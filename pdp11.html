@@ -1222,26 +1222,9 @@
     </div>
     <div class="page" id="page-terminal">
       <p class=clear><br>
-      <div id="g60printer">
-        <div class="printer-input-area">
-          <textarea id="g60printer_input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-            placeholder="Click here to type..."></textarea>
-          <div id="g60printer_buttons" style="padding:4px 0;display:flex;gap:2px;flex-wrap:wrap;">
-            <button onclick="dlReceiveQueue(0,[3]);document.getElementById('g60printer_input').focus();">^C</button>
-            <button onclick="dlReceiveQueue(0,[4]);document.getElementById('g60printer_input').focus();">^D</button>
-            <button onclick="dlReceiveQueue(0,[8]);document.getElementById('g60printer_input').focus();">^H</button>
-            <button onclick="dlReceiveQueue(0,[10]);document.getElementById('g60printer_input').focus();">LF</button>
-            <button onclick="dlReceiveQueue(0,[17]);document.getElementById('g60printer_input').focus();">^Q</button>
-            <button onclick="dlReceiveQueue(0,[19]);document.getElementById('g60printer_input').focus();">^S</button>
-            <button onclick="dlReceiveQueue(0,[20]);document.getElementById('g60printer_input').focus();">^T</button>
-            <button onclick="dlReceiveQueue(0,[26]);document.getElementById('g60printer_input').focus();">^Z</button>
-            <button onclick="dlReceiveQueue(0,[27]);document.getElementById('g60printer_input').focus();">ESC</button>
-            <button onclick="dlReceiveQueue(0,[9]);document.getElementById('g60printer_input').focus();">TAB</button>
-            <button onclick="dlReceiveQueue(0,[0]);document.getElementById('g60printer_input').focus();">Break</button>
-            <button
-              onclick="if(g60printer)g60printer.clear();document.getElementById('g60printer_input').focus();">Clear</button>
-          </div>
-        </div>
+      <div id="g60printer"></div>
+      <div id="punchkeypane">
+        <div id="punchkeyboard"></div>
       </div>
       <p>
       <div id="vt11"></div>
@@ -3322,13 +3305,183 @@ There is a small mailbox here.
       if (g60printer) return;
       g60printer = new G60Printer('g60printer');
       g60Console = createG60Console(g60printer);
-      // Focus the input area
-      var inp = document.getElementById('g60printer_input');
-      if (inp) setTimeout(function () { inp.focus(); }, 100);
     }
 
-    // Initialize printer immediately (Audio elements work without gesture)
+    // ==================================================================
+    // Google60-style punch-keyboard for PDP-11 terminal input
+    // ==================================================================
+    // Renders a keypunch-style keyboard using simple styled buttons.
+    // ==================================================================
+
+    var g60Keyboard = (function () {
+      'use strict';
+
+      // Row definitions: { top, left, keys[] }
+      // key = [label, shiftLabel] or {label, code, shift, space}
+      var keyRows = [
+        {
+          top: 4, left: 0, keys: [
+            ['1', '!'], ['2', '"'], ['3', '#'], ['4', '$'], ['5', '%'],
+            ['6', '&'], ['7', '\''], ['8', '('], ['9', ')'], ['0'],
+            [':', '*'], ['-', '=']
+          ]
+        },
+        {
+          top: 44, left: 20, keys: [
+            ['Q'], ['W'], ['E'], ['R'], ['T'], ['Y'],
+            ['U'], ['I'], ['O', '_'], ['P', '@'],
+            null, { label: 'DISCARD', code: 8, cls: 'func' }
+          ]
+        },
+        {
+          top: 84, left: 40, keys: [
+            ['A'], ['S'], ['D'], ['F'], ['G'], ['H'],
+            ['J'], ['K', '['], ['L', '\\'], [';', '+'],
+            null, { label: 'RETURN', code: 13, cls: 'func' }
+          ]
+        },
+        {
+          top: 124, left: 2, keys: [
+            { label: 'PICS', shift: true, cls: 'shift' }, null,
+            ['Z'], ['X'], ['C'], ['V'], ['B'],
+            ['N', '^'], ['M', ']'], [',', '<'], ['.', '>'], ['/', '?'],
+            null, { label: 'PICS', shift: true, cls: 'shift' }
+          ]
+        },
+        {
+          top: 172, left: 221, keys: [
+            { label: '', code: 32, space: true }
+          ]
+        }
+      ];
+
+      var shifted = false;
+      var shiftCls = 'g60kbd-shift-on';
+
+      function buildKeyboard() {
+        var kbd = document.getElementById('punchkeyboard');
+        if (!kbd) return;
+        kbd.innerHTML = '';
+
+        for (var ri = 0; ri < keyRows.length; ri++) {
+          var row = keyRows[ri];
+          var keys = row.keys;
+          // Original visualKeyboard formula:
+          // x starts at row.left, decrements by 44 per null spacer
+          // position = x + c*50
+          var x = row.left;
+
+          for (var ci = 0; ci < keys.length; ci++) {
+            var def = keys[ci];
+            if (!def) { x -= 44; continue; }
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            var pos = x + ci * 50;
+
+            // Distinguish plain arrays (char keys) from object configs
+            if (Array.isArray(def)) {
+              btn.className = 'g60kbd-key';
+              btn.textContent = def[0];
+              btn._code = def[0].charCodeAt(0);
+              btn._shiftCode = def[1] ? def[1].charCodeAt(0) : btn._code;
+              btn._shiftLabel = def[1] || null;
+            } else if (def.space === true) {
+              btn.className = 'g60kbd-key g60kbd-space';
+              btn.textContent = '\u00A0';
+              btn._code = 32;
+            } else if (def.shift === true) {
+              btn.className = 'g60kbd-key g60kbd-shift';
+              btn.textContent = 'PICS';
+              btn._shift = true;
+            } else if (typeof def.code === 'number') {
+              btn.className = 'g60kbd-key g60kbd-' + (def.cls || 'func');
+              btn.textContent = def.label;
+              btn._code = def.code;
+            }
+
+            btn.style.left = pos + 'px';
+            btn.style.top = row.top + 'px';
+
+            btn.addEventListener('mousedown', function (e) {
+              e.preventDefault();
+              if (this._shift) {
+                shifted = !shifted;
+                var all = document.querySelectorAll('.g60kbd-shift');
+                for (var i = 0; i < all.length; i++) {
+                  all[i].classList.toggle(shiftCls, shifted);
+                }
+                return;
+              }
+              var send = (shifted && this._shiftCode) ? this._shiftCode : this._code;
+              sendChar(send);
+              this.classList.add('g60kbd-down');
+              var self = this;
+              setTimeout(function () { self.classList.remove('g60kbd-down'); }, 120);
+              if (shifted && this._shiftLabel) {
+                shifted = false;
+                var all = document.querySelectorAll('.g60kbd-shift');
+                for (var i = 0; i < all.length; i++) {
+                  all[i].classList.remove(shiftCls);
+                }
+              }
+            });
+
+            kbd.appendChild(btn);
+          }
+        }
+      }
+
+      // Physical keyboard handlers
+      function installPhysicalKeyboard() {
+        document.addEventListener('keydown', function (e) {
+          var code = e.keyCode || e.which;
+          if (/^(input|textarea)$/i.test(e.target.tagName)) return;
+          if (code === 13) { sendDL([13]); e.preventDefault(); return; }
+          if (code === 8) { sendDL([8]); e.preventDefault(); return; }
+          if (code === 9) { sendDL([9]); e.preventDefault(); return; }
+          if (e.ctrlKey && code >= 65 && code <= 90) {
+            sendDL([code - 64]); e.preventDefault(); return;
+          }
+        });
+        document.addEventListener('keypress', function (e) {
+          var code = e.keyCode || e.which;
+          if (/^(input|textarea)$/i.test(e.target.tagName)) return;
+          if (code >= 32 && code < 127) { sendDL([code]); e.preventDefault(); }
+        });
+        var pane = document.getElementById('punchkeypane');
+        if (pane) {
+          pane.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var text = (e.clipboardData || window.clipboardData).getData('text');
+            if (text) {
+              text = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
+              var bytes = [];
+              for (var i = 0; i < text.length; i++) {
+                bytes.push(text.charCodeAt(i) & 0x7F);
+              }
+              sendDL(bytes);
+            }
+          });
+        }
+      }
+      function sendChar(code) {
+        if (typeof window.dlReceiveQueue === 'function') {
+          window.dlReceiveQueue(0, [code]);
+        }
+      }
+      function sendDL(bytes) {
+        if (typeof window.dlReceiveQueue === 'function') {
+          window.dlReceiveQueue(0, bytes);
+        }
+      }
+
+      return { init: function () { buildKeyboard(); installPhysicalKeyboard(); } };
+    })();
+
+    // Initialize printer and keyboard
     initG60Printer();
+    g60Keyboard.init();
 
     boot();
   </script>

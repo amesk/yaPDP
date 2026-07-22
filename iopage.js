@@ -887,6 +887,11 @@ function dl11(vt52Unit, deviceVector) {
         dlPump(unit);
     }
 
+    // Expose globally for the visual punch-keyboard (and inline handlers)
+    if (unit === 0) {
+        window.dlReceiveQueue = dlReceiveQueue;
+    }
+
     // --- Typeahead queue service routine ---
     // Feeds one byte at a time into dlReceiveChar(), respecting DL11 timing.
     function dlPump(unit) {
@@ -928,48 +933,11 @@ function dl11(vt52Unit, deviceVector) {
     // --- Lazy UI creation on first output ---
     // Expose the receive queue globally for console (tty0) input
     function ensureTtyUI(unit) {
-        // For unit 0 (console), use printer input but also set up keyboard handlers
+        // For unit 0 (console): output goes to Google60 printer,
+        // input is handled by the visual punch-keyboard in the HTML.
+        // Physical keyboard input is captured globally by g60Keyboard.init().
         if (unit === 0) {
-            var printerInput = document.getElementById('g60printer_input');
-            if (!printerInput) return null;
-
-            // Attach keyboard handlers (only once)
-            if (!printerInput._g60keyboard) {
-                printerInput._g60keyboard = true;
-
-                printerInput.addEventListener('keydown', function(e) {
-                    var code = e.keyCode || e.which;
-                    if (code === 13) { dlReceiveQueue(0, [13]); e.preventDefault(); return; }
-                    if (code === 8) { dlReceiveQueue(0, [8]); e.preventDefault(); return; }
-                    if (code === 9) { dlReceiveQueue(0, [9]); e.preventDefault(); return; }
-                    if (e.ctrlKey && code >= 65 && code <= 90) {
-                        dlReceiveQueue(0, [code - 64]); e.preventDefault(); return;
-                    }
-                });
-
-                printerInput.addEventListener('keypress', function(e) {
-                    var code = e.keyCode || e.which;
-                    if (code >= 32 && code < 127) {
-                        dlReceiveQueue(0, [code]);
-                        e.preventDefault();
-                    }
-                });
-
-                printerInput.addEventListener('paste', function(e) {
-                    e.preventDefault();
-                    var text = (e.clipboardData || window.clipboardData).getData('text');
-                    if (text) {
-                        text = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
-                        var bytes = [];
-                        for (var i = 0; i < text.length; i++) {
-                            bytes.push(text.charCodeAt(i) & 0x7F);
-                        }
-                        dlReceiveQueue(0, bytes);
-                    }
-                });
-            }
-
-            return printerInput;
+            return null; // no textarea needed
         }
 
         // Original behavior for tty1, tty2, etc.

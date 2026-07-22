@@ -264,33 +264,101 @@
     z-index: 10;
 }
 
-/* Printer input area (keyboard input) */
-#g60printer .printer-input-area {
+/* ==================================================================
+   Google60-style punch keyboard for PDP-11 terminal input
+   Placed below the line printer in the terminal page.
+   ================================================================== */
+
+#punchkeypane {
+    position: relative;
+    width: 940px;
+    height: 215px;
+    background-color: #3a1018;
+    background-image: url('assets/images/keyboardbg.jpg');
+    background-repeat: repeat-x;
+    margin: 0;
+    padding: 0;
+    border: 1px solid #444;
+    border-top: none;
+}
+
+#punchkeyboard {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 100px;
-    background: #1a1a1a;
-    border-top: 1px solid #444;
-    padding: 8px;
-    box-sizing: border-box;
+    top: 14px;
+    left: 180px;
 }
 
-#g60printer .printer-input-area textarea {
-    width: 100%;
-    height: 100%;
-    background: #111;
-    color: #0f0;
-    border: 1px solid #333;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    resize: none;
+/* Base key button — rounded retro keypunch style */
+#punchkeyboard .g60kbd-key {
+    position: absolute;
+    width: 38px;
+    height: 36px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 35%, #f0e8d8 0%, #d8d0be 35%, #b8b0a0 65%, #a09888 100%);
+    color: #1a1a1a;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 36px;
+    text-align: center;
+    cursor: default;
+    box-shadow:
+        0 3px 6px rgba(0, 0, 0, 0.5),
+        0 1px 0 rgba(255, 255, 255, 0.3) inset,
+        0 -2px 3px rgba(0, 0, 0, 0.15) inset;
+    user-select: none;
     outline: none;
-    padding: 4px;
-    box-sizing: border-box;
+    -webkit-user-select: none;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
-#g60printer .printer-input-area textarea:focus {
-    border-color: #0f0;
+/* Pressed state — key sinks in */
+#punchkeyboard .g60kbd-key.g60kbd-down {
+    background: radial-gradient(ellipse at 50% 40%, #c8c0b0 0%, #b0a898 40%, #989080 70%, #888070 100%);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.5),
+        0 1px 0 rgba(255, 255, 255, 0.15) inset,
+        0 -1px 2px rgba(0, 0, 0, 0.2) inset;
+    margin-top: 2px;
+}
+
+/* Space bar — elongated rounded pill */
+#punchkeyboard .g60kbd-space {
+    width: 150px;
+    height: 32px;
+    border-radius: 18px;
+    background: radial-gradient(ellipse at 50% 35%, #e8e0d0 0%, #d0c8b8 35%, #b8b0a0 65%, #a8a090 100%);
+    line-height: 32px;
+}
+
+/* Function keys (DISCARD, RETURN) */
+#punchkeyboard .g60kbd-func {
+    width: 48px;
+    height: 32px;
+    font-size: 7px;
+    line-height: 32px;
+    background: radial-gradient(ellipse at 50% 35%, #d8d0c0 0%, #c0b8a8 35%, #a8a090 65%, #989080 100%);
+}
+
+/* Shift (PICS) key */
+#punchkeyboard .g60kbd-shift {
+    width: 42px;
+    height: 32px;
+    font-size: 8px;
+    line-height: 32px;
+    background: radial-gradient(ellipse at 50% 35%, #d8d0c0 0%, #c0b8a8 35%, #a8a090 65%, #989080 100%);
+}
+
+/* Shift active state — lit up amber/gold */
+#punchkeyboard .g60kbd-shift.g60kbd-shift-on {
+    background: radial-gradient(ellipse at 50% 35%, #e8d090 0%, #c8a850 35%, #a08830 65%, #807020 100%);
+    color: #fff0c0;
+    box-shadow:
+        0 3px 6px rgba(0, 0, 0, 0.5),
+        0 1px 0 rgba(255, 220, 100, 0.4) inset,
+        0 -2px 3px rgba(0, 0, 0, 0.2) inset;
 }
