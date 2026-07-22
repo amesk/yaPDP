@@ -1,0 +1,1497 @@
+.MAIN.  MACRO V05.05   03:15  Page 1
+
+
+      1                                 ; ===========================================================================
+      2                                 ; PDP-11/70 Emulator Bootstrap Environment
+      3                                 ; ===========================================================================
+      4                                 ;
+      5                                 ; This file provides the complete bootstrap environment for the emulator.
+      6                                 ; It includes:
+      7                                 ;   o Console I/O (input, output, interrupt-driven printing)
+      8                                 ;   o Clock tickle for front-panel display activity
+      9                                 ;   o Command interpreter and dispatcher
+     10                                 ;   o Demonstration routines (lights, chaser, MMU relocation)
+     11                                 ;   o Multi-device boot support (rk, rl, rp, ra, tm, pr)
+     12                                 ;
+     13                                 ;
+     14                                 ; boot loader code
+     15                                 ;mac/list:boot boot
+     16                                 ;link/bot:120000 boot,odt11
+     17                                 ;dump/noascii/start:120/out:tt: boot.sav
+     18                                 ;
+     19                                 ; ===========================================================================
+     20
+     21                                 ; ---------------------------------------------------------------------------
+     22                                 ; macros
+     23                                 ; ---------------------------------------------------------------------------
+     24
+     25                                     .macro lda lab,reg
+     26                                         mov     pc,reg
+     27                                         add     lab-.,reg          ; load address relative to pc (PIC)
+     28                                     .endm
+     29
+     30                                 ; ---------------------------------------------------------------------------
+     31                                 ; constants and device registers
+     32                                 ; ---------------------------------------------------------------------------
+     33
+     34         177776                  psw     = 177776        ; Processor Status Word
+     35         177772                  pir     = 177772        ; Programmable Interrupt Register
+     36         177570                  consol  = 177570        ; Display Register (front-panel console)
+     37
+     38                                 ; console terminal
+     39         177560                  ttks    = 177560        ; keyboard status
+     40         177562                  ttkb    = 177562        ; keyboard buffer
+     41         177564                  ttss    = 177564        ; transmitter status
+     42         177566                  ttsb    = 177566        ; transmitter buffer
+     43
+     44                                 ; ---------------------------------------------------------------------------
+     45                                 ; startup sequence
+     46                                 ; ---------------------------------------------------------------------------
+     47
+     48 000000                          start:
+     49 000000  000005                          reset
+     50 000002  005037  177776                  clr     @#psw
+     51 000006  012737  000000' 000004          mov     #start,@#4         ; set addressing error trap
+     52 000014  012737  000200  000006          mov     #200,@#6
+     53
+     54 000022                                  lda     #start, sp
+     55 000030  062706  020000                  add     #20000, sp         ; stack at end of current page
+     56
+     57 000034                                  lda     #banner, r0
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-1
+
+
+     58 000042  004767  000462                  jsr     pc, print          ; print banner
+     59
+     60 000046  162706  000400                  sub     #256., sp          ; reserve space for command buffer
+     61 000052  010667  000546                  mov     sp, buffer
+     62
+     63 000056  004767  000546                  jsr     pc, getcmd         ; print prompt, start clock, wait for input
+     64
+     65 000062  005000                          clr     r0
+     66 000064                          10$:
+     67 000064  000001                          wait
+     68 000066  005200                          inc     r0
+     69 000070  000775                          br      10$                ; idle loop
+     70
+     71
+     72                                 ; ===========================================================================
+     73                                 ; static strings
+     74                                 ; ===========================================================================
+     75
+     76 000072     120     141     165  banner: .asciz "Paul Nankervis - paulnank@hotmail.com"<15><12><15><12>
+        000075     154     040     116
+        000100     141     156     153
+        000103     145     162     166
+        000106     151     163     040
+        000111     055     040     160
+        000114     141     165     154
+        000117     156     141     156
+        000122     153     100     150
+        000125     157     164     155
+        000130     141     151     154
+        000133     056     143     157
+        000136     155     015     012
+        000141     015     012     000
+     77 000144     102     157     157  prompt: .asciz "Boot> "
+        000147     164     076     040
+        000152     000
+     78
+     79 000153     103     157     155  hlpmsg: .ascii  "Commands are BOOT, HELP, LIGHTS, CHASER, ODT"<15><12>
+        000156     155     141     156
+        000161     144     163     040
+        000164     141     162     145
+        000167     040     102     117
+        000172     117     124     054
+        000175     040     110     105
+        000200     114     120     054
+        000203     040     114     111
+        000206     107     110     124
+        000211     123     054     040
+        000214     103     110     101
+        000217     123     105     122
+        000222     054     040     117
+        000225     104     124     015
+        000230     012
+     80 000231     102     157     157          .ascii  "Boot devices are RK RL RP RA TM or PR"<15><12>
+        000234     164     040     144
+        000237     145     166     151
+        000242     143     145     163
+        000245     040     141     162
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-2
+
+
+        000250     145     040     122
+        000253     113     040     122
+        000256     114     040     122
+        000261     120     040     122
+        000264     101     040     124
+        000267     115     040     157
+        000272     162     040     120
+        000275     122     015     012
+     81 000300     145     147     056          .asciz  "eg. Boot> BOOT rp1"<15><12><15><12>
+        000303     040     102     157
+        000306     157     164     076
+        000311     040     102     117
+        000314     117     124     040
+        000317     162     160     061
+        000322     015     012     015
+        000325     012     000
+     82
+     83 000327     015     012     000  eol:    .byte   15,12,0
+     84 000332     010     040     010  del:    .byte   10,40,10,0
+        000335     000
+     85 000336     126     141     154  unkmsg: .asciz  "Valid commands are BOOT, HELP, LIGHTS, CHASER, ODT"<12><15>
+        000341     151     144     040
+        000344     143     157     155
+        000347     155     141     156
+        000352     144     163     040
+        000355     141     162     145
+        000360     040     102     117
+        000363     117     124     054
+        000366     040     110     105
+        000371     114     120     054
+        000374     040     114     111
+        000377     107     110     124
+        000402     123     054     040
+        000405     103     110     101
+        000410     123     105     122
+        000413     054     040     117
+        000416     104     124     012
+        000421     015     000
+     86 000423     126     141     154  badboo: .asciz  "Valid boot devices are RK RL RP RA TM and PR eg rk2"<12><15>
+        000426     151     144     040
+        000431     142     157     157
+        000434     164     040     144
+        000437     145     166     151
+        000442     143     145     163
+        000445     040     141     162
+        000450     145     040     122
+        000453     113     040     122
+        000456     114     040     122
+        000461     120     040     122
+        000464     101     040     124
+        000467     115     040     141
+        000472     156     144     040
+        000475     120     122     040
+        000500     145     147     040
+        000503     162     153     062
+        000506     012     015     000
+     87                                         .even
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-3
+
+
+     88
+     89
+     90                                 ; ===========================================================================
+     91                                 ; console output routines
+     92                                 ; ===========================================================================
+     93
+     94                                 ; ---------------------------------------------------------------------------
+     95                                 ; putchr - output a single character in r0
+     96                                 ; ---------------------------------------------------------------------------
+     97
+     98 000512                          putchr:
+     99 000512                          10$:
+    100 000512  105737  177564                  tstb    @#ttss
+    101 000516  100375                          bpl     10$
+    102 000520  110037  177566                  movb    r0, @#ttsb
+    103 000524  000207                          rts     pc
+    104
+    105
+    106                                 ; ---------------------------------------------------------------------------
+    107                                 ; print - start interrupt-driven printing of a zero-terminated string
+    108                                 ;          r0 = address of string
+    109                                 ; ---------------------------------------------------------------------------
+    110
+    111 000526  000000                  prtptr: .word   0
+    112
+    113 000530                          print:
+    114 000530                          10$:
+    115 000530  132737  000100  177564          bitb    #100, @#ttss
+    116 000536  001374                          bne     10$                ; wait until transmitter IE is clear
+    117
+    118 000540  010067  177762                  mov     r0, prtptr
+    119
+    120 000544                                  lda     #prtast, r0
+    121 000552  010037  000064                  mov     r0, @#64           ; vector low
+    122 000556  012737  000200  000066          mov     #200, @#66         ; vector high
+    123 000564  012737  000100  177564          mov     #100, @#ttss       ; enable transmitter interrupts
+    124
+    125 000572  000207                          rts     pc
+    126
+    127
+    128                                 ; ---------------------------------------------------------------------------
+    129                                 ; prtast - transmitter interrupt service routine
+    130                                 ; ---------------------------------------------------------------------------
+    131
+    132 000574                          prtast:
+    133 000574  105777  177726                  tstb    @prtptr
+    134 000600  001406                          beq     prtDone
+    135
+    136 000602  117737  177720  177566          movb    @prtptr, @#ttsb
+    137 000610  005267  177712                  inc     prtptr
+    138 000614  000006                          rtt
+    139
+    140 000616                          prtDone:
+    141 000616  105037  177564                  clrb    @#ttss             ; disable transmitter IE
+    142 000622  000006                          rtt
+    143
+    144
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-4
+
+
+    145                                 ; ===========================================================================
+    146                                 ; console input routines
+    147                                 ; ===========================================================================
+    148
+    149 000624  000000                  buffer: .word   0       ; base of input buffer
+    150 000626  000000                  bufptr: .word   0       ; current write pointer
+    151
+    152
+    153                                 ; ---------------------------------------------------------------------------
+    154                                 ; getcmd - print prompt, start clock tickle, prepare for input
+    155                                 ; ---------------------------------------------------------------------------
+    156
+    157 000630                          getcmd:
+    158 000630                                  lda     #prompt, r0
+    159 000636  004767  177666                  jsr     pc, print
+    160
+    161 000642  016767  177756  177756          mov     buffer, bufptr
+    162
+    163                                 ; install console input ISR
+    164 000650                                  lda     #inpast, r0
+    165 000656  010037  000060                  mov     r0, @#60
+    166 000662  012737  000200  000062          mov     #200, @#62
+    167 000670  112737  000100  177560          movb    #100, @#ttks
+    168
+    169                                 ; install clock ISR
+    170 000676                                  lda     #clkast, r0
+    171 000704  010037  000100                  mov     r0, @#100
+    172 000710  012737  000340  000102          mov     #340, @#102
+    173 000716  112737  000100  177546          movb    #100, @#177546
+    174
+    175 000724  000207                          rts     pc
+    176
+    177
+    178                                 ; ---------------------------------------------------------------------------
+    179                                 ; clock tickle ISR - updates display register
+    180                                 ; ---------------------------------------------------------------------------
+    181
+    182 000726  000000                  clkcnt: .word   0
+    183
+    184 000730                          clkast:
+    185 000730  005367  177772                  dec     clkcnt
+    186 000734  016737  177766  177570          mov     clkcnt, @#consol
+    187 000742  000006                          rtt
+    188
+    189
+    190                                 ; ---------------------------------------------------------------------------
+    191                                 ; inpast - console input ISR
+    192                                 ;          handles character input, echo, editing, and command dispatch
+    193                                 ; ---------------------------------------------------------------------------
+    194
+    195 000744                          inpast:
+    196 000744  010046                          mov     r0, -(sp)
+    197 000746  010146                          mov     r1, -(sp)
+    198
+    199 000750  113700  177562                  movb    @#ttkb, r0         ; get character
+    200
+    201 000754  120027  000040                  cmpb    r0, #40            ; below space?
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-5
+
+
+    202 000760  002432                          blt     10$
+    203
+    204 000762  120027  000177                  cmpb    r0, #177           ; DEL?
+    205 000766  002036                          bge     20$
+    206
+    207                                 ; normal printable character
+    208 000770  016701  177632                  mov     bufptr, r1
+    209 000774  166701  177624                  sub     buffer, r1
+    210 001000  020127  000372                  cmp     r1, #250.
+    211 001004  003061                          bgt     40$                ; buffer full
+    212
+    213 001006  004767  177500                  jsr     pc, putchr         ; echo
+    214
+    215                                 ; convert lowercase - uppercase (ASCII decimal)
+    216 001012  120027  000141                  cmpb    r0, #97.           ; 'a'
+    217 001016  002405                          blt     30$
+    218 001020  120027  000172                  cmpb    r0, #122.          ; 'z'
+    219 001024  003002                          bgt     30$
+    220 001026  142700  000040                  bicb    #40, r0            ; clear ASCII case bit
+    221
+    222 001032                          30$:
+    223 001032  016701  177570                  mov     bufptr, r1
+    224 001036  110021                          movb    r0, (r1)+
+    225 001040  010167  177562                  mov     r1, bufptr
+    226 001044  000441                          br      40$
+    227
+    228                                 ; control characters
+    229 001046                          10$:
+    230 001046  120027  000015                  cmpb    r0, #15            ; CR?
+    231 001052  001420                          beq     50$
+    232 001054  120027  000012                  cmpb    r0, #12            ; LF?
+    233 001060  001033                          bne     40$
+    234 001062  000400                          br      20$
+    235
+    236                                 ; backspace / delete
+    237 001064                          20$:
+    238 001064  026767  177536  177532          cmp     bufptr, buffer
+    239 001072  101426                          blos    40$
+    240
+    241 001074  005367  177526                  dec     bufptr
+    242 001100                                  lda     #del, r0
+    243 001106  004767  177416                  jsr     pc, print
+    244 001112  000416                          br      40$
+    245
+    246                                 ; carriage return - dispatch command
+    247 001114                          50$:
+    248 001114  016700  177506                  mov     bufptr, r0
+    249 001120  105010                          clrb    (r0)
+    250
+    251 001122                                  lda     #cmd, r0
+    252 001130  010037  000240                  mov     r0, @#240
+    253 001134  012737  000040  000242          mov     #40, @#242
+    254 001142  012737  001000  177772          mov     #1000, @#pir       ; invoke cmd at priority 1
+    255
+    256 001150                          40$:
+    257 001150  012601                          mov     (sp)+, r1
+    258 001152  012600                          mov     (sp)+, r0
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-6
+
+
+    259 001154  000006                          rtt
+    260
+    261                                 ; ===========================================================================
+    262                                 ; command interpreter
+    263                                 ; ===========================================================================
+    264                                 ;
+    265                                 ; Provides:
+    266                                 ;   o Prompting and command entry
+    267                                 ;   o Uppercasing and simple line editing
+    268                                 ;   o Command lookup by name
+    269                                 ;   o Dispatch to command routines
+    270                                 ;
+    271                                 ; Commands supported:
+    272                                 ;   boot, help, lights, chaser, odt
+    273                                 ;
+    274                                 ; ===========================================================================
+    275
+    276
+    277                                 ; ---------------------------------------------------------------------------
+    278                                 ; command table
+    279                                 ; ---------------------------------------------------------------------------
+    280
+    281 001156                          cmdtbl:
+    282 001156  001334                          .word   boot-.
+    283 001160  000260                          .word   help-.
+    284 001162  000310                          .word   lights-.
+    285 001164  000270                          .word   chaser-.
+    286 001166  000000C                         .word   odt-.
+    287
+    288 001170                          cmdlst:
+    289 001170     102     117     117          .asciz  "BOOT"
+        001173     124     000
+    290 001175     110     105     114          .asciz  "HELP"
+        001200     120     000
+    291 001202     114     111     107          .asciz  "LIGHTS"
+        001205     110     124     123
+        001210     000
+    292 001211     103     110     101          .asciz  "CHASER"
+        001214     123     105     122
+        001217     000
+    293 001220     117     104     124          .asciz  "ODT"
+        001223     000
+    294 001224     000                          .byte   0
+    295                                         .even
+    296
+    297                                 ; ---------------------------------------------------------------------------
+    298                                 ; cmd - main command dispatcher
+    299                                 ; ---------------------------------------------------------------------------
+    300
+    301 001226                          cmd:
+    302 001226  005037  177772                  clr     @#pir              ; no more pir calls
+    303
+    304 001232  010046                          mov     r0, -(sp)
+    305 001234  010146                          mov     r1, -(sp)
+    306 001236  010246                          mov     r2, -(sp)
+    307 001240  010346                          mov     r3, -(sp)
+    308 001242  010446                          mov     r4, -(sp)
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-7
+
+
+    309 001244  010546                          mov     r5, -(sp)
+    310
+    311 001246                                  lda     #eol, r0
+    312 001254  004767  177250                  jsr     pc, print
+    313
+    314 001260  016705  177340                  mov     buffer, r5         ; r5 = pointer into input buffer
+    315
+    316                                 ; skip leading spaces
+    317 001264                          10$:
+    318 001264  112504                          movb    (r5)+, r4
+    319 001266  001453                          beq     90$                ; empty line
+    320 001270  120427  000040                  cmpb    r4, #40
+    321 001274  001773                          beq     10$
+    322
+    323                                 ; r4 = first non-space character
+    324 001276  005003                          clr     r3                 ; command index
+    325 001300                                  lda     #cmdlst, r0        ; command name table
+    326
+    327                                 ; try each command in table
+    328 001306                          20$:
+    329 001306  112001                          movb    (r0)+, r1
+    330 001310  001435                          beq     80$                ; end of table - unknown command
+    331
+    332 001312  120104                          cmpb    r1, r4
+    333 001314  001013                          bne     40$                ; first letter mismatch
+    334
+    335 001316  010502                          mov     r5, r2             ; compare remaining letters
+    336
+    337 001320                          30$:
+    338 001320  111201                          movb    (r2), r1
+    339 001322  001415                          beq     70$                ; end of input token
+    340 001324  005202                          inc     r2
+    341 001326  120127  000040                  cmpb    r1, #40
+    342 001332  001411                          beq     70$                ; space ends token
+    343
+    344 001334  105710                          tstb    (r0)
+    345 001336  001402                          beq     40$                ; table entry ended early
+    346
+    347 001340  120120                          cmpb    r1, (r0)+
+    348 001342  001766                          beq     30$
+    349
+    350                                 ; no match - skip to next command
+    351 001344                          40$:
+    352 001344  105720                          tstb    (r0)+
+    353 001346  001376                          bne     40$
+    354 001350  062703  000002                  add     #2, r3
+    355 001354  000754                          br      20$
+    356
+    357                                 ; found matching command
+    358 001356                          70$:
+    359 001356  132737  000100  177564          bitb    #100, @#ttss
+    360 001364  001374                          bne     70$                ; wait for printing to finish
+    361
+    362 001366                                  lda     #cmdtbl, r0
+    363 001374  060003                          add     r0, r3
+    364 001376  061303                          add     (r3), r3
+    365 001400  004713                          jsr     pc, (r3)           ; execute command routine
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-8
+
+
+    366 001402  000405                          br      90$
+    367
+    368                                 ; unknown command
+    369 001404                          80$:
+    370 001404                                  lda     #unkmsg, r0
+    371 001412  004767  177112                  jsr     pc, print
+    372
+    373                                 ; return to prompt
+    374 001416                          90$:
+    375 001416  004767  177206                  jsr     pc, getcmd
+    376
+    377 001422  012605                          mov     (sp)+, r5
+    378 001424  012604                          mov     (sp)+, r4
+    379 001426  012603                          mov     (sp)+, r3
+    380 001430  012602                          mov     (sp)+, r2
+    381 001432  012601                          mov     (sp)+, r1
+    382 001434  012600                          mov     (sp)+, r0
+    383 001436  000006                          rtt
+    384
+    385                                 ; ---------------------------------------------------------------------------
+    386                                 ; help - print help text
+    387                                 ; ---------------------------------------------------------------------------
+    388
+    389 001440                          help:
+    390 001440                                  lda     #hlpmsg, r0
+    391 001446  004767  177056                  jsr     pc, print
+    392 001452  000207                          rts     pc
+    393
+    394
+    395                                 ; ---------------------------------------------------------------------------
+    396                                 ; chaser - simple rotating light pattern
+    397                                 ; ---------------------------------------------------------------------------
+    398
+    399 001454                          chaser:
+    400 001454  012700  000001                  mov     #1, r0
+    401 001460                          10$:
+    402 001460  006100                          rol     r0
+    403 001462  010037  177570                  mov     r0, @#consol
+    404 001466  000005                          reset                       ; loop forever
+    405 001470  000773                          br      10$
+    406
+    407
+    408                                 ; ===========================================================================
+    409                                 ; lights and mmu relocation demonstration
+    410                                 ; ===========================================================================
+    411                                 ;
+    412                                 ; Provides:
+    413                                 ;   o Rotating pattern on front-panel display
+    414                                 ;   o MMU mode setup for all four modes
+    415                                 ;   o Copying virtual code into mapped memory
+    416                                 ;   o Executing code in relocated address space
+    417                                 ;
+    418                                 ; ===========================================================================
+    419
+    420         177572                  mmr0    = 177572
+    421         177574                  mmr1    = 177574
+    422         177576                  mmr2    = 177576
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-9
+
+
+    423         172516                  mmr3    = 172516
+    424
+    425         172300                  mmrk    = 172300
+    426         172200                  mmrs    = 172200
+    427         177600                  mmru    = 177600
+    428
+    429         000004                  modes   = 4.
+    430
+    431 001472                          lights:
+    432 001472  005037  177572                  clr @#mmr0          ;turn off mmu
+    433 001476                                  lda #mmupar,r5      ;get mmu page address register table
+    434 001504  012704  000004                  mov #modes,r4       ;number of table entries
+    435
+    436 001510  012503                  10$:    mov (r5)+,r3        ;get page address register base for mode
+    437 001512  100007                          bpl 20$             ;skip dummy entry for illegal mode
+    438
+    439 001514  005001                          clr r1              ;set base virtual relocation address to 0
+    440 001516  010302                          mov r3,r2           ;pass page register address to subroutine
+    441 001520  004767  000152                  jsr pc,90$          ;initialize all map pdr & par registers for mode
+    442 001524  012763  177600  000076          mov #177600,76(r3)  ;point last d page (8) to i/o space
+    443 001532  077412                  20$:    sob r4,10$          ;repeat for all modes
+    444
+    445 001534  012737  000007  172516          mov #7,@#mmr3       ;set mmu for 18 bit addressing with split i/d
+    446 001542  012737  000001  177572          mov #1,@#mmr0       ;enable memory mapping
+    447
+    448 001550  012700  004000                  mov #4000,r0        ;relocation address for light virtual code (upper mem somewhere)
+    449 001554  010037  172244                  mov r0,@#mmrs+44    ;super mode page 2 i relocation base (becomes i virtual #40000)
+    450 001560  010037  172264                  mov r0,@#mmrs+64    ;super mode page 2 d relocation base
+    451 001564  042737  030000  177776          bic #030000,@#psw   ;clear previous mode in psw
+    452 001572  052737  010000  177776          bis #010000,@#psw   ;set pm to super
+    453 001600  012703  040200                  mov #40200,r3       ;target virtual address for code (allowing 200 for data)
+    454 001604                                  lda #vcode,r2       ;where we get virtual code
+    455 001612                                  lda #vcoded,r0      ;end of virtual code
+    456
+    457 001620  012246                  30$:    mov (r2)+,-(sp)     ;get a word of code
+    458 001622  006623                          mtpi (r3)+          ;push into super space
+    459 001624  020200                          cmp r2,r0           ;push all code to target space
+    460 001626  103774                          blo 30$             ;until done
+    461
+    462 001630  012746  040200                  mov #40200,-(sp)
+    463 001634  006606                          mtpi sp             ;set super sp
+    464 001636  052737  030000  177776          bis #030000,@#psw
+    465 001644  012746  040140                  mov #40140,-(sp)
+    466 001650  006606                          mtpi sp             ;set user sp (no further sp handling needed)
+    467 001652  012737  040200  000240          mov #40200,@#240    ;start address for super pc
+    468 001660  012737  054040  000242          mov #054040,@#242   ;super mode will use alternate registers
+    469 001666  012737  001000  177772          mov #1000,@#pir     ;call #40200 in super mode at priority 1 using pir
+    470 001674  000207                          rts pc              ;our work here is done
+    471
+    472 001676  012700  000010          90$:    mov #8.,r0          ;subroutine to set up mapping pdr/par registers at r2 with r1 base addre
+    473
+    474 001702  010162  000060          95$:    mov r1,60(r2)       ;load d par
+    475 001706  010162  000040                  mov r1,40(r2)       ;load i par
+    476 001712  012762  077406  000020          mov #77406,20(r2)   ;load d pdr as full length read/write page
+    477 001720  012722  077406                  mov #77406,(r2)+    ;load i pdr
+    478 001724  062701  000200                  add #200,r1         ;step base address
+    479 001730  077014                          sob r0,95$          ;repeat
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-10
+
+
+    480 001732  000207                          rts pc
+    481
+    482                                 ;this code is copied to the target mode virtual address #40200 (on page 2)
+    483                                 ;virtual addresses #40000 to #40101 reserved for wait & jmp instructions
+    484 001734                          vcode:
+    485 001734  005037  177772                  clr @#pir           ;turn off pir
+    486 001740  042737  000340  177776          bic #340,@#psw      ;lower priority
+    487 001746  012700  000037                  mov #37,r0          ;load initial display pattern (r0 displays in console data paths)
+    488 001752  012701  174000                  mov #174000,r1      ;load initial address pattern (r1 displays as the virtual address
+    489                                                             ;                              of an instruction following a wait)
+    490
+    491 001756  013703  177776          10$:    mov @#psw,r3        ;get current psw
+    492 001762  004767  000432                  jsr pc,ps2par       ;convert r3 psw to mmu page register base in r2
+    493 001766  010205                          mov r2,r5           ;store result
+    494
+    495 001770  010102                          mov r1,r2           ;get address to display
+    496 001772  162702  000002                  sub #2,r2           ;compute address of wait instruction
+    497 001776  010203                          mov r2,r3           ;copy address to make offset
+    498 002000  042703  177701                  bic #177701,r3      ;make 6 bit page offset (without low bit!)
+    499 002004  012763  000001  040000          mov #0000001,40000(r3)  ;write wait instruction
+    500 002012  012763  000113  040002          mov #0000113,40002(r3)  ;write jmp (r3) instruction
+    501
+    502 002020  010203                          mov r2,r3           ;make relocation base for wait/jmp
+    503 002022  042703  160077                  bic #160077,r3      ;from 7 middle address bits
+    504 002026  072327  177772                  ash #-6,r3          ;move into position
+    505 002032  016504  000044                  mov 44(r5),r4       ;get existing i page 2 base
+    506 002036  160304                          sub r3,r4           ;calculate new relocation base for wait/jmp
+    507
+    508 002040  072227  177764                  ash #-12.,r2        ;3 top bits of wait address are wait page
+    509 002044  042702  177761                  bic #177761,r2      ;convert to word index
+    510 002050  010103                          mov r1,r3           ;address for jmp instruction (2 after wait)
+    511 002052  072327  177764                  ash #-12.,r3        ;3 top bits are jmp page number
+    512 002056  042703  177761                  bic #177761,r3      ;convert to word index
+    513 002062  020302                          cmp r3,r2           ;both on same page?
+    514 002064  001403                          beq 20$             ;yes jmp doesn't need own par
+    515
+    516 002066  060503                          add r5,r3           ;address of jmp mmu par
+    517 002070  010463  000040                  mov r4,40(r3)       ;set relocation base for jmp i page
+    518
+    519 002074  060502                  20$:    add r5,r2           ;address of wait mmu par
+    520 002076  010462  000040                  mov r4,40(r2)       ;set relocation base for wait i page
+    521
+    522 002102  010102                          mov r1,r2           ;get address to display
+    523 002104  162702  000002                  sub #2,r2           ;compute address of wait instruction
+    524 002110  042702  000001                  bic #1,r2           ;no odd instruction addresses please :-(
+    525 002114                                  lda #32$,r3         ;put jmp return address into r3
+    526 002122  012704  000003                  mov #3,r4           ;repeat count
+    527
+    528 002126  000112                  30$:    jmp (r2)            ;jmp to wait
+    529 002130  077402                  32$:    sob r4,30$          ;jmp (r3) comes back here
+    530
+    531 002132  032737  000001  177570          bit #1,@#consol     ;change rotation directon on switch bit zero
+    532 002140  001004                          bne 40$
+    533 002142  006101                          rol r1              ;rotate light pattern anticlockwise
+    534 002144  006000                          ror r0
+    535 002146  005501                          adc r1
+    536 002150  000403                          br 50$
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-11
+
+
+    537
+    538 002152  006100                  40$:    rol r0              ;rotate light pattern clockwise
+    539 002154  006001                          ror r1
+    540 002156  005500                          adc r0
+    541
+    542 002160  020027  000037          50$:    cmp r0,#37          ;check if start of pattern
+    543 002164  001274                          bne 10$             ;if not we are done
+    544
+    545 002166  032737  000002  177570          bit #2,@#consol     ;don't change CPU mode if switch bit one
+    546 002174  001023                          bne 60$
+    547
+    548 002176  013703  177776                  mov @#psw,r3        ;get current psw
+    549 002202  004767  000212                  jsr pc,ps2par       ;convert r3 psw to mmu page register base in r2
+    550 002206  016205  000044                  mov 44(r2),r5       ;get current mode i page 2 relocation base
+    551 002212  062703  040000                  add #040000,r3      ;increment cpu mode
+    552 002216  100002                          bpl 55$
+    553
+    554 002220  052703  040000                  bis #040000,r3      ;skip illegal mode 2
+    555 002224  004767  000170          55$:    jsr pc,ps2par       ;convert new r3 psw to mmu page register base in r2
+    556 002230  010562  000064                  mov r5,64(r2)       ;set new mode d page 2 relocation base
+    557 002234  010562  000044                  mov r5,44(r2)       ;set new mode i page 2 relocation base
+    558 002240  010337  177776                  mov r3,@#psw        ;set new mode
+    559
+    560 002244  032737  000004  177570  60$:    bit #4,@#consol     ;don't fiddle with physical addressing if switch bit two
+    561 002252  001401                          beq 70$
+    562
+    563 002254  000640                  65$:    br  10$             ;stepping stone for code below which has a branch too far
+    564
+    565 002256  013703  177776          70$:    mov @#psw,r3        ;get current psw
+    566 002262  004767  000132                  jsr pc,ps2par       ;convert r3 psw to mmu page register base in r2
+    567 002266  016205  000044                  mov 44(r2),r5       ;get current mode i page 2 relocation base
+    568
+    569 002272  000257                          ccc                 ;0 fill
+    570 002274  006005                          ror r5              ;rotate relocation base right
+    571 002276  042705  000077                  bic #077,r5         ;test for as far down as we dare go
+    572 002302  001020                          bne 85$             ;if still ok use it
+    573
+    574 002304  032737  000010  177570          bit #10,@#consol    ;don't adjust 18/22 addressing if switch bit four
+    575 002312  001004                          bne 80$
+    576
+    577 002314  012703  000020                  mov #20,r3          ;mmr3 22 bit mask
+    578 002320  074337  172516                  xor r3,@#mmr3       ;toggle 18/22 bit addressing
+    579
+    580 002324  012705  004000          80$:    mov #4000,r5        ;assume an 18 bit relocation address
+    581 002330  032737  000020  172516          bit #20,@#mmr3      ;ok if in 18 bit mode
+    582 002336  001402                          beq 85$
+    583
+    584 002340  012705  100000                  mov #100000,r5      ;use a bigger relocation address for 22 bit
+    585
+    586 002344  010562  000062          85$:    mov r5,62(r2)       ;set the relocation base for d page 1 (output target area)
+    587 002350                                  lda #vcoded,r3      ;get code end address (somewhere in page 2)
+    588 002356  162703  040000                  sub #40000,r3       ;convert to byte count from page 2 start
+    589 002362  006203                          asr r3              ;then word count
+    590 002364  012704  020000                  mov #20000,r4       ;begin at the start address of page 1
+    591 002370  016424  020000          90$:    mov 20000(r4),(r4)+ ;copy a word from page 2 to page 1
+    592 002374  077303                          sob r3,90$          ;repeat
+    593
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-12
+
+
+    594 002376  010562  000064                  mov r5,64(r2)       ;set mode d page 2 relocation base
+    595 002402  010562  000044                  mov r5,44(r2)       ;set mode i page 2 relocation base
+    596 002406  000722                          br 65$              ;our work here is done
+    597
+    598
+    599 002410  172300                  mmupar: .word mmrk  ; mmu page address registers by mode (note illegal mode)
+    600 002412  172200                          .word mmrs
+    601 002414  000001                          .word 1
+    602 002416  177600                          .word mmru
+    603
+    604 002420                          ps2par:                     ;convert psw (r3) to mmu page register base address (r2)
+    605 002420  010302                          mov r3,r2           ;don't clobber r3!
+    606 002422  072227  177763                  ash #-13.,r2        ;shift psw mode to bits 2 and 1
+    607 002426  042702  177771                  bic #177771,r2      ;clear other junk
+    608 002432  060702                          add pc,r2           ;get relative address of
+    609 002434  062702  177754                  add #mmupar-.,r2    ;page address register table entry
+    610 002440  011202                          mov (r2),r2         ;return mmu page register base for psw in r2
+    611 002442  000207                          rts pc              ;done
+    612
+    613 002444                          vcoded:                     ;end of virtual mode code
+    614
+    615
+    616                                 ; ===========================================================================
+    617                                 ; boot dispatcher
+    618                                 ; ===========================================================================
+    619                                 ;
+    620                                 ; Parses a device name and optional unit number from the command buffer,
+    621                                 ; validates it, and dispatches to the appropriate bootstrap routine.
+    622                                 ;
+    623                                 ; Supported device prefixes:
+    624                                 ;     RK, RL, RP, RA, TM, PR
+    625                                 ;
+    626                                 ; Unit numbers are parsed as octal digits (0-7), packed into r3.
+    627                                 ;
+    628                                 ; ===========================================================================
+    629
+    630
+    631                                 ; ---------------------------------------------------------------------------
+    632                                 ; device name table (two ascii chars per entry)
+    633                                 ; ---------------------------------------------------------------------------
+    634
+    635 002444                          boolst:
+    636 002444     122     113                  .ascii  "RK"
+    637 002446     122     114                  .ascii  "RL"
+    638 002450     122     120                  .ascii  "RP"
+    639 002452     122     101                  .ascii  "RA"
+    640 002454     124     115                  .ascii  "TM"
+    641 002456     120     122                  .ascii  "PR"
+    642 002460  000000                          .word   0
+    643
+    644                                 ; ---------------------------------------------------------------------------
+    645                                 ; boot routine table (offsets relative to table base)
+    646                                 ; ---------------------------------------------------------------------------
+    647
+    648 002462                          bootbl:
+    649 002462  000202                          .word   bootrk-.
+    650 002464  000232                          .word   bootrl-.
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-13
+
+
+    651 002466  000312                          .word   bootrp-.
+    652 002470  000756                          .word   bootra-.
+    653 002472  000376                          .word   boottm-.
+    654 002474  000544                          .word   bootpt-.
+    655
+    656                                 ; ---------------------------------------------------------------------------
+    657                                 ; maximum unit numbers for each device
+    658                                 ; ---------------------------------------------------------------------------
+    659
+    660 002476                          boomax:
+    661 002476  000005  000003  000004          .word   5, 3, 4, 4, 3, 0
+        002504  000004  000003  000000
+    662
+    663
+    664                                 ; ---------------------------------------------------------------------------
+    665                                 ; boot - parse device name and unit, then dispatch
+    666                                 ; ---------------------------------------------------------------------------
+    667
+    668 002512                          boot:
+    669 002512                          10$:
+    670 002512  112204                          movb    (r2)+, r4
+    671 002514  120427  000040                  cmpb    r4, #40         ; skip leading spaces
+    672 002520  001774                          beq     10$
+    673
+    674 002522  105704                          tstb    r4
+    675 002524  001451                          beq     90$             ; no device name
+    676
+    677 002526  112200                          movb    (r2)+, r0       ; get second character
+    678 002530  001447                          beq     90$
+    679
+    680 002532  000300                          swab    r0
+    681 002534  050004                          bis     r0, r4          ; r4 = two-char device code
+    682
+    683                                 ; parse unit number (octal)
+    684 002536  005003                          clr     r3
+    685 002540                          20$:
+    686 002540  112200                          movb    (r2)+, r0
+    687 002542  001411                          beq     40$
+    688 002544  162700  000060                  sub     #60, r0         ; '0' = 060 octal
+    689 002550  120027  000007                  cmpb    r0, #7
+    690 002554  101035                          bhi     90$
+    691 002556  072327  000003                  ash     #3, r3
+    692 002562  150003                          bisb    r0, r3
+    693 002564  000765                          br      20$
+    694
+    695 002566                          40$:
+    696 002566  005002                          clr     r2
+    697 002570                                  lda     #boolst, r0     ; find device in table
+    698
+    699 002576                          50$:
+    700 002576  012001                          mov     (r0)+, r1
+    701 002600  001423                          beq     90$             ; not found
+    702 002602  020104                          cmp     r1, r4
+    703 002604  001403                          beq     60$             ; device match
+    704 002606  062702  000002                  add     #2, r2
+    705 002612  000771                          br      50$
+    706
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-14
+
+
+    707 002614                          60$:
+    708 002614                                  lda     #boomax, r0
+    709 002622  060200                          add     r2, r0
+    710 002624  020310                          cmp     r3, (r0)        ; validate maximum unit
+    711 002626  003010                          bgt     90$
+    712
+    713 002630  000005                          reset
+    714
+    715 002632                                  lda     #bootbl, r0
+    716 002640  060002                          add     r0, r2
+    717 002642  061202                          add     (r2), r2
+    718 002644  004712                          jsr     pc, (r2)        ; call device bootstrap (r3 = unit)
+    719 002646  000405                          br      100$
+    720
+    721 002650                          90$:
+    722 002650                                  lda     #badboo, r0     ; invalid device or unit
+    723 002656  004767  175646                  jsr     pc, print
+    724
+    725 002662                          100$:
+    726 002662  000207                          rts     pc
+    727
+    728
+    729                                 ; ===========================================================================
+    730                                 ; device boot routines
+    731                                 ; ===========================================================================
+    732                                 ;
+    733                                 ; Each routine loads block 0 from the specified device and transfers control
+    734                                 ; to address 0. All routines expect:
+    735                                 ;
+    736                                 ;       r3 = unit number (already validated)
+    737                                 ;
+    738                                 ; ===========================================================================
+    739
+    740
+    741                                 ; ===========================================================================
+    742                                 ; rk05 bootstrap (rk11)
+    743                                 ; ===========================================================================
+    744
+    745         177412                  rkda    = 177412
+    746
+    747 002664                          bootrk:
+    748 002664  012700  177412                  mov     #rkda, r0
+    749 002670  072327  000015                  ash     #13., r3           ; unit - da bits
+    750 002674  010310                          mov     r3, (r0)           ; da
+    751 002676  005040                          clr     -(r0)              ; ba
+    752 002700  012740  177000                  mov     #-256.*2, -(r0)    ; wc = 256 words
+    753 002704  012740  000005                  mov     #5, -(r0)          ; read + go
+    754
+    755 002710                          10$:
+    756 002710  105710                          tstb    (r0)
+    757 002712  100376                          bpl     10$
+    758
+    759 002714  005007                          clr     pc
+    760
+    761
+    762
+    763                                 ; ===========================================================================
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-15
+
+
+    764                                 ; rl01/rl02 bootstrap (rl11)
+    765                                 ; ===========================================================================
+    766
+    767         174400                  rlcs    = 174400
+    768
+    769 002716                          bootrl:
+    770 002716  000303                          swab    r3                 ; unit - high byte
+    771 002720  012700  174400                  mov     #rlcs, r0
+    772
+    773 002724  012760  000013  000004          mov     #13, 4(r0)         ; seek
+    774 002732  052703  000004                  bis     #4, r3             ; unit + gstat
+    775 002736  010310                          mov     r3, (r0)
+    776
+    777 002740                          10$:
+    778 002740  105710                          tstb    (r0)
+    779 002742  100376                          bpl     10$
+    780
+    781 002744  005060  000002                  clr     2(r0)              ; ba
+    782 002750  005060  000004                  clr     4(r0)              ; da
+    783 002754  012760  177000  000006          mov     #-512., 6(r0)      ; wc
+    784
+    785 002762  105003                          clrb    r3
+    786 002764  052703  000014                  bis     #14, r3            ; unit + read
+    787 002770  010310                          mov     r3, (r0)
+    788
+    789 002772                          20$:
+    790 002772  105710                          tstb    (r0)
+    791 002774  100376                          bpl     20$
+    792
+    793 002776  005007                          clr     pc
+    794
+    795
+    796
+    797                                 ; ===========================================================================
+    798                                 ; rp bootstrap (rp11 / rs03 / rs04)
+    799                                 ; ===========================================================================
+    800
+    801         176700                  rpcsr   = 176700
+    802
+    803 003000                          bootrp:
+    804 003000  012701  176700                  mov     #rpcsr, r1
+    805
+    806 003004  012761  000040  000010          mov     #40, 10(r1)        ; reset
+    807 003012  010361  000010                  mov     r3, 10(r1)         ; unit
+    808 003016  012711  000021                  mov     #21, (r1)          ; pack ack
+    809 003022  012761  010000  000032          mov     #10000, 32(r1)     ; 16-bit mode
+    810
+    811 003030  012761  177000  000002          mov     #-512., 2(r1)      ; wc
+    812 003036  005061  000004                  clr     4(r1)              ; ba
+    813 003042  005061  000006                  clr     6(r1)              ; da
+    814 003046  005061  000034                  clr     34(r1)             ; cyl
+    815
+    816 003052  012711  000071                  mov     #71, (r1)          ; read
+    817
+    818 003056                          10$:
+    819 003056  105711                          tstb    (r1)
+    820 003060  100376                          bpl     10$
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-16
+
+
+    821
+    822 003062  105011                          clrb    (r1)
+    823 003064  010300                          mov     r3, r0             ; bsd expects unit in r0
+    824 003066  005007                          clr     pc
+    825
+    826
+    827
+    828                                 ; ===========================================================================
+    829                                 ; tm11 magnetic tape bootstrap (tu10/tu16)
+    830                                 ; ===========================================================================
+    831
+    832         172526                  mtcma   = 172526
+    833
+    834 003070                          boottm:
+    835 003070  010300                          mov     r3, r0
+    836 003072  012701  172526                  mov     #mtcma, r1
+    837
+    838 003076  005011                          clr     (r1)
+    839 003100  012741  177777                  mov     #-1, -(r1)         ; mtbrc
+    840
+    841 003104  010002                          mov     r0, r2
+    842 003106  000302                          swab    r2
+    843 003110  062702  060011                  add     #60011, r2         ; space + go
+    844 003114  010241                          mov     r2, -(r1)
+    845
+    846 003116                          10$:
+    847 003116  105711                          tstb    (r1)
+    848 003120  100376                          bpl     10$
+    849
+    850 003122  010002                          mov     r0, r2
+    851 003124  000302                          swab    r2
+    852 003126  062702  060003                  add     #60003, r2         ; read + go
+    853 003132  010211                          mov     r2, (r1)
+    854
+    855 003134                          20$:
+    856 003134  105711                          tstb    (r1)
+    857 003136  100376                          bpl     20$
+    858
+    859 003140  005007                          clr     pc
+    860
+    861
+    862
+    863                                 ; ===========================================================================
+    864                                 ; paper tape bootstrap (rt-11 lda format)
+    865                                 ; ===========================================================================
+    866                                 ;
+    867                                 ;Paper tape boot routine using RT11 LDA format
+    868                                 ;Input format:
+    869                                 ;Frame
+    870                                 ;  1    001
+    871                                 ;  2    000
+    872                                 ;  3    Low order byte count    (Includes all except checksum,
+    873                                 ;  4    High order byte count    even the 001 000.)
+    874                                 ;  5    Low order load address
+    875                                 ;  6    High order load address
+    876                                 ;  7..  Data bytes
+    877                                 ;  XXX  Checksum    (Includes all the block - even the 001)
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-17
+
+
+    878                                 ;
+    879                                 ;The checksum is calculated such that when all the bytes have
+    880                                 ;been added up, the low byte of the sum will be zero.
+    881                                 ;
+    882                                 ;If the byte count is 6, the load address specified will be
+    883                                 ;taken to be the start address of the program. If the address
+    884                                 ;is even the program will be started, otherwise ODT will be
+    885                                 ;re-entered.  If (count > 6), the data block will be loaded.
+    886                                 ;
+    887                                 ;This is the format used by DEC for paper tapes, and can be
+    888                                 ;produced using the RT-11 LINK/LDA command.
+    889
+    890                                 ;Register use:
+    891                                 ; R0 - input byte       R1 - checksum
+    892                                 ; R2 - load address     R3 - byte count
+    893                                 ; R4 - start address flag
+    894                                 ; ---------------------------------------------------------------------------
+    895
+    896         177550                  ptrcsr = 177550 ;Address of reader device
+    897
+    898 003142     120     141     160  pterr:.asciz 'Paper tape checksum error'<15><12>
+        003145     145     162     040
+        003150     164     141     160
+        003153     145     040     143
+        003156     150     145     143
+        003161     153     163     165
+        003164     155     040     145
+        003167     162     162     157
+        003172     162     015     012
+        003175     000
+    899 003176     120     141     160  ptnost:.asciz 'Paper tape has no start address'<15><12>
+        003201     145     162     040
+        003204     164     141     160
+        003207     145     040     150
+        003212     141     163     040
+        003215     156     157     040
+        003220     163     164     141
+        003223     162     164     040
+        003226     141     144     144
+        003231     162     145     163
+        003234     163     015     012
+        003237     000
+    900                                 .even
+    901
+    902 003240                          bootpt:
+    903 003240  005001                  10$:    clr r1              ;Initialize checksum
+    904 003242  004767  000124                  jsr pc,getch
+    905 003246  120027  000001                  cmpb r0,#1          ;Read until start of frame
+    906 003252  001372                          bne 10$
+    907
+    908 003254  004767  000112                  jsr pc,getch
+    909 003260  105700                          tstb r0             ;Byte after start must be zero
+    910 003262  001366                          bne 10$
+    911
+    912 003264  004767  000062                  jsr pc,getwd
+    913 003270  010203                          mov r2,r3           ;Get byte count in R3
+    914 003272  004767  000054                  jsr pc,getwd        ;Get load address in R2
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-18
+
+
+    915 003276  063702  177570                  add @#consol,r2     ;Add switches for relocation
+    916
+    917 003302  162703  000006                  sub #6,r3
+    918 003306  010304                          mov r3,r4           ;Flag whether there is data
+    919 003310  003404                          ble 40$             ;If no data then must be a start address
+    920
+    921 003312  004767  000054          30$:    jsr pc,getch
+    922 003316  110022                          movb r0,(r2)+       ;Put byte into memory
+    923 003320  077304                          sob r3,30$
+    924
+    925 003322  004767  000044          40$:    jsr pc,getch
+    926 003326  105701                          tstb r1             ;Verify checksum
+    927 003330  001034                          bne chkerr
+    928
+    929 003332  005704                          tst r4
+    930 003334  003341                          bgt 10$             ;If that frame contained data go get more
+    931
+    932 003336  005702                          tst r2
+    933 003340  001434                          beq nostrt          ;If load address null then don't start
+    934 003342  032702  000001                  bit #1,r2
+    935 003346  001031                          bne nostrt          ;If load address odd then don't start
+    936
+    937 003350  000112                          jmp (r2)            ;See what happens
+    938
+    939 003352                          getwd:                  ;Get a word from reader in R2
+    940 003352  004767  000014                  jsr pc,getch
+    941 003356  010002                          mov r0,r2           ;Low order
+    942 003360  004767  000006                  jsr pc,getch
+    943 003364  000300                          swab r0
+    944 003366  050002                          bis r0,r2           ;Hi order
+    945 003370  000207                          rts pc
+    946
+    947 003372                          getch:                  ;Get a character from reader in R0
+    948 003372  012700  177550                  mov #ptrcsr,r0      ;Reader device
+    949 003376  012710  000001                  mov #1,(r0)         ;Start reader
+    950 003402  105710                  1$:     tstb (r0)
+    951 003404  100376                          bpl 1$              ;Wait for a character
+    952
+    953 003406  116000  000002                  movb 2(r0),r0       ;Get it
+    954 003412  042700  177400                  bic #177400,r0
+    955 003416  060001                          add r0,r1           ;Accumulate checksum
+    956 003420  000207                          rts pc
+    957
+    958 003422                          chkerr:
+    959 003422                                  lda #pterr,r0
+    960 003430  000403                          br ptend
+    961
+    962 003432                          nostrt:
+    963 003432                                  lda #ptnost,r0
+    964 003440                          ptend:
+    965 003440  004767  175064                  jsr pc,print
+    966 003444  000207                          rts pc
+    967
+    968
+    969                                 ; ================================================================
+    970                                 ;   RA (MSCP) Bootstrap for PDP-11
+    971                                 ;   Loads block 0 from an RA device using a UDA50-compatible MSCP controller.
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-19
+
+
+    972                                 ;
+    973                                 ;   Sequence:
+    974                                 ;     1. Perform UDA50 INIT handshake (4 steps)
+    975                                 ;     2. Issue unit ONLINE command
+    976                                 ;     3. Issue READ command for block 0 address 0
+    977                                 ;     4. Transfer control to loaded block
+    978                                 ;
+    979                                 ; ================================================================
+    980
+    981         172150                  udadev = 172150         ; Controller base
+    982
+    983         000010                  udahdr = 8.                 ; Ring header before cmd/resp pointers
+    984         000010                  udrgln = 8.                 ; Ring decriptor cmd/resp data length
+    985         000014                  udcpkt = udrgln + 4         ; Command packet offset from ring base (after packet header)
+    986         000060                  udcpln = 60                 ; Command packet length (bytes)
+    987         000100                  udrpkt = udcpkt + udcpln + 4 ; Response packet offset (after packet header)
+    988         000100                  udrpln = 100                ; Response packet length
+    989         000210                  udwaln = udahdr + udrpkt + udrpln ;Work area length
+    990
+    991 003446                          bootra:
+    992 003446  010300                          mov r3, r0          ; save unit
+    993
+    994 003450                          udares:                 ; restart point (after unit is saved)
+    995                                     ; ------------------------------------------------------------
+    996                                     ; Zero the entire work area (header + rings + cmd + resp)
+    997                                     ; ------------------------------------------------------------
+    998 003450  012703  003646'                 mov     #udwa, r3
+    999 003454  012702  000104                  mov     #udwaln/2, r2
+   1000 003460                          10$:
+   1001 003460  005023                          clr     (r3)+
+   1002 003462  077202                          sob     r2, 10$
+   1003
+   1004                                     ; ------------------------------------------------------------
+   1005                                     ; r5 = data table pointer
+   1006                                     ; r4 = step mask (starts at 4000, shifts left each step)
+   1007                                     ; r1 = UDA50 CSR
+   1008                                     ; ------------------------------------------------------------
+   1009 003464  012705  003630'                 mov     #udatab, r5
+   1010 003470  012704  004000                  mov     #4000, r4
+   1011 003474  012701  172150                  mov     #udadev, r1
+   1012
+   1013 003500  005021                          clr     (r1)+           ; Kick controller into INIT sequence
+   1014
+   1015                                 ; ------------------------------------------------------------
+   1016                                 ; UDA50 INIT handshake
+   1017                                 ; Four steps, each requiring:
+   1018                                 ;   - Wait for RDY bit corresponding to current step mask
+   1019                                 ;   - Write next word from table to CSR
+   1020                                 ;   - Shift mask left
+   1021                                 ; ------------------------------------------------------------
+   1022 003502                          30$:
+   1023 003502  011102                          mov     (r1), r2
+   1024 003504  100761                          bmi     udares          ; Error - restart bootstrap
+   1025 003506  030402                          bit     r4, r2
+   1026 003510  001774                          beq     30$             ; Wait for this step's RDY bit
+   1027
+   1028 003512  012511                          mov     (r5)+, (r1)     ; Send step data
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-20
+
+
+   1029 003514  006304                          asl     r4              ; Next step
+   1030 003516  100371                          bpl     30$             ; Continue until mask goes negative
+   1031
+   1032                                     ; ------------------------------------------------------------
+   1033                                     ; Ring buffer setup
+   1034                                     ; r3 = ring base
+   1035                                     ; ------------------------------------------------------------
+   1036 003520  016703  000106                  mov     udatab+2, r3    ; Ring base address from table
+   1037
+   1038 003524  010302                          mov     r3, r2
+   1039 003526  062702  000100                  add     #udrpkt, r2
+   1040 003532  010213                          mov     r2, (r3)        ; Response packet pointer
+   1041
+   1042 003534  010302                          mov     r3, r2
+   1043 003536  062702  000014                  add     #udcpkt, r2
+   1044 003542  010263  000004                  mov     r2, 4(r3)       ; Command packet pointer
+   1045
+   1046 003546  012762  000060  177774          mov     #udcpln, -4(r2) ; Insert cmd packet length
+   1047 003554  010062  000004                  mov     r0, 4(r2)       ; Unit number
+   1048
+   1049                                 ; ------------------------------------------------------------
+   1050                                 ; Issue MSCP commands from table:
+   1051                                 ;   .byte opcode, modifier
+   1052                                 ;   Ends when next table byte = 0
+   1053                                 ; ------------------------------------------------------------
+   1054 003560                          50$:
+   1055 003560  112562  000010                  movb    (r5)+, 10(r2)   ; Opcode
+   1056 003564  112562  000015                  movb    (r5)+, 15(r2)   ; Modifier (high byte of read length)
+   1057
+   1058 003570  010463  000002                  mov     r4, 2(r3)       ; Give ownership to controller (resp)
+   1059 003574  010463  000006                  mov     r4, 6(r3)       ; Give ownership to controller (cmd)
+   1060
+   1061 003600  005761  177776                  tst     -2(r1)          ; Wake controller
+   1062
+   1063 003604                          70$:
+   1064 003604  005763  000002                  tst     2(r3)           ; Wait for controller to clear the OWN bit
+   1065 003610  100775                          bmi     70$
+   1066
+   1067 003612  105763  000112                  tstb    udrpkt+12(r3)   ; Non-zero MSCP status - restart bootstrap
+   1068 003616  001314                          bne     udares          ; Error - restart
+   1069
+   1070 003620  105715                          tstb    (r5)            ; More commands?
+   1071 003622  001356                          bne     50$
+   1072
+   1073                                         ; ------------------------------------------------------------
+   1074                                         ; Success: jump to loaded block 0
+   1075                                         ; ------------------------------------------------------------
+   1076 003624  005041                          clr     -(r1)           ; Point R1 to controller (for some OS's)
+   1077 003626  005007                          clr     pc
+   1078
+   1079                                 ; ------------------------------------------------------------
+   1080                                 ; Data table - init data followed by command data
+   1081                                 ; ------------------------------------------------------------
+   1082 003630                          udatab:
+   1083 003630  100000                          .word   100000          ; Step 1: no vectors, no interrupts, ring sizes both = 1
+   1084 003632  003656'                         .word   udwa+10         ; Step 2: Ring base address (low)
+   1085 003634  000000                          .word   0               ; Step 3: Ring base address (high)
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-21
+
+
+   1086 003636  000001                          .word   1               ; Step 4: GO
+   1087
+   1088 003640     011     000                  .byte   11,0            ; ONLINE command - no parameter
+   1089 003642     041     002                  .byte   41,2            ; READ command - block 0, 512 bytes (in high byte)
+   1090
+   1091 003644  000000                          .word   0               ; End of table
+   1092
+   1093 003646                          udwa:
+   1094                                     ; ------------------------------------------------------------
+   1095                                     ; Ring layout (relative to controller ring base at udwa + 8)
+   1096                                     ;
+   1097                                     ;   -8    Header: adapter purge + command/response transitions (8 bytes)
+   1098                                     ;   +0    1 Response descriptor (4 bytes) (controller ring base)
+   1099                                     ;   +4    1 Command descriptor (4 bytes)
+   1100                                     ;   +8    Command packet (4 byte header + 60 bytes)
+   1101                                     ;   +56   Response packet (4 byte header + 100 bytes)
+   1102                                     ; ------------------------------------------------------------
+   1103
+   1104
+   1105 003646  000000'                 end:    .end    start
+
+
+
+
+
+
+
+
+.MAIN.  MACRO V05.05   03:15  Page 1-22
+Symbol table
+
+BADBOO  000423R         CLKAST  000730R         MMRK  = 172300          PRTDON  000616R         TTSS  = 177564
+BANNER  000072R         CLKCNT  000726R         MMRS  = 172200          PRTPTR  000526R         UDADEV= 172150
+BOOLST  002444R         CMD     001226R         MMRU  = 177600          PSW   = 177776          UDAHDR= 000010
+BOOMAX  002476R         CMDLST  001170R         MMR0  = 177572          PS2PAR  002420R         UDARES  003450R
+BOOT    002512R         CMDTBL  001156R         MMR1  = 177574          PTEND   003440R         UDATAB  003630R
+BOOTBL  002462R         CONSOL= 177570          MMR2  = 177576          PTERR   003142R         UDCPKT= 000014
+BOOTPT  003240R         DEL     000332R         MMR3  = 172516          PTNOST  003176R         UDCPLN= 000060
+BOOTRA  003446R         END     003646R         MMUPAR  002410R         PTRCSR= 177550          UDRGLN= 000010
+BOOTRK  002664R         EOL     000327R         MODES = 000004          PUTCHR  000512R         UDRPKT= 000100
+BOOTRL  002716R         GETCH   003372R         MTCMA = 172526          RKDA  = 177412          UDRPLN= 000100
+BOOTRP  003000R         GETCMD  000630R         NOSTRT  003432R         RLCS  = 174400          UDWA    003646R
+BOOTTM  003070R         GETWD   003352R         ODT   = ****** GX       RPCSR = 176700          UDWALN= 000210
+BUFFER  000624R         HELP    001440R         PIR   = 177772          START   000000R         UNKMSG  000336R
+BUFPTR  000626R         HLPMSG  000153R         PRINT   000530R         TTKB  = 177562          VCODE   001734R
+CHASER  001454R         INPAST  000744R         PROMPT  000144R         TTKS  = 177560          VCODED  002444R
+CHKERR  003422R         LIGHTS  001472R         PRTAST  000574R         TTSB  = 177566
+
+. ABS.  000000    000   (RW,I,GBL,ABS,OVR)
+        003646    001   (RW,I,LCL,REL,CON)
+Errors detected:  0
+
+*** Assembler statistics
+
+
+Work  file  reads: 0
+Work  file writes: 0
+Size of work file: 8312 Words  ( 33 Pages)
+Size of core pool: 13312 Words  ( 52 Pages)
+Operating  system: RT-11
+
+Elapsed time: 00:00:00.07
+DK:BOOT,DK:BOOT=DK:BOOT
+
+
+.

@@ -1,0 +1,296 @@
+/*
+ * g60printer.css
+ * Google60-style line printer for PDP-11 console output
+ * Adapted from Google60 by Norbert Landsteiner (mass:werk)
+ */
+
+/* Font face declaration for the LP1 font */
+@font-face {
+    font-family: 'lp1_regular';
+    src: url('assets/fonts/lp1/lp1-regular-webfont.eot');
+    src: url('assets/fonts/lp1/lp1-regular-webfont.eot#iefix') format('embedded-opentype'),
+        url('assets/fonts/lp1/lp1-regular-webfont.woff') format('woff'),
+        url('assets/fonts/lp1/lp1-regular-webfont.ttf') format('truetype'),
+        url('assets/fonts/lp1/lp1-regular-webfont.svg#lp1_regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Printer container – replaces the old console textarea */
+#g60printer {
+    position: relative;
+    width: 940px;
+    height: 600px;
+    background-color: #2a2a2a;
+    overflow: hidden;
+    border: 1px solid #444;
+    margin: 8px 0;
+}
+
+#g60printer div#printer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 940px;
+    height: 464px;
+    background-color: #6f323d;
+    background-image: url('assets/images/printer_bg.gif');
+    background-repeat: repeat;
+}
+
+#g60printer #printheadarea {
+    display: block;
+    position: absolute;
+    top: 388px;
+    left: 67px;
+    width: 807px;
+    max-width: 807px;
+    height: 12px;
+    max-height: 12px;
+    padding: 0;
+    margin: 0;
+    z-index: 3;
+    overflow: hidden;
+}
+
+#g60printer #printhead {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 16px;
+    padding: 0;
+    margin: 0;
+}
+
+#g60printer div#printer_frontpannel {
+    position: absolute;
+    top: 395px;
+    left: 67px;
+    width: 807px;
+    height: 69px;
+    background-image: url('assets/images/printerskin.png');
+    background-repeat: repeat-x;
+    background-position: 0 -465px;
+    z-index: 2;
+}
+
+#g60printer div#printer_left {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 67px;
+    height: 464px;
+    background-image: url('assets/images/printerskin.png');
+    background-repeat: no-repeat;
+}
+
+#g60printer div#printer_right {
+    position: absolute;
+    top: 0;
+    left: 874px;
+    width: 66px;
+    height: 464px;
+    background-image: url('assets/images/printerskin.png');
+    background-repeat: no-repeat;
+    background-position: -67px 0;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+
+    #g60printer div#printer_frontpannel,
+    #g60printer div#printer_left,
+    #g60printer div#printer_right {
+        background-image: url('assets/images/printerskin_webkit.png');
+    }
+}
+
+#g60printer div#paper {
+    position: absolute;
+    top: 0;
+    left: 67px;
+    width: 839px;
+    height: 400px;
+    max-height: 400px;
+    vertical-align: top;
+    text-align: left;
+    padding: 0;
+    margin: 0;
+    z-index: 1;
+}
+
+#g60printer div#paper.paperNoScroll {
+    overflow: hidden;
+}
+
+#g60printer div#paper.paperScroll {
+    overflow-y: auto;
+}
+
+#g60printer div#paper_topspacer {
+    position: relative;
+    height: 345px;
+    width: 1px;
+    margin: 0;
+    padding: 0;
+}
+
+#g60printer div#paper_topspacer.paperScroll {
+    height: 16px;
+}
+
+#g60printer table#paper_area {
+    margin: 0;
+    padding: 0;
+    border: 0 none;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+#g60printer table#paper_area td {
+    vertical-align: top;
+    margin: 0;
+    white-space: nowrap;
+}
+
+#g60printer td#papermargin_left,
+#g60printer td#papermargin_right {
+    background-image: url('assets/images/paper-margin.png');
+    background-repeat: repeat-y;
+    width: 33px;
+    min-width: 33px;
+}
+
+#g60printer td#papermargin_left {
+    background-position: -3px 0;
+}
+
+#g60printer td#papermargin_right {
+    background-position: 0 0;
+}
+
+#g60printer td#paper_top {
+    background-image: url('assets/images/paper-edge.png');
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    height: 5px;
+}
+
+#g60printer tr#paper_bottom {
+    background-image: url('assets/images/paper-edge.png');
+    background-repeat: repeat-x;
+    background-position: 0 -5px;
+    height: 5px;
+    display: none;
+}
+
+#g60printer td#paper_printarea {
+    width: 705px;
+    color: #36363c;
+    font-size: 13px;
+    text-align: left;
+    font-family: lp1_regular, "Trebuchet MS", sans-serif;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 16px;
+    background-color: white;
+    padding: 57px 18px 1px 18px;
+    white-space: nowrap;
+    background-image: url('assets/images/paper.png');
+    background-repeat: repeat;
+    -webkit-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    -moz-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    -o-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    -webkit-font-smoothing: subpixel-antialiased;
+}
+
+#g60printer td#paper_printarea span {
+    display: inline-block;
+    vertical-align: top;
+    white-space: pre;
+    width: 7px;
+    max-width: 7px;
+    height: 16px;
+    max-height: 16px;
+    text-align: center;
+}
+
+#g60printer td#paper_printarea span.drop {
+    margin-top: 1px;
+    height: 15px;
+    max-height: 15px;
+    overflow: hidden;
+    text-shadow: 0 -1px 1px rgba(115, 115, 121, 0.7), 0 -1px 2px rgba(115, 115, 121, 0.4);
+}
+
+#g60printer td#paper_printarea span.shift {
+    margin-top: -1px;
+    text-shadow: 0 1px 1px rgba(115, 115, 121, 0.7), 0 1px 2px rgba(115, 115, 121, 0.4);
+}
+
+#g60printer td#paper_printarea span.nonAscii {
+    font-size: 12px !important;
+    line-height: 18px !important;
+}
+
+#g60printer td#paper_printarea p {
+    margin: 0;
+    padding: 0;
+    max-height: 16px;
+    vertical-align: top;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+#g60printer div#printer_topoverlay,
+#g60printer div#paper_topshadow {
+    position: absolute;
+    top: 0;
+    left: 67px;
+    width: 807px;
+    height: 20px;
+    padding: 0;
+    margin: 0;
+    background-image: url('assets/images/paper-topoverlay.png');
+    background-repeat: repeat-x;
+}
+
+#g60printer div#printer_topoverlay {
+    z-index: 1;
+}
+
+#g60printer div#paper_topshadow {
+    background-position: 0 -21px;
+    z-index: 10;
+}
+
+/* Printer input area (keyboard input) */
+#g60printer .printer-input-area {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100px;
+    background: #1a1a1a;
+    border-top: 1px solid #444;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+#g60printer .printer-input-area textarea {
+    width: 100%;
+    height: 100%;
+    background: #111;
+    color: #0f0;
+    border: 1px solid #333;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+#g60printer .printer-input-area textarea:focus {
+    border-color: #0f0;
+}

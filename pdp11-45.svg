@@ -1,0 +1,18 @@
+<svg width="352" height="122" preserveAspectRatio="xMaxYMax" xmlns="http://www.w3.org/2000/svg">
+    <g id="pdp45" fill="none" stroke="#f6f5f5" stroke-width="4" stroke-linejoin="miter">
+        <circle cx="35" cy="61" r="20"/>
+        <path d="M15 36 v-7 h-12 v90 h12 v-32 a32 32 0 1 0 0 -51 Z"/>
+        <circle cx="99" cy="61" r="20"/>
+        <path d="M119 36 v-32 h12 v90 h-12 v-7 a32 32 0 1 1 0 -51 Z"/>
+        <circle cx="163" cy="61" r="20"/>
+        <path d="M143 36 v-7 h-12 v90 h12 v-32 a32 32 0 1 0 0 -51 Z"/>
+        <path d="M241 118 l20 -114 Z"/>
+        <path d="M268 69 h18 v-24 Z"/>
+        <path d="M253 81 v-12 l30 -40 h15 v40 h6 v12 h-6 v12 h-12 v-12 Z"/>
+        <path d="M312 29 h37 v11 h-24 l-2 11 a21 21 0 1 1 -16 24 h11 a10 10 0 1 0 1 -10 h-11 l6 -36 Z"/>
+    </g>
+    <g id="11" fill="#f6f5f5">
+        <path d="M196 27 h16 v68 h-16 v-52 h-7 l-6 -6 h3 a16 16 0 0 0 10 -10 Z"/>
+        <path d="M227 27 h16 v68 h-16 v-52 h-15 v-6 h4 a16 16 0 0 0 10 -10 Z"/>
+    </g>
+</svg>

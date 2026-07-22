@@ -1,0 +1,3084 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Javascript PDP 11/70 Emulator</title>
+  <meta name="description" content="Javascript PDP 11/70 Emulator">
+  <meta name="keywords" content="PDP,PDP-11,11/70,JavaScript,Emulator">
+  <style>
+    :root {
+      --unitWidth: 4px;
+      --unitHeight: 5px;
+      --ledColor: radial-gradient(circle at 4px 4px, yellow, red);
+    }
+
+    .frame {
+      width: calc(var(--unitWidth) * 272);
+      height: calc(var(--unitHeight) * 93);
+      position: relative;
+      background: linear-gradient(#c3bcaa, #a39c8a);
+      -webkit-text-size-adjust: none;
+      text-size-adjust: none;
+    }
+
+    .decBase {
+      width: calc(var(--unitWidth) * 106);
+      height: calc(var(--unitHeight) * 8);
+      position: absolute;
+      top: calc(var(--unitHeight) * 1);
+      left: calc(var(--unitWidth) * 3);
+      border: 1px solid #736c62;
+      border-radius: calc(var(--unitWidth) * 2);
+      color: #736c62;
+      font-family: arial, helvetica, sans-serif;
+    }
+
+    .smallSpace {
+      width: calc(var(--unitWidth) * 2.66);
+      height: 1px;
+      float: left;
+    }
+
+    .decLetter {
+      width: calc(var(--unitWidth) * 4);
+      height: calc(var(--unitHeight) * 5);
+      border: 1px solid #736c62;
+      border-bottom-color: #534c42;
+      font-weight: 100;
+      font-size: calc(var(--unitHeight) * 4);
+      line-height: calc(var(--unitHeight) * 5);
+      text-align: center;
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+      float: left;
+    }
+
+    .decName {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      font-size: calc(var(--unitHeight) * 2);
+      line-height: calc(var(--unitHeight) * 8);
+      float: left;
+    }
+
+    .topEdge {
+      width: calc(var(--unitWidth) * 256);
+      height: 0;
+      position: absolute;
+      top: calc(var(--unitHeight) * 10);
+      left: 0;
+      right: 0;
+      margin: auto;
+      padding: calc(var(--unitWidth) * 3.33);
+      background: #837c72;
+      border: none;
+      border-radius: calc(var(--unitWidth) * 8);
+    }
+
+    .sideEdges {
+      width: calc(var(--unitWidth) * 263);
+      height: 0;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+      border-bottom: calc(var(--unitHeight) * 80) solid #9c9781;
+      border-left: calc(var(--unitWidth) * 2) solid transparent;
+      border-right: calc(var(--unitWidth) * 2) solid transparent;
+    }
+
+    .switchBevel {
+      width: calc(var(--unitWidth) * 265);
+      height: calc(var(--unitHeight) * 1);
+      background: #a39c8a;
+      border-top: calc(var(--unitHeight) * 8) solid #9c9781;
+      border-bottom: calc(var(--unitHeight) * 7) solid #534c42;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+    }
+
+    .switchPanel {
+      position: relative;
+      top: calc(var(--unitHeight) * 12);
+      left: calc(var(--unitWidth) * 8);
+    }
+
+    .panel {
+      width: calc(var(--unitWidth) * 256);
+      height: calc(var(--unitHeight) * 65);
+      background: #181818;
+      border-radius: calc(var(--unitWidth) * 4);
+      color: white;
+      font-family: arial, helvetica, sans-serif;
+      font-size: calc(var(--unitHeight) * 1.4);
+      text-align: center;
+    }
+
+    .floatLeft {
+      float: left;
+    }
+
+    .floatRight {
+      float: right;
+    }
+
+    .clear {
+      clear: both;
+    }
+
+    .blankLine {
+      width: 100%;
+      height: calc(var(--unitHeight) * 5);
+      clear: both;
+    }
+
+    .smallLine {
+      width: 100%;
+      height: calc(var(--unitHeight) * 4);
+      clear: both;
+    }
+
+    .space {
+      width: calc(var(--unitWidth) * 8);
+      height: 1px;
+      float: left;
+    }
+
+    .margin {
+      margin-right: 1px;
+      width: calc(100% - 1px);
+    }
+
+    .logo {
+      width: calc(var(--unitWidth) * 40);
+      float: left;
+    }
+
+    .statusBlock {
+      width: calc(var(--unitWidth) * 8);
+      background-color: black;
+      font-size: calc(var(--unitHeight) * 1.4);
+      float: left;
+    }
+
+    .statusLabel1 {
+      width: 100%;
+      height: calc(var(--unitHeight) * 2);
+      line-height: calc(var(--unitHeight) * 3);
+    }
+
+    .statusLabel2 {
+      width: calc(var(--unitWidth) * 8 - 1px);
+      height: calc(var(--unitHeight) * 7);
+      position: relative;
+      float: left;
+    }
+
+    .ledBlock {
+      width: calc(var(--unitWidth) * 24);
+      float: left;
+    }
+
+    .ledBase {
+      margin-right: 1px;
+      width: calc(100% - 1px);
+      height: calc(var(--unitHeight) * 2);
+      line-height: calc(var(--unitHeight) * 2);
+      font-size: calc(var(--unitHeight) * 1.45);
+      position: relative;
+      float: left;
+    }
+
+    .statusPanel {
+      width: calc(var(--unitWidth) * 88);
+      height: calc(var(--unitHeight) * 8);
+      position: relative;
+      background: black;
+      border-radius: calc(var(--unitWidth) * 2);
+      float: left;
+    }
+
+    .statusTable {
+      display: table;
+      table-layout: fixed;
+      width: 100%;
+      height: 85%;
+      position: relative;
+      top: 15%;
+      left: 5%;
+      text-align: left;
+      float: left;
+    }
+
+    .nick {
+      height: 0;
+      width: 0;
+      border-bottom: calc(var(--unitHeight) * 1.7) solid black;
+      border-left: calc(var(--unitWidth) * 0.3) solid transparent;
+      border-right: calc(var(--unitWidth) * 1) solid transparent;
+      position: absolute;
+      left: calc(var(--unitWidth) * 7);
+      bottom: 0;
+    }
+
+    .notch {
+      height: 0;
+      width: 1px;
+      border-top: calc(var(--unitHeight) * 1.9) solid purple;
+      border-left: calc(var(--unitWidth) * 1.0) solid transparent;
+      border-right: calc(var(--unitWidth) * 1.0) solid transparent;
+      position: absolute;
+      left: calc(var(--unitWidth) * 7);
+      top: 0;
+      z-index: 1;
+    }
+
+    .ledPad {
+      position: relative;
+      margin-right: 1px;
+      width: calc(var(--unitWidth) * 8 - 1px);
+      height: calc(var(--unitHeight) * 10);
+      background-color: black;
+      border-bottom-left-radius: calc(var(--unitWidth) * 1.5);
+      border-bottom-right-radius: calc(var(--unitWidth) * 1.5);
+      float: left;
+    }
+
+    .mainLed,
+    .rotaryLed {
+      width: calc(var(--unitWidth) * 3);
+      height: calc(var(--unitWidth) * 3);
+      border-radius: 32%;
+      background: var(--ledColor);
+    }
+
+    .mainLed {
+      position: absolute;
+      bottom: calc(var(--unitWidth) * 2);
+      left: 0;
+      right: 0;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .rotaryLed {
+      margin-left: 5%;
+      margin-right: 10%;
+      float: left;
+    }
+
+    .lockPanel {
+      position: relative;
+      width: calc(var(--unitWidth) * 15);
+      height: calc(var(--unitHeight) * 12);
+      font-size: calc(var(--unitHeight) * 1.4);
+      float: left;
+    }
+
+    .atBottom {
+      position: absolute;
+      bottom: 0;
+    }
+
+    .lock {
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: auto;
+      margin-right: auto;
+      width: 55%;
+      height: 55%;
+      border-radius: 50%;
+      background: linear-gradient(15deg, #808080, #383838);
+      border: solid 1px #707070;
+    }
+
+    .lock::before {
+      content: "";
+      display: block;
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: auto;
+      margin-right: auto;
+      width: 45%;
+      height: 45%;
+      border-radius: 50%;
+      background: linear-gradient(15deg, #101010, silver);
+      border: solid 2px #11100e;
+      box-shadow: 0 0 0 1px #404040;
+    }
+
+    .key {
+      content: "";
+      display: block;
+      position: absolute;
+      border: solid 1px #101010;
+      top: -25%;
+      left: 46%;
+      width: 8%;
+      height: 150%;
+      background: #b0b0b0;
+      transform: rotate(-45deg);
+      transition: 0.5s;
+    }
+
+    .rotaryPanel {
+      width: calc(var(--unitWidth) * 88);
+      height: calc(var(--unitHeight) * 12);
+      position: relative;
+      background: black;
+      border-radius: calc(var(--unitWidth) * 3);
+      float: left;
+    }
+
+    .rotaryTopPanel {
+      width: calc(var(--unitWidth) * 56);
+      height: calc(var(--unitHeight) * 25);
+      position: relative;
+      background: black;
+      border-radius: calc(var(--unitWidth) * 3);
+      float: left;
+    }
+
+    .rotaryBottomPanel {
+      width: calc(var(--unitWidth) * 56);
+      height: calc(var(--unitHeight) * 12);
+      position: relative;
+      background: black;
+      border-radius: calc(var(--unitWidth) * 3);
+      float: left;
+    }
+
+    .rotaryTable {
+      display: table;
+      table-layout: fixed;
+      width: 70%;
+      height: 85%;
+      position: absolute;
+      top: 15%;
+      left: 5%;
+      text-align: left;
+    }
+
+    .rotaryTableCell {
+      display: table-cell;
+    }
+
+    .rotaryTableRow {
+      display: table-row;
+    }
+
+    .rotaryBase {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      right: 10%;
+    }
+
+    .rotarySwitch {
+      height: calc(var(--unitWidth) * 10);
+      width: calc(var(--unitWidth) * 10);
+      position: relative;
+      border: solid 1px #202020;
+      border-radius: 50%;
+      background: linear-gradient(0deg,
+          #b0b0c0,
+          #020212 25%,
+          #404050 35%,
+          #303040 65%,
+          #020212 75%,
+          #b0b0c0);
+      transform: rotate(-45deg);
+      transition: 0.5s;
+    }
+
+    .rotarySwitch:before {
+      position: absolute;
+      display: block;
+      content: "";
+      width: 50%;
+      height: 6%;
+      top: 47%;
+      background: #faf8f9;
+      margin: 0 auto;
+    }
+
+    .rotaryCentre {
+      position: relative;
+      background: #faf8f9;
+      left: 43%;
+      top: 44%;
+      width: 12%;
+      height: 12%;
+      border-radius: 50%;
+    }
+
+    .switchLabels {
+      position: absolute;
+      bottom: 0px;
+    }
+
+    .switchPad {
+      margin: 2px 1px 2px 1px;
+      width: calc(var(--unitWidth) * 8 - 2px);
+      height: calc(var(--unitHeight) * 8);
+      line-height: calc(var(--unitHeight) * 8);
+      float: left;
+    }
+
+    .switchPadHalf {
+      width: 100%;
+      height: 49%;
+      line-height: calc(var(--unitHeight) * 4);
+    }
+
+    .switchPadBar {
+      width: 100%;
+      height: 4%;
+      background: black;
+    }
+
+    .multiText {
+      display: inline-block;
+      vertical-align: middle;
+      line-height: calc(var(--unitHeight) * 1.5);
+    }
+
+    .switch {
+      width: calc(var(--unitWidth) * 5);
+      height: calc(var(--unitHeight) * 1);
+      border-top: calc(var(--unitHeight) * 8) solid rgba(0, 0, 0, .16);
+      border-bottom: calc(var(--unitHeight) * 7) solid rgba(0, 0, 0, 0.42);
+      border-left: calc(var(--unitWidth) * 1.5) solid rgba(0, 0, 0, 0.46);
+      border-right: calc(var(--unitWidth) * 1.5) solid rgba(0, 0, 0, 0.50);
+      transition: 0.33s;
+      float: left;
+    }
+
+    .textRight {
+      text-align: right;
+    }
+
+    .single {
+      width: calc(var(--unitWidth) * 8);
+    }
+
+    .double {
+      width: calc(var(--unitWidth) * 16);
+    }
+
+    .triple {
+      width: calc(var(--unitWidth) * 24 - 1px);
+    }
+
+    .roundTopLeft,
+    .roundLeft,
+    .roundTop {
+      border-top-left-radius: calc(var(--unitWidth) * 1.5);
+    }
+
+    .roundTopRight,
+    .roundRight,
+    .roundTop {
+      border-top-right-radius: calc(var(--unitWidth) * 1.5);
+    }
+
+    .roundBottomLeft,
+    .roundLeft {
+      border-bottom-left-radius: calc(var(--unitWidth) * 1.5);
+    }
+
+    .roundBottomRight,
+    .roundRight {
+      border-bottom-right-radius: calc(var(--unitWidth) * 1.5);
+    }
+
+    .red {
+      background: linear-gradient(crimson, firebrick);
+    }
+
+    .redBase {
+      background: crimson;
+    }
+
+    .purple {
+      background: linear-gradient(darkmagenta, purple);
+    }
+
+    .purpleBase {
+      background: darkmagenta;
+    }
+
+    .black {
+      background-color: black;
+    }
+
+    .white {
+      background-color: #f0e6d9;
+    }
+
+    thead {
+      font-weight: bold;
+    }
+
+    .disk {
+      font-weight: bold;
+    }
+
+    .system {
+      white-space: nowrap;
+      font-weight: bold;
+    }
+
+    pre {
+      font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
+      font-size: 14px;
+    }
+
+    b {
+      color: blue;
+    }
+  </style>
+
+  <!-- Google60 Printer styles -->
+  <link rel="stylesheet" href="g60printer.css" type="text/css" charset="utf-8" media="all" />
+
+</head>
+
+<body>
+  <div class=frame>
+    <div class=decBase>
+      <span class=smallSpace></span>
+      <span class=decLetter>d</span>
+      <span class=decLetter>i</span>
+      <span class=decLetter>g</span>
+      <span class=decLetter>i</span>
+      <span class=decLetter>t</span>
+      <span class=decLetter>a</span>
+      <span class=decLetter>l</span>
+      <span class=smallSpace></span>
+      <span class=decName>digital equipment corporation &bull; maynard, massachusetts</span>
+    </div>
+    <div class=sideEdges></div>
+    <div class=topEdge></div>
+    <div class=switchBevel></div>
+    <div class=switchPanel>
+      <div class=panel>
+        <div class=blankLine></div>
+        <div class=blankLine></div>
+        <div class=space></div>
+        <div class=floatLeft>
+          <div class=clear>
+            <div class=floatLeft>
+              <div class=clear>
+                <span class=logo>
+                  <img src="pdp11-70.svg" alt="pdp11-70" width=100%>
+                </span>
+                <div class=floatRight>
+                  <span class="statusBlock roundLeft">
+                    <div class="statusLabel1">PAR</div>
+                    <span class=statusLabel2>ERR <div id=s11 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class="statusBlock margin">
+                    <div class="statusLabel1">ADRS</div>
+                    <span class=statusLabel2>ERR <div id=s10 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class=statusBlock>
+                    <div class="statusLabel1">RUN</div>
+                    <span class=statusLabel2>&nbsp; <div id=s9 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class=statusBlock>
+                    <div class="statusLabel1">PAUSE</div>
+                    <span class=statusLabel2>&nbsp; <div id=s8 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class="statusBlock margin">
+                    <div class="statusLabel1">MASTER</div>
+                    <span class=statusLabel2>&nbsp; <div id=s7 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class=statusBlock>
+                    <div class="statusLabel1">USER</div>
+                    <span class=statusLabel2>&nbsp; <div id=s6 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class=statusBlock>
+                    <div class="statusLabel1">SUPER</div>
+                    <span class=statusLabel2>&nbsp; <div id=s5 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class="statusBlock margin">
+                    <div class="statusLabel1">KERNEL</div>
+                    <span class=statusLabel2>&nbsp; <div id=s4 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class=statusBlock>
+                    <div class="statusLabel1">DATA</div>
+                    <span class=statusLabel2>&nbsp; <div id=s3 class=mainLed></div>
+                    </span>
+                  </span>
+                  <span class="statusBlock triple roundRight">
+                    <div class="statusLabel1">ADDRESSING</div>
+                    <span class=statusLabel2>16 <div id=s2 class=mainLed></div>
+                    </span>
+                    <span class=statusLabel2>18 <div id=s1 class=mainLed></div>
+                    </span>
+                    <span class=statusLabel2>22 <div id=s0 class=mainLed></div>
+                    </span>
+                  </span>
+                  <div class=smallLine></div>
+                </div>
+              </div>
+              <div class=clear>
+                <span class="ledBlock single">
+                  <div class="ledBase red roundTopLeft"></div>
+                  <div class=ledPad>
+                    <div id=a21 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase purple"></div>
+                  <div class=ledPad>
+                    <div id=a20 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a19 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a18 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase red"></div>
+                  <div class=ledPad>
+                    <div id=a17 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a16 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a15 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase purple"></div>
+                  <div class=ledPad>
+                    <div id=a14 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a13 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a12 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase red"></div>
+                  <div class=ledPad>
+                    <div id=a11 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a10 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a9 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase purple"></div>
+                  <div class=ledPad>
+                    <div id=a8 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a7 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a6 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase red"></div>
+                  <div class=ledPad>
+                    <div id=a5 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a4 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a3 class=mainLed></div>
+                  </div>
+                </span>
+                <span class=ledBlock>
+                  <div class="ledBase purple textRight roundTopRight">ADDRESS &nbsp;</div>
+                  <div class=ledPad>
+                    <div id=a2 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a1 class=mainLed></div>
+                  </div>
+                  <div class=ledPad>
+                    <div id=a0 class=mainLed></div>
+                  </div>
+                </span>
+              </div>
+              <div class=blankLine></div>
+              <div class=clear>
+                <div class=lockPanel>
+                  <div class=floatLeft>POWER</div>
+                  <div class=floatRight>LOCK</div>
+                  <div class=lock
+                    onclick="if (event && event.shiftKey) { if (--panel.powerSwitch < -1) panel.powerSwitch = 1; } else { if (++panel.powerSwitch > 1) panel.powerSwitch = -1; } if (panel.powerSwitch < 0) { CPU.runState = STATE_HALT; } key.style.transform='rotate('+(panel.powerSwitch * 90 - 45)+'deg)';">
+                    <div id=key class=key></div>
+                  </div>
+                  <div class=atBottom>OFF</div>
+                </div>
+                <div class=floatRight>
+                  <span class="ledBlock double">
+                    <div class="ledBase black roundTop">PARITY</div>
+                    <div class=ledPad>HIGH <div id=s13 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>LOW <div id=s12 class=mainLed></div>
+                    </div>
+                  </span>
+                  <span class=space></span>
+                  <span class="ledBlock single">
+                    <div class="ledBase red roundTopLeft"></div>
+                    <div class=ledPad>
+                      <div id=d15 class=mainLed></div>
+                    </div>
+                  </span>
+                  <span class=ledBlock>
+                    <div class="ledBase purple">
+                      <div class=nick></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d14 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d13 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d12 class=mainLed></div>
+                    </div>
+                  </span>
+                  <span class=ledBlock>
+                    <div class="ledBase red">
+                      <div class=nick></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d11 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d10 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d9 class=mainLed></div>
+                    </div>
+                  </span>
+                  <span class=ledBlock>
+                    <div class="ledBase purple">
+                      <div class=nick></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d8 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d7 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d6 class=mainLed></div>
+                    </div>
+                  </span>
+                  <span class=ledBlock>
+                    <div class="ledBase red"></div>
+                    <div class=ledPad>
+                      <div id=d5 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d4 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d3 class=mainLed></div>
+                    </div>
+                  </span>
+                  <span class=ledBlock>
+                    <div class="ledBase purple textRight roundTopRight">DATA &nbsp;</div>
+                    <div class=ledPad>
+                      <div id=d2 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d1 class=mainLed></div>
+                    </div>
+                    <div class=ledPad>
+                      <div id=d0 class=mainLed></div>
+                    </div>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class=space></div>
+            <div class=floatLeft>
+              <div class=rotaryTopPanel>
+                <span class=rotaryTable>
+                  <div class=rotaryTableRow>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s17></span>USER D
+                    </div>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s18></span>USER I
+                    </div>
+                  </div>
+                  <div class=rotaryTableRow>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s16></span>SUPER D
+                    </div>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s19></span>SUPER I
+                    </div>
+                  </div>
+                  <div class=rotaryTableRow>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s15></span>KERNEL D
+                    </div>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s20></span>KERNEL I
+                    </div>
+                  </div>
+                  <div class=rotaryTableRow>
+                    <div class=rotaryTableCell>
+                      <div class=rotaryLed id=s14></div>CONS PHY
+                    </div>
+                    <div class=rotaryTableCell>
+                      <div class=rotaryLed id=s21></div>PROG PHY
+                    </div>
+                  </div>
+                </span>
+                <span class=rotaryBase>
+                  <div class=rotarySwitch
+                    onclick="if (event && event.shiftKey) { if (--panel.rotary0 < 0) panel.rotary0 = 7; } else { if (++panel.rotary0 > 7) panel.rotary0 = 0; } this.style.transform = 'rotate('+(panel.rotary0*45-45)+'deg)'; panel.autoIncr = 0;">
+                    <div class=rotaryCentre></div>
+                  </div>
+                </span>
+              </div>
+              <div class=blankLine></div>
+              <div class=rotaryBottomPanel>
+                <span class=rotaryTable>
+                  <div class=rotaryTableRow>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s22></span>DATA<br>PATHS
+                    </div>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s23></span>&micro; ADRS<br>FPP/CPU
+                    </div>
+                  </div>
+                  <div class=rotaryTableRow>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s25></span>BUS REG
+                    </div>
+                    <div class=rotaryTableCell>
+                      <span class=rotaryLed id=s24></span>DISPLAY<br>REGISTER
+                    </div>
+                  </div>
+                </span>
+                <span class=rotaryBase>
+                  <div class=rotarySwitch
+                    onclick="if (event && event.shiftKey) { if (--panel.rotary1 < 0) panel.rotary1 = 3; } else { if (++panel.rotary1 > 3) panel.rotary1 = 0; } this.style.transform = 'rotate('+(panel.rotary1*45-45)+'deg)'; panel.autoIncr = 0;">
+                    <div class=rotaryCentre></div>
+                  </div>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class=switchLabels>
+            <span class="switchPad red roundLeft roundRight">21</span>
+            <span class="switchPad purple roundLeft">20</span>
+            <span class="switchPad purple">19</span>
+            <span class="switchPad purple roundRight">18</span>
+            <span class="switchPad red roundLeft">17</span>
+            <span class="switchPad red">16</span>
+            <span class="switchPad red roundRight">15</span>
+            <span class="switchPad purple roundLeft">14</span>
+            <span class="switchPad purple">13</span>
+            <span class="switchPad purple roundRight">12</span>
+            <span class="switchPad red roundLeft">11</span>
+            <span class="switchPad red">10</span>
+            <span class="switchPad red roundRight">9</span>
+            <span class="switchPad purple roundLeft">8</span>
+            <span class="switchPad purple">7</span>
+            <span class="switchPad purple roundRight">6</span>
+            <span class="switchPad red roundLeft">5</span>
+            <span class="switchPad red">4</span>
+            <span class="switchPad red roundRight">3</span>
+            <span class="switchPad purple roundLeft">2</span>
+            <span class="switchPad purple">1</span>
+            <span class="switchPad purple roundRight">0</span>
+            <span class=space></span>
+            <span class="switchPad red roundTop"><span class=multiText>LOAD ADRS</span></span>
+            <span class="switchPad purple roundTop">EXAM</span>
+            <span class="switchPad red roundTop">DEP</span>
+            <span class="switchPad purple roundTop">CONT</span>
+            <span class="switchPad red roundTop">
+              <div class="switchPadHalf">ENABLE</div>
+              <div class="switchPadBar"></div>
+              <div class="switchPadHalf">HALT</div>
+            </span>
+            <span class="switchPad purple roundTop">
+              <div class="switchPadHalf">S INST</div>
+              <div class="switchPadBar"></div>
+              <div class="switchPadHalf">S BUS</div>
+            </span>
+            <span class="switchPad red roundTop">START</span>
+          </div>
+        </div>
+      </div>
+      <div class=floatLeft>
+        <span class=space></span>
+        <span class="switch redBase" onClick="setSwitch(this, 21);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 20);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 19);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 18);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 17);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 16);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 15);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 14);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 13);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 12);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 11);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 10);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 9);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 8);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 7);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 6);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 5);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 4);"></span>
+        <span class="switch redBase" onClick="setSwitch(this, 3);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 2);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 1);"></span>
+        <span class="switch purpleBase" onClick="setSwitch(this, 0);"></span>
+        <span class="switch white"
+          onclick="moveSwitch(this, panel.lampTest = 1 - panel.lampTest); if (!panel.powerSwitch) { if (panel.lamp) panel.lamp = 1; }"></span>
+        <span class="switch redBase"
+          onClick="toggleSwitch(this, 0); CPU.displayAddress = CPU.switchRegister; panel.autoIncr = 0;"></span>
+        <span class="switch purpleBase"
+          onClick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) examineDeposit(-1); }"></span>
+        <span class="switch redBase"
+          onClick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) examineDeposit(CPU.switchRegister); }"></span>
+        <span class="switch purpleBase"
+          onClick="toggleSwitch(this, 0); if (!panel.powerSwitch && CPU.runState == STATE_HALT) { if (panel.halt) { CPU.runState = STATE_STEP; } else { CPU.runState = STATE_RUN; }}"></span>
+        <span class="switch redBase"
+          onClick="moveSwitch(this, panel.halt = 1 - panel.halt); if (!panel.powerSwitch) { if (panel.halt) { CPU.runState = STATE_HALT; }}"></span>
+        <span class="switch purpleBase" onClick="moveSwitch(this, panel.step = 1 - panel.step);"></span>
+        <span class="switch redBase"
+          onclick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) {iopage.reset(); CPU.registerVal[7] = CPU.displayAddress & 0xffff; if (!panel.halt) { CPU.runState = STATE_RUN; }}}"></span>
+      </div>
+    </div>
+  </div>
+  <p class=clear><br>
+  <div id="g60printer">
+    <div class="printer-input-area">
+      <textarea id="g60printer_input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        placeholder="Click here to type..."></textarea>
+      <div id="g60printer_buttons" style="padding:4px 0;display:flex;gap:2px;flex-wrap:wrap;">
+        <button onclick="dlReceiveQueue(0,[3]);document.getElementById('g60printer_input').focus();">^C</button>
+        <button onclick="dlReceiveQueue(0,[4]);document.getElementById('g60printer_input').focus();">^D</button>
+        <button onclick="dlReceiveQueue(0,[8]);document.getElementById('g60printer_input').focus();">^H</button>
+        <button onclick="dlReceiveQueue(0,[10]);document.getElementById('g60printer_input').focus();">LF</button>
+        <button onclick="dlReceiveQueue(0,[17]);document.getElementById('g60printer_input').focus();">^Q</button>
+        <button onclick="dlReceiveQueue(0,[19]);document.getElementById('g60printer_input').focus();">^S</button>
+        <button onclick="dlReceiveQueue(0,[20]);document.getElementById('g60printer_input').focus();">^T</button>
+        <button onclick="dlReceiveQueue(0,[26]);document.getElementById('g60printer_input').focus();">^Z</button>
+        <button onclick="dlReceiveQueue(0,[27]);document.getElementById('g60printer_input').focus();">ESC</button>
+        <button onclick="dlReceiveQueue(0,[9]);document.getElementById('g60printer_input').focus();">TAB</button>
+        <button onclick="dlReceiveQueue(0,[0]);document.getElementById('g60printer_input').focus();">Break</button>
+        <button
+          onclick="if(g60printer)g60printer.clear();document.getElementById('g60printer_input').focus();">Clear</button>
+      </div>
+    </div>
+  </div>
+  <br>
+  <button onclick="if(g60Console){g60Console.writeChar(10);}boot();">REBOOT</button>
+  </p>
+  <p>
+    <label>Paper tape reader file</label>
+    <select id="ptr">
+      <option value="">--none--</option>
+      <option value="DEC-11-AJPB-PB">BASIC-11 V007A</option>
+      <option value="DEC-11-O2PA-PB">ODT-11X-V004A</option>
+      <option value="ED-11-V004B-8K">ED-11-V004B</option>
+      <option value="lander">Lunar Lander</option>
+      <option value="bootcode">Bootcode</option>
+    </select>
+  </p>
+  <p>
+    <label>Download disk</label>
+    <select id="downLoadSelect" disabled>
+      <option value="">--none--</option>
+    </select>
+  </p>
+  <p>
+  <div id="vt11"></div>
+  </p>
+  <bp>
+    <div id="vg11"></div>
+    </p>
+    <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
+    <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
+    <!-- Add more if needed -->
+    <div id="lp11_div"></div>
+    <br>
+    <h2>PDP‑11/70 Emulator</h2>
+
+    <p>
+      This emulator began as a personal project. Years ago I was a programmer on RSTS/E running on a PDP‑11/45, and I
+      vividly remembered the console’s idle loop light pattern — but not quite how it looked. With real hardware long
+      gone, I decided to recreate it in software.
+    </p>
+
+    <p>
+      My initial plan was to emulate the PDP‑11/45, but the expanded memory of the PDP‑11/70 (nearly 4 MB!) proved
+      irresistible. The result was a
+      <a href="https://paulnank.github.io/pdp11-js/pdp11.html">PDP‑11/70 emulator</a>, later joined by a
+      <a href="https://paulnank.github.io/pdp11-js/pdp11-45.html">PDP‑11/45</a> version and even a
+      <a href="https://skn.noip.me/pdp10/pdp10.html">PDP‑10</a>.
+    </p>
+
+    <p>
+      The core objective was met: I can now see the RSTS/E console light pattern again. Interestingly, later releases
+      (such as v9.6) changed the pattern, and other operating systems have their own distinctive styles. RSX and BSD
+      2.11 show lively variations, while Unix V5 and Ultrix keep the lights almost static, reflecting heavy use of WAIT
+      mode.
+    </p>
+
+    <p>
+      Collecting the operating systems themselves was a challenge. One highlight was tracking down RSTS/E V06C, which
+      has its own
+      <a href="https://paulnank.github.io/pdp11-js/RSTSv06c.html">story</a>.
+    </p>
+
+    <p>
+      Many of these systems include source code, offering fascinating insights into their design. Their influence on
+      later computing is profound — Unix in particular feels familiar to modern administrators. I sometimes wonder if
+      encountering Ultrix earlier might have steered my career differently.
+    </p>
+
+    <p>
+      The emulator boots with a custom PDP‑11 program that drives its own light patterns. Loaded at address
+      <code>120000</code>, it includes a <b>LIGHTS</b> command that cycles through virtual addresses with WAIT
+      instructions, displaying the contents of R0 and the current instruction address. You can also use <b>BOOT</b> to
+      start guest operating systems, or <b>ODT</b> to launch the Octal Debugging Tool.
+    </p>
+
+    <p>
+      Original PDP‑11s had no BIOS. Booting meant toggling in a tiny bootstrap loader from the front panel — unless you
+      were lucky enough to have residual code in magnetic core memory. Below is an example bootstrap for the RK05 disk,
+      where the value at address <code>1002</code> selects the unit (rk0, rk1, rk2, etc.).
+    </p>
+
+    <pre>
+<b>Address  Data    Code           Switch commands</b>
+                               HALT, 001000, LOAD ADDRESS
+001000   012737  mov #unit,rkda 012737, DEPOSIT
+001002   000000                 000000, DEPOSIT (020000 for rk1, 040000 for rk2, etc)
+001004   177412                 177412, DEPOSIT
+001006   012700  mov #rkwc,r0   012700, DEPOSIT
+001010   177406                 177406, DEPOSIT
+001012   012710  mov #-256,(r0) 012710, DEPOSIT
+001014   177400                 177400, DEPOSIT
+001016   012740  mov #5,-(r0)   012740, DEPOSIT
+001020   000005                 000005, DEPOSIT
+001022   105710  tstb (r0)      105710, DEPOSIT
+001024   100376  bpl .-2        100376, DEPOSIT
+001026   005007  clr pc         005007, DEPOSIT
+                               001000, LOAD ADDRESS, ENABLE, START
+</pre>
+
+    <p>
+      For fun, here’s a simple “light chaser” program you can toggle in:
+    </p>
+
+    <pre>
+<b>Address  Data    Code        Switch commands</b>
+                            HALT, 001000, LOAD ADDRESS
+001000   012700  mov #1,r0   012700, DEPOSIT
+001002   000001              000001, DEPOSIT
+001004   006100  rol r0      006100, DEPOSIT
+001006   000005  reset       000005, DEPOSIT
+001010   000775  br .-4      000775, DEPOSIT
+                            001000, LOAD ADDRESS, ENABLE, START
+</pre>
+
+    <p>
+      To restart the emulator’s initial boot code (if not overwritten), use:
+    </p>
+
+    <pre>
+HALT, 120000, LOAD ADDRESS, ENABLE, START
+</pre>
+
+    <p>
+      Curious how it all works? The source is available on
+      <a href="https://github.com/paulnank/pdp11-js/">GitHub</a>. The main JavaScript files are <code>pdp11.js</code>,
+      <code>fpp.js</code>, and <code>iopage.js</code>.
+    </p>
+
+    <p><b>Happy emulating!</b></p>
+    <p><i>Paul Nankervis</i></p>
+
+    <h3>Guest Operating Systems</h3>
+
+    <table style="margin-left:25px; padding:3px;">
+      <thead>
+        <tr>
+          <th>Disk</th>
+          <th>OS</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="disk">RK0</td>
+          <td class="system">Unix V5</td>
+          <td>Boot using: <code>unix</code>, then login as root</td>
+        </tr>
+        <tr>
+          <td class="disk">RK1</td>
+          <td class="system">RT‑11 v4.0</td>
+          <td>The smallest OS here</td>
+        </tr>
+        <tr>
+          <td class="disk">RK2</td>
+          <td class="system">RSTS V06C‑03</td>
+          <td>Login as 1,2 (password SYSTEM) or 11,70 (password PDP)</td>
+        </tr>
+        <tr>
+          <td class="disk">RK3</td>
+          <td class="system">XXDP</td>
+          <td>Diagnostic OS and utilities</td>
+        </tr>
+        <tr>
+          <td class="disk">RK4</td>
+          <td class="system">RT‑11 3B</td>
+          <td>Distribution for RT‑11 Version 3B</td>
+        </tr>
+        <tr>
+          <td class="disk">TM0</td>
+          <td class="system">RSTS 4B‑17</td>
+          <td>Boot ROLLIN from TM0, restore DK0, then reboot. Default login 1,2 (SYSTEM) or 11,70 (PDP).</td>
+        </tr>
+        <tr>
+          <td class="disk">RL0</td>
+          <td class="system">BSD 2.9</td>
+          <td>Boot using: <code>rl(0,0)rlunix</code>. CTRL/D to enter multiuser. Login as root.</td>
+        </tr>
+        <tr>
+          <td class="disk">RL1</td>
+          <td class="system">RSX 11M v3.2</td>
+          <td>Login as 1,2 (SYSTEM)</td>
+        </tr>
+        <tr>
+          <td class="disk">RL2</td>
+          <td class="system">RSTS/E v7.0</td>
+          <td>Login as 1,2 (SYSTEM) or 11,70 (PDP)</td>
+        </tr>
+        <tr>
+          <td class="disk">RL3</td>
+          <td class="system">XXDP</td>
+          <td>Larger diagnostics, including PDP‑11/70 utilities</td>
+        </tr>
+        <tr>
+          <td class="disk">RP0</td>
+          <td class="system">ULTRIX‑11 V3.1</td>
+          <td>CTRL/D to enter multiuser mode. Login as root (no password)</td>
+        </tr>
+        <tr>
+          <td class="disk">RP1</td>
+          <td class="system">BSD 2.11</td>
+          <td>Autoboots into multiuser. Login as root (no password)</td>
+        </tr>
+        <tr>
+          <td class="disk">RP2</td>
+          <td class="system">RSTS/E v9.6</td>
+          <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
+        </tr>
+        <tr>
+          <td class="disk">RP3</td>
+          <td class="system">RSX 11M v4.6</td>
+          <td>Starts logged in as 1,2 (SYSTEM). Other accounts: 200,1 (no password), 11,70 (PDP).</td>
+        </tr>
+        <tr>
+          <td class="disk">RP4</td>
+          <td class="system">RSTS/E v10.1</td>
+          <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
+        </tr>
+      </tbody>
+    </table>
+
+
+    <h3>Example boot of Unix V5</h3>
+    <pre>
+Boot&gt; <b>boot rk0</b>
+@<b>unix</b>
+
+login: <b>root</b>
+# <b>cat /etc/passwd</b>
+root::0:1::/:
+daemon::1:1::/bin:
+bin::3:1::/bin:
+# <b>who</b>
+root    tty8 Mar 21 12:09
+# <b>chdir /usr/sys/ken</b>
+# <b>pwd</b>
+../usr/sys/ken
+# <b>ls -al</b>
+total 121
+drwxr-xr-x  2 bin       352 Nov 26 18:13 .
+drwxr-xr-x  5 bin       384 Nov 26 18:13 ..
+-rw-r--r--  1 bin      3855 Nov 26 18:13 alloc.c
+-rw-r--r--  1 bin      2159 Nov 26 18:13 clock.c
+-rw-r--r--  1 bin      2662 Nov 26 18:13 fio.c
+-rw-r--r--  1 bin      2941 Nov 26 18:13 iget.c
+-rw-r--r--  1 bin      2674 Nov 26 18:13 main.c
+...
+# <b>ls -al /usr/games</b>
+total 64
+drwxr-xr-x  2 bin       144 Nov 26 18:13 .
+drwxr-xr-x 14 bin       224 Nov 26 18:13 ..
+-rwxr-xr-x  1 bin      1562 Nov 26 18:13 bj
+-rwxr-xr-x  1 bin     16268 Nov 26 18:13 chess
+-rwxr-xr-x  1 bin      2468 Nov 26 18:13 cubic
+-rwxr-xr-x  1 bin       624 Nov 26 18:13 moo
+-rwxr-xr-x  1 bin      2192 Nov 26 18:13 ttt
+-rw-rw-rw-  1 bin       294 Nov 26 18:13 ttt.k
+-rwxr-xr-x  1 bin      5386 Nov 26 18:13 wump
+# <b>ls -al /bin</b>
+total 339
+drwxr-xr-x  2 bin       944 Nov 26 18:13 .
+drwxr-xr-x  9 bin       160 Jan 29 16:14 ..
+-rwxr-xr-x  1 bin      1514 Nov 26 18:13 ar
+-rwxr-xr-x  1 bin      7308 Nov 26 18:13 as
+-rwxr-xr-x  1 bin      6042 Nov 26 18:13 bas
+-rwxr-xr-x  1 bin       152 Nov 26 18:13 cat
+-rwxr-xr-x  1 bin      5668 Nov 26 18:13 cc
+....
+# <b>ls -al /usr/source/s2</b>
+total 281
+drwxr-xr-x  2 bin       848 Jan  2 19:36 .
+drwxr-xr-x  7 bin       112 Nov 26 18:13 ..
+-rw-r--r--  1 bin      4233 Nov 26 18:13 mail.c
+-rw-r--r--  1 bin       588 Nov 26 18:13 mesg.s
+-rw-r--r--  1 bin      1088 Nov 26 18:13 mkdir.s
+-rw-r--r--  1 bin      6922 Nov 26 18:13 mkfs.c
+-rw-r--r--  1 bin       563 Nov 26 18:13 mknod.c
+...
+# <b>chdir /</b>
+# <b>cal 10 1981</b>
+Oct 1981
+S  M Tu  W Th  F  S
+1  2  3
+4  5  6  7  8  9 10
+11 12 13 14 15 16 17
+18 19 20 21 22 23 24
+25 26 27 28 29 30 31
+# <b>bas</b>
+<b>print sqr(2)</b>
+1.414213562
+<b>10 print "Calculating e"
+20 p = 20
+30 k = 1
+40 e = 0
+50 for x=1 p
+60 e = e + 1/k
+70 k = k * x
+80 next x
+90 print "e=" e " (" exp(1) ")"
+run</b>
+Calculating e
+e=2.718281828 (2.718281828)
+<b>^D</b>
+# <b>cat &gt; hello.c
+main(argc, argv)
+char **argv;
+{
+printf("Hello world\n");
+}</b>
+<b>^D</b>
+# <b>cc hello.c</b>
+# <b>a.out</b>
+Hello world
+# <b>cat &gt; pi.f
+c PI via Nilakantha series: 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) ...
+      double precision pi, n, d
+      pi = 3.0
+      n = 4.0
+      d = 2.0
+      do 25 i=1,3000
+        pi = pi + n / (d * (d + 1.0) * (d + 2.0))
+        d = d + 2.0
+        n = -n
+ 25     continue
+      write(6,70) pi
+ 70   format('PI is approximately ', d2.16)
+      end</b>
+<b>^D</b>
+# <b>fc pi.f</b>
+# <b>a.out</b>
+PI is approximately 0.3141592653580503d+01
+#
+</pre>
+    <h3>Example boot of RT11 v4.0</h3>
+    <pre>
+Boot&gt; <b>boot rk1</b>
+RT-11SJ  V04.00C
+
+.D 56=5015
+
+.TYPE V4USER.TXT
+Welcome to RT-11 Version 4. RT-11 V04 provides new hardware support
+and some major enhancements over Version 3B.
+
+Please use the HELP command;  it describes the new options in many
+of the utilities.
+
+If you are using a terminal that requires fill characters,
+modify location 56 with a Deposit command before proceeding with
+system installation. LA36 DECwriter II and VT52 DECscope terminals
+do NOT require such modification.
+
+.D 56=0
+
+.<b>DIR</b>
+
+SWAP  .SYS    25  01-Feb-82      RT11BL.SYS    65  01-Feb-82
+RT11SJ.SYS    67  01-Feb-82      RT11FB.SYS    80  01-Feb-82
+...
+DISMT2.COM     8  01-Feb-82      DUNGEO.COM     1  07-Jun-86
+DSAVE .DAT    10  07-Jun-86      ADVENT.DOC     4  20-Jul-85
+DUNGEO.SAV   216  07-Jun-86      DINDX .DAT    20  07-Jun-86
+DTEXT .DAT   383  07-Jun-86      ADVENT.SAV    93  20-Jul-85
+ADVENT.VAR    22  20-Jul-85      ADVTXT.TXT   125  20-Jul-85
+ODT11 .MAC    61  31-Oct-74      ANIMAL.SAV    22  02-Oct-85
+BLKJAK.SAV    20  02-Nov-85      FORTH .MAC   146
+RTLEM .MAC   363  06-Sep-73      BOOT  .MAC    26  24-Mar-75
+ 118 Files, 3392 Blocks
+ 1370 Free blocks
+
+.<b>R DUNGEO</b>
+Welcome to Dungeon.                     This version created 10-AUG-78.
+You are in an open field west of a big white house with a boarded
+front door.
+There is a small mailbox here.
+&gt;<b>OPEN MAILBOX</b>
+Opening the mailbox reveals:
+  A leaflet.
+&gt;<b>READ LEAFLET</b>
+Taken.
+                    Welcome to Dungeon!
+
+   Dungeon is a game of adventure, danger, and low cunning.  In it
+you will explore some of the most amazing territory ever seen by mortal
+man.  Hardened adventurers have run screaming from the terrors contained
+within.
+
+   In Dungeon, the intrepid explorer delves into the forgotten secrets
+of a lost labyrinth deep in the bowels of the earth, searching for
+vast treasures long hidden from prying eyes, treasures guarded by
+fearsome monsters and diabolical traps!
+
+   No DECsystem should be without one!
+
+   Dungeon was created at the Programming Technology Division of the MIT
+Laboratory for Computer Science by Tim Anderson, Marc Blank, Bruce
+Daniels, and Dave Lebling.  It was inspired by the Adventure game of
+Crowther and Woods, and the Dungeons and Dragons game of Gygax
+and Arneson.  The original version was written in MDL (alias MUDDLE).
+The current version was translated from MDL into FORTRAN IV by
+a somewhat paranoid DEC engineer who prefers to remain anonymous.
+
+   On-line information may be obtained with the commands HELP and INFO.
+&gt;<b>QUIT</b>
+Your score would be   0 [total of 560 points], in    1 move.
+This gives you the rank of beginner.
+Do you wish to leave the game?
+<b>Y</b>
+
+.<b>MAC RTLEM</b>
+ERRORS DETECTED:  0
+.<b>LINK RTLEM</b>
+.<b>RUN RTLEM</b>
+... attempt to land the lunar module using the mouse as a light pen - goodluck!
+</pre>
+    <h3>Example boot of RSTS V06C-03</h3>
+    <pre>
+Boot&gt; <b>boot rk2</b>
+
+RSTS V06C-03 Vixen (DK2)
+
+Option: <b>&lt;LF&gt;</b>
+
+You currently have: JOB MAX = 31, SWAP MAX = 28K.
+
+You currently have crash dump disabled.
+
+DD-MMM-YY? <b>31-OCT-76</b>
+12:00 PM? <b>9:03</b>
+INIT    V06C-03 RSTS V06C-03 Vixen
+
+Command File Name?
+DETACHING...
+
+<b>I11/70</b>
+Password: <b>PDP</b>
+
+Ready
+
+<b>DIR</b>
+ Name .Ext  Size    Prot   Date       SY:[11,70]
+ACEY  .BAS     5   &lt; 60&gt; 31-Oct-76
+TREK  .BAS    16   &lt; 60&gt; 31-Oct-76
+TREK  .DOC     9   &lt; 60&gt; 31-Oct-76
+ANIMAL.BAS     5   &lt; 60&gt; 31-Oct-76
+STRTRK.BAS    27   &lt; 60&gt; 31-Mar-81
+STRTR1.BAS     9   &lt; 60&gt; 31-Mar-81
+ADVENT.DOC     4   &lt; 60&gt; 20-Jul-85
+ADVENT.SAV    93   &lt;124&gt; 20-Jul-85
+ADVENT.VAR    22   &lt; 60&gt; 20-Jul-85
+ADVTXT.TXT   125   &lt; 60&gt; 20-Jul-85
+SYSMAC.SML    42   &lt; 60&gt; 13-Mar-77
+HELLO .MAC     1   &lt; 60&gt; 13-Mar-77
+PRIME .BAS     1   &lt; 60&gt; 24-Mar-76
+PI    .BAS     1   &lt; 60&gt; 24-Mar-76
+BOOT  .MAC    26   &lt; 60&gt; 01-Jan-76
+
+Total of 386 blocks in 15 files in SY:[11,70]
+
+Ready
+
+<b>RUN PI</b>
+3.14159265358979
+
+Ready
+
+<b>RUN ADVENT</b>
+
+WELCOME TO ADVENTURE!!  WOULD YOU LIKE INSTRUCTIONS?
+
+<b>NO</b>
+YOU ARE STANDING AT THE END OF A ROAD BEFORE A SMALL BRICK BUILDING.
+AROUND YOU IS A FOREST.  A SMALL STREAM FLOWS OUT OF THE BUILDING AND
+DOWN A GULLY.
+
+<b>E</b>
+YOU ARE INSIDE A BUILDING, A WELL HOUSE FOR A LARGE SPRING.
+
+THERE ARE SOME KEYS ON THE GROUND HERE.
+
+THERE IS A SHINY BRASS LAMP NEARBY.
+
+THERE IS FOOD HERE.
+
+THERE IS A BOTTLE OF WATER HERE.
+
+<b>GET FOOD</b>
+OK
+
+<b>QUIT</b>
+DO YOU REALLY WANT TO QUIT NOW?
+
+<b>Y</b>
+OK
+YOU SCORED  32 OUT OF A POSSIBLE 350, USING    3 TURNS.
+YOU ARE OBVIOUSLY A RANK AMATEUR.  BETTER LUCK NEXT TIME.
+TO ACHIEVE THE NEXT HIGHER RATING, YOU NEED  4 MORE POINTS.
+
+Ready
+
+<b>RUN ACEY</b>
+                          ACEY DUCEY CARD GAME
+               CREATIVE COMPUTING  MORRISTOWN, NEW JERSEY
+
+
+ACEY-DUCEY IS PLAYED IN THE FOLLOWING MANNER
+THE DEALER (COMPUTER) DEALS TWO CARDS FACE UP
+YOU HAVE AN OPTION TO BET OR NOT BET DEPENDING
+ON WHETHER OR NOT YOU FEEL THE CARD WILL HAVE
+A VALUE BETWEEN THE FIRST TWO.
+IF YOU DO NOT WANT TO BET, INPUT A 0
+YOU NOW HAVE 100 DOLLARS.
+
+HERE ARE YOUR NEXT TWO CARDS:
+ 4
+ 5
+
+WHAT IS YOUR BET? <b>100</b>
+ 9
+SORRY, YOU LOSE
+
+SORRY, FRIEND, BUT YOU BLEW YOUR WAD.
+
+TRY AGAIN (YES OR NO)? <b>NO</b>
+
+O.K., HOPE YOU HAD FUN!
+
+Ready
+
+<b>SYSTAT</b>
+
+RSTS V06C-03 Vixen status at 31-Oct-76, 09:05 AM Up: 2:34
+
+Job    Who    Where    What    Size    State    Run-Time   RTS
+ 1    [OPR]   Det     ERRCPY    5K     SR            5.0  BASIC
+ 2    [SELF]  KB0     SYSTAT    8K     RN Lck        2.1  BASIC
+
+Busy Devices: None
+
+Disk Structure:
+Disk    Open    Free    Cluster Errors  Name    Comments
+DK2       3     324        1      0     VIXEN   Pub, DLW
+
+Small   Large   Jobs    Hung TTY's      Errors
+380       1      2/2        0              0
+
+Run-Time Systems:
+ Name   Ext       Size  Users   Comments
+BASIC   BAC     16(16)K   2     Perm, Addr:26, KBM, CSZ
+RSX     TSK      2(28)K   0     Non-Res, KBM
+RT11    SAV      4(28)K   0     Temp, Addr:66, KBM, CSZ, EMT:255
+RMS11   TSK      4(28)K   0     Non-Res
+
+Message Receivers:
+ Name   Job     Msgs    Max     Senders
+ERRLOG   1       0      40      Priv
+
+Ready
+
+<b>BYE/Y</b>
+Saved all disk files; 388 blocks in use, 112 free
+Job 2 User 11,70 logged off KB0 at 31-Oct-76 09:05 AM
+System RSTS V06C-03 Vixen
+Run time was 2.7 seconds
+Elapsed time was 2 minutes
+Good morning
+</pre>
+    <h3>Example boot of XXDP</h3>
+    <pre>
+Boot&gt; <b>boot rk3</b>
+
+CHMDKB1 XXDP+ DK MONITOR
+BOOTED VIA UNIT 3
+28K UNIBUS SYSTEM
+
+ENTER DATE (DD-MMM-YY):
+
+RESTART ADDR: 152010
+THIS IS XXDP+.  TYPE "H" OR "H/L" FOR HELP.
+
+.<b>R EKBB??</b>
+EKBBF0.BIC
+
+CEKBBF0 11/70 CPU #2
+A
+CPU UNDER TEST FOUND TO BE A KB11-B/C OR KB11-CM
+LOOK AT THE CONSOLE LIGHTS
+THE DATA LIGHTS SHOULD READ 166667
+THE ADDRESS LIGHTS SHOULD READ  032236
+CHANGE SWITCH 7 TO CONTINUE
+LOOK AT THE CONSOLE LIGHTS
+THE DATA LIGHTS SHOULD READ 166667
+THE ADDRESS LIGHTS SHOULD READ  032316
+TYPE A CHARACTER TO CONTINUE
+
+END PASS #     1  TOTAL ERRORS SINCE LAST REPORT      0
+AAAAAAAAAAAAAAAAAAAAA
+END PASS #     2  TOTAL ERRORS SINCE LAST REPORT      0
+AAAAAAAAAAAAAAAAAAAAA
+END PASS #     3  TOTAL ERRORS SINCE LAST REPORT      0
+AAAAAAAAAAAAAAAAAAAAA
+END PASS #     4  TOTAL ERRORS SINCE LAST REPORT      0
+AAAAAAAAAAAAAAAAAAAAA
+END PASS #     5  TOTAL ERRORS SINCE LAST REPORT      0
+AAAAAAAAAAAAAAAAAAAAA
+...
+</pre>
+    <h3>Example boot of RSTS 4B-17</h3>
+    <pre>
+Boot&gt; <b>boot tm0</b>
+
+ROLLIN V07
+
+#<b>DK:&lt;MT:VIXEN/REW</b>
+END-OF-FILE DURING READ, TYPE
+M TO MOUNT ANOTHER REEL, OR K TO KILL REQUEST: <b>k</b>
+
+#<b>/BO:DK:</b>
+
+RSTS V04B-17 VIXEN
+
+OPTION? <b>&lt;LF&gt;</b>
+DD-MON-YY? <b>24-MAR-75</b>
+HH:MM? <b>9:21</b>
+VIXEN  - SYSTEM PACK MOUNTED
+ENABLE CRASH DUMP? <b>N</b>
+CHAIN "INIT"
+CATASTROPHIC ERROR
+PROGRAM LOST-SORRY
+I/O CHANNEL NOT OPEN
+
+Ready
+
+SYSTEM INITIALIZATION PROGRAM
+
+END OF FILE ON DEVICE - INIT ASSUMED COMPLETE
+
+Ready
+
+<b>CAT</b>
+LOGIN .BAS       7       60     31-Oct-71 31-Oct-71 06:42 AM
+LOGIN .BAC       15      60     31-Oct-71 31-Oct-71 06:42 AM
+LOGOUT.BAS       7       60     31-Oct-71 31-Oct-71 06:42 AM
+LOGOUT.BAC       15      60     31-Oct-71 31-Oct-71 06:42 AM
+PIP   .BAS       18      60     31-Oct-71 31-Oct-71 06:42 AM
+PIP   .BAC       23      40     31-Oct-71 31-Oct-71 06:42 AM
+SYSTAT.BAS       12      60     31-Oct-71 31-Oct-71 06:42 AM
+SYSTAT.BAC       19      168    31-Oct-71 31-Oct-71 06:42 AM
+...
+
+Ready
+
+<b>RUN TTYSET</b>
+'TTYSET' TERMINAL CHARACTERISTICS PROGRAM
+? <b>LC</b>
+? <b>^Z</b>
+
+Ready
+
+<b>run utilty</b>
+'UTILTY' SYSTEM UTILITY PROGRAM
+? <b>LOGINS</b>
+? <b>HELP</b>
+COMMANDS ARE:
+ MOUNT DEV:ID           DISMOUNT DEV:
+ LOCK DEV:              UNLOCK DEV:
+ NO LOGINS              LOGINS
+ CLEAN DEV:             KILL JOB#
+ SEND KBN: STRING       FORCE KBN: [^]STRING
+ CHANGE [ACCT]PASSWORD  QUOTA [ACCT] QUOTA
+ ZERO DEV:[ACCT]        HANGUP KBN:
+ DATE DD-MMM-YY         TIME HH:MM
+? <b>^Z</b>
+
+Ready
+
+<b>run pip</b>
+PIP - RSTS V04B-17 VIXEN
+#<b>acct.sys</b>
+11,70,PDP,0,2,PDP 11/70 EMULATOR
+#<b>^Z</b>
+
+Ready
+
+<b>run systat</b>
+OUTPUT STATUS TO? <b>kb:</b>
+
+RSTS V04B-17 VIXEN STATUS ON 24-Mar-75 AT 09:22 AM UP: 1:07
+
+JOB    WHO      WHERE    WHAT   SIZE    STATE     RUN-TIME
+ 1     1,2       KB0    SYSTAT   6K     RN             0.1
+
+BUSY DEVICES: NONE
+
+DISK STRUCTURE:
+DISK    OPEN     FREE   CLUSTER ERRORS  COMMENTS
+DK0      0       3185     1       0     PUBLIC
+
+SMALL  LARGE   ERRORS  HUNG TTY'S
+ 69     0      0        0
+
+Ready
+
+<b>bye</b>
+CONFIRM: <b>y</b>
+SAVED ALL DISK FILES; 782 BLOCKS IN USE
+JOB 1 USER 1,2 LOGGED OFF KB0 AT 24-Mar-75 09:22 AM
+SYSTEM RSTS V04B-17 VIXEN
+RUN TIME WAS .1 SECONDS
+ELAPSED TIME WAS 1 MINUTE, 20 SECONDS
+GOOD MORNING
+
+HELLO
+
+RSTS V04B-17 VIXEN  JOB 1  KB0  24-Mar-75  09:24 AM
+#<b>11,70</b>
+PASSWORD: <b>PDP</b>
+RSTS V4B-17 IS NOW AVAILABLE...
+
+NEW OR OLD--
+<b>^C</b>
+
+Ready
+
+<b>CAT</b>
+PRIME .BAS       1       60     31-Oct-71 31-Oct-71 06:43 AM
+PI    .BAS       1       60     31-Oct-71 31-Oct-71 06:43 AM
+
+Ready
+
+<b>OLD PI</b>
+
+Ready
+
+<b>LIST</b>
+PI      09:25 AM        24-Mar-75
+10 REM CALCULATE PI
+20 P = 0
+30 P1 = 1
+40 FOR K%=0% TO 10%
+50 P = P + 1.0/P1 * (4.0/(8%*K% + 1%) - 2.0/(8%*K% + 4%) - 1.0/(8%*K% +5%) - 1.0/(8%*K% + 6%))
+60 P1 = P1 * 16.0
+70 NEXT K%
+80 PRINT USING "#.##############",P
+99 END
+
+Ready
+
+<b>RUN</b>
+PI      09:25 AM        24-Mar-75
+3.14159265358979
+
+Ready
+</pre>
+    <h3>Example boot of BSD 2.9</h3>
+    <pre>
+Boot&gt; <b>boot rl0</b>
+:boot
+
+70Boot
+: <b>rl(0,0)rlunix</b>
+
+Berkeley UNIX (Rev. 2.9.1) Sun Nov 20 14:55:50 PST 1983
+mem = 3797696
+xp2: drive type 20 unrecognized
+xp3: drive type 20 unrecognized
+
+CONFIGURE SYSTEM:
+xp 0 csr 176700 vector 254 attached
+rk 0 csr 177400 vector 220 attached
+hk ? csr 177440 vector 210 skipped:  No CSR
+rl 0 csr 174400 vector 160 attached
+rp ? csr 176700 vector 254 interrupt vector already in use
+ht 0 csr 172440 vector 224 skipped:  No CSR
+tm 0 csr 172520 vector 224 attached
+ts 0 csr 172520 vector 224 interrupt vector already in use
+dh ? csr 160020 vector 370 skipped:  No CSR
+dm ? csr 170500 vector 360 skipped:  No autoconfig routines
+dz ? csr 160110 vector 320 skipped:  No CSR
+dz ? csr 160110 vector 320 skipped:  No CSR
+dn 0 csr 175200 vector 300 skipped:  No autoconfig routines
+vp ? csr 177500 vector 174 skipped:  No autoconfig routines
+lp 0 csr 177514 vector 200 attached
+Erase=^?, kill=^U, intr=^C
+# <b>^D</b>
+Wed Dec 31 16:02:43 PST 1969
+/etc/fstab: No such file or directory
+/usr/sys: No such file or directory
+init: /dev/tty07: cannot open
+init: /dev/tty06: cannot open
+init: /dev/tty05: cannot open
+init: /dev/tty04: cannot open
+init: /dev/tty03: cannot open
+init: /dev/tty02: cannot open
+init: /dev/tty01: cannot open
+init: /dev/tty00: cannot open
+
+
+Berkeley Unix 2.9BSD
+
+:login: <b>root</b>
+
+Welcome to the 2.9BSD (Berkeley) UNIX system.
+
+
+# <b>cat /etc/passwd</b>
+root::0:2:The Man:/:/bin/csh
+toor::0:2:The Man:/:
+daemon:***:1:1:The devil himself:/:
+sys:***:2:1::/:
+bin:***:3:1::/:
+uucp::4:1:UNIX-to-UNIX Copy:/usr/spool/uucppublic:/usr/lib/uucp/uucico
+notes:***:5:1:Notesfiles maintainer:/usr/spool/notes:
+anon:***:6:1:Notesfiles anonymous user:/usr/spool/notes:
+news:***:7:1:News maintainer:/usr/spool/news:
+wnj:ZDjXDBwXle2gc:8:2:Bill Joy,457E,7780:/a/guest/wnj:/bin/csh
+dmr:AiInt5qKdjmHs:9:2:Dennis Ritchie:/a/guest/dmr:
+ken:sq5UDrPlKj1nA:10:2:&amp; Thompson:/a/guest/ken:
+mike:KnKNwMkyCt8ZI:11:2:mike karels:/a/guest/mike:/bin/csh
+carl:S2KiTfS3pH3kg:12:2:&amp; Smith,508-21E,6258:/a/guest/carl:/bin/csh
+joshua::999:2:&amp;:/usr/games:/usr/games/wargames
+# <b>ls -al</b>
+total 546
+drwxr-xr-x11 root     daemon       512 Mar  7 09:00 .
+drwxr-xr-x11 root     daemon       512 Mar  7 09:00 ..
+-rw-rw-r-- 1 root     daemon       164 Sep 29 09:20 .cshrc
+-rw-rw-r-- 1 root     daemon       266 Mar  7 08:43 .login
+-rw-rw-r-- 1 root     superuse       2 Jul 26 16:00 .msgsrc
+-rw-rw-r-- 1 root     daemon       116 Mar 30 00:59 .profile
+-rw-r--r-- 1 root     superuse      56 Nov 20 16:03 2.9stamp
+-rw-rw-r-- 1 root     superuse     450 Mar 30 00:50 READ_ME
+drwxrwxr-x 2 bin      bin         1632 Nov 20 16:04 bin
+-rwxrwxr-x 1 root     superuse   23572 Mar  7 09:05 boot
+drwxrwxr-x 2 root     superuse    1424 Nov 20 18:11 dev
+drwxr-xr-x 2 root     superuse     768 Nov 20 17:46 etc
+-rwxrwxr-x 1 root     superuse     561 Jul 26 16:55 genallsys.sh
+-rwxr-xr-x 1 root     sys        74534 Nov 20 16:38 hkunix
+drwxrwxr-x 2 bin      bin          416 Nov 20 16:06 lib
+drwxrwxr-x 2 root     daemon      4128 Dec  7 22:35 lost+found
+drwxrwxr-x 2 root     superuse     128 Apr 11 10:00 mdec
+drwx------ 2 root     daemon        32 Jul  7 13:07 mnt
+-rwxr-xr-x 1 root     sys        74534 Nov 20 16:38 rkunix
+-rwxr-xr-x 1 root     sys        74534 Nov 20 16:38 rlunix
+-rwxr-xr-x 1 root     sys        74534 Nov 20 16:39 rpunix
+drwxrwxrwx 2 root     superuse     144 May 30 19:42 tmp
+-rwxr-xr-x 2 root     sys       104798 Nov 20 16:33 unix
+drwxrwxrwx 2 root     superuse      48 Feb 18 18:16 usr
+-rwxr-xr-x 2 root     sys       104798 Nov 20 16:33 xpunix
+#
+...
+</pre>
+    <h3>Example boot of RSX 11M v3.2</h3>
+    <pre>
+Boot&gt; <b>boot rl1</b>
+
+  RSX-11M V3.2 BL26   1912K  MAPPED
+&gt;RED DL1:=SY:
+&gt;RED DL1:=LB:
+&gt;MOU DL1:VIXEN
+&gt;@DL1:[1,2]STARTUP
+&gt;* Enter date and time ( dd-mmm-yy hh:mm ) [S]:
+&gt;TIM
+00:00:12 29-APR-74
+&gt;ins $pip
+&gt;ins $edt
+&gt;ins $for
+&gt;ins $flx
+&gt;ins $tkb
+&gt;ins $bro
+&gt;bro all:Welcome to RSX V3.2
+
+29-APR-74 00:00     FROM TT0:   TO ALL:
+WELCOME TO RSX V3.2
+
+&gt;@ &lt;EOF&gt;
+&gt;<b>dev</b>
+LP0: LOADED
+PR0: LOADED
+DB0: LOADED TYPE=RP06
+DB1: LOADED TYPE=RP06
+DK0: LOADED
+DK1: LOADED
+DK2: LOADED
+DK3: LOADED
+DL0: LOADED TYPE=RL02
+DL1: PUBLIC MOUNTED LOADED LABEL=VIXEN TYPE=RL02
+DL2: LOADED TYPE=RL01
+DL3: LOADED TYPE=RL01
+MT0: LOADED
+MT1: LOADED
+MT2: LOADED
+MT3: LOADED
+TT0: [,] - LOGGED ON  LOADED
+TT1: LOADED
+TT2: LOADED
+NL0:
+TI0:
+CO0:    TT0:
+CL0:    TT0:
+LB0:    DL1:
+SY0:    DL1:
+&gt;<b>tas</b>
+...LDR 11     LDRPAR 248. 00002400 LB0:-00017060 FIXED
+TKTN   03.94  SYSPAR 248. 00010000 LB0:-00012411
+...RMD V01    GEN    225. 00040000 LB0:-00020004
+MTAACP 0010   GEN    200. 00013500 LB0:-00017626
+...DMO 22.00  GEN    160. 00040000 LB0:-00011467
+MCR... 02.01  SYSPAR 160. 00010000 LB0:-00017222
+...MOU 22.15  GEN    160. 00040000 LB0:-00012251
+...MCR 01     GEN    160. 00020000 LB0:-00017246
+F11ACP M0320  FCPPAR 149. 00024000 LB0:-00017140
+PMD... 05     GEN    140. 00020000 LB0:-00017735
+SHF... 04     SYSPAR 105. 00010000 LB0:-00020105
+...INS 04     GEN    100. 00040000 LB0:-00012024
+...SAV 04.22  GEN    100. 00040000 LB0:-00012340
+...UFD V0410  GEN    100. 00040000 LB0:-00012421
+QMG... 01.04  GEN     75. 00040000 LB0:-00017364
+PRT... 01.01  GEN     70. 00040000 LB0:-00017536
+LPP0   01.06  GEN     70. 00040000 LB0:-00017542
+...AT. 04.25  GEN     65. 00040000 LB0:-00011656
+...INI 20.01  GEN     60. 00040000 LB0:-00011762
+...QUE 1.0    GEN     50. 00040000 LB0:-00017437
+...PRI 1.0    GEN     50. 00040000 LB0:-00017437
+...ACS 01     GEN     50. 00040000 LB0:-00012457
+...BOO 03.4   GEN     50. 00040000 LB0:-00011441
+...LOA 03.3   GEN     50. 00040000 LB0:-00012057
+...HEL 01.24  GEN     50. 00040000 LB0:-00020210
+...BYE 02.2   GEN     50. 00004000 LB0:-00020202
+...UNL 02.8   GEN     50. 00040000 LB0:-00012430
+...PIP M1332  GEN     50. 00040000 LB0:-00014757
+...EDT 000012 GEN     50. 00075000 LB0:-00014326
+...FOR 007    GEN     50. 00160100 LB0:-00020317
+...FLX M11    GEN     50. 00040000 LB0:-00014502
+...TKB M36    GEN     50. 00040000 LB0:-00015421
+...BRO V02.6  GEN     50. 00030000 LB0:-00020251
+&gt;<b>bye</b>
+&gt;
+HAVE A NICE DAY
+29-APR-74 00:00 TT0:  LOGGED OFF
+&gt;<b>hel</b>
+ACCOUNT OR NAME: <b>11,70</b>
+PASSWORD: <b>pdp</b>
+
+    RSX-11M BL26   MULTI-USER SYSTEM
+
+GOOD MORNING
+29-APR-74 00:00 LOGGED ON TERMINAL TT0:
+
+Welcome to RSX V3.2
+
+This is a minimal system with a user account of 11,70 and a password of
+PDP
+
+Hopefully it demonstrates how things were in the good old days
+
+Paul Nankervis
+paulnank@hotmail.com
+http://skn.noip.me/pdp11/pdp11.html
+
+&gt;<b>pip/li</b>
+
+DIRECTORY DL1:[11,70]
+29-APR-74 00:01
+
+HELLO.FTN;2         1.         13-MAR-77 09:03
+
+TOTAL OF 1./5. BLOCKS IN 1. FILE
+
+
+&gt;<b>for hello,lp:=hello</b>
+.MAIN.
+&gt;<b>tkb hello/fp=hello,lb:[1,1]forots/lb</b>
+&gt;<b>pip/li</b>
+
+DIRECTORY DL1:[11,70]
+29-APR-74 00:02
+
+HELLO.OBJ;1         1.         29-APR-74 00:02
+HELLO.FTN;2         1.         13-MAR-77 09:03
+HELLO.TSK;1         30.     C  29-APR-74 00:02
+
+TOTAL OF 32./40. BLOCKS IN 3. FILES
+
+
+&gt;<b>run hello</b>
+  Hello world from Fortran IV
+&gt;<b>edt hello.ftn</b>
+
+* <b>&lt;CR&gt;</b>
+10  C   edt hello.ftn
+* <b>&lt;CR&gt;</b>
+20  C   for hello,lp:=hello
+* <b>&lt;CR&gt;</b>
+30  C   tkb hello/fp=hello,lb:[1,1]forots/lb
+* <b>&lt;CR&gt;</b>
+40  C   run fortst
+*<b>s/fortst/hello/</b>
+40  C   run hello
+*<b>exit</b>
+9 LINES OUTPUT
+
+&gt;<b>pip/li</b>
+
+DIRECTORY DL1:[11,70]
+29-APR-74 00:03
+
+HELLO.OBJ;1         1.         29-APR-74 00:02
+HELLO.FTN;2         1.         13-MAR-77 09:03
+HELLO.TSK;1         30.     C  29-APR-74 00:02
+HELLO.FTN;3         1.         29-APR-74 00:03
+
+TOTAL OF 33./45. BLOCKS IN 4. FILES
+
+&gt;<b>help</b>
+
+        Welcome to RSX-11M V3.2
+
+ The general form of the HELP command is:
+    HELP qualifier1 qualifier2 ... qualifier9
+ HELP displays entries from the system help file (LB:[1,2]HELP.HLP).
+ HELP presently provides information for the following primary
+ qualifiers (i.e., qualifier1):
+
+ ABORT      ACS         ACTIVE      ALLOCATE
+ ALTER      ASSIGN      ATL         BOOT
+ BRK        BROADCAST   BYE         CANCEL
+ CLQUEUE    DEALLOCATE  DEVICES     DMOUNT
+ FIX        HELLO       INITVOLUME  INSTALL
+ LOAD       LUNS        MOUNT       OPEN
+ PARTITIONS PRINT       QUEUE       REASSIGN
+ REDIRECT   REMOVE      RESUME      RUN
+ SAVE       SET         SYNTAX      UFD
+ UNLOAD     VMR
+
+ To get information about how to log onto this system, type:
+
+    HELP HELLO
+
+ To get further information about the syntax of the HELP command and of
+ the help displays, type:
+
+    HELP SYNTAX
+
+&gt;<b>bye</b>
+&gt;
+HAVE A NICE DAY
+29-APR-74 00:03 TT0:  LOGGED OFF
+&gt;
+</pre>
+    <h3>Example boot of RSTS/E v7.0</h3>
+    <pre>
+Boot&gt; <b>boot rl2</b>
+
+RSTS V7.0-07 Vixen (DL2)
+
+Option: <b>&lt;LF&gt;</b>
+
+You currently have: JOB MAX = 63, SWAP MAX = 31K.
+
+Default memory allocation table specifies some existing memory
+as being nonexistent.
+
+Table will be reset by RSTS.
+
+  Memory allocation table:
+
+     0K: 00000000 - 00207777 (  34K) : EXEC
+    34K: 00210000 - 00307777 (  16K) : RTS (BASIC)
+    50K: 00310000 - 16737777 (1862K) : USER
+  1912K: 16740000 - End              : NXM
+
+
+  Table suboption? <b>&lt;LF&gt;</b>
+
+You currently have crash dump disabled.
+
+DD-MMM-YY? <b>31-OCT-81</b>
+12:00 PM? <b>9:32</b>
+INIT    V7.0-07 RSTS V7.0-07 Vixen
+
+Command File Name? <b>&lt;LF&gt;</b>
+DETACHING...
+...
+
+ERRINT  V7.0-07 RSTS V7.0-07 Vixen
+ERRLOG File is 2% Full
+Change Size to &lt; 100&gt;?
+Utilize Crash File Output (Yes/No) &lt;No&gt;?
+Detaching . . .
+
+<b>I11,70</b>
+Password: <b>PDP</b>
+
+Welcome to RSTS/E V7.0 time sharing
+...
+
+Ready
+
+<b>DIR</b>
+ Name .Ext    Size   Prot    Date       SY:[11,70]
+ACEY  .BAS       5   &lt; 60&gt; 31-Oct-76
+TREK  .BAS      16   &lt; 60&gt; 31-Oct-76
+TREK  .DOC       9   &lt; 60&gt; 31-Oct-76
+ANIMAL.BAS       5   &lt; 60&gt; 31-Oct-76
+STRTRK.BAS      27   &lt; 60&gt; 31-Mar-81
+STRTR1.BAS       9   &lt; 60&gt; 31-Mar-81
+ADVENT.DOC       4   &lt; 60&gt; 20-Jul-85
+ADVENT.SAV      93   &lt;124&gt; 20-Jul-85
+ADVENT.VAR      22   &lt; 60&gt; 20-Jul-85
+ADVTXT.TXT     125   &lt; 60&gt; 20-Jul-85
+SYSMAC.SML      42   &lt; 60&gt; 13-Mar-77
+HELLO .MAC       1   &lt; 60&gt; 13-Mar-77
+BOOT  .MAC      24   &lt; 60&gt; 13-Mar-77
+PRIME .BAS       1   &lt; 60&gt; 24-Mar-76
+PI    .BAS       1   &lt; 60&gt; 24-Mar-76
+
+Total of 384 blocks in 15 files in SY:[11,70]
+
+Ready
+
+<b>SYSTAT</b>
+
+RSTS V7.0-07 Vixen status at 31-Oct-81, 09:32 AM Up: 36
+
+Job    Who    Where    What    Size    State    Run-Time    RTS
+ 1    [OPR]   Det     ERRCPY    5K     SR            4.7   BASIC
+ 2    [SELF]  KB0     SYSTAT   11K     RN Lck        0.3   BASIC
+
+Busy Devices: None
+
+Disk Structure:
+Disk    Open    Free    Cluster Errors  Name    Comments
+DL2       3     2500       1      0     VIXEN   Pub, DLW
+
+Small   Large   Jobs    Hung TTY's      Errors
+486       1      2/2        0              0
+
+Run-Time Systems:
+ Name   Ext       Size  Users   Comments
+BASIC   BAC     16(16)K   2     Perm, Addr:34, KBM, CSZ
+RT11    SAV      4(28)K   0     Non-Res, KBM, CSZ, EMT:255
+RSX     TSK      3(28)K   0     Non-Res, KBM
+TECO    TEC      8(24)K   0     Non-Res
+
+Resident Libraries: None
+
+Message Receivers:
+ Name   Job     Msgs    Max     Senders
+ERRLOG   1       0      40      Priv
+
+Ready
+
+<b>EDT TEST.BAS</b>
+*<b>I
+10 PRINT "SIMPLE TEST"
+20 END
+^Z</b>
+*<b>EX</b>
+2 LINES OUTPUT
+
+Ready
+
+<b>OLD TEST</b>
+
+Ready
+
+<b>RUN</b>
+TEST    09:33 AM        31-Oct-81
+SIMPLE TEST
+
+Ready
+
+<b>BYE</b>
+Confirm: <b>Y</b>
+Saved all disk files; 387 blocks in use, 113 free
+Job 2 User 11,70 logged off KB0 at 31-Oct-81 09:33 AM
+System RSTS V7.0-07 Vixen
+Run time was .6 seconds
+Elapsed time was 1 minute
+Good morning
+
+</pre>
+    <h3>Example boot of XXDP</h3>
+    <pre>
+Boot&gt; <b>boot rl3</b>
+
+CHMDLD0 XXDP+ DL MONITOR
+BOOTED VIA UNIT 3
+28K UNIBUS SYSTEM
+
+ENTER DATE (DD-MMM-YY):
+
+RESTART ADDR: 152010
+THIS IS XXDP+.  TYPE "H" OR "H/L" FOR HELP.
+
+.<b>R EQKC??</b>
+EQKCE1.BIC
+
+CEQKC-E...PDP 11/70 CPU EXERCISER
+
+CPU UNDER TEST FOUND TO BE A 11/74          (KB11CM)
+
+PROCESSOR ID REGISTER =000001 (OCTAL)       1 (DECIMAL)
+OPT.CP=165406
+OPERATIONAL SWITCH SETTINGS
+SWITCH                  USE
+  15            HALT ON ERROR
+  14            LOOP ON TEST
+  13            INHIBIT ERROR TYPEOUTS
+  12            INHIBIT UBE
+  11            INHIBIT ITTERATIONS
+  10            BELL ON ERROR
+   9            LOOP ON ERROR
+   8            ALLOW RELOCATION VIA I/O DEVICE (NOTE CHANGE)
+   7            INHIBIT TYPEOUT OF THIS TEXT AND SYS SIZE
+   6            INHIBIT RELOCATION
+   5            INHIBIT ROUND ROBIN RELOCATION
+   4            INHIBIT RANDOM DISK ADDRESS
+   3            INHIBIT MBT
+   2            THESE THREE SWITCHES
+   1            ARE ENCODED TO SELECT RELOCATION
+   0            ON THE FOLLOWING DEVICES:
+        0...RP11/RP03
+        1...RK11/RK05
+        2...NOT USED
+        3...NOT USED
+        4...RH70/RP04
+        5...RH70/RS04 OR RS03
+        6...NOT USED
+        7...NOT USED
+
+**NOTE** SWITCH REG BIT 8 HAS BEEN REVERSED IN REV D
+NOTE THAT SWR BIT 8 SET NOW ALLOWS I/O RELOCATION
+
+THIS PROGRAM SUPPORTS I/O RELOCATION ONLY WITH THE FOLLOWING DEVICES:
+RP03,RK05,RP04/5/6,RS03/4
+THE FOLLOWING DEVICES AND DRIVES WILL BE USED FOR RELOCATION IF BIT 8 SET:
+DEVICE  DRIVES
+RK05    0, 1, 2, 3, 4, 5, 6, 7,
+RP04    0, 1, 2, 3, 4,
+TYPE A CHARACTER TO CONTINUE
+<b>k</b>1THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
+2THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
+3THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
+4THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
+5THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
+000:01:01
+
+END PASS #     1  TOTAL ERRORS SINCE LAST REPORT      0
+1THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
+...
+</pre>
+    <h3>Example boot of ULTRIX-11 System V3.1</h3>
+    <pre>
+Boot&gt; <b>boot rp0</b>
+
+Sizing Memory...
+
+Boot: hp(0,0)unix    (CTRL/C will abort auto-boot)
+
+hp(0,0)unix: 37006+55744+8128+7680+7296+7232+5312+3648
+
+ULTRIX-11 Kernel V3.1
+
+realmem = 3915776
+buffers = 73728
+clists  = 2080
+usermem = 3672896
+maxumem = 417792
+proc on q
+erase = delete, kill = ^U, intr = ^C
+# <b>^D</b>
+
+Restricted rights:
+
+        Use, duplication, or disclosure is subject
+        to restrictions stated in your contract with
+        Digital Equipment Corporation.
+
+*UNIX is a trademark of AT&amp;T Bell Laboratories.
+
+Mounted /dev/hp01 on /usr
+Mounted /dev/hp04 on /user1
+
+Sat Oct 31 09:11:16 PDT 1981
+
+ERROR LOG has - 2 of 200 blocks used
+
+ULTRIX-11 System V3.1 (vixen)
+
+login: <b>root</b>
+
+Welcome to the ULTRIX-11 System
+
+erase = delete, kill = ^U, intr = ^C
+vixen# <b>df</b>
+Filesystem    total    kbytes  kbytes  percent
+   node       kbytes    used    free   used    Mounted on
+/dev/hp00       4606    3065    1541    67%    /
+/dev/hp01       9629    9229     400    96%    /usr
+/dev/hp04     148244   17552  130692    12%    /user1
+vixen# <b>ps -aux</b>
+
+   PID TTY TIME CMD
+    42 co  0:00 -sh
+    43 10  0:00 - 2
+    44 11  0:00 - 2
+    53 co  0:00 ps -aux
+vixen# <b>ls /dev</b>
+console hp06    kmem    nrht0   rhp00   rhp10   rl00    rrl00   tty00
+errlog  hp07    lp      nrmt0   rhp01   rhp11   rl07    rrl07   tty01
+hp00    hp10    maus0   nrtk0   rhp02   rhp12   rl10    rrl10   tty10
+hp01    hp11    maus1   null    rhp03   rhp13   rl17    rrl17   tty11
+hp02    hp12    maus2   ptyp0   rhp04   rhp17   rlp     rtk0    ttyp0
+hp03    hp13    maus3   ptyp1   rhp05   rht0    rmt0    swap    ttyp1
+hp04    hp17    mem     ptyp2   rhp06   rk0     rrk0    tk0     ttyp2
+hp05    ht0     mt0     ptyp3   rhp07   rk1     rrk1    tty     ttyp3
+vixen# <b>uname -a</b>
+ULTRIX-11 vixen 3 0 PDP-11/70
+vixen# <b>ls /user1/src/sys/sys</b>
+acct.c      machdep.c   pipe.c      subr_net.c  trap.c
+alloc.c     main.c      prf.c       sys1.c      ubmap.c
+clock.c     makefile    prim.c      sys2.c      uipc_domain.c
+errlog.c    malloc.c    rdwri.c     sys3.c      uipc_socket.c
+fakenet.s   maus.c      select.c    sys4.c      uipc_socket2.c
+fio.c       mbuf.c      sem.c       sys_berk.c  uipc_syscall.c
+flock.c     mbuf11.c    sepid.s     sys_socket.c    ureg.c
+fpsim.s     mkuchar.c   shuffle.c   sys_v7m.c
+iget.c      msg.c       sig.c       sysent.c
+ioctl.c     nami.c      slp.c       syslocal.c
+ipc.c       nonsepid.s  subr.c      text.c
+vixen# <b>/usr/games/hangman</b>
+guesses:  word: ....... errors: 0/7
+guess: <b>a</b>
+guesses: a word: ....... errors: 1/7
+guess: <b>e</b>
+guesses: ae word: .e..e.e errors: 1/7
+guess: <b>v</b>
+guesses: aev word: .e..eve errors: 1/7
+guess: <b>i</b>
+guesses: aeiv word: .e.ieve errors: 1/7
+guess: <b>l</b>
+guesses: aeilv word: .elieve errors: 1/7
+guess: <b>b</b>
+you win, the word is believe
+(1.00/1) guesses:  word: ........ errors: 0/7
+guess: <b>^C</b>
+vixen# <b>cc size.c</b>
+vixen# <b>a.out</b>
+Size of char: 1 byte
+Size of int: 2 bytes
+Size of long: 4 bytes
+Size of float: 4 bytes
+Size of double: 8 bytes
+vixen# <b>cp pi.c /dev/lp</b>
+vixen# <b>cc pi.c</b>
+vixen# <b>a.out 80</b>
+3.14159265358979323846264338327950288419716939937510582097494459230781640628620
+vixen# <b>^D</b>
+
+ULTRIX-11 System V3.1 (vixen)
+
+login:
+</pre>
+    <h3>Example boot of BSD 2.11</h3>
+    <pre>
+Boot&gt; <b>boot rp1</b>
+
+70Boot from xp(0,1,0) at 0176700
+Press &lt;CR&gt; to boot, or any other key to abort: 0
+
+: xp(0,1,0)unix
+Boot: bootdev=05010 bootcsr=0176700
+
+2.11 BSD UNIX #1: Oct 31 09:13:53 CST 1981
+    root@Sat:/usr/src/sys/VIXEN
+
+attaching sl
+attaching lo0
+
+phys mem  = 3915776
+avail mem = 3489088
+user mem  = 307200
+
+October 31 09:26:16 init: configure system
+
+lp 0 csr 177514 vector 200 attached
+rk 0 csr 177400 vector 220 attached
+rl 0 csr 174400 vector 160 attached
+tm 0 csr 172520 vector 224 attached
+xp 0 csr 176700 vector 254 attached
+cn 1 csr 176500 vector 310 attached
+cn 2 csr 176510 vector 320 attached
+Automatic reboot in progress...
+Sat Oct 31 09:26:21 CST 1981
+Sat Oct 31 09:26:21 CST 1981
+checking quotas: done.
+Assuming NETWORKING system ...
+ifconfig: ioctl (SIOCGIFFLAGS): no such interface
+vixen.skn.noip.me: bad value
+add net default: gateway 127.0.0.1
+starting system logger
+checking for core dump...
+preserving editor files
+clearing /tmp
+standard daemons: update cron accounting.
+starting network daemons: inetd rwhod printer.
+Sat Oct 31 09:26:23 CST 1981
+Oct 31 09:26:23 vixen October 31 09:26:23 init: kernel security level changed from 0 to 1
+
+
+2.11 BSD UNIX (vixen.skn.noip.me) (console)
+
+login: <b>root</b>
+erase, kill ^U, intr ^C
+# <b>df</b>
+Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
+/dev/xp1a      163969    82864    81105    51%    /
+# <b>ps -aux</b>
+USER       PID NICE SZ TTY TIME COMMAND
+root         0   0   8 ?   0:00 [swapper]
+root         1   0  31 ?   0:00  (init)
+root        52   0  11 ?   0:00 update
+root        55   0  51 ?   0:00 cron
+root        59  -1  26 ?   0:00 acctd
+root        67   0  39 ?   0:00 /usr/sbin/inetd
+root        71   0  27 ?   0:00 rwhod
+root        75   0  47 ?   0:00 /usr/sbin/lpd
+root        42   0  58 co  0:00 syslogd
+root        81   0  19 co  0:00 -sh
+root        88   0  77 co  0:00 ps -aux
+root        82   0  29 l1  0:00 - std.9600 ttyl1 (getty)
+root        83   0  29 l2  0:00 - std.9600 ttyl2 (getty)
+# <b>ls /dev</b>
+MAKEDEV  nmt1     ptyp9    rl1b     rrl0b    rxp0d    ttyp1    xp0d
+acctlog  nmt8     ptypa    rl1c     rrl0c    rxp0e    ttyp2    xp0e
+console  nmt9     ptypb    rl1d     rrl0d    rxp0f    ttyp3    xp0f
+errlog   nrmt0    ptypc    rl1e     rrl0e    rxp0g    ttyp4    xp0g
+klog     nrmt1    ptypd    rl1f     rrl0f    rxp0h    ttyp5    xp0h
+kmem     nrmt8    ptype    rl1g     rrl0g    rxp1a    ttyp6    xp1a
+log      nrmt9    ptypf    rl1h     rrl0h    rxp1b    ttyp7    xp1b
+lp0      null     rk0h     rmt0     rrl1a    rxp1c    ttyp8    xp1c
+mem      printer  rk1h     rmt1     rrl1b    rxp1d    ttyp9    xp1d
+mt0      ptyp0    rl0a     rmt12    rrl1c    rxp1e    ttypa    xp1e
+mt1      ptyp1    rl0b     rmt13    rrl1d    rxp1f    ttypb    xp1f
+mt12     ptyp2    rl0c     rmt4     rrl1e    rxp1g    ttypc    xp1g
+mt13     ptyp3    rl0d     rmt5     rrl1f    rxp1h    ttypd    xp1h
+mt4      ptyp4    rl0e     rmt8     rrl1g    swap     ttype    zero
+mt5      ptyp5    rl0f     rmt9     rrl1h    tty      ttypf
+mt8      ptyp6    rl0g     rrk0h    rxp0a    ttyl1    xp0a
+mt9      ptyp7    rl0h     rrk1h    rxp0b    ttyl2    xp0b
+nmt0     ptyp8    rl1a     rrl0a    rxp0c    ttyp0    xp0c
+# <b>uname -a</b>
+BSD vixen.skn.noip.me 2.11 2.11 BSD UNIX #1: Oct 31 09:13:53 CST 1981       root@Sat:/usr/src/sys/VIXEN  pdp11
+# <b>/usr/games/fortune</b>
+IMPARTIAL:
+        Unable to perceive any promise of personal advantage from
+        espousing either side of a controversy or adopting either of two
+        conflicting opinions.
+# <b>/usr/games/fortune</b>
+I  wish  there was a knob on the TV to turn up the intelligence.
+There's a knob called "brightness", but it doesn't seem to work.
+                -- Gallagher
+# <b>/usr/games/hangman</b>
+     ______
+     |    |
+     |                                               Guessed:
+     |
+     |                                               Word #:           1
+     |                                               Current Average:  0.000
+   __|_____                                          Overall Average:  0.000
+   |      |___
+   |_________|
+
+ Word:  -------
+Guess: <b>^C</b>
+# <b>cc size.c</b>
+# <b>./a.out</b>
+Size of char: 1 byte
+Size of int: 2 bytes
+Size of long: 4 bytes
+Size of float: 4 bytes
+Size of double: 8 bytes
+# <b>cp pi.c /dev/lp0</b>
+# <b>cc pi.c</b>
+# <b>./a.out 90</b>
+3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348
+# <b>cd /sys/VIXEN</b>
+# <b>time make</b>
+make -f Make.sys I=/usr/include H=../h M=../machine AS="/bin/as -V" CPP="/lib/cpp -P -DKERNEL -DVIXEN -DINET -I. -I../h"  CFLAGS="-O -DKERNEL -DVIXEN -DINET -I. -I../h" SED="/bin/sed"
+cc -O -DKERNEL -DVIXEN -DINET -I. -I../h -S ../sys/init_main.c
+/bin/sed -f SPLFIX init_main.s | /bin/as -V -u -o init_main.o
+rm -f init_main.s
+cc -O -DKERNEL -DVIXEN -DINET -I. -I../h -S ../sys/init_sysent.c
+....
+size netnix
+text    data    bss     dec     hex
+59328   2218    37726   99272   183c8
+Compacting symbol table
+symcompact netnix
+symcompact: 243 symbols removed
+Compacting strings table - this will take a few minutes
+strcompact netnix
+rearranging symbols
+symorder ../pdp/symbols.sort netnix
+      211.2 real       168.1 user        42.1 sys
+# <b>shutdown -h now</b>
+Shutdown at 09:35 (in 0 minutes) [pid 1595]
+
+        *** FINAL System shutdown message from root@vixen.skn.noip.me ***
+
+System going down IMMEDIATELY
+
+System shutdown time has arrived
+# Oct 31 09:35:33 vixen October 31 09:35:33 shutdown: halt by root:
+Oct 31 09:35:36 vixen syslogd: going down on signal 15
+syncing disks... done
+halting
+</pre>
+    <h3>Example boot of RSTS V9.6</h3>
+    <pre>
+Boot&gt; <b>boot rp2</b>
+
+RSTS V9.6-11 RSTS   (DB2) INIT V9.6-11
+
+Today's date? <b>31-OCT-86</b>
+
+Current time? <b>11:12</b>
+
+Start timesharing? &lt;Yes&gt; <b>&lt;LF&gt;</b>
+
+Default memory allocation table shows LESS
+memory than INIT detects on this machine.
+
+Adjusting memory table.
+
+  Memory allocation table:
+
+     0K: 00000000 - 00433777 (  71K) : EXEC
+    71K: 00434000 - 15163777 (1622K) : USER
+  1693K: 15164000 - 16737777 ( 219K) : XBUF
+
+Memory available to RSTS/E is 1912K words.
+
+86.10.31 11:12
+
+1 device disabled
+
+Proceed with system startup? &lt;YES&gt; <b>&lt;LF&gt;</b>
+
+ Beginning RSTS/E system startup...
+86.10.31  11:12      Installing monitor overlays
+86.10.31  11:12      Mounting disks
+86.10.31  11:12      Assigning logical names
+86.10.31  11:12      Starting error logging
+86.10.31  11:12      Setting system characteristics
+31-Oct-86 11:12 AM   Installing run-time systems and libraries
+31-Oct-86 11:12 AM   Setting terminal characteristics
+31-Oct-86 11:12 AM   Defining system commands
+31-Oct-86 11:12 AM   Setting printer characteristics
+31-Oct-86 11:12 AM   Starting spoolers
+
+*** From [1,2] on KB0: at 11:12 AM 31-Oct-86
+** RSTS/E is on the air...
+
+<b>I11,70</b>
+Last logged in on 31-Oct-86, 06:42 AM at KB0:
+
+Welcome to RSTS/E V9.6 time sharing
+...
+
+$ <b>systat</b>
+
+RSTS V9.6-11 RSTS/E V9.6 status at 31-Oct-86, 11:12 AM Up: 29
+
+Job    Who    Where     What    Size    State    Run-Time    RTS
+ 1     1,2    Det      ERRCPY    5K     SR            1.3    ...RSX
+ 2    11,70   KB0      SYSTAT   16K     RN Lck        0.2    ...RSX
+ 3     1,2    Det      PBS...   19K     SL            0.1    ...RSX
+
+Busy Devices: None
+
+Disk Structure:
+Dsk  Open    Size      Free    Clu   Err Name      Level  Comments
+DB2    18  171796  119440  69%   4     0 VIXEN      1.2   Pub, DLW
+
+General  FIP                    Hung
+Buffers  Buffers  Jobs/Jobmax   TTY's   Errors
+  734      461       3/63         0        0
+
+Run-Time Systems:
+ Name   Typ   Dev    Size    Users  Comments
+...RSX  TSK          0(32)K    3    Monitor, KBM
+DCL     COM   DB2:   24(8)K    0    Temp, Addr:71, DF KBM
+RT11    SAV   DB2:   4(28)K    0    Temp, Addr:108, KBM, CSZ, EMT:255
+BASIC   BAC   DB2:  16(16)K    0    Non-Res, KBM, CSZ
+TECO    TEC   DB2:  10(20)K    0    Non-Res, KBM
+
+Resident Libraries:
+ Name  Prot        Acct      Size  Users  Comments
+CSPLIB &lt; 42&gt;  DB2:[  0,1  ]    8K    2    Temp, Addr:100
+EDT    &lt; 42&gt;  DB2:[  0,11 ]   39K    0    Non-Res
+RMSRES &lt; 42&gt;  DB2:[  0,10 ]    4K    1    Temp, Addr:1689
+RMSLBA &lt; 42&gt;  DB2:[  0,10 ]    4K    1    Temp, Addr:139
+RMSLBB &lt; 42&gt;  DB2:[  0,10 ]    3K    1    Temp, Addr:132
+RMSLBC &lt; 42&gt;  DB2:[  0,10 ]    3K    1    Non-Res
+RMSLBD &lt; 42&gt;  DB2:[  0,10 ]    2K    1    Temp, Addr:143
+RMSLBE &lt; 42&gt;  DB2:[  0,10 ]    3K    1    Temp, Addr:125
+RMSLBF &lt; 42&gt;  DB2:[  0,10 ]    4K    1    Temp, Addr:128
+DAPRES &lt; 42&gt;  DB2:[  0,10 ]   10K    0    Non-Res, Addr:1679
+
+Message Receivers:
+Rcvrid   Job    Rib  Obj   Msgs/Max   Links/InMax/OutMax  Access
+ERRLOG    1      0    1       0/40          0/0/0          Prv
+QM$CMD    3      1    3       0/20          0/0/255        Prv
+QM$SRV    3      2    4       0/30          0/0/255        Prv
+QM$URP    3      3    5       0/10          0/0/255        Lcl
+PR$03A    3     17   65       0/5           0/0/255        Prv
+PR$03B    3     25   65       0/5           0/0/255        Prv
+BA$03A    3     41   66       0/5           0/0/255        Prv
+BA$03B    3     49   66       0/5           0/0/255        Prv
+BA$03C    3     57   66       0/5           0/0/255        Prv
+$ <b>help</b>
+
+You can obtain on-line information about any DCL command or qualifier, as
+well as many other general topics.  For more complete details about a
+topic, refer to the appropriate RSTS manual or guide.
+
+The RSTS/E System User's Guide contains descriptions of the DCL commands
+and qualifiers that you use in file, system, and programming operations.
+
+The RSTS/E System Manager's Guide contains descriptions of the DCL
+commands and qualifiers used in system management operations.
+
+See the RSTS/E Quick Reference Guide for the syntax of all DCL commands
+and qualifiers on RSTS/E.
+
+For instructions on how to use this HELP facility, type HELP HELP from
+DCL, or type HELP in response to the HELP Topic?  prompt.
+
+Additional help is available on:
+
+@               Accounts        Advanced        ALLOCATE        APPEND
+ASSIGN          ATTACH          BACKUP          BASIC           BROADCAST
+BYE             CCL             CLOSE           COBOL           COPY
+CREATE          Dates           DCL             DEALLOCATE      DEASSIGN
+DEFINE          DELETE          DETACH          DIBOL           DIFFERENCES
+DIRECTORY       DISMOUNT        DUMP            EDIT            Entries
+EOD             EXIT            Expressions     Files           FORCE
+...
+
+Topic? <b>^Z</b>
+$ <b>set term/width:80</b>
+$ <b>dir</b>
+
+ Name .Typ    Size    Prot     Name .Typ    Size    Prot    SY:[11,70]
+ACEY  .BAS       5   &lt; 60&gt;    TREK  .BAS      16   &lt; 60&gt;
+TREK  .DOC       9   &lt; 60&gt;    ANIMAL.BAS       5   &lt; 60&gt;
+STRTRK.BAS      27   &lt; 60&gt;    STRTR1.BAS       9   &lt; 60&gt;
+ADVENT.DOC       4   &lt; 60&gt;    ADVENT.SAV      93   &lt;124&gt;
+ADVENT.VAR      22   &lt; 60&gt;    ADVTXT.TXT     125   &lt; 60&gt;
+SYSMAC.SML      42   &lt; 60&gt;    HELLO .MAC       1   &lt; 60&gt;
+BOOT  .MAC      24   &lt; 60&gt;    PI    .BAS       1   &lt; 60&gt;
+PRIME .BAS       1   &lt; 60&gt;
+
+Total of 384 blocks in 15 files in SY:[11,70]
+
+$ <b>switch basic</b>
+
+Ready
+
+<b>run prime</b>
+ 1             2             3             5             7
+ 11            13            17            19            23
+ 29            31            37            41            43
+...
+CPU TIME       2.7           SECONDS
+
+Ready
+
+<b>list</b>
+PRIME   11:14 AM    31-Oct-86
+10 REM PRIME NUMBERS
+20 S=TIME(1)
+30 FOR I%=1% TO 1000%
+40  FOR J%=2% TO I%-1%
+50   IF I%/J%*J%=I% THEN 80
+60  NEXT J%
+70 PRINT I%,
+80 NEXT I%
+90 PRINT
+100 PRINT "CPU TIME ", (TIME(1) - S) / 10, " SECONDS"
+999 END
+
+Ready
+
+<b>bye</b>
+Saved all disk files on SY: 424 blocks in use
+Job 2 User 11,70 logged off KB0: at 31-Oct-86 11:14 AM
+System RSTS V9.6-11 RSTS/E V9.6
+Run time was 4.2 seconds
+Elapsed time was 2 minutes
+Good morning
+
+</pre>
+    <h3>Example boot of RSX 11M 4.6</h3>
+    <pre>
+Boot&gt; <b>boot rp3</b>
+RSX-11M V4.6 BL56   1912.K MAPPED
+&gt;RED DB3:=SY:
+&gt;RED DB3:=LB:
+&gt;MOU DB3:RSXM56
+&gt;@DB3:[1,2]STARTUP
+&gt;* PLEASE ENTER TIME AND DATE (HR:MN DD-MMM-YY) [S]: <b>11:12 31-OCT-76</b>
+&gt;TIM 11:12 31-OCT-76
+&gt;* ENTER LINE WIDTH OF THIS TERMINAL [D D:132.]: <b>80</b>
+&gt;SET /BUF=TI:80.
+&gt;ACS SY:/BLKS=1024.
+&gt;;
+&gt;; This system startup command file (LB:[1,2]STARTUP.CMD) contains a
+&gt;; template of commands to initialize the queue print spooler and queue
+&gt;; LP0:, initialize the error logger, initialize the DCL CLI, and install
+&gt;; the RMS Library and Utilities.  As is these commands are commented out
+&gt;; and are not executed.  To include these commands as part of the
+&gt;; startup procedure, edit the file to remove the period and semi-colon
+&gt;; (.;) comment delimiter from the beginning of each line.  These
+&gt;; commands may be useful for initializing the various facilities for
+&gt;; your installation or else they may provide a model with which to
+&gt;; tailor initialization commands for your particular installation.
+&gt;;
+&gt;ELI /LOG
+11:12:04  ERRLOG -- Error Logging initialized
+&gt;CLI /INIT=DCL/TASK=...DCL
+&gt;INS LB:[1,54]PIP.TSK
+&gt;INS LB:[1,54]EDT.TSK
+&gt;INS LB:[1,54]TKB.TSK
+&gt;INS LB:[1,54]MAC.TSK
+&gt;INS LB:[1,54]BRU.TSK
+&gt;@ &lt;EOF&gt;
+&gt;<b>PIP [200,1]/LI</b>
+Directory DB3:[200,1]
+31-OCT-76 11:12
+GSA.MAC;1           19.        03-JAN-90 17:07
+SEARCH.MAC;1        10.        03-JAN-90 17:07
+RENAME.MAC;1        12.        03-JAN-90 17:07
+ERASE.MAC;1         10.        03-JAN-90 17:07
+PARSE.MAC;1         11.        03-JAN-90 17:07
+SEARCH.TSK;1        26.     C  03-JAN-90 17:07
+RENAME.TSK;1        26.     C  03-JAN-90 17:07
+ERASE.TSK;1         25.     C  03-JAN-90 17:07
+PARSE.TSK;1         22.     C  03-JAN-90 17:07
+....
+Total of 533./533. blocks in 34. files
+&gt;<b>HELP</b>
+Help is available for many RSX-11M commands and utilities.
+For help in logging into the system, type HELP HELLO or HELP
+LOGIN.  You'll need a user-ID and password to log in.  Ask your
+system manager.
+RSX-11M systems have two major command languages or CLIs:  MCR
+and DCL.  Once you log in, your terminal is set to either
+MCR or DCL.  (All terminals are set to MCR prior to logging in.)
+The general forms of the HELP command are:
+&gt;HELP[/cli] topic [subtopic[s]]
+&gt;HELP commandname [switch]
+Once you are logged in, you need not include the name of the CLI
+to which your terminal is set.
+For information on what further help is available, type
+HELP[/MCR] LIST (brackets indicate an optional command line
+entry) or HELP/DCL.  For a listing of help available on other
+topics, type HELP[/MCR] MORE or HELP/DCL MORE.  You need not
+log in to get help.
+&gt;<b>TAS</b>
+LDR... 13.02  LDRPAR 248. 00002600 LB0:-00104402 FIXED
+TKTN   05.00  SYSPAR 248. 00011700 LB0:-00110145
+...RMD 03.00  GEN    225. 00027200 LB0:-00112034
+F11MSG 13.00  GEN    200. 00005700 LB0:-00110164
+MTAACP 15.01  GEN    200. 00014700 LB0:-00111651
+...DMO 04.00  GEN    160. 00014600 LB0:-00107227
+MCR... 07.00  SYSPAR 160. 00011700 LB0:-00110050
+...DCL 5.04   GEN    160. 00051500 LB0:-00110525
+...MOU 27.01  GEN    160. 00037700 LB0:-00110402
+...MCR 07.00  GEN    160. 00020000 LB0:-00110211
+F11ACP 06.01  FCPPAR 149. 00024200 LB0:-00107323
+...
+&gt;<b>BYE</b>
+Have a Good Morning
+31-OCT-76 11:12 TT0:  logged off VIXEN
+&gt;<b>HELLO</b>
+Account or name: <b>11,70</b>
+Password: <b>PDP</b>
+RSX-11M BL56   [1,54] System     VIXEN
+31-OCT-76 11:12 Logged on Terminal TT0:
+Good Morning
+&gt;@LOGIN.CMD
+Welcome to RSX-11M V4.6 time sharing
+This is a minimal system with a user account of 200,1 (no password) and 11,70 (p
+assword of PDP)
+Hopefully it demonstrates how things were in the good old days
+Paul Nankervis
+paulnank@hotmail.com
+
+&gt;@ &lt;EOF&gt;
+&gt;<b>DIR</b>
+Directory DB3:[11,70]
+31-OCT-76 11:12
+HELLO.MAC;1         1.         31-OCT-76 06:55
+LOGIN.CMD;1         1.         31-OCT-76 06:48
+LOGIN.CMD;2         1.         31-OCT-76 06:48
+Total of 3./3. blocks in 3. files
+&gt;<b>EDIT HELLO.MAC</b>
+1       ;       HELLO WORLD IN ASSEMBLER FOR THE DEC PDP-11 WITH THE
+*<b>type whole</b>
+1       ;       HELLO WORLD IN ASSEMBLER FOR THE DEC PDP-11 WITH THE
+2       ;   RSX-11M-PLUS OPERATING SYSTEM
+3       ;
+4               .TITLE HELLO
+5               .IDENT /V0001A/
+6               .MCALL QIOW$S, EXIT$S
+7               .PSECT $CODE,RO,I
+8       START:  QIOW$S  #IO.WVB,#5,#2,,,,&lt;#STR,#LEN,#40&gt;
+9               EXIT$S
+10               .PSECT $DATA,RO,D
+11       STR:    .ASCII / HELLO WORLD!/
+12               LEN=.-STR
+13               .END START
+14
+[EOB]
+*<b>exit</b>
+DB3:[11,70]HELLO.MAC;2 14 lines
+&gt;<b>MACRO HELLO</b>
+&gt;<b>LINK HELLO</b>
+&gt;<b>RUN HELLO</b>
+HELLO WORLD!
+&gt;<b>LOGOUT</b>
+Have a Good Morning
+31-OCT-76 11:13 TT0:  logged off VIXEN
+&gt;
+</pre>
+    <h3>Example boot of RSTS V10.1</h3>
+    <pre>
+Boot&gt; <b>boot rp4</b>
+
+RSTS V10.1-L RSTS   (DB4) INIT V10.1-0L
+
+
+Today's date? <b>13-MAR-90</b>
+
+Current time? <b>9:00</b>
+
+
+Start timesharing? &lt;Yes&gt; <b>&lt;LF&gt;</b>
+
+Size of monitor has changed from 78K to 77K.
+
+Default memory allocation table shows LESS
+memory than INIT detects on this machine.
+
+Adjusting memory table.
+
+  Memory allocation table:
+
+     0K: 00000000 - 00463777 (  77K) : EXEC
+    77K: 00464000 - 15653777 (1694K) : USER
+  1771K: 15654000 - 16737777 ( 141K) : XBUF
+
+Memory available to RSTS/E is 1912K words.
+
+13-Mar-90 09:00 AM
+
+5 devices disabled
+
+Proceed with system startup? &lt;YES&gt; <b>&lt;LF&gt;</b>
+
+ Beginning RSTS/E system startup...
+13-Mar-90 09:00 AM   Installing monitor overlays
+13-Mar-90 09:00 AM   Mounting disks
+13-Mar-90 09:00 AM   Assigning logical names
+13-Mar-90 09:00 AM   Starting error logging
+13-Mar-90 09:00 AM   Setting system characteristics
+13-Mar-90 09:00 AM   Installing run-time systems and libraries
+13-Mar-90 09:00 AM   Starting Operator/Message Services
+
+&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;  OMS V10.1-A  13-Mar-90 09:00 AM  &lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+Message 1 from OMS, user [1,2], Detached, job 3
+Starting Operator/Message Services
+13-Mar-90 09:00 AM   Setting terminal characteristics
+13-Mar-90 09:00 AM   Defining system commands
+13-Mar-90 09:00 AM   Setting printer characteristics
+13-Mar-90 09:00 AM   Starting spoolers
+
+*** From [1,2] "[ 1, 2]" on KB0: at 09:00 AM 13-Mar-90
+** RSTS/E is on the air...
+
+&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;  OMS V10.1-A  13-Mar-90 09:00 AM  &lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
+Message 2 from user [1,2] on _KB0:, job 2
+The system startup is complete
+
+
+<b>login</b>
+RSTS V10.1-L 13-Mar-90 09:00 AM
+User: <b>11,70</b>
+
+$ <b>cc hello</b>
+$ <b>link/cc hello</b>
+$ <b>run hello</b>
+Hello world!
+$ <b>switch basic</b>
+
+Ready
+
+<b>run prime</b>
+ 1             2             3             5             7             11            13            17            19
+ 23            29            31            37            41            43            47            53            59
+...
+
+Ready
+
+<b>switch dcl</b>
+$ <b>run auxlib$:fit</b>
+FIT    V10.1-A    RSTS V10.1-L RSTS/E V10.1
+FIT&gt;<b>*.*=dk1:dungeo.*/rt</b>
+FIT&gt;<b>*.*=dk1:dsave.dat/rt</b>
+FIT&gt;<b>*.*=dk1:dindx.dat/rt</b>
+FIT&gt;<b>*.*=dk1:dtext.dat/rt</b>
+FIT&gt;<b>^Z</b>
+$ <b>run dungeo</b>
+Welcome to Dungeon.                     This version created 10-AUG-78.
+You are in an open field west of a big white house with a boarded
+front door.
+There is a small mailbox here.
+&gt;
+
+</pre>
+
+    <h3>Software Sources</h3>
+    <p>
+      The software used in this emulator has been sourced from many places on the Internet and unfortunately many of
+      these seem to have disappeared. If you are looking for something I would suggest the following main sites...
+    <ul>
+      <li>Documentation: <a href='http://bitsavers.org/pdf/dec/pdp11/'>http://bitsavers.org/pdf/dec/pdp11/</a> </li>
+      <li>Software: <a href='http://bitsavers.org/bits/DEC/pdp11/'>http://bitsavers.org/bits/DEC/pdp11/</a> </li>
+      <li>Unix: <a href='https://www.tuhs.org/'>https://www.tuhs.org/</a> </li>
+    </ul>
+
+
+    <p><a href='https://github.com/paulnank/pdp11-js/'>Github</a></p>
+
+
+    <script>
+
+      function moveSwitch(id, position) { // -1 up  0 centre   1 down  - will move 5/16 units
+        "use strict";
+        var style = window.getComputedStyle(id, null);
+        id.style.borderTopWidth = 'calc(var(--unitHeight) * ' + (8 + 4 * position) + ')';
+        id.style.borderBottomWidth = 'calc(var(--unitHeight) * ' + (7 - 4 * position) + ')';
+      }
+
+      function setSwitch(id, weight) {
+        "use strict";
+        var mask = 1 << weight;
+        CPU.switchRegister ^= mask;
+        moveSwitch(id, (CPU.switchRegister & mask) ? -1 : 0);
+      }
+
+      function toggleSwitch(id) {
+        "use strict";
+        moveSwitch(id, 1);
+        setTimeout(function () {
+          moveSwitch(id, 0);
+        }, 350);
+      }
+
+      function examineDeposit(data) {
+        var result, autoMask, trapState;
+        if (data < 0) {
+          autoMask = 1; // Examine auto increment mask
+        } else {
+          autoMask = 2; // Deposit auto increment mask
+        }
+        trapState = CPU.trapPSW;
+        CPU.trapPSW = -2; // Disable trap handling
+        if (panel.rotary0 >= 1 && panel.rotary0 <= 6) { // If a virtual address is selected...
+          if (panel.autoIncr & autoMask) {
+            CPU.displayAddress += 2; // auto increment if applicable
+          }
+          CPU.displayAddress &= 0xffff;
+          CPU.displayAddress |= [0, 0, 0, 0, 0x10000, 0x10000, 0x10000, 0][panel.rotary0];
+          CPU.mmuMode = [0, 0, 1, 3, 3, 1, 0, 0][panel.rotary0];
+          if (data < 0) { // examine (read)
+            result = readWordByVirtual(CPU.displayAddress);
+          } else { // deposit (write)
+            data &= 0xffff; // 16 bits only
+            result = writeWordByVirtual(CPU.displayAddress, data);
+            if (result >= 0) {
+              result = data; // Write return may just be a status
+            }
+          }
+          CPU.displayAddress &= 0xffff;
+        } else { // Physical address stuff...
+          CPU.displayAddress &= 0x3fffff; // 22 bits max
+          if (CPU_TYPE !== 70 && CPU.displayAddress >= IOBASE_18BIT) { // For 18 bit CPU map address to 22 bit
+            CPU.displayAddress |= IOBASE_22BIT;
+          }
+          if (panel.autoIncr & autoMask) {
+            if (CPU.displayAddress >= 017777700 && CPU.displayAddress <= 017777717) {
+              CPU.displayAddress++; // register addresses increment only by 1
+              if (CPU.displayAddress >= 017777720) {
+                CPU.displayAddress = 017777700; // and registers loop around! (!)
+              }
+            } else {
+              CPU.displayAddress += 2; // ordinary increment to next word
+            }
+          }
+          CPU.displayAddress &= 0x3fffff; // 22 bits only
+          if (CPU.displayAddress < IOBASE_UNIBUS && ((CPU.displayAddress & 1) || CPU.displayAddress >= MAX_MEMORY)) {
+            CPU.displayAddress |= 0x400000; // Set ADRS ERR light
+          } else {
+            if (data < 0) { // examine (read)
+              result = readWordByPhysical(CPU.displayAddress);
+            } else { // deposit (write)
+              data &= 0xffff; // 16 bits only
+              result = writeWordByPhysical(CPU.displayAddress, data);
+              if (result >= 0) {
+                result = data; // Write return may just be a status
+              } else {
+                if (CPU.displayAddress == 017777776) { // write to PSW
+                  result = readPSW(); // PSW write return is a false error
+                }
+              }
+            }
+          }
+        }
+        CPU.trapPSW = trapState; // Reenable trap handling
+        writePSW(CPU.PSW); // Restore mode (CPU.mmuMode)
+        if (result >= 0) {
+          panel.autoIncr = autoMask; // Set auto increment for next time
+          CPU.displayDataPaths = result;
+        } else {
+          panel.autoIncr = 0;
+        }
+      }
+
+      const CPU_TYPE = 70; // This is a PDP 11/70
+
+    </script>
+    <script src='g60printer.js'></script>
+    <script src="https://unpkg.com/fzstd@0.1.1"></script>
+    <script src='bootcode.js'></script>
+    <script src='vt52.js'></script>
+    <script src='pdp11.js'></script>
+    <script src='fpp.js'></script>
+    <script src='iopage.js'></script>
+    <script src='vt11.js'></script>
+    <script>
+      // Initialize Google60 Printer for console output
+      var g60printer = null;
+      var g60Console = null;
+
+      function g60ConsoleWrite(code) {
+        if (g60Console) g60Console.writeChar(code);
+      }
+
+      function initG60Printer() {
+        if (g60printer) return;
+        g60printer = new G60Printer('g60printer');
+        g60Console = createG60Console(g60printer);
+        // Focus the input area
+        var inp = document.getElementById('g60printer_input');
+        if (inp) setTimeout(function () { inp.focus(); }, 100);
+      }
+
+      // Initialize printer immediately (Audio elements work without gesture)
+      initG60Printer();
+
+      boot();
+    </script>
+</body>
+
+</html>
