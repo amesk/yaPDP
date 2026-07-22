@@ -685,45 +685,48 @@
     .page {
       display: none;
       flex: 1;
+      background: #1c1915;
     }
 
     .page.active {
-      display: block;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       overflow-y: auto;
     }
 
-    /* ===== Info / Instructions page — readable on dark background ===== */
-    #page-instructions {
+    /* Instructions page — uses block layout + max-width for readability */
+    #page-instructions.active {
+      display: block;
       color: #e0d8c8;
+      max-width: 960px;
+      margin: 0 auto;
       padding: 16px 24px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
-    #page-instructions h2,
-    #page-instructions h3 {
+    #page-instructions.active h2,
+    #page-instructions.active h3 {
       color: #f0e6c8;
     }
 
-    #page-instructions a {
+    #page-instructions.active a {
       color: #c8a860;
     }
 
-    #page-instructions a:hover {
+    #page-instructions.active a:hover {
       color: #e8d080;
     }
 
-    #page-instructions b,
-    #page-instructions strong {
-      color: inherit;
-    }
-
-    #page-instructions code {
+    #page-instructions.active code {
       color: #d4c4a0;
       background: rgba(0, 0, 0, 0.3);
       padding: 1px 4px;
       border-radius: 2px;
     }
 
-    #page-instructions pre {
+    #page-instructions.active pre {
       color: #d0c8b8;
       background: rgba(0, 0, 0, 0.3);
       border: 1px solid #4a453a;
@@ -731,12 +734,17 @@
       padding: 8px 12px;
     }
 
-    #page-instructions table {
+    #page-instructions.active table {
       color: #e0d8c8;
     }
 
-    #page-instructions table thead {
+    #page-instructions.active table thead {
       color: #f0e6c8;
+    }
+
+    #page-instructions b,
+    #page-instructions strong {
+      color: inherit;
     }
   </style>
 
@@ -1251,8 +1259,10 @@
       <h2>PDP‑11/70 Emulator</h2>
 
       <p>
-        This emulator began as a personal project. Years ago I was a programmer on RSTS/E running on a PDP‑11/45, and I
-        vividly remembered the console’s idle loop light pattern — but not quite how it looked. With real hardware long
+        This emulator began as a personal project. Years ago I was a programmer on RSTS/E running on a PDP‑11/45, and
+        I
+        vividly remembered the console’s idle loop light pattern — but not quite how it looked. With real hardware
+        long
         gone, I decided to recreate it in software.
       </p>
 
@@ -1265,7 +1275,8 @@
       </p>
 
       <p>
-        The core objective was met: I can now see the RSTS/E console light pattern again. Interestingly, later releases
+        The core objective was met: I can now see the RSTS/E console light pattern again. Interestingly, later
+        releases
         (such as v9.6) changed the pattern, and other operating systems have their own distinctive styles. RSX and BSD
         2.11 show lively variations, while Unix V5 and Ultrix keep the lights almost static, reflecting heavy use of
         WAIT
@@ -1273,21 +1284,24 @@
       </p>
 
       <p>
-        Collecting the operating systems themselves was a challenge. One highlight was tracking down RSTS/E V06C, which
+        Collecting the operating systems themselves was a challenge. One highlight was tracking down RSTS/E V06C,
+        which
         has its own
         <a href="https://paulnank.github.io/pdp11-js/RSTSv06c.html">story</a>.
       </p>
 
       <p>
         Many of these systems include source code, offering fascinating insights into their design. Their influence on
-        later computing is profound — Unix in particular feels familiar to modern administrators. I sometimes wonder if
+        later computing is profound — Unix in particular feels familiar to modern administrators. I sometimes wonder
+        if
         encountering Ultrix earlier might have steered my career differently.
       </p>
 
       <p>
         The emulator boots with a custom PDP‑11 program that drives its own light patterns. Loaded at address
         <code>120000</code>, it includes a <b>LIGHTS</b> command that cycles through virtual addresses with WAIT
-        instructions, displaying the contents of R0 and the current instruction address. You can also use <b>BOOT</b> to
+        instructions, displaying the contents of R0 and the current instruction address. You can also use <b>BOOT</b>
+        to
         start guest operating systems, or <b>ODT</b> to launch the Octal Debugging Tool.
       </p>
 
@@ -1342,7 +1356,8 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 
       <p>
         Curious how it all works? The source is available on
-        <a href="https://github.com/paulnank/pdp11-js/">GitHub</a>. The main JavaScript files are <code>pdp11.js</code>,
+        <a href="https://github.com/paulnank/pdp11-js/">GitHub</a>. The main JavaScript files are
+        <code>pdp11.js</code>,
         <code>fpp.js</code>, and <code>iopage.js</code>.
       </p>
 
