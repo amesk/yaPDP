@@ -546,6 +546,154 @@
     b {
       color: blue;
     }
+
+    /* ===== Page layout & sidebar (DEC 1960s style) ===== */
+    body {
+      margin: 0;
+      padding: 0;
+      background: #2a2722;
+      font-family: arial, helvetica, sans-serif;
+    }
+
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .page.active {
+      overflow-y: auto !important;
+    }
+
+    .app-sidebar {
+      width: 62px;
+      min-width: 62px;
+      background: linear-gradient(180deg, #1a1815 0%, #2a2722 40%, #1a1815 100%);
+      border-right: 2px solid #4a453a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 12px;
+      gap: 2px;
+      box-shadow: 2px 0 6px rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+
+    .app-sidebar .nav-btn {
+      width: 52px;
+      height: 72px;
+      margin: 2px 0;
+      background: linear-gradient(180deg, #3a352a, #2a2722);
+      border: 1px solid #5a554a;
+      border-radius: 4px;
+      color: #b8b0a0;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.3;
+      padding: 4px 2px;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4);
+      user-select: none;
+    }
+
+    .app-sidebar .nav-btn:hover {
+      background: linear-gradient(180deg, #4a453a, #3a352a);
+      border-color: #8a7a5a;
+      color: #e0d8c8;
+    }
+
+    .app-sidebar .nav-btn.active {
+      background: linear-gradient(180deg, #5a4a30, #3a3528);
+      border-color: #c8a860;
+      color: #f0e6c8;
+      box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .app-sidebar .nav-btn .nav-icon {
+      font-size: 16px;
+      margin-bottom: 3px;
+      opacity: 0.8;
+    }
+
+    .app-sidebar .nav-btn.active .nav-icon {
+      opacity: 1;
+    }
+
+    .app-sidebar .dec-logo {
+      width: 40px;
+      margin-top: auto;
+      margin-bottom: 12px;
+      opacity: 0.3;
+      font-size: 9px;
+      color: #6a655a;
+      text-align: center;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .page {
+      display: none;
+      flex: 1;
+    }
+
+    .page.active {
+      display: block;
+      overflow-y: auto;
+    }
+
+    /* ===== Info / Instructions page — readable on dark background ===== */
+    #page-instructions {
+      color: #e0d8c8;
+      padding: 16px 24px;
+    }
+
+    #page-instructions h2,
+    #page-instructions h3 {
+      color: #f0e6c8;
+    }
+
+    #page-instructions a {
+      color: #c8a860;
+    }
+
+    #page-instructions a:hover {
+      color: #e8d080;
+    }
+
+    #page-instructions b,
+    #page-instructions strong {
+      color: inherit;
+    }
+
+    #page-instructions code {
+      color: #d4c4a0;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1px 4px;
+      border-radius: 2px;
+    }
+
+    #page-instructions pre {
+      color: #d0c8b8;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid #4a453a;
+      border-radius: 4px;
+      padding: 8px 12px;
+    }
+
+    #page-instructions table {
+      color: #e0d8c8;
+    }
+
+    #page-instructions table thead {
+      color: #f0e6c8;
+    }
   </style>
 
   <!-- Google60 Printer styles -->
@@ -554,538 +702,562 @@
 </head>
 
 <body>
-  <div class=frame>
-    <div class=decBase>
-      <span class=smallSpace></span>
-      <span class=decLetter>d</span>
-      <span class=decLetter>i</span>
-      <span class=decLetter>g</span>
-      <span class=decLetter>i</span>
-      <span class=decLetter>t</span>
-      <span class=decLetter>a</span>
-      <span class=decLetter>l</span>
-      <span class=smallSpace></span>
-      <span class=decName>digital equipment corporation &bull; maynard, massachusetts</span>
+  <div class="app-layout">
+    <div class="app-sidebar">
+      <div class="nav-btn active" data-page="panel" onclick="switchPage('panel')">
+        <span class="nav-icon">&#9673;</span>
+        Panel
+      </div>
+      <div class="nav-btn" data-page="terminal" onclick="switchPage('terminal')">
+        <span class="nav-icon">&#9632;</span>
+        Terminal
+      </div>
+      <div class="nav-btn" data-page="instructions" onclick="switchPage('instructions')">
+        <span class="nav-icon">&#9776;</span>
+        Info
+      </div>
+      <div class="dec-logo">digital</div>
     </div>
-    <div class=sideEdges></div>
-    <div class=topEdge></div>
-    <div class=switchBevel></div>
-    <div class=switchPanel>
-      <div class=panel>
-        <div class=blankLine></div>
-        <div class=blankLine></div>
-        <div class=space></div>
-        <div class=floatLeft>
-          <div class=clear>
-            <div class=floatLeft>
-              <div class=clear>
-                <span class=logo>
-                  <img src="pdp11-70.svg" alt="pdp11-70" width=100%>
-                </span>
-                <div class=floatRight>
-                  <span class="statusBlock roundLeft">
-                    <div class="statusLabel1">PAR</div>
-                    <span class=statusLabel2>ERR <div id=s11 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class="statusBlock margin">
-                    <div class="statusLabel1">ADRS</div>
-                    <span class=statusLabel2>ERR <div id=s10 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class=statusBlock>
-                    <div class="statusLabel1">RUN</div>
-                    <span class=statusLabel2>&nbsp; <div id=s9 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class=statusBlock>
-                    <div class="statusLabel1">PAUSE</div>
-                    <span class=statusLabel2>&nbsp; <div id=s8 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class="statusBlock margin">
-                    <div class="statusLabel1">MASTER</div>
-                    <span class=statusLabel2>&nbsp; <div id=s7 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class=statusBlock>
-                    <div class="statusLabel1">USER</div>
-                    <span class=statusLabel2>&nbsp; <div id=s6 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class=statusBlock>
-                    <div class="statusLabel1">SUPER</div>
-                    <span class=statusLabel2>&nbsp; <div id=s5 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class="statusBlock margin">
-                    <div class="statusLabel1">KERNEL</div>
-                    <span class=statusLabel2>&nbsp; <div id=s4 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class=statusBlock>
-                    <div class="statusLabel1">DATA</div>
-                    <span class=statusLabel2>&nbsp; <div id=s3 class=mainLed></div>
-                    </span>
-                  </span>
-                  <span class="statusBlock triple roundRight">
-                    <div class="statusLabel1">ADDRESSING</div>
-                    <span class=statusLabel2>16 <div id=s2 class=mainLed></div>
-                    </span>
-                    <span class=statusLabel2>18 <div id=s1 class=mainLed></div>
-                    </span>
-                    <span class=statusLabel2>22 <div id=s0 class=mainLed></div>
-                    </span>
-                  </span>
-                  <div class=smallLine></div>
-                </div>
-              </div>
-              <div class=clear>
-                <span class="ledBlock single">
-                  <div class="ledBase red roundTopLeft"></div>
-                  <div class=ledPad>
-                    <div id=a21 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase purple"></div>
-                  <div class=ledPad>
-                    <div id=a20 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a19 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a18 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase red"></div>
-                  <div class=ledPad>
-                    <div id=a17 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a16 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a15 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase purple"></div>
-                  <div class=ledPad>
-                    <div id=a14 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a13 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a12 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase red"></div>
-                  <div class=ledPad>
-                    <div id=a11 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a10 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a9 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase purple"></div>
-                  <div class=ledPad>
-                    <div id=a8 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a7 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a6 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase red"></div>
-                  <div class=ledPad>
-                    <div id=a5 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a4 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a3 class=mainLed></div>
-                  </div>
-                </span>
-                <span class=ledBlock>
-                  <div class="ledBase purple textRight roundTopRight">ADDRESS &nbsp;</div>
-                  <div class=ledPad>
-                    <div id=a2 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a1 class=mainLed></div>
-                  </div>
-                  <div class=ledPad>
-                    <div id=a0 class=mainLed></div>
-                  </div>
-                </span>
-              </div>
-              <div class=blankLine></div>
-              <div class=clear>
-                <div class=lockPanel>
-                  <div class=floatLeft>POWER</div>
-                  <div class=floatRight>LOCK</div>
-                  <div class=lock
-                    onclick="if (event && event.shiftKey) { if (--panel.powerSwitch < -1) panel.powerSwitch = 1; } else { if (++panel.powerSwitch > 1) panel.powerSwitch = -1; } if (panel.powerSwitch < 0) { CPU.runState = STATE_HALT; } key.style.transform='rotate('+(panel.powerSwitch * 90 - 45)+'deg)';">
-                    <div id=key class=key></div>
-                  </div>
-                  <div class=atBottom>OFF</div>
-                </div>
-                <div class=floatRight>
-                  <span class="ledBlock double">
-                    <div class="ledBase black roundTop">PARITY</div>
-                    <div class=ledPad>HIGH <div id=s13 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>LOW <div id=s12 class=mainLed></div>
-                    </div>
-                  </span>
-                  <span class=space></span>
-                  <span class="ledBlock single">
-                    <div class="ledBase red roundTopLeft"></div>
-                    <div class=ledPad>
-                      <div id=d15 class=mainLed></div>
-                    </div>
-                  </span>
-                  <span class=ledBlock>
-                    <div class="ledBase purple">
-                      <div class=nick></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d14 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d13 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d12 class=mainLed></div>
-                    </div>
-                  </span>
-                  <span class=ledBlock>
-                    <div class="ledBase red">
-                      <div class=nick></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d11 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d10 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d9 class=mainLed></div>
-                    </div>
-                  </span>
-                  <span class=ledBlock>
-                    <div class="ledBase purple">
-                      <div class=nick></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d8 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d7 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d6 class=mainLed></div>
-                    </div>
-                  </span>
-                  <span class=ledBlock>
-                    <div class="ledBase red"></div>
-                    <div class=ledPad>
-                      <div id=d5 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d4 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d3 class=mainLed></div>
-                    </div>
-                  </span>
-                  <span class=ledBlock>
-                    <div class="ledBase purple textRight roundTopRight">DATA &nbsp;</div>
-                    <div class=ledPad>
-                      <div id=d2 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d1 class=mainLed></div>
-                    </div>
-                    <div class=ledPad>
-                      <div id=d0 class=mainLed></div>
-                    </div>
-                  </span>
-                </div>
-              </div>
-            </div>
+    <div class="page active" id="page-panel">
+      <div class=frame>
+        <div class=decBase>
+          <span class=smallSpace></span>
+          <span class=decLetter>d</span>
+          <span class=decLetter>i</span>
+          <span class=decLetter>g</span>
+          <span class=decLetter>i</span>
+          <span class=decLetter>t</span>
+          <span class=decLetter>a</span>
+          <span class=decLetter>l</span>
+          <span class=smallSpace></span>
+          <span class=decName>digital equipment corporation &bull; maynard, massachusetts</span>
+        </div>
+        <div class=sideEdges></div>
+        <div class=topEdge></div>
+        <div class=switchBevel></div>
+        <div class=switchPanel>
+          <div class=panel>
+            <div class=blankLine></div>
+            <div class=blankLine></div>
             <div class=space></div>
             <div class=floatLeft>
-              <div class=rotaryTopPanel>
-                <span class=rotaryTable>
-                  <div class=rotaryTableRow>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s17></span>USER D
-                    </div>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s18></span>USER I
+              <div class=clear>
+                <div class=floatLeft>
+                  <div class=clear>
+                    <span class=logo>
+                      <img src="pdp11-70.svg" alt="pdp11-70" width=100%>
+                    </span>
+                    <div class=floatRight>
+                      <span class="statusBlock roundLeft">
+                        <div class="statusLabel1">PAR</div>
+                        <span class=statusLabel2>ERR <div id=s11 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class="statusBlock margin">
+                        <div class="statusLabel1">ADRS</div>
+                        <span class=statusLabel2>ERR <div id=s10 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class=statusBlock>
+                        <div class="statusLabel1">RUN</div>
+                        <span class=statusLabel2>&nbsp; <div id=s9 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class=statusBlock>
+                        <div class="statusLabel1">PAUSE</div>
+                        <span class=statusLabel2>&nbsp; <div id=s8 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class="statusBlock margin">
+                        <div class="statusLabel1">MASTER</div>
+                        <span class=statusLabel2>&nbsp; <div id=s7 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class=statusBlock>
+                        <div class="statusLabel1">USER</div>
+                        <span class=statusLabel2>&nbsp; <div id=s6 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class=statusBlock>
+                        <div class="statusLabel1">SUPER</div>
+                        <span class=statusLabel2>&nbsp; <div id=s5 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class="statusBlock margin">
+                        <div class="statusLabel1">KERNEL</div>
+                        <span class=statusLabel2>&nbsp; <div id=s4 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class=statusBlock>
+                        <div class="statusLabel1">DATA</div>
+                        <span class=statusLabel2>&nbsp; <div id=s3 class=mainLed></div>
+                        </span>
+                      </span>
+                      <span class="statusBlock triple roundRight">
+                        <div class="statusLabel1">ADDRESSING</div>
+                        <span class=statusLabel2>16 <div id=s2 class=mainLed></div>
+                        </span>
+                        <span class=statusLabel2>18 <div id=s1 class=mainLed></div>
+                        </span>
+                        <span class=statusLabel2>22 <div id=s0 class=mainLed></div>
+                        </span>
+                      </span>
+                      <div class=smallLine></div>
                     </div>
                   </div>
-                  <div class=rotaryTableRow>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s16></span>SUPER D
+                  <div class=clear>
+                    <span class="ledBlock single">
+                      <div class="ledBase red roundTopLeft"></div>
+                      <div class=ledPad>
+                        <div id=a21 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase purple"></div>
+                      <div class=ledPad>
+                        <div id=a20 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a19 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a18 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase red"></div>
+                      <div class=ledPad>
+                        <div id=a17 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a16 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a15 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase purple"></div>
+                      <div class=ledPad>
+                        <div id=a14 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a13 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a12 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase red"></div>
+                      <div class=ledPad>
+                        <div id=a11 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a10 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a9 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase purple"></div>
+                      <div class=ledPad>
+                        <div id=a8 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a7 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a6 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase red"></div>
+                      <div class=ledPad>
+                        <div id=a5 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a4 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a3 class=mainLed></div>
+                      </div>
+                    </span>
+                    <span class=ledBlock>
+                      <div class="ledBase purple textRight roundTopRight">ADDRESS &nbsp;</div>
+                      <div class=ledPad>
+                        <div id=a2 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a1 class=mainLed></div>
+                      </div>
+                      <div class=ledPad>
+                        <div id=a0 class=mainLed></div>
+                      </div>
+                    </span>
+                  </div>
+                  <div class=blankLine></div>
+                  <div class=clear>
+                    <div class=lockPanel>
+                      <div class=floatLeft>POWER</div>
+                      <div class=floatRight>LOCK</div>
+                      <div class=lock
+                        onclick="if (event && event.shiftKey) { if (--panel.powerSwitch < -1) panel.powerSwitch = 1; } else { if (++panel.powerSwitch > 1) panel.powerSwitch = -1; } if (panel.powerSwitch < 0) { CPU.runState = STATE_HALT; } key.style.transform='rotate('+(panel.powerSwitch * 90 - 45)+'deg)';">
+                        <div id=key class=key></div>
+                      </div>
+                      <div class=atBottom>OFF</div>
                     </div>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s19></span>SUPER I
+                    <div class=floatRight>
+                      <span class="ledBlock double">
+                        <div class="ledBase black roundTop">PARITY</div>
+                        <div class=ledPad>HIGH <div id=s13 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>LOW <div id=s12 class=mainLed></div>
+                        </div>
+                      </span>
+                      <span class=space></span>
+                      <span class="ledBlock single">
+                        <div class="ledBase red roundTopLeft"></div>
+                        <div class=ledPad>
+                          <div id=d15 class=mainLed></div>
+                        </div>
+                      </span>
+                      <span class=ledBlock>
+                        <div class="ledBase purple">
+                          <div class=nick></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d14 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d13 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d12 class=mainLed></div>
+                        </div>
+                      </span>
+                      <span class=ledBlock>
+                        <div class="ledBase red">
+                          <div class=nick></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d11 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d10 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d9 class=mainLed></div>
+                        </div>
+                      </span>
+                      <span class=ledBlock>
+                        <div class="ledBase purple">
+                          <div class=nick></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d8 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d7 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d6 class=mainLed></div>
+                        </div>
+                      </span>
+                      <span class=ledBlock>
+                        <div class="ledBase red"></div>
+                        <div class=ledPad>
+                          <div id=d5 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d4 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d3 class=mainLed></div>
+                        </div>
+                      </span>
+                      <span class=ledBlock>
+                        <div class="ledBase purple textRight roundTopRight">DATA &nbsp;</div>
+                        <div class=ledPad>
+                          <div id=d2 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d1 class=mainLed></div>
+                        </div>
+                        <div class=ledPad>
+                          <div id=d0 class=mainLed></div>
+                        </div>
+                      </span>
                     </div>
                   </div>
-                  <div class=rotaryTableRow>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s15></span>KERNEL D
-                    </div>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s20></span>KERNEL I
-                    </div>
+                </div>
+                <div class=space></div>
+                <div class=floatLeft>
+                  <div class=rotaryTopPanel>
+                    <span class=rotaryTable>
+                      <div class=rotaryTableRow>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s17></span>USER D
+                        </div>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s18></span>USER I
+                        </div>
+                      </div>
+                      <div class=rotaryTableRow>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s16></span>SUPER D
+                        </div>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s19></span>SUPER I
+                        </div>
+                      </div>
+                      <div class=rotaryTableRow>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s15></span>KERNEL D
+                        </div>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s20></span>KERNEL I
+                        </div>
+                      </div>
+                      <div class=rotaryTableRow>
+                        <div class=rotaryTableCell>
+                          <div class=rotaryLed id=s14></div>CONS PHY
+                        </div>
+                        <div class=rotaryTableCell>
+                          <div class=rotaryLed id=s21></div>PROG PHY
+                        </div>
+                      </div>
+                    </span>
+                    <span class=rotaryBase>
+                      <div class=rotarySwitch
+                        onclick="if (event && event.shiftKey) { if (--panel.rotary0 < 0) panel.rotary0 = 7; } else { if (++panel.rotary0 > 7) panel.rotary0 = 0; } this.style.transform = 'rotate('+(panel.rotary0*45-45)+'deg)'; panel.autoIncr = 0;">
+                        <div class=rotaryCentre></div>
+                      </div>
+                    </span>
                   </div>
-                  <div class=rotaryTableRow>
-                    <div class=rotaryTableCell>
-                      <div class=rotaryLed id=s14></div>CONS PHY
-                    </div>
-                    <div class=rotaryTableCell>
-                      <div class=rotaryLed id=s21></div>PROG PHY
-                    </div>
+                  <div class=blankLine></div>
+                  <div class=rotaryBottomPanel>
+                    <span class=rotaryTable>
+                      <div class=rotaryTableRow>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s22></span>DATA<br>PATHS
+                        </div>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s23></span>&micro; ADRS<br>FPP/CPU
+                        </div>
+                      </div>
+                      <div class=rotaryTableRow>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s25></span>BUS REG
+                        </div>
+                        <div class=rotaryTableCell>
+                          <span class=rotaryLed id=s24></span>DISPLAY<br>REGISTER
+                        </div>
+                      </div>
+                    </span>
+                    <span class=rotaryBase>
+                      <div class=rotarySwitch
+                        onclick="if (event && event.shiftKey) { if (--panel.rotary1 < 0) panel.rotary1 = 3; } else { if (++panel.rotary1 > 3) panel.rotary1 = 0; } this.style.transform = 'rotate('+(panel.rotary1*45-45)+'deg)'; panel.autoIncr = 0;">
+                        <div class=rotaryCentre></div>
+                      </div>
+                    </span>
                   </div>
-                </span>
-                <span class=rotaryBase>
-                  <div class=rotarySwitch
-                    onclick="if (event && event.shiftKey) { if (--panel.rotary0 < 0) panel.rotary0 = 7; } else { if (++panel.rotary0 > 7) panel.rotary0 = 0; } this.style.transform = 'rotate('+(panel.rotary0*45-45)+'deg)'; panel.autoIncr = 0;">
-                    <div class=rotaryCentre></div>
-                  </div>
-                </span>
+                </div>
               </div>
-              <div class=blankLine></div>
-              <div class=rotaryBottomPanel>
-                <span class=rotaryTable>
-                  <div class=rotaryTableRow>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s22></span>DATA<br>PATHS
-                    </div>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s23></span>&micro; ADRS<br>FPP/CPU
-                    </div>
-                  </div>
-                  <div class=rotaryTableRow>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s25></span>BUS REG
-                    </div>
-                    <div class=rotaryTableCell>
-                      <span class=rotaryLed id=s24></span>DISPLAY<br>REGISTER
-                    </div>
-                  </div>
+              <div class=switchLabels>
+                <span class="switchPad red roundLeft roundRight">21</span>
+                <span class="switchPad purple roundLeft">20</span>
+                <span class="switchPad purple">19</span>
+                <span class="switchPad purple roundRight">18</span>
+                <span class="switchPad red roundLeft">17</span>
+                <span class="switchPad red">16</span>
+                <span class="switchPad red roundRight">15</span>
+                <span class="switchPad purple roundLeft">14</span>
+                <span class="switchPad purple">13</span>
+                <span class="switchPad purple roundRight">12</span>
+                <span class="switchPad red roundLeft">11</span>
+                <span class="switchPad red">10</span>
+                <span class="switchPad red roundRight">9</span>
+                <span class="switchPad purple roundLeft">8</span>
+                <span class="switchPad purple">7</span>
+                <span class="switchPad purple roundRight">6</span>
+                <span class="switchPad red roundLeft">5</span>
+                <span class="switchPad red">4</span>
+                <span class="switchPad red roundRight">3</span>
+                <span class="switchPad purple roundLeft">2</span>
+                <span class="switchPad purple">1</span>
+                <span class="switchPad purple roundRight">0</span>
+                <span class=space></span>
+                <span class="switchPad red roundTop"><span class=multiText>LOAD ADRS</span></span>
+                <span class="switchPad purple roundTop">EXAM</span>
+                <span class="switchPad red roundTop">DEP</span>
+                <span class="switchPad purple roundTop">CONT</span>
+                <span class="switchPad red roundTop">
+                  <div class="switchPadHalf">ENABLE</div>
+                  <div class="switchPadBar"></div>
+                  <div class="switchPadHalf">HALT</div>
                 </span>
-                <span class=rotaryBase>
-                  <div class=rotarySwitch
-                    onclick="if (event && event.shiftKey) { if (--panel.rotary1 < 0) panel.rotary1 = 3; } else { if (++panel.rotary1 > 3) panel.rotary1 = 0; } this.style.transform = 'rotate('+(panel.rotary1*45-45)+'deg)'; panel.autoIncr = 0;">
-                    <div class=rotaryCentre></div>
-                  </div>
+                <span class="switchPad purple roundTop">
+                  <div class="switchPadHalf">S INST</div>
+                  <div class="switchPadBar"></div>
+                  <div class="switchPadHalf">S BUS</div>
                 </span>
+                <span class="switchPad red roundTop">START</span>
               </div>
             </div>
           </div>
-          <div class=switchLabels>
-            <span class="switchPad red roundLeft roundRight">21</span>
-            <span class="switchPad purple roundLeft">20</span>
-            <span class="switchPad purple">19</span>
-            <span class="switchPad purple roundRight">18</span>
-            <span class="switchPad red roundLeft">17</span>
-            <span class="switchPad red">16</span>
-            <span class="switchPad red roundRight">15</span>
-            <span class="switchPad purple roundLeft">14</span>
-            <span class="switchPad purple">13</span>
-            <span class="switchPad purple roundRight">12</span>
-            <span class="switchPad red roundLeft">11</span>
-            <span class="switchPad red">10</span>
-            <span class="switchPad red roundRight">9</span>
-            <span class="switchPad purple roundLeft">8</span>
-            <span class="switchPad purple">7</span>
-            <span class="switchPad purple roundRight">6</span>
-            <span class="switchPad red roundLeft">5</span>
-            <span class="switchPad red">4</span>
-            <span class="switchPad red roundRight">3</span>
-            <span class="switchPad purple roundLeft">2</span>
-            <span class="switchPad purple">1</span>
-            <span class="switchPad purple roundRight">0</span>
+          <div class=floatLeft>
             <span class=space></span>
-            <span class="switchPad red roundTop"><span class=multiText>LOAD ADRS</span></span>
-            <span class="switchPad purple roundTop">EXAM</span>
-            <span class="switchPad red roundTop">DEP</span>
-            <span class="switchPad purple roundTop">CONT</span>
-            <span class="switchPad red roundTop">
-              <div class="switchPadHalf">ENABLE</div>
-              <div class="switchPadBar"></div>
-              <div class="switchPadHalf">HALT</div>
-            </span>
-            <span class="switchPad purple roundTop">
-              <div class="switchPadHalf">S INST</div>
-              <div class="switchPadBar"></div>
-              <div class="switchPadHalf">S BUS</div>
-            </span>
-            <span class="switchPad red roundTop">START</span>
+            <span class="switch redBase" onClick="setSwitch(this, 21);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 20);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 19);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 18);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 17);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 16);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 15);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 14);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 13);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 12);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 11);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 10);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 9);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 8);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 7);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 6);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 5);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 4);"></span>
+            <span class="switch redBase" onClick="setSwitch(this, 3);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 2);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 1);"></span>
+            <span class="switch purpleBase" onClick="setSwitch(this, 0);"></span>
+            <span class="switch white"
+              onclick="moveSwitch(this, panel.lampTest = 1 - panel.lampTest); if (!panel.powerSwitch) { if (panel.lamp) panel.lamp = 1; }"></span>
+            <span class="switch redBase"
+              onClick="toggleSwitch(this, 0); CPU.displayAddress = CPU.switchRegister; panel.autoIncr = 0;"></span>
+            <span class="switch purpleBase"
+              onClick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) examineDeposit(-1); }"></span>
+            <span class="switch redBase"
+              onClick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) examineDeposit(CPU.switchRegister); }"></span>
+            <span class="switch purpleBase"
+              onClick="toggleSwitch(this, 0); if (!panel.powerSwitch && CPU.runState == STATE_HALT) { if (panel.halt) { CPU.runState = STATE_STEP; } else { CPU.runState = STATE_RUN; }}"></span>
+            <span class="switch redBase"
+              onClick="moveSwitch(this, panel.halt = 1 - panel.halt); if (!panel.powerSwitch) { if (panel.halt) { CPU.runState = STATE_HALT; }}"></span>
+            <span class="switch purpleBase" onClick="moveSwitch(this, panel.step = 1 - panel.step);"></span>
+            <span class="switch redBase"
+              onclick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) {iopage.reset(); CPU.registerVal[7] = CPU.displayAddress & 0xffff; if (!panel.halt) { CPU.runState = STATE_RUN; }}}"></span>
           </div>
         </div>
       </div>
-      <div class=floatLeft>
-        <span class=space></span>
-        <span class="switch redBase" onClick="setSwitch(this, 21);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 20);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 19);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 18);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 17);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 16);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 15);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 14);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 13);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 12);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 11);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 10);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 9);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 8);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 7);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 6);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 5);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 4);"></span>
-        <span class="switch redBase" onClick="setSwitch(this, 3);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 2);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 1);"></span>
-        <span class="switch purpleBase" onClick="setSwitch(this, 0);"></span>
-        <span class="switch white"
-          onclick="moveSwitch(this, panel.lampTest = 1 - panel.lampTest); if (!panel.powerSwitch) { if (panel.lamp) panel.lamp = 1; }"></span>
-        <span class="switch redBase"
-          onClick="toggleSwitch(this, 0); CPU.displayAddress = CPU.switchRegister; panel.autoIncr = 0;"></span>
-        <span class="switch purpleBase"
-          onClick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) examineDeposit(-1); }"></span>
-        <span class="switch redBase"
-          onClick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) examineDeposit(CPU.switchRegister); }"></span>
-        <span class="switch purpleBase"
-          onClick="toggleSwitch(this, 0); if (!panel.powerSwitch && CPU.runState == STATE_HALT) { if (panel.halt) { CPU.runState = STATE_STEP; } else { CPU.runState = STATE_RUN; }}"></span>
-        <span class="switch redBase"
-          onClick="moveSwitch(this, panel.halt = 1 - panel.halt); if (!panel.powerSwitch) { if (panel.halt) { CPU.runState = STATE_HALT; }}"></span>
-        <span class="switch purpleBase" onClick="moveSwitch(this, panel.step = 1 - panel.step);"></span>
-        <span class="switch redBase"
-          onclick="toggleSwitch(this, 0); if (!panel.powerSwitch) { if (CPU.runState == STATE_HALT) {iopage.reset(); CPU.registerVal[7] = CPU.displayAddress & 0xffff; if (!panel.halt) { CPU.runState = STATE_RUN; }}}"></span>
-      </div>
     </div>
-  </div>
-  <p class=clear><br>
-  <div id="g60printer">
-    <div class="printer-input-area">
-      <textarea id="g60printer_input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-        placeholder="Click here to type..."></textarea>
-      <div id="g60printer_buttons" style="padding:4px 0;display:flex;gap:2px;flex-wrap:wrap;">
-        <button onclick="dlReceiveQueue(0,[3]);document.getElementById('g60printer_input').focus();">^C</button>
-        <button onclick="dlReceiveQueue(0,[4]);document.getElementById('g60printer_input').focus();">^D</button>
-        <button onclick="dlReceiveQueue(0,[8]);document.getElementById('g60printer_input').focus();">^H</button>
-        <button onclick="dlReceiveQueue(0,[10]);document.getElementById('g60printer_input').focus();">LF</button>
-        <button onclick="dlReceiveQueue(0,[17]);document.getElementById('g60printer_input').focus();">^Q</button>
-        <button onclick="dlReceiveQueue(0,[19]);document.getElementById('g60printer_input').focus();">^S</button>
-        <button onclick="dlReceiveQueue(0,[20]);document.getElementById('g60printer_input').focus();">^T</button>
-        <button onclick="dlReceiveQueue(0,[26]);document.getElementById('g60printer_input').focus();">^Z</button>
-        <button onclick="dlReceiveQueue(0,[27]);document.getElementById('g60printer_input').focus();">ESC</button>
-        <button onclick="dlReceiveQueue(0,[9]);document.getElementById('g60printer_input').focus();">TAB</button>
-        <button onclick="dlReceiveQueue(0,[0]);document.getElementById('g60printer_input').focus();">Break</button>
-        <button
-          onclick="if(g60printer)g60printer.clear();document.getElementById('g60printer_input').focus();">Clear</button>
+    <div class="page" id="page-terminal">
+      <p class=clear><br>
+      <div id="g60printer">
+        <div class="printer-input-area">
+          <textarea id="g60printer_input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+            placeholder="Click here to type..."></textarea>
+          <div id="g60printer_buttons" style="padding:4px 0;display:flex;gap:2px;flex-wrap:wrap;">
+            <button onclick="dlReceiveQueue(0,[3]);document.getElementById('g60printer_input').focus();">^C</button>
+            <button onclick="dlReceiveQueue(0,[4]);document.getElementById('g60printer_input').focus();">^D</button>
+            <button onclick="dlReceiveQueue(0,[8]);document.getElementById('g60printer_input').focus();">^H</button>
+            <button onclick="dlReceiveQueue(0,[10]);document.getElementById('g60printer_input').focus();">LF</button>
+            <button onclick="dlReceiveQueue(0,[17]);document.getElementById('g60printer_input').focus();">^Q</button>
+            <button onclick="dlReceiveQueue(0,[19]);document.getElementById('g60printer_input').focus();">^S</button>
+            <button onclick="dlReceiveQueue(0,[20]);document.getElementById('g60printer_input').focus();">^T</button>
+            <button onclick="dlReceiveQueue(0,[26]);document.getElementById('g60printer_input').focus();">^Z</button>
+            <button onclick="dlReceiveQueue(0,[27]);document.getElementById('g60printer_input').focus();">ESC</button>
+            <button onclick="dlReceiveQueue(0,[9]);document.getElementById('g60printer_input').focus();">TAB</button>
+            <button onclick="dlReceiveQueue(0,[0]);document.getElementById('g60printer_input').focus();">Break</button>
+            <button
+              onclick="if(g60printer)g60printer.clear();document.getElementById('g60printer_input').focus();">Clear</button>
+          </div>
+        </div>
       </div>
+      <br>
+      <button onclick="if(g60Console){g60Console.writeChar(10);}boot();">REBOOT</button>
+      </p>
+      <p>
+        <label>Paper tape reader file</label>
+        <select id="ptr">
+          <option value="">--none--</option>
+          <option value="DEC-11-AJPB-PB">BASIC-11 V007A</option>
+          <option value="DEC-11-O2PA-PB">ODT-11X-V004A</option>
+          <option value="ED-11-V004B-8K">ED-11-V004B</option>
+          <option value="lander">Lunar Lander</option>
+          <option value="bootcode">Bootcode</option>
+        </select>
+      </p>
+      <p>
+        <label>Download disk</label>
+        <select id="downLoadSelect" disabled>
+          <option value="">--none--</option>
+        </select>
+      </p>
+      <p>
+      <div id="vt11"></div>
+      </p>
+      <bp>
+        <div id="vg11"></div>
+        </p>
+        <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
+        <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
+        <!-- Add more if needed -->
+        <div id="lp11_div"></div>
+        <br>
     </div>
-  </div>
-  <br>
-  <button onclick="if(g60Console){g60Console.writeChar(10);}boot();">REBOOT</button>
-  </p>
-  <p>
-    <label>Paper tape reader file</label>
-    <select id="ptr">
-      <option value="">--none--</option>
-      <option value="DEC-11-AJPB-PB">BASIC-11 V007A</option>
-      <option value="DEC-11-O2PA-PB">ODT-11X-V004A</option>
-      <option value="ED-11-V004B-8K">ED-11-V004B</option>
-      <option value="lander">Lunar Lander</option>
-      <option value="bootcode">Bootcode</option>
-    </select>
-  </p>
-  <p>
-    <label>Download disk</label>
-    <select id="downLoadSelect" disabled>
-      <option value="">--none--</option>
-    </select>
-  </p>
-  <p>
-  <div id="vt11"></div>
-  </p>
-  <bp>
-    <div id="vg11"></div>
-    </p>
-    <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
-    <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
-    <!-- Add more if needed -->
-    <div id="lp11_div"></div>
-    <br>
-    <h2>PDP‑11/70 Emulator</h2>
+    <div class="page" id="page-instructions">
+      <h2>PDP‑11/70 Emulator</h2>
 
-    <p>
-      This emulator began as a personal project. Years ago I was a programmer on RSTS/E running on a PDP‑11/45, and I
-      vividly remembered the console’s idle loop light pattern — but not quite how it looked. With real hardware long
-      gone, I decided to recreate it in software.
-    </p>
+      <p>
+        This emulator began as a personal project. Years ago I was a programmer on RSTS/E running on a PDP‑11/45, and I
+        vividly remembered the console’s idle loop light pattern — but not quite how it looked. With real hardware long
+        gone, I decided to recreate it in software.
+      </p>
 
-    <p>
-      My initial plan was to emulate the PDP‑11/45, but the expanded memory of the PDP‑11/70 (nearly 4 MB!) proved
-      irresistible. The result was a
-      <a href="https://paulnank.github.io/pdp11-js/pdp11.html">PDP‑11/70 emulator</a>, later joined by a
-      <a href="https://paulnank.github.io/pdp11-js/pdp11-45.html">PDP‑11/45</a> version and even a
-      <a href="https://skn.noip.me/pdp10/pdp10.html">PDP‑10</a>.
-    </p>
+      <p>
+        My initial plan was to emulate the PDP‑11/45, but the expanded memory of the PDP‑11/70 (nearly 4 MB!) proved
+        irresistible. The result was a
+        <a href="https://paulnank.github.io/pdp11-js/pdp11.html">PDP‑11/70 emulator</a>, later joined by a
+        <a href="https://paulnank.github.io/pdp11-js/pdp11-45.html">PDP‑11/45</a> version and even a
+        <a href="https://skn.noip.me/pdp10/pdp10.html">PDP‑10</a>.
+      </p>
 
-    <p>
-      The core objective was met: I can now see the RSTS/E console light pattern again. Interestingly, later releases
-      (such as v9.6) changed the pattern, and other operating systems have their own distinctive styles. RSX and BSD
-      2.11 show lively variations, while Unix V5 and Ultrix keep the lights almost static, reflecting heavy use of WAIT
-      mode.
-    </p>
+      <p>
+        The core objective was met: I can now see the RSTS/E console light pattern again. Interestingly, later releases
+        (such as v9.6) changed the pattern, and other operating systems have their own distinctive styles. RSX and BSD
+        2.11 show lively variations, while Unix V5 and Ultrix keep the lights almost static, reflecting heavy use of
+        WAIT
+        mode.
+      </p>
 
-    <p>
-      Collecting the operating systems themselves was a challenge. One highlight was tracking down RSTS/E V06C, which
-      has its own
-      <a href="https://paulnank.github.io/pdp11-js/RSTSv06c.html">story</a>.
-    </p>
+      <p>
+        Collecting the operating systems themselves was a challenge. One highlight was tracking down RSTS/E V06C, which
+        has its own
+        <a href="https://paulnank.github.io/pdp11-js/RSTSv06c.html">story</a>.
+      </p>
 
-    <p>
-      Many of these systems include source code, offering fascinating insights into their design. Their influence on
-      later computing is profound — Unix in particular feels familiar to modern administrators. I sometimes wonder if
-      encountering Ultrix earlier might have steered my career differently.
-    </p>
+      <p>
+        Many of these systems include source code, offering fascinating insights into their design. Their influence on
+        later computing is profound — Unix in particular feels familiar to modern administrators. I sometimes wonder if
+        encountering Ultrix earlier might have steered my career differently.
+      </p>
 
-    <p>
-      The emulator boots with a custom PDP‑11 program that drives its own light patterns. Loaded at address
-      <code>120000</code>, it includes a <b>LIGHTS</b> command that cycles through virtual addresses with WAIT
-      instructions, displaying the contents of R0 and the current instruction address. You can also use <b>BOOT</b> to
-      start guest operating systems, or <b>ODT</b> to launch the Octal Debugging Tool.
-    </p>
+      <p>
+        The emulator boots with a custom PDP‑11 program that drives its own light patterns. Loaded at address
+        <code>120000</code>, it includes a <b>LIGHTS</b> command that cycles through virtual addresses with WAIT
+        instructions, displaying the contents of R0 and the current instruction address. You can also use <b>BOOT</b> to
+        start guest operating systems, or <b>ODT</b> to launch the Octal Debugging Tool.
+      </p>
 
-    <p>
-      Original PDP‑11s had no BIOS. Booting meant toggling in a tiny bootstrap loader from the front panel — unless you
-      were lucky enough to have residual code in magnetic core memory. Below is an example bootstrap for the RK05 disk,
-      where the value at address <code>1002</code> selects the unit (rk0, rk1, rk2, etc.).
-    </p>
+      <p>
+        Original PDP‑11s had no BIOS. Booting meant toggling in a tiny bootstrap loader from the front panel — unless
+        you
+        were lucky enough to have residual code in magnetic core memory. Below is an example bootstrap for the RK05
+        disk,
+        where the value at address <code>1002</code> selects the unit (rk0, rk1, rk2, etc.).
+      </p>
 
-    <pre>
+      <pre>
 <b>Address  Data    Code           Switch commands</b>
                                HALT, 001000, LOAD ADDRESS
 001000   012737  mov #unit,rkda 012737, DEPOSIT
@@ -1103,11 +1275,11 @@
                                001000, LOAD ADDRESS, ENABLE, START
 </pre>
 
-    <p>
-      For fun, here’s a simple “light chaser” program you can toggle in:
-    </p>
+      <p>
+        For fun, here’s a simple “light chaser” program you can toggle in:
+      </p>
 
-    <pre>
+      <pre>
 <b>Address  Data    Code        Switch commands</b>
                             HALT, 001000, LOAD ADDRESS
 001000   012700  mov #1,r0   012700, DEPOSIT
@@ -1118,115 +1290,115 @@
                             001000, LOAD ADDRESS, ENABLE, START
 </pre>
 
-    <p>
-      To restart the emulator’s initial boot code (if not overwritten), use:
-    </p>
+      <p>
+        To restart the emulator’s initial boot code (if not overwritten), use:
+      </p>
 
-    <pre>
+      <pre>
 HALT, 120000, LOAD ADDRESS, ENABLE, START
 </pre>
 
-    <p>
-      Curious how it all works? The source is available on
-      <a href="https://github.com/paulnank/pdp11-js/">GitHub</a>. The main JavaScript files are <code>pdp11.js</code>,
-      <code>fpp.js</code>, and <code>iopage.js</code>.
-    </p>
+      <p>
+        Curious how it all works? The source is available on
+        <a href="https://github.com/paulnank/pdp11-js/">GitHub</a>. The main JavaScript files are <code>pdp11.js</code>,
+        <code>fpp.js</code>, and <code>iopage.js</code>.
+      </p>
 
-    <p><b>Happy emulating!</b></p>
-    <p><i>Paul Nankervis</i></p>
+      <p><b>Happy emulating!</b></p>
+      <p><i>Paul Nankervis</i></p>
 
-    <h3>Guest Operating Systems</h3>
+      <h3>Guest Operating Systems</h3>
 
-    <table style="margin-left:25px; padding:3px;">
-      <thead>
-        <tr>
-          <th>Disk</th>
-          <th>OS</th>
-          <th>Notes</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="disk">RK0</td>
-          <td class="system">Unix V5</td>
-          <td>Boot using: <code>unix</code>, then login as root</td>
-        </tr>
-        <tr>
-          <td class="disk">RK1</td>
-          <td class="system">RT‑11 v4.0</td>
-          <td>The smallest OS here</td>
-        </tr>
-        <tr>
-          <td class="disk">RK2</td>
-          <td class="system">RSTS V06C‑03</td>
-          <td>Login as 1,2 (password SYSTEM) or 11,70 (password PDP)</td>
-        </tr>
-        <tr>
-          <td class="disk">RK3</td>
-          <td class="system">XXDP</td>
-          <td>Diagnostic OS and utilities</td>
-        </tr>
-        <tr>
-          <td class="disk">RK4</td>
-          <td class="system">RT‑11 3B</td>
-          <td>Distribution for RT‑11 Version 3B</td>
-        </tr>
-        <tr>
-          <td class="disk">TM0</td>
-          <td class="system">RSTS 4B‑17</td>
-          <td>Boot ROLLIN from TM0, restore DK0, then reboot. Default login 1,2 (SYSTEM) or 11,70 (PDP).</td>
-        </tr>
-        <tr>
-          <td class="disk">RL0</td>
-          <td class="system">BSD 2.9</td>
-          <td>Boot using: <code>rl(0,0)rlunix</code>. CTRL/D to enter multiuser. Login as root.</td>
-        </tr>
-        <tr>
-          <td class="disk">RL1</td>
-          <td class="system">RSX 11M v3.2</td>
-          <td>Login as 1,2 (SYSTEM)</td>
-        </tr>
-        <tr>
-          <td class="disk">RL2</td>
-          <td class="system">RSTS/E v7.0</td>
-          <td>Login as 1,2 (SYSTEM) or 11,70 (PDP)</td>
-        </tr>
-        <tr>
-          <td class="disk">RL3</td>
-          <td class="system">XXDP</td>
-          <td>Larger diagnostics, including PDP‑11/70 utilities</td>
-        </tr>
-        <tr>
-          <td class="disk">RP0</td>
-          <td class="system">ULTRIX‑11 V3.1</td>
-          <td>CTRL/D to enter multiuser mode. Login as root (no password)</td>
-        </tr>
-        <tr>
-          <td class="disk">RP1</td>
-          <td class="system">BSD 2.11</td>
-          <td>Autoboots into multiuser. Login as root (no password)</td>
-        </tr>
-        <tr>
-          <td class="disk">RP2</td>
-          <td class="system">RSTS/E v9.6</td>
-          <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
-        </tr>
-        <tr>
-          <td class="disk">RP3</td>
-          <td class="system">RSX 11M v4.6</td>
-          <td>Starts logged in as 1,2 (SYSTEM). Other accounts: 200,1 (no password), 11,70 (PDP).</td>
-        </tr>
-        <tr>
-          <td class="disk">RP4</td>
-          <td class="system">RSTS/E v10.1</td>
-          <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
-        </tr>
-      </tbody>
-    </table>
+      <table style="margin-left:25px; padding:3px;">
+        <thead>
+          <tr>
+            <th>Disk</th>
+            <th>OS</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="disk">RK0</td>
+            <td class="system">Unix V5</td>
+            <td>Boot using: <code>unix</code>, then login as root</td>
+          </tr>
+          <tr>
+            <td class="disk">RK1</td>
+            <td class="system">RT‑11 v4.0</td>
+            <td>The smallest OS here</td>
+          </tr>
+          <tr>
+            <td class="disk">RK2</td>
+            <td class="system">RSTS V06C‑03</td>
+            <td>Login as 1,2 (password SYSTEM) or 11,70 (password PDP)</td>
+          </tr>
+          <tr>
+            <td class="disk">RK3</td>
+            <td class="system">XXDP</td>
+            <td>Diagnostic OS and utilities</td>
+          </tr>
+          <tr>
+            <td class="disk">RK4</td>
+            <td class="system">RT‑11 3B</td>
+            <td>Distribution for RT‑11 Version 3B</td>
+          </tr>
+          <tr>
+            <td class="disk">TM0</td>
+            <td class="system">RSTS 4B‑17</td>
+            <td>Boot ROLLIN from TM0, restore DK0, then reboot. Default login 1,2 (SYSTEM) or 11,70 (PDP).</td>
+          </tr>
+          <tr>
+            <td class="disk">RL0</td>
+            <td class="system">BSD 2.9</td>
+            <td>Boot using: <code>rl(0,0)rlunix</code>. CTRL/D to enter multiuser. Login as root.</td>
+          </tr>
+          <tr>
+            <td class="disk">RL1</td>
+            <td class="system">RSX 11M v3.2</td>
+            <td>Login as 1,2 (SYSTEM)</td>
+          </tr>
+          <tr>
+            <td class="disk">RL2</td>
+            <td class="system">RSTS/E v7.0</td>
+            <td>Login as 1,2 (SYSTEM) or 11,70 (PDP)</td>
+          </tr>
+          <tr>
+            <td class="disk">RL3</td>
+            <td class="system">XXDP</td>
+            <td>Larger diagnostics, including PDP‑11/70 utilities</td>
+          </tr>
+          <tr>
+            <td class="disk">RP0</td>
+            <td class="system">ULTRIX‑11 V3.1</td>
+            <td>CTRL/D to enter multiuser mode. Login as root (no password)</td>
+          </tr>
+          <tr>
+            <td class="disk">RP1</td>
+            <td class="system">BSD 2.11</td>
+            <td>Autoboots into multiuser. Login as root (no password)</td>
+          </tr>
+          <tr>
+            <td class="disk">RP2</td>
+            <td class="system">RSTS/E v9.6</td>
+            <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
+          </tr>
+          <tr>
+            <td class="disk">RP3</td>
+            <td class="system">RSX 11M v4.6</td>
+            <td>Starts logged in as 1,2 (SYSTEM). Other accounts: 200,1 (no password), 11,70 (PDP).</td>
+          </tr>
+          <tr>
+            <td class="disk">RP4</td>
+            <td class="system">RSTS/E v10.1</td>
+            <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
+          </tr>
+        </tbody>
+      </table>
 
 
-    <h3>Example boot of Unix V5</h3>
-    <pre>
+      <h3>Example boot of Unix V5</h3>
+      <pre>
 Boot&gt; <b>boot rk0</b>
 @<b>unix</b>
 
@@ -1336,8 +1508,8 @@ c PI via Nilakantha series: 3 + 4/(2*3*4) - 4/(4*5*6) + 4/(6*7*8) ...
 PI is approximately 0.3141592653580503d+01
 #
 </pre>
-    <h3>Example boot of RT11 v4.0</h3>
-    <pre>
+      <h3>Example boot of RT11 v4.0</h3>
+      <pre>
 Boot&gt; <b>boot rk1</b>
 RT-11SJ  V04.00C
 
@@ -1418,8 +1590,8 @@ ERRORS DETECTED:  0
 .<b>RUN RTLEM</b>
 ... attempt to land the lunar module using the mouse as a light pen - goodluck!
 </pre>
-    <h3>Example boot of RSTS V06C-03</h3>
-    <pre>
+      <h3>Example boot of RSTS V06C-03</h3>
+      <pre>
 Boot&gt; <b>boot rk2</b>
 
 RSTS V06C-03 Vixen (DK2)
@@ -1570,8 +1742,8 @@ Run time was 2.7 seconds
 Elapsed time was 2 minutes
 Good morning
 </pre>
-    <h3>Example boot of XXDP</h3>
-    <pre>
+      <h3>Example boot of XXDP</h3>
+      <pre>
 Boot&gt; <b>boot rk3</b>
 
 CHMDKB1 XXDP+ DK MONITOR
@@ -1610,8 +1782,8 @@ END PASS #     5  TOTAL ERRORS SINCE LAST REPORT      0
 AAAAAAAAAAAAAAAAAAAAA
 ...
 </pre>
-    <h3>Example boot of RSTS 4B-17</h3>
-    <pre>
+      <h3>Example boot of RSTS 4B-17</h3>
+      <pre>
 Boot&gt; <b>boot tm0</b>
 
 ROLLIN V07
@@ -1757,8 +1929,8 @@ PI      09:25 AM        24-Mar-75
 
 Ready
 </pre>
-    <h3>Example boot of BSD 2.9</h3>
-    <pre>
+      <h3>Example boot of BSD 2.9</h3>
+      <pre>
 Boot&gt; <b>boot rl0</b>
 :boot
 
@@ -1854,8 +2026,8 @@ drwxrwxrwx 2 root     superuse      48 Feb 18 18:16 usr
 #
 ...
 </pre>
-    <h3>Example boot of RSX 11M v3.2</h3>
-    <pre>
+      <h3>Example boot of RSX 11M v3.2</h3>
+      <pre>
 Boot&gt; <b>boot rl1</b>
 
   RSX-11M V3.2 BL26   1912K  MAPPED
@@ -2052,8 +2224,8 @@ HAVE A NICE DAY
 29-APR-74 00:03 TT0:  LOGGED OFF
 &gt;
 </pre>
-    <h3>Example boot of RSTS/E v7.0</h3>
-    <pre>
+      <h3>Example boot of RSTS/E v7.0</h3>
+      <pre>
 Boot&gt; <b>boot rl2</b>
 
 RSTS V7.0-07 Vixen (DL2)
@@ -2185,8 +2357,8 @@ Elapsed time was 1 minute
 Good morning
 
 </pre>
-    <h3>Example boot of XXDP</h3>
-    <pre>
+      <h3>Example boot of XXDP</h3>
+      <pre>
 Boot&gt; <b>boot rl3</b>
 
 CHMDLD0 XXDP+ DL MONITOR
@@ -2255,8 +2427,8 @@ END PASS #     1  TOTAL ERRORS SINCE LAST REPORT      0
 1THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK 0123456789
 ...
 </pre>
-    <h3>Example boot of ULTRIX-11 System V3.1</h3>
-    <pre>
+      <h3>Example boot of ULTRIX-11 System V3.1</h3>
+      <pre>
 Boot&gt; <b>boot rp0</b>
 
 Sizing Memory...
@@ -2367,8 +2539,8 @@ ULTRIX-11 System V3.1 (vixen)
 
 login:
 </pre>
-    <h3>Example boot of BSD 2.11</h3>
-    <pre>
+      <h3>Example boot of BSD 2.11</h3>
+      <pre>
 Boot&gt; <b>boot rp1</b>
 
 70Boot from xp(0,1,0) at 0176700
@@ -2522,8 +2694,8 @@ Oct 31 09:35:36 vixen syslogd: going down on signal 15
 syncing disks... done
 halting
 </pre>
-    <h3>Example boot of RSTS V9.6</h3>
-    <pre>
+      <h3>Example boot of RSTS V9.6</h3>
+      <pre>
 Boot&gt; <b>boot rp2</b>
 
 RSTS V9.6-11 RSTS   (DB2) INIT V9.6-11
@@ -2708,8 +2880,8 @@ Elapsed time was 2 minutes
 Good morning
 
 </pre>
-    <h3>Example boot of RSX 11M 4.6</h3>
-    <pre>
+      <h3>Example boot of RSX 11M 4.6</h3>
+      <pre>
 Boot&gt; <b>boot rp3</b>
 RSX-11M V4.6 BL56   1912.K MAPPED
 &gt;RED DB3:=SY:
@@ -2841,8 +3013,8 @@ Have a Good Morning
 31-OCT-76 11:13 TT0:  logged off VIXEN
 &gt;
 </pre>
-    <h3>Example boot of RSTS V10.1</h3>
-    <pre>
+      <h3>Example boot of RSTS V10.1</h3>
+      <pre>
 Boot&gt; <b>boot rp4</b>
 
 RSTS V10.1-L RSTS   (DB4) INIT V10.1-0L
@@ -2937,148 +3109,172 @@ There is a small mailbox here.
 
 </pre>
 
-    <h3>Software Sources</h3>
-    <p>
-      The software used in this emulator has been sourced from many places on the Internet and unfortunately many of
-      these seem to have disappeared. If you are looking for something I would suggest the following main sites...
-    <ul>
-      <li>Documentation: <a href='http://bitsavers.org/pdf/dec/pdp11/'>http://bitsavers.org/pdf/dec/pdp11/</a> </li>
-      <li>Software: <a href='http://bitsavers.org/bits/DEC/pdp11/'>http://bitsavers.org/bits/DEC/pdp11/</a> </li>
-      <li>Unix: <a href='https://www.tuhs.org/'>https://www.tuhs.org/</a> </li>
-    </ul>
+      <h3>Software Sources</h3>
+      <p>
+        The software used in this emulator has been sourced from many places on the Internet and unfortunately many of
+        these seem to have disappeared. If you are looking for something I would suggest the following main sites...
+      <ul>
+        <li>Documentation: <a href='http://bitsavers.org/pdf/dec/pdp11/'>http://bitsavers.org/pdf/dec/pdp11/</a> </li>
+        <li>Software: <a href='http://bitsavers.org/bits/DEC/pdp11/'>http://bitsavers.org/bits/DEC/pdp11/</a> </li>
+        <li>Unix: <a href='https://www.tuhs.org/'>https://www.tuhs.org/</a> </li>
+      </ul>
 
 
-    <p><a href='https://github.com/paulnank/pdp11-js/'>Github</a></p>
+      <p><a href='https://github.com/paulnank/pdp11-js/'>Github</a></p>
 
 
-    <script>
-
-      function moveSwitch(id, position) { // -1 up  0 centre   1 down  - will move 5/16 units
-        "use strict";
-        var style = window.getComputedStyle(id, null);
-        id.style.borderTopWidth = 'calc(var(--unitHeight) * ' + (8 + 4 * position) + ')';
-        id.style.borderBottomWidth = 'calc(var(--unitHeight) * ' + (7 - 4 * position) + ')';
+    </div>
+  </div>
+  <script>
+    function switchPage(page) {
+      "use strict";
+      var pages = document.querySelectorAll('.page');
+      var btns = document.querySelectorAll('.nav-btn');
+      for (var i = 0; i < pages.length; i++) {
+        pages[i].classList.remove('active');
       }
-
-      function setSwitch(id, weight) {
-        "use strict";
-        var mask = 1 << weight;
-        CPU.switchRegister ^= mask;
-        moveSwitch(id, (CPU.switchRegister & mask) ? -1 : 0);
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.remove('active');
       }
-
-      function toggleSwitch(id) {
-        "use strict";
-        moveSwitch(id, 1);
-        setTimeout(function () {
-          moveSwitch(id, 0);
-        }, 350);
-      }
-
-      function examineDeposit(data) {
-        var result, autoMask, trapState;
-        if (data < 0) {
-          autoMask = 1; // Examine auto increment mask
-        } else {
-          autoMask = 2; // Deposit auto increment mask
+      document.getElementById('page-' + page).classList.add('active');
+      var btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
+      if (btn) btn.classList.add('active');
+      // Fix printer paper scroll when terminal becomes visible
+      if (page === 'terminal') {
+        var paper = document.getElementById('paper');
+        if (paper && paper.scrollHeight > paper.clientHeight) {
+          paper.scrollTop = paper.scrollHeight - paper.clientHeight;
         }
-        trapState = CPU.trapPSW;
-        CPU.trapPSW = -2; // Disable trap handling
-        if (panel.rotary0 >= 1 && panel.rotary0 <= 6) { // If a virtual address is selected...
-          if (panel.autoIncr & autoMask) {
-            CPU.displayAddress += 2; // auto increment if applicable
+      }
+    }
+
+
+    function moveSwitch(id, position) { // -1 up  0 centre   1 down  - will move 5/16 units
+      "use strict";
+      var style = window.getComputedStyle(id, null);
+      id.style.borderTopWidth = 'calc(var(--unitHeight) * ' + (8 + 4 * position) + ')';
+      id.style.borderBottomWidth = 'calc(var(--unitHeight) * ' + (7 - 4 * position) + ')';
+    }
+
+    function setSwitch(id, weight) {
+      "use strict";
+      var mask = 1 << weight;
+      CPU.switchRegister ^= mask;
+      moveSwitch(id, (CPU.switchRegister & mask) ? -1 : 0);
+    }
+
+    function toggleSwitch(id) {
+      "use strict";
+      moveSwitch(id, 1);
+      setTimeout(function () {
+        moveSwitch(id, 0);
+      }, 350);
+    }
+
+    function examineDeposit(data) {
+      var result, autoMask, trapState;
+      if (data < 0) {
+        autoMask = 1; // Examine auto increment mask
+      } else {
+        autoMask = 2; // Deposit auto increment mask
+      }
+      trapState = CPU.trapPSW;
+      CPU.trapPSW = -2; // Disable trap handling
+      if (panel.rotary0 >= 1 && panel.rotary0 <= 6) { // If a virtual address is selected...
+        if (panel.autoIncr & autoMask) {
+          CPU.displayAddress += 2; // auto increment if applicable
+        }
+        CPU.displayAddress &= 0xffff;
+        CPU.displayAddress |= [0, 0, 0, 0, 0x10000, 0x10000, 0x10000, 0][panel.rotary0];
+        CPU.mmuMode = [0, 0, 1, 3, 3, 1, 0, 0][panel.rotary0];
+        if (data < 0) { // examine (read)
+          result = readWordByVirtual(CPU.displayAddress);
+        } else { // deposit (write)
+          data &= 0xffff; // 16 bits only
+          result = writeWordByVirtual(CPU.displayAddress, data);
+          if (result >= 0) {
+            result = data; // Write return may just be a status
           }
-          CPU.displayAddress &= 0xffff;
-          CPU.displayAddress |= [0, 0, 0, 0, 0x10000, 0x10000, 0x10000, 0][panel.rotary0];
-          CPU.mmuMode = [0, 0, 1, 3, 3, 1, 0, 0][panel.rotary0];
+        }
+        CPU.displayAddress &= 0xffff;
+      } else { // Physical address stuff...
+        CPU.displayAddress &= 0x3fffff; // 22 bits max
+        if (CPU_TYPE !== 70 && CPU.displayAddress >= IOBASE_18BIT) { // For 18 bit CPU map address to 22 bit
+          CPU.displayAddress |= IOBASE_22BIT;
+        }
+        if (panel.autoIncr & autoMask) {
+          if (CPU.displayAddress >= 017777700 && CPU.displayAddress <= 017777717) {
+            CPU.displayAddress++; // register addresses increment only by 1
+            if (CPU.displayAddress >= 017777720) {
+              CPU.displayAddress = 017777700; // and registers loop around! (!)
+            }
+          } else {
+            CPU.displayAddress += 2; // ordinary increment to next word
+          }
+        }
+        CPU.displayAddress &= 0x3fffff; // 22 bits only
+        if (CPU.displayAddress < IOBASE_UNIBUS && ((CPU.displayAddress & 1) || CPU.displayAddress >= MAX_MEMORY)) {
+          CPU.displayAddress |= 0x400000; // Set ADRS ERR light
+        } else {
           if (data < 0) { // examine (read)
-            result = readWordByVirtual(CPU.displayAddress);
+            result = readWordByPhysical(CPU.displayAddress);
           } else { // deposit (write)
             data &= 0xffff; // 16 bits only
-            result = writeWordByVirtual(CPU.displayAddress, data);
+            result = writeWordByPhysical(CPU.displayAddress, data);
             if (result >= 0) {
               result = data; // Write return may just be a status
-            }
-          }
-          CPU.displayAddress &= 0xffff;
-        } else { // Physical address stuff...
-          CPU.displayAddress &= 0x3fffff; // 22 bits max
-          if (CPU_TYPE !== 70 && CPU.displayAddress >= IOBASE_18BIT) { // For 18 bit CPU map address to 22 bit
-            CPU.displayAddress |= IOBASE_22BIT;
-          }
-          if (panel.autoIncr & autoMask) {
-            if (CPU.displayAddress >= 017777700 && CPU.displayAddress <= 017777717) {
-              CPU.displayAddress++; // register addresses increment only by 1
-              if (CPU.displayAddress >= 017777720) {
-                CPU.displayAddress = 017777700; // and registers loop around! (!)
-              }
             } else {
-              CPU.displayAddress += 2; // ordinary increment to next word
-            }
-          }
-          CPU.displayAddress &= 0x3fffff; // 22 bits only
-          if (CPU.displayAddress < IOBASE_UNIBUS && ((CPU.displayAddress & 1) || CPU.displayAddress >= MAX_MEMORY)) {
-            CPU.displayAddress |= 0x400000; // Set ADRS ERR light
-          } else {
-            if (data < 0) { // examine (read)
-              result = readWordByPhysical(CPU.displayAddress);
-            } else { // deposit (write)
-              data &= 0xffff; // 16 bits only
-              result = writeWordByPhysical(CPU.displayAddress, data);
-              if (result >= 0) {
-                result = data; // Write return may just be a status
-              } else {
-                if (CPU.displayAddress == 017777776) { // write to PSW
-                  result = readPSW(); // PSW write return is a false error
-                }
+              if (CPU.displayAddress == 017777776) { // write to PSW
+                result = readPSW(); // PSW write return is a false error
               }
             }
           }
         }
-        CPU.trapPSW = trapState; // Reenable trap handling
-        writePSW(CPU.PSW); // Restore mode (CPU.mmuMode)
-        if (result >= 0) {
-          panel.autoIncr = autoMask; // Set auto increment for next time
-          CPU.displayDataPaths = result;
-        } else {
-          panel.autoIncr = 0;
-        }
       }
-
-      const CPU_TYPE = 70; // This is a PDP 11/70
-
-    </script>
-    <script src='g60printer.js'></script>
-    <script src="https://unpkg.com/fzstd@0.1.1"></script>
-    <script src='bootcode.js'></script>
-    <script src='vt52.js'></script>
-    <script src='pdp11.js'></script>
-    <script src='fpp.js'></script>
-    <script src='iopage.js'></script>
-    <script src='vt11.js'></script>
-    <script>
-      // Initialize Google60 Printer for console output
-      var g60printer = null;
-      var g60Console = null;
-
-      function g60ConsoleWrite(code) {
-        if (g60Console) g60Console.writeChar(code);
+      CPU.trapPSW = trapState; // Reenable trap handling
+      writePSW(CPU.PSW); // Restore mode (CPU.mmuMode)
+      if (result >= 0) {
+        panel.autoIncr = autoMask; // Set auto increment for next time
+        CPU.displayDataPaths = result;
+      } else {
+        panel.autoIncr = 0;
       }
+    }
 
-      function initG60Printer() {
-        if (g60printer) return;
-        g60printer = new G60Printer('g60printer');
-        g60Console = createG60Console(g60printer);
-        // Focus the input area
-        var inp = document.getElementById('g60printer_input');
-        if (inp) setTimeout(function () { inp.focus(); }, 100);
-      }
+    const CPU_TYPE = 70; // This is a PDP 11/70
 
-      // Initialize printer immediately (Audio elements work without gesture)
-      initG60Printer();
+  </script>
+  <script src='g60printer.js'></script>
+  <script src="https://unpkg.com/fzstd@0.1.1"></script>
+  <script src='bootcode.js'></script>
+  <script src='vt52.js'></script>
+  <script src='pdp11.js'></script>
+  <script src='fpp.js'></script>
+  <script src='iopage.js'></script>
+  <script src='vt11.js'></script>
+  <script>
+    // Initialize Google60 Printer for console output
+    var g60printer = null;
+    var g60Console = null;
 
-      boot();
-    </script>
+    function g60ConsoleWrite(code) {
+      if (g60Console) g60Console.writeChar(code);
+    }
+
+    function initG60Printer() {
+      if (g60printer) return;
+      g60printer = new G60Printer('g60printer');
+      g60Console = createG60Console(g60printer);
+      // Focus the input area
+      var inp = document.getElementById('g60printer_input');
+      if (inp) setTimeout(function () { inp.focus(); }, 100);
+    }
+
+    // Initialize printer immediately (Audio elements work without gesture)
+    initG60Printer();
+
+    boot();
+  </script>
 </body>
 
 </html>
