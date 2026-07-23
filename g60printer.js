@@ -75,7 +75,7 @@
         var delayCharUp = 6;
         var delayEmptyLine = 50;
         var headIdlePos = -3;
-        var headOffset = 16;
+        var headOffset = 30;
         var lineHeight = 16;
         var charWidth = 7;
         var headBaseY = 8;
