@@ -758,9 +758,9 @@
         <span class="nav-icon">&#9673;</span>
         Panel
       </div>
-      <div class="nav-btn" data-page="terminal" onclick="switchPage('terminal')">
+      <div class="nav-btn" data-page="teletype" onclick="switchPage('teletype')">
         <span class="nav-icon">&#9632;</span>
-        Terminal
+        Teletype
       </div>
       <div class="nav-btn" data-page="instructions" onclick="switchPage('instructions')">
         <span class="nav-icon">&#9776;</span>
@@ -1218,7 +1218,7 @@
         </select>
       </div>
     </div>
-    <div class="page" id="page-terminal">
+    <div class="page" id="page-teletype">
       <p class=clear><br>
       <div id="g60printer"></div>
       <div id="punchkeypane">
@@ -3177,8 +3177,8 @@ There is a small mailbox here.
       document.getElementById('page-' + page).classList.add('active');
       var btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
       if (btn) btn.classList.add('active');
-      // Fix printer paper scroll when terminal becomes visible
-      if (page === 'terminal') {
+      // Fix printer paper scroll when teletype page becomes visible
+      if (page === 'teletype') {
         var paper = document.getElementById('paper');
         if (paper && paper.scrollHeight > paper.clientHeight) {
           paper.scrollTop = paper.scrollHeight - paper.clientHeight;
@@ -3546,9 +3546,9 @@ There is a small mailbox here.
         document.addEventListener('keydown', function (e) {
           if (/^(input|textarea)$/i.test(e.target.tagName)) return;
 
-          // Only intercept keyboard when the Terminal page is active —
+          // Only intercept keyboard when the Teletype page is active —
           // on Panel and Info pages browser shortcuts (Ctrl+F etc.) must work normally.
-          var termPage = document.getElementById('page-terminal');
+          var termPage = document.getElementById('page-teletype');
           if (!termPage || !termPage.classList.contains('active')) return;
 
           // Special keys: Enter, Backspace, Tab

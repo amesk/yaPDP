@@ -13,9 +13,12 @@
 
     // ====================================================================
     // AudioManager
-    // Uses keypunch2.mp3 (short punch) for single character print,
+    // Uses keypunch2.mp3 (cloned per-play) for single character print,
     // teletype33-print.mp3 (long) for animated line printing,
     // teletype33-lf.mp3 for line feed.
+    //
+    // Cloning the Audio element for each play avoids overlap/restart issues:
+    // each clone plays independently once and is garbage-collected.
     // ====================================================================
     var G60Audio = {
         _sounds: {},
@@ -25,6 +28,21 @@
                 var audio = new Audio(url);
                 audio.preload = 'auto';
                 this._sounds[name] = audio;
+            } catch(e) {}
+        },
+
+        /**
+         * Play a sound by cloning the pre-loaded Audio element.
+         * The clone plays independently, so rapid calls never collide.
+         */
+        playCloned: function(name) {
+            try {
+                var s = this._sounds[name];
+                if (s) {
+                    var clone = s.cloneNode();
+                    clone.volume = 0.5;
+                    clone.play().catch(function() {});
+                }
             } catch(e) {}
         },
 
@@ -68,6 +86,13 @@
             delayFeed, feedDy, topSpacerVisible, lastTime,
             lastLineFeed, afId1, afId2, afId3,
             spacerCurrentHeight;
+
+        // Character pacing state (authentic teletype speed)
+        var charPrintDelay = 30;    // ms per character (~33 cps, compromise between
+                                    //   authentic ASR 33 feel and practical usability)
+        var charBuffer = [];        // pending characters to print
+        var charPrintTimer = null;  // timer ID for paced printing
+        var CHAR_LF = '\n';         // sentinel marker in buffer to trigger a line feed
 
         // Printer configuration
         var delayBlank = 7;
@@ -174,18 +199,18 @@
         // ================================================================
 
         /**
-         * printChar(c) - Print a single character at the current cursor
-         * position without advancing to the next line.
+         * doPrintChar(c) - Internal: render a single character immediately.
+         * This is the actual rendering logic, separated from the pacing queue.
          */
-        function printChar(c) {
+        function doPrintChar(c) {
             if (!currentLineEl) {
                 currentLineEl = document.createElement('p');
                 printArea.appendChild(currentLineEl);
                 currentCharPos = 0;
             }
 
-            // Play short punch sound for single character
-            G60Audio.play('punch');
+            // Play short punch sound (cloned Audio element per play)
+            G60Audio.playCloned('punch');
 
             // Create a span for the character
             var span = document.createElement('span');
@@ -204,9 +229,64 @@
         }
 
         /**
-         * println() - Complete the current line and move to the next line
+         * processCharBuffer() - Called by the pacing timer to render one item.
+         * Renders a single character or performs a line feed, then schedules
+         * the next timer if more items remain in the buffer.
+         * Always clears charPrintTimer first so that synchronous calls to
+         * printChar/println during the same CPU slice set a NEW timer.
          */
-        function println() {
+        function processCharBuffer() {
+            // Clear timer reference so the next arrival starts a fresh timer
+            charPrintTimer = null;
+
+            if (charBuffer.length === 0) return;
+
+            var item = charBuffer.shift();
+
+            if (item === CHAR_LF) {
+                // Line feed marker: execute the println logic
+                doPrintln();
+            } else {
+                // Regular character: render it
+                doPrintChar(item);
+            }
+
+            // If more items queued, schedule the next one
+            if (charBuffer.length > 0) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            }
+        }
+
+        /**
+         * printChar(c) - Enqueue a character for paced printing at teletype speed.
+         * Characters are buffered and rendered one per charPrintDelay interval
+         * by the pacing timer.  The first character to arrive starts the timer.
+         */
+        function printChar(c) {
+            charBuffer.push(c);
+            if (!charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            }
+        }
+
+        /**
+         * flushCharBuffer() - Immediately discard all buffered items.
+         * Used on reset/stop to clear pending output.
+         */
+        function flushCharBuffer() {
+            if (charPrintTimer) {
+                clearTimeout(charPrintTimer);
+                charPrintTimer = null;
+            }
+            charBuffer = [];
+        }
+
+        /**
+         * doPrintln() - Internal: execute the line feed / new paragraph logic.
+         * This is the same as the original println() body, extracted so it can
+         * be scheduled as a buffered item in the pacing queue.
+         */
+        function doPrintln() {
             // Start a new paragraph (line)
             currentLineEl = document.createElement('p');
             printArea.appendChild(currentLineEl);
@@ -253,6 +333,18 @@
 
             // Move print head to idle position
             setHeadPos(headIdlePos, false);
+        }
+
+        /**
+         * println() - Enqueue a line feed in the pacing queue.
+         * The line feed runs after all preceding characters in the buffer
+         * have been printed at teletype speed.
+         */
+        function println() {
+            charBuffer.push(CHAR_LF);
+            if (!charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            }
         }
 
         /**
@@ -484,6 +576,13 @@
         }
 
         function resetPrinter(unloading) {
+            // Cancel pending character pacing
+            if (charPrintTimer) {
+                clearTimeout(charPrintTimer);
+                charPrintTimer = null;
+            }
+            charBuffer = [];
+
             if (topSpacer) {
                 topSpacer.className = '';
                 // Set initial spacer height via JS for gradual reduction
@@ -525,6 +624,13 @@
         }
 
         function stopPrinter() {
+            // Cancel pending character pacing
+            if (charPrintTimer) {
+                clearTimeout(charPrintTimer);
+                charPrintTimer = null;
+            }
+            charBuffer = [];
+
             if (timer) clearTimeout(timer);
             if (timer2) clearTimeout(timer2);
             if (afId1 && cancelReqAnimFrame) cancelReqAnimFrame(afId1);
