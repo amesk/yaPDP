@@ -604,10 +604,6 @@
       min-height: 100vh;
     }
 
-    .page.active {
-      overflow-y: auto !important;
-    }
-
     .app-sidebar {
       width: 78px;
       min-width: 78px;
@@ -693,12 +689,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      overflow-y: auto;
     }
 
     /* Instructions page — uses block layout + max-width for readability */
     #page-instructions.active {
       display: block;
+      overflow-y: auto;
       color: #e0d8c8;
       max-width: 960px;
       margin: 0 auto;
