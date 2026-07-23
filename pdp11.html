@@ -3329,6 +3329,8 @@ There is a small mailbox here.
         },
         {
           top: 44, left: 20, keys: [
+            { label: 'CTRL', cls: 'func', ctrl: true },
+            null,
             ['Q'], ['W'], ['E'], ['R'], ['T'], ['Y'],
             ['U'], ['I'], ['O', '_'], ['P', '@'],
             null, { label: 'DISCARD', code: 8, cls: 'func' }
@@ -3357,6 +3359,7 @@ There is a small mailbox here.
       ];
 
       var shifted = false;
+      var ctrlHeld = false;
 
       function buildKeyboard() {
         var kbd = document.getElementById('punchkeyboard');
@@ -3409,6 +3412,33 @@ There is a small mailbox here.
 
               kbd.appendChild(el);
               bgx += 37;
+              continue;
+            }
+
+            if (def.ctrl === true) {
+              // ---- CTRL key: text label over sprite body (no keyface) ----
+              var el = document.createElement('div');
+              el.className = 'key';
+              var bg = document.createElement('div');
+              bg.className = 'keybg';
+              el.appendChild(bg);
+              var label = document.createElement('span');
+              label.className = 'keylabel_ctrl';
+              label.textContent = def.label;
+              el.appendChild(label);
+              el.style.left = pos + 'px';
+              el.style.top = row.top + 'px';
+              el._ctrl = true;
+              el.id = 'key_ctrl';
+
+              el.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                ctrlHeld = !ctrlHeld;
+                updateCtrlVisual();
+              });
+
+              kbd.appendChild(el);
+              // Do NOT increment bgx — keep sprite positions aligned for subsequent keys
               continue;
             }
 
@@ -3475,6 +3505,11 @@ There is a small mailbox here.
               if (!this.classList.contains('key_down')) return;
               this.classList.remove('key_down');
               var send = (shifted && this._shiftCode) ? this._shiftCode : this._code;
+              if (ctrlHeld) {
+                send = send & 0x1F;        // Ctrl clears bits 6 and 7
+                ctrlHeld = false;
+                updateCtrlVisual();
+              }
               sendChar(send);
               if (shifted && this._shiftLabel) {
                 shifted = false;
@@ -3500,6 +3535,12 @@ There is a small mailbox here.
         var el2 = document.getElementById('key_shift_2');
         if (el1) el1.className = 'key' + (shifted ? ' key_down' : '');
         if (el2) el2.className = 'key' + (shifted ? ' key_down' : '');
+      }
+
+      function updateCtrlVisual() {
+        // Ctrl key uses key_down class for pressed visual
+        var el = document.getElementById('key_ctrl');
+        if (el) el.className = 'key' + (ctrlHeld ? ' key_down' : '');
       }
 
       // Physical keyboard handlers
