@@ -267,12 +267,14 @@
 /* ==================================================================
    Google60-style punch keyboard for PDP-11 terminal input
    Placed below the line printer in the terminal page.
+   Sprite-based 3D keys (keys.png + keyfaces.png) matching the
+   original Google60 keypunch keyboard.
    ================================================================== */
 
 #punchkeypane {
     position: relative;
     width: 940px;
-    height: 215px;
+    height: 240px;
     background-color: #3a1018;
     background-image: url('assets/images/keyboardbg.jpg');
     background-repeat: repeat-x;
@@ -288,77 +290,73 @@
     left: 180px;
 }
 
-/* Base key button — rounded retro keypunch style */
-#punchkeyboard .g60kbd-key {
+/* ---- Sprite-based keys (Google60 style) ---- */
+
+#punchkeyboard .key {
     position: absolute;
     width: 38px;
-    height: 36px;
-    padding: 0;
-    margin: 0;
-    border: none;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at 50% 35%, #f0e8d8 0%, #d8d0be 35%, #b8b0a0 65%, #a09888 100%);
-    color: #1a1a1a;
-    font-family: 'Courier New', 'Lucida Console', monospace;
-    font-size: 12px;
-    font-weight: bold;
-    line-height: 36px;
-    text-align: center;
+    height: 38px;
     cursor: default;
-    box-shadow:
-        0 3px 6px rgba(0, 0, 0, 0.5),
-        0 1px 0 rgba(255, 255, 255, 0.3) inset,
-        0 -2px 3px rgba(0, 0, 0, 0.15) inset;
-    user-select: none;
-    outline: none;
-    -webkit-user-select: none;
-    -webkit-appearance: none;
-    appearance: none;
 }
 
-/* Pressed state — key sinks in */
-#punchkeyboard .g60kbd-key.g60kbd-down {
-    background: radial-gradient(ellipse at 50% 40%, #c8c0b0 0%, #b0a898 40%, #989080 70%, #888070 100%);
-    box-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.5),
-        0 1px 0 rgba(255, 255, 255, 0.15) inset,
-        0 -1px 2px rgba(0, 0, 0, 0.2) inset;
-    margin-top: 2px;
+/* Key 3D background sprite (keys.png) */
+#punchkeyboard .key .keybg {
+    position: absolute;
+    width: 45px;
+    height: 58px;
+    left: -4px;
+    top: -12px;
+    background-image: url('assets/images/keys.png');
+    background-repeat: no-repeat;
+    background-position: 0 0;
 }
 
-/* Space bar — elongated rounded pill */
-#punchkeyboard .g60kbd-space {
-    width: 150px;
-    height: 32px;
-    border-radius: 18px;
-    background: radial-gradient(ellipse at 50% 35%, #e8e0d0 0%, #d0c8b8 35%, #b8b0a0 65%, #a8a090 100%);
-    line-height: 32px;
+/* Key face character sprite (keyfaces.png) */
+#punchkeyboard .key .keyface {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 37px;
+    height: 35px;
+    z-index: 2;
+    background-image: url('assets/images/keyfaces.png');
+    background-repeat: no-repeat;
+    pointer-events: none;
 }
 
-/* Function keys (DISCARD, RETURN) */
-#punchkeyboard .g60kbd-func {
-    width: 48px;
-    height: 32px;
-    font-size: 7px;
-    line-height: 32px;
-    background: radial-gradient(ellipse at 50% 35%, #d8d0c0 0%, #c0b8a8 35%, #a8a090 65%, #989080 100%);
+/* Pressed state: shift keybg sprite down, keyface shifts down */
+#punchkeyboard .key:active .keybg,
+#punchkeyboard .key.key_down .keybg {
+    background-position: 0 -59px !important;
 }
 
-/* Shift (PICS) key */
-#punchkeyboard .g60kbd-shift {
-    width: 42px;
-    height: 32px;
-    font-size: 8px;
-    line-height: 32px;
-    background: radial-gradient(ellipse at 50% 35%, #d8d0c0 0%, #c0b8a8 35%, #a8a090 65%, #989080 100%);
+#punchkeyboard .key:active .keyface,
+#punchkeyboard .key.key_down .keyface {
+    top: 4px;
 }
 
-/* Shift active state — lit up amber/gold */
-#punchkeyboard .g60kbd-shift.g60kbd-shift-on {
-    background: radial-gradient(ellipse at 50% 35%, #e8d090 0%, #c8a850 35%, #a08830 65%, #807020 100%);
-    color: #fff0c0;
-    box-shadow:
-        0 3px 6px rgba(0, 0, 0, 0.5),
-        0 1px 0 rgba(255, 220, 100, 0.4) inset,
-        0 -2px 3px rgba(0, 0, 0, 0.2) inset;
+/* ---- Space bar (sprite-based) ---- */
+
+#punchkeyboard .key_blank {
+    position: absolute;
+    width: 187px;
+    height: 35px;
+    cursor: pointer;
+}
+
+#punchkeyboard .key_blank .key_blank_bg {
+    position: absolute;
+    width: 195px;
+    height: 58px;
+    left: -4px;
+    top: -12px;
+    background-image: url('assets/images/keys.png');
+    background-repeat: no-repeat;
+    background-position: -46px 0;
+    pointer-events: none;
+}
+
+#punchkeyboard .key_blank:active .key_blank_bg,
+#punchkeyboard .key_blank_down .key_blank_bg {
+    background-position: -46px -59px !important;
 }
