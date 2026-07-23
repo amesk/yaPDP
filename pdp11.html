@@ -3549,6 +3549,11 @@ There is a small mailbox here.
         document.addEventListener('keydown', function (e) {
           if (/^(input|textarea)$/i.test(e.target.tagName)) return;
 
+          // Only intercept keyboard when the Terminal page is active —
+          // on Panel and Info pages browser shortcuts (Ctrl+F etc.) must work normally.
+          var termPage = document.getElementById('page-terminal');
+          if (!termPage || !termPage.classList.contains('active')) return;
+
           // Special keys: Enter, Backspace, Tab
           var code = e.keyCode || e.which;
           if (code === 13) { sendDL([13]); e.preventDefault(); return; }
