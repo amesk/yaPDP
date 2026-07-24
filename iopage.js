@@ -888,8 +888,12 @@ function dl11(vt52Unit, deviceVector) {
     }
 
     // Expose globally for the visual punch-keyboard (and inline handlers)
+    // Unit 0 → global dlReceiveQueue (console, used by Teletype page)
+    // Unit 1 → global dlReceiveQueue1 (VT52 page)
     if (unit === 0) {
         window.dlReceiveQueue = dlReceiveQueue;
+    } else if (unit === 1) {
+        window.dlReceiveQueue1 = dlReceiveQueue;
     }
 
     // --- Typeahead queue service routine ---
@@ -938,6 +942,12 @@ function dl11(vt52Unit, deviceVector) {
         // Physical keyboard input is captured globally by g60Keyboard.init().
         if (unit === 0) {
             return null; // no textarea needed
+        }
+
+        // If VT52 terminal is already initialized (e.g., on VT52 page with canvas),
+        // do NOT create a duplicate UI. The global vt52Get() checks the VT map.
+        if (typeof window.vt52Get === 'function' && window.vt52Get(unit)) {
+            return document.getElementById(`tty${unit}_textarea`);
         }
 
         // Original behavior for tty1, tty2, etc.

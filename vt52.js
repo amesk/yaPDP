@@ -318,7 +318,8 @@
         // ============================================================================
 
         constructor({ unit, receiveRoutine, textArea, screenCanvas,
-                      rows = DEFAULT_ROWS, cols = DEFAULT_COLS }) {
+                      rows = DEFAULT_ROWS, cols = DEFAULT_COLS,
+                      allowCanvas = false, noHardcopyFallback = false }) {
 
             // External wiring
             this.unit = unit;
@@ -371,7 +372,8 @@
                 state: 0      // 0 = initial, -n = waiting for n chars, +n = CSI parameter at n
             };
 
-            this.allowCanvas = false;   // not for the masses - canvas allows attributes like blinking, reverse...
+            this.allowCanvas = allowCanvas;   // canvas mode now configurable via options
+            this.noHardcopyFallback = noHardcopyFallback;  // set true to disable auto-switch to textarea (VT52 CRT)
             this.debug = false;
 
             // -------------------------------------------------------------------------
@@ -1152,7 +1154,8 @@
                     this.scrollUp(1);
 
                     // Optional: auto‑hardcopy fallback when bottom of screen scrolls
-                    if (!this.modes.keypad && this.cursorRow === this.rows - 1) {
+                    // Disabled when noHardcopyFallback is set (e.g., for VT52 CRT terminal)
+                    if (!this.noHardcopyFallback && !this.modes.keypad && this.cursorRow === this.rows - 1) {
                         this.enterHardcopyMode();
                     }
                 }
@@ -1835,13 +1838,17 @@
     // These functions are attached to window for easy integration with
     // emulators, PDP‑11 simulators, or browser‑based DEC tools.
     // ============================================================================
-    function vt52Initialize(unit, receiveRoutine, textArea, screenCanvas) {
-        VT.set(unit, new Terminal({
+    function vt52Initialize(unit, receiveRoutine, textArea, screenCanvas, options) {
+        VT.set(unit, new Terminal(Object.assign({
             unit,
             receiveRoutine,
             textArea,
             screenCanvas
-        }));
+        }, options || {})));
+    }
+
+    function vt52Get(unit) {
+        return VT.get(unit);
     }
 
     function vt52Write(unit, data) {
@@ -1858,5 +1865,6 @@
     }
 
     window.vt52Initialize = vt52Initialize;
+    window.vt52Get        = vt52Get;
     window.vt52Write      = vt52Write;
 })();
