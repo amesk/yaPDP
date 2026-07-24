@@ -539,20 +539,15 @@ function setByteNZVC(result, flagV) {
 //   PSW, PC, stack, and error flags across the emulator.
 
 
-var trapNestLevel = 0;
 function trap(vector, errorMask) {
     "use strict";
-    if (++trapNestLevel > 4) {
-        console.error("TRAP_RECURSION: v=" + vector.toString(8) + " tPSW=" + CPU.trapPSW.toString(8) + " R6=" + CPU.registerVal[6].toString(8) + " PC=" + CPU.registerVal[7].toString(8) + " mode=" + CPU.mmuMode + " mmuEn=" + CPU.mmuEnable.toString(8));
-        throw new Error("TRAP_RECURSION");
-    }
     let newPC, newPSW, doubleTrap = 0;
     if (CPU.trapPSW > -2) { // console mode doesn't actually do all the regular trap stuff
         if (CPU.trapPSW < 0) {
             CPU.trapMask = 0; // No other traps unless we cause one here
             CPU.trapPSW = readPSW(); // Remember original PSW
         } else {
-            if (!CPU.mmuMode) {
+            if (CPU.mmuMode < 2) { // Kernel (0) or Supervisor (1) — double trap handling
                 vector = 4;
                 doubleTrap = 1;
             }
@@ -582,7 +577,6 @@ function trap(vector, errorMask) {
         CPU.displayPhysical |= 0x400000; // All CPU error flags set ADRS ERR light
         CPU.CPU_Error |= errorMask & 0xfc;
     }
-    trapNestLevel--;
     return -1; // signal that a trap has occurred
 }
 
