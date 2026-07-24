@@ -21,7 +21,28 @@ var iopage = (function() {
     var devicePoll  = [];                 // poll() handlers (sorted by priority)
     var deviceAccess = new Array(0o17777 >>> 3); // access() handlers by slot
 
+    // Pending callback queue — ensures diskIO callbacks execute
+    // in CPU context (pdp11Processor loop), not in microtask context.
+    var pendingCallbacks = [];
+
+    function scheduleCallback(fn) {
+        // Collect all arguments beyond the function reference
+        var args = Array.prototype.slice.call(arguments, 1);
+        pendingCallbacks.push({ fn: fn, args: args });
+    }
+
+    function processPendingCallbacks() {
+        while (pendingCallbacks.length) {
+            var item = pendingCallbacks.shift();
+            item.fn.apply(null, item.args);
+        }
+    }
+
     return {
+        // Schedule a callback for execution in CPU context
+        scheduleCallback: scheduleCallback,
+        // Process pending diskIO callbacks (called from pdp11Processor)
+        processPendingCallbacks: processPendingCallbacks,
 
         // ------------------------------------------------------------
         // access() — dispatch Unibus I/O reads/writes
@@ -1594,13 +1615,13 @@ async function diskIO(controlBlock, operation, position, address, count, options
                 case OP_CHECK: // Compare memory with cache
                     data = busReadWord(address);
                     if (data < 0) {
-                        controlBlock.callback(controlBlock, 2, position, address, count, options);
+                        iopage.scheduleCallback(controlBlock.callback, controlBlock, 2, position, address, count, options);
                         return;
                     }
                     if (operation === OP_WRITE) {
                         controlBlock.cache[block][offset >>> 1] = data;
                     } else if (data !== controlBlock.cache[block][offset >>> 1]) {
-                        controlBlock.callback(controlBlock, 3, position, address, count, options);
+                        iopage.scheduleCallback(controlBlock.callback, controlBlock, 3, position, address, count, options);
                         return;
                     }
                     address += 2; position += 2; count -= 2;
@@ -1610,13 +1631,13 @@ async function diskIO(controlBlock, operation, position, address, count, options
                     data = controlBlock.cache[block][offset >>> 1];
                     if (count > 1) {
                         if (busWriteWord(address, data) < 0) {
-                            controlBlock.callback(controlBlock, 2, position, address, count, options);
+                            iopage.scheduleCallback(controlBlock.callback, controlBlock, 2, position, address, count, options);
                             return;
                         }
                         address += 2; position += 2; count -= 2;
                     } else {
                         if (writeByteByPhysical(mapUnibus(address), data & 0xFF) < 0) {
-                            controlBlock.callback(controlBlock, 2, position, address, count, options);
+                            iopage.scheduleCallback(controlBlock.callback, controlBlock, 2, position, address, count, options);
                             return;
                         }
                         address += 1; position += 2; count--;
@@ -1646,13 +1667,13 @@ async function diskIO(controlBlock, operation, position, address, count, options
             await fetchBlock(controlBlock, block);
             await diskIO(controlBlock, operation, position, address, count, options); // Resume after fetch
         } catch (err) {
-            controlBlock.callback(controlBlock, 9, position, address, count, options); // Network/fetch error
+            iopage.scheduleCallback(controlBlock.callback, controlBlock, 9, position, address, count, options); // Network/fetch error
         }
         return;
     }
 
     // --- Completion ---
-    controlBlock.callback(controlBlock, 0, position, address, count, options); // Success
+    iopage.scheduleCallback(controlBlock.callback, controlBlock, 0, position, address, count, options); // Success
 }
 
 

@@ -1329,6 +1329,8 @@ function pdp11Processor() {
             loopCount = 2000;
             dst = 0;
             do {
+                // Process pending diskIO callbacks (from async fetch completion)
+                iopage.processPendingCallbacks();
                 // check if an interrupt has been requested - with a one instruction delay after SPL (!)
                 if (CPU.interruptRequested) {
                     if (!(--CPU.interruptRequested)) {
