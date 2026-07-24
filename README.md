@@ -2,8 +2,6 @@
 
 ![PDP‑11/70 Front Panel](assets/pdp1170-large.png)
 
-> *Also available as a [PDP‑11/45 version](https://paulnank.github.io/pdp11-js/pdp11-45.html).*
-
 ---
 
 ## Foreword: A Personal Note
@@ -26,7 +24,7 @@ Welcome to the machine.
 
 ## About This Project
 
-This is a **PDP‑11/70** (and **PDP‑11/45**) emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just open the page and you're standing in front of a DEC minicomputer.
+This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just open the page and you're standing in front of a DEC minicomputer.
 
 ### What makes it special
 
@@ -42,7 +40,6 @@ This is a **PDP‑11/70** (and **PDP‑11/45**) emulator written entirely in Jav
 ### Live Demo
 
 - [**PDP‑11/70**](https://paulnank.github.io/pdp11-js/pdp11.html)
-- [**PDP‑11/45**](https://paulnank.github.io/pdp11-js/pdp11-45.html)
 
 ---
 

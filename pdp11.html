@@ -510,84 +510,130 @@
       </div>
     </div>
     <div class="page" id="page-instructions">
-      <h2>PDP‑11/70 Emulator</h2>
+      <h2>PDP‑11 Web Emulator — with Authentic Front Panel & ASR 33 Teletype</h2>
 
       <p>
-        This emulator began as a personal project. Years ago I was a programmer on RSTS/E running on a PDP‑11/45, and
-        I
-        vividly remembered the console’s idle loop light pattern — but not quite how it looked. With real hardware
-        long
-        gone, I decided to recreate it in software.
+        <img src="assets/pdp1170-large.png" alt="PDP‑11/70 Front Panel" style="max-width:100%; height:auto;">
+      </p>
+
+      <hr>
+
+      <h3>Foreword: A Personal Note</h3>
+
+      <p>
+        I first saw DEC minicomputers as a child at my parents' workplace. The blinking lights, the whir of disk
+        drives, the smell of ozone and paper — it left an impression that never faded.
       </p>
 
       <p>
-        My initial plan was to emulate the PDP‑11/45, but the expanded memory of the PDP‑11/70 (nearly 4 MB!) proved
-        irresistible. The result was a
-        <a href="https://paulnank.github.io/pdp11-js/pdp11.html">PDP‑11/70 emulator</a>, later joined by a
-        <a href="https://paulnank.github.io/pdp11-js/pdp11-45.html">PDP‑11/45</a> version and even a
-        <a href="https://skn.noip.me/pdp10/pdp10.html">PDP‑10</a>.
+        My real hands‑on encounter came later, when I found myself in front of the Soviet clones of DEC hardware —
+        the <b>SM‑4</b> and <b>SM‑1420</b> — running <b>RSX‑11M</b>. And with them came C. The language that lets you
+        feel the machine. It was love at first sight.
       </p>
 
       <p>
-        The core objective was met: I can now see the RSTS/E console light pattern again. Interestingly, later
-        releases
-        (such as v9.6) changed the pattern, and other operating systems have their own distinctive styles. RSX and BSD
-        2.11 show lively variations, while Unix V5 and Ultrix keep the lights almost static, reflecting heavy use of
-        WAIT
-        mode.
+        That was forty years ago.
       </p>
 
       <p>
-        Collecting the operating systems themselves was a challenge. One highlight was tracking down RSTS/E V06C,
-        which
-        has its own
-        <a href="https://paulnank.github.io/pdp11-js/RSTSv06c.html">story</a>.
+        I went on to become a professional programmer, eventually leading large projects. But the feeling of powering
+        up an SM‑4 with my own hands, watching the console lights dance, then walking to the next room to sit at a
+        terminal — that stayed with me. I've been trying to bring it back ever since.
       </p>
 
       <p>
-        Many of these systems include source code, offering fascinating insights into their design. Their influence on
-        later computing is profound — Unix in particular feels familiar to modern administrators. I sometimes wonder
-        if
-        encountering Ultrix earlier might have steered my career differently.
+        I never got to run <b>real UNIX</b> on those machines. The Soviet replicas lived under RSX‑11M, and by the
+        time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But decades
+        later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot Unix V5,
+        BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
       </p>
 
       <p>
-        The emulator boots with a custom PDP‑11 program that drives its own light patterns. Loaded at address
-        <code>120000</code>, it includes a <b>LIGHTS</b> command that cycles through virtual addresses with WAIT
-        instructions, displaying the contents of R0 and the current instruction address. You can also use <b>BOOT</b>
-        to
-        start guest operating systems, or <b>ODT</b> to launch the Octal Debugging Tool.
+        This emulator is the result. A fully fledged PDP‑11/70 (and /45) emulator that runs right in your browser,
+        with an authentic front panel and a connected <b>ASR 33 teletype</b> — the operator's console I always dreamed
+        of having next to my desk.
       </p>
 
       <p>
-        Original PDP‑11s had no BIOS. Booting meant toggling in a tiny bootstrap loader from the front panel — unless
-        you
-        were lucky enough to have residual code in magnetic core memory. Below is an example bootstrap for the RK05
-        disk,
-        where the value at address <code>1002</code> selects the unit (rk0, rk1, rk2, etc.).
+        Welcome to the machine.
       </p>
 
-      <pre>
-<b>Address  Data    Code           Switch commands</b>
-                               HALT, 001000, LOAD ADDRESS
-001000   012737  mov #unit,rkda 012737, DEPOSIT
-001002   000000                 000000, DEPOSIT (020000 for rk1, 040000 for rk2, etc)
-001004   177412                 177412, DEPOSIT
-001006   012700  mov #rkwc,r0   012700, DEPOSIT
-001010   177406                 177406, DEPOSIT
-001012   012710  mov #-256,(r0) 012710, DEPOSIT
-001014   177400                 177400, DEPOSIT
-001016   012740  mov #5,-(r0)   012740, DEPOSIT
-001020   000005                 000005, DEPOSIT
-001022   105710  tstb (r0)      105710, DEPOSIT
-001024   100376  bpl .-2        100376, DEPOSIT
-001026   005007  clr pc         005007, DEPOSIT
-                               001000, LOAD ADDRESS, ENABLE, START
-</pre>
+      <hr>
+
+      <h3>About This Project</h3>
 
       <p>
-        For fun, here’s a simple “light chaser” program you can toggle in:
+        This is a <b>PDP‑11/70</b> emulator written entirely in JavaScript. It runs in any modern browser — no
+        plugins, no downloads, no configuration. Just open the page and you're standing in front of a DEC
+        minicomputer.
       </p>
+
+      <h4>What makes it special</h4>
+
+      <table style="margin-left:25px; padding:3px;">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="disk"><b>Authentic Front Panel</b></td>
+            <td>Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC
+              engineers did in the 1970s.</td>
+          </tr>
+          <tr>
+            <td class="disk"><b>ASR 33 Teletype</b></td>
+            <td>A fully animated Google60-style teletype connected as the operator console — complete with paper
+              printing, keypunch sounds, and line-feed whirs.</td>
+          </tr>
+          <tr>
+            <td class="disk"><b>VT52 Terminal</b></td>
+            <td>A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals.</td>
+          </tr>
+          <tr>
+            <td class="disk"><b>16 Guest Operating Systems</b></td>
+            <td>Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11,
+              XXDP diagnostics, and more.</td>
+          </tr>
+          <tr>
+            <td class="disk"><b>Persistent Disk Images</b></td>
+            <td>All disk and tape images are preloaded. Changes to disk contents persist in browser storage across
+              sessions.</td>
+          </tr>
+          <tr>
+            <td class="disk"><b>Paper Tape Reader</b></td>
+            <td>Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr>
+
+      <h3>Quick Start</h3>
+
+      <ol>
+        <li>Open the <a href="https://paulnank.github.io/pdp11-js/pdp11.html">PDP‑11/70 emulator</a>.</li>
+        <li>At the <code>Boot></code> prompt, type <code>boot rp1</code> and press ENTER.</li>
+        <li>BSD 2.11 will autoboot into multiuser mode. Login as <code>root</code> (no password).</li>
+        <li>Try <code>ls</code>, <code>ps -aux</code>, <code>df</code> — or compile a C program with <code>cc</code>.
+        </li>
+      </ol>
+
+      <h4>Switching pages</h4>
+
+      <p>Use the sidebar to switch between:</p>
+      <ul>
+        <li><b>Panel</b> — the front panel with switches and LEDs</li>
+        <li><b>Teletype</b> — the ASR 33 teletype console</li>
+        <li><b>VT52</b> — the DECscope VT52 video terminal</li>
+        <li><b>Info</b> — detailed instructions and OS reference</li>
+      </ul>
+
+      <h4>A simple light chaser</h4>
+
+      <p>Toggle this into the front panel to see the address and data LEDs dance:</p>
 
       <pre>
 <b>Address  Data    Code        Switch commands</b>
@@ -600,112 +646,112 @@
                             001000, LOAD ADDRESS, ENABLE, START
 </pre>
 
-      <p>
-        To restart the emulator’s initial boot code (if not overwritten), use:
-      </p>
+      <h4>Restart the bootloader</h4>
 
       <pre>
 HALT, 120000, LOAD ADDRESS, ENABLE, START
 </pre>
 
-      <p>
-        Curious how it all works? The source is available on
-        <a href="https://github.com/paulnank/pdp11-js/">GitHub</a>. The main JavaScript files are
-        <code>pdp11.js</code>,
-        <code>fpp.js</code>, and <code>iopage.js</code>.
-      </p>
-
-      <p><b>Happy emulating!</b></p>
-      <p><i>Paul Nankervis</i></p>
+      <hr>
 
       <h3>Guest Operating Systems</h3>
+
+      <p>
+        The emulator ships with ready-to-boot disk and tape images. Just type <code>boot <device></code>
+        at the <code>Boot></code> prompt.
+      </p>
 
       <table style="margin-left:25px; padding:3px;">
         <thead>
           <tr>
             <th>Disk</th>
-            <th>OS</th>
-            <th>Notes</th>
+            <th>Operating System</th>
+            <th>How to Boot</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td class="disk">RK0</td>
             <td class="system">Unix V5</td>
-            <td>Boot using: <code>unix</code>, then login as root</td>
+            <td><code>boot rk0</code> → <code>unix</code> → login as <code>root</code></td>
           </tr>
           <tr>
             <td class="disk">RK1</td>
             <td class="system">RT‑11 v4.0</td>
-            <td>The smallest OS here</td>
+            <td><code>boot rk1</code></td>
           </tr>
           <tr>
             <td class="disk">RK2</td>
             <td class="system">RSTS V06C‑03</td>
-            <td>Login as 1,2 (password SYSTEM) or 11,70 (password PDP)</td>
+            <td><code>boot rk2</code> — login <code>11,70</code> password <code>PDP</code></td>
           </tr>
           <tr>
             <td class="disk">RK3</td>
-            <td class="system">XXDP</td>
-            <td>Diagnostic OS and utilities</td>
+            <td class="system">XXDP (diagnostics)</td>
+            <td><code>boot rk3</code></td>
           </tr>
           <tr>
             <td class="disk">RK4</td>
-            <td class="system">RT‑11 3B</td>
-            <td>Distribution for RT‑11 Version 3B</td>
+            <td class="system">RT‑11 3B Distribution</td>
+            <td><code>boot rk4</code></td>
           </tr>
           <tr>
             <td class="disk">TM0</td>
-            <td class="system">RSTS 4B‑17</td>
-            <td>Boot ROLLIN from TM0, restore DK0, then reboot. Default login 1,2 (SYSTEM) or 11,70 (PDP).</td>
+            <td class="system">RSTS 4B‑17 (tape)</td>
+            <td><code>boot tm0</code> — follow ROLLIN restore procedure</td>
           </tr>
           <tr>
             <td class="disk">RL0</td>
             <td class="system">BSD 2.9</td>
-            <td>Boot using: <code>rl(0,0)rlunix</code>. CTRL/D to enter multiuser. Login as root.</td>
+            <td><code>boot rl0</code> → <code>rl(0,0)rlunix</code> → CTRL/D → login <code>root</code></td>
           </tr>
           <tr>
             <td class="disk">RL1</td>
-            <td class="system">RSX 11M v3.2</td>
-            <td>Login as 1,2 (SYSTEM)</td>
+            <td class="system">RSX‑11M v3.2</td>
+            <td><code>boot rl1</code> — login <code>1,2</code> password <code>SYSTEM</code></td>
           </tr>
           <tr>
             <td class="disk">RL2</td>
             <td class="system">RSTS/E v7.0</td>
-            <td>Login as 1,2 (SYSTEM) or 11,70 (PDP)</td>
+            <td><code>boot rl2</code> — login <code>11,70</code> password <code>PDP</code></td>
           </tr>
           <tr>
             <td class="disk">RL3</td>
-            <td class="system">XXDP</td>
-            <td>Larger diagnostics, including PDP‑11/70 utilities</td>
+            <td class="system">XXDP (extended)</td>
+            <td><code>boot rl3</code></td>
           </tr>
           <tr>
             <td class="disk">RP0</td>
             <td class="system">ULTRIX‑11 V3.1</td>
-            <td>CTRL/D to enter multiuser mode. Login as root (no password)</td>
+            <td><code>boot rp0</code> → CTRL/D → login <code>root</code></td>
           </tr>
           <tr>
             <td class="disk">RP1</td>
             <td class="system">BSD 2.11</td>
-            <td>Autoboots into multiuser. Login as root (no password)</td>
+            <td><code>boot rp1</code> — autoboots to multiuser, login <code>root</code></td>
           </tr>
           <tr>
             <td class="disk">RP2</td>
             <td class="system">RSTS/E v9.6</td>
-            <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
+            <td><code>boot rp2</code> — answer prompts, login <code>11,70</code></td>
           </tr>
           <tr>
             <td class="disk">RP3</td>
-            <td class="system">RSX 11M v4.6</td>
-            <td>Starts logged in as 1,2 (SYSTEM). Other accounts: 200,1 (no password), 11,70 (PDP).</td>
+            <td class="system">RSX‑11M v4.6</td>
+            <td><code>boot rp3</code> — auto-logs <code>1,2</code> SYSTEM</td>
           </tr>
           <tr>
             <td class="disk">RP4</td>
             <td class="system">RSTS/E v10.1</td>
-            <td>Answer boot questions and login as 1,2 (SYSTEM) or 11,70 (no password)</td>
+            <td><code>boot rp4</code> — answer prompts, login <code>11,70</code></td>
           </tr>
         </tbody>
       </table>
+
+      <p>
+        Full boot session logs for every OS can be found in
+        <a href="ExampleBoots.md">ExampleBoots.md</a>.
+      </p>
 
 
       <h3>Example boot of Unix V5</h3>
@@ -2420,19 +2466,160 @@ There is a small mailbox here.
 
 </pre>
 
+      <h3>Project Architecture</h3>
+
+      <table style="margin-left:25px; padding:3px;">
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="disk"><a href="pdp11.js"><code>pdp11.js</code></a></td>
+            <td>Core CPU emulation (PDP‑11/70 & /45 instruction set, MMU, interrupts)</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="fpp.js"><code>fpp.js</code></a></td>
+            <td>Floating‑Point Processor (FP11) emulation</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="iopage.js"><code>iopage.js</code></a></td>
+            <td>I/O page — disk controllers, terminal interfaces, paper tape reader, line printer</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="pdp11-panel.js"><code>pdp11-panel.js</code></a></td>
+            <td>Front panel rendering and switch interaction</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="pdp11-app.js"><code>pdp11-app.js</code></a></td>
+            <td>Application glue — boots the emulator, wires teletype and VT52</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="vt52.js"><code>vt52.js</code></a></td>
+            <td>DECscope VT52 terminal emulation (canvas‑based)</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="g60printer.js"><code>g60printer.js</code></a></td>
+            <td>Google60-style teletype printer (ASR 33)</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="vt11.js"><code>vt11.js</code></a></td>
+            <td>Vector graphics VT11 display</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="bootcode.js"><code>bootcode.js</code></a></td>
+            <td>The custom bootstrap loader program</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="pdp11.css"><code>pdp11.css</code></a></td>
+            <td>Front panel and application styles</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="g60printer.css"><code>g60printer.css</code></a></td>
+            <td>Teletype printer styles</td>
+          </tr>
+          <tr>
+            <td class="disk"><a href="tools/gen-favicon.js"><code>tools/gen-favicon.js</code></a></td>
+            <td>Favicon generator</td>
+          </tr>
+        </tbody>
+      </table>
+
       <h3>Software Sources</h3>
       <p>
-        The software used in this emulator has been sourced from many places on the Internet and unfortunately many of
-        these seem to have disappeared. If you are looking for something I would suggest the following main sites...
+        The software used in this emulator has been sourced from many places on the Internet. If you are looking for
+        something, try the following resources:
+      </p>
       <ul>
-        <li>Documentation: <a href='http://bitsavers.org/pdf/dec/pdp11/'>http://bitsavers.org/pdf/dec/pdp11/</a> </li>
-        <li>Software: <a href='http://bitsavers.org/bits/DEC/pdp11/'>http://bitsavers.org/bits/DEC/pdp11/</a> </li>
-        <li>Unix: <a href='https://www.tuhs.org/'>https://www.tuhs.org/</a> </li>
+        <li>Documentation: <a href="http://bitsavers.org/pdf/dec/pdp11/">http://bitsavers.org/pdf/dec/pdp11/</a></li>
+        <li>Software: <a href="http://bitsavers.org/bits/DEC/pdp11/">http://bitsavers.org/bits/DEC/pdp11/</a></li>
+        <li>Unix: <a href="https://www.tuhs.org/">https://www.tuhs.org/</a></li>
+        <li>RSTS/E: <a href="http://www.rsts.org/">http://www.rsts.org/</a></li>
       </ul>
 
+      <h3>Acknowledgments</h3>
 
-      <p><a href='https://github.com/paulnank/pdp11-js/'>Github</a></p>
+      <p>This project stands on the shoulders of giants.</p>
 
+      <h4>Paul Nankervis — Original PDP‑11 Emulator</h4>
+
+      <p>
+        Paul wrote the original <a href="https://github.com/paulnank/pdp11-js">pdp11-js</a> emulator, which this
+        repository is forked from. His meticulous work — cycle‑accurate CPU emulation, beautifully rendered front
+        panels, and a meticulously curated collection of vintage operating systems — made this project possible.
+      </p>
+
+      <blockquote>
+        <em>"I met my core objective — I can now see the RSTS/E console light pattern that I was looking for."</em>
+        <br>— Paul Nankervis
+      </blockquote>
+
+      <h4>Norbert Landsteiner (mass:werk) — Google60 Teletype</h4>
+
+      <p>
+        The ASR 33 teletype emulation is adapted from <a href="https://www.masswerk.at/google60/">Google60</a> by
+        <b>Norbert Landsteiner</b> of <a href="https://www.masswerk.at/">mass:werk</a>. Google60 is a brilliant
+        simulation of the Google search interface as it would have appeared on a ASR 33 Teletype in the
+        1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance animation and
+        authentic sound effects — brings the teletype to life.
+      </p>
+
+      <h4>Additional Sources</h4>
+
+      <ul>
+        <li><a href="http://bitsavers.org/pdf/dec/pdp11/">Bitsavers</a> — DEC PDP‑11 documentation archive</li>
+        <li><a href="http://bitsavers.org/bits/DEC/pdp11/">Bitsavers Software</a> — PDP‑11 software and disk images</li>
+        <li><a href="https://www.tuhs.org/">The Unix Heritage Society (TUHS)</a> — Preserving UNIX history</li>
+        <li><a href="http://www.rsts.org/">RSTS.ORG</a> — RSTS/E community and software preservation</li>
+      </ul>
+
+      <h3>Links</h3>
+
+      <table style="margin-left:25px; padding:3px;">
+        <thead>
+          <tr>
+            <th>Resource</th>
+            <th>URL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="disk">Original pdp11-js</td>
+            <td><a href="https://github.com/paulnank/pdp11-js/">https://github.com/paulnank/pdp11-js/</a></td>
+          </tr>
+          <tr>
+            <td class="disk">Google60 (mass:werk)</td>
+            <td><a href="https://www.masswerk.at/google60/">https://www.masswerk.at/google60/</a></td>
+          </tr>
+          <tr>
+            <td class="disk">mass:werk</td>
+            <td><a href="https://www.masswerk.at/">https://www.masswerk.at/</a></td>
+          </tr>
+          <tr>
+            <td class="disk">Bitsavers (docs)</td>
+            <td><a href="http://bitsavers.org/pdf/dec/pdp11/">http://bitsavers.org/pdf/dec/pdp11/</a></td>
+          </tr>
+          <tr>
+            <td class="disk">Bitsavers (software)</td>
+            <td><a href="http://bitsavers.org/bits/DEC/pdp11/">http://bitsavers.org/bits/DEC/pdp11/</a></td>
+          </tr>
+          <tr>
+            <td class="disk">TUHS</td>
+            <td><a href="https://www.tuhs.org/">https://www.tuhs.org/</a></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr>
+
+      <p><em>Happy emulating!</em></p>
+
+      <p>
+        — Paul Nankervis (<em>original author</em>)<br>
+        — <em>Fork maintained with love for the DEC era</em>
+      </p>
 
     </div>
   </div>
