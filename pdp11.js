@@ -564,6 +564,7 @@ function trap(vector, errorMask) {
                 if (doubleTrap) {
                     CPU.CPU_Error |= 4; // Double trap treated as red zone error
                     CPU.registerVal[6] = 4; // Reset stack
+                    CPU.mmuEnable = 0; // Disable MMU: real PDP-11/70 does this on double trap
                 }
                 if (pushWord(CPU.trapPSW, doubleTrap) >= 0 && pushWord(CPU.registerVal[7], doubleTrap) >= 0) {
                     CPU.registerVal[7] = newPC;
