@@ -602,7 +602,7 @@
 
     .app-layout {
       display: flex;
-      min-height: 100vh;
+      height: 100vh;
     }
 
     .app-sidebar {
@@ -3855,6 +3855,7 @@ There is a small mailbox here.
       }, textarea, canvas, {
         allowCanvas: true,
         noHardcopyFallback: true,
+        fontSize: 20,
         cols: 80,
         rows: 24
       });
@@ -3876,6 +3877,15 @@ There is a small mailbox here.
           term.screenCanvas.focus();
         }
         term.clearScreen();
+
+        // Size canvas to match font metrics for 80x24
+        var charW = term.canvas.charWidth;
+        if (charW > 0) {
+          canvas.width = 80 * charW;
+          canvas.height = 24 * term.fontHeight;
+          term.resetCanvasContext(term.canvas.ctx);
+          term.renderCanvas();
+        }
 
         // Disable vt52's built-in keydown handler on the canvas to avoid double-sending.
         // The global installVT52Keyboard() captures physical keyboard input instead.

@@ -89,13 +89,9 @@
     // CSI private prefix ('?')
     const CSI_PRIVATE = 63;
 
-    // Canvas rendering parameters
-    const TEXT_FONT   = "16px monospace";
-    const BOLD_FONT   = "bold 16px monospace";
-    const FONT_HEIGHT = 16;
+    // Canvas rendering parameters (defaults — overridden by instance properties)
     const BG_COLOR    = "#000"; // Black background
     const FG_COLOR    = "#0F0"; // Green writing
-    const UNDERLINE_HEIGHT = 2;
 
     // Attribute bitmask flags (SGR)
     const ATTR_BOLD       = 1;
@@ -319,7 +315,8 @@
 
         constructor({ unit, receiveRoutine, textArea, screenCanvas,
                       rows = DEFAULT_ROWS, cols = DEFAULT_COLS,
-                      allowCanvas = false, noHardcopyFallback = false }) {
+                      allowCanvas = false, noHardcopyFallback = false,
+                      fontSize = 16 }) {
 
             // External wiring
             this.unit = unit;
@@ -360,6 +357,13 @@
             // Hardcopy overhang:
             // Number of characters after the cursor in the textarea (bumped by CR/BS)
             this.overHang = 0;
+
+            // Font metrics (may be overridden via fontSize option)
+            this.fontSize   = fontSize;
+            this.fontHeight = this.fontSize;
+            this.textFont   = this.fontSize + "px monospace";
+            this.boldFont   = "bold " + this.fontSize + "px monospace";
+            this.underlineHeight = Math.max(1, Math.floor(this.fontSize / 8));
 
             // Sparse screen buffer:
             // Each row is an array of { c: charCode, a: attributes }.
@@ -509,7 +513,7 @@
             // Canvas resets wipe font, fillStyle, and baseline, so we restore them.
             ctx.textBaseline = "top";
             ctx.fillStyle = BG_COLOR;
-            ctx.font = TEXT_FONT;
+            ctx.font = this.textFont;
 
             // Track current drawing modes so we can avoid redundant state changes.
             this.fgMode = false;   // false = background colour, true = foreground colour
@@ -535,9 +539,9 @@
         // ---------------------------------------------------------------------------
         setBold(bold) {
             if (bold) {
-                if (!this.boldMode) this.canvas.ctx.font = BOLD_FONT;
+                if (!this.boldMode) this.canvas.ctx.font = this.boldFont;
             } else {
-                if (this.boldMode) this.canvas.ctx.font = TEXT_FONT;
+                if (this.boldMode) this.canvas.ctx.font = this.textFont;
             }
             this.boldMode = bold;
         }
@@ -551,7 +555,7 @@
         //   • underline (if enabled)
         renderText(row, col, attr, string) {
             const ctx = this.canvas.ctx;
-            const h = FONT_HEIGHT;
+            const h = this.fontHeight;
             const x = col * this.canvas.charWidth;
             const y = row * h;
             const w = string.length * this.canvas.charWidth;
@@ -567,7 +571,7 @@
 
             // Underline (drawn as a solid bar at bottom of cell)
             if (attr & ATTR_UNDERSCORE) {
-                ctx.fillRect(x, y + h - UNDERLINE_HEIGHT, w, UNDERLINE_HEIGHT);
+                ctx.fillRect(x, y + h - this.underlineHeight, w, this.underlineHeight);
             }
         }
 
@@ -576,7 +580,7 @@
         // ---------------------------------------------------------------------------
         renderClear(row, col, end) {
             const ctx = this.canvas.ctx;
-            const h = FONT_HEIGHT;
+            const h = this.fontHeight;
             const x = col * this.canvas.charWidth;
             const y = row * h;
             const w = (end - col) * this.canvas.charWidth;
@@ -651,7 +655,7 @@
             }
 
             const ctx = this.canvas.ctx;
-            const h = FONT_HEIGHT;
+            const h = this.fontHeight;
             const x = col * this.canvas.charWidth;
             const y = row * h;
 
@@ -661,7 +665,7 @@
                 if (this.modes.ansi) { // VT100 / VT52
                     ctx.fillRect(x, y, this.canvas.charWidth, h);
                 } else {
-                    ctx.fillRect(x, y + h - UNDERLINE_HEIGHT, this.canvas.charWidth, UNDERLINE_HEIGHT);
+                    ctx.fillRect(x, y + h - this.underlineHeight, this.canvas.charWidth, this.underlineHeight);
                 }
                 this.canvas.lastCursor = { row, col };
             } else {
@@ -1368,7 +1372,7 @@
 
                         if (this.allowCanvas) {
                             this.screenCanvas.width  = this.cols * this.canvas.charWidth;
-                            this.screenCanvas.height = this.rows * FONT_HEIGHT;
+                            this.screenCanvas.height = this.rows * this.fontHeight;
                             this.resetCanvasContext(this.canvas.ctx);
                         }
                         break;
