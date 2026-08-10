@@ -1516,20 +1516,42 @@ function createCache(cache, block, dataView) {
 
 // --- fetchBlock() ---
 // Fetch a cache block from disk/tape image.
-// - Uses HTTP Range headers to request block slice from raw .dsk file
+// - For known-compressed images (controlBlock.compressed): fetches the .zst
+//   image directly and decompresses it via fzstd. No raw-file probe is made,
+//   so no 404 "File not found" noise appears in the browser console.
+// - Otherwise: uses HTTP Range headers to request block slice from raw .dsk file
 // - On success: fills cache via createCache()
 // - On 416 (range error): creates empty cache block
 // - On network error or non‑OK status: falls back to .zst compressed image
 // - Returns HTTP status code on success/fallback
 //
 // Parameters:
-// - controlBlock: device control block (cache, url, etc.)
+// - controlBlock: device control block (cache, url, compressed, etc.)
 // - block: block index to fetch
 //
 // Notes:
 // - Fallback requires fzstd decompression library
 // - Adds cache to download list for export after .zst fallback
 async function fetchBlock(controlBlock, block) {
+    // --- .zst-compressed image path ---
+    // Bundled disk/tape images ship as .zst (e.g. rp1.dsk.zst). Fetch and
+    // decompress them directly to avoid a wasted (and console-logged) 404
+    // probe of the non-existent raw file.
+    if (controlBlock.compressed) {
+        const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
+        if (zstResponse.ok) {
+            const buffer = await zstResponse.arrayBuffer();
+            if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
+                throw new Error("fzstd decompression library not loaded");
+            }
+            const decompressed = fzstd.decompress(new Uint8Array(buffer));
+            createCache(controlBlock.cache, block, decompressed);
+            downLoadAdd(controlBlock.url, controlBlock.cache);
+            return zstResponse.status;
+        }
+        // .zst file missing: fall through to the raw-file probe below.
+    }
+
     const rangeHeader = `bytes=${block * IO_BLOCKSIZE}-${(block + 1) * IO_BLOCKSIZE - 1}`;
 
     try {
@@ -2093,6 +2115,7 @@ iopage.register(0o17772520, 6, (function() {
                 cache: [],
                 callback: mtCallback,
                 url: `tm${drive}.tap`,
+                compressed: true, // Bundled tape images ship as .zst
                 drive,
                 position: 0,
                 command: 0
@@ -2477,6 +2500,7 @@ iopage.register(0o17777400, 8, (function() {
                         cache: [],
                         callback: rkCallback,
                         url: `rk${drive}.dsk`,
+                        compressed: true, // Bundled disk images ship as .zst
                         drive
                     };
                 }
@@ -2780,6 +2804,7 @@ iopage.register(0o17774400, 4, (function() {
                 cache: [],
                 callback: rlCallback,
                 url: `rl${drive}.dsk`,
+                compressed: true, // Bundled disk images ship as .zst
                 drive
             };
         }
@@ -3194,6 +3219,7 @@ iopage.register(0o17776700, 20, (function() {
                     cache: [],
                     callback: rpCallback,
                     url: `rp${drive}.dsk`,
+                    compressed: true, // Bundled disk images ship as .zst
                     drive
                 };
             }
@@ -3795,6 +3821,7 @@ iopage.register(0o17772150, 2, (function() {
                     cache: [],
                     callback: rqCallback,
                     url: `ra${unit}.dsk`,
+                    compressed: true, // Bundled disk images ship as .zst
                     unit
                 };
             }
