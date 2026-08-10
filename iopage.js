@@ -1665,7 +1665,14 @@ async function diskIO(controlBlock, operation, position, address, count, options
     if (count > 0) {
         try {
             await fetchBlock(controlBlock, block);
-            await diskIO(controlBlock, operation, position, address, count, options); // Resume after fetch
+            // Resume diskIO in CPU context (pdp11Processor loop) via the pending
+            // callback queue. This guarantees that the actual data transfer
+            // (busReadWord/busWriteWord -> memory and I/O page) runs synchronously
+            // inside the CPU loop, never inside a microtask between instructions.
+            // Without this, slow network fetches (e.g. GitHub Pages) could trigger
+            // NXM traps / MMU state changes at unexpected points and cascade into
+            // a double trap while the guest OS is mid-boot.
+            iopage.scheduleCallback(diskIO, controlBlock, operation, position, address, count, options);
         } catch (err) {
             iopage.scheduleCallback(controlBlock.callback, controlBlock, 9, position, address, count, options); // Network/fetch error
         }

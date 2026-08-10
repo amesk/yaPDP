@@ -122,6 +122,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`pdp11.css`](pdp11.css) | Front panel and application styles |
 | [`g60printer.css`](g60printer.css) | Teletype printer styles |
 | [`tools/gen-favicon.js`](tools/gen-favicon.js) | Favicon generator |
+| [`assets/vendor/fzstd.js`](assets/vendor/fzstd.js) | Bundled fzstd (ZSTD decompression) — served locally instead of an external CDN so disk/tape images decompress reliably on any network |
 
 ### Media files
 
