@@ -1329,8 +1329,12 @@ function pdp11Processor() {
             loopCount = 2000;
             dst = 0;
             do {
-                // Process pending diskIO callbacks (from async fetch completion)
-                iopage.processPendingCallbacks();
+                // Process pending diskIO callbacks (from async fetch completion).
+                // Guard against iopage.js not being loaded yet (e.g. slow/async
+                // script loading) so the CPU loop never throws a ReferenceError.
+                if (typeof iopage !== 'undefined') {
+                    iopage.processPendingCallbacks();
+                }
                 // check if an interrupt has been requested - with a one instruction delay after SPL (!)
                 if (CPU.interruptRequested) {
                     if (!(--CPU.interruptRequested)) {
@@ -2426,4 +2430,17 @@ for (let i = 0; i < MAX_MEMORY / 2; i++) {
     CPU.memory[i] = 0;
 }
 CPU.runState = STATE_RUN;
-setTimeout(pdp11Processor, 80);
+// Start the CPU loop only once the whole module set (including iopage) has
+// been loaded. This avoids a load-time race where the 80ms timer fires
+// before iopage.js executes, which would throw "iopage is not defined".
+(function startWhenReady(n) {
+    if (typeof iopage === 'undefined') {
+        if (n < 500) {
+            setTimeout(startWhenReady, 10, n + 1);
+        } else {
+            console.log("startWhenReady: iopage.js did not load - check the Network tab");
+        }
+        return;
+    }
+    setTimeout(pdp11Processor, 80);
+})(0);
