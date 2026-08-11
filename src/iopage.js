@@ -1538,7 +1538,7 @@ async function fetchBlock(controlBlock, block) {
     // decompress them directly to avoid a wasted (and console-logged) 404
     // probe of the non-existent raw file.
     if (controlBlock.compressed) {
-        const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
+        const zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
         if (zstResponse.ok) {
             const buffer = await zstResponse.arrayBuffer();
             if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
@@ -1556,7 +1556,7 @@ async function fetchBlock(controlBlock, block) {
 
     try {
         // --- Primary path: fetch raw .dsk file slice ---
-        const response = await fetch(`media/${controlBlock.url}`, {
+        const response = await fetch(`../media/${controlBlock.url}`, {
             headers: { "Range": rangeHeader }
         });
 
@@ -1575,7 +1575,7 @@ async function fetchBlock(controlBlock, block) {
     }
 
     // --- Fallback path: fetch compressed .zst file ---
-    const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
+    const zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
     if (!zstResponse.ok) {
         throw new Error(`Network error fetching .zst for ${controlBlock.url}`);
     }

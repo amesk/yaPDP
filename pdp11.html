@@ -7,10 +7,10 @@
   <meta name="description" content="Javascript PDP 11/70 Emulator">
   <meta name="keywords" content="PDP,PDP-11,11/70,JavaScript,Emulator">
   <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
-  <link rel="stylesheet" href="pdp11.css" type="text/css" charset="utf-8" media="all" />
+  <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
 
   <!-- Google60 Printer styles -->
-  <link rel="stylesheet" href="g60printer.css" type="text/css" charset="utf-8" media="all" />
+  <link rel="stylesheet" href="css/g60printer.css" type="text/css" charset="utf-8" media="all" />
 
 </head>
 
@@ -62,7 +62,7 @@
                 <div class=floatLeft>
                   <div class=clear>
                     <span class=logo>
-                      <img src="pdp11-70.svg" alt="pdp11-70" width=100%>
+                      <img src="assets/pdp11-70.svg" alt="pdp11-70" width=100%>
                     </span>
                     <div class=floatRight>
                       <span class="statusBlock roundLeft">
@@ -750,7 +750,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 
       <p>
         Full boot session logs for every OS can be found in
-        <a href="ExampleBoots.md">ExampleBoots.md</a>.
+        <a href="docs/ExampleBoots.md">ExampleBoots.md</a>.
       </p>
 
 
@@ -2477,47 +2477,47 @@ There is a small mailbox here.
         </thead>
         <tbody>
           <tr>
-            <td class="disk"><a href="pdp11.js"><code>pdp11.js</code></a></td>
+            <td class="disk"><a href="src/pdp11.js"><code>src/pdp11.js</code></a></td>
             <td>Core CPU emulation (PDP‑11/70 & /45 instruction set, MMU, interrupts)</td>
           </tr>
           <tr>
-            <td class="disk"><a href="fpp.js"><code>fpp.js</code></a></td>
+            <td class="disk"><a href="src/fpp.js"><code>src/fpp.js</code></a></td>
             <td>Floating‑Point Processor (FP11) emulation</td>
           </tr>
           <tr>
-            <td class="disk"><a href="iopage.js"><code>iopage.js</code></a></td>
+            <td class="disk"><a href="src/iopage.js"><code>src/iopage.js</code></a></td>
             <td>I/O page — disk controllers, terminal interfaces, paper tape reader, line printer</td>
           </tr>
           <tr>
-            <td class="disk"><a href="pdp11-panel.js"><code>pdp11-panel.js</code></a></td>
+            <td class="disk"><a href="src/pdp11-panel.js"><code>src/pdp11-panel.js</code></a></td>
             <td>Front panel rendering and switch interaction</td>
           </tr>
           <tr>
-            <td class="disk"><a href="pdp11-app.js"><code>pdp11-app.js</code></a></td>
+            <td class="disk"><a href="src/pdp11-app.js"><code>src/pdp11-app.js</code></a></td>
             <td>Application glue — boots the emulator, wires teletype and VT52</td>
           </tr>
           <tr>
-            <td class="disk"><a href="vt52.js"><code>vt52.js</code></a></td>
+            <td class="disk"><a href="src/vt52.js"><code>src/vt52.js</code></a></td>
             <td>DECscope VT52 terminal emulation (canvas‑based)</td>
           </tr>
           <tr>
-            <td class="disk"><a href="g60printer.js"><code>g60printer.js</code></a></td>
+            <td class="disk"><a href="src/g60printer.js"><code>src/g60printer.js</code></a></td>
             <td>Google60-style teletype printer (ASR 33)</td>
           </tr>
           <tr>
-            <td class="disk"><a href="vt11.js"><code>vt11.js</code></a></td>
+            <td class="disk"><a href="src/vt11.js"><code>src/vt11.js</code></a></td>
             <td>Vector graphics VT11 display</td>
           </tr>
           <tr>
-            <td class="disk"><a href="bootcode.js"><code>bootcode.js</code></a></td>
+            <td class="disk"><a href="src/bootcode.js"><code>src/bootcode.js</code></a></td>
             <td>The custom bootstrap loader program</td>
           </tr>
           <tr>
-            <td class="disk"><a href="pdp11.css"><code>pdp11.css</code></a></td>
+            <td class="disk"><a href="css/pdp11.css"><code>css/pdp11.css</code></a></td>
             <td>Front panel and application styles</td>
           </tr>
           <tr>
-            <td class="disk"><a href="g60printer.css"><code>g60printer.css</code></a></td>
+            <td class="disk"><a href="css/g60printer.css"><code>css/g60printer.css</code></a></td>
             <td>Teletype printer styles</td>
           </tr>
           <tr>
@@ -2623,16 +2623,16 @@ There is a small mailbox here.
 
     </div>
   </div>
-  <script src='pdp11-panel.js'></script>
-  <script src='g60printer.js'></script>
+  <script src='src/pdp11-panel.js'></script>
+  <script src='src/g60printer.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
-  <script src='bootcode.js'></script>
-  <script src='vt52.js'></script>
-  <script src='pdp11.js'></script>
-  <script src='fpp.js'></script>
-  <script src='iopage.js'></script>
-  <script src='vt11.js'></script>
-  <script src='pdp11-app.js'></script>
+  <script src='src/bootcode.js'></script>
+  <script src='src/vt52.js'></script>
+  <script src='src/pdp11.js'></script>
+  <script src='src/fpp.js'></script>
+  <script src='src/iopage.js'></script>
+  <script src='src/vt11.js'></script>
+  <script src='src/pdp11-app.js'></script>
 </body>
 
 </html>

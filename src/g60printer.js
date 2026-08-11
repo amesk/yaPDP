@@ -62,9 +62,9 @@
     };
 
     // Pre-load sounds
-    G60Audio.load('punch', 'assets/sounds/keypunch2.mp3');      // short punch for single char
-    G60Audio.load('print', 'assets/sounds/teletype33-print.mp3'); // long for line animation
-    G60Audio.load('linefeed', 'assets/sounds/teletype33-lf.mp3'); // line feed
+    G60Audio.load('punch', '../assets/sounds/keypunch2.mp3');      // short punch for single char
+    G60Audio.load('print', '../assets/sounds/teletype33-print.mp3'); // long for line animation
+    G60Audio.load('linefeed', '../assets/sounds/teletype33-lf.mp3'); // line feed
 
     // ====================================================================
     // Google60-style Line Printer
@@ -93,6 +93,7 @@
         var charBuffer = [];        // pending characters to print
         var charPrintTimer = null;  // timer ID for paced printing
         var CHAR_LF = '\n';         // sentinel marker in buffer to trigger a line feed
+        var CHAR_BS = '\b';         // sentinel marker in buffer to trigger a backspace
 
         // Printer configuration
         var delayBlank = 7;
@@ -120,6 +121,7 @@
         // Current line tracking for character-by-character printing
         var currentLineEl = null;  // the current <p> element
         var currentCharPos = 0;    // character position in current line
+        var overHang = 0;          // pending overstrike positions after a backspace
 
         // CSS property detection
         var cssPropertyTransform = '';
@@ -188,7 +190,7 @@
             el = document.createElement('div'); el.id = 'printer_frontpannel'; element.appendChild(el);
             el = document.createElement('div'); el.id = 'printheadarea'; element.appendChild(el);
             printHead = document.createElement('img');
-            printHead.id = 'printhead'; printHead.src = 'assets/images/printhead.png'; el.appendChild(printHead);
+            printHead.id = 'printhead'; printHead.src = '../assets/images/printhead.png'; el.appendChild(printHead);
             printArea = td2;
             container.appendChild(element);
             resetPrinter();
@@ -212,11 +214,30 @@
             // Play short punch sound (cloned Audio element per play)
             G60Audio.playCloned('punch');
 
-            // Create a span for the character
-            var span = document.createElement('span');
             var space = (c === ' ');
-            span.textContent = space ? '\u00A0' : c;
-            currentLineEl.appendChild(span);
+            var span;
+
+            if (overHang > 0) {
+                // Overstrike: print over the character left by a previous
+                // backspace. nroff/man renders bold as "X\bX"; the second
+                // 'X' must replace the first. The leading NBSP span occupies
+                // position 0, so the target character is at currentCharPos + 1.
+                var index = currentCharPos + 1;
+                span = currentLineEl.children[index];
+                if (span) {
+                    span.textContent = space ? '\u00A0' : c;
+                } else {
+                    span = document.createElement('span');
+                    span.textContent = space ? '\u00A0' : c;
+                    currentLineEl.appendChild(span);
+                }
+                overHang--;
+            } else {
+                // Create a span for the character
+                span = document.createElement('span');
+                span.textContent = space ? '\u00A0' : c;
+                currentLineEl.appendChild(span);
+            }
 
             // Animate print head
             var targetPos = currentCharPos;
@@ -226,6 +247,19 @@
 
             // Scroll paper if at end
             ensurePaperScroll();
+        }
+
+        /**
+         * doBackspace() - Internal: move the print head back one position.
+         * The next printed character overstrikes the character left there
+         * (used by nroff/man for bold output, e.g. "N\bN").
+         */
+        function doBackspace() {
+            if (currentCharPos > 0) {
+                currentCharPos--;
+                overHang++;
+                movePrintHeadQuick(currentCharPos);
+            }
         }
 
         /**
@@ -246,6 +280,9 @@
             if (item === CHAR_LF) {
                 // Line feed marker: execute the println logic
                 doPrintln();
+            } else if (item === CHAR_BS) {
+                // Backspace marker: move the print head back for overstrike
+                doBackspace();
             } else {
                 // Regular character: render it
                 doPrintChar(item);
@@ -294,6 +331,7 @@
             spaceEl.textContent = '\u00A0';
             currentLineEl.appendChild(spaceEl);
             currentCharPos = 0;
+            overHang = 0;
 
             // Play linefeed sound
             G60Audio.play('linefeed');
@@ -601,7 +639,7 @@
             idle = scrollLock = topSpacerVisible = true;
             keepLocked = false; headUp = headDir = undefined;
             // Reset current line tracking
-            currentLineEl = null; currentCharPos = 0;
+            currentLineEl = null; currentCharPos = 0; overHang = 0;
             if (!unloading) {
                 setHeadPos(headIdlePos, false);
                 // Re-create initial empty line
@@ -672,6 +710,14 @@
             printChar(c);
         };
 
+        // Backspace: move the print head back one position (overstrike)
+        this.backspace = function() {
+            charBuffer.push(CHAR_BS);
+            if (!charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            }
+        };
+
         // Newline (carriage return + line feed)
         this.println = function() {
             println();
@@ -715,8 +761,13 @@
                 printer.println();
             } else if (code === 13) {
                 // CR: carriage return - ignored on line printer
-            } else if (code === 8 || code === 0x7F) {
-                // Backspace - handled at the input level
+            } else if (code === 8) {
+                // Backspace (^H): move the print head back so the next character
+                // overstrikes it. nroff/man uses "^H" to render bold text
+                // (e.g. "N\bN" prints as "N" instead of "NN").
+                printer.backspace();
+            } else if (code === 0x7F) {
+                // DEL (rubout) - ignored
             } else if (code >= 32 && code < 127) {
                 // Printable ASCII: display immediately
                 printer.printChar(String.fromCharCode(code));

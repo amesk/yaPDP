@@ -31,7 +31,7 @@ This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in an
 | Feature | Description |
 |---------|-------------|
 | **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
-| **ASR 33 Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, and line-feed whirs. |
+| **ASR 33 Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering. |
 | **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
@@ -65,7 +65,7 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 | **RP3** | RSX‑11M v4.6 | `boot rp3` — auto-logs `1,2` SYSTEM |
 | **RP4** | RSTS/E v10.1 | `boot rp4` — answer prompts, login `11,70` |
 
-> Full boot session logs for every OS can be found in [`ExampleBoots.md`](ExampleBoots.md).
+> Full boot session logs for every OS can be found in [`docs/ExampleBoots.md`](docs/ExampleBoots.md).
 
 ---
 
@@ -110,17 +110,17 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 
 | File | Purpose |
 |------|---------|
-| [`pdp11.js`](pdp11.js) | Core CPU emulation (PDP‑11/70 & /45 instruction set, MMU, interrupts) |
-| [`fpp.js`](fpp.js) | Floating‑Point Processor (FP11) emulation |
-| [`iopage.js`](iopage.js) | I/O page — disk controllers, terminal interfaces, paper tape reader, line printer |
-| [`pdp11-panel.js`](pdp11-panel.js) | Front panel rendering and switch interaction |
-| [`pdp11-app.js`](pdp11-app.js) | Application glue — boots the emulator, wires teletype and VT52 |
-| [`vt52.js`](vt52.js) | DECscope VT52 terminal emulation (canvas‑based) |
-| [`g60printer.js`](g60printer.js) | Google60-style teletype printer (ASR 33) |
-| [`vt11.js`](vt11.js) | Vector graphics VT11 display |
-| [`bootcode.js`](bootcode.js) | The custom bootstrap loader program |
-| [`pdp11.css`](pdp11.css) | Front panel and application styles |
-| [`g60printer.css`](g60printer.css) | Teletype printer styles |
+| [`src/pdp11.js`](src/pdp11.js) | Core CPU emulation (PDP‑11/70 & /45 instruction set, MMU, interrupts) |
+| [`src/fpp.js`](src/fpp.js) | Floating‑Point Processor (FP11) emulation |
+| [`src/iopage.js`](src/iopage.js) | I/O page — disk controllers, terminal interfaces, paper tape reader, line printer |
+| [`src/pdp11-panel.js`](src/pdp11-panel.js) | Front panel rendering and switch interaction |
+| [`src/pdp11-app.js`](src/pdp11-app.js) | Application glue — boots the emulator, wires teletype and VT52 |
+| [`src/vt52.js`](src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based) |
+| [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (ASR 33) |
+| [`src/vt11.js`](src/vt11.js) | Vector graphics VT11 display |
+| [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
+| [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
+| [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/gen-favicon.js`](tools/gen-favicon.js) | Favicon generator |
 | [`assets/vendor/fzstd.js`](assets/vendor/fzstd.js) | Bundled fzstd (ZSTD decompression) — served locally instead of an external CDN so disk/tape images decompress reliably on any network |
 

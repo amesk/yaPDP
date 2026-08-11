@@ -7,11 +7,11 @@
 /* Font face declaration for the LP1 font */
 @font-face {
     font-family: 'lp1_regular';
-    src: url('assets/fonts/lp1/lp1-regular-webfont.eot');
-    src: url('assets/fonts/lp1/lp1-regular-webfont.eot#iefix') format('embedded-opentype'),
-        url('assets/fonts/lp1/lp1-regular-webfont.woff') format('woff'),
-        url('assets/fonts/lp1/lp1-regular-webfont.ttf') format('truetype'),
-        url('assets/fonts/lp1/lp1-regular-webfont.svg#lp1_regular') format('svg');
+    src: url('../assets/fonts/lp1/lp1-regular-webfont.eot');
+    src: url('../assets/fonts/lp1/lp1-regular-webfont.eot#iefix') format('embedded-opentype'),
+        url('../assets/fonts/lp1/lp1-regular-webfont.woff') format('woff'),
+        url('../assets/fonts/lp1/lp1-regular-webfont.ttf') format('truetype'),
+        url('../assets/fonts/lp1/lp1-regular-webfont.svg#lp1_regular') format('svg');
     font-weight: normal;
     font-style: normal;
 }
@@ -34,7 +34,7 @@
     width: 940px;
     height: 464px;
     background-color: #6f323d;
-    background-image: url('assets/images/printer_bg.gif');
+    background-image: url('../assets/images/printer_bg.gif');
     background-repeat: repeat;
 }
 
@@ -68,7 +68,7 @@
     left: 67px;
     width: 807px;
     height: 69px;
-    background-image: url('assets/images/printerskin.png');
+    background-image: url('../assets/images/printerskin.png');
     background-repeat: repeat-x;
     background-position: 0 -465px;
     z-index: 2;
@@ -80,7 +80,7 @@
     left: 0;
     width: 67px;
     height: 464px;
-    background-image: url('assets/images/printerskin.png');
+    background-image: url('../assets/images/printerskin.png');
     background-repeat: no-repeat;
 }
 
@@ -90,7 +90,7 @@
     left: 874px;
     width: 66px;
     height: 464px;
-    background-image: url('assets/images/printerskin.png');
+    background-image: url('../assets/images/printerskin.png');
     background-repeat: no-repeat;
     background-position: -67px 0;
 }
@@ -100,7 +100,7 @@
     #g60printer div#printer_frontpannel,
     #g60printer div#printer_left,
     #g60printer div#printer_right {
-        background-image: url('assets/images/printerskin_webkit.png');
+        background-image: url('../assets/images/printerskin_webkit.png');
     }
 }
 
@@ -154,7 +154,7 @@
 
 #g60printer td#papermargin_left,
 #g60printer td#papermargin_right {
-    background-image: url('assets/images/paper-margin.png');
+    background-image: url('../assets/images/paper-margin.png');
     background-repeat: repeat-y;
     width: 33px;
     min-width: 33px;
@@ -169,14 +169,14 @@
 }
 
 #g60printer td#paper_top {
-    background-image: url('assets/images/paper-edge.png');
+    background-image: url('../assets/images/paper-edge.png');
     background-repeat: repeat-x;
     background-position: 0 0;
     height: 5px;
 }
 
 #g60printer tr#paper_bottom {
-    background-image: url('assets/images/paper-edge.png');
+    background-image: url('../assets/images/paper-edge.png');
     background-repeat: repeat-x;
     background-position: 0 -5px;
     height: 5px;
@@ -195,7 +195,7 @@
     background-color: white;
     padding: 57px 18px 1px 18px;
     white-space: nowrap;
-    background-image: url('assets/images/paper.png');
+    background-image: url('../assets/images/paper.png');
     background-repeat: repeat;
     -webkit-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
     -moz-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
@@ -251,7 +251,7 @@
     height: 20px;
     padding: 0;
     margin: 0;
-    background-image: url('assets/images/paper-topoverlay.png');
+    background-image: url('../assets/images/paper-topoverlay.png');
     background-repeat: repeat-x;
 }
 
@@ -276,7 +276,7 @@
     width: 940px;
     height: 240px;
     background-color: #3a1018;
-    background-image: url('assets/images/keyboardbg.jpg');
+    background-image: url('../assets/images/keyboardbg.jpg');
     background-repeat: repeat-x;
     margin: 0;
     padding: 0;
@@ -306,7 +306,7 @@
     height: 58px;
     left: -4px;
     top: -12px;
-    background-image: url('assets/images/keys.png');
+    background-image: url('../assets/images/keys.png');
     background-repeat: no-repeat;
     background-position: 0 0;
 }
@@ -319,7 +319,7 @@
     width: 37px;
     height: 35px;
     z-index: 2;
-    background-image: url('assets/images/keyfaces.png');
+    background-image: url('../assets/images/keyfaces.png');
     background-repeat: no-repeat;
     pointer-events: none;
 }
@@ -375,7 +375,7 @@
     height: 58px;
     left: -4px;
     top: -12px;
-    background-image: url('assets/images/keys.png');
+    background-image: url('../assets/images/keys.png');
     background-repeat: no-repeat;
     background-position: -46px 0;
     pointer-events: none;
