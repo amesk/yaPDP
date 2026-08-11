@@ -43,6 +43,62 @@ This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in an
 
 ---
 
+## Desktop App (Tauri)
+
+The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/).
+It runs fully offline: a small set of boot images (`rk0`, `rk1`, `bootcode`) is bundled with the
+installer, and any other disk/tape image can be **dragged & dropped** straight into the window
+(or picked with the file chooser) — no hosting access required.
+
+| Artifact (Windows x64) | Size |
+|------------------------|------|
+| `PDP-11_0.1.0_x64-setup.exe` (NSIS installer) | ~3.2 MB |
+| `PDP-11_0.1.0_x64_en-US.msi` (MSI installer) | ~3.8 MB |
+| `pdp11.exe` (portable binary) | ~6.2 MB |
+
+### Bundled boot images
+
+| Image | OS | How to Boot |
+|-------|----|-------------|
+| `rk0.dsk` | Unix V5 | `boot rk0` → `unix` → login `root` |
+| `rk1.dsk` | RT‑11 v4.0 | `boot rk1` |
+| `bootcode.ptap` | Bootstrap loader | loaded via Paper Tape reader |
+
+All other images (RP/RL/TM/RA devices) are loaded at runtime by **dragging the file** onto the
+drop zone in the control bar — `.dsk`, `.tap`, `.ptap` and their `.zst`-compressed forms are
+supported. Mounted images persist in IndexedDB and are re-mounted automatically on the next launch.
+
+### How image loading works
+
+```mermaid
+flowchart LR
+    A[DataLoader] --> B[Bundled resources<br/>rk0 / rk1 / bootcode]
+    A --> C[Drag & Drop<br/>local files]
+    A --> D[HTTP fetch<br/>browser hosting]
+    B --> E[fzstd decompress]
+    C --> E
+    D --> E
+    E --> F[Block cache] --> G[PDP-11 Emulator]
+```
+
+### Building the desktop app
+
+Prerequisites (Windows): Rust (MSVC toolchain), Visual Studio 2019/2022 with "Desktop
+development with C++", WebView2 (built into Windows 11), and `tauri-cli`
+(`cargo install tauri-cli --version "^2"`).
+
+```bash
+# 1. Stage the lightweight frontend (excludes heavy media/) into desktop/
+bash tools/build-desktop.sh
+
+# 2. Build installers (MSI + NSIS + portable exe)
+cd src-tauri && cargo tauri build
+```
+
+Re-run `tools/build-desktop.sh` after any web-source change before rebuilding.
+
+---
+
 ## Guest Operating Systems
 
 The emulator ships with ready-to-boot disk and tape images. Just type `boot <device>` at the `Boot>` prompt.
@@ -119,9 +175,14 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (ASR 33) |
 | [`src/vt11.js`](src/vt11.js) | Vector graphics VT11 display |
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
+| [`src/dragdrop.js`](src/dragdrop.js) | Drag & drop disk/tape image import — mounts files into DataLoader, persists them in IndexedDB |
+| [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
+| [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/gen-favicon.js`](tools/gen-favicon.js) | Favicon generator |
+| [`tools/build-desktop.sh`](tools/build-desktop.sh) | Stages the lightweight Tauri frontend into `desktop/` (excludes heavy media/) |
+| [`src-tauri/`](src-tauri/) | Tauri v2 desktop shell — Rust commands, `tauri.conf.json`, bundled resources, app icons |
 | [`assets/vendor/fzstd.js`](assets/vendor/fzstd.js) | Bundled fzstd (ZSTD decompression) — served locally instead of an external CDN so disk/tape images decompress reliably on any network |
 
 ### Media files

@@ -1,0 +1,11 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "default",
+    "description": "Capability for the main window of the PDP-11 emulator",
+    "windows": [
+        "main"
+    ],
+    "permissions": [
+        "core:default"
+    ]
+}

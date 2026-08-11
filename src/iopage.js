@@ -1427,6 +1427,74 @@ const OP_ACCUM = 4;
 const OP_BYTE  = 5;
 
 
+// ================================================================
+// DataLoader — unified data-source abstraction for disk/tape images
+// ================================================================
+// Lets images be "mounted" in memory by their logical URL name
+// (e.g. "rk0.dsk") so that fetchBlock() serves them from memory
+// instead of over HTTP. Sources:
+//   - drag-and-drop import (works in browser AND Tauri WebView)
+//   - bundled resources shipped with the desktop build (Tauri)
+//   - future: explicit local file access
+//
+// A mounted image is the FULL decompressed raw image as Uint8Array.
+// fetchBlock() slices it per cache block on demand — no network I/O.
+//
+// Public API:
+//   mount(url, bytes)   — mount decompressed bytes by logical url
+//   mountZst(url, zst)  — mount .zst bytes, decompress via fzstd
+//   get(url)            — return mounted bytes or undefined
+//   has(url)            — true if image is mounted locally
+//   unmount(url)        — remove a mounted image
+//   list()              — urls of all mounted images
+//   sourceOf(url)       — source hint for UI ("dragdrop" | "bundled")
+// ================================================================
+var DataLoader = (() => {
+    "use strict";
+
+    // Logical url (e.g. "rk0.dsk") → full decompressed image bytes
+    const mounted = new Map();
+    // Logical url → source hint for UI (dragdrop / bundled)
+    const sources = new Map();
+
+    return {
+        mount(url, bytes) {
+            mounted.set(url, bytes);
+            sources.set(url, "local");
+        },
+        mountZst(url, zstBytes) {
+            if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
+                return -1;
+            }
+            try {
+                const decompressed = fzstd.decompress(new Uint8Array(zstBytes));
+                mounted.set(url, decompressed);
+                sources.set(url, "local");
+                return decompressed.length;
+            } catch (err) {
+                return -1;
+            }
+        },
+        get(url) {
+            return mounted.get(url);
+        },
+        has(url) {
+            return mounted.has(url);
+        },
+        unmount(url) {
+            mounted.delete(url);
+            sources.delete(url);
+        },
+        list() {
+            return Array.from(mounted.keys());
+        },
+        sourceOf(url) {
+            return sources.get(url);
+        }
+    };
+})();
+
+
 // Download support
 let downLoadList = [];
 
@@ -1533,6 +1601,25 @@ function createCache(cache, block, dataView) {
 // - Fallback requires fzstd decompression library
 // - Adds cache to download list for export after .zst fallback
 async function fetchBlock(controlBlock, block) {
+    // --- Local (in-memory) image path ---
+    // Images mounted via DataLoader (drag-and-drop import or bundled
+    // resources in the desktop build) are served directly from memory,
+    // avoiding network access entirely. The full raw image is sliced
+    // per cache block on demand.
+    const local = DataLoader.get(controlBlock.url);
+    if (local !== undefined) {
+        const start = block * IO_BLOCKSIZE;
+        if (start >= local.length) {
+            // Past end of image: create empty cache block
+            createCache(controlBlock.cache, block, "");
+        } else {
+            const end = Math.min(start + IO_BLOCKSIZE, local.length);
+            createCache(controlBlock.cache, block, local.subarray(start, end));
+        }
+        downLoadAdd(controlBlock.url, controlBlock.cache);
+        return 200;
+    }
+
     // --- .zst-compressed image path ---
     // Bundled disk/tape images ship as .zst (e.g. rp1.dsk.zst). Fetch and
     // decompress them directly to avoid a wasted (and console-logged) 404

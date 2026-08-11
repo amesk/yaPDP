@@ -1,0 +1,46 @@
+{
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "PDP-11",
+    "version": "0.1.0",
+    "identifier": "org.pdp11.emulator",
+    "build": {
+        "frontendDist": "../desktop"
+    },
+    "app": {
+        "withGlobalTauri": true,
+        "windows": [
+            {
+                "label": "main",
+                "title": "PDP-11/70 Emulator",
+                "url": "pdp11.html",
+                "width": 1280,
+                "height": 920,
+                "minWidth": 900,
+                "minHeight": 640,
+                "resizable": true,
+                "fullscreen": false
+            }
+        ],
+        "security": {
+            "csp": null
+        }
+    },
+    "bundle": {
+        "active": true,
+        "targets": "all",
+        "category": "Utility",
+        "shortDescription": "PDP-11/70 web emulator desktop app",
+        "longDescription": "A PDP-11/70 (and /45) emulator with an authentic front panel and ASR 33 teletype, packaged as a native desktop app.",
+        "icon": [
+            "icons/32x32.png",
+            "icons/128x128.png",
+            "icons/128x128@2x.png",
+            "icons/icon.ico"
+        ],
+        "resources": {
+            "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
+            "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
+            "../media/bootcode.ptap": "media/bootcode.ptap"
+        }
+    }
+}

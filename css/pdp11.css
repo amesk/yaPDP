@@ -156,6 +156,164 @@
     border-color: #c8a860;
 }
 
+/* Drop zone — drag & drop disk/tape image import */
+.drop-zone {
+    display: inline-block;
+    vertical-align: middle;
+    padding: 4px 10px;
+    margin-left: 8px;
+    border: 1px dashed #7a7468;
+    border-radius: 4px;
+    background: #22221e;
+    color: #e0d8c8;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: border-color 0.15s, background 0.15s;
+    line-height: 1.4;
+    max-width: 320px;
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
+    border-color: #c8a860;
+    background: #2e2c26;
+}
+
+.drop-zone-icon {
+    color: #c8a860;
+    font-size: 14px;
+    margin-right: 4px;
+}
+
+.drop-zone-text {
+    font-weight: bold;
+}
+
+.drop-zone-hint {
+    color: #9a9488;
+    font-size: 11px;
+    margin-left: 6px;
+}
+
+.drop-zone-status {
+    display: block;
+    font-size: 11px;
+    color: #9a9488;
+    margin-top: 2px;
+    white-space: normal;
+}
+
+.drop-zone-status.ok {
+    color: #7fbf7f;
+}
+
+.drop-zone-status.warn {
+    color: #d8c070;
+}
+
+.drop-zone-status.error {
+    color: #d08080;
+}
+
+/* Full-window drop overlay — shown while dragging files over the page */
+.drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 8, 6, 0.65);
+}
+
+.drop-overlay.visible {
+    display: flex;
+}
+
+.drop-overlay-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    padding: 48px 72px;
+    border: 3px dashed #c8a860;
+    border-radius: 14px;
+    background: rgba(22, 18, 14, 0.95);
+    color: #e0d8c8;
+    pointer-events: none;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.drop-overlay-icon {
+    font-size: 52px;
+    color: #c8a860;
+    line-height: 1;
+}
+
+.drop-overlay-title {
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.drop-overlay-hint {
+    font-size: 14px;
+    color: #9a9488;
+}
+
+/* Mounted-images management control (unmount UI) */
+.mounted-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 14px;
+    font-size: 13px;
+    vertical-align: middle;
+    color: #e0d8c8;
+}
+
+.mounted-control label {
+    color: #e0d8c8;
+    font-weight: bold;
+}
+
+.mounted-control select {
+    background: #2a2a2a;
+    color: #e0d8c8;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-size: 12px;
+    max-width: 200px;
+}
+
+.mounted-control select:focus {
+    outline: none;
+    border-color: #c8a860;
+}
+
+.mounted-control button {
+    background: #3a3a3a;
+    color: #e0d8c8;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 3px 10px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.mounted-control button:hover:not(:disabled) {
+    background: #4a4a4a;
+    border-color: #c8a860;
+}
+
+.mounted-control button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .floatLeft {
     float: left;
 }

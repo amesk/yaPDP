@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- PDP-11/70 style front panel icon -->
+  <rect x="0" y="0" width="1024" height="1024" rx="96" fill="#14100c"/>
+  <!-- top accent line -->
+  <rect x="0" y="0" width="1024" height="14" fill="#c8a860"/>
+  <!-- "digital" wordmark -->
+  <g font-family="Helvetica, Arial, sans-serif" font-weight="bold" text-anchor="middle">
+    <text x="512" y="320" font-size="120" fill="#8f8a80" letter-spacing="4">digital</text>
+  </g>
+  <!-- PDP-11 title -->
+  <g font-family="'Courier New', monospace" font-weight="bold" text-anchor="middle">
+    <text x="512" y="470" font-size="150" fill="#e8e0d0" letter-spacing="8">PDP-11</text>
+  </g>
+  <!-- LED strips (rows of indicator dots) -->
+  <g>
+    <circle cx="232" cy="640" r="26" fill="#b04028"/>
+    <circle cx="312" cy="640" r="26" fill="#7a5ca8"/>
+    <circle cx="392" cy="640" r="26" fill="#b04028"/>
+    <circle cx="472" cy="640" r="26" fill="#7a5ca8"/>
+    <circle cx="552" cy="640" r="26" fill="#b04028"/>
+    <circle cx="632" cy="640" r="26" fill="#7a5ca8"/>
+    <circle cx="712" cy="640" r="26" fill="#b04028"/>
+    <circle cx="792" cy="640" r="26" fill="#7a5ca8"/>
+
+    <circle cx="232" cy="720" r="26" fill="#7a5ca8"/>
+    <circle cx="312" cy="720" r="26" fill="#b04028"/>
+    <circle cx="392" cy="720" r="26" fill="#7a5ca8"/>
+    <circle cx="472" cy="720" r="26" fill="#b04028"/>
+    <circle cx="552" cy="720" r="26" fill="#7a5ca8"/>
+    <circle cx="632" cy="720" r="26" fill="#b04028"/>
+    <circle cx="712" cy="720" r="26" fill="#7a5ca8"/>
+    <circle cx="792" cy="720" r="26" fill="#b04028"/>
+  </g>
+  <!-- RUN indicator glowing -->
+  <g>
+    <rect x="380" y="800" width="264" height="64" rx="12" fill="#2a2218"/>
+    <text x="512" y="844" font-family="'Courier New', monospace" font-weight="bold" font-size="44" fill="#d8d0c0" text-anchor="middle" letter-spacing="12">RUN</text>
+  </g>
+</svg>

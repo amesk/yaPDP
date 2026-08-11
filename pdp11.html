@@ -469,10 +469,26 @@
           <option value="bootcode">Bootcode</option>
         </select>
         &nbsp;
-        <label>Download disk</label>
+        <label>Export disk</label>
         <select id="downLoadSelect" disabled>
           <option value="">--none--</option>
         </select>
+        &nbsp;
+        <span class="drop-zone" id="drop-zone" title="Drop a disk/tape image here">
+          <span class="drop-zone-icon">&#8681;</span>
+          <span class="drop-zone-text">Drop image</span>
+          <span class="drop-zone-hint">.dsk .tap .ptap .zst</span>
+          <input type="file" id="drop-file-input" accept=".dsk,.tap,.ptap,.zst,.dsk.zst,.tap.zst,.ptap.zst" multiple
+            hidden>
+          <span class="drop-zone-status"></span>
+        </span>
+        <span class="mounted-control">
+          <label>Mounted images</label>
+          <select id="mounted-select" disabled>
+            <option value="">--none--</option>
+          </select>
+          <button type="button" id="mounted-remove" disabled>Unmount</button>
+        </span>
       </div>
     </div>
     <div class="page" id="page-teletype">
@@ -2623,6 +2639,16 @@ There is a small mailbox here.
 
     </div>
   </div>
+
+  <!-- Full-window drop target: shown while dragging files over the page -->
+  <div class="drop-overlay" id="drop-overlay">
+    <div class="drop-overlay-box">
+      <span class="drop-overlay-icon">&#8681;</span>
+      <span class="drop-overlay-title">Drop image files here</span>
+      <span class="drop-overlay-hint">.dsk &nbsp;.tap &nbsp;.ptap &nbsp;.zst</span>
+    </div>
+  </div>
+
   <script src='src/pdp11-panel.js'></script>
   <script src='src/g60printer.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
@@ -2632,6 +2658,8 @@ There is a small mailbox here.
   <script src='src/fpp.js'></script>
   <script src='src/iopage.js'></script>
   <script src='src/vt11.js'></script>
+  <script src='src/dragdrop.js'></script>
+  <script src='src/tauri-bundled.js'></script>
   <script src='src/pdp11-app.js'></script>
 </body>
 

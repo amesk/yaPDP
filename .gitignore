@@ -1,0 +1,12 @@
+# ---- Tauri build artifacts ----
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# ---- Generated staging directory (rebuilt by tools/build-desktop.sh) ----
+desktop/
+
+# ---- OS / editor junk ----
+Thumbs.db
+Desktop.ini
+nul
+.DS_Store
