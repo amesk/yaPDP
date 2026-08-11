@@ -37,6 +37,15 @@
             "icons/128x128@2x.png",
             "icons/icon.ico"
         ],
+        "windows": {
+            "nsis": {
+                "sidebarImage": "installer/sidebar.bmp"
+            },
+            "wix": {
+                "bannerPath": "installer/banner.bmp",
+                "dialogImagePath": "installer/dialog.bmp"
+            }
+        },
         "resources": {
             "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
             "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
