@@ -124,6 +124,7 @@
 
 #g60printer div#paper.paperScroll {
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 #g60printer div#paper_topspacer {
@@ -213,6 +214,15 @@
     height: 16px;
     max-height: 16px;
     text-align: center;
+}
+
+/* Right-margin overstrike: characters printed after the carriage reached
+   the last column pile up on top of each other, forming an unreadable
+   dark blob (authentic ASR 33 behaviour). */
+#g60printer td#paper_printarea span.overstrike {
+    background-color: #3a3a3a;
+    color: #8a8a8a;
+    text-shadow: none;
 }
 
 #g60printer td#paper_printarea span.drop {

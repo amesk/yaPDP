@@ -104,6 +104,11 @@
         var headOffset = 30;
         var lineHeight = 16;
         var charWidth = 7;
+        // Maximum printable columns per line.  Authentic ASR 33 stops the
+        // carriage at the right margin (72 columns; some setups use 80) and
+        // further characters overstrike the last column instead of wrapping
+        // or widening the paper.
+        var maxCols = 72;
         var headBaseY = 8;
         var headUpY = 1;
         var headUpFuzzyness = 3;
@@ -217,7 +222,22 @@
             var space = (c === ' ');
             var span;
 
-            if (overHang > 0) {
+            if (currentCharPos >= maxCols) {
+                // Carriage has reached the right margin: the carriage-return
+                // mechanism is physically blocked, so every further character
+                // overstrikes the last column, building up an unreadable dark
+                // blob (authentic ASR 33 behaviour). No automatic wrapping.
+                // NB: a leading NBSP span occupies children[0], so the
+                // character on column k lives at children[k + 1]; the last
+                // column (maxCols - 1) is therefore children[maxCols].
+                span = currentLineEl.children[maxCols];
+                if (span) {
+                    span.textContent = space ? '\u00A0' : c;
+                    if (span.className.indexOf('overstrike') === -1) {
+                        span.className += ' overstrike';
+                    }
+                }
+            } else if (overHang > 0) {
                 // Overstrike: print over the character left by a previous
                 // backspace. nroff/man renders bold as "X\bX"; the second
                 // 'X' must replace the first. The leading NBSP span occupies
@@ -239,11 +259,12 @@
                 currentLineEl.appendChild(span);
             }
 
-            // Animate print head
-            var targetPos = currentCharPos;
+            // Animate print head: clamp to the right margin (last column)
+            // so the carriage stops and cannot advance any further.
+            var targetPos = (currentCharPos >= maxCols) ? (maxCols - 1) : currentCharPos;
             movePrintHeadQuick(targetPos);
 
-            currentCharPos++;
+            if (currentCharPos < maxCols) currentCharPos++;
 
             // Scroll paper if at end
             ensurePaperScroll();
@@ -449,7 +470,10 @@
             pe = document.createElement('p');
             empty = true;
             pb = [];
-            while (pos < 100) {
+            // Cap line length at the right margin (maxCols). Authentic ASR 33
+            // never wraps: the carriage stops at the last column, so a longer
+            // line must not widen the paper / create a horizontal scrollbar.
+            while (pos < maxCols) {
                 c = textBuffer.charAt(textPos++);
                 if (c === '\n' || c === '') break;
                 space = (c === ' ');
@@ -473,7 +497,7 @@
                 else { empty = false; p1 = pos; }
                 pb.push(space);
                 if (textPos >= textBuffer.length) break;
-                if (++pos === 100 && textBuffer.charAt(textPos) === '\n') textPos++;
+                if (++pos === maxCols && textBuffer.charAt(textPos) === '\n') textPos++;
             }
             if (textPos >= textBuffer.length) { textPos = 0; textBuffer = ''; }
             if (empty) {
