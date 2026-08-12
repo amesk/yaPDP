@@ -95,7 +95,6 @@ fs.rmSync(DEST, { recursive: true, force: true });
 fs.mkdirSync(DEST, { recursive: true });
 
 fs.copyFileSync(path.join(ROOT, "pdp11.html"), path.join(DEST, "pdp11.html"));
-fs.copyFileSync(path.join(ROOT, "pdp11-45.html"), path.join(DEST, "pdp11-45.html"));
 fs.copyFileSync(path.join(ROOT, "favicon.ico"), path.join(DEST, "favicon.ico"));
 copyDir(path.join(ROOT, "css"), path.join(DEST, "css"));
 copyDir(path.join(ROOT, "src"), path.join(DEST, "src"));

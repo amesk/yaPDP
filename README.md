@@ -16,7 +16,7 @@ I went on to become a professional programmer, eventually leading large projects
 
 I never got to run **real UNIX** on those machines. The Soviet replicas lived under RSX‑11M, and by the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
 
-This repository is the result. A fully fledged PDP‑11/70 (and /45) emulator that runs right in your browser, with an authentic front panel and a connected **ASR 33 teletype** — the operator's console I always dreamed of having next to my desk.
+This repository is the result. A fully fledged PDP‑11/70 emulator that runs right in your browser, with an authentic front panel and a connected **ASR 33 teletype** — the operator's console I always dreamed of having next to my desk.
 
 Welcome to the machine.
 
