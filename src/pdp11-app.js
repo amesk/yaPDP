@@ -474,3 +474,6 @@ initG60Printer();
 g60Keyboard.init();
 initVT52Page();
 boot();
+
+// First-run onboarding hint (no-op after the user has dismissed it once)
+Onboarding.init();

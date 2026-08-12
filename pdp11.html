@@ -529,6 +529,10 @@
       <h2>PDP‑11 Web Emulator — with Authentic Front Panel & ASR 33 Teletype</h2>
 
       <p>
+        <button type="button" class="onboard-show-again" id="onboard-show-again">Show first-run hint again</button>
+      </p>
+
+      <p>
         <img src="assets/pdp1170-large.png" alt="PDP‑11/70 Front Panel" style="max-width:100%; height:auto;">
       </p>
 
@@ -677,7 +681,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
         at the <code>Boot></code> prompt.
       </p>
 
-      <table style="margin-left:25px; padding:3px;">
+      <table id="guest-os-table" style="margin-left:25px; padding:3px;">
         <thead>
           <tr>
             <th>Disk</th>
@@ -2660,6 +2664,7 @@ There is a small mailbox here.
   <script src='src/vt11.js'></script>
   <script src='src/dragdrop.js'></script>
   <script src='src/tauri-bundled.js'></script>
+  <script src='src/onboarding.js'></script>
   <script src='src/pdp11-app.js'></script>
 </body>
 

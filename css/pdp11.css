@@ -263,6 +263,124 @@
     color: #9a9488;
 }
 
+/* First-run onboarding modal overlay */
+.onboard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 8, 6, 0.72);
+}
+
+.onboard-overlay.visible {
+    display: flex;
+}
+
+.onboard-box {
+    max-width: 540px;
+    padding: 28px 34px;
+    border: 1px solid #c8a860;
+    border-radius: 10px;
+    background: #1c1814;
+    color: #e0d8c8;
+    box-shadow: 0 10px 46px rgba(0, 0, 0, 0.6);
+    line-height: 1.5;
+}
+
+.onboard-title {
+    display: block;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #c8a860;
+    margin-bottom: 12px;
+}
+
+.onboard-intro {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #cfc7b8;
+}
+
+.onboard-steps {
+    margin: 0 0 6px 22px;
+    padding: 0;
+    font-size: 14px;
+}
+
+.onboard-steps li {
+    margin: 4px 0;
+}
+
+.onboard-boots {
+    list-style: none;
+    margin: 2px 0 8px;
+    padding: 6px 0 6px 10px;
+    border-left: 3px solid #c8a860;
+    background: rgba(200, 168, 96, 0.07);
+    font-size: 13px;
+}
+
+.onboard-boots li {
+    margin: 3px 0;
+}
+
+.onboard-boot code {
+    background: #2a2a2a;
+    color: #ffd27f;
+    border: 1px solid #4a4438;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+.onboard-boot.onboard-more {
+    color: #9a9488;
+}
+
+.onboard-drag {
+    margin: 8px 0 16px;
+    font-size: 13px;
+    color: #b8b0a0;
+}
+
+.onboard-close {
+    display: inline-block;
+    padding: 8px 28px;
+    border: 1px solid #c8a860;
+    border-radius: 5px;
+    background: #2c261c;
+    color: #ffd27f;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+}
+
+.onboard-close:hover {
+    background: #3a3224;
+}
+
+/* "Show first-run hint again" link/button on the Info page */
+.onboard-show-again {
+    display: inline-block;
+    margin: 4px 0 10px;
+    padding: 6px 16px;
+    border: 1px solid #6a624f;
+    border-radius: 5px;
+    background: #211d17;
+    color: #c8a860;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.onboard-show-again:hover {
+    background: #2c261c;
+    border-color: #c8a860;
+}
+
 /* Mounted-images management control (unmount UI) */
 .mounted-control {
     display: inline-flex;

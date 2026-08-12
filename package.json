@@ -8,7 +8,7 @@
         "node": ">=18"
     },
     "scripts": {
-        "test": "node tests/dataloader.test.js",
+        "test": "node tests/dataloader.test.js && node tests/onboarding.test.js",
         "favicon": "node tools/gen-favicon.js",
         "stage": "node tools/build-desktop.js",
         "desktop": "node tools/build-desktop.js && node tools/tauri-build.js",

@@ -106,7 +106,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular DataLoader tests |
+| `npm test` | Run the modular tests (DataLoader + onboarding first-run logic) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run favicon` | Regenerate `favicon.ico` |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
