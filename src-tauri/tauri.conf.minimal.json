@@ -1,8 +1,8 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
-    "productName": "PDP-11",
+    "productName": "PDP-11 Minimal",
     "version": "0.1.0",
-    "identifier": "org.pdp11.emulator",
+    "identifier": "org.pdp11.emulator.minimal",
     "build": {
         "frontendDist": "../desktop"
     },
@@ -29,8 +29,8 @@
         "active": true,
         "targets": "all",
         "category": "Utility",
-        "shortDescription": "PDP-11/70 web emulator desktop app",
-        "longDescription": "A PDP-11/70 (and /45) emulator with an authentic front panel and ASR 33 teletype, packaged as a native desktop app.",
+        "shortDescription": "PDP-11/70 web emulator desktop app (minimal)",
+        "longDescription": "A PDP-11/70 (and /45) emulator with an authentic front panel and ASR 33 teletype, packaged as a native desktop app. Minimal build: ships the core boot images only; other disk/tape images can be dragged & dropped.",
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",
