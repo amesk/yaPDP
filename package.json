@@ -1,0 +1,20 @@
+{
+    "name": "pdp11-emulator",
+    "version": "0.1.0",
+    "private": true,
+    "type": "commonjs",
+    "description": "PDP-11/70 web emulator - development & build scripts",
+    "engines": {
+        "node": ">=18"
+    },
+    "scripts": {
+        "test": "node tests/dataloader.test.js",
+        "favicon": "node tools/gen-favicon.js",
+        "stage": "node tools/build-desktop.js",
+        "desktop": "node tools/build-desktop.js && node tools/tauri-build.js",
+        "desktop:minimal": "node tools/build-desktop.js --variant minimal && node tools/tauri-build.js",
+        "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
+        "serve": "node tools/serve.js",
+        "clean": "node tools/build-desktop.js --clean"
+    }
+}

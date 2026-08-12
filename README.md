@@ -95,22 +95,37 @@ flowchart LR
 ### Building the desktop app
 
 Prerequisites (Windows): Rust (MSVC toolchain), Visual Studio 2019/2022 with "Desktop
-development with C++", WebView2 (built into Windows 11), and `tauri-cli`
-(`cargo install tauri-cli --version "^2"`).
+development with C++", WebView2 (built into Windows 11), `tauri-cli`
+(`cargo install tauri-cli --version "^2"`), and Node.js >= 18.
+
+The build is orchestrated through npm scripts — the repo has no npm dependencies,
+just plain Node tooling. Run `npm run` to list every target:
+
+| Script | Action |
+|--------|--------|
+| `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
+| `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
+| `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
+| `npm test` | Run the modular DataLoader tests |
+| `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
+| `npm run favicon` | Regenerate `favicon.ico` |
+| `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
 ```bash
-# 0. Stage the lightweight frontend (excludes heavy media/) into desktop/
-#    --variant minimal (default) bundles rk0/rk1/bootcode only,
-#    --variant full bundles every disk/tape image
-bash tools/build-desktop.sh --variant full
+# Build the full desktop app (stage + installers) in one step
+npm run desktop:full
 
-# 1. Build installers (MSI + NSIS + portable exe)
-cd src-tauri && cargo tauri build
+# Or manually: stage only
+npm run stage -- --variant full
+
+# Serve the browser version for development
+npm run serve
 ```
 
-`tools/build-desktop.sh` also copies the matching `src-tauri/tauri.conf.<variant>.json`
-over `src-tauri/tauri.conf.json` (gitignored) so `cargo tauri build` picks up the right
-set of bundled resources. Re-run it after any web-source change before rebuilding.
+`tools/build-desktop.js` (invoked by the `stage`/`desktop*` scripts) copies the matching
+`src-tauri/tauri.conf.<variant>.json` over `src-tauri/tauri.conf.json` (gitignored) so
+`cargo tauri build` picks up the right set of bundled resources. Re-run the staging step
+after any web-source change before rebuilding.
 
 The installers are branded with a themed PDP-11 front-panel artwork (dark cabinet,
 "11" lettering, indicator lamps, toggle switches) that ships as static
@@ -211,7 +226,9 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/gen-favicon.js`](tools/gen-favicon.js) | Favicon generator |
-| [`tools/build-desktop.sh`](tools/build-desktop.sh) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |
+| [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |
+| [`tools/serve.js`](tools/serve.js) | Minimal static file server for the browser emulator (port 1170, HTTP Range support) |
+| [`package.json`](package.json) | npm build scripts — `test`, `stage`, `desktop`/`desktop:minimal`/`desktop:full`, `serve`, `favicon`, `clean` |
 | [`src-tauri/`](src-tauri/) | Tauri v2 desktop shell — Rust commands, `tauri.conf.minimal.json` / `tauri.conf.full.json`, bundled resources, app icons |
 | [`assets/vendor/fzstd.js`](assets/vendor/fzstd.js) | Bundled fzstd (ZSTD decompression) — served locally instead of an external CDN so disk/tape images decompress reliably on any network |
 
