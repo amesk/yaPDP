@@ -108,7 +108,6 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
 | `npm test` | Run the modular tests (DataLoader + onboarding first-run logic) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
-| `npm run favicon` | Regenerate `favicon.ico` |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
 ```bash
@@ -225,10 +224,9 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
-| [`tools/gen-favicon.js`](tools/gen-favicon.js) | Favicon generator |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |
 | [`tools/serve.js`](tools/serve.js) | Minimal static file server for the browser emulator (port 1170, HTTP Range support) |
-| [`package.json`](package.json) | npm build scripts — `test`, `stage`, `desktop`/`desktop:minimal`/`desktop:full`, `serve`, `favicon`, `clean` |
+| [`package.json`](package.json) | npm build scripts — `test`, `stage`, `desktop`/`desktop:minimal`/`desktop:full`, `serve`, `clean` |
 | [`src-tauri/`](src-tauri/) | Tauri v2 desktop shell — Rust commands, `tauri.conf.minimal.json` / `tauri.conf.full.json`, bundled resources, app icons |
 | [`assets/vendor/fzstd.js`](assets/vendor/fzstd.js) | Bundled fzstd (ZSTD decompression) — served locally instead of an external CDN so disk/tape images decompress reliably on any network |
 
