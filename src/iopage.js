@@ -909,12 +909,12 @@ function dl11(vt52Unit, deviceVector) {
     }
 
     // Expose globally for the visual punch-keyboard (and inline handlers)
-    // Unit 0 → global dlReceiveQueue (console, used by Teletype page)
-    // Unit 1 → global dlReceiveQueue1 (VT52 page)
+    // Unit 0 → global dlReceiveQueue (console)
+    // Unit N → global dlReceiveQueueN (VT52 user terminals)
     if (unit === 0) {
         window.dlReceiveQueue = dlReceiveQueue;
-    } else if (unit === 1) {
-        window.dlReceiveQueue1 = dlReceiveQueue;
+    } else {
+        window["dlReceiveQueue" + unit] = dlReceiveQueue;
     }
 
     // --- Typeahead queue service routine ---
@@ -1159,9 +1159,15 @@ function dl11(vt52Unit, deviceVector) {
                         }
                         xbuf = result & 0x7f;
                         if (xbuf >= 8 && xbuf < 127) {
-                            // Route console (tty0) to Google60 Printer, others use VT52
-                            if (unit === 0 && typeof g60ConsoleWrite !== 'undefined') {
-                                g60ConsoleWrite(xbuf);
+                            // Route console (tty0) to the configured terminal type;
+                            // user terminals (1+) always use VT52.
+                            if (unit === 0) {
+                                var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+                                if (cfg && cfg.consoleType === 'vt52') {
+                                    vt52Write(0, xbuf);
+                                } else if (typeof g60ConsoleWrite !== 'undefined') {
+                                    g60ConsoleWrite(xbuf);
+                                }
                             } else {
                                 vt52Write(unit, xbuf);
                             }
@@ -1197,9 +1203,16 @@ function dl11(vt52Unit, deviceVector) {
 }
 
 // --- Register console and additional terminals ---
-iopage.register(0o17777560, 4, dl11(0, 0o60));   // Console
-iopage.register(0o17776500, 4, dl11(1, 0o310));  // TTY1
-iopage.register(0o17776510, 4, dl11(2, 0o320));  // TTY2
+// The console (tty0) is always present. User terminals are registered only
+// when configured (0-2), so the guest OS sees exactly the configured hardware.
+var __config = (typeof Config !== 'undefined') ? Config.get() : null;
+iopage.register(0o17777560, 4, dl11(0, 0o60));   // Console (tty0) — always
+if (__config && __config.userTerminals >= 1) {
+    iopage.register(0o17776500, 4, dl11(1, 0o310));  // TTY1
+}
+if (__config && __config.userTerminals >= 2) {
+    iopage.register(0o17776510, 4, dl11(2, 0o320));  // TTY2
+}
 
 
 
@@ -1227,6 +1240,8 @@ iopage.register(0o17776510, 4, dl11(2, 0o320));  // TTY2
 //
 // ================================================================
 
+// The LP11 printer is registered only when the CONFIG option "printer" is on.
+if (__config && __config.printer) {
 iopage.register(0o17777510, 2, (function() {
     "use strict";
 
@@ -1242,13 +1257,19 @@ iopage.register(0o17777510, 2, (function() {
     let lpcs;          // Control/Status register
     let lpdb;          // Data buffer
     let iMask;         // Interrupt pending mask
-    let lp11Element;   // UI element for printer output
+    let lp11Console;   // G60 console adapter driving the animated printer
+    let lp11Printer;   // G60Printer instance (no keyboard)
+    // Plain-text copy of the printed jobs, accumulated alongside the animated
+    // paper so the "Print" / "Save .txt" buttons can output them for real.
+    // Kept across controller resets (the paper stays, like real hardware).
+    let lp11Buffer = [];       // completed lines
+    let lp11CurrentLine = "";  // line being built
 
     // --- initLP() ---
     // Initialize LP11 controller state.
     // - Sets LPCS DONE (printer always ready, IE clear)
     // - Clears data buffer and interrupt mask
-    // - Resets UI element reference
+    // - Resets the printer UI reference
     function initLP() {
         // Control/Status: DONE set, IE clear
         lpcs = LP_LPCS_DONE;
@@ -1259,42 +1280,96 @@ iopage.register(0o17777510, 2, (function() {
         // Clear interrupt mask
         iMask = 0;
 
-        // Reset printer output UI element
-        lp11Element = undefined;
+        // The printer instance and its paper are kept across controller
+        // resets (like real hardware) — only the registers are re-initialized.
+        // On first load ensureUI() creates the printer eagerly below.
     }
 
     // --- ensureUI() ---
-    // Lazy UI creation for LP11 printer output.
-    // - Creates textarea + Clear/Save buttons if not already present
-    // - Attaches savePrinterOutput() helper to export contents
+    // Lazy UI creation for LP11 output: an animated G60 printer (the same
+    // rendering as the console teletype) but WITHOUT a keyboard, hosted on the
+    // Printer page in the #lp11_printer container. It uses a unique idPrefix
+    // so the two G60Printer instances never collide on DOM ids.
     function ensureUI() {
-        if (lp11Element === undefined) {
-            // Inject printer UI into lp11_div container
-            document.getElementById("lp11_div").innerHTML =
-                '<p>Printer<br />' +
-                '<textarea id="lp11_id" cols="132" rows="24" spellcheck="false" ' +
-                'style="font-family:monospace"></textarea><br />' +
-                '<button onclick="document.getElementById(\'lp11_id\').value=\'\';">Clear</button> ' +
-                '<button onclick="savePrinterOutput()">Save</button></p>';
-
-            // Cache textarea element reference
-            lp11Element = document.getElementById("lp11_id");
-
-            // Attach save helper
-            window.savePrinterOutput = function() {
-                const text = lp11Element.value;
-                const blob = new Blob([text], { type: "text/plain" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "lp11_output.txt";
-                a.click();
-                URL.revokeObjectURL(url);
-            };
+        if (lp11Console === undefined) {
+            var container = document.getElementById("lp11_printer");
+            if (!container || typeof window.G60Printer === "undefined") {
+                lp11Console = null;
+                return;
+            }
+            var printerWidth = (typeof Config !== "undefined")
+                ? Config.get().printerWidth : 80;
+            // idPrefix "lp11g60" keeps the generated element ids distinct from
+            // the page container id "lp11_printer".
+            lp11Printer = new window.G60Printer("lp11_printer", {
+                idPrefix: "lp11g60",
+                maxCols: printerWidth
+            });
+            lp11Console = window.createG60Console(lp11Printer);
+            // Expose for live print-width changes from the CONFIG page.
+            window.lp11G60Printer = lp11Printer;
         }
     }
 
     initLP();
+
+    // Create the printer UI immediately when the printer is installed, so the
+    // Printer page shows the machine instead of an empty grey box before the
+    // first job is printed. ensureUI() is idempotent (checks lp11Console).
+    ensureUI();
+
+    // ================================================================
+    // Real printer output — "Print" (system dialog) and "Save .txt"
+    // ================================================================
+
+    // Join every completed line plus the in-progress line.
+    function lp11GetText() {
+        return lp11Buffer.concat([lp11CurrentLine]).join("\n");
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+    }
+
+    // Send the accumulated jobs to the real (OS) printer via a hidden iframe.
+    function lp11Print() {
+        var text = lp11GetText();
+        if (!text.trim()) return;
+        var iframe = document.createElement("iframe");
+        iframe.setAttribute("style",
+            "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;");
+        document.body.appendChild(iframe);
+        var doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(
+            "<!DOCTYPE html><html><head><title>LP11 output</title>" +
+            "<style>body{font-family:'Courier New',monospace;font-size:12px;white-space:pre;}pre{margin:0;}</style>" +
+            "</head><body><pre>" + escapeHtml(text) + "</pre></body></html>"
+        );
+        doc.close();
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(function () {
+            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 1000);
+    }
+
+    // Download the accumulated jobs as a plain-text file.
+    function lp11Save() {
+        var text = lp11GetText();
+        if (!text.trim()) return;
+        var blob = new Blob([text], { type: "text/plain" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "lp11_output.txt";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    window.lp11Print = lp11Print;
+    window.lp11Save = lp11Save;
+    window.lp11GetText = lp11GetText;
 
     // --- Device interface ---
     return {
@@ -1329,17 +1404,32 @@ iopage.register(0o17777510, 2, (function() {
                 case 0o6: // LPDB – Line Printer Data Buffer
                     result = insertData(lpdb, pa, data, byteFlag);
                     if (data >= 0 && result >= 0) {
-                        // Ensure UI element exists
+                        // Ensure the animated printer exists
                         ensureUI();
                         lpdb = result & 0x7F; // 7‑bit ASCII
 
-                        // Append printable characters (ignore CR, accept LF + printable)
-                        if (lpdb >= 0o12 && lpdb !== 0o15) {
-                            lp11Element.value += String.fromCharCode(lpdb);
-                            if (lpdb === 0o12) {
-                                lp11Element.scrollTop = lp11Element.scrollHeight;
-                            }
+                        // Feed printable characters into the G60 console adapter
+                        // (CR ignored, LF + printable accepted, like the old textarea)
+                        if (lpdb >= 0o12 && lpdb !== 0o15 && lp11Console) {
+                            lp11Console.writeChar(lpdb);
                         }
+
+                        // Accumulate a plain-text copy for Print / Save .txt.
+                        // TAB advances to the next 8-column tab stop — matching
+                        // printer.printTab() so the printed output and the
+                        // on-screen paper always agree.
+                        if (lpdb === 0o12) {                 // LF: end of line
+                            lp11Buffer.push(lp11CurrentLine);
+                            lp11CurrentLine = "";
+                        } else if (lpdb === 0o11) {          // TAB → next 8-column stop
+                            var tabCol = lp11CurrentLine.length % 8;
+                            for (var t = 0; t < 8 - tabCol; t++) {
+                                lp11CurrentLine += " ";
+                            }
+                        } else if (lpdb >= 0x20 && lpdb < 0x7F) { // printable
+                            lp11CurrentLine += String.fromCharCode(lpdb);
+                        }
+                        // CR (0o15), DEL (0o7F) and other controls are ignored.
 
                         // Raise interrupt if IE set
                         if (lpcs & LP_LPCS_IE) {
@@ -1382,6 +1472,7 @@ iopage.register(0o17777510, 2, (function() {
         reset: initLP
     };
 })());
+}
 
 
 // ================================================================

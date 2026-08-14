@@ -23,7 +23,9 @@ function g60ConsoleWrite(code) {
 
 function initG60Printer() {
   if (g60printer) return;
-  g60printer = new G60Printer('g60printer');
+  var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+  var maxCols = (cfg) ? cfg.printWidth : 72;
+  g60printer = new G60Printer('g60printer', { maxCols: maxCols });
   g60Console = createG60Console(g60printer);
 }
 
@@ -333,41 +335,46 @@ var g60Keyboard = (function () {
   return { init: function () { buildKeyboard(); installPhysicalKeyboard(); } };
 })();
 
-// ---- VT52 page keyboard handler ----
-// Routes physical keyboard input to TTY1 (unit 1) when VT52 page is active.
-function installVT52Keyboard() {
+// ---- VT52 page keyboard handler (parameterized by unit and page) ----
+// Routes physical keyboard input to a given VT52 unit while its page is
+// active. The global handler pattern keeps input consistent across the
+// console VT52 and every user terminal page.
+function installVT52Keyboard(unit, pageId) {
   document.addEventListener('keydown', function (e) {
     if (/^(input|textarea)$/i.test(e.target.tagName)) return;
 
     // Ignore browser auto-repeat (key held down)
     if (e.repeat) return;
 
-    // Only intercept when VT52 page is active
-    var vt52Page = document.getElementById('page-vt52');
-    if (!vt52Page || !vt52Page.classList.contains('active')) return;
+    // Only intercept when THIS VT52 page is active
+    var pageEl = document.getElementById(pageId);
+    if (!pageEl || !pageEl.classList.contains('active')) return;
 
-    // Don't intercept when teletype page is also active (let g60Keyboard handle it)
+    // Don't intercept when the teletype console page is active
+    // (let g60Keyboard handle it)
     var telePage = document.getElementById('page-teletype');
     if (telePage && telePage.classList.contains('active')) return;
 
     // Prevent Tab switching away from the emulator
     if (e.key === 'Tab') { e.preventDefault(); return; }
 
-    // Route to TTY1 (unit 1) via globally exposed dlReceiveQueue1
-    function sendVT52(bytes) {
-      if (typeof window.dlReceiveQueue1 === 'function') {
-        window.dlReceiveQueue1(1, bytes);
-      }
+    // Route to the given unit via the globally exposed receive queue.
+    // Unit 0 → dlReceiveQueue, unit N → dlReceiveQueueN.
+    function sendToUnit(bytes) {
+      // Optional audible key click (VT100-style feedback)
+      if (typeof window.playKeyClick === 'function') window.playKeyClick();
+      var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
+      if (typeof q === 'function') q(unit, bytes);
     }
 
     // Special keys: Enter, Backspace
     var code = e.keyCode || e.which;
-    if (code === 13) { sendVT52([13]); e.preventDefault(); return; }
-    if (code === 8) { sendVT52([8]); e.preventDefault(); return; }
+    if (code === 13) { sendToUnit([13]); e.preventDefault(); return; }
+    if (code === 8) { sendToUnit([8]); e.preventDefault(); return; }
 
     // Ctrl+letter → control codes
     if (e.ctrlKey && code >= 65 && code <= 90) {
-      sendVT52([code - 64]); e.preventDefault(); return;
+      sendToUnit([code - 64]); e.preventDefault(); return;
     }
 
     // Printable characters
@@ -386,15 +393,15 @@ function installVT52Keyboard() {
     }
 
     if (ch >= 32 && ch < 127) {
-      sendVT52([ch]);
+      sendToUnit([ch]);
       e.preventDefault();
     }
   });
 
-  // Paste handler for VT52 page
-  var vt52Crt = document.getElementById('vt52-crt');
-  if (vt52Crt) {
-    vt52Crt.addEventListener('paste', function (e) {
+  // Paste handler for this VT52 page's canvas
+  var crt = document.querySelector('#' + pageId + ' canvas');
+  if (crt) {
+    crt.addEventListener('paste', function (e) {
       e.preventDefault();
       var text = (e.clipboardData || window.clipboardData).getData('text');
       if (text) {
@@ -403,31 +410,29 @@ function installVT52Keyboard() {
         for (var i = 0; i < text.length; i++) {
           bytes.push(text.charCodeAt(i) & 0x7F);
         }
-        if (typeof window.dlReceiveQueue1 === 'function') {
-          window.dlReceiveQueue1(1, bytes);
-        }
+        var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
+        if (typeof q === 'function') q(unit, bytes);
       }
     });
   }
 }
 
-// ---- Initialize VT52 terminal on the VT52 page ----
-function initVT52Page() {
-  var canvas = document.getElementById('vt52-screen');
+// ---- Initialize a VT52 terminal on the given page ----
+function initVT52Page(unit, pageId, canvasId, textareaId) {
+  var canvas = document.getElementById(canvasId);
   if (!canvas) return;
 
   // Create a hidden textarea for the VT52 to use as a backing store
   var textarea = document.createElement('textarea');
-  textarea.id = 'tty1_textarea';
+  textarea.id = textareaId;
   textarea.style.display = 'none';
   document.body.appendChild(textarea);
 
-  // Initialize the VT52 terminal with canvas enabled
-  // Note: receiveRoutine must use dlReceiveQueue1 for TTY1 input
-  window.vt52Initialize(1, function (unit, bytes) {
-    if (typeof window.dlReceiveQueue1 === 'function') {
-      window.dlReceiveQueue1(1, bytes);
-    }
+  // Initialize the VT52 terminal with canvas enabled.
+  // receiveRoutine feeds input back through the unit's global queue.
+  window.vt52Initialize(unit, function (unit, bytes) {
+    var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
+    if (typeof q === 'function') q(unit, bytes);
   }, textarea, canvas, {
     allowCanvas: true,
     noHardcopyFallback: true,
@@ -437,12 +442,12 @@ function initVT52Page() {
   });
 
   // Install keyboard handler for this page
-  installVT52Keyboard();
+  installVT52Keyboard(unit, pageId);
 
   // Force terminal into screen mode with canvas visible immediately.
   // Without this, the terminal starts in hardcopy mode (output to hidden textarea)
   // and only switches to canvas upon receiving an escape sequence.
-  var term = window.vt52Get(1);
+  var term = window.vt52Get(unit);
   if (term) {
     term.modes.screen = true;
     term.rows = 24;
@@ -469,10 +474,147 @@ function initVT52Page() {
   }
 }
 
+// ==================================================================
+// Optional audible key click for VT52 terminals (VT100-style feedback).
+// Synthesized with Web Audio (no binary asset needed). The CONFIG
+// "keyClick" setting is checked live on every keystroke.
+// ==================================================================
+(function installKeyClick() {
+  var audioCtx = null;
+  window.playKeyClick = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (!cfg || !cfg.keyClick) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = audioCtx || new Ctx();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 2000;
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.03);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.03);
+    } catch (err) { /* ignore audio errors */ }
+  };
+})();
+
+// ---- Sidebar visibility according to the configuration ----
+function setNavVisible(page, visible) {
+  var btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
+  if (btn) {
+    if (visible) btn.classList.remove('hidden');
+    else btn.classList.add('hidden');
+  }
+}
+
+function applyVisibility() {
+  var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+  if (!cfg) return;
+  setNavVisible('teletype', cfg.consoleType === 'teletype');
+  setNavVisible('vt52-console', cfg.consoleType === 'vt52');
+  setNavVisible('vt52', cfg.userTerminals >= 1);
+  setNavVisible('vt52-2', cfg.userTerminals >= 2);
+  setNavVisible('printer', cfg.printer);
+}
+
+// ---- CONFIG page form: populate controls and wire up events ----
+function initConfigForm() {
+  var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+  if (!cfg) return;
+
+  var radios = document.querySelectorAll('input[name="consoleType"]');
+  for (var i = 0; i < radios.length; i++) {
+    radios[i].checked = (radios[i].value === cfg.consoleType);
+  }
+  var userTerm = document.getElementById('config-userTerminals');
+  if (userTerm) userTerm.value = String(cfg.userTerminals);
+  var printerEl = document.getElementById('config-printer');
+  if (printerEl) printerEl.checked = cfg.printer;
+  var pwEl = document.getElementById('config-printWidth');
+  if (pwEl) pwEl.value = String(cfg.printWidth);
+  var pwrEl = document.getElementById('config-printerWidth');
+  if (pwrEl) pwrEl.value = String(cfg.printerWidth);
+  var kcEl = document.getElementById('config-keyClick');
+  if (kcEl) kcEl.checked = cfg.keyClick;
+
+  // Structural changes (hardware presence) restart the machine so iopage.js
+  // re-registers the configured devices and the UI is rebuilt from scratch.
+  function structural(partial) {
+    if (typeof Config === 'undefined') return;
+    Config.set(partial);
+    window.location.reload();
+  }
+
+  for (var i = 0; i < radios.length; i++) {
+    radios[i].addEventListener('change', function () {
+      if (this.checked) structural({ consoleType: this.value });
+    });
+  }
+  if (userTerm) {
+    userTerm.addEventListener('change', function () {
+      structural({ userTerminals: Number(this.value) });
+    });
+  }
+  if (printerEl) {
+    printerEl.addEventListener('change', function () {
+      structural({ printer: this.checked });
+    });
+  }
+
+  // Live changes apply without reloading.
+  if (pwEl) {
+    pwEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ printWidth: Number(this.value) });
+      if (g60printer && g60printer.setMaxCols) g60printer.setMaxCols(Number(this.value));
+    });
+  }
+  if (pwrEl) {
+    pwrEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ printerWidth: Number(this.value) });
+      if (window.lp11G60Printer && window.lp11G60Printer.setMaxCols) {
+        window.lp11G60Printer.setMaxCols(Number(this.value));
+      }
+    });
+  }
+  if (kcEl) {
+    kcEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ keyClick: this.checked });
+    });
+  }
+
+  var resetBtn = document.getElementById('config-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function () {
+      if (typeof Config !== 'undefined') Config.resetAndGet();
+      window.location.reload();
+    });
+  }
+}
+
 // ---- Bootstrap ----
+var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
+
 initG60Printer();
 g60Keyboard.init();
-initVT52Page();
+
+// Console terminal: teletype (already initialized above) or VT52 on tty0.
+if (__appCfg && __appCfg.consoleType === 'vt52') {
+  initVT52Page(0, 'page-vt52-console', 'vt52-console-screen', 'console_vt52_textarea');
+}
+// User terminals: one page per configured terminal (TT1 / TT2).
+if (__appCfg && __appCfg.userTerminals >= 1) {
+  initVT52Page(1, 'page-vt52', 'vt52-screen', 'tty1_textarea');
+}
+if (__appCfg && __appCfg.userTerminals >= 2) {
+  initVT52Page(2, 'page-vt52-2', 'vt52-2-screen', 'tty2_textarea');
+}
+
+applyVisibility();
+initConfigForm();
 boot();
 
 // First-run onboarding hint (no-op after the user has dismissed it once)

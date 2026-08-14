@@ -23,19 +23,33 @@ function switchPage(page) {
   for (var i = 0; i < btns.length; i++) {
     btns[i].classList.remove('active');
   }
-  document.getElementById('page-' + page).classList.add('active');
+  var pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
   var btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
   if (btn) btn.classList.add('active');
-  // Fix printer paper scroll when teletype page becomes visible
-  if (page === 'teletype') {
-    var paper = document.getElementById('paper');
+
+  // Scroll the paper of the console teletype / LP11 printer when shown.
+  // Scoped selectors keep the two G60Printer instances (teletype + printer)
+  // independent even though they share the same inner element ids.
+  var paperSelectors = {
+    'teletype': '#page-teletype #paper',
+    'printer': '#page-printer #lp11g60paper'
+  };
+  if (paperSelectors[page]) {
+    var paper = document.querySelector(paperSelectors[page]);
     if (paper && paper.scrollHeight > paper.clientHeight) {
       paper.scrollTop = paper.scrollHeight - paper.clientHeight;
     }
   }
-  // Focus the VT52 canvas when its page becomes active for keyboard capture
-  if (page === 'vt52') {
-    var canvas = document.getElementById('vt52-screen');
+
+  // Focus the VT52 canvas on VT52 pages for keyboard capture.
+  var canvasIds = {
+    'vt52': 'vt52-screen',
+    'vt52-console': 'vt52-console-screen',
+    'vt52-2': 'vt52-2-screen'
+  };
+  if (canvasIds[page]) {
+    var canvas = document.getElementById(canvasIds[page]);
     if (canvas) canvas.focus();
   }
 }

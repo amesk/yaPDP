@@ -23,11 +23,27 @@
       </div>
       <div class="nav-btn" data-page="teletype">
         <span class="nav-icon">&#9632;</span>
-        Teletype
+        Console
       </div>
-      <div class="nav-btn" data-page="vt52">
+      <div class="nav-btn hidden" data-page="vt52-console">
         <span class="nav-icon">&#9618;</span>
-        VT52
+        Console
+      </div>
+      <div class="nav-btn hidden" data-page="vt52">
+        <span class="nav-icon">&#9618;</span>
+        TTY 1
+      </div>
+      <div class="nav-btn hidden" data-page="vt52-2">
+        <span class="nav-icon">&#9618;</span>
+        TTY 2
+      </div>
+      <div class="nav-btn hidden" data-page="printer">
+        <span class="nav-icon">&#9999;</span>
+        Printer
+      </div>
+      <div class="nav-btn" data-page="config">
+        <span class="nav-icon">&#9881;</span>
+        Config
       </div>
       <div class="nav-btn" data-page="instructions">
         <span class="nav-icon">&#9776;</span>
@@ -456,6 +472,156 @@
           </div>
         </div>
       </div>
+    </div>
+    <div class="page" id="page-teletype">
+      <p class=clear><br>
+      <div id="g60printer"></div>
+      <div id="punchkeypane">
+        <div id="punchkeyboard"></div>
+      </div>
+      <p>
+      <div id="vt11"></div>
+      </p>
+      <bp>
+        <div id="vg11"></div>
+        </p>
+        <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
+        <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
+        <!-- Add more if needed -->
+        <br>
+    </div>
+    <div class="page" id="page-vt52">
+      <div class="vt52-container">
+        <div class="vt52-terminal">
+          <div class="vt52-badge">digital vt52</div>
+          <div class="vt52-crt" id="vt52-crt">
+            <canvas id="vt52-screen" width="1280" height="384" tabindex="0" autocomplete="off" autocorrect="off"
+              autocapitalize="off" spellcheck="false"></canvas>
+          </div>
+        </div>
+        <div class="vt52-status">
+          <span class="led on" id="vt52-power-led"></span>
+          VT52 DECscope &mdash; TT1: &nbsp;
+          <span id="vt52-conn-status">online</span>
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-vt52-console">
+      <div class="vt52-container">
+        <div class="vt52-terminal">
+          <div class="vt52-badge">digital vt52</div>
+          <div class="vt52-crt" id="vt52-console-crt">
+            <canvas id="vt52-console-screen" width="1280" height="384" tabindex="0" autocomplete="off" autocorrect="off"
+              autocapitalize="off" spellcheck="false"></canvas>
+          </div>
+        </div>
+        <div class="vt52-status">
+          <span class="led on" id="vt52-console-power-led"></span>
+          VT52 DECscope &mdash; console (TT0:) &nbsp;
+          <span id="vt52-console-conn-status">online</span>
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-vt52-2">
+      <div class="vt52-container">
+        <div class="vt52-terminal">
+          <div class="vt52-badge">digital vt52</div>
+          <div class="vt52-crt" id="vt52-2-crt">
+            <canvas id="vt52-2-screen" width="1280" height="384" tabindex="0" autocomplete="off" autocorrect="off"
+              autocapitalize="off" spellcheck="false"></canvas>
+          </div>
+        </div>
+        <div class="vt52-status">
+          <span class="led on" id="vt52-2-power-led"></span>
+          VT52 DECscope &mdash; TT2: &nbsp;
+          <span id="vt52-2-conn-status">online</span>
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-printer">
+      <p class="clear"><br>
+      <div id="lp11_printer"></div>
+      <p class="printer-actions">
+        <button type="button" onclick="window.lp11Print && window.lp11Print()">Print</button>
+        <button type="button" onclick="window.lp11Save && window.lp11Save()">Save .txt</button>
+      </p>
+    </div>
+    <div class="page" id="page-config">
+      <h2>System Configuration</h2>
+      <p>
+        Configure the peripherals attached to the PDP&#8209;11. Structural changes
+        (console terminal, user terminals, line printer) restart the machine so the
+        emulated hardware matches the configuration. Print widths and the key click
+        are applied immediately.
+      </p>
+
+      <div class="config-form">
+        <div class="config-field">
+          <span class="config-label">Console terminal</span>
+          <div class="config-control config-radios">
+            <label><input type="radio" name="consoleType" value="teletype"> Teletype (ASR 33)</label>
+            <label><input type="radio" name="consoleType" value="vt52"> VT52 (TT0:)</label>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">User terminals</span>
+          <div class="config-control">
+            <select id="config-userTerminals">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+            <span class="config-hint">Each terminal gets its own sidebar page.</span>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">Line printer (LP11)</span>
+          <div class="config-control">
+            <label><input type="checkbox" id="config-printer"> Install an LP11 printer</label>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">Teletype print width</span>
+          <div class="config-control">
+            <select id="config-printWidth">
+              <option value="72">72</option>
+              <option value="80">80</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">Printer width</span>
+          <div class="config-control">
+            <select id="config-printerWidth">
+              <option value="72">72</option>
+              <option value="80">80</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">VT52 key click</span>
+          <div class="config-control">
+            <label><input type="checkbox" id="config-keyClick"> Audible key click on VT52 terminals</label>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">Defaults</span>
+          <div class="config-control">
+            <button type="button" id="config-reset">Restore defaults</button>
+            <span class="config-hint">Resets every setting to its factory value.</span>
+          </div>
+        </div>
+      </div>
+
+      <h3>Machine</h3>
       <div class="panel-controls">
         <button data-action="reboot">REBOOT</button>
         &nbsp;
@@ -489,40 +655,6 @@
           </select>
           <button type="button" id="mounted-remove" disabled>Unmount</button>
         </span>
-      </div>
-    </div>
-    <div class="page" id="page-teletype">
-      <p class=clear><br>
-      <div id="g60printer"></div>
-      <div id="punchkeypane">
-        <div id="punchkeyboard"></div>
-      </div>
-      <p>
-      <div id="vt11"></div>
-      </p>
-      <bp>
-        <div id="vg11"></div>
-        </p>
-        <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
-        <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
-        <!-- Add more if needed -->
-        <div id="lp11_div"></div>
-        <br>
-    </div>
-    <div class="page" id="page-vt52">
-      <div class="vt52-container">
-        <div class="vt52-terminal">
-          <div class="vt52-badge">digital vt52</div>
-          <div class="vt52-crt" id="vt52-crt">
-            <canvas id="vt52-screen" width="1280" height="384" tabindex="0" autocomplete="off" autocorrect="off"
-              autocapitalize="off" spellcheck="false"></canvas>
-          </div>
-        </div>
-        <div class="vt52-status">
-          <span class="led on" id="vt52-power-led"></span>
-          VT52 DECscope &mdash; TT1: &nbsp;
-          <span id="vt52-conn-status">online</span>
-        </div>
       </div>
     </div>
     <div class="page" id="page-instructions">
@@ -2651,6 +2783,7 @@ There is a small mailbox here.
 
   <script src='src/pdp11-panel.js'></script>
   <script src='src/g60printer.js'></script>
+  <script src='src/config.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
   <script src='src/bootcode.js'></script>
   <script src='src/vt52.js'></script>

@@ -395,3 +395,263 @@
 #punchkeyboard .key_blank_down .key_blank_bg {
     background-position: -46px -59px !important;
 }
+
+/* ==================================================================
+   LP11 printer page — the same Google60 rendering as the console
+   teletype, but WITHOUT a keyboard. The G60Printer instance is created
+   with idPrefix "lp11g60", so every generated id is scoped under the
+   #lp11_printer container and never collides with the console printer.
+   ================================================================== */
+#lp11_printer {
+    position: relative;
+    width: 940px;
+    height: 470px;
+    background-color: #2a2a2a;
+    overflow: hidden;
+    border: 1px solid #444;
+    margin: 8px 0;
+}
+
+#lp11_printer div#lp11g60printer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 940px;
+    height: 464px;
+    background-color: #6f323d;
+    background-image: url('../assets/images/printer_bg.gif');
+    background-repeat: repeat;
+}
+
+#lp11_printer #lp11g60printheadarea {
+    display: block;
+    position: absolute;
+    top: 388px;
+    left: 67px;
+    width: 807px;
+    max-width: 807px;
+    height: 30px;
+    max-height: 30px;
+    padding: 0;
+    margin: 0;
+    z-index: 3;
+    overflow: hidden;
+}
+
+#lp11_printer #lp11g60printhead {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 16px;
+    padding: 0;
+    margin: 0;
+}
+
+#lp11_printer div#lp11g60printer_frontpannel {
+    position: absolute;
+    top: 395px;
+    left: 67px;
+    width: 807px;
+    height: 69px;
+    background-image: url('../assets/images/printerskin.png');
+    background-repeat: repeat-x;
+    background-position: 0 -465px;
+    z-index: 2;
+}
+
+#lp11_printer div#lp11g60printer_left {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 67px;
+    height: 464px;
+    background-image: url('../assets/images/printerskin.png');
+    background-repeat: no-repeat;
+}
+
+#lp11_printer div#lp11g60printer_right {
+    position: absolute;
+    top: 0;
+    left: 874px;
+    width: 66px;
+    height: 464px;
+    background-image: url('../assets/images/printerskin.png');
+    background-repeat: no-repeat;
+    background-position: -67px 0;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+
+    #lp11_printer div#lp11g60printer_frontpannel,
+    #lp11_printer div#lp11g60printer_left,
+    #lp11_printer div#lp11g60printer_right {
+        background-image: url('../assets/images/printerskin_webkit.png');
+    }
+}
+
+#lp11_printer div#lp11g60paper {
+    position: absolute;
+    top: 0;
+    left: 67px;
+    width: 839px;
+    height: 400px;
+    max-height: 400px;
+    vertical-align: top;
+    text-align: left;
+    padding: 0;
+    margin: 0;
+    z-index: 1;
+}
+
+#lp11_printer div#lp11g60paper.paperNoScroll {
+    overflow: hidden;
+}
+
+#lp11_printer div#lp11g60paper.paperScroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#lp11_printer div#lp11g60paper_topspacer {
+    position: relative;
+    height: 345px;
+    width: 1px;
+    margin: 0;
+    padding: 0;
+}
+
+#lp11_printer div#lp11g60paper_topspacer.paperScroll {
+    height: 16px;
+}
+
+#lp11_printer table#lp11g60paper_area {
+    margin: 0;
+    padding: 0;
+    border: 0 none;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+#lp11_printer table#lp11g60paper_area td {
+    vertical-align: top;
+    margin: 0;
+    white-space: nowrap;
+}
+
+#lp11_printer td#lp11g60papermargin_left,
+#lp11_printer td#lp11g60papermargin_right {
+    background-image: url('../assets/images/paper-margin.png');
+    background-repeat: repeat-y;
+    width: 33px;
+    min-width: 33px;
+}
+
+#lp11_printer td#lp11g60papermargin_left {
+    background-position: -3px 0;
+}
+
+#lp11_printer td#lp11g60papermargin_right {
+    background-position: 0 0;
+}
+
+#lp11_printer td#lp11g60paper_top {
+    background-image: url('../assets/images/paper-edge.png');
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    height: 5px;
+}
+
+#lp11_printer tr#lp11g60paper_bottom {
+    background-image: url('../assets/images/paper-edge.png');
+    background-repeat: repeat-x;
+    background-position: 0 -5px;
+    height: 5px;
+    display: none;
+}
+
+#lp11_printer td#lp11g60paper_printarea {
+    width: 705px;
+    color: #36363c;
+    font-size: 13px;
+    text-align: left;
+    font-family: lp1_regular, "Trebuchet MS", sans-serif;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 16px;
+    background-color: white;
+    padding: 57px 18px 1px 18px;
+    white-space: nowrap;
+    background-image: url('../assets/images/paper.png');
+    background-repeat: repeat;
+    -webkit-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    -moz-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    -o-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
+    -webkit-font-smoothing: subpixel-antialiased;
+}
+
+#lp11_printer td#lp11g60paper_printarea span {
+    display: inline-block;
+    vertical-align: top;
+    white-space: pre;
+    width: 7px;
+    max-width: 7px;
+    height: 16px;
+    max-height: 16px;
+    text-align: center;
+}
+
+#lp11_printer td#lp11g60paper_printarea span.overstrike {
+    background-color: #3a3a3a;
+    color: #8a8a8a;
+    text-shadow: none;
+}
+
+#lp11_printer td#lp11g60paper_printarea span.drop {
+    margin-top: 1px;
+    height: 15px;
+    max-height: 15px;
+    overflow: hidden;
+    text-shadow: 0 -1px 1px rgba(115, 115, 121, 0.7), 0 -1px 2px rgba(115, 115, 121, 0.4);
+}
+
+#lp11_printer td#lp11g60paper_printarea span.shift {
+    margin-top: -1px;
+    text-shadow: 0 1px 1px rgba(115, 115, 121, 0.7), 0 1px 2px rgba(115, 115, 121, 0.4);
+}
+
+#lp11_printer td#lp11g60paper_printarea span.nonAscii {
+    font-size: 12px !important;
+    line-height: 18px !important;
+}
+
+#lp11_printer td#lp11g60paper_printarea p {
+    margin: 0;
+    padding: 0;
+    max-height: 16px;
+    vertical-align: top;
+    white-space: nowrap;
+    overflow: visible;
+}
+
+#lp11_printer div#lp11g60printer_topoverlay,
+#lp11_printer div#lp11g60paper_topshadow {
+    position: absolute;
+    top: 0;
+    left: 67px;
+    width: 807px;
+    height: 20px;
+    padding: 0;
+    margin: 0;
+    background-image: url('../assets/images/paper-topoverlay.png');
+    background-repeat: repeat-x;
+}
+
+#lp11_printer div#lp11g60printer_topoverlay {
+    z-index: 1;
+}
+
+#lp11_printer div#lp11g60paper_topshadow {
+    background-position: 0 -21px;
+    z-index: 10;
+}

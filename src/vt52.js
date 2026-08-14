@@ -1808,6 +1808,13 @@
 
             // Any result is sent to the emulator receive routine
             if (bytes) {
+                // Optional audible key click (VT100-style feedback). The hook
+                // is installed by pdp11-app.js and honours the CONFIG
+                // "keyClick" setting; it is optional so this module stays
+                // decoupled from the application configuration.
+                if (typeof window.playKeyClick === "function") {
+                    window.playKeyClick();
+                }
                 this.receiveRoutine(this.unit, bytes);
                 ev.preventDefault();
             }

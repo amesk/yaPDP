@@ -73,10 +73,20 @@
     /**
      * G60Printer constructor
      * @param {string} containerId - DOM element ID to attach the printer to
+     * @param {object} [options] - optional printer configuration
+     *   options.maxCols  - printable columns (72/80/100); default 72
+     *   options.idPrefix - string prefix for the generated DOM element ids,
+     *                      so multiple printer instances keep unique ids
+     *                      (e.g. 'lp11' for the LP11 printer page)
      */
-    window.G60Printer = function(containerId) {
+    window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
         if (!container) throw new Error('Container ' + containerId + ' not found');
+
+        // Optional configuration (CONFIG page)
+        var opts = options || {};
+        var idPrefix = (typeof opts.idPrefix === 'string') ? opts.idPrefix : '';
+        var PRINT_WIDTHS = [72, 80, 100];
 
         // Printer state
         var textPos, textBuffer, timer, timer2, lines,
@@ -108,7 +118,8 @@
         // carriage at the right margin (72 columns; some setups use 80) and
         // further characters overstrike the last column instead of wrapping
         // or widening the paper.
-        var maxCols = 72;
+        var maxCols = (PRINT_WIDTHS.indexOf(Number(opts.maxCols)) !== -1)
+            ? Number(opts.maxCols) : 72;
         var headBaseY = 8;
         var headUpY = 1;
         var headUpFuzzyness = 3;
@@ -172,30 +183,34 @@
         // ================================================================
 
         function setupPrinter() {
+            // All generated DOM ids are prefixed (options.idPrefix) so that
+            // multiple printer instances on different pages keep unique ids
+            // (empty prefix -> legacy ids, e.g. "printer", "paper").
+            function pid(name) { return idPrefix + name; }
             var tbl, tb, tr, td1, td2, td3, el;
             element = document.createElement('div');
-            element.id = 'printer';
-            el = document.createElement('div'); el.id = 'printer_left'; element.appendChild(el);
-            el = document.createElement('div'); el.id = 'printer_right'; element.appendChild(el);
-            el = document.createElement('div'); el.id = 'printer_topoverlay'; element.appendChild(el);
-            paper = document.createElement('div'); paper.id = 'paper'; paper.className = 'paperNoScroll';
-            topSpacer = document.createElement('div'); topSpacer.id = 'paper_topspacer'; paper.appendChild(topSpacer);
-            tbl = document.createElement('table'); tbl.id = 'paper_area'; tb = document.createElement('tbody');
+            element.id = pid('printer');
+            el = document.createElement('div'); el.id = pid('printer_left'); element.appendChild(el);
+            el = document.createElement('div'); el.id = pid('printer_right'); element.appendChild(el);
+            el = document.createElement('div'); el.id = pid('printer_topoverlay'); element.appendChild(el);
+            paper = document.createElement('div'); paper.id = pid('paper'); paper.className = 'paperNoScroll';
+            topSpacer = document.createElement('div'); topSpacer.id = pid('paper_topspacer'); paper.appendChild(topSpacer);
+            tbl = document.createElement('table'); tbl.id = pid('paper_area'); tb = document.createElement('tbody');
             tr = document.createElement('tr');
-            td1 = document.createElement('td'); td1.id = 'paper_top'; td1.setAttribute('colspan', 3); tr.appendChild(td1); tb.appendChild(tr);
+            td1 = document.createElement('td'); td1.id = pid('paper_top'); td1.setAttribute('colspan', 3); tr.appendChild(td1); tb.appendChild(tr);
             tr = document.createElement('tr');
-            td1 = document.createElement('td'); td1.id = 'papermargin_left';
-            td2 = document.createElement('td'); td2.id = 'paper_printarea';
-            td3 = document.createElement('td'); td3.id = 'papermargin_right';
+            td1 = document.createElement('td'); td1.id = pid('papermargin_left');
+            td2 = document.createElement('td'); td2.id = pid('paper_printarea');
+            td3 = document.createElement('td'); td3.id = pid('papermargin_right');
             tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tb.appendChild(tr);
-            tr = document.createElement('tr'); tr.id = 'paper_bottom';
+            tr = document.createElement('tr'); tr.id = pid('paper_bottom');
             td1 = document.createElement('td'); td1.setAttribute('colspan', 3); tr.appendChild(td1); tb.appendChild(tr);
             tbl.appendChild(tb); paper.appendChild(tbl); element.appendChild(paper);
-            el = document.createElement('div'); el.id = 'paper_topshadow'; element.appendChild(el);
-            el = document.createElement('div'); el.id = 'printer_frontpannel'; element.appendChild(el);
-            el = document.createElement('div'); el.id = 'printheadarea'; element.appendChild(el);
+            el = document.createElement('div'); el.id = pid('paper_topshadow'); element.appendChild(el);
+            el = document.createElement('div'); el.id = pid('printer_frontpannel'); element.appendChild(el);
+            el = document.createElement('div'); el.id = pid('printheadarea'); element.appendChild(el);
             printHead = document.createElement('img');
-            printHead.id = 'printhead'; printHead.src = '../assets/images/printhead.png'; el.appendChild(printHead);
+            printHead.id = pid('printhead'); printHead.src = '../assets/images/printhead.png'; el.appendChild(printHead);
             printArea = td2;
             container.appendChild(element);
             resetPrinter();
@@ -751,6 +766,25 @@
         this.stop = function() { stopPrinter(); };
         this.destroy = function() { destroyPrinter(); };
         this.clear = function() { resetPrinter(); };
+
+        // Change the printable column count (72/80/100) and re-render the
+        // paper. Invalid values are ignored.
+        this.setMaxCols = function(n) {
+            if (PRINT_WIDTHS.indexOf(Number(n)) !== -1) {
+                maxCols = Number(n);
+                resetPrinter();
+            }
+        };
+
+        // Advance the carriage to the next tab stop (every 8 columns) by
+        // queueing spaces, matching real ASR 33 / LP11 tab behaviour. Used by
+        // the console adapter on TAB (code 9).
+        this.printTab = function() {
+            var spaces = 8 - (currentCharPos % 8);
+            for (var i = 0; i < spaces; i++) {
+                printChar(' ');
+            }
+        };
     };
 
     // ================================================================
@@ -796,8 +830,13 @@
                 // Printable ASCII: display immediately
                 printer.printChar(String.fromCharCode(code));
             } else if (code === 9) {
-                // Tab - print as space
-                printer.printChar(' ');
+                // Tab - advance the carriage to the next tab stop (every
+                // 8 columns), matching real ASR 33 / LP11 behaviour.
+                if (typeof printer.printTab === 'function') {
+                    printer.printTab();
+                } else {
+                    printer.printChar(' ');
+                }
             }
             // Other control codes are ignored
         }

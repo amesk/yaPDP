@@ -106,7 +106,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (DataLoader + onboarding first-run logic) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding first-run logic) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -180,9 +180,29 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 
 Use the sidebar to switch between:
 - **Panel** — the front panel with switches and LEDs
-- **Teletype** — the ASR 33 teletype console
-- **VT52** — the DECscope VT52 video terminal
+- **Console** — the operator console: an ASR 33 teletype (when the console terminal is a teletype)
+- **Console** — the operator console: a DECscope VT52 (when the console terminal is a VT52)
+- **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
+- **Printer** — the LP11 line printer page, shown only when configured
+- **Config** — configure the emulated peripherals (persisted between sessions)
 - **Info** — detailed instructions and OS reference
+
+The **Config** page controls the console terminal type (teletype or VT52), the
+number of user terminals (0–2), the presence of the LP11 line printer, the
+teletype/printer print widths (72/80/100) and optional VT100-style key-click
+sound for VT52 terminals. Structural changes (console type, terminals, printer)
+restart the machine so the emulated hardware matches the configuration; print
+widths and the key click apply immediately. A **Restore defaults** button resets
+every setting to its factory value.
+
+The same page hosts the **Machine** section: **Reboot**, the paper-tape reader file
+selector, the drag & drop image drop zone and the mounted-images/Unmount list.
+
+The **Printer** page renders the LP11 output on an animated paper machine (no
+keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
+via the system dialog) and **Save .txt** buttons. Both the teletype and the
+printer advance the carriage to the next 8-column tab stop on TAB, matching real
+ASR 33 / LP11 behaviour.
 
 ### A simple light chaser
 
@@ -214,13 +234,15 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/fpp.js`](src/fpp.js) | Floating‑Point Processor (FP11) emulation |
 | [`src/iopage.js`](src/iopage.js) | I/O page — disk controllers, terminal interfaces, paper tape reader, line printer |
 | [`src/pdp11-panel.js`](src/pdp11-panel.js) | Front panel rendering and switch interaction |
-| [`src/pdp11-app.js`](src/pdp11-app.js) | Application glue — boots the emulator, wires teletype and VT52 |
+| [`src/pdp11-app.js`](src/pdp11-app.js) | Application glue — boots the emulator, wires the configured teletype/VT52 console, user terminals, printer and the CONFIG page |
+| [`src/config.js`](src/config.js) | User configuration (CONFIG page) — validated, persisted in localStorage |
 | [`src/vt52.js`](src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based) |
-| [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (ASR 33) |
+| [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (ASR 33 / LP11) |
 | [`src/vt11.js`](src/vt11.js) | Vector graphics VT11 display |
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
 | [`src/dragdrop.js`](src/dragdrop.js) | Drag & drop disk/tape image import — mounts files into DataLoader, persists them in IndexedDB |
 | [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
+| [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |

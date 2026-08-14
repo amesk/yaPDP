@@ -1013,8 +1013,52 @@ body {
     color: inherit;
 }
 
+/* ===== Front panel — centre vertically like the console/terminals ===== */
+#page-panel.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* ===== Printer page — centre the printer block vertically ===== */
+#page-printer.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* Real-printer actions (Print / Save .txt) below the machine */
+.printer-actions {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.printer-actions button {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0 6px;
+}
+
+.printer-actions button:hover {
+    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+}
+
 /* ===== VT52 Page — CRT terminal styling ===== */
-#page-vt52.active {
+/* Applies to the console VT52 and both user-terminal pages so they all
+   centre the CRT the same way. */
+#page-vt52.active,
+#page-vt52-console.active,
+#page-vt52-2.active {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1132,4 +1176,106 @@ body {
 .vt52-status .led.on {
     background: #0f0;
     box-shadow: 0 0 6px #0f0;
+}
+
+/* ===== Hidden sidebar buttons (toggled by the CONFIG page) ===== */
+.nav-btn.hidden {
+    display: none !important;
+}
+
+/* ===== Config page (DEC-styled form) ===== */
+#page-config.active {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    color: #e0d8c8;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    box-sizing: border-box;
+}
+
+#page-config.active h2,
+#page-config.active h3 {
+    color: #f0e6c8;
+}
+
+#page-config.active p {
+    line-height: 1.5;
+}
+
+.config-form {
+    margin-top: 8px;
+}
+
+.config-field {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.config-label {
+    flex: 0 0 220px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #c8a860;
+}
+
+.config-control {
+    flex: 1;
+    font-size: 13px;
+}
+
+.config-control label {
+    display: inline-block;
+    margin-right: 18px;
+    color: #e0d8c8;
+    cursor: pointer;
+}
+
+.config-radios label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.config-control input[type="radio"],
+.config-control input[type="checkbox"] {
+    accent-color: #c8a860;
+    cursor: pointer;
+}
+
+.config-control select {
+    background: #2a2722;
+    color: #e0d8c8;
+    border: 1px solid #5a554a;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.config-control button {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.config-control button:hover {
+    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+}
+
+.config-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #8a857a;
 }
