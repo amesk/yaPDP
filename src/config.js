@@ -8,8 +8,8 @@
  *                    When a terminal is added, a matching sidebar page is shown.
  *   - printer:       whether an LP11 line printer is present (own page, an
  *                    animated G60 printer without a keyboard).
- *   - printWidth:    printable columns for the console teletype (72/80/100).
- *   - printerWidth:  printable columns for the LP11 printer page (72/80/100).
+ *   - printWidth:    printable columns for the console teletype (72/80/100/132).
+ *   - printerWidth:  printable columns for the LP11 printer page (72/80/100/132).
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
  *
@@ -29,12 +29,12 @@ var Config = (function () {
         consoleType: "teletype", // 'teletype' | 'vt52'
         userTerminals: 0,        // 0 | 1 | 2
         printer: false,          // boolean
-        printWidth: 72,          // 72 | 80 | 100 (console teletype)
-        printerWidth: 80,        // 72 | 80 | 100 (LP11 printer page)
+        printWidth: 72,          // 72 | 80 | 100 | 132 (console teletype)
+        printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         keyClick: false          // boolean (VT52 key click)
     });
 
-    var PRINT_WIDTHS = Object.freeze([72, 80, 100]);
+    var PRINT_WIDTHS = Object.freeze([72, 80, 100, 132]);
 
     function getStorage() {
         try {

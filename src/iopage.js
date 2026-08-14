@@ -1264,6 +1264,20 @@ iopage.register(0o17777510, 2, (function() {
     // Kept across controller resets (the paper stays, like real hardware).
     let lp11Buffer = [];       // completed lines
     let lp11CurrentLine = "";  // line being built
+    let lp11Col = 0;           // cursor column within the current line (CR/BS)
+
+    // Write one character into the plain-text line at the cursor column.
+    // A CR returns the cursor to column 0 so later characters overwrite in
+    // place (nroff/man overstrike); a BS moves the cursor back one column.
+    function lp11WriteChar(ch) {
+        if (lp11Col < lp11CurrentLine.length) {
+            lp11CurrentLine =
+                lp11CurrentLine.slice(0, lp11Col) + ch + lp11CurrentLine.slice(lp11Col + 1);
+        } else {
+            lp11CurrentLine += ch;
+        }
+        lp11Col++;
+    }
 
     // --- initLP() ---
     // Initialize LP11 controller state.
@@ -1298,12 +1312,21 @@ iopage.register(0o17777510, 2, (function() {
                 return;
             }
             var printerWidth = (typeof Config !== "undefined")
-                ? Config.get().printerWidth : 80;
+                ? Config.get().printerWidth : 132;
             // idPrefix "lp11g60" keeps the generated element ids distinct from
-            // the page container id "lp11_printer".
+            // the page container id "lp11_printer". The LP11 is a fast line
+            // printer (unlike the ASR 33 console): chars echo at ~3 ms each
+            // (browsers clamp nested timers to ~4 ms) with 3 chars rendered per
+            // tick (charsPerTick: 3), reaching close to the real ~300 LPM, and
+            // the per-character teletype clicks are muted — a real line printer
+            // makes continuous noise, not per-char ticks.
             lp11Printer = new window.G60Printer("lp11_printer", {
                 idPrefix: "lp11g60",
-                maxCols: printerWidth
+                maxCols: printerWidth,
+                charPrintDelay: 3,
+                charSound: false,
+                charsPerTick: 3,
+                printWhirr: true
             });
             lp11Console = window.createG60Console(lp11Printer);
             // Expose for live print-width changes from the CONFIG page.
@@ -1408,28 +1431,42 @@ iopage.register(0o17777510, 2, (function() {
                         ensureUI();
                         lpdb = result & 0x7F; // 7‑bit ASCII
 
-                        // Feed printable characters into the G60 console adapter
-                        // (CR ignored, LF + printable accepted, like the old textarea)
-                        if (lpdb >= 0o12 && lpdb !== 0o15 && lp11Console) {
+                        // Feed the characters the animated printer understands
+                        // into the G60 console adapter: backspace, TAB, LF, CR
+                        // (carriage return — nroff/man renders bold/underline via
+                        // "text\rtext" overstrike, not backspace) and printable
+                        // ASCII. Other control codes are dropped.
+                        var isBackspace = (lpdb === 0o10);
+                        var isTab = (lpdb === 0o11);
+                        var isLf = (lpdb === 0o12);
+                        var isCr = (lpdb === 0o15);
+                        var isPrintable = (lpdb >= 0x20 && lpdb < 0x7F);
+                        if (lp11Console && (isBackspace || isTab || isLf || isCr || isPrintable)) {
                             lp11Console.writeChar(lpdb);
                         }
 
                         // Accumulate a plain-text copy for Print / Save .txt.
-                        // TAB advances to the next 8-column tab stop — matching
-                        // printer.printTab() so the printed output and the
-                        // on-screen paper always agree.
+                        // TAB advances to the next 8-column tab stop; CR returns
+                        // the cursor to column 0 and BS moves it back one column,
+                        // so overstruck nroff/man bold/underline collapses to a
+                        // single clean glyph in the exported text.
                         if (lpdb === 0o12) {                 // LF: end of line
                             lp11Buffer.push(lp11CurrentLine);
                             lp11CurrentLine = "";
+                            lp11Col = 0;
+                        } else if (lpdb === 0o10) {          // BS: back one column
+                            if (lp11Col > 0) lp11Col--;
+                        } else if (lpdb === 0o15) {          // CR: return to column 0
+                            lp11Col = 0;
                         } else if (lpdb === 0o11) {          // TAB → next 8-column stop
-                            var tabCol = lp11CurrentLine.length % 8;
+                            var tabCol = lp11Col % 8;
                             for (var t = 0; t < 8 - tabCol; t++) {
-                                lp11CurrentLine += " ";
+                                lp11WriteChar(" ");
                             }
                         } else if (lpdb >= 0x20 && lpdb < 0x7F) { // printable
-                            lp11CurrentLine += String.fromCharCode(lpdb);
+                            lp11WriteChar(String.fromCharCode(lpdb));
                         }
-                        // CR (0o15), DEL (0o7F) and other controls are ignored.
+                        // DEL (0o7F) and other controls are ignored.
 
                         // Raise interrupt if IE set
                         if (lpcs & LP_LPCS_IE) {

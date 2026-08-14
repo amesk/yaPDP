@@ -189,8 +189,9 @@ Use the sidebar to switch between:
 
 The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11 line printer, the
-teletype/printer print widths (72/80/100) and optional VT100-style key-click
-sound for VT52 terminals. Structural changes (console type, terminals, printer)
+teletype/printer print widths (72/80/100/132) and optional VT100-style key-click
+sound for VT52 terminals. The LP11 line printer defaults to the authentic
+132-column width. Structural changes (console type, terminals, printer)
 restart the machine so the emulated hardware matches the configuration; print
 widths and the key click apply immediately. A **Restore defaults** button resets
 every setting to its factory value.
@@ -200,9 +201,12 @@ selector, the drag & drop image drop zone and the mounted-images/Unmount list.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
-via the system dialog) and **Save .txt** buttons. Both the teletype and the
-printer advance the carriage to the next 8-column tab stop on TAB, matching real
-ASR 33 / LP11 behaviour.
+via the system dialog) and **Save .txt** buttons. Like the real LP11, it echoes
+characters far faster than the ASR 33 console teletype (the console keeps its
+authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
+original's ~300 lines/min. Both the teletype and the printer advance the
+carriage to the next 8-column tab stop on TAB, matching real ASR 33 / LP11
+behaviour.
 
 ### A simple light chaser
 

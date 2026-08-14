@@ -53,10 +53,30 @@
             } catch(e) {}
         },
 
+        // Start the dedicated line-printer whirr if it is not already playing.
+        // Uses a SEPARATE audio element ("whirr") so the console teletype's
+        // handling of the shared "print" sound can never cut it off. Driven by
+        // the element's paused state so an autoplay-blocked attempt is retried
+        // on the next tick once the user gesture unlocks audio.
+        startWhirr: function() {
+            try {
+                var s = this._sounds['whirr'];
+                if (s && s.paused) { s.loop = true; s.currentTime = 0; s.play().catch(function() {}); }
+            } catch(e) {}
+        },
+
+        // Stop the line-printer whirr if it is currently playing.
+        stopWhirr: function() {
+            try {
+                var s = this._sounds['whirr'];
+                if (s && !s.paused) { s.pause(); s.currentTime = 0; s.loop = false; }
+            } catch(e) {}
+        },
+
         stopSound: function(name) {
             try {
                 var s = this._sounds[name];
-                if (s) { s.pause(); s.currentTime = 0; }
+                if (s) { s.pause(); s.currentTime = 0; s.loop = false; }
             } catch(e) {}
         }
     };
@@ -65,6 +85,9 @@
     G60Audio.load('punch', '../assets/sounds/keypunch2.mp3');      // short punch for single char
     G60Audio.load('print', '../assets/sounds/teletype33-print.mp3'); // long for line animation
     G60Audio.load('linefeed', '../assets/sounds/teletype33-lf.mp3'); // line feed
+    // Dedicated element for the continuous LP11 whirr — separate from the
+    // shared "print" element so the console teletype never stops it.
+    G60Audio.load('whirr', '../assets/sounds/teletype33-print.mp3');
 
     // ====================================================================
     // Google60-style Line Printer
@@ -74,10 +97,26 @@
      * G60Printer constructor
      * @param {string} containerId - DOM element ID to attach the printer to
      * @param {object} [options] - optional printer configuration
-     *   options.maxCols  - printable columns (72/80/100); default 72
-     *   options.idPrefix - string prefix for the generated DOM element ids,
-     *                      so multiple printer instances keep unique ids
-     *                      (e.g. 'lp11' for the LP11 printer page)
+     *   options.maxCols        - printable columns (72/80/100/132); default 72
+     *   options.idPrefix       - string prefix for the generated DOM element ids,
+     *                            so multiple printer instances keep unique ids
+     *                            (e.g. 'lp11' for the LP11 printer page)
+     *   options.charPrintDelay - ms per character for the paced console echo
+     *                            (default 30, ~33 cps). The LP11 line printer
+     *                            overrides this with a small value so it prints
+     *                            much faster than the ASR 33 console teletype.
+     *   options.charSound      - play per-character punch / line-feed sounds
+     *                            (default true; false disables them, used by the
+     *                            fast LP11 line printer)
+     *   options.charsPerTick   - how many buffered items are rendered per pacing
+     *                            timer tick (default 1). The LP11 line printer
+     *                            raises this to burst several characters per tick
+     *                            and print close to the real ~300 LPM; the console
+     *                            teletype keeps 1 (authentic per-character pacing).
+     *   options.printWhirr     - play a looping continuous "print" sound while
+     *                            characters are being rendered and stop when the
+     *                            buffer drains (default false). Used by the fast
+     *                            LP11 line printer instead of per-character clicks.
      */
     window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
@@ -86,7 +125,7 @@
         // Optional configuration (CONFIG page)
         var opts = options || {};
         var idPrefix = (typeof opts.idPrefix === 'string') ? opts.idPrefix : '';
-        var PRINT_WIDTHS = [72, 80, 100];
+        var PRINT_WIDTHS = [72, 80, 100, 132];
 
         // Printer state
         var textPos, textBuffer, timer, timer2, lines,
@@ -97,13 +136,31 @@
             lastLineFeed, afId1, afId2, afId3,
             spacerCurrentHeight;
 
-        // Character pacing state (authentic teletype speed)
-        var charPrintDelay = 30;    // ms per character (~33 cps, compromise between
-                                    //   authentic ASR 33 feel and practical usability)
+        // Character pacing state. The per-character delay is configurable so a
+        // fast line printer (LP11) can echo far faster than the ASR 33 console
+        // teletype: the console keeps the authentic ~30 ms/char (33 cps) pacing
+        // while the LP11 instance overrides it with a small value (~3 ms).
+        var charPrintDelay = (typeof opts.charPrintDelay === 'number' && opts.charPrintDelay > 0)
+            ? opts.charPrintDelay : 30;
+        // Per-character punch / line-feed click sounds. Disabled for the fast
+        // LP11 line printer: a real drum/chain printer makes continuous noise,
+        // not per-character ticks.
+        var charSound = (opts.charSound !== false);
+        // Burst size per pacing tick. The LP11 line printer renders several
+        // buffered items per tick (e.g. 3), lifting throughput above the
+        // browser's ~4 ms floor for nested timers; the ASR 33 console keeps 1.
+        var charsPerTick = (typeof opts.charsPerTick === 'number' && opts.charsPerTick >= 1)
+            ? Math.floor(opts.charsPerTick) : 1;
+        // Continuous line-printer whirr: while characters are being rendered the
+        // fast LP11 plays a looping "print" sound (a real line printer makes
+        // steady noise), stopping when the buffer drains. The ASR 33 console
+        // keeps per-character clicks (charSound) instead.
+        var printWhirr = (opts.printWhirr === true);
         var charBuffer = [];        // pending characters to print
         var charPrintTimer = null;  // timer ID for paced printing
         var CHAR_LF = '\n';         // sentinel marker in buffer to trigger a line feed
         var CHAR_BS = '\b';         // sentinel marker in buffer to trigger a backspace
+        var CHAR_CR = '\r';         // sentinel marker in buffer to trigger a carriage return
 
         // Printer configuration
         var delayBlank = 7;
@@ -231,8 +288,9 @@
                 currentCharPos = 0;
             }
 
-            // Play short punch sound (cloned Audio element per play)
-            G60Audio.playCloned('punch');
+            // Play short punch sound (cloned Audio element per play).
+            // Skipped for the fast LP11 line printer (charSound:false).
+            if (charSound) G60Audio.playCloned('punch');
 
             var space = (c === ' ');
             var span;
@@ -254,13 +312,31 @@
                 }
             } else if (overHang > 0) {
                 // Overstrike: print over the character left by a previous
-                // backspace. nroff/man renders bold as "X\bX"; the second
-                // 'X' must replace the first. The leading NBSP span occupies
+                // backspace/carriage return. nroff/man renders bold as "X\bX"
+                // (or "X\rX") and underline as "_\bX" (or "_\rX"); the second
+                // pass replaces the first. The leading NBSP span occupies
                 // position 0, so the target character is at currentCharPos + 1.
+                // Re-printing the SAME glyph is how a real terminal produces
+                // bold (heavier ink), and a letter over an underscore produces
+                // underline — mark the span so the CSS can show the emphasis.
                 var index = currentCharPos + 1;
                 span = currentLineEl.children[index];
                 if (span) {
-                    span.textContent = space ? '\u00A0' : c;
+                    if (space) {
+                        // A space overstrike is pure carriage motion on a real
+                        // terminal (nroff moves the carriage with spaces between
+                        // overstruck words); it must NOT erase the existing glyph.
+                    } else {
+                        var prevGlyph = span.textContent;
+                        span.textContent = c;
+                        if (c !== '_' && prevGlyph === c) {
+                            // Same character overstruck → bold
+                            if (span.className.indexOf('bold') === -1) span.className += ' bold';
+                        } else if (c !== '_' && prevGlyph === '_') {
+                            // Letter over an underscore → underline
+                            if (span.className.indexOf('underline') === -1) span.className += ' underline';
+                        }
+                    }
                 } else {
                     span = document.createElement('span');
                     span.textContent = space ? '\u00A0' : c;
@@ -299,9 +375,25 @@
         }
 
         /**
-         * processCharBuffer() - Called by the pacing timer to render one item.
-         * Renders a single character or performs a line feed, then schedules
-         * the next timer if more items remain in the buffer.
+         * doCarriageReturn() - Internal: return the carriage to column 0 so
+         * the characters that follow overstrike the current line. nroff/man
+         * renders bold as "NAME\rNAME" and underline as "text + CR + spaces +
+         * overstruck word", so CR is the overstrike operator on a real
+         * terminal. overHang is set so the next characters replace the
+         * existing glyphs instead of appending at the end of the line.
+         */
+        function doCarriageReturn() {
+            if (currentCharPos > 0) {
+                overHang += currentCharPos;
+                currentCharPos = 0;
+                movePrintHeadQuick(0);
+            }
+        }
+
+        /**
+         * processCharBuffer() - Called by the pacing timer to render buffered
+         * items. Renders one or more characters / line feeds (see charsPerTick),
+         * then schedules the next timer if more items remain in the buffer.
          * Always clears charPrintTimer first so that synchronous calls to
          * printChar/println during the same CPU slice set a NEW timer.
          */
@@ -309,24 +401,47 @@
             // Clear timer reference so the next arrival starts a fresh timer
             charPrintTimer = null;
 
-            if (charBuffer.length === 0) return;
+            if (charBuffer.length === 0) {
+                // Nothing pending — stop the continuous whirr.
+                if (printWhirr) G60Audio.stopWhirr();
+                return;
+            }
 
-            var item = charBuffer.shift();
+            // Keep the looping line-printer whirr running while output is
+            // pending. startWhirr() is retried each tick while the audio stays
+            // paused, so a blocked autoplay attempt recovers once audio unlocks.
+            if (printWhirr) G60Audio.startWhirr();
 
-            if (item === CHAR_LF) {
-                // Line feed marker: execute the println logic
-                doPrintln();
-            } else if (item === CHAR_BS) {
-                // Backspace marker: move the print head back for overstrike
-                doBackspace();
-            } else {
-                // Regular character: render it
-                doPrintChar(item);
+            // Render up to charsPerTick items in this tick. Fast line printers
+            // (LP11, charsPerTick > 1) burst several characters per tick to go
+            // beyond the browser's ~4 ms nested-timer floor; the ASR 33 console
+            // (charsPerTick = 1) keeps its authentic per-character pacing.
+            var count = 0;
+            while (charBuffer.length > 0 && count < charsPerTick) {
+                var item = charBuffer.shift();
+                count++;
+
+                if (item === CHAR_LF) {
+                    // Line feed marker: execute the println logic
+                    doPrintln();
+                } else if (item === CHAR_BS) {
+                    // Backspace marker: move the print head back for overstrike
+                    doBackspace();
+                } else if (item === CHAR_CR) {
+                    // Carriage return marker: return to column 0 for overstrike
+                    doCarriageReturn();
+                } else {
+                    // Regular character: render it
+                    doPrintChar(item);
+                }
             }
 
             // If more items queued, schedule the next one
             if (charBuffer.length > 0) {
                 charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            } else if (printWhirr) {
+                // Buffer drained — stop the whirr until the next output arrives.
+                G60Audio.stopWhirr();
             }
         }
 
@@ -369,9 +484,10 @@
             currentCharPos = 0;
             overHang = 0;
 
-            // Play linefeed sound
-            G60Audio.play('linefeed');
-            G60Audio.stopSound('print');
+            // Play linefeed sound (disabled on the fast LP11 line printer).
+            // Do not cut the continuous LP11 whirr at a line boundary.
+            if (charSound) G60Audio.play('linefeed');
+            if (!printWhirr) G60Audio.stopSound('print');
 
             // Animate paper feed
             if (reqAnimFrame) {
@@ -659,6 +775,8 @@
                 charPrintTimer = null;
             }
             charBuffer = [];
+            // Stop the continuous whirr.
+            if (printWhirr) G60Audio.stopWhirr();
 
             if (topSpacer) {
                 topSpacer.className = '';
@@ -707,6 +825,8 @@
                 charPrintTimer = null;
             }
             charBuffer = [];
+            // Stop the continuous whirr.
+            if (printWhirr) G60Audio.stopWhirr();
 
             if (timer) clearTimeout(timer);
             if (timer2) clearTimeout(timer2);
@@ -760,6 +880,16 @@
         // Newline (carriage return + line feed)
         this.println = function() {
             println();
+        };
+
+        // Carriage return: return the carriage to column 0 so the next
+        // characters overstrike the current line. nroff/man uses CR (not
+        // backspace) for bold/underline overstrike.
+        this.carriageReturn = function() {
+            charBuffer.push(CHAR_CR);
+            if (!charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            }
         };
 
         this.reset = function() { resetPrinter(); };
@@ -818,7 +948,12 @@
                 // LF: line feed - advance to next line
                 printer.println();
             } else if (code === 13) {
-                // CR: carriage return - ignored on line printer
+                // CR: carriage return - return to column 0 so the following
+                // characters overstrike the current line. nroff/man renders
+                // bold/underline via "text\rtext" overstrike, not backspace.
+                if (typeof printer.carriageReturn === 'function') {
+                    printer.carriageReturn();
+                }
             } else if (code === 8) {
                 // Backspace (^H): move the print head back so the next character
                 // overstrikes it. nroff/man uses "^H" to render bold text

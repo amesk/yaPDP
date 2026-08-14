@@ -225,6 +225,16 @@
     text-shadow: none;
 }
 
+/* Bold / underline emphasis produced by nroff/man overstrike (same glyph
+   re-printed → bold; letter printed over an underscore → underline). */
+#g60printer td#paper_printarea span.bold {
+    font-weight: bold;
+}
+
+#g60printer td#paper_printarea span.underline {
+    text-decoration: underline;
+}
+
 #g60printer td#paper_printarea span.drop {
     margin-top: 1px;
     height: 15px;
@@ -398,13 +408,16 @@
 
 /* ==================================================================
    LP11 printer page — the same Google60 rendering as the console
-   teletype, but WITHOUT a keyboard. The G60Printer instance is created
-   with idPrefix "lp11g60", so every generated id is scoped under the
-   #lp11_printer container and never collides with the console printer.
+   teletype, but WITHOUT a keyboard and WIDER: a real LP11 prints
+   132 columns, so the whole machine is scaled up (1160px) to fit a
+   full 132-character line on the paper. The G60Printer instance is
+   created with idPrefix "lp11g60", so every generated id is scoped
+   under the #lp11_printer container and never collides with the
+   console printer. The console teletype (#g60printer) stays 940px.
    ================================================================== */
 #lp11_printer {
     position: relative;
-    width: 940px;
+    width: 1160px;
     height: 470px;
     background-color: #2a2a2a;
     overflow: hidden;
@@ -416,7 +429,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 940px;
+    width: 1160px;
     height: 464px;
     background-color: #6f323d;
     background-image: url('../assets/images/printer_bg.gif');
@@ -428,8 +441,8 @@
     position: absolute;
     top: 388px;
     left: 67px;
-    width: 807px;
-    max-width: 807px;
+    width: 994px;
+    max-width: 994px;
     height: 30px;
     max-height: 30px;
     padding: 0;
@@ -451,7 +464,7 @@
     position: absolute;
     top: 395px;
     left: 67px;
-    width: 807px;
+    width: 994px;
     height: 69px;
     background-image: url('../assets/images/printerskin.png');
     background-repeat: repeat-x;
@@ -472,7 +485,7 @@
 #lp11_printer div#lp11g60printer_right {
     position: absolute;
     top: 0;
-    left: 874px;
+    left: 1094px;
     width: 66px;
     height: 464px;
     background-image: url('../assets/images/printerskin.png');
@@ -493,7 +506,7 @@
     position: absolute;
     top: 0;
     left: 67px;
-    width: 839px;
+    width: 1026px;
     height: 400px;
     max-height: 400px;
     vertical-align: top;
@@ -570,7 +583,7 @@
 }
 
 #lp11_printer td#lp11g60paper_printarea {
-    width: 705px;
+    width: 960px;
     color: #36363c;
     font-size: 13px;
     text-align: left;
@@ -607,6 +620,16 @@
     text-shadow: none;
 }
 
+/* Bold / underline emphasis produced by nroff/man overstrike (same glyph
+   re-printed → bold; letter printed over an underscore → underline). */
+#lp11_printer td#lp11g60paper_printarea span.bold {
+    font-weight: bold;
+}
+
+#lp11_printer td#lp11g60paper_printarea span.underline {
+    text-decoration: underline;
+}
+
 #lp11_printer td#lp11g60paper_printarea span.drop {
     margin-top: 1px;
     height: 15px;
@@ -639,7 +662,7 @@
     position: absolute;
     top: 0;
     left: 67px;
-    width: 807px;
+    width: 994px;
     height: 20px;
     padding: 0;
     margin: 0;

@@ -8,7 +8,7 @@
  *
  * The config covers the CONFIG page settings:
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
- *   printWidth / printerWidth (72/80/100), keyClick (bool).
+ *   printWidth / printerWidth (72/80/100/132), keyClick (bool).
  *
  * Run with:  node tests/config.test.js
  *
@@ -60,7 +60,7 @@ function run() {
             userTerminals: 0,
             printer: false,
             printWidth: 72,
-            printerWidth: 80,
+            printerWidth: 132,
             keyClick: false,
         }, "defaults should match the documented values");
     }
@@ -82,11 +82,13 @@ function run() {
         assert.strictEqual(C.validate({ userTerminals: 5 }).userTerminals, 0);
         assert.strictEqual(C.validate({ userTerminals: -1 }).userTerminals, 0);
 
-        // printWidth / printerWidth restricted to 72/80/100.
+        // printWidth / printerWidth restricted to 72/80/100/132.
         assert.strictEqual(C.validate({ printWidth: 80 }).printWidth, 80);
         assert.strictEqual(C.validate({ printWidth: 100 }).printWidth, 100);
+        assert.strictEqual(C.validate({ printWidth: 132 }).printWidth, 132);
         assert.strictEqual(C.validate({ printWidth: 55 }).printWidth, 72);
         assert.strictEqual(C.validate({ printerWidth: 100 }).printerWidth, 100);
+        assert.strictEqual(C.validate({ printerWidth: 132 }).printerWidth, 132);
         assert.strictEqual(C.validate({ printerWidth: 999 }).printerWidth, C.DEFAULTS.printerWidth);
 
         // booleans coerced.

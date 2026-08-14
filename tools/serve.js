@@ -122,6 +122,10 @@ function sendFile(filePath, stat, req, res) {
         "Content-Type": type,
         "Content-Length": stat.size,
         "Accept-Ranges": "bytes",
+        // Development server: never let the browser serve stale JS/CSS/HTML
+        // from its cache, otherwise code changes are invisible until a hard
+        // refresh. The 206 range responses (media slices) stay cacheable.
+        "Cache-Control": "no-cache",
     });
     if (req.method === "HEAD") {
         res.end();
