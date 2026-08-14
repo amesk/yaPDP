@@ -106,7 +106,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding first-run logic) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike logic) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -240,7 +240,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/pdp11-panel.js`](src/pdp11-panel.js) | Front panel rendering and switch interaction |
 | [`src/pdp11-app.js`](src/pdp11-app.js) | Application glue — boots the emulator, wires the configured teletype/VT52 console, user terminals, printer and the CONFIG page |
 | [`src/config.js`](src/config.js) | User configuration (CONFIG page) — validated, persisted in localStorage |
-| [`src/vt52.js`](src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based) |
+| [`src/vt52.js`](src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based); renders nroff/man overstrike as bold/underline |
 | [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (ASR 33 / LP11) |
 | [`src/vt11.js`](src/vt11.js) | Vector graphics VT11 display |
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
@@ -248,6 +248,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
+| [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 overstrike (bold/underline) modular tests — run with `node tests/vt52.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

@@ -564,10 +564,17 @@
             this.setForeground(attr & ATTR_REVERSE);
             ctx.fillRect(x, y, w, h);
 
-            // Foreground text
+            // Foreground text. Bold is rendered as a double strike: the glyph
+            // is drawn twice with a 1px horizontal offset. This stays visibly
+            // heavier even when the browser ignores the "bold" weight of the
+            // monospace font (some systems resolve "monospace" without a bold
+            // face), and it matches how nroff overstrike produces bold.
             this.setForeground(!(attr & ATTR_REVERSE));
             this.setBold(attr & ATTR_BOLD);
             ctx.fillText(string, x, y);
+            if (attr & ATTR_BOLD) {
+                ctx.fillText(string, x + 1, y);
+            }
 
             // Underline (drawn as a solid bar at bottom of cell)
             if (attr & ATTR_UNDERSCORE) {
@@ -717,6 +724,7 @@
             this.cursorRow = 0;
             this.cursorCol = 0;
             this.graphics.sgr = 0;
+            this.overHang = 0;
             this.render(true); // force full redraw
         }
 
@@ -813,6 +821,10 @@
         // Move cursor to (row, col), respecting origin mode and scroll region
         // ---------------------------------------------------------------------------
         moveCursor(row, col) {
+            // Any absolute/relative cursor motion ends a pending overstrike
+            // run (started by BS/CR). Only carriageReturn re-arms it afterwards.
+            this.overHang = 0;
+
             if (this.modes.origin) {
                 // Origin mode clamps cursor to the active scroll region
                 this.cursorRow = Math.max(
@@ -1065,9 +1077,39 @@
                     this.screen[row].push({ c: ch, a: this.graphics.sgr });
                 } else {
                     const cell = this.screen[row][col];
-                    cell.c = ch;
-                    cell.a = this.graphics.sgr;
-                }
+                    if (this.overHang > 0) {
+                        // Overstrike after BS/CR: nroff/man renders bold as
+                        // "X\bX" (or "X\rX") and underline as "_\bX". A space
+                        // only moves the carriage; the existing glyph is kept
+                        // so the canvas can show the emphasis.
+                        const prevC = cell.c;
+                        if (ch === 32) {
+                            // Space overstrike: pure carriage motion.
+                        } else if (ch === prevC && ch !== 95) {
+                            // Same glyph overstruck → bold.
+                            cell.a |= ATTR_BOLD;
+                        } else if (ch !== 95 && prevC === 95) {
+                            // Letter over an underscore → underline.
+                            cell.c = ch;
+                            cell.a |= ATTR_UNDERSCORE;
+                        } else if (ch === 95 && prevC !== 32 && prevC !== 95) {
+                            // Underscore over a letter → underline
+                            // ("NAME\r_____" form); the letter stays visible.
+                            cell.a |= ATTR_UNDERSCORE;
+                        } else {
+                            cell.c = ch;
+                            cell.a = this.graphics.sgr;
+                        }
+
+                    } else {
+                        cell.c = ch;
+                        cell.a = this.graphics.sgr;
+                    }
+                 }
+
+                // Consume one pending overstrike position (the column was
+                // written, whether the cell existed or was freshly appended).
+                if (this.overHang > 0) this.overHang--;
 
                 // Canvas: redraw only the changed cell
                 if (this.allowCanvas) {
@@ -1122,10 +1164,9 @@
         backSpace() {
             if (this.cursorCol > 0) {
                 this.cursorCol--;
-                if (!this.modes.screen) {
-                    // Hardcopy mode: backspace increases overwrite region
-                    this.overHang++;
-                }
+                // Both hardcopy and screen mode: backspace marks the position
+                // for an overstrike (nroff/man bold/underline).
+                this.overHang++;
                 this.render(false);
             }
         }
@@ -1150,6 +1191,9 @@
         // ---------------------------------------------------------------------------
         lineFeed() {
             if (this.modes.screen) {
+                // A new line ends any pending overstrike run.
+                this.overHang = 0;
+
                 // Within scroll region
                 if (this.cursorRow < this.margin.bottom - 1) {
                     this.moveCursor(this.cursorRow + 1, this.cursorCol);
@@ -1177,7 +1221,13 @@
         // ---------------------------------------------------------------------------
         carriageReturn() {
             if (this.modes.screen) {
+                // CR is the overstrike operator used by nroff/man: return the
+                // cursor to column 0 so the following characters overstrike
+                // the current line. moveCursor resets overHang, so re-arm it
+                // with the number of columns that will be overstruck.
+                const n = this.cursorCol;
                 this.moveCursor(this.cursorRow, 0);
+                this.overHang = n;
             } else {
                 // Hardcopy mode: trim buffer if too large
                 if (this.textArea.value.length > MAX_BUFFER) {
