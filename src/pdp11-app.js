@@ -25,7 +25,10 @@ function initG60Printer() {
   if (g60printer) return;
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
   var maxCols = (cfg) ? cfg.printWidth : 72;
-  g60printer = new G60Printer('g60printer', { maxCols: maxCols });
+  // The ASR 33 console teletype used a smooth paper ROLL (no fanfold folds),
+  // so it must NOT draw the LP11 fold-marker on form feed — only advance the
+  // paper. The LP11 printer page keeps the marker (fanfold paper).
+  g60printer = new G60Printer('g60printer', { maxCols: maxCols, pageBreakMarker: false });
   g60Console = createG60Console(g60printer);
 }
 

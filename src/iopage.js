@@ -1266,17 +1266,45 @@ iopage.register(0o17777510, 2, (function() {
     let lp11CurrentLine = "";  // line being built
     let lp11Col = 0;           // cursor column within the current line (CR/BS)
 
-    // Write one character into the plain-text line at the cursor column.
-    // A CR returns the cursor to column 0 so later characters overwrite in
-    // place (nroff/man overstrike); a BS moves the cursor back one column.
-    function lp11WriteChar(ch) {
-        if (lp11Col < lp11CurrentLine.length) {
-            lp11CurrentLine =
-                lp11CurrentLine.slice(0, lp11Col) + ch + lp11CurrentLine.slice(lp11Col + 1);
+    // Pure plain-text accumulation for the LP11 job copy (Print / Save .txt).
+    // Operates on a state object { buffer, line, col } so the logic is free of
+    // the device closure and unit-testable in Node (tests/lp11-text.test.js).
+    //   BS (0o10) moves the cursor back one column; CR (0o15) returns it to
+    //   column 0; TAB (0o11) advances to the next 8-column stop; LF (0o12)
+    //   ends the line; FF (0o14) records a "\f" page-eject marker (2.11BSD lpd
+    //   sends FF between print jobs, keeping real page breaks in the export).
+    //   Overstruck nroff/man bold/underline collapses to a single clean glyph.
+    function lp11PutChar(state, ch) {
+        if (state.col < state.line.length) {
+            state.line = state.line.slice(0, state.col) + ch +
+                state.line.slice(state.col + 1);
         } else {
-            lp11CurrentLine += ch;
+            state.line += ch;
         }
-        lp11Col++;
+        state.col++;
+    }
+
+    function lp11TextPut(state, ch) {
+        if (ch === 0o12) {                 // LF: end of line
+            state.buffer.push(state.line);
+            state.line = "";
+            state.col = 0;
+        } else if (ch === 0o10) {          // BS: back one column
+            if (state.col > 0) state.col--;
+        } else if (ch === 0o15) {          // CR: return to column 0
+            state.col = 0;
+        } else if (ch === 0o14) {          // FF: page-eject marker
+            state.buffer.push("\f");
+        } else if (ch === 0o11) {          // TAB → next 8-column stop
+            var tabCol = state.col % 8;
+            for (var t = 0; t < 8 - tabCol; t++) {
+                lp11PutChar(state, " ");
+            }
+        } else if (ch >= 0x20 && ch < 0x7F) { // printable
+            lp11PutChar(state, String.fromCharCode(ch));
+        }
+        // DEL (0o7F) and other controls are ignored.
+        return state;
     }
 
     // --- initLP() ---
@@ -1439,34 +1467,26 @@ iopage.register(0o17777510, 2, (function() {
                         var isBackspace = (lpdb === 0o10);
                         var isTab = (lpdb === 0o11);
                         var isLf = (lpdb === 0o12);
+                        var isFormFeed = (lpdb === 0o14);
                         var isCr = (lpdb === 0o15);
                         var isPrintable = (lpdb >= 0x20 && lpdb < 0x7F);
-                        if (lp11Console && (isBackspace || isTab || isLf || isCr || isPrintable)) {
+                        if (lp11Console && (isBackspace || isTab || isLf || isCr || isPrintable || isFormFeed)) {
                             lp11Console.writeChar(lpdb);
                         }
 
                         // Accumulate a plain-text copy for Print / Save .txt.
-                        // TAB advances to the next 8-column tab stop; CR returns
-                        // the cursor to column 0 and BS moves it back one column,
-                        // so overstruck nroff/man bold/underline collapses to a
-                        // single clean glyph in the exported text.
-                        if (lpdb === 0o12) {                 // LF: end of line
-                            lp11Buffer.push(lp11CurrentLine);
-                            lp11CurrentLine = "";
-                            lp11Col = 0;
-                        } else if (lpdb === 0o10) {          // BS: back one column
-                            if (lp11Col > 0) lp11Col--;
-                        } else if (lpdb === 0o15) {          // CR: return to column 0
-                            lp11Col = 0;
-                        } else if (lpdb === 0o11) {          // TAB → next 8-column stop
-                            var tabCol = lp11Col % 8;
-                            for (var t = 0; t < 8 - tabCol; t++) {
-                                lp11WriteChar(" ");
-                            }
-                        } else if (lpdb >= 0x20 && lpdb < 0x7F) { // printable
-                            lp11WriteChar(String.fromCharCode(lpdb));
-                        }
-                        // DEL (0o7F) and other controls are ignored.
+                        // The pure lp11TextPut() state machine handles
+                        // BS/TAB/LF/CR/printable and form feed (FF, 0o14, sent
+                        // by 2.11BSD lpd between jobs → recorded as a "\f"
+                        // marker so the exported text keeps real page breaks).
+                        // `buffer` is shared by reference; the primitive
+                        // `line`/`col` come back via the returned state.
+                        var lp11TextState = lp11TextPut(
+                            { buffer: lp11Buffer, line: lp11CurrentLine, col: lp11Col },
+                            lpdb
+                        );
+                        lp11CurrentLine = lp11TextState.line;
+                        lp11Col = lp11TextState.col;
 
                         // Raise interrupt if IE set
                         if (lpcs & LP_LPCS_IE) {

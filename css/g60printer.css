@@ -262,6 +262,18 @@
     overflow: visible;
 }
 
+/* Form-feed page separator: 2.11BSD lpd sends FF between print jobs and the
+   printer ejects to the top of the next page. The fold/perforation marker is
+   a dashed seam across the full printable width. The ASR 33 console teletype
+   disables the marker (smooth paper roll) and only advances the paper. */
+#g60printer td#paper_printarea p.pageBreak,
+#lp11_printer td#lp11g60paper_printarea p.pageBreak {
+    margin: 0;
+    padding: 0;
+    max-height: 16px;
+    border-bottom: 1px dashed #8a8a8a;
+}
+
 #g60printer div#printer_topoverlay,
 #g60printer div#paper_topshadow {
     position: absolute;

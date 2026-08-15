@@ -210,6 +210,14 @@ to the configured print width (centred in the machine body), so a full line
 always reaches the paper edge. Both also advance the carriage to the next
 8-column tab stop on TAB, matching real ASR 33 / LP11 behaviour.
 
+Both also honour form feed (FF, 0x0C): the 2.11BSD spooler (`lpr`/`lpd`) sends
+FF between print jobs so each starts on a fresh page. The LP11 ejects to the
+top of the next fanfold page — it fills the rest of the sheet (66 lines at
+6 LPI for an 11″ page) and closes it with a dashed fold/perforation marker;
+the ASR 33 console teletype (which also supported FF via its FORM key) simply
+advances its smooth paper roll. The **Save .txt** export keeps a `\f` marker so
+the real page breaks survive in the file.
+
 ### A simple light chaser
 
 Toggle this into the front panel to see the address and data LEDs dance:

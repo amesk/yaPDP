@@ -157,11 +157,35 @@
         // steady noise), stopping when the buffer drains. The ASR 33 console
         // keeps per-character clicks (charSound) instead.
         var printWhirr = (opts.printWhirr === true);
+        // Form feed (FF, 0x0C): a real line printer advances the paper to the
+        // top of the next page. On the continuous G60 paper this is rendered
+        // as `pageLength` empty lines (filling the rest of the sheet) followed
+        // by a fold/perforation marker at the seam. 2.11BSD lpd sends FF
+        // between jobs, so each job starts on a fresh page. 66 lines = an 11"
+        // fanfold page at 6 LPI.
+        var pageLength = (typeof opts.pageLength === 'number' && opts.pageLength > 0)
+            ? Math.floor(opts.pageLength) : 66;
+        // Draw the fold-marker line on form feed (a dashed perforation seam).
+        // A real ASR 33 used a smooth paper ROLL (no fanfold folds), so the
+        // console teletype disables this; the LP11 fanfold paper keeps it.
+        var pageBreakMarker = (opts.pageBreakMarker !== false);
+        // Form-feed page tracking: pagePos counts lines printed on the current
+        // fanfold sheet (wraps at pageLength); pageHasContent tells whether any
+        // line has been printed since the last fold seam. Together they let a
+        // form feed fill only the REMAINDER of the sheet (nroff-formatted man
+        // pages already fill the page, so the footer sits right before the
+        // seam) instead of always inserting a full extra blank page.
+        var pagePos = 0;
+        var pageHasContent = false;
         var charBuffer = [];        // pending characters to print
         var charPrintTimer = null;  // timer ID for paced printing
         var CHAR_LF = '\n';         // sentinel marker in buffer to trigger a line feed
         var CHAR_BS = '\b';         // sentinel marker in buffer to trigger a backspace
         var CHAR_CR = '\r';         // sentinel marker in buffer to trigger a carriage return
+        var CHAR_FF = '\f';         // sentinel marker in buffer to trigger a form feed (page eject)
+        // Sentinel queued AFTER the page filler so the fold marker is drawn
+        // when the blank lines have scrolled past (seam at the sheet bottom).
+        var CHAR_FF_MARK = '\u000C\u000C';
 
         // Printer configuration
         var delayBlank = 7;
@@ -386,6 +410,9 @@
                 printArea.appendChild(currentLineEl);
                 currentCharPos = 0;
             }
+            // A printed character marks the current sheet as used, so the
+            // following form feed will close the page (draw the seam).
+            pageHasContent = true;
 
             // Play short punch sound (cloned Audio element per play).
             // Skipped for the fast LP11 line printer (charSound:false).
@@ -529,6 +556,12 @@
                 } else if (item === CHAR_CR) {
                     // Carriage return marker: return to column 0 for overstrike
                     doCarriageReturn();
+                } else if (item === CHAR_FF) {
+                    // Form feed: eject the paper to the top of the next page
+                    doFormFeed();
+                } else if (item === CHAR_FF_MARK) {
+                    // Draw the fold marker now that the page filler has scrolled
+                    doFormFeedMarker();
                 } else {
                     // Regular character: render it
                     doPrintChar(item);
@@ -583,6 +616,11 @@
             currentCharPos = 0;
             overHang = 0;
 
+            // Track lines printed on the current fanfold sheet (wraps at
+            // pageLength) so a form feed fills only the remainder of the page.
+            pagePos = (pagePos + 1) % pageLength;
+            pageHasContent = true;
+
             // Play linefeed sound (disabled on the fast LP11 line printer).
             // Do not cut the continuous LP11 whirr at a line boundary.
             if (charSound) G60Audio.play('linefeed');
@@ -622,6 +660,69 @@
 
             // Move print head to idle position
             setHeadPos(headIdlePos, false);
+        }
+
+        /**
+         * doFormFeed() - Internal: eject the paper to the top of the next page.
+         * A real line printer (LP11 + fanfold paper) advances to top of form on
+         * FF; 2.11BSD lpd sends FF between print jobs so each job starts on a
+         * fresh page. On the continuous G60 paper this queues the REMAINDER of
+         * the current sheet (pageLength - pagePos empty lines) first, then
+         * CHAR_FF_MARK so the fold/perforation seam is drawn AFTER the filler
+         * — exactly where the seam sits on real fanfold paper. Because the fill
+         * is computed from the current line position, a nroff-formatted man
+         * page (which already fills the page) closes with its footer right
+         * before the seam, while short raw output leaves a blank bottom margin.
+         * The ASR 33 console teletype also supported FF (its FORM key) but
+         * used a smooth paper roll, so it advances without the fold marker.
+         */
+        function doFormFeed() {
+            // The page eject must appear at the FF position in the logical
+            // stream — i.e. BEFORE any content already queued after the FF
+            // (such as the next job / man page body). The filler is therefore
+            // unshifted to the FRONT of the remaining buffer: the blank lines
+            // filling the rest of the sheet, then the fold-marker draw
+            // sentinel so the seam lands after the filler. Nothing is ejected
+            // when the page is already empty at a boundary (e.g. an lpd FF
+            // before the banner of a fresh job). Items render at the normal
+            // pacing rate (in charsPerTick bursts).
+            if (pageHasContent) {
+                var fill = (pageLength - pagePos) % pageLength;
+                charBuffer.unshift(CHAR_FF_MARK);
+                for (var i = 0; i < fill; i++) {
+                    charBuffer.unshift(CHAR_LF);
+                }
+
+                // Brief paper-advance sound on the console teletype (the fast
+                // LP11 keeps charSound disabled and plays its continuous whirr
+                // instead).
+                if (charSound) G60Audio.play('linefeed');
+            }
+        }
+
+        /**
+         * doFormFeedMarker() - Internal: draw the fold/perforation seam that
+         * closes a fanfold page. Queued after the page filler by doFormFeed()
+         * so the seam appears at the bottom of the sheet, as on real paper.
+         * Skipped on paper types with no visible fold (smooth ASR 33 roll).
+         * Resets the current line so the next job's first line starts on a
+         * fresh line below the seam (top of the next sheet).
+         */
+        function doFormFeedMarker() {
+            if (pageBreakMarker) {
+                var marker = document.createElement('p');
+                marker.className = 'pageBreak';
+                var markerSpan = document.createElement('span');
+                markerSpan.textContent = '\u00A0';
+                marker.appendChild(markerSpan);
+                printArea.appendChild(marker);
+            }
+            // Start the next page on a clean line below the seam.
+            currentLineEl = null;
+            currentCharPos = 0;
+            overHang = 0;
+            // The fresh sheet is empty until the next line is printed.
+            pageHasContent = false;
         }
 
         /**
@@ -900,8 +1001,9 @@
             textBuffer = ''; callback = curLine = null;
             idle = scrollLock = topSpacerVisible = true;
             keepLocked = false; headUp = headDir = undefined;
-            // Reset current line tracking
+            // Reset current line tracking and form-feed page position.
             currentLineEl = null; currentCharPos = 0; overHang = 0;
+            pagePos = 0; pageHasContent = false;
             if (!unloading) {
                 setHeadPos(headIdlePos, false);
                 // Re-create initial empty line
@@ -987,6 +1089,16 @@
             println();
         };
 
+        // Form feed: eject the paper to the top of the next page. Sent by
+        // 2.11BSD lpd between print jobs; rendered as a fold-marker line plus
+        // pageLength empty lines so each job starts on a fresh page.
+        this.formFeed = function() {
+            charBuffer.push(CHAR_FF);
+            if (!charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+            }
+        };
+
         // Carriage return: return the carriage to column 0 so the next
         // characters overstrike the current line. nroff/man uses CR (not
         // backspace) for bold/underline overstrike.
@@ -1070,6 +1182,13 @@
             } else if (code >= 32 && code < 127) {
                 // Printable ASCII: display immediately
                 printer.printChar(String.fromCharCode(code));
+            } else if (code === 12) {
+                // Form feed (^L): eject the paper to the top of the next page.
+                // 2.11BSD lpd sends FF between jobs so each starts on a fresh
+                // page. The ASR 33 teletype also supported FF (its FORM key).
+                if (typeof printer.formFeed === 'function') {
+                    printer.formFeed();
+                }
             } else if (code === 9) {
                 // Tab - advance the carriage to the next tab stop (every
                 // 8 columns), matching real ASR 33 / LP11 behaviour.
