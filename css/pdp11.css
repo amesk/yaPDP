@@ -844,6 +844,13 @@ body {
     opacity: 0.8;
 }
 
+.app-sidebar .nav-btn .nav-icon-svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    margin: 0 auto;
+}
+
 .app-sidebar .nav-btn.active .nav-icon {
     opacity: 1;
 }

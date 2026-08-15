@@ -15,42 +15,157 @@
 </head>
 
 <body>
+  <!-- Hidden SVG sprite: sidebar terminal (CRT display) icon -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="icon-crt" viewBox="0 0 24 24">
+        <!-- CRT cabinet outline -->
+        <rect x="2" y="2.5" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" />
+        <!-- screen (halftone fill) -->
+        <rect x="4.5" y="4.5" width="15" height="9.5" rx="1" fill="currentColor" opacity="0.16" />
+        <!-- screen scanline highlight -->
+        <rect x="4.5" y="4.5" width="15" height="2" fill="currentColor" opacity="0.45" />
+        <!-- neck -->
+        <rect x="10.8" y="16.5" width="2.4" height="2.6" fill="currentColor" />
+        <!-- base -->
+        <path d="M8 19.1h8l1 2.4H7z" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-panel" viewBox="0 0 24 24">
+        <!-- panel face -->
+        <rect x="2" y="2.5" width="20" height="19" rx="2" fill="currentColor" opacity="0.1" />
+        <rect x="2" y="2.5" width="20" height="19" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" />
+        <!-- LED row -->
+        <circle cx="4.6" cy="6.5" r="1" fill="currentColor" opacity="0.5" />
+        <circle cx="7.4" cy="6.5" r="1" fill="currentColor" opacity="0.5" />
+        <circle cx="10.2" cy="6.5" r="1" fill="currentColor" opacity="0.5" />
+        <circle cx="13" cy="6.5" r="1" fill="currentColor" opacity="0.5" />
+        <circle cx="15.8" cy="6.5" r="1" fill="currentColor" opacity="0.5" />
+        <circle cx="18.6" cy="6.5" r="1" fill="currentColor" opacity="0.5" />
+        <!-- toggle switches -->
+        <rect x="5.5" y="11" width="5" height="7" rx="1" fill="currentColor" opacity="0.28" />
+        <rect x="5.5" y="11" width="5" height="3" rx="1" fill="currentColor" opacity="0.8" />
+        <rect x="13.5" y="11" width="5" height="7" rx="1" fill="currentColor" opacity="0.28" />
+        <rect x="13.5" y="15" width="5" height="3" rx="1" fill="currentColor" opacity="0.8" />
+      </symbol>
+      <symbol id="icon-keyboard" viewBox="0 0 24 24">
+        <!-- keyboard body -->
+        <rect x="2" y="6" width="20" height="12" rx="2" fill="currentColor" opacity="0.12" />
+        <rect x="2" y="6" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" />
+        <!-- key rows -->
+        <g fill="currentColor" opacity="0.55">
+          <rect x="4" y="8" width="2.4" height="2" rx="0.4" />
+          <rect x="7" y="8" width="2.4" height="2" rx="0.4" />
+          <rect x="10" y="8" width="2.4" height="2" rx="0.4" />
+          <rect x="13" y="8" width="2.4" height="2" rx="0.4" />
+          <rect x="16" y="8" width="2.4" height="2" rx="0.4" />
+          <rect x="19" y="8" width="2.4" height="2" rx="0.4" />
+          <rect x="4" y="11" width="2.4" height="2" rx="0.4" />
+          <rect x="7" y="11" width="2.4" height="2" rx="0.4" />
+          <rect x="10" y="11" width="2.4" height="2" rx="0.4" />
+          <rect x="13" y="11" width="2.4" height="2" rx="0.4" />
+          <rect x="16" y="11" width="2.4" height="2" rx="0.4" />
+          <rect x="19" y="11" width="2.4" height="2" rx="0.4" />
+          <!-- space bar -->
+          <rect x="4" y="14" width="16.4" height="2" rx="0.4" opacity="0.85" />
+        </g>
+      </symbol>
+      <symbol id="icon-printer" viewBox="0 0 24 24">
+        <!-- paper emerging from the top slot -->
+        <rect x="9.5" y="2" width="5" height="6" fill="currentColor" opacity="0.22" />
+        <rect x="9.5" y="2" width="5" height="6" fill="none" stroke="currentColor" stroke-width="1" />
+        <!-- printer body -->
+        <rect x="2.5" y="6.5" width="19" height="12" rx="2" fill="currentColor" opacity="0.12" />
+        <rect x="2.5" y="6.5" width="19" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3" />
+        <!-- paper output slot -->
+        <rect x="5" y="12" width="14" height="2.4" rx="0.6" fill="currentColor" opacity="0.5" />
+        <!-- control buttons -->
+        <circle cx="7" cy="9" r="1" fill="currentColor" opacity="0.6" />
+        <circle cx="9.4" cy="9" r="1" fill="currentColor" opacity="0.6" />
+      </symbol>
+      <symbol id="icon-control" viewBox="0 0 24 24">
+        <!-- power symbol: arc open at the top -->
+        <path d="M8 7.5a6 6 0 1 0 8 0" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"
+          opacity="0.9" />
+        <line x1="12" y1="2.5" x2="12" y2="8.5" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-config" viewBox="0 0 24 24">
+        <!-- gear ring -->
+        <circle cx="12" cy="12" r="6.2" fill="none" stroke="currentColor" stroke-width="2.4" />
+        <!-- gear teeth -->
+        <g stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+          <line x1="12" y1="5.1" x2="12" y2="3.4" />
+          <line x1="12" y1="18.9" x2="12" y2="20.6" />
+          <line x1="5.1" y1="12" x2="3.4" y2="12" />
+          <line x1="18.9" y1="12" x2="20.6" y2="12" />
+          <line x1="7.1" y1="7.1" x2="5.9" y2="5.9" />
+          <line x1="16.9" y1="16.9" x2="18.1" y2="18.1" />
+          <line x1="16.9" y1="7.1" x2="18.1" y2="5.9" />
+          <line x1="7.1" y1="16.9" x2="5.9" y2="18.1" />
+        </g>
+        <!-- center hub -->
+        <circle cx="12" cy="12" r="2.3" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.85" />
+        <circle cx="12" cy="7.3" r="1.3" fill="currentColor" />
+        <line x1="12" y1="10.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+      </symbol>
+    </defs>
+  </svg>
   <div class="app-layout">
     <div class="app-sidebar">
       <div class="nav-btn active" data-page="panel">
-        <span class="nav-icon">&#9673;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-panel" />
+          </svg></span>
         Panel
       </div>
       <div class="nav-btn" data-page="teletype">
-        <span class="nav-icon">&#9632;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-keyboard" />
+          </svg></span>
         Console
       </div>
       <div class="nav-btn hidden" data-page="vt52-console">
-        <span class="nav-icon">&#9618;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-crt" />
+          </svg></span>
         Console
       </div>
       <div class="nav-btn hidden" data-page="vt52">
-        <span class="nav-icon">&#9618;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-crt" />
+          </svg></span>
         TTY 1
       </div>
       <div class="nav-btn hidden" data-page="vt52-2">
-        <span class="nav-icon">&#9618;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-crt" />
+          </svg></span>
         TTY 2
       </div>
       <div class="nav-btn hidden" data-page="printer">
-        <span class="nav-icon">&#9999;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-printer" />
+          </svg></span>
         Printer
       </div>
       <div class="nav-btn" data-page="control">
-        <span class="nav-icon">&#128295;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-control" />
+          </svg></span>
         Control
       </div>
       <div class="nav-btn" data-page="config">
-        <span class="nav-icon">&#9881;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-config" />
+          </svg></span>
         Config
       </div>
       <div class="nav-btn" data-page="instructions">
-        <span class="nav-icon">&#9776;</span>
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-info" />
+          </svg></span>
         Info
       </div>
       <div class="dec-logo">digital</div>
