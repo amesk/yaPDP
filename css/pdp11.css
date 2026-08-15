@@ -112,50 +112,6 @@
     text-align: center;
 }
 
-/* Panel control bar — boot/paper tape/disk controls below the front panel */
-.panel-controls {
-    padding: 10px 12px;
-    border-top: 1px solid #534c42;
-    margin-top: 6px;
-    color: #e0d8c8;
-    font-size: 13px;
-    line-height: 2;
-}
-
-.panel-controls label {
-    color: #e0d8c8;
-    font-weight: bold;
-}
-
-.panel-controls select {
-    background: #2a2a2a;
-    color: #e0d8c8;
-    border: 1px solid #555;
-    border-radius: 3px;
-    padding: 2px 4px;
-    font-size: 12px;
-}
-
-.panel-controls select:focus {
-    outline: none;
-    border-color: #c8a860;
-}
-
-.panel-controls button {
-    background: #3a3a3a;
-    color: #e0d8c8;
-    border: 1px solid #555;
-    border-radius: 3px;
-    padding: 3px 10px;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.panel-controls button:hover {
-    background: #4a4a4a;
-    border-color: #c8a860;
-}
-
 /* Drop zone — drag & drop disk/tape image import */
 .drop-zone {
     display: inline-block;
@@ -379,57 +335,6 @@
 .onboard-show-again:hover {
     background: #2c261c;
     border-color: #c8a860;
-}
-
-/* Mounted-images management control (unmount UI) */
-.mounted-control {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: 14px;
-    font-size: 13px;
-    vertical-align: middle;
-    color: #e0d8c8;
-}
-
-.mounted-control label {
-    color: #e0d8c8;
-    font-weight: bold;
-}
-
-.mounted-control select {
-    background: #2a2a2a;
-    color: #e0d8c8;
-    border: 1px solid #555;
-    border-radius: 3px;
-    padding: 2px 4px;
-    font-size: 12px;
-    max-width: 200px;
-}
-
-.mounted-control select:focus {
-    outline: none;
-    border-color: #c8a860;
-}
-
-.mounted-control button {
-    background: #3a3a3a;
-    color: #e0d8c8;
-    border: 1px solid #555;
-    border-radius: 3px;
-    padding: 3px 10px;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.mounted-control button:hover:not(:disabled) {
-    background: #4a4a4a;
-    border-color: #c8a860;
-}
-
-.mounted-control button:disabled {
-    opacity: 0.5;
-    cursor: default;
 }
 
 .floatLeft {
@@ -1215,6 +1120,36 @@ body {
 
 #page-config.active p {
     line-height: 1.5;
+}
+
+/* ===== Control page (machine management) ===== */
+#page-control.active {
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
+    color: #e0d8c8;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    box-sizing: border-box;
+    /* Dark translucent slab so the controls stay readable over the photo */
+    background: rgba(28, 25, 21, 0.82);
+}
+
+#page-control.active h2,
+#page-control.active h3 {
+    color: #f0e6c8;
+}
+
+#page-control.active p {
+    line-height: 1.5;
+}
+
+#page-control.active code {
+    color: #d4c4a0;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1px 4px;
+    border-radius: 2px;
 }
 
 .config-form {

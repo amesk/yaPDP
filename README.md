@@ -184,6 +184,7 @@ Use the sidebar to switch between:
 - **Console** — the operator console: a DECscope VT52 (when the console terminal is a VT52)
 - **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
 - **Printer** — the LP11 line printer page, shown only when configured
+- **Control** — machine management: reboot, paper-tape reader, disk/tape image import and mounted images
 - **Config** — configure the emulated peripherals (persisted between sessions)
 - **Info** — detailed instructions and OS reference
 
@@ -198,8 +199,10 @@ the emulated hardware matches the configuration; print widths, the key
 click and the photo backdrop apply immediately. A **Restore defaults** button
 resets every setting to its factory value.
 
-The same page hosts the **Machine** section: **Reboot**, the paper-tape reader file
-selector, the drag & drop image drop zone and the mounted-images/Unmount list.
+The **Control** page manages the running machine: **Reboot**, the paper-tape
+reader file selector, the drag & drop disk/tape image drop zone and the
+mounted-images/Unmount list. Images dropped there are mounted into DataLoader
+and persist in IndexedDB across sessions.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
