@@ -1,9 +1,9 @@
 {
-    "name": "pdp11-emulator",
+    "name": "yapdp",
     "version": "0.1.0",
     "private": true,
     "type": "commonjs",
-    "description": "PDP-11/70 web emulator - development & build scripts",
+    "description": "yaPDP - Yet Another PDP-11/70 web emulator - development & build scripts",
     "engines": {
         "node": ">=18"
     },

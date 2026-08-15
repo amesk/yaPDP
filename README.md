@@ -1,4 +1,4 @@
-# PDP‑11 Web Emulator — with Authentic Front Panel & Model 33 ASR Teletype
+# yaPDP — Yet Another PDP‑11/70 Web Emulator, with Authentic Front Panel & Model 33 ASR Teletype
 
 ![PDP‑11/70 Front Panel](assets/pdp1170-large.png)
 
@@ -16,7 +16,7 @@ I went on to become a professional programmer, eventually leading large projects
 
 I never got to run **real UNIX** on those machines. The Soviet replicas lived under RSX‑11M, and by the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
 
-This repository is the result. A fully fledged PDP‑11/70 emulator that runs right in your browser, with an authentic front panel and a connected **Model 33 ASR teletype** — the operator's console I always dreamed of having next to my desk.
+This repository is the result: **yaPDP**, a fully fledged PDP‑11/70 emulator that runs right in your browser, with an authentic front panel and a connected **Model 33 ASR teletype** — the operator's console I always dreamed of having next to my desk.
 
 Welcome to the machine.
 
@@ -24,7 +24,7 @@ Welcome to the machine.
 
 ## About This Project
 
-This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just open the page and you're standing in front of a DEC minicomputer.
+This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just open the page and you're standing in front of a DEC minicomputer.
 
 ### What makes it special
 
@@ -39,7 +39,7 @@ This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in an
 
 ### Live Demo
 
-- [**PDP‑11/70**](https://paulnank.github.io/pdp11-js/pdp11.html)
+- [**yaPDP**](https://paulnank.github.io/pdp11-js/pdp11.html)
 
 ---
 
@@ -58,8 +58,8 @@ download and a fully-offline bundle with every disk/tape image:
 
 | Artifact | Size |
 |----------|------|
-| `PDP-11 Minimal_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `PDP-11 Minimal.exe` | ~3.2 MB / ~4.3 MB / ~6.2 MB |
-| `PDP-11 Full_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `PDP-11 Full.exe` | ~84 MB / ~85 MB / ~6.2 MB |
+| `yaPDP Minimal_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP Minimal.exe` | ~3.2 MB / ~4.3 MB / ~6.2 MB |
+| `yaPDP Full_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP Full.exe` | ~84 MB / ~85 MB / ~6.2 MB |
 
 ### Bundled images
 
@@ -89,7 +89,7 @@ flowchart LR
     B --> E[fzstd decompress]
     C --> E
     D --> E
-    E --> F[Block cache] --> G[PDP-11 Emulator]
+    E --> F[Block cache] --> G[yaPDP]
 ```
 
 ### Building the desktop app
@@ -171,7 +171,7 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 
 ## Quick Start
 
-1. Open the [PDP‑11/70 emulator](https://paulnank.github.io/pdp11-js/pdp11.html).
+1. Open the [yaPDP emulator](https://paulnank.github.io/pdp11-js/pdp11.html).
 2. At the `Boot>` prompt, type `boot rp1` and press ENTER.
 3. BSD 2.11 will autoboot into multiuser mode. Login as `root` (no password).
 4. Try `ls`, `ps -aux`, `df` — or compile a C program with `cc`.

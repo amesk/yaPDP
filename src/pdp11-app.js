@@ -1,5 +1,5 @@
 /**
- * PDP-11/70 Application Initialization
+ * yaPDP — PDP-11/70 Application Initialization
  *
  * Bootstraps the emulator after all core modules are loaded:
  * - G60 Printer (console teletype)

@@ -1,5 +1,5 @@
 /**
- * PDP-11 Emulator — User configuration (CONFIG page).
+ * yaPDP — User configuration (CONFIG page).
  *
  * Single source of truth for the configurable system parameters:
  *   - consoleType:   terminal attached to the operator console (tty0),
@@ -20,7 +20,7 @@
  *   - photoBackdrop: whether the PDP-11 machine-room photo is shown behind
  *                    the pages. Applied immediately, no reboot needed.
  *
- * Persistence uses localStorage under the key "pdp11.config.v1" (the same
+ * Persistence uses localStorage under the key "yapdp.config.v1" (the same
  * pattern as Onboarding in onboarding.js). The pure helpers validate/load/
  * save/reset are DOM-free and unit-testable in Node.
  *
@@ -30,7 +30,7 @@
 "use strict";
 
 var Config = (function () {
-    var STORAGE_KEY = "pdp11.config.v1";
+    var STORAGE_KEY = "yapdp.config.v1";
 
     var DEFAULTS = Object.freeze({
         consoleType: "teletype", // 'teletype' | 'vt52'

@@ -1,4 +1,4 @@
-# PDP 11 Media
+# yaPDP Media
 
 Some of the emulator media images in the media folder are in compressed format (ZST) to keep github file sizes below limits.
 

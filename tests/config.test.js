@@ -143,7 +143,7 @@ function run() {
             "empty storage -> defaults");
 
         // Corrupt JSON -> defaults (no throw).
-        const corrupt = makeStorage({ "pdp11.config.v1": "{not json" });
+        const corrupt = makeStorage({ "yapdp.config.v1": "{not json" });
         assert.deepStrictEqual(plain(C.load(corrupt)), plain(C.DEFAULTS),
             "corrupt storage -> defaults");
     }
@@ -164,7 +164,7 @@ function run() {
         const resetCfg = C.reset(s);
         assert.deepStrictEqual(plain(resetCfg), plain(C.DEFAULTS),
             "reset returns defaults");
-        assert.strictEqual(s.getItem("pdp11.config.v1"), null,
+        assert.strictEqual(s.getItem("yapdp.config.v1"), null,
             "reset clears the stored key");
         assert.deepStrictEqual(plain(C.load(s)), plain(C.DEFAULTS),
             "after reset, load yields defaults");

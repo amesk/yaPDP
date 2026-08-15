@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Minimal dependency-free static file server for the PDP-11 emulator.
+ * Minimal dependency-free static file server for the yaPDP emulator.
  *
  * Serves the repository root over HTTP so the emulator works without
  * installing a web server or disabling browser file-access restrictions
@@ -189,6 +189,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`PDP-11 emulator server: http://localhost:${port}/pdp11.html`);
+    console.log(`yaPDP emulator server: http://localhost:${port}/pdp11.html`);
     console.log(`Serving: ${root}`);
 });

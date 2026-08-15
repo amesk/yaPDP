@@ -1,5 +1,5 @@
 /**
- * PDP-11/70 Front Panel Controller
+ * yaPDP — PDP-11/70 Front Panel Controller
  *
  * Handles the physical front panel UI: switches, rotary encoders,
  * navigation sidebar, and examine/deposit operations.

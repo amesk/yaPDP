@@ -1,8 +1,8 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
-    "productName": "PDP-11 Minimal",
+    "productName": "yaPDP Minimal",
     "version": "0.1.0",
-    "identifier": "org.pdp11.emulator.minimal",
+    "identifier": "org.yapdp.emulator.minimal",
     "build": {
         "frontendDist": "../desktop"
     },
@@ -11,7 +11,7 @@
         "windows": [
             {
                 "label": "main",
-                "title": "PDP-11/70 Emulator",
+                "title": "yaPDP — PDP-11/70 Emulator",
                 "url": "pdp11.html",
                 "width": 1280,
                 "height": 920,
@@ -29,8 +29,8 @@
         "active": true,
         "targets": "all",
         "category": "Utility",
-        "shortDescription": "PDP-11/70 web emulator desktop app (minimal)",
-        "longDescription": "A PDP-11/70 emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Minimal build: ships the core boot images only; other disk/tape images can be dragged & dropped.",
+        "shortDescription": "yaPDP - Yet Another PDP-11/70 web emulator desktop app (minimal)",
+        "longDescription": "yaPDP - Yet Another PDP-11/70 emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Minimal build: ships the core boot images only; other disk/tape images can be dragged & dropped.",
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",

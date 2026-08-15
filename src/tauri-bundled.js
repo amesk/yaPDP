@@ -108,7 +108,7 @@
         chain.then(function (results) {
             var ok = (results || []).filter(Boolean).length;
             if (ok > 0) {
-                console.info("PDP-11 desktop: mounted " + ok + " bundled image(s)");
+                console.info("yaPDP desktop: mounted " + ok + " bundled image(s)");
             }
         });
     }

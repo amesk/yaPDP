@@ -1,5 +1,5 @@
 /**
- * PDP-11 Emulator — First-run onboarding hint
+ * yaPDP — First-run onboarding hint
  *
  * On the very first launch (no saved flag in localStorage) a short modal
  * overlay explains what the user can do right away: which page to open,
@@ -29,7 +29,7 @@
 "use strict";
 
 var Onboarding = (function () {
-    var ONBOARDING_KEY = "pdp11.onboarding.v1";
+    var ONBOARDING_KEY = "yapdp.onboarding.v1";
     var FLAG_VALUE = "done";
     var MAX_SUGGESTIONS = 4;
     var bootTable = null; // cached [{url, device, label, boot}] from Info page
@@ -196,7 +196,7 @@ var Onboarding = (function () {
     function boxHtml() {
         return (
             '<div class="onboard-box">' +
-                '<span class="onboard-title">Welcome to the PDP-11/70</span>' +
+                '<span class="onboard-title">Welcome to yaPDP — the PDP-11/70</span>' +
                 '<p class="onboard-intro">Here is how to get going in 30 seconds:</p>' +
                 '<ol class="onboard-steps">' +
                     '<li>Open the <b>Teletype</b> page in the left sidebar.</li>' +

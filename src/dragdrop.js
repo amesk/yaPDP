@@ -1,5 +1,5 @@
 /**
- * PDP-11 Emulator — Disk/Tape Image Drag & Drop Import
+ * yaPDP — Disk/Tape Image Drag & Drop Import
  *
  * Lets the user drop (or pick) disk/tape/paper-tape images directly onto
  * the page. Images are mounted into DataLoader (defined in iopage.js) so
@@ -39,7 +39,7 @@
     // ------------------------------------------------------------------
     // IndexedDB persistence
     // ------------------------------------------------------------------
-    var DB_NAME = "pdp11-images";
+    var DB_NAME = "yapdp-images";
     var DB_STORE = "images";
     var dbPromise = null;
 
