@@ -249,7 +249,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 
 | File | Purpose |
 |------|---------|
-| [`src/pdp11.js`](src/pdp11.js) | Core CPU emulation (PDP‑11/70 & /45 instruction set, MMU, interrupts) |
+| [`src/pdp11.js`](src/pdp11.js) | Core CPU emulation (PDP‑11/70 instruction set, MMU, interrupts) |
 | [`src/fpp.js`](src/fpp.js) | Floating‑Point Processor (FP11) emulation |
 | [`src/iopage.js`](src/iopage.js) | I/O page — disk controllers, terminal interfaces, paper tape reader, line printer |
 | [`src/pdp11-panel.js`](src/pdp11-panel.js) | Front panel rendering and switch interaction |

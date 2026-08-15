@@ -30,7 +30,7 @@
         "targets": "all",
         "category": "Utility",
         "shortDescription": "PDP-11/70 web emulator desktop app (full)",
-        "longDescription": "A PDP-11/70 (and /45) emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Full build: ships every disk/tape image (RK/RL/RP/RA/TM + paper tapes) for fully offline booting of all 16 guest operating systems.",
+        "longDescription": "A PDP-11/70 emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Full build: ships every disk/tape image (RK/RL/RP/RA/TM + paper tapes) for fully offline booting of all 16 guest operating systems.",
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",
