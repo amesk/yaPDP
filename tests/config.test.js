@@ -9,7 +9,7 @@
  * The config covers the CONFIG page settings:
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
  *   printWidth (72/80, ASR 33 teletype), printerWidth (72/80/100/132, LP11),
- *   keyClick (bool).
+ *   keyClick (bool), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
  *
@@ -63,6 +63,7 @@ function run() {
             printWidth: 72,
             printerWidth: 132,
             keyClick: false,
+            photoBackdrop: true,
         }, "defaults should match the documented values");
     }
 
@@ -104,6 +105,12 @@ function run() {
         assert.strictEqual(C.validate({ printer: 0 }).printer, false);
         assert.strictEqual(C.validate({ keyClick: 1 }).keyClick, true);
         assert.strictEqual(C.validate({ keyClick: 0 }).keyClick, false);
+
+        // photoBackdrop: absent -> true (keeps the photo for old configs),
+        // otherwise coerced to boolean.
+        assert.strictEqual(C.validate({}).photoBackdrop, true);
+        assert.strictEqual(C.validate({ photoBackdrop: 1 }).photoBackdrop, true);
+        assert.strictEqual(C.validate({ photoBackdrop: 0 }).photoBackdrop, false);
     }
 
     // ---- load / save round-trip ------------------------------------
@@ -116,6 +123,7 @@ function run() {
             printWidth: 80,
             printerWidth: 80,
             keyClick: true,
+            photoBackdrop: false,
         };
         C.save(cfg, s);
         assert.deepStrictEqual(plain(C.load(s)), cfg,
@@ -141,6 +149,7 @@ function run() {
             printWidth: 80,
             printerWidth: 100,
             keyClick: true,
+            photoBackdrop: true,
         }, s);
         const resetCfg = C.reset(s);
         assert.deepStrictEqual(plain(resetCfg), plain(C.DEFAULTS),

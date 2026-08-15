@@ -524,6 +524,12 @@ function applyVisibility() {
   setNavVisible('printer', cfg.printer);
 }
 
+// Toggle the PDP-11 photo backdrop on body. The 'no-photo-bg' class restores
+// the plain dark background (see css/pdp11.css).
+function applyPhotoBackdrop(enabled) {
+  document.body.classList.toggle('no-photo-bg', !enabled);
+}
+
 // ---- CONFIG page form: populate controls and wire up events ----
 function initConfigForm() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
@@ -543,6 +549,9 @@ function initConfigForm() {
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   var kcEl = document.getElementById('config-keyClick');
   if (kcEl) kcEl.checked = cfg.keyClick;
+  var pbEl = document.getElementById('config-photoBackdrop');
+  if (pbEl) pbEl.checked = cfg.photoBackdrop;
+  applyPhotoBackdrop(cfg.photoBackdrop);
 
   // Structural changes (hardware presence) restart the machine so iopage.js
   // re-registers the configured devices and the UI is rebuilt from scratch.
@@ -586,6 +595,12 @@ function initConfigForm() {
   if (kcEl) {
     kcEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ keyClick: this.checked });
+    });
+  }
+  if (pbEl) {
+    pbEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ photoBackdrop: this.checked });
+      applyPhotoBackdrop(this.checked);
     });
   }
 

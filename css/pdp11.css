@@ -863,7 +863,15 @@ body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background: #2a2722;
+    /* PDP-11 backdrop: dark fallback + dimming overlay over the machine-room photo.
+       Adjust the overlay alpha to control how strongly the photo shows through. */
+    background-color: #2a2722;
+    background-image:
+        linear-gradient(rgba(24, 21, 17, 0.82), rgba(24, 21, 17, 0.82)),
+        url("../assets/images/pdp11-room.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     font-family: arial, helvetica, sans-serif;
 }
 
@@ -950,7 +958,8 @@ body {
 .page {
     display: none;
     flex: 1;
-    background: #1c1915;
+    /* Transparent so the PDP-11 photo backdrop on body shows through */
+    background: transparent;
 }
 
 .page.active {
@@ -969,6 +978,8 @@ body {
     margin: 0 auto;
     padding: 16px 24px;
     box-sizing: border-box;
+    /* Dark translucent slab so the long text stays readable over the photo */
+    background: rgba(28, 25, 21, 0.82);
 }
 
 #page-instructions.active h2,
@@ -1063,7 +1074,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: #2a2722;
+    /* Transparent so the PDP-11 photo backdrop on body shows through */
     overflow: hidden;
 }
 
@@ -1193,6 +1204,8 @@ body {
     margin: 0 auto;
     padding: 16px 24px;
     box-sizing: border-box;
+    /* Dark translucent slab so the form stays readable over the photo */
+    background: rgba(28, 25, 21, 0.82);
 }
 
 #page-config.active h2,
@@ -1278,4 +1291,27 @@ body {
     margin-top: 4px;
     font-size: 11px;
     color: #8a857a;
+}
+
+/* ===== Photo backdrop toggle (CONFIG) ===== */
+/* body.no-photo-bg — the PDP-11 machine-room photo is switched off: restore
+   the plain dark background. The dark tone (#1c1915, same as the front-panel
+   page) is painted on the whole .app-layout area, so centred pages such as
+   CONFIG/INFO (which are narrower than the viewport) stay uniform edge-to-edge
+   instead of showing the lighter body colour in their side gutters. */
+body.no-photo-bg {
+    background-image: none;
+    background-color: #2a2722;
+}
+
+body.no-photo-bg .app-layout {
+    background: #1c1915;
+}
+
+body.no-photo-bg #page-config.active,
+body.no-photo-bg #page-instructions.active,
+body.no-photo-bg #page-vt52.active,
+body.no-photo-bg #page-vt52-console.active,
+body.no-photo-bg #page-vt52-2.active {
+    background: transparent;
 }

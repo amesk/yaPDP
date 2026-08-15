@@ -14,6 +14,8 @@
  *   - printerWidth:  printable columns for the LP11 printer page (72/80/100/132).
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
+ *   - photoBackdrop: whether the PDP-11 machine-room photo is shown behind
+ *                    the pages. Applied immediately, no reboot needed.
  *
  * Persistence uses localStorage under the key "pdp11.config.v1" (the same
  * pattern as Onboarding in onboarding.js). The pure helpers validate/load/
@@ -33,7 +35,8 @@ var Config = (function () {
         printer: false,          // boolean
         printWidth: 72,          // 72 | 80 (console teletype, ASR 33)
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
-        keyClick: false          // boolean (VT52 key click)
+        keyClick: false,         // boolean (VT52 key click)
+        photoBackdrop: true      // boolean (PDP-11 photo behind the pages)
     });
 
     // LP11 line-printer widths (a real LP11 is a 132-column machine).
@@ -80,7 +83,11 @@ var Config = (function () {
             printer: Boolean(o.printer),
             printWidth: normalizePrintWidth(o.printWidth, DEFAULTS.printWidth, PRINT_WIDTHS_TTY),
             printerWidth: normalizePrintWidth(o.printerWidth, DEFAULTS.printerWidth),
-            keyClick: Boolean(o.keyClick)
+            keyClick: Boolean(o.keyClick),
+            // Absent key falls back to true (keeps the photo on for old configs).
+            photoBackdrop: typeof o.photoBackdrop === "undefined"
+                ? DEFAULTS.photoBackdrop
+                : Boolean(o.photoBackdrop)
         };
     }
 
