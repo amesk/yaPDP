@@ -30,7 +30,7 @@
         "targets": "all",
         "category": "Utility",
         "shortDescription": "PDP-11/70 web emulator desktop app (minimal)",
-        "longDescription": "A PDP-11/70 (and /45) emulator with an authentic front panel and ASR 33 teletype, packaged as a native desktop app. Minimal build: ships the core boot images only; other disk/tape images can be dragged & dropped.",
+        "longDescription": "A PDP-11/70 (and /45) emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Minimal build: ships the core boot images only; other disk/tape images can be dragged & dropped.",
         "icon": [
             "icons/32x32.png",
             "icons/128x128.png",

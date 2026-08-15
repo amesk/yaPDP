@@ -1,4 +1,4 @@
-# PDP‑11 Web Emulator — with Authentic Front Panel & ASR 33 Teletype
+# PDP‑11 Web Emulator — with Authentic Front Panel & Model 33 ASR Teletype
 
 ![PDP‑11/70 Front Panel](assets/pdp1170-large.png)
 
@@ -16,7 +16,7 @@ I went on to become a professional programmer, eventually leading large projects
 
 I never got to run **real UNIX** on those machines. The Soviet replicas lived under RSX‑11M, and by the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
 
-This repository is the result. A fully fledged PDP‑11/70 emulator that runs right in your browser, with an authentic front panel and a connected **ASR 33 teletype** — the operator's console I always dreamed of having next to my desk.
+This repository is the result. A fully fledged PDP‑11/70 emulator that runs right in your browser, with an authentic front panel and a connected **Model 33 ASR teletype** — the operator's console I always dreamed of having next to my desk.
 
 Welcome to the machine.
 
@@ -31,7 +31,7 @@ This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in an
 | Feature | Description |
 |---------|-------------|
 | **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
-| **ASR 33 Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph (e.g. a 2.11 BSD boot countdown) leaves the real dark overstrike blot a hard-copy terminal makes. Long lines faithfully jam the carriage at the right margin (72 or 80 columns; characters overstrike the last column instead of wrapping, no scrollbar), and the paper width follows the selected width so a full line reaches the paper edge. The console echo speed is selectable in the CONFIG page: **authentic 110 baud (~10 chars/sec)** or a fast development pace (~33 chars/sec). |
+| **Model 33 ASR Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph (e.g. a 2.11 BSD boot countdown) leaves the real dark overstrike blot a hard-copy terminal makes. Long lines faithfully jam the carriage at the right margin (72 or 80 columns; characters overstrike the last column instead of wrapping, no scrollbar), and the paper width follows the selected width so a full line reaches the paper edge. The console echo speed is selectable in the CONFIG page: **authentic 110 baud (~10 chars/sec)** or a fast development pace (~33 chars/sec). |
 | **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
@@ -180,7 +180,7 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 
 Use the sidebar to switch between:
 - **Panel** — the front panel with switches and LEDs
-- **Console** — the operator console: an ASR 33 teletype (when the console terminal is a teletype)
+- **Console** — the operator console: a Model 33 ASR teletype (when the console terminal is a teletype)
 - **Console** — the operator console: a DECscope VT52 (when the console terminal is a VT52)
 - **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
 - **Printer** — the LP11 line printer page, shown only when configured
@@ -190,7 +190,7 @@ Use the sidebar to switch between:
 
 The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11 line printer, the
-teletype print width (72/80 — an ASR 33 is at most 80 columns), the printer
+teletype print width (72/80 — a Model 33 ASR is at most 80 columns), the printer
 print width (72/80/100/132), optional VT100-style key-click sound for VT52
 terminals and the PDP-11 machine-room photo backdrop behind the pages.
 The LP11 line printer defaults to the authentic 132-column width.
@@ -208,18 +208,18 @@ and persist in IndexedDB across sessions.
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
 via the system dialog) and **Save .txt** buttons. Like the real LP11, it echoes
-characters far faster than the ASR 33 console teletype (the console keeps its
+characters far faster than the Model 33 ASR console teletype (the console keeps its
 authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
 original's ~300 lines/min. Both the teletype and the printer size their paper
 to the configured print width (centred in the machine body), so a full line
 always reaches the paper edge. Both also advance the carriage to the next
-8-column tab stop on TAB, matching real ASR 33 / LP11 behaviour.
+8-column tab stop on TAB, matching real Model 33 ASR / LP11 behaviour.
 
 Both also honour form feed (FF, 0x0C): the 2.11BSD spooler (`lpr`/`lpd`) sends
 FF between print jobs so each starts on a fresh page. The LP11 ejects to the
 top of the next fanfold page — it fills the rest of the sheet (66 lines at
 6 LPI for an 11″ page) and closes it with a dashed fold/perforation marker;
-the ASR 33 console teletype (which also supported FF via its FORM key) simply
+the Model 33 ASR console teletype (which also supported FF via its FORM key) simply
 advances its smooth paper roll. The **Save .txt** export keeps a `\f` marker so
 the real page breaks survive in the file.
 
@@ -256,7 +256,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/pdp11-app.js`](src/pdp11-app.js) | Application glue — boots the emulator, wires the configured teletype/VT52 console, user terminals, printer and the CONFIG page |
 | [`src/config.js`](src/config.js) | User configuration (CONFIG page) — validated, persisted in localStorage |
 | [`src/vt52.js`](src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based); renders nroff/man overstrike as bold/underline |
-| [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (ASR 33 / LP11) |
+| [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (Model 33 ASR / LP11) |
 | [`src/vt11.js`](src/vt11.js) | Vector graphics VT11 display |
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
 | [`src/dragdrop.js`](src/dragdrop.js) | Drag & drop disk/tape image import — mounts files into DataLoader, persists them in IndexedDB |
@@ -291,7 +291,7 @@ Paul wrote the original [pdp11-js](https://github.com/paulnank/pdp11-js) emulato
 
 ### Norbert Landsteiner (mass:werk) — Google60 Teletype
 
-The ASR 33 teletype emulation is adapted from [**Google60**](https://www.masswerk.at/google60/) by **Norbert Landsteiner** of [mass:werk](https://www.masswerk.at/). Google60 is a brilliant simulation of the Google search interface as it would have appeared on a ASR 33 Teletype in the 1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance animation and authentic sound effects — brings the teletype to life. This project repurposes his engine as the operator console for the PDP‑11.
+The Model 33 ASR teletype emulation is adapted from [**Google60**](https://www.masswerk.at/google60/) by **Norbert Landsteiner** of [mass:werk](https://www.masswerk.at/). Google60 is a brilliant simulation of the Google search interface as it would have appeared on a Model 33 ASR Teletype in the 1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance animation and authentic sound effects — brings the teletype to life. This project repurposes his engine as the operator console for the PDP‑11.
 
 His work is a masterclass in retro‑UI simulation. Thank you, Norbert.
 

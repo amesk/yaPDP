@@ -104,7 +104,7 @@
      *   options.charPrintDelay - ms per character for the paced console echo
      *                            (default 30, ~33 cps). The LP11 line printer
      *                            overrides this with a small value so it prints
-     *                            much faster than the ASR 33 console teletype.
+     *                            much faster than the Model 33 ASR console teletype.
      *   options.charSound      - play per-character punch / line-feed sounds
      *                            (default true; false disables them, used by the
      *                            fast LP11 line printer)
@@ -138,7 +138,7 @@
             spacerCurrentHeight;
 
         // Character pacing state. The per-character delay is configurable so a
-        // fast line printer (LP11) can echo far faster than the ASR 33 console
+        // fast line printer (LP11) can echo far faster than the Model 33 ASR console
         // teletype: the console keeps the authentic ~30 ms/char (33 cps) pacing
         // while the LP11 instance overrides it with a small value (~3 ms).
         var charPrintDelay = (typeof opts.charPrintDelay === 'number' && opts.charPrintDelay > 0)
@@ -149,12 +149,12 @@
         var charSound = (opts.charSound !== false);
         // Burst size per pacing tick. The LP11 line printer renders several
         // buffered items per tick (e.g. 3), lifting throughput above the
-        // browser's ~4 ms floor for nested timers; the ASR 33 console keeps 1.
+        // browser's ~4 ms floor for nested timers; the Model 33 ASR console keeps 1.
         var charsPerTick = (typeof opts.charsPerTick === 'number' && opts.charsPerTick >= 1)
             ? Math.floor(opts.charsPerTick) : 1;
         // Continuous line-printer whirr: while characters are being rendered the
         // fast LP11 plays a looping "print" sound (a real line printer makes
-        // steady noise), stopping when the buffer drains. The ASR 33 console
+        // steady noise), stopping when the buffer drains. The Model 33 ASR console
         // keeps per-character clicks (charSound) instead.
         var printWhirr = (opts.printWhirr === true);
         // Form feed (FF, 0x0C): a real line printer advances the paper to the
@@ -166,7 +166,7 @@
         var pageLength = (typeof opts.pageLength === 'number' && opts.pageLength > 0)
             ? Math.floor(opts.pageLength) : 66;
         // Draw the fold-marker line on form feed (a dashed perforation seam).
-        // A real ASR 33 used a smooth paper ROLL (no fanfold folds), so the
+        // A real Model 33 ASR used a smooth paper ROLL (no fanfold folds), so the
         // console teletype disables this; the LP11 fanfold paper keeps it.
         var pageBreakMarker = (opts.pageBreakMarker !== false);
         // Form-feed page tracking: pagePos counts lines printed on the current
@@ -196,7 +196,7 @@
         var headOffset = 30;
         var lineHeight = 16;
         var charWidth = 7;
-        // Maximum printable columns per line.  Authentic ASR 33 stops the
+        // Maximum printable columns per line.  Authentic Model 33 ASR stops the
         // carriage at the right margin (72 columns; some setups use 80) and
         // further characters overstrike the last column instead of wrapping
         // or widening the paper.
@@ -435,7 +435,7 @@
                 // Carriage has reached the right margin: the carriage-return
                 // mechanism is physically blocked, so every further character
                 // overstrikes the last column, building up an unreadable dark
-                // blob (authentic ASR 33 behaviour). No automatic wrapping.
+                // blob (authentic Model 33 ASR behaviour). No automatic wrapping.
                 // NB: a leading NBSP span occupies children[0], so the
                 // character on column k lives at children[k + 1]; the last
                 // column (maxCols - 1) is therefore children[maxCols].
@@ -572,7 +572,7 @@
 
             // Render up to charsPerTick items in this tick. Fast line printers
             // (LP11, charsPerTick > 1) burst several characters per tick to go
-            // beyond the browser's ~4 ms nested-timer floor; the ASR 33 console
+            // beyond the browser's ~4 ms nested-timer floor; the Model 33 ASR console
             // (charsPerTick = 1) keeps its authentic per-character pacing.
             var count = 0;
             while (charBuffer.length > 0 && count < charsPerTick) {
@@ -705,7 +705,7 @@
          * is computed from the current line position, a nroff-formatted man
          * page (which already fills the page) closes with its footer right
          * before the seam, while short raw output leaves a blank bottom margin.
-         * The ASR 33 console teletype also supported FF (its FORM key) but
+         * The Model 33 ASR console teletype also supported FF (its FORM key) but
          * used a smooth paper roll, so it advances without the fold marker.
          */
         function doFormFeed() {
@@ -736,7 +736,7 @@
          * doFormFeedMarker() - Internal: draw the fold/perforation seam that
          * closes a fanfold page. Queued after the page filler by doFormFeed()
          * so the seam appears at the bottom of the sheet, as on real paper.
-         * Skipped on paper types with no visible fold (smooth ASR 33 roll).
+         * Skipped on paper types with no visible fold (smooth Model 33 ASR roll).
          * Resets the current line so the next job's first line starts on a
          * fresh line below the seam (top of the next sheet).
          */
@@ -839,7 +839,7 @@
             pe = document.createElement('p');
             empty = true;
             pb = [];
-            // Cap line length at the right margin (maxCols). Authentic ASR 33
+            // Cap line length at the right margin (maxCols). Authentic Model 33 ASR
             // never wraps: the carriage stops at the last column, so a longer
             // line must not widen the paper / create a horizontal scrollbar.
             while (pos < maxCols) {
@@ -1169,7 +1169,7 @@
         };
 
         // Advance the carriage to the next tab stop (every 8 columns) by
-        // queueing spaces, matching real ASR 33 / LP11 tab behaviour. Used by
+        // queueing spaces, matching real Model 33 ASR / LP11 tab behaviour. Used by
         // the console adapter on TAB (code 9).
         this.printTab = function() {
             var spaces = 8 - (currentCharPos % 8);
@@ -1229,13 +1229,13 @@
             } else if (code === 12) {
                 // Form feed (^L): eject the paper to the top of the next page.
                 // 2.11BSD lpd sends FF between jobs so each starts on a fresh
-                // page. The ASR 33 teletype also supported FF (its FORM key).
+                // page. The Model 33 ASR teletype also supported FF (its FORM key).
                 if (typeof printer.formFeed === 'function') {
                     printer.formFeed();
                 }
             } else if (code === 9) {
                 // Tab - advance the carriage to the next tab stop (every
-                // 8 columns), matching real ASR 33 / LP11 behaviour.
+                // 8 columns), matching real Model 33 ASR / LP11 behaviour.
                 if (typeof printer.printTab === 'function') {
                     printer.printTab();
                 } else {

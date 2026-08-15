@@ -18,7 +18,7 @@ var g60printer = null;
 var g60Console = null;
 
 // Console teletype echo pace (ms per character) for each CONFIG speed.
-// 'authentic' is the real ASR 33 at 110 baud (~10 chars/sec); 'fast' is the
+// 'authentic' is the real Model 33 ASR at 110 baud (~10 chars/sec); 'fast' is the
 // accelerated development pace (~33 chars/sec).
 var TELETYPE_CHAR_DELAY_MS = { authentic: 100, fast: 30 };
 
@@ -34,7 +34,7 @@ function initG60Printer() {
   if (g60printer) return;
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
   var maxCols = (cfg) ? cfg.printWidth : 72;
-  // The ASR 33 console teletype used a smooth paper ROLL (no fanfold folds),
+  // The Model 33 ASR console teletype used a smooth paper ROLL (no fanfold folds),
   // so it must NOT draw the LP11 fold-marker on form feed — only advance the
   // paper. The LP11 printer page keeps the marker (fanfold paper).
   g60printer = new G60Printer('g60printer', {

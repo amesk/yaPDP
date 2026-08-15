@@ -8,7 +8,7 @@
  *
  * The config covers the CONFIG page settings:
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
- *   printWidth (72/80, ASR 33 teletype), printerWidth (72/80/100/132, LP11),
+ *   printWidth (72/80, Model 33 ASR teletype), printerWidth (72/80/100/132, LP11),
  *   teletypeSpeed (authentic/fast), keyClick (bool), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
@@ -85,7 +85,7 @@ function run() {
         assert.strictEqual(C.validate({ userTerminals: 5 }).userTerminals, 0);
         assert.strictEqual(C.validate({ userTerminals: -1 }).userTerminals, 0);
 
-        // Teletype printWidth restricted to the ASR 33 widths (72/80);
+        // Teletype printWidth restricted to the Model 33 ASR widths (72/80);
         // the wider 100/132 values are LP11-only and must fall back to 72.
         assert.strictEqual(C.validate({ printWidth: 72 }).printWidth, 72);
         assert.strictEqual(C.validate({ printWidth: 80 }).printWidth, 80);

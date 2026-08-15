@@ -1343,7 +1343,7 @@ iopage.register(0o17777510, 2, (function() {
                 ? Config.get().printerWidth : 132;
             // idPrefix "lp11g60" keeps the generated element ids distinct from
             // the page container id "lp11_printer". The LP11 is a fast line
-            // printer (unlike the ASR 33 console): chars echo at ~3 ms each
+            // printer (unlike the Model 33 ASR console): chars echo at ~3 ms each
             // (browsers clamp nested timers to ~4 ms) with 3 chars rendered per
             // tick (charsPerTick: 3), reaching close to the real ~300 LPM, and
             // the per-character teletype clicks are muted — a real line printer

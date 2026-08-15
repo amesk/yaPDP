@@ -961,7 +961,7 @@ body {
 
 /* ===== Teletype page — centre vertically like the console/terminals ===== */
 /* The base .page.active only centres horizontally (align-items: center);
-   this adds vertical centring so the ASR 33 printer + keyboard block sits
+   this adds vertical centring so the Model 33 ASR printer + keyboard block sits
    in the middle of the page just like the VT52 / panel / printer pages. */
 #page-teletype.active {
     justify-content: center;

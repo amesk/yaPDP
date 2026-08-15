@@ -218,7 +218,7 @@
 
 /* Right-margin overstrike: characters printed after the carriage reached
    the last column pile up on top of each other, forming an unreadable
-   dark blob (authentic ASR 33 behaviour). */
+   dark blob (authentic Model 33 ASR behaviour). */
 #g60printer td#paper_printarea span.overstrike {
     background-color: #3a3a3a;
     color: #8a8a8a;
@@ -264,7 +264,7 @@
 
 /* Form-feed page separator: 2.11BSD lpd sends FF between print jobs and the
    printer ejects to the top of the next page. The fold/perforation marker is
-   a dashed seam across the full printable width. The ASR 33 console teletype
+   a dashed seam across the full printable width. The Model 33 ASR console teletype
    disables the marker (smooth paper roll) and only advances the paper. */
 #g60printer td#paper_printarea p.pageBreak,
 #lp11_printer td#lp11g60paper_printarea p.pageBreak {
@@ -297,8 +297,8 @@
 }
 
 /* ==================================================================
-   ASR 33 console teletype — smooth plain paper (no tractor feed).
-   A real ASR 33 was fed by friction with a smooth roll of paper, NOT
+   Model 33 ASR console teletype — smooth plain paper (no tractor feed).
+   A real Model 33 ASR was fed by friction with a smooth roll of paper, NOT
    the striped fanfold with sprocket holes used by line printers. The
    striped texture (paper.png) and the tractor-hole margins
    (paper-margin.png) are shared with the LP11 line printer, so here

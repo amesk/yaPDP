@@ -80,7 +80,7 @@ function run() {
   const TTY_BODY = 940 - LEFT_SKIN - RIGHT_SKIN;
   assert.strictEqual(TTY_BODY, 807, "teletype body width");
 
-  // --- 72 columns (default ASR 33) ---
+  // --- 72 columns (default Model 33 ASR) ---
   {
     const g = compute(72, {
       bodyWidth: TTY_BODY, charWidth: CHAR_WIDTH,
