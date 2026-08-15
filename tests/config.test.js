@@ -8,7 +8,8 @@
  *
  * The config covers the CONFIG page settings:
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
- *   printWidth / printerWidth (72/80/100/132), keyClick (bool).
+ *   printWidth (72/80, ASR 33 teletype), printerWidth (72/80/100/132, LP11),
+ *   keyClick (bool).
  *
  * Run with:  node tests/config.test.js
  *
@@ -82,14 +83,21 @@ function run() {
         assert.strictEqual(C.validate({ userTerminals: 5 }).userTerminals, 0);
         assert.strictEqual(C.validate({ userTerminals: -1 }).userTerminals, 0);
 
-        // printWidth / printerWidth restricted to 72/80/100/132.
+        // Teletype printWidth restricted to the ASR 33 widths (72/80);
+        // the wider 100/132 values are LP11-only and must fall back to 72.
+        assert.strictEqual(C.validate({ printWidth: 72 }).printWidth, 72);
         assert.strictEqual(C.validate({ printWidth: 80 }).printWidth, 80);
-        assert.strictEqual(C.validate({ printWidth: 100 }).printWidth, 100);
-        assert.strictEqual(C.validate({ printWidth: 132 }).printWidth, 132);
+        assert.strictEqual(C.validate({ printWidth: 100 }).printWidth, 72);
+        assert.strictEqual(C.validate({ printWidth: 132 }).printWidth, 72);
         assert.strictEqual(C.validate({ printWidth: 55 }).printWidth, 72);
+        // Printer width keeps the full LP11 list (72/80/100/132).
+        assert.strictEqual(C.validate({ printerWidth: 80 }).printerWidth, 80);
         assert.strictEqual(C.validate({ printerWidth: 100 }).printerWidth, 100);
         assert.strictEqual(C.validate({ printerWidth: 132 }).printerWidth, 132);
         assert.strictEqual(C.validate({ printerWidth: 999 }).printerWidth, C.DEFAULTS.printerWidth);
+        // Exported width lists.
+        assert.deepStrictEqual(plain(C.PRINT_WIDTHS), [72, 80, 100, 132], "LP11 width list");
+        assert.deepStrictEqual(plain(C.PRINT_WIDTHS_TTY), [72, 80], "teletype width list");
 
         // booleans coerced.
         assert.strictEqual(C.validate({ printer: 1 }).printer, true);
@@ -105,7 +113,7 @@ function run() {
             consoleType: "vt52",
             userTerminals: 2,
             printer: true,
-            printWidth: 100,
+            printWidth: 80,
             printerWidth: 80,
             keyClick: true,
         };
@@ -130,7 +138,7 @@ function run() {
             consoleType: "vt52",
             userTerminals: 1,
             printer: true,
-            printWidth: 100,
+            printWidth: 80,
             printerWidth: 100,
             keyClick: true,
         }, s);

@@ -31,7 +31,7 @@ This is a **PDP‑11/70** emulator written entirely in JavaScript. It runs in an
 | Feature | Description |
 |---------|-------------|
 | **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
-| **ASR 33 Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering. Long lines faithfully jam the carriage at the 72‑column right margin (characters overstrike the last column instead of wrapping, no scrollbar). |
+| **ASR 33 Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering. Long lines faithfully jam the carriage at the right margin (72 or 80 columns; characters overstrike the last column instead of wrapping, no scrollbar), and the paper width follows the selected width so a full line reaches the paper edge. |
 | **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
@@ -189,12 +189,13 @@ Use the sidebar to switch between:
 
 The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11 line printer, the
-teletype/printer print widths (72/80/100/132) and optional VT100-style key-click
-sound for VT52 terminals. The LP11 line printer defaults to the authentic
-132-column width. Structural changes (console type, terminals, printer)
-restart the machine so the emulated hardware matches the configuration; print
-widths and the key click apply immediately. A **Restore defaults** button resets
-every setting to its factory value.
+teletype print width (72/80 — an ASR 33 is at most 80 columns), the printer
+print width (72/80/100/132) and optional VT100-style key-click sound for VT52
+terminals. The LP11 line printer defaults to the authentic 132-column width.
+Structural changes (console type, terminals, printer) restart the machine so
+the emulated hardware matches the configuration; print widths and the key
+click apply immediately. A **Restore defaults** button resets every setting to
+its factory value.
 
 The same page hosts the **Machine** section: **Reboot**, the paper-tape reader file
 selector, the drag & drop image drop zone and the mounted-images/Unmount list.
@@ -204,9 +205,10 @@ keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
 via the system dialog) and **Save .txt** buttons. Like the real LP11, it echoes
 characters far faster than the ASR 33 console teletype (the console keeps its
 authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
-original's ~300 lines/min. Both the teletype and the printer advance the
-carriage to the next 8-column tab stop on TAB, matching real ASR 33 / LP11
-behaviour.
+original's ~300 lines/min. Both the teletype and the printer size their paper
+to the configured print width (centred in the machine body), so a full line
+always reaches the paper edge. Both also advance the carriage to the next
+8-column tab stop on TAB, matching real ASR 33 / LP11 behaviour.
 
 ### A simple light chaser
 

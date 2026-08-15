@@ -8,7 +8,9 @@
  *                    When a terminal is added, a matching sidebar page is shown.
  *   - printer:       whether an LP11 line printer is present (own page, an
  *                    animated G60 printer without a keyboard).
- *   - printWidth:    printable columns for the console teletype (72/80/100/132).
+ *   - printWidth:    printable columns for the console teletype (72/80).
+ *                    An ASR 33 is at most an 80-column machine; the wider
+ *                    100/132 columns exist only on the LP11 line printer.
  *   - printerWidth:  printable columns for the LP11 printer page (72/80/100/132).
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
@@ -29,12 +31,15 @@ var Config = (function () {
         consoleType: "teletype", // 'teletype' | 'vt52'
         userTerminals: 0,        // 0 | 1 | 2
         printer: false,          // boolean
-        printWidth: 72,          // 72 | 80 | 100 | 132 (console teletype)
+        printWidth: 72,          // 72 | 80 (console teletype, ASR 33)
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         keyClick: false          // boolean (VT52 key click)
     });
 
+    // LP11 line-printer widths (a real LP11 is a 132-column machine).
     var PRINT_WIDTHS = Object.freeze([72, 80, 100, 132]);
+    // ASR 33 console teletype widths — a teletype is at most 80 columns.
+    var PRINT_WIDTHS_TTY = Object.freeze([72, 80]);
 
     function getStorage() {
         try {
@@ -53,9 +58,12 @@ var Config = (function () {
     }
 
     // Normalize a raw print width value; falls back to the given default.
-    function normalizePrintWidth(value, fallback) {
+    // `allowed` restricts the accepted values (defaults to the LP11 list);
+    // the teletype passes PRINT_WIDTHS_TTY so 100/132 fall back.
+    function normalizePrintWidth(value, fallback, allowed) {
         var n = Number(value);
-        return isOneOf(n, PRINT_WIDTHS) ? n : fallback;
+        var list = allowed || PRINT_WIDTHS;
+        return isOneOf(n, list) ? n : fallback;
     }
 
     /**
@@ -70,7 +78,7 @@ var Config = (function () {
                 ? Number(o.userTerminals)
                 : DEFAULTS.userTerminals,
             printer: Boolean(o.printer),
-            printWidth: normalizePrintWidth(o.printWidth, DEFAULTS.printWidth),
+            printWidth: normalizePrintWidth(o.printWidth, DEFAULTS.printWidth, PRINT_WIDTHS_TTY),
             printerWidth: normalizePrintWidth(o.printerWidth, DEFAULTS.printerWidth),
             keyClick: Boolean(o.keyClick)
         };
@@ -113,6 +121,7 @@ var Config = (function () {
     return {
         DEFAULTS: DEFAULTS,
         PRINT_WIDTHS: PRINT_WIDTHS,
+        PRINT_WIDTHS_TTY: PRINT_WIDTHS_TTY,
         getStorage: getStorage,
         validate: validate,
         load: load,

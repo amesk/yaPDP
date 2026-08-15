@@ -130,6 +130,7 @@
         // Printer state
         var textPos, textBuffer, timer, timer2, lines,
             element, printArea, paper, topSpacer, printHead,
+            topOverlay, paperTopShadow,
             scrollState, scrollLock, initialTop, idle, headPos,
             headDir, curLine, headUp, callback, keepLocked,
             delayFeed, feedDy, topSpacerVisible, lastTime,
@@ -177,6 +178,98 @@
         // or widening the paper.
         var maxCols = (PRINT_WIDTHS.indexOf(Number(opts.maxCols)) !== -1)
             ? Number(opts.maxCols) : 72;
+
+        // Printable-paper layout constants (CSS values, see g60printer.css).
+        var PAPER_PADDING_X = 18;  // horizontal padding of the print-area cell
+        var PAPER_MARGIN_X = 33;   // width of the left/right paper margin columns
+        var LEFT_SKIN_WIDTH = 67;  // width of the fixed left machine skin
+        var RIGHT_SKIN_WIDTH = 66; // width of the fixed right machine skin
+
+        /**
+         * computePaperGeometry(cols, opts) - Pure, DOM-free geometry helper.
+         * Derives the printable-paper layout for a column count so a full
+         * line of `cols` monospaced characters fills the paper from margin to
+         * margin, with the paper centred between the fixed side skins of the
+         * machine body. Kept as a standalone function so it can be extracted
+         * and unit-tested in Node (see tests/paper-geometry.test.js).
+         *
+         * @param {number} cols - printable columns (72/80 teletype, 72..132 LP11)
+         * @param {object} opts - layout constants:
+         *   bodyWidth - usable inner width of the machine (container minus skins)
+         *   charWidth - fixed monospaced cell width in px (7)
+         *   paddingX  - horizontal padding of the print-area cell (18)
+         *   marginX   - paper margin column width (33)
+         *   leftSkin  - width of the left machine skin (67)
+         * @returns {object} { paperWidth, paperLeft, printAreaWidth, headOffset }
+         *   All values in px; headOffset keeps the carriage aligned with column 0.
+         */
+        function computePaperGeometry(cols, opts) {
+            var bodyWidth = opts.bodyWidth;
+            var cw = opts.charWidth;
+            var paddingX = opts.paddingX;
+            var marginX = opts.marginX;
+            var leftSkin = opts.leftSkin;
+
+            var contentWidth = cols * cw;
+            // Rendered paper width = content + cell padding + both margin columns.
+            var paperWidth = contentWidth + 2 * paddingX + 2 * marginX;
+            paperWidth = Math.min(paperWidth, bodyWidth);
+
+            // Centre the paper between the fixed side skins.
+            var paperLeft = leftSkin + Math.max(0, Math.round((bodyWidth - paperWidth) / 2));
+
+            // The print-area cell width is the pure content width (content-box);
+            // the browser adds the 2*paddingX cell padding on top.
+            var printAreaWidth = contentWidth;
+
+            // Carriage offset follows the paper so column 0 stays aligned.
+            // 30 was the original offset for the left-anchored layout
+            // (paperLeft === leftSkin).
+            var headOffset = 30 + (paperLeft - leftSkin);
+
+            return {
+                paperWidth: paperWidth,
+                paperLeft: paperLeft,
+                printAreaWidth: printAreaWidth,
+                headOffset: headOffset
+            };
+        }
+
+        /**
+         * applyPaperGeometry() - Re-compute and apply the paper layout for the
+         * current maxCols: paper position/width, print-area width, the paper
+         * top overlay/shadow and the carriage head offset. When the machine is
+         * on a hidden page (clientWidth is 0) it is skipped and reapplied by a
+         * ResizeObserver once the page becomes visible.
+         */
+        function applyPaperGeometry() {
+            if (!paper || !printArea || !topOverlay || !paperTopShadow) return;
+            var bodyWidth = element.clientWidth - LEFT_SKIN_WIDTH - RIGHT_SKIN_WIDTH;
+            if (bodyWidth <= 0) return; // hidden page; ResizeObserver reapplies
+            var g = computePaperGeometry(maxCols, {
+                bodyWidth: bodyWidth,
+                charWidth: charWidth,
+                paddingX: PAPER_PADDING_X,
+                marginX: PAPER_MARGIN_X,
+                leftSkin: LEFT_SKIN_WIDTH
+            });
+            paper.style.left = g.paperLeft + 'px';
+            paper.style.width = g.paperWidth + 'px';
+            printArea.style.width = g.printAreaWidth + 'px';
+            topOverlay.style.left = g.paperLeft + 'px';
+            topOverlay.style.width = g.paperWidth + 'px';
+            paperTopShadow.style.left = g.paperLeft + 'px';
+            paperTopShadow.style.width = g.paperWidth + 'px';
+            headOffset = g.headOffset;
+            // If the carriage has already been placed (e.g. the machine was
+            // hidden at construction and this runs from a ResizeObserver
+            // later), reposition it so the new offset applies immediately —
+            // otherwise the head would sit at the previous offset until the
+            // next keystroke.
+            if (typeof headPos === 'number') {
+                setHeadPos(headPos, headUp);
+            }
+        }
         var headBaseY = 8;
         var headUpY = 1;
         var headUpFuzzyness = 3;
@@ -249,7 +342,7 @@
             element.id = pid('printer');
             el = document.createElement('div'); el.id = pid('printer_left'); element.appendChild(el);
             el = document.createElement('div'); el.id = pid('printer_right'); element.appendChild(el);
-            el = document.createElement('div'); el.id = pid('printer_topoverlay'); element.appendChild(el);
+            topOverlay = document.createElement('div'); topOverlay.id = pid('printer_topoverlay'); element.appendChild(topOverlay);
             paper = document.createElement('div'); paper.id = pid('paper'); paper.className = 'paperNoScroll';
             topSpacer = document.createElement('div'); topSpacer.id = pid('paper_topspacer'); paper.appendChild(topSpacer);
             tbl = document.createElement('table'); tbl.id = pid('paper_area'); tb = document.createElement('tbody');
@@ -263,13 +356,19 @@
             tr = document.createElement('tr'); tr.id = pid('paper_bottom');
             td1 = document.createElement('td'); td1.setAttribute('colspan', 3); tr.appendChild(td1); tb.appendChild(tr);
             tbl.appendChild(tb); paper.appendChild(tbl); element.appendChild(paper);
-            el = document.createElement('div'); el.id = pid('paper_topshadow'); element.appendChild(el);
+            paperTopShadow = document.createElement('div'); paperTopShadow.id = pid('paper_topshadow'); element.appendChild(paperTopShadow);
             el = document.createElement('div'); el.id = pid('printer_frontpannel'); element.appendChild(el);
             el = document.createElement('div'); el.id = pid('printheadarea'); element.appendChild(el);
             printHead = document.createElement('img');
             printHead.id = pid('printhead'); printHead.src = '../assets/images/printhead.png'; el.appendChild(printHead);
             printArea = td2;
             container.appendChild(element);
+            applyPaperGeometry();
+            // Re-apply paper geometry once the machine gets a real size (e.g.
+            // when a hidden LP11 page becomes active).
+            if (typeof window.ResizeObserver !== 'undefined') {
+                new ResizeObserver(function() { applyPaperGeometry(); }).observe(element);
+            }
             resetPrinter();
         }
 
@@ -541,6 +640,12 @@
          * Quick print head movement for character echo
          */
         function movePrintHeadQuick(pos) {
+            // Keep the logical carriage position in sync: the character-echo
+            // path (doPrintChar/doBackspace/doCarriageReturn) drives the head
+            // visually, and applyPaperGeometry() repositions it from headPos
+            // when the machine page is shown again. Without this the head
+            // would jump back to the idle position on every page switch.
+            headPos = pos;
             var l = headOffset + pos * charWidth + 'px';
             if (reqAnimFrame) {
                 reqAnimFrame(function() { printHead.style.left = l; });
@@ -845,7 +950,7 @@
         function destroyPrinter() {
             resetPrinter(true);
             if (element && element.parentNode) element.parentNode.removeChild(element);
-            element = printHead = paper = printArea = lines = topSpacer = null;
+            element = printHead = paper = printArea = lines = topSpacer = topOverlay = paperTopShadow = null;
         }
 
         // Initialization
@@ -902,6 +1007,7 @@
         this.setMaxCols = function(n) {
             if (PRINT_WIDTHS.indexOf(Number(n)) !== -1) {
                 maxCols = Number(n);
+                applyPaperGeometry();
                 resetPrinter();
             }
         };
