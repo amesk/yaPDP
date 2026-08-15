@@ -17,6 +17,15 @@
 var g60printer = null;
 var g60Console = null;
 
+// Console teletype echo pace (ms per character) for each CONFIG speed.
+// 'authentic' is the real ASR 33 at 110 baud (~10 chars/sec); 'fast' is the
+// accelerated development pace (~33 chars/sec).
+var TELETYPE_CHAR_DELAY_MS = { authentic: 100, fast: 30 };
+
+function teletypeDelay(speed) {
+  return TELETYPE_CHAR_DELAY_MS[speed] || 30;
+}
+
 function g60ConsoleWrite(code) {
   if (g60Console) g60Console.writeChar(code);
 }
@@ -28,7 +37,11 @@ function initG60Printer() {
   // The ASR 33 console teletype used a smooth paper ROLL (no fanfold folds),
   // so it must NOT draw the LP11 fold-marker on form feed — only advance the
   // paper. The LP11 printer page keeps the marker (fanfold paper).
-  g60printer = new G60Printer('g60printer', { maxCols: maxCols, pageBreakMarker: false });
+  g60printer = new G60Printer('g60printer', {
+    maxCols: maxCols,
+    pageBreakMarker: false,
+    charPrintDelay: teletypeDelay((cfg) ? cfg.teletypeSpeed : null)
+  });
   g60Console = createG60Console(g60printer);
 }
 
@@ -539,6 +552,10 @@ function initConfigForm() {
   for (var i = 0; i < radios.length; i++) {
     radios[i].checked = (radios[i].value === cfg.consoleType);
   }
+  var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
+  for (var j = 0; j < speedRadios.length; j++) {
+    speedRadios[j].checked = (speedRadios[j].value === cfg.teletypeSpeed);
+  }
   var userTerm = document.getElementById('config-userTerminals');
   if (userTerm) userTerm.value = String(cfg.userTerminals);
   var printerEl = document.getElementById('config-printer');
@@ -574,6 +591,18 @@ function initConfigForm() {
   if (printerEl) {
     printerEl.addEventListener('change', function () {
       structural({ printer: this.checked });
+    });
+  }
+
+  // Teletype speed applies live (no reload): persist the choice and retune the
+  // existing console printer's char pacing.
+  for (var j = 0; j < speedRadios.length; j++) {
+    speedRadios[j].addEventListener('change', function () {
+      if (!this.checked) return;
+      if (typeof Config !== 'undefined') Config.set({ teletypeSpeed: this.value });
+      if (g60printer && g60printer.setCharPrintDelay) {
+        g60printer.setCharPrintDelay(teletypeDelay(this.value));
+      }
     });
   }
 

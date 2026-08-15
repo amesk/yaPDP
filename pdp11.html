@@ -715,6 +715,17 @@
         </div>
 
         <div class="config-field">
+          <span class="config-label">Teletype speed</span>
+          <div class="config-control config-radios">
+            <label><input type="radio" name="teletypeSpeed" value="authentic"> Authentic (10 chars/sec — ASR 33 at 110
+              baud)</label>
+            <label><input type="radio" name="teletypeSpeed" value="fast"> Fast (33 chars/sec)</label>
+            <span class="config-hint">Authentic is the real ASR 33 speed —
+              booting 2.11 BSD prints for a very long time. Applied immediately.</span>
+          </div>
+        </div>
+
+        <div class="config-field">
           <span class="config-label">Printer width</span>
           <div class="config-control">
             <select id="config-printerWidth">

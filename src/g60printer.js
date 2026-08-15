@@ -1156,6 +1156,18 @@
             }
         };
 
+        // Change the per-character echo delay live. processCharBuffer() reads
+        // charPrintDelay on every tick, so the new pace applies immediately —
+        // the pending buffered characters render at the new rate. Invalid
+        // values are ignored. Used by the CONFIG teletype speed toggle (the
+        // fast LP11 instance never calls this and keeps its own fixed pace).
+        this.setCharPrintDelay = function(ms) {
+            var n = Number(ms);
+            if (isFinite(n) && n > 0) {
+                charPrintDelay = n;
+            }
+        };
+
         // Advance the carriage to the next tab stop (every 8 columns) by
         // queueing spaces, matching real ASR 33 / LP11 tab behaviour. Used by
         // the console adapter on TAB (code 9).

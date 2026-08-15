@@ -12,6 +12,9 @@
  *                    An ASR 33 is at most an 80-column machine; the wider
  *                    100/132 columns exist only on the LP11 line printer.
  *   - printerWidth:  printable columns for the LP11 printer page (72/80/100/132).
+ *   - teletypeSpeed: console teletype echo speed, 'authentic' (real ASR 33,
+ *                    110 baud = 10 chars/sec) or 'fast' (accelerated dev pace,
+ *                    ~33 chars/sec). Applied live, no reboot needed.
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
  *   - photoBackdrop: whether the PDP-11 machine-room photo is shown behind
@@ -35,6 +38,7 @@ var Config = (function () {
         printer: false,          // boolean
         printWidth: 72,          // 72 | 80 (console teletype, ASR 33)
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
+        teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
         keyClick: false,         // boolean (VT52 key click)
         photoBackdrop: true      // boolean (PDP-11 photo behind the pages)
     });
@@ -43,6 +47,9 @@ var Config = (function () {
     var PRINT_WIDTHS = Object.freeze([72, 80, 100, 132]);
     // ASR 33 console teletype widths — a teletype is at most 80 columns.
     var PRINT_WIDTHS_TTY = Object.freeze([72, 80]);
+    // Console teletype echo speeds. 'authentic' is the real ASR 33 at 110 baud
+    // (~100 ms/char, 10 chars/sec); 'fast' is the accelerated dev pace (~30 ms).
+    var TELETYPE_SPEEDS = Object.freeze(["authentic", "fast"]);
 
     function getStorage() {
         try {
@@ -83,6 +90,8 @@ var Config = (function () {
             printer: Boolean(o.printer),
             printWidth: normalizePrintWidth(o.printWidth, DEFAULTS.printWidth, PRINT_WIDTHS_TTY),
             printerWidth: normalizePrintWidth(o.printerWidth, DEFAULTS.printerWidth),
+            // Absent/garbage falls back to 'authentic' (the real ASR 33 speed).
+            teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
             keyClick: Boolean(o.keyClick),
             // Absent key falls back to true (keeps the photo on for old configs).
             photoBackdrop: typeof o.photoBackdrop === "undefined"
@@ -129,6 +138,7 @@ var Config = (function () {
         DEFAULTS: DEFAULTS,
         PRINT_WIDTHS: PRINT_WIDTHS,
         PRINT_WIDTHS_TTY: PRINT_WIDTHS_TTY,
+        TELETYPE_SPEEDS: TELETYPE_SPEEDS,
         getStorage: getStorage,
         validate: validate,
         load: load,

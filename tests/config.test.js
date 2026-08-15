@@ -9,7 +9,7 @@
  * The config covers the CONFIG page settings:
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
  *   printWidth (72/80, ASR 33 teletype), printerWidth (72/80/100/132, LP11),
- *   keyClick (bool), photoBackdrop (bool).
+ *   teletypeSpeed (authentic/fast), keyClick (bool), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
  *
@@ -62,6 +62,7 @@ function run() {
             printer: false,
             printWidth: 72,
             printerWidth: 132,
+            teletypeSpeed: "authentic",
             keyClick: false,
             photoBackdrop: true,
         }, "defaults should match the documented values");
@@ -100,6 +101,13 @@ function run() {
         assert.deepStrictEqual(plain(C.PRINT_WIDTHS), [72, 80, 100, 132], "LP11 width list");
         assert.deepStrictEqual(plain(C.PRINT_WIDTHS_TTY), [72, 80], "teletype width list");
 
+        // teletypeSpeed only authentic|fast; absent/garbage -> authentic.
+        assert.strictEqual(C.validate({}).teletypeSpeed, "authentic");
+        assert.strictEqual(C.validate({ teletypeSpeed: "fast" }).teletypeSpeed, "fast");
+        assert.strictEqual(C.validate({ teletypeSpeed: "authentic" }).teletypeSpeed, "authentic");
+        assert.strictEqual(C.validate({ teletypeSpeed: "garbage" }).teletypeSpeed, "authentic");
+        assert.deepStrictEqual(plain(C.TELETYPE_SPEEDS), ["authentic", "fast"], "teletype speed list");
+
         // booleans coerced.
         assert.strictEqual(C.validate({ printer: 1 }).printer, true);
         assert.strictEqual(C.validate({ printer: 0 }).printer, false);
@@ -122,6 +130,7 @@ function run() {
             printer: true,
             printWidth: 80,
             printerWidth: 80,
+            teletypeSpeed: "fast",
             keyClick: true,
             photoBackdrop: false,
         };
@@ -148,6 +157,7 @@ function run() {
             printer: true,
             printWidth: 80,
             printerWidth: 100,
+            teletypeSpeed: "fast",
             keyClick: true,
             photoBackdrop: true,
         }, s);
