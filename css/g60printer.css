@@ -498,7 +498,10 @@
     position: absolute;
     top: 395px;
     left: 67px;
-    width: 994px;
+    /* Full machine body width (1160 - 67 left skin - 66 right skin = 1027),
+       so the panel seam meets the right skin exactly, matching the console
+       teletype (#printer_frontpannel) where width == body width. */
+    width: 1027px;
     height: 69px;
     background-image: url('../assets/images/printerskin.png');
     background-repeat: repeat-x;
