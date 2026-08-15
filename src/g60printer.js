@@ -449,12 +449,13 @@
             } else if (overHang > 0) {
                 // Overstrike: print over the character left by a previous
                 // backspace/carriage return. nroff/man renders bold as "X\bX"
-                // (or "X\rX") and underline as "_\bX" (or "_\rX"); the second
-                // pass replaces the first. The leading NBSP span occupies
-                // position 0, so the target character is at currentCharPos + 1.
-                // Re-printing the SAME glyph is how a real terminal produces
-                // bold (heavier ink), and a letter over an underscore produces
-                // underline — mark the span so the CSS can show the emphasis.
+                // (or "X\rX") and underline as "_\bX" (or "_\rX"); re-printing
+                // the SAME glyph produces bold (heavier ink), and an underscore
+                // struck over a letter produces underline. Striking a DIFFERENT
+                // glyph (e.g. the 2.11BSD boot countdown "5\r4") leaves the
+                // authentic dark overstrike blot a real teletype makes. The
+                // leading NBSP span occupies position 0, so the target
+                // character is at currentCharPos + 1.
                 var index = currentCharPos + 1;
                 span = currentLineEl.children[index];
                 if (span) {
@@ -464,13 +465,34 @@
                         // overstruck words); it must NOT erase the existing glyph.
                     } else {
                         var prevGlyph = span.textContent;
-                        span.textContent = c;
-                        if (c !== '_' && prevGlyph === c) {
-                            // Same character overstruck → bold
-                            if (span.className.indexOf('bold') === -1) span.className += ' bold';
-                        } else if (c !== '_' && prevGlyph === '_') {
-                            // Letter over an underscore → underline
+                        if (prevGlyph === '\u00A0') {
+                            // Carriage moved over an empty column (only the
+                            // leading-space placeholder): no ink on the paper
+                            // yet, so this is a plain first print.
+                            span.textContent = c;
+                        } else if (c === '_') {
+                            // Underscore overstrike → underline. nroff/man
+                            // underlines as "NAME\r_____" (the underscores are
+                            // struck over the letters), so the letter stays
+                            // visible and the CSS shows the emphasis.
                             if (span.className.indexOf('underline') === -1) span.className += ' underline';
+                        } else if (prevGlyph === '_') {
+                            // Letter over an underscore → underline.
+                            span.textContent = c;
+                            if (span.className.indexOf('underline') === -1) span.className += ' underline';
+                        } else if (prevGlyph === c) {
+                            // Same character overstruck → bold (heavier ink on
+                            // a real teletype); the glyph is unchanged.
+                            if (span.className.indexOf('bold') === -1) span.className += ' bold';
+                        } else {
+                            // Different glyph overstruck (e.g. the boot
+                            // countdown "5\r4"): on a real teletype the new
+                            // character is struck ON TOP of the old one, leaving
+                            // a dark overstrike blot on the paper. Show the
+                            // newest glyph with the overstrike class so the
+                            // paper reveals the trace of re-printing.
+                            span.textContent = c;
+                            if (span.className.indexOf('overstrike') === -1) span.className += ' overstrike';
                         }
                     }
                 } else {
