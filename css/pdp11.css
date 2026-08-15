@@ -1258,23 +1258,25 @@ body {
 
 /* ===== Photo backdrop toggle (CONFIG) ===== */
 /* body.no-photo-bg — the PDP-11 machine-room photo is switched off: restore
-   the plain dark background. The dark tone (#1c1915, same as the front-panel
-   page) is painted on the whole .app-layout area, so centred pages such as
-   CONFIG/INFO (which are narrower than the viewport) stay uniform edge-to-edge
-   instead of showing the lighter body colour in their side gutters. */
+   the plain dark background. The whole .app-layout is painted a deep
+   near-black tone (so the lighter body colour never shows in the page
+   gutters), while the CONFIG/CONTROL/INFO forms keep a slightly lighter solid
+   card (#1c1915 — the same tone as their photo-mode slabs) so they stay
+   visually distinct from the backdrop instead of blending into it. */
 body.no-photo-bg {
     background-image: none;
-    background-color: #2a2722;
+    background-color: #0d0c0a;
 }
 
 body.no-photo-bg .app-layout {
-    background: #1c1915;
+    background: #0d0c0a;
 }
 
 body.no-photo-bg #page-config.active,
-body.no-photo-bg #page-instructions.active,
-body.no-photo-bg #page-vt52.active,
-body.no-photo-bg #page-vt52-console.active,
-body.no-photo-bg #page-vt52-2.active {
-    background: transparent;
+body.no-photo-bg #page-control.active,
+body.no-photo-bg #page-instructions.active {
+    /* Solid card on the dark backdrop: keeps the form readable and separates
+       it from the window background (there is no photo to sit a translucent
+       slab on, so a translucent one would only blend into the backdrop). */
+    background: #1c1915;
 }
