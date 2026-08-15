@@ -285,6 +285,28 @@
 }
 
 /* ==================================================================
+   ASR 33 console teletype — smooth plain paper (no tractor feed).
+   A real ASR 33 was fed by friction with a smooth roll of paper, NOT
+   the striped fanfold with sprocket holes used by line printers. The
+   striped texture (paper.png) and the tractor-hole margins
+   (paper-margin.png) are shared with the LP11 line printer, so here
+   they are overridden with CSS gradients scoped ONLY to the teletype
+   container #g60printer. The LP11 page (#lp11_printer) keeps the
+   authentic fanfold look untouched.
+   ================================================================== */
+#g60printer td#paper_printarea {
+    background: linear-gradient(to bottom, #f6f1e5 0%, #ede6d5 100%) repeat;
+}
+
+#g60printer td#papermargin_left,
+#g60printer td#papermargin_right {
+    /* The `background` shorthand resets image + repeat + position + color
+       in one declaration, so no trace of paper-margin.png (sprocket holes)
+       can survive here. The LP11 page rules below still use that image. */
+    background: linear-gradient(to bottom, #f6f1e5 0%, #ede6d5 100%) repeat-y;
+}
+
+/* ==================================================================
    Google60-style punch keyboard for PDP-11 terminal input
    Placed below the line printer in the terminal page.
    Sprite-based 3D keys (keys.png + keyfaces.png) matching the
