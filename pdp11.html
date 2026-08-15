@@ -669,9 +669,10 @@
       <h2>System Configuration</h2>
       <p>
         Configure the peripherals attached to the PDP&#8209;11. Structural changes
-        (console terminal, user terminals, line printer) restart the machine so the
-        emulated hardware matches the configuration. Print widths and the key click
-        are applied immediately.
+        (console terminal, user terminals, line printer) are committed with the
+        Apply button, which restarts the machine so the emulated hardware matches
+        the configuration. Print widths, teletype speed, key click and the photo
+        backdrop apply immediately.
       </p>
 
       <div class="config-form">
@@ -756,7 +757,16 @@
           <span class="config-label">Defaults</span>
           <div class="config-control">
             <button type="button" id="config-reset">Restore defaults</button>
-            <span class="config-hint">Resets every setting to its factory value.</span>
+            <span class="config-hint">Fills the form with factory values; press Apply to commit.</span>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">Apply changes</span>
+          <div class="config-control">
+            <button type="button" id="config-apply">Apply</button>
+            <span class="config-hint">Commits all pending changes at once.
+              Structural changes (console, terminals, printer) restart the machine.</span>
           </div>
         </div>
       </div>

@@ -158,9 +158,28 @@ function examineDeposit(data) {
 (function initPanelUI() {
 
   // --- Sidebar navigation (data-page) ---
+  // Leaving the CONFIG page with uncommitted changes asks for confirmation via
+  // the onboarding-style overlay (window.configConfirmLeave) so the user does
+  // not silently lose pending structural edits.
   document.querySelectorAll('.nav-btn[data-page]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      switchPage(this.dataset.page);
+      var target = this.dataset.page;
+      if (target !== 'config' &&
+          typeof window.isConfigDirty === 'function' &&
+          window.isConfigDirty()) {
+        var cfgPage = document.getElementById('page-config');
+        var onConfig = cfgPage && cfgPage.classList.contains('active');
+        if (onConfig) {
+          if (typeof window.configConfirmLeave === 'function') {
+            // The overlay's "Leave" button performs the switch asynchronously.
+            window.configConfirmLeave(function () { switchPage(target); });
+          } else if (window.confirm('You have uncommitted configuration changes. Leave without applying?')) {
+            switchPage(target);
+          }
+          return;
+        }
+      }
+      switchPage(target);
     });
   });
 

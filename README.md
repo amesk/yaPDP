@@ -194,10 +194,11 @@ teletype print width (72/80 — an ASR 33 is at most 80 columns), the printer
 print width (72/80/100/132), optional VT100-style key-click sound for VT52
 terminals and the PDP-11 machine-room photo backdrop behind the pages.
 The LP11 line printer defaults to the authentic 132-column width.
-Structural changes (console type, terminals, printer) restart the machine so
-the emulated hardware matches the configuration; print widths, the key
-click and the photo backdrop apply immediately. A **Restore defaults** button
-resets every setting to its factory value.
+Structural changes (console type, terminals, printer) are committed with the
+**Apply** button, which restarts the machine so the emulated hardware matches
+the configuration; print widths, the teletype speed, the key click and the
+photo backdrop apply immediately. A **Restore defaults** button fills the form
+with factory values (committed by **Apply**).
 
 The **Control** page manages the running machine: **Reboot**, the paper-tape
 reader file selector, the drag & drop disk/tape image drop zone and the

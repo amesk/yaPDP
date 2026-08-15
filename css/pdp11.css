@@ -319,6 +319,11 @@
     background: #3a3224;
 }
 
+/* Config "unapplied changes" dialog: side-by-side action buttons. */
+#config-leave-overlay .onboard-close+.onboard-close {
+    margin-left: 10px;
+}
+
 /* "Show first-run hint again" link/button on the Info page */
 .onboard-show-again {
     display: inline-block;
@@ -1235,6 +1240,13 @@ body {
 
 .config-control button:hover {
     background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+}
+
+/* Apply button highlight while the CONFIG form has uncommitted changes. */
+.config-control button#config-apply.dirty {
+    background: linear-gradient(180deg, #8a6a30, #5a4a28);
+    border-color: #ffd27f;
+    box-shadow: 0 0 8px rgba(255, 210, 127, 0.45);
 }
 
 .config-hint {

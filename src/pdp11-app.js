@@ -543,55 +543,172 @@ function applyPhotoBackdrop(enabled) {
   document.body.classList.toggle('no-photo-bg', !enabled);
 }
 
+// ---- Leaving the CONFIG page with uncommitted changes ----
+// Confirmation dialog reusing the onboarding overlay style (onboard-* classes,
+// see css/pdp11.css) so it matches the first-run hint. onLeave() runs when the
+// user confirms leaving; onStay() when they cancel or click the backdrop.
+var __configLeaveCallbacks = { onLeave: null, onStay: null };
+var __configLeaveOverlay = null;
+
+window.configConfirmLeave = function (onLeave, onStay) {
+  __configLeaveCallbacks.onLeave = onLeave || null;
+  __configLeaveCallbacks.onStay = onStay || null;
+  if (!__configLeaveOverlay) {
+    __configLeaveOverlay = document.createElement('div');
+    __configLeaveOverlay.id = 'config-leave-overlay';
+    __configLeaveOverlay.className = 'onboard-overlay';
+    __configLeaveOverlay.innerHTML =
+      '<div class="onboard-box">' +
+        '<span class="onboard-title">Unapplied configuration</span>' +
+        '<p class="onboard-intro">You have uncommitted configuration changes. ' +
+        'Press Apply on the Config page to commit them before leaving.</p>' +
+        '<button type="button" class="onboard-close" data-leave-action="stay">Stay</button>' +
+        '<button type="button" class="onboard-close" data-leave-action="leave">Leave</button>' +
+      '</div>';
+    __configLeaveOverlay.addEventListener('click', function (e) {
+      var action = e.target.getAttribute && e.target.getAttribute('data-leave-action');
+      var cb = __configLeaveCallbacks;
+      if (action === 'leave') {
+        __configLeaveOverlay.classList.remove('visible');
+        if (cb.onLeave) cb.onLeave();
+      } else if (action === 'stay' || e.target === __configLeaveOverlay) {
+        __configLeaveOverlay.classList.remove('visible');
+        if (cb.onStay) cb.onStay();
+      }
+    });
+    document.body.appendChild(__configLeaveOverlay);
+  }
+  __configLeaveOverlay.classList.add('visible');
+};
+
 // ---- CONFIG page form: populate controls and wire up events ----
 function initConfigForm() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
   if (!cfg) return;
 
   var radios = document.querySelectorAll('input[name="consoleType"]');
-  for (var i = 0; i < radios.length; i++) {
-    radios[i].checked = (radios[i].value === cfg.consoleType);
-  }
   var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
-  for (var j = 0; j < speedRadios.length; j++) {
-    speedRadios[j].checked = (speedRadios[j].value === cfg.teletypeSpeed);
-  }
   var userTerm = document.getElementById('config-userTerminals');
-  if (userTerm) userTerm.value = String(cfg.userTerminals);
   var printerEl = document.getElementById('config-printer');
-  if (printerEl) printerEl.checked = cfg.printer;
   var pwEl = document.getElementById('config-printWidth');
-  if (pwEl) pwEl.value = String(cfg.printWidth);
   var pwrEl = document.getElementById('config-printerWidth');
-  if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   var kcEl = document.getElementById('config-keyClick');
-  if (kcEl) kcEl.checked = cfg.keyClick;
   var pbEl = document.getElementById('config-photoBackdrop');
+  var applyBtn = document.getElementById('config-apply');
+  var resetBtn = document.getElementById('config-reset');
+
+  function setRadioChecked(list, value) {
+    for (var i = 0; i < list.length; i++) {
+      list[i].checked = (list[i].value === value);
+    }
+  }
+
+  // Populate the form from the persisted config.
+  setRadioChecked(radios, cfg.consoleType);
+  setRadioChecked(speedRadios, cfg.teletypeSpeed);
+  if (userTerm) userTerm.value = String(cfg.userTerminals);
+  if (printerEl) printerEl.checked = cfg.printer;
+  if (pwEl) pwEl.value = String(cfg.printWidth);
+  if (pwrEl) pwrEl.value = String(cfg.printerWidth);
+  if (kcEl) kcEl.checked = cfg.keyClick;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   applyPhotoBackdrop(cfg.photoBackdrop);
 
-  // Structural changes (hardware presence) restart the machine so iopage.js
-  // re-registers the configured devices and the UI is rebuilt from scratch.
-  function structural(partial) {
+  // Read every control into a full config-shaped object. The values come from
+  // the fixed option lists, so they always survive Config.validate() unchanged.
+  function readForm() {
+    var consoleType = 'teletype';
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) consoleType = radios[i].value;
+    }
+    var teletypeSpeed = 'authentic';
+    for (var j = 0; j < speedRadios.length; j++) {
+      if (speedRadios[j].checked) teletypeSpeed = speedRadios[j].value;
+    }
+    return {
+      consoleType: consoleType,
+      userTerminals: (userTerm) ? Number(userTerm.value) : cfg.userTerminals,
+      printer: (printerEl) ? printerEl.checked : cfg.printer,
+      printWidth: (pwEl) ? Number(pwEl.value) : cfg.printWidth,
+      printerWidth: (pwrEl) ? Number(pwrEl.value) : cfg.printerWidth,
+      teletypeSpeed: teletypeSpeed,
+      keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
+      photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop
+    };
+  }
+
+  // The form is dirty when its values differ from the persisted config. Live
+  // settings update Config immediately, so only uncommitted structural edits
+  // (and a pending Restore-defaults) surface as a difference.
+  function isDirty() {
+    if (typeof Config === 'undefined') return false;
+    var current = Config.get();
+    var form = readForm();
+    return form.consoleType !== current.consoleType ||
+      form.userTerminals !== current.userTerminals ||
+      form.printer !== current.printer ||
+      form.printWidth !== current.printWidth ||
+      form.printerWidth !== current.printerWidth ||
+      form.teletypeSpeed !== current.teletypeSpeed ||
+      form.keyClick !== current.keyClick ||
+      form.photoBackdrop !== current.photoBackdrop;
+  }
+
+  // Re-tune the live console/printer instances from a full config snapshot.
+  function applyLive(f) {
+    if (g60printer) {
+      if (g60printer.setMaxCols) g60printer.setMaxCols(f.printWidth);
+      if (g60printer.setCharPrintDelay) g60printer.setCharPrintDelay(teletypeDelay(f.teletypeSpeed));
+    }
+    if (window.lp11G60Printer && window.lp11G60Printer.setMaxCols) {
+      window.lp11G60Printer.setMaxCols(f.printerWidth);
+    }
+    applyPhotoBackdrop(f.photoBackdrop);
+  }
+
+  function updateDirtyUI() {
+    if (applyBtn) applyBtn.classList.toggle('dirty', isDirty());
+  }
+
+  // Structural changes are no longer applied on the fly; they only mark the
+  // form as dirty and are committed together by the Apply button.
+  function markStructural() {
+    updateDirtyUI();
+  }
+
+  // Apply: persist the whole form in one Config.set() call, then reload only
+  // when the hardware layout changed (so iopage.js re-registers the devices).
+  function applyForm() {
     if (typeof Config === 'undefined') return;
-    Config.set(partial);
-    window.location.reload();
+    var before = Config.get();
+    var form = readForm();
+    var structuralChanged =
+      form.consoleType !== before.consoleType ||
+      form.userTerminals !== before.userTerminals ||
+      form.printer !== before.printer;
+    // Persist the complete form (validated) and refresh the in-memory snapshot.
+    Config.set(form);
+    // Re-tune live instances; harmless if we are about to reload anyway.
+    applyLive(readForm());
+    if (structuralChanged) {
+      // The form now equals the saved config, so the beforeunload guard
+      // (registered below) won't intercept this intentional reload.
+      window.location.reload();
+    } else {
+      updateDirtyUI();
+    }
   }
 
   for (var i = 0; i < radios.length; i++) {
     radios[i].addEventListener('change', function () {
-      if (this.checked) structural({ consoleType: this.value });
+      if (this.checked) markStructural();
     });
   }
   if (userTerm) {
-    userTerm.addEventListener('change', function () {
-      structural({ userTerminals: Number(this.value) });
-    });
+    userTerm.addEventListener('change', markStructural);
   }
   if (printerEl) {
-    printerEl.addEventListener('change', function () {
-      structural({ printer: this.checked });
-    });
+    printerEl.addEventListener('change', markStructural);
   }
 
   // Teletype speed applies live (no reload): persist the choice and retune the
@@ -603,6 +720,7 @@ function initConfigForm() {
       if (g60printer && g60printer.setCharPrintDelay) {
         g60printer.setCharPrintDelay(teletypeDelay(this.value));
       }
+      updateDirtyUI();
     });
   }
 
@@ -611,6 +729,7 @@ function initConfigForm() {
     pwEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ printWidth: Number(this.value) });
       if (g60printer && g60printer.setMaxCols) g60printer.setMaxCols(Number(this.value));
+      updateDirtyUI();
     });
   }
   if (pwrEl) {
@@ -619,27 +738,56 @@ function initConfigForm() {
       if (window.lp11G60Printer && window.lp11G60Printer.setMaxCols) {
         window.lp11G60Printer.setMaxCols(Number(this.value));
       }
+      updateDirtyUI();
     });
   }
   if (kcEl) {
     kcEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ keyClick: this.checked });
+      updateDirtyUI();
     });
   }
   if (pbEl) {
     pbEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ photoBackdrop: this.checked });
       applyPhotoBackdrop(this.checked);
+      updateDirtyUI();
     });
   }
 
-  var resetBtn = document.getElementById('config-reset');
   if (resetBtn) {
     resetBtn.addEventListener('click', function () {
-      if (typeof Config !== 'undefined') Config.resetAndGet();
-      window.location.reload();
+      if (typeof Config === 'undefined') return;
+      var d = Config.DEFAULTS;
+      setRadioChecked(radios, d.consoleType);
+      setRadioChecked(speedRadios, d.teletypeSpeed);
+      if (userTerm) userTerm.value = String(d.userTerminals);
+      if (printerEl) printerEl.checked = d.printer;
+      if (pwEl) pwEl.value = String(d.printWidth);
+      if (pwrEl) pwrEl.value = String(d.printerWidth);
+      if (kcEl) kcEl.checked = d.keyClick;
+      if (pbEl) pbEl.checked = d.photoBackdrop;
+      // The form now shows factory values; nothing is persisted until Apply.
+      updateDirtyUI();
     });
   }
+
+  if (applyBtn) {
+    applyBtn.addEventListener('click', applyForm);
+  }
+
+  // Expose the dirty state so sidebar navigation (pdp11-panel.js) and the
+  // beforeunload guard below can warn about uncommitted changes.
+  window.isConfigDirty = isDirty;
+
+  // Warn before closing/reloading the page with uncommitted config changes.
+  window.addEventListener('beforeunload', function (e) {
+    if (!window.isConfigDirty || !window.isConfigDirty()) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  updateDirtyUI();
 }
 
 // ---- Bootstrap ----
