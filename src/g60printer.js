@@ -408,6 +408,16 @@
             if (!currentLineEl) {
                 currentLineEl = document.createElement('p');
                 printArea.appendChild(currentLineEl);
+                // Every line carries a leading NBSP spacer at children[0]
+                // (see doPrintln()/resetPrinter()), so the character of column
+                // k lives at children[k+1]. A line created here — the first
+                // line after a form-feed page break, when doFormFeedMarker()
+                // reset currentLineEl to null — must get the same spacer, or
+                // it would render one cell left of every later line and lose
+                // its leading space (e.g. the od offset column).
+                var spaceEl = document.createElement('span');
+                spaceEl.textContent = '\u00A0';
+                currentLineEl.appendChild(spaceEl);
                 currentCharPos = 0;
             }
             // A printed character marks the current sheet as used, so the
