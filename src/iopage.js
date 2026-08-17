@@ -903,7 +903,14 @@ function dl11(vt52Unit, deviceVector) {
     // Now accepts an ARRAY of bytes.
     function dlReceiveQueue(unit, bytes) {
         for (const b of bytes) {
-            typeAhead.push(b & 0x7F); // DL11 is 7-bit clean
+            const ch = b & 0x7F; // DL11 is 7-bit clean
+            typeAhead.push(ch);
+            // ^C (ETX) on the console is the operator's interrupt key: flush any
+            // runaway teletype output backlog so the interruption is immediately
+            // visible (see flushG60Console in pdp11-app.js).
+            if (unit === 0 && ch === 3 && typeof flushG60Console === 'function') {
+                flushG60Console();
+            }
         }
         dlPump(unit);
     }

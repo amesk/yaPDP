@@ -299,7 +299,11 @@ function examineDeposit(data) {
     enableHalt.addEventListener('click', function () {
       moveSwitch(this, panel.halt = 1 - panel.halt);
       if (!panel.powerSwitch) {
-        if (panel.halt) CPU.runState = STATE_HALT;
+        if (panel.halt) {
+          CPU.runState = STATE_HALT;
+          // A halted machine must stop producing console output at once.
+          flushG60Console();
+        }
       }
     });
   }
@@ -334,6 +338,9 @@ function examineDeposit(data) {
   if (reboot) {
     reboot.addEventListener('click', function () {
       if (g60Console) g60Console.writeChar(10);
+      // Stop any runaway teletype output backlog before restarting the CPU,
+      // so the Boot> prompt is immediately visible and usable.
+      flushG60Console();
       boot();
     });
   }

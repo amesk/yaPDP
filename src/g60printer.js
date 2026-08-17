@@ -1146,6 +1146,13 @@
         this.destroy = function() { destroyPrinter(); };
         this.clear = function() { resetPrinter(); };
 
+        // Flush only the pending (buffered) output queue — discard any
+        // characters/line-feeds still waiting to be paced onto the paper,
+        // without wiping the already-printed paper or resetting the printer.
+        // Used on reboot / machine halt / console ^C so a runaway program's
+        // backlog stops printing immediately and the operator regains control.
+        this.flush = function() { flushCharBuffer(); };
+
         // Change the printable column count (72/80/100) and re-render the
         // paper. Invalid values are ignored.
         this.setMaxCols = function(n) {

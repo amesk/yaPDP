@@ -106,7 +106,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike logic) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -264,6 +264,8 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 overstrike (bold/underline) modular tests — run with `node tests/vt52.test.js` |
+| [`tests/g60printer-flush.test.js`](tests/g60printer-flush.test.js) | G60Printer `flushCharBuffer()` backlog-flush modular tests — run with `node tests/g60printer-flush.test.js` |
+| [`tests/dl11-recv.test.js`](tests/dl11-recv.test.js) | DL11 console receive-path modular tests (^C delivery, RBUF/DONE, vector 60 interrupt) — run with `node tests/dl11-recv.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

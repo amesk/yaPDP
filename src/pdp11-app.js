@@ -30,6 +30,18 @@ function g60ConsoleWrite(code) {
   if (g60Console) g60Console.writeChar(code);
 }
 
+// Flush the console teletype's pending output queue (see G60Printer.flush()).
+// Used on reboot, on the front-panel HALT and when the operator sends ^C to
+// the console, so a runaway program's buffered backlog stops printing at once
+// and the machine becomes responsive again. No-op for a VT52 console.
+// NOTE: the queue lives on the G60Printer instance (g60printer); the console
+// adapter (g60Console) deliberately exposes a no-op flush().
+function flushG60Console() {
+  if (g60printer && typeof g60printer.flush === 'function') {
+    g60printer.flush();
+  }
+}
+
 function initG60Printer() {
   if (g60printer) return;
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
