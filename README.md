@@ -106,7 +106,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + fullscreen toggle) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -188,6 +188,11 @@ Use the sidebar to switch between:
 - **Config** — configure the emulated peripherals (persisted between sessions)
 - **Info** — detailed instructions and OS reference
 
+A floating **fullscreen** button (bottom-right of the window) hides the browser/
+system chrome — the address bar in the browser, the OS window frame and the
+taskbar in the Tauri desktop app — while leaving the emulator UI untouched.
+Press it again (or Esc) to return.
+
 The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11 line printer, the
 teletype print width (72/80 — a Model 33 ASR is at most 80 columns), the printer
@@ -261,11 +266,13 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
 | [`src/dragdrop.js`](src/dragdrop.js) | Drag & drop disk/tape image import — mounts files into DataLoader, persists them in IndexedDB |
 | [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
+| [`src/fullscreen.js`](src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 overstrike (bold/underline) modular tests — run with `node tests/vt52.test.js` |
 | [`tests/g60printer-flush.test.js`](tests/g60printer-flush.test.js) | G60Printer `flushCharBuffer()` backlog-flush modular tests — run with `node tests/g60printer-flush.test.js` |
 | [`tests/dl11-recv.test.js`](tests/dl11-recv.test.js) | DL11 console receive-path modular tests (^C delivery, RBUF/DONE, vector 60 interrupt) — run with `node tests/dl11-recv.test.js` |
+| [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

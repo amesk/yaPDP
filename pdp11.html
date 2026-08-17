@@ -110,6 +110,28 @@
         <circle cx="12" cy="7.3" r="1.3" fill="currentColor" />
         <line x1="12" y1="10.5" x2="12" y2="16.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
       </symbol>
+      <symbol id="icon-fullscreen" viewBox="0 0 24 24">
+        <!-- four corner arrows pointing outward (enter fullscreen) -->
+        <path d="M9 4H4v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M15 4h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M15 20h5v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+      </symbol>
+      <symbol id="icon-fullscreen-exit" viewBox="0 0 24 24">
+        <!-- four corner arrows pointing inward (exit fullscreen) -->
+        <path d="M4 9h5V4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M20 9h-5V4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M4 15h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+        <path d="M20 15h-5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" />
+      </symbol>
     </defs>
   </svg>
   <div class="app-layout">
@@ -1209,6 +1231,17 @@ Hello world
     </div>
   </div>
 
+  <!-- Floating fullscreen toggle — hides the browser/system chrome
+       (browser Fullscreen API; native window fullscreen in the Tauri app).
+       Wired up by src/fullscreen.js. No data-page, so the sidebar navigation
+       in src/pdp11-panel.js never treats it as a page switch. -->
+  <button type="button" id="fullscreen-btn" class="fullscreen-btn" aria-label="Enter fullscreen"
+    title="Enter fullscreen">
+    <svg class="fullscreen-icon" aria-hidden="true" focusable="false">
+      <use href="#icon-fullscreen" />
+    </svg>
+  </button>
+
   <script src='src/pdp11-panel.js'></script>
   <script src='src/g60printer.js'></script>
   <script src='src/config.js'></script>
@@ -1221,6 +1254,7 @@ Hello world
   <script src='src/vt11.js'></script>
   <script src='src/dragdrop.js'></script>
   <script src='src/tauri-bundled.js'></script>
+  <script src='src/fullscreen.js'></script>
   <script src='src/onboarding.js'></script>
   <script src='src/pdp11-app.js'></script>
 </body>
