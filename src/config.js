@@ -8,6 +8,8 @@
  *                    When a terminal is added, a matching sidebar page is shown.
  *   - printer:       whether an LP11 line printer is present (own page, an
  *                    animated G60 printer without a keyboard).
+ *   - vt11:          whether a VT11 vector-graphics display is present (own
+ *                    "Display" page, green-phosphor CRT). Off by default.
  *   - printWidth:    printable columns for the console teletype (72/80).
  *                    A Model 33 ASR is at most an 80-column machine; the wider
  *                    100/132 columns exist only on the LP11 line printer.
@@ -36,6 +38,7 @@ var Config = (function () {
         consoleType: "teletype", // 'teletype' | 'vt52'
         userTerminals: 0,        // 0 | 1 | 2
         printer: false,          // boolean
+        vt11: false,             // boolean (VT11 graphics display)
         printWidth: 72,          // 72 | 80 (console teletype, Model 33 ASR)
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
@@ -88,6 +91,7 @@ var Config = (function () {
                 ? Number(o.userTerminals)
                 : DEFAULTS.userTerminals,
             printer: Boolean(o.printer),
+            vt11: Boolean(o.vt11),
             printWidth: normalizePrintWidth(o.printWidth, DEFAULTS.printWidth, PRINT_WIDTHS_TTY),
             printerWidth: normalizePrintWidth(o.printerWidth, DEFAULTS.printerWidth),
             // Absent/garbage falls back to 'authentic' (the real Model 33 ASR speed).

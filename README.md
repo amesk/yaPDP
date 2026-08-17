@@ -33,6 +33,7 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 | **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
 | **Model 33 ASR Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph (e.g. a 2.11 BSD boot countdown) leaves the real dark overstrike blot a hard-copy terminal makes. Long lines faithfully jam the carriage at the right margin (72 or 80 columns; characters overstrike the last column instead of wrapping, no scrollbar), and the paper width follows the selected width so a full line reaches the paper edge. The console echo speed is selectable in the CONFIG page: **authentic 110 baud (~10 chars/sec)** or a fast development pace (~33 chars/sec). |
 | **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals. |
+| **VT11 Display** | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page, enabled from the CONFIG page. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
 | **Paper Tape Reader** | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape. |
@@ -106,7 +107,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + fullscreen toggle) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -184,6 +185,7 @@ Use the sidebar to switch between:
 - **Console** — the operator console: a DECscope VT52 (when the console terminal is a VT52)
 - **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
 - **Printer** — the LP11 line printer page, shown only when configured
+- **Display** — the VT11 vector-graphics CRT page, shown only when configured
 - **Control** — machine management: reboot, paper-tape reader, disk/tape image import and mounted images
 - **Config** — configure the emulated peripherals (persisted between sessions)
 - **Info** — detailed instructions and OS reference
@@ -194,16 +196,17 @@ taskbar in the Tauri desktop app — while leaving the emulator UI untouched.
 Press it again (or Esc) to return.
 
 The **Config** page controls the console terminal type (teletype or VT52), the
-number of user terminals (0–2), the presence of the LP11 line printer, the
-teletype print width (72/80 — a Model 33 ASR is at most 80 columns), the printer
-print width (72/80/100/132), optional VT100-style key-click sound for VT52
-terminals and the PDP-11 machine-room photo backdrop behind the pages.
-The LP11 line printer defaults to the authentic 132-column width.
-Structural changes (console type, terminals, printer) are committed with the
-**Apply** button, which restarts the machine so the emulated hardware matches
-the configuration; print widths, the teletype speed, the key click and the
-photo backdrop apply immediately. A **Restore defaults** button fills the form
-with factory values (committed by **Apply**).
+number of user terminals (0–2), the presence of the LP11 line printer and the
+VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
+most 80 columns), the printer print width (72/80/100/132), optional VT100-style
+key-click sound for VT52 terminals and the PDP-11 machine-room photo backdrop
+behind the pages. The LP11 line printer defaults to the authentic 132-column
+width.
+Structural changes (console type, terminals, printer, VT11 display) are
+committed with the **Apply** button, which restarts the machine so the emulated
+hardware matches the configuration; print widths, the teletype speed, the key
+click and the photo backdrop apply immediately. A **Restore defaults** button
+fills the form with factory values (committed by **Apply**).
 
 The **Control** page manages the running machine: **Reboot**, the paper-tape
 reader file selector, the drag & drop disk/tape image drop zone and the
@@ -272,6 +275,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 overstrike (bold/underline) modular tests — run with `node tests/vt52.test.js` |
 | [`tests/g60printer-flush.test.js`](tests/g60printer-flush.test.js) | G60Printer `flushCharBuffer()` backlog-flush modular tests — run with `node tests/g60printer-flush.test.js` |
 | [`tests/dl11-recv.test.js`](tests/dl11-recv.test.js) | DL11 console receive-path modular tests (^C delivery, RBUF/DONE, vector 60 interrupt) — run with `node tests/dl11-recv.test.js` |
+| [`tests/vt11.test.js`](tests/vt11.test.js) | VT11 display register/gating modular tests — run with `node tests/vt11.test.js` |
 | [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |

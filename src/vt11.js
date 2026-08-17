@@ -15,7 +15,12 @@
 // -----------------------------------------------------------------------------
 // VT11 Graphic Display Processor emulator (modular + statistics + phosphor)
 // -----------------------------------------------------------------------------
+// The device is registered only when the CONFIG option "vt11" is on, so the
+// guest OS sees the VT11 register block (17772000) exactly when the Display
+// page is configured — same gating pattern as the LP11 printer in iopage.js.
 
+var __vt11Config = (typeof Config !== 'undefined') ? Config.get() : null;
+if (__vt11Config && __vt11Config.vt11) {
 iopage.register(0o17772000, 4, (function () {
     "use strict";
 
@@ -37,7 +42,9 @@ iopage.register(0o17772000, 4, (function () {
     const VT11_PHOSPHOR_FADE_ALPHA = 0.55; // fraction of black applied per frame
 
     // Statistics panel configuration
-    const VT11_STATS_ENABLED_DEFAULT = true;
+    // The statistics panel is an internal debug aid and is hidden by default;
+    // the Display page shows a clean CRT with no stats checkbox/panel.
+    const VT11_STATS_ENABLED_DEFAULT = false;
     const VT11_STATS_PANEL_WIDTH_PX = 390;
 
     // Interrupt flag bits for iMask
@@ -270,6 +277,10 @@ iopage.register(0o17772000, 4, (function () {
             if (inited) return;
             inited = true;
 
+            // Create the panel only when stats are enabled; otherwise leave
+            // panel null so update() stays a no-op and no DOM is added.
+            if (!VT11_STATS_ENABLED_DEFAULT) return;
+
             let toggle = document.getElementById('vt11_stats_toggle');
             if (toggle) {
                 visible = !!toggle.checked;
@@ -375,21 +386,8 @@ iopage.register(0o17772000, 4, (function () {
 
             let container = document.getElementById('vt11') || document.body;
 
-            // Create VT11 statistics toggle dynamically
-            let statsToggleLabel = document.createElement('label');
-            statsToggleLabel.style.display = 'block';
-            statsToggleLabel.style.marginBottom = '4px';
-
-            let statsToggle = document.createElement('input');
-            statsToggle.type = 'checkbox';
-            statsToggle.id = 'vt11_stats_toggle';
-            statsToggle.checked = true;   // or false if you want it hidden by default
-
-            statsToggleLabel.appendChild(statsToggle);
-            statsToggleLabel.appendChild(document.createTextNode(' VT11 statistics'));
-
-            container.appendChild(statsToggleLabel);
-
+            // No statistics toggle/panel on the Display page: the VT11 stats
+            // are a debug aid gated by VT11_STATS_ENABLED_DEFAULT (default off).
 
             statsPanel.init(container);      // stats above canvas
             container.appendChild(canvasFG);
@@ -1031,3 +1029,4 @@ iopage.register(0o17772000, 4, (function () {
     state.reset();
     return vt11Device;
 })());
+}

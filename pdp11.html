@@ -172,6 +172,12 @@
           </svg></span>
         Printer
       </div>
+      <div class="nav-btn hidden" data-page="vt11">
+        <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
+            <use href="#icon-crt" />
+          </svg></span>
+        Display
+      </div>
       <div class="nav-btn" data-page="control">
         <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
             <use href="#icon-control" />
@@ -620,16 +626,9 @@
       <div id="punchkeypane">
         <div id="punchkeyboard"></div>
       </div>
-      <p>
-      <div id="vt11"></div>
-      </p>
-      <bp>
-        <div id="vg11"></div>
-        </p>
-        <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
-        <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
-        <!-- Add more if needed -->
-        <br>
+      <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
+      <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
+      <!-- Add more if needed -->
     </div>
     <div class="page" id="page-vt52">
       <div class="vt52-container">
@@ -687,14 +686,31 @@
         <button type="button" onclick="window.lp11Save && window.lp11Save()">Save .txt</button>
       </p>
     </div>
+    <div class="page" id="page-vt11">
+      <div class="vt11-container">
+        <div class="vt11-terminal">
+          <div class="vt52-badge">digital vt11</div>
+          <div class="vt11-crt">
+            <!-- The #vt11 container is filled by src/vt11.js on first DPC write:
+                 it appends the green-phosphor canvas. -->
+            <div id="vt11"></div>
+          </div>
+        </div>
+        <div class="vt52-status">
+          <span class="led on" id="vt11-power-led"></span>
+          VT11 DEC display processor &mdash; vector graphics &nbsp;
+          <span id="vt11-conn-status">online</span>
+        </div>
+      </div>
+    </div>
     <div class="page" id="page-config">
       <h2>System Configuration</h2>
       <p>
         Configure the peripherals attached to the PDP&#8209;11. Structural changes
-        (console terminal, user terminals, line printer) are committed with the
-        Apply button, which restarts the machine so the emulated hardware matches
-        the configuration. Print widths, teletype speed, key click and the photo
-        backdrop apply immediately.
+        (console terminal, user terminals, line printer, VT11 display) are
+        committed with the Apply button, which restarts the machine so the
+        emulated hardware matches the configuration. Print widths, teletype
+        speed, key click and the photo backdrop apply immediately.
       </p>
 
       <div class="config-form">
@@ -722,6 +738,14 @@
           <span class="config-label">Line printer (LP11)</span>
           <div class="config-control">
             <label><input type="checkbox" id="config-printer"> Install an LP11 printer</label>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <span class="config-label">VT11 graphics display</span>
+          <div class="config-control">
+            <label><input type="checkbox" id="config-vt11"> Install a VT11 vector-graphics display</label>
+            <span class="config-hint">DEC VT11 vector graphics terminal on its own Display page.</span>
           </div>
         </div>
 
@@ -952,6 +976,11 @@
             <td>A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals.</td>
           </tr>
           <tr>
+            <td class="disk"><b>VT11 Display</b></td>
+            <td>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page, enabled from
+              the CONFIG page.</td>
+          </tr>
+          <tr>
             <td class="disk"><b>16 Guest Operating Systems</b></td>
             <td>Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11,
               XXDP diagnostics, and more.</td>
@@ -987,6 +1016,7 @@
         <li><b>Panel</b> — the front panel with switches and LEDs</li>
         <li><b>Teletype</b> — the Model 33 ASR teletype console</li>
         <li><b>VT52</b> — the DECscope VT52 video terminal</li>
+        <li><b>Display</b> — the VT11 vector-graphics CRT terminal (shown only when configured)</li>
         <li><b>Info</b> — detailed instructions and OS reference</li>
       </ul>
 

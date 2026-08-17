@@ -1038,7 +1038,8 @@ body {
    centre the CRT the same way. */
 #page-vt52.active,
 #page-vt52-console.active,
-#page-vt52-2.active {
+#page-vt52-2.active,
+#page-vt11.active {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1055,7 +1056,8 @@ body {
     box-sizing: border-box;
 }
 
-.vt52-terminal {
+.vt52-terminal,
+.vt11-terminal {
     position: relative;
     background: linear-gradient(180deg, #3a352a 0%, #2a2722 100%);
     border: 3px solid #5a554a;
@@ -1156,6 +1158,61 @@ body {
 .vt52-status .led.on {
     background: #0f0;
     box-shadow: 0 0 6px #0f0;
+}
+
+/* ===== VT11 Display page — vector-graphics CRT ===== */
+/* The VT11 canvas (1024x768) is created lazily by src/vt11.js inside the
+   #vt11 container; this wraps it in a matching DEC bezel + scanlines. */
+.vt11-container {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+/* CRT tube (green-phosphor vector display) */
+/* min-width/height keep the tube at the native 1024x768 canvas size even
+   before src/vt11.js lazily creates the canvas (first DPC write), so the
+   Display page never collapses to a tiny frame; it then grows to fit the
+   canvas. */
+.vt11-crt {
+    position: relative;
+    min-width: 1024px;
+    min-height: 768px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #001000;
+    border: 2px solid #1a1a1a;
+    box-shadow:
+        inset 0 0 40px rgba(0, 255, 0, 0.04),
+        inset 0 0 80px rgba(0, 0, 0, 0.6),
+        0 0 30px rgba(0, 255, 0, 0.08);
+}
+
+/* Scanlines overlay (same treatment as the VT52) */
+.vt11-crt::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(0deg,
+            rgba(0, 0, 0, 0.12) 0px,
+            rgba(0, 0, 0, 0.12) 1px,
+            transparent 1px,
+            transparent 3px);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* The green-phosphor canvas appended by vt11.js */
+.vt11-crt canvas {
+    display: block;
+    filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.3));
+    outline: none;
+    animation: phosphor-shimmer 4s ease-in-out infinite;
 }
 
 /* ===== Hidden sidebar buttons (toggled by the CONFIG page) ===== */

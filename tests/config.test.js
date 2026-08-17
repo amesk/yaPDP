@@ -8,7 +8,8 @@
  *
  * The config covers the CONFIG page settings:
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
- *   printWidth (72/80, Model 33 ASR teletype), printerWidth (72/80/100/132, LP11),
+ *   vt11 (bool, VT11 graphics display), printWidth (72/80, Model 33 ASR
+ *   teletype), printerWidth (72/80/100/132, LP11),
  *   teletypeSpeed (authentic/fast), keyClick (bool), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
@@ -60,6 +61,7 @@ function run() {
             consoleType: "teletype",
             userTerminals: 0,
             printer: false,
+            vt11: false,
             printWidth: 72,
             printerWidth: 132,
             teletypeSpeed: "authentic",
@@ -111,6 +113,11 @@ function run() {
         // booleans coerced.
         assert.strictEqual(C.validate({ printer: 1 }).printer, true);
         assert.strictEqual(C.validate({ printer: 0 }).printer, false);
+        // vt11 (VT11 graphics display) absent/garbage -> false.
+        assert.strictEqual(C.validate({}).vt11, false);
+        assert.strictEqual(C.validate({ vt11: 1 }).vt11, true);
+        assert.strictEqual(C.validate({ vt11: "yes" }).vt11, true);
+        assert.strictEqual(C.validate({ vt11: 0 }).vt11, false);
         assert.strictEqual(C.validate({ keyClick: 1 }).keyClick, true);
         assert.strictEqual(C.validate({ keyClick: 0 }).keyClick, false);
 
@@ -128,6 +135,7 @@ function run() {
             consoleType: "vt52",
             userTerminals: 2,
             printer: true,
+            vt11: true,
             printWidth: 80,
             printerWidth: 80,
             teletypeSpeed: "fast",
@@ -155,6 +163,7 @@ function run() {
             consoleType: "vt52",
             userTerminals: 1,
             printer: true,
+            vt11: true,
             printWidth: 80,
             printerWidth: 100,
             teletypeSpeed: "fast",

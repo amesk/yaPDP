@@ -547,6 +547,7 @@ function applyVisibility() {
   setNavVisible('vt52', cfg.userTerminals >= 1);
   setNavVisible('vt52-2', cfg.userTerminals >= 2);
   setNavVisible('printer', cfg.printer);
+  setNavVisible('vt11', cfg.vt11);
 }
 
 // Toggle the PDP-11 photo backdrop on body. The 'no-photo-bg' class restores
@@ -602,6 +603,7 @@ function initConfigForm() {
   var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
   var userTerm = document.getElementById('config-userTerminals');
   var printerEl = document.getElementById('config-printer');
+  var vt11El = document.getElementById('config-vt11');
   var pwEl = document.getElementById('config-printWidth');
   var pwrEl = document.getElementById('config-printerWidth');
   var kcEl = document.getElementById('config-keyClick');
@@ -620,6 +622,7 @@ function initConfigForm() {
   setRadioChecked(speedRadios, cfg.teletypeSpeed);
   if (userTerm) userTerm.value = String(cfg.userTerminals);
   if (printerEl) printerEl.checked = cfg.printer;
+  if (vt11El) vt11El.checked = cfg.vt11;
   if (pwEl) pwEl.value = String(cfg.printWidth);
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   if (kcEl) kcEl.checked = cfg.keyClick;
@@ -641,6 +644,7 @@ function initConfigForm() {
       consoleType: consoleType,
       userTerminals: (userTerm) ? Number(userTerm.value) : cfg.userTerminals,
       printer: (printerEl) ? printerEl.checked : cfg.printer,
+      vt11: (vt11El) ? vt11El.checked : cfg.vt11,
       printWidth: (pwEl) ? Number(pwEl.value) : cfg.printWidth,
       printerWidth: (pwrEl) ? Number(pwrEl.value) : cfg.printerWidth,
       teletypeSpeed: teletypeSpeed,
@@ -659,6 +663,7 @@ function initConfigForm() {
     return form.consoleType !== current.consoleType ||
       form.userTerminals !== current.userTerminals ||
       form.printer !== current.printer ||
+      form.vt11 !== current.vt11 ||
       form.printWidth !== current.printWidth ||
       form.printerWidth !== current.printerWidth ||
       form.teletypeSpeed !== current.teletypeSpeed ||
@@ -697,7 +702,8 @@ function initConfigForm() {
     var structuralChanged =
       form.consoleType !== before.consoleType ||
       form.userTerminals !== before.userTerminals ||
-      form.printer !== before.printer;
+      form.printer !== before.printer ||
+      form.vt11 !== before.vt11;
     // Persist the complete form (validated) and refresh the in-memory snapshot.
     Config.set(form);
     // Re-tune live instances; harmless if we are about to reload anyway.
@@ -721,6 +727,9 @@ function initConfigForm() {
   }
   if (printerEl) {
     printerEl.addEventListener('change', markStructural);
+  }
+  if (vt11El) {
+    vt11El.addEventListener('change', markStructural);
   }
 
   // Teletype speed applies live (no reload): persist the choice and retune the
@@ -775,6 +784,7 @@ function initConfigForm() {
       setRadioChecked(speedRadios, d.teletypeSpeed);
       if (userTerm) userTerm.value = String(d.userTerminals);
       if (printerEl) printerEl.checked = d.printer;
+      if (vt11El) vt11El.checked = d.vt11;
       if (pwEl) pwEl.value = String(d.printWidth);
       if (pwrEl) pwrEl.value = String(d.printerWidth);
       if (kcEl) kcEl.checked = d.keyClick;
