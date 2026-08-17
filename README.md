@@ -58,8 +58,8 @@ download and a fully-offline bundle with every disk/tape image:
 
 | Artifact | Size |
 |----------|------|
-| `yaPDP Minimal_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP Minimal.exe` | ~3.2 MB / ~4.3 MB / ~6.2 MB |
-| `yaPDP Full_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP Full.exe` | ~84 MB / ~85 MB / ~6.2 MB |
+| `yaPDP-Minimal_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP-Minimal.exe` | ~3.2 MB / ~4.3 MB / ~6.2 MB |
+| `yaPDP-Full_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP-Full.exe` | ~84 MB / ~85 MB / ~6.2 MB |
 
 ### Bundled images
 

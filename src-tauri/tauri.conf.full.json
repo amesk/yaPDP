@@ -1,6 +1,6 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
-    "productName": "yaPDP Full",
+    "productName": "yaPDP-Full",
     "version": "0.1.0",
     "identifier": "org.yapdp.emulator.full",
     "build": {
