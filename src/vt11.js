@@ -510,9 +510,14 @@ iopage.register(0o17772000, 4, (function () {
             initializedMouse = true;
 
             canvasFG.addEventListener('mousemove', function vt11TrackMouse(evt) {
+                // The tube is CSS-scaled to fit the viewport (css/pdp11.css),
+                // so map pointer coordinates back into the internal 1024x768
+                // canvas space used by light-pen hit testing.
                 let rect = canvasFG.getBoundingClientRect();
-                mouseX = evt.clientX - rect.left;
-                mouseY = evt.clientY - rect.top;
+                let scaleX = rect.width > 0 ? canvasFG.width / rect.width : 1;
+                let scaleY = rect.height > 0 ? canvasFG.height / rect.height : 1;
+                mouseX = (evt.clientX - rect.left) * scaleX;
+                mouseY = (evt.clientY - rect.top) * scaleY;
             }, false);
         }
 

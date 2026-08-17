@@ -1172,14 +1172,17 @@ body {
 }
 
 /* CRT tube (green-phosphor vector display) */
-/* min-width/height keep the tube at the native 1024x768 canvas size even
-   before src/vt11.js lazily creates the canvas (first DPC write), so the
-   Display page never collapses to a tiny frame; it then grows to fit the
-   canvas. */
+/* The tube starts at the native 1024x768 canvas size but is CSS-scaled down
+   to fit the available viewport (sidebar, bezel and status bar accounted for)
+   while preserving the 4:3 aspect ratio. The internal 1024x768 coordinate
+   space in src/vt11.js stays untouched — only the displayed size changes, so
+   the page no longer overflows a 1080p window (especially with OS display
+   scaling). */
 .vt11-crt {
     position: relative;
-    min-width: 1024px;
-    min-height: 768px;
+    width: min(1024px, calc(100vw - 140px), calc((100vh - 120px) * 4 / 3));
+    aspect-ratio: 4 / 3;
+    height: auto;
     border-radius: 10px;
     overflow: hidden;
     background: #001000;
@@ -1207,9 +1210,17 @@ body {
     z-index: 2;
 }
 
-/* The green-phosphor canvas appended by vt11.js */
+/* The green-phosphor canvas appended by vt11.js: stretch it to fill the
+   (possibly CSS-scaled) tube so the 1024x768 rendering scales with it. */
+.vt11-crt #vt11 {
+    width: 100%;
+    height: 100%;
+}
+
 .vt11-crt canvas {
     display: block;
+    width: 100%;
+    height: 100%;
     filter: drop-shadow(0 0 3px rgba(0, 255, 0, 0.3));
     outline: none;
     animation: phosphor-shimmer 4s ease-in-out infinite;
