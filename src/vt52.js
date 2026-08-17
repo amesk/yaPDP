@@ -76,6 +76,7 @@
     const BS  = 8;    // Backspace
     const TAB = 9;    // Horizontal tab
     const LF  = 10;   // Line feed (no carriage return)
+    const FF  = 12;   // Form feed (VT52/VT100: clear screen + cursor home)
     const CR  = 13;   // Carriage return (no line feed)
     const ESC = 27;   // Escape introducer
     const SO  = 0x0E; // Shift Out  → select G1
@@ -1241,6 +1242,18 @@
         }
 
         // ---------------------------------------------------------------------------
+        // Form Feed (FF)
+        // ---------------------------------------------------------------------------
+        // On VT52/VT100 hardware, form feed (^L, 0x0C) clears the screen and
+        // returns the cursor to home. 2.11 BSD nroff/man separate pages with
+        // ^L, so each page starts at the top of a fresh screen instead of
+        // printing below the previous one.
+        // ---------------------------------------------------------------------------
+        formFeed() {
+            this.clearScreen();
+        }
+
+        // ---------------------------------------------------------------------------
         // Reverse Index (RI) — VT100
         // ---------------------------------------------------------------------------
         // Moves cursor up, scrolling region downward if at top margin.
@@ -1275,6 +1288,7 @@
                 case BS:  return this.backSpace();
                 case TAB: return this.tab();
                 case LF:  return this.lineFeed();
+                case FF:  return this.formFeed();
                 case CR:  return this.carriageReturn();
 
                 case ESC:
@@ -1549,6 +1563,22 @@
                 // ---------------------------------------------------------------
                 case 'J': this.erase(4); break; // erase to end of screen
                 case 'K': this.erase(0); break; // erase to end of line
+
+                // ---------------------------------------------------------------
+                // ESC E — VT52 clear screen + home cursor.
+                // 2.11 BSD termcap "cl" for VT52 is "\033E"; both `clear` and
+                // the full-screen `more` pager emit it, so each page of nroff/
+                // man output starts from the top row. In ANSI/VT100 mode ESC E
+                // is NEL (next line: carriage return + line feed).
+                // ---------------------------------------------------------------
+                case 'E':
+                    if (this.modes.ansi) {
+                        this.carriageReturn();
+                        this.lineFeed();
+                    } else {
+                        this.clearScreen();
+                    }
+                    break;
 
                 // ---------------------------------------------------------------
                 // ESC Y row col — VT52 direct cursor addressing

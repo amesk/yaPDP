@@ -144,6 +144,31 @@ function run() {
         assert.strictEqual(cell(term, 0).a, ATTR_BOLD, "CSI 1 m sets bold attribute");
     }
 
+    // ---- Form feed (^L) clears the screen and homes the cursor --------
+    {
+        const { term, write } = makeTerminal();
+        write("ABC");
+        assert.strictEqual(term.screen.length, 1, "typing fills the first row");
+        write("\f");
+        assert.strictEqual(term.cursorRow, 0, "form feed homes the cursor row");
+        assert.strictEqual(term.cursorCol, 0, "form feed homes the cursor column");
+        assert.strictEqual(term.screen.length, 1, "a single blank row remains");
+        assert.strictEqual(term.screen[0].length, 1, "blank row holds one cell");
+        assert.strictEqual(cell(term, 0).c, 32, "cell is blank after form feed");
+    }
+
+    // ---- ESC E (VT52 clear screen) clears the screen and homes cursor -
+    {
+        const { term, write } = makeTerminal();
+        write("ABC");
+        write(ESC + "E");
+        assert.strictEqual(term.cursorRow, 0, "ESC E homes the cursor row");
+        assert.strictEqual(term.cursorCol, 0, "ESC E homes the cursor column");
+        assert.strictEqual(term.screen.length, 1, "a single blank row remains");
+        assert.strictEqual(term.screen[0].length, 1, "blank row holds one cell");
+        assert.strictEqual(cell(term, 0).c, 32, "cell is blank after ESC E");
+    }
+
     // ---- Line feed clears any pending overstrike --------------------
     {
         const { term, write } = makeTerminal();
