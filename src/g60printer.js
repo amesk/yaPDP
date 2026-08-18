@@ -82,12 +82,12 @@
     };
 
     // Pre-load sounds
-    G60Audio.load('punch', '../assets/sounds/keypunch2.mp3');      // short punch for single char
-    G60Audio.load('print', '../assets/sounds/teletype33-print.mp3'); // long for line animation
-    G60Audio.load('linefeed', '../assets/sounds/teletype33-lf.mp3'); // line feed
+    G60Audio.load('punch', 'assets/sounds/keypunch2.mp3');      // short punch for single char
+    G60Audio.load('print', 'assets/sounds/teletype33-print.mp3'); // long for line animation
+    G60Audio.load('linefeed', 'assets/sounds/teletype33-lf.mp3'); // line feed
     // Dedicated element for the continuous LP11 whirr — separate from the
     // shared "print" element so the console teletype never stops it.
-    G60Audio.load('whirr', '../assets/sounds/teletype33-print.mp3');
+    G60Audio.load('whirr', 'assets/sounds/teletype33-print.mp3');
 
     // ====================================================================
     // Google60-style Line Printer
@@ -384,7 +384,7 @@
             el = document.createElement('div'); el.id = pid('printer_frontpannel'); element.appendChild(el);
             el = document.createElement('div'); el.id = pid('printheadarea'); element.appendChild(el);
             printHead = document.createElement('img');
-            printHead.id = pid('printhead'); printHead.src = '../assets/images/printhead.png'; el.appendChild(printHead);
+            printHead.id = pid('printhead'); printHead.src = 'assets/images/printhead.png'; el.appendChild(printHead);
             printArea = td2;
             container.appendChild(element);
             applyPaperGeometry();
