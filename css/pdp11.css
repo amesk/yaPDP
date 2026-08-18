@@ -1554,6 +1554,16 @@ body.crt-effects .vt52-crt::after {
     background: rgba(138, 74, 74, 0.15);
 }
 
+/* Punch tape size indicator (Storage page). */
+.punch-size {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #7fb8d8;
+    vertical-align: middle;
+}
+
 /* CONFIG page tabbed layout: a top tab bar splits the growing configuration
    into Equipment (hardware) and Visual enhancements (look & feel) panels.
    Both panels live in the same grid cell (the inactive one is hidden with

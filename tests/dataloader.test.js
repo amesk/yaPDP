@@ -265,6 +265,23 @@ async function run() {
     console.log("PASS test 8: fetchBlock serves mounted .ptap without HTTP");
   }
 
+  // ---- Test 9: punchTapeAppend accumulates raw punch bytes --------
+  {
+    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    const fn = extractBlock(src, "function punchTapeAppend(buffer, byte)");
+    const sb = buildSandbox();
+    vm.createContext(sb);
+    vm.runInContext(fn, sb);
+
+    const buf = [];
+    sb.punchTapeAppend(buf, 0x41);
+    sb.punchTapeAppend(buf, 0x0d);
+    sb.punchTapeAppend(buf, 0x0a);
+    sb.punchTapeAppend(buf, 0x1ff); // only the low 8 bits are kept
+    assert.deepStrictEqual(buf, [0x41, 0x0d, 0x0a, 0xff]);
+    console.log("PASS test 9: punchTapeAppend accumulates raw punch bytes");
+  }
+
   console.log("\nAll DataLoader tests passed.");
 }
 

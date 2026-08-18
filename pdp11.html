@@ -940,6 +940,19 @@
         </div>
 
         <div class="config-field">
+          <span class="config-label">Export paper tape</span>
+          <div class="config-control">
+            <button type="button" id="punch-download" onclick="downloadPunchTape()"
+              title="Download the punched paper tape (.ptap)">Download</button>
+            &nbsp;
+            <button type="button" id="punch-clear" onclick="clearPunchTape()"
+              title="Discard the current punch tape buffer">Clear</button>
+            <span id="punch-size" class="punch-size">0 bytes</span>
+            <span class="config-hint">Download the punched paper tape (.ptap) to your machine.</span>
+          </div>
+        </div>
+
+        <div class="config-field">
           <span class="config-label">Drop image</span>
           <div class="config-control">
             <span class="drop-zone" id="drop-zone" title="Drop a disk/tape image here">

@@ -1957,6 +1957,13 @@ function ptrUrlFor(name) {
     return /\.ptap$/i.test(name) ? name : `${name}.ptap`;
 }
 
+/// --- punchTapeAppend() ---
+// Append a punched byte to a paper tape output buffer (pure, testable).
+// Keeps only the low 8 bits, matching the 8‑track paper tape encoding.
+function punchTapeAppend(buffer, byte) {
+    buffer.push(byte & 0xFF);
+}
+
 
 
 // ================================================================
@@ -2027,6 +2034,9 @@ iopage.register(0o17777550, 2, (function() {
     let ptpcs;           // Control/Status register
     let ptpdb;           // Data buffer
     let ptpIMask;        // Interrupt pending mask
+    var punchBuffer = []; // Punched bytes collected for export (.ptap)
+    var punchTimer = null; // Throttle timer for the size indicator
+    var dbwWritten = false; // True right after a PTPDB write (GO is redundant)
 
     // --- initPTR() ---
     // Initialize PTR11 paper tape reader state.
@@ -2055,15 +2065,67 @@ iopage.register(0o17777550, 2, (function() {
     }
 
     // --- punchByte() ---
-    // Complete a punch operation: the byte is accepted and discarded, the
-    // operation finishes immediately and an interrupt is raised if enabled.
+    // Complete a punch operation: the byte is appended to the punch tape
+    // output buffer, the operation finishes immediately and an interrupt is
+    // raised if enabled.
     function punchByte() {
+        punchTapeAppend(punchBuffer, ptpdb);
+        schedulePunchSizeUpdate();
         ptpcs = (ptpcs | PTP_DONE) & ~PTP_BUSY;
         if (ptpcs & PTP_IE) {
             ptpIMask = 1;
             requestInterrupt();
         }
     }
+
+    // --- updatePunchSize() ---
+    // Refresh the punch tape size indicator in the Storage page.
+    function updatePunchSize() {
+        const el = document.getElementById("punch-size");
+        if (!el) return;
+        el.textContent = punchBuffer.length + " bytes";
+    }
+
+    // --- schedulePunchSizeUpdate() ---
+    // Throttle DOM updates so a high punch rate does not spam the indicator.
+    function schedulePunchSizeUpdate() {
+        if (punchTimer) return;
+        punchTimer = setTimeout(function () {
+            punchTimer = null;
+            updatePunchSize();
+        }, 100);
+    }
+
+    // --- downloadPunchTape() ---
+    // Export the punched tape as a raw .ptap file (download).
+    function downloadPunchTape() {
+        if (!punchBuffer.length) {
+            updatePunchSize();
+            return;
+        }
+        const blob = new Blob([new Uint8Array(punchBuffer)], {
+            type: "application/octet-stream"
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "punch.ptap";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // --- clearPunchTape() ---
+    // Discard the current punch tape buffer (start a fresh tape).
+    function clearPunchTape() {
+        punchBuffer = [];
+        updatePunchSize();
+    }
+
+    // Expose punch export/clear for the Storage page buttons.
+    window.downloadPunchTape = downloadPunchTape;
+    window.clearPunchTape = clearPunchTape;
 
     // --- ptCallback() ---
     // Completion callback for PTR11 tape I/O operations.
@@ -2227,17 +2289,28 @@ iopage.register(0o17777550, 2, (function() {
                             } else {
                                 ptpIMask = 0;
                             }
+                            // IE is preserved across writes (a GO-only write
+                            // must not clear an already-enabled interrupt).
+                            ptpcs = (ptpcs & ~PTP_IE) | (result & PTP_IE);
                         }
 
-                        // Update IE + GO bits only
-                        ptpcs = (ptpcs & ~(PTP_IE | PTP_GO | PTP_BUSY)) |
-                                (result & (PTP_IE | PTP_GO));
-
-                        // On GO, punch the buffered byte immediately (instant
-                        // device), then clear GO.
-                        if (ptpcs & PTP_GO) {
-                            ptpcs = (ptpcs & ~PTP_GO) | PTP_BUSY;
-                            punchByte();
+                        // GO starts a punch: clear DONE, set BUSY, then the
+                        // byte is punched and DONE is raised on completion.
+                        // A GO that follows a DBR write is redundant (the DBR
+                        // write already punched the byte), so it only completes
+                        // the operation and raises DONE.
+                        if (result & PTP_GO) {
+                            ptpcs = (ptpcs & ~(PTP_GO | PTP_DONE)) | PTP_BUSY;
+                            if (dbwWritten) {
+                                ptpcs = (ptpcs & ~PTP_BUSY) | PTP_DONE;
+                                if (ptpcs & PTP_IE) {
+                                    ptpIMask = 1;
+                                    requestInterrupt();
+                                }
+                            } else {
+                                punchByte();
+                            }
+                            dbwWritten = false;
                         }
                     }
                     break;
@@ -2246,9 +2319,14 @@ iopage.register(0o17777550, 2, (function() {
                     result = insertData(ptpdb, pa, data, byteFlag);
                     if (data >= 0) {
                         ptpdb = result & 0xFF;
-                        // A punch started by GO before the data byte arrived
-                        // completes when the byte is written.
-                        if (ptpcs & PTP_BUSY) punchByte();
+                        // Writing the data byte starts the punch. Some guest
+                        // drivers (RT-11) never write GO and rely on the DBR
+                        // write to trigger the operation.
+                        dbwWritten = true;
+                        if (!(ptpcs & PTP_BUSY)) {
+                            ptpcs = (ptpcs & ~PTP_DONE) | PTP_BUSY;
+                            punchByte();
+                        }
                     }
                     break;
 
