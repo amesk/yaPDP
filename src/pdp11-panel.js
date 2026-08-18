@@ -52,6 +52,13 @@ function switchPage(page) {
     var canvas = document.getElementById(canvasIds[page]);
     if (canvas) canvas.focus();
   }
+
+  // The floating REBOOT button is a console action: show it only on the
+  // operator console page (teletype or VT52 console) where commands are typed.
+  var rebootBtn = document.getElementById('reboot-btn');
+  if (rebootBtn) {
+    rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52-console'));
+  }
 }
 
 // ==================================================================

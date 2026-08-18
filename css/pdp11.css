@@ -1039,6 +1039,12 @@ body {
     color: #fff3d6;
 }
 
+/* The REBOOT action only makes sense on the operator console page (teletype /
+   VT52 console) where commands are typed; switchPage() toggles this class. */
+.console-reboot.hidden {
+    display: none !important;
+}
+
 /* Real-printer actions (Print / Save .txt) below the machine */
 .printer-actions {
     margin-top: 8px;
