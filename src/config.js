@@ -25,6 +25,9 @@
  *                    printer or VT52 key-click sounds. Applied immediately.
  *   - photoBackdrop: whether the PDP-11 machine-room photo is shown behind
  *                    the pages. Applied immediately, no reboot needed.
+ *   - crtEffects:    pure-CSS CRT simulation on VT52 terminals: brightness
+ *                    flicker, scanline shimmer and a vertical-hold roll band.
+ *                    Applied immediately, no reboot needed.
  *
  * Persistence uses localStorage under the key "yapdp.config.v1" (the same
  * pattern as Onboarding in onboarding.js). The pure helpers validate/load/
@@ -48,6 +51,7 @@ var Config = (function () {
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
         keyClick: false,         // boolean (VT52 key click)
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
+        crtEffects: true,        // boolean (VT52 pure-CSS CRT flicker/roll simulation)
         hum: true,               // boolean (ambient power-supply hum + fan noise)
         photoBackdrop: true      // boolean (PDP-11 photo behind the pages)
     });
@@ -104,6 +108,11 @@ var Config = (function () {
             teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
             keyClick: Boolean(o.keyClick),
             vt52ReverseVideo: Boolean(o.vt52ReverseVideo),
+            // Absent key falls back to the default (keeps the CRT effects on
+            // for old configs saved before the option existed).
+            crtEffects: typeof o.crtEffects === "undefined"
+                ? DEFAULTS.crtEffects
+                : Boolean(o.crtEffects),
             // Absent key falls back to the default (keeps the ambient hum on
             // for old configs saved before the "hum" option existed).
             hum: typeof o.hum === "undefined"

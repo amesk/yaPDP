@@ -12,6 +12,7 @@
  *   teletype), printerWidth (72/80/100/132, LP11),
  *   teletypeSpeed (authentic/fast), keyClick (bool),
  *   vt52ReverseVideo (bool, historical VT52 reverse-video mode),
+ *   crtEffects (bool, pure-CSS CRT flicker/roll simulation),
  *   hum (bool, ambient power-supply hum), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
@@ -69,6 +70,7 @@ function run() {
             teletypeSpeed: "authentic",
             keyClick: false,
             vt52ReverseVideo: false,
+            crtEffects: true,
             hum: true,
             photoBackdrop: true,
         }, "defaults should match the documented values");
@@ -128,6 +130,12 @@ function run() {
         assert.strictEqual(C.validate({ vt52ReverseVideo: 1 }).vt52ReverseVideo, true);
         assert.strictEqual(C.validate({ vt52ReverseVideo: 0 }).vt52ReverseVideo, false);
 
+        // crtEffects: absent -> default (true, keeps the CRT effects on for
+        // old configs saved before the option existed), otherwise boolean.
+        assert.strictEqual(C.validate({}).crtEffects, true);
+        assert.strictEqual(C.validate({ crtEffects: 1 }).crtEffects, true);
+        assert.strictEqual(C.validate({ crtEffects: 0 }).crtEffects, false);
+
         // hum: absent -> default (true, keeps the ambient hum on for old
         // configs), otherwise coerced to boolean.
         assert.strictEqual(C.validate({}).hum, true);
@@ -154,6 +162,7 @@ function run() {
             teletypeSpeed: "fast",
             keyClick: true,
             vt52ReverseVideo: true,
+            crtEffects: false,
             hum: true,
             photoBackdrop: false,
         };
@@ -184,6 +193,7 @@ function run() {
             teletypeSpeed: "fast",
             keyClick: true,
             vt52ReverseVideo: true,
+            crtEffects: true,
             hum: false,
             photoBackdrop: true,
         }, s);

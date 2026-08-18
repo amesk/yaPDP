@@ -1135,6 +1135,125 @@ body {
     animation: phosphor-shimmer 4s ease-in-out infinite;
 }
 
+/* ===== CRT effects (CONFIG → Visual → "CRT effects") ===== */
+/* Enabled by toggling 'crt-effects' on <body> (see pdp11-app.js
+   applyCRTEffects). Everything is pure CSS layered on top of the
+   canvas-rendered VT52 tube, so the emulator's drawing pipeline is
+   untouched. Only .vt52-crt terminals are affected (VT11 keeps its own
+   green-phosphor look). Compositor-friendly properties only (opacity,
+   transform, filter, background-position), pointer-events: none so the
+   overlays never steal keyboard/click focus from the canvas. */
+body.crt-effects .vt52-crt canvas {
+    animation:
+        phosphor-shimmer 4s ease-in-out infinite,
+        crt-flicker 0.09s steps(2) infinite,
+        crt-jitter 8s steps(1, end) infinite;
+}
+
+/* Rapid, irregular brightness flicker — as if the HV supply is marginal.
+   The drop-shadow glow from the base rule is re-stated in every keyframe
+   so the phosphor halo persists while the brightness snaps. */
+@keyframes crt-flicker {
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.12)) brightness(1);
+    }
+
+    50% {
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.08)) brightness(0.96);
+    }
+}
+
+/* Occasional horizontal micro-jerks — a loose horizontal-hold pot. */
+@keyframes crt-jitter {
+    0% {
+        transform: translateX(0);
+    }
+
+    90% {
+        transform: translateX(0);
+    }
+
+    91% {
+        transform: translateX(1px);
+    }
+
+    92% {
+        transform: translateX(0);
+    }
+
+    95% {
+        transform: translateX(-1px);
+    }
+
+    96%,
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Vertical-hold roll: a single soft bright band sweeps down the tube on a
+   loop, like a drifting vertical sync. It is a separate ::before layer
+   (z-index 1) beneath the scanlines (::after, z-index 2). */
+body.crt-effects .vt52-crt::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(180deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.05) 45%,
+            rgba(255, 255, 255, 0.12) 50%,
+            rgba(255, 255, 255, 0.05) 55%,
+            transparent 100%);
+    mix-blend-mode: screen;
+    animation: crt-roll 6s linear infinite;
+}
+
+@keyframes crt-roll {
+    0% {
+        transform: translateY(-100%);
+    }
+
+    100% {
+        transform: translateY(250%);
+    }
+}
+
+/* Scanline shimmer: the line pattern itself flickers subtly, reinforcing
+   the interlaced feel of a real raster CRT. */
+body.crt-effects .vt52-crt::after {
+    animation: crt-scanline-shimmer 0.18s steps(2) infinite;
+}
+
+@keyframes crt-scanline-shimmer {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.85;
+    }
+}
+
+/* Accessibility: users who prefer reduced motion get a stable, readable
+   screen (the static scanlines and glow remain, but nothing animates). */
+@media (prefers-reduced-motion: reduce) {
+
+    body.crt-effects .vt52-crt canvas,
+    body.crt-effects .vt52-crt::before,
+    body.crt-effects .vt52-crt::after {
+        animation: none;
+    }
+}
+
 /* Status label below screen */
 .vt52-status {
     margin-top: 10px;

@@ -555,6 +555,13 @@ function applyPhotoBackdrop(enabled) {
   document.body.classList.toggle('no-photo-bg', !enabled);
 }
 
+// Toggle the pure-CSS CRT simulation on body. The 'crt-effects' class drives
+// the VT52 flicker/roll overlays (see css/pdp11.css); disabling it restores
+// the static scanline-only tube.
+function applyCRTEffects(enabled) {
+  document.body.classList.toggle('crt-effects', !!enabled);
+}
+
 // Apply the configured reverse-video mode to every live VT52 terminal
 // (console + user terminals). Non-canvas terminals simply ignore it.
 function applyVT52ReverseVideo(enabled) {
@@ -661,6 +668,7 @@ function initConfigForm() {
   var pwrEl = document.getElementById('config-printerWidth');
   var kcEl = document.getElementById('config-keyClick');
   var vt52RevEl = document.getElementById('config-vt52ReverseVideo');
+  var crtEl = document.getElementById('config-crtEffects');
   var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
   var applyBtn = document.getElementById('config-apply');
@@ -682,9 +690,11 @@ function initConfigForm() {
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   if (kcEl) kcEl.checked = cfg.keyClick;
   if (vt52RevEl) vt52RevEl.checked = cfg.vt52ReverseVideo;
+  if (crtEl) crtEl.checked = cfg.crtEffects;
   if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   applyPhotoBackdrop(cfg.photoBackdrop);
+  applyCRTEffects(cfg.crtEffects);
 
   // Read every control into a full config-shaped object. The values come from
   // the fixed option lists, so they always survive Config.validate() unchanged.
@@ -707,6 +717,7 @@ function initConfigForm() {
       teletypeSpeed: teletypeSpeed,
       keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
       vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
+      crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
       hum: (humEl) ? humEl.checked : cfg.hum,
       photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop
     };
@@ -728,6 +739,7 @@ function initConfigForm() {
       form.teletypeSpeed !== current.teletypeSpeed ||
       form.keyClick !== current.keyClick ||
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
+      form.crtEffects !== current.crtEffects ||
       form.hum !== current.hum ||
       form.photoBackdrop !== current.photoBackdrop;
   }
@@ -742,6 +754,7 @@ function initConfigForm() {
       window.lp11G60Printer.setMaxCols(f.printerWidth);
     }
     applyVT52ReverseVideo(f.vt52ReverseVideo);
+    applyCRTEffects(f.crtEffects);
     applyPhotoBackdrop(f.photoBackdrop);
   }
 
@@ -838,6 +851,15 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // CRT effects apply immediately (no reload): toggling the body class that
+  // drives the pure-CSS flicker/roll overlays (see css/pdp11.css).
+  if (crtEl) {
+    crtEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ crtEffects: this.checked });
+      applyCRTEffects(this.checked);
+      updateDirtyUI();
+    });
+  }
   // Ambient power-supply hum applies immediately (no reload): persist the
   // choice; Hum.update() re-reads the config on its next tick.
   if (humEl) {
@@ -868,6 +890,7 @@ function initConfigForm() {
       if (pwrEl) pwrEl.value = String(d.printerWidth);
       if (kcEl) kcEl.checked = d.keyClick;
       if (vt52RevEl) vt52RevEl.checked = d.vt52ReverseVideo;
+      if (crtEl) crtEl.checked = d.crtEffects;
       if (humEl) humEl.checked = d.hum;
       if (pbEl) pbEl.checked = d.photoBackdrop;
       // The form now shows factory values; nothing is persisted until Apply.
@@ -913,6 +936,9 @@ if (__appCfg && __appCfg.userTerminals >= 2) {
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);
+
+// Apply the configured CRT-effects mode (pure-CSS flicker/roll simulation).
+applyCRTEffects(__appCfg && __appCfg.crtEffects);
 
 applyVisibility();
 initConfigForm();
