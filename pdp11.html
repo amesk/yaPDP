@@ -793,6 +793,16 @@
         </div>
 
         <div class="config-field">
+          <span class="config-label">Machine hum</span>
+          <div class="config-control">
+            <label><input type="checkbox" id="config-hum"> Power-supply hum and fan noise while the machine is
+              on</label>
+            <span class="config-hint">Applied immediately; on its own audio channel so the teletype and terminal
+              sounds stay clear.</span>
+          </div>
+        </div>
+
+        <div class="config-field">
           <span class="config-label">Photo backdrop</span>
           <div class="config-control">
             <label><input type="checkbox" id="config-photoBackdrop"> Show PDP-11 photo behind the pages</label>
@@ -1281,6 +1291,7 @@ Hello world
   <script src='src/pdp11.js'></script>
   <script src='src/fpp.js'></script>
   <script src='src/iopage.js'></script>
+  <script src='src/hum.js'></script>
   <script src='src/vt11.js'></script>
   <script src='src/dragdrop.js'></script>
   <script src='src/tauri-bundled.js'></script>

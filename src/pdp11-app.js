@@ -607,6 +607,7 @@ function initConfigForm() {
   var pwEl = document.getElementById('config-printWidth');
   var pwrEl = document.getElementById('config-printerWidth');
   var kcEl = document.getElementById('config-keyClick');
+  var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
@@ -626,6 +627,7 @@ function initConfigForm() {
   if (pwEl) pwEl.value = String(cfg.printWidth);
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   if (kcEl) kcEl.checked = cfg.keyClick;
+  if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   applyPhotoBackdrop(cfg.photoBackdrop);
 
@@ -649,6 +651,7 @@ function initConfigForm() {
       printerWidth: (pwrEl) ? Number(pwrEl.value) : cfg.printerWidth,
       teletypeSpeed: teletypeSpeed,
       keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
+      hum: (humEl) ? humEl.checked : cfg.hum,
       photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop
     };
   }
@@ -668,6 +671,7 @@ function initConfigForm() {
       form.printerWidth !== current.printerWidth ||
       form.teletypeSpeed !== current.teletypeSpeed ||
       form.keyClick !== current.keyClick ||
+      form.hum !== current.hum ||
       form.photoBackdrop !== current.photoBackdrop;
   }
 
@@ -768,6 +772,15 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // Ambient power-supply hum applies immediately (no reload): persist the
+  // choice; Hum.update() re-reads the config on its next tick.
+  if (humEl) {
+    humEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ hum: this.checked });
+      if (window.Hum) window.Hum.update();
+      updateDirtyUI();
+    });
+  }
   if (pbEl) {
     pbEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ photoBackdrop: this.checked });
@@ -788,6 +801,7 @@ function initConfigForm() {
       if (pwEl) pwEl.value = String(d.printWidth);
       if (pwrEl) pwrEl.value = String(d.printerWidth);
       if (kcEl) kcEl.checked = d.keyClick;
+      if (humEl) humEl.checked = d.hum;
       if (pbEl) pbEl.checked = d.photoBackdrop;
       // The form now shows factory values; nothing is persisted until Apply.
       updateDirtyUI();

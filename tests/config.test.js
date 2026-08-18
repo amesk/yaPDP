@@ -10,7 +10,8 @@
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
  *   vt11 (bool, VT11 graphics display), printWidth (72/80, Model 33 ASR
  *   teletype), printerWidth (72/80/100/132, LP11),
- *   teletypeSpeed (authentic/fast), keyClick (bool), photoBackdrop (bool).
+ *   teletypeSpeed (authentic/fast), keyClick (bool), hum (bool, ambient
+ *   power-supply hum), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
  *
@@ -66,6 +67,7 @@ function run() {
             printerWidth: 132,
             teletypeSpeed: "authentic",
             keyClick: false,
+            hum: true,
             photoBackdrop: true,
         }, "defaults should match the documented values");
     }
@@ -121,6 +123,12 @@ function run() {
         assert.strictEqual(C.validate({ keyClick: 1 }).keyClick, true);
         assert.strictEqual(C.validate({ keyClick: 0 }).keyClick, false);
 
+        // hum: absent -> default (true, keeps the ambient hum on for old
+        // configs), otherwise coerced to boolean.
+        assert.strictEqual(C.validate({}).hum, true);
+        assert.strictEqual(C.validate({ hum: 1 }).hum, true);
+        assert.strictEqual(C.validate({ hum: 0 }).hum, false);
+
         // photoBackdrop: absent -> true (keeps the photo for old configs),
         // otherwise coerced to boolean.
         assert.strictEqual(C.validate({}).photoBackdrop, true);
@@ -140,6 +148,7 @@ function run() {
             printerWidth: 80,
             teletypeSpeed: "fast",
             keyClick: true,
+            hum: true,
             photoBackdrop: false,
         };
         C.save(cfg, s);
@@ -168,6 +177,7 @@ function run() {
             printerWidth: 100,
             teletypeSpeed: "fast",
             keyClick: true,
+            hum: false,
             photoBackdrop: true,
         }, s);
         const resetCfg = C.reset(s);

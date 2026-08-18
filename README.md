@@ -107,7 +107,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -199,14 +199,16 @@ The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11 line printer and the
 VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
 most 80 columns), the printer print width (72/80/100/132), optional VT100-style
-key-click sound for VT52 terminals and the PDP-11 machine-room photo backdrop
-behind the pages. The LP11 line printer defaults to the authentic 132-column
-width.
+key-click sound for VT52 terminals, the ambient PDP-11 power-supply hum and fan
+noise while the machine is on, and the PDP-11 machine-room photo backdrop behind
+the pages. The LP11 line printer defaults to the authentic 132-column width.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
 hardware matches the configuration; print widths, the teletype speed, the key
-click and the photo backdrop apply immediately. A **Restore defaults** button
-fills the form with factory values (committed by **Apply**).
+click, the machine hum and the photo backdrop apply immediately. A **Restore
+defaults** button fills the form with factory values (committed by **Apply**).
+The hum is synthesized with Web Audio on its own audio channel, so it never
+cuts off the teletype/printer or the VT52 key-click sounds.
 
 The **Control** page manages the running machine: **Reboot**, the paper-tape
 reader file selector, the drag & drop disk/tape image drop zone and the
@@ -263,6 +265,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/pdp11-panel.js`](src/pdp11-panel.js) | Front panel rendering and switch interaction |
 | [`src/pdp11-app.js`](src/pdp11-app.js) | Application glue — boots the emulator, wires the configured teletype/VT52 console, user terminals, printer and the CONFIG page |
 | [`src/config.js`](src/config.js) | User configuration (CONFIG page) — validated, persisted in localStorage |
+| [`src/hum.js`](src/hum.js) | Ambient PDP-11 power-supply hum + fan noise — synthesized on a dedicated Web Audio context, follows power/run state |
 | [`src/vt52.js`](src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based); renders nroff/man overstrike as bold/underline |
 | [`src/g60printer.js`](src/g60printer.js) | Google60-style teletype printer (Model 33 ASR / LP11) |
 | [`src/vt11.js`](src/vt11.js) | Vector graphics VT11 display |
@@ -277,6 +280,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/dl11-recv.test.js`](tests/dl11-recv.test.js) | DL11 console receive-path modular tests (^C delivery, RBUF/DONE, vector 60 interrupt) — run with `node tests/dl11-recv.test.js` |
 | [`tests/vt11.test.js`](tests/vt11.test.js) | VT11 display register/gating modular tests — run with `node tests/vt11.test.js` |
 | [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |
+| [`tests/hum.test.js`](tests/hum.test.js) | Machine-hum state-to-gain mapping modular tests — run with `node tests/hum.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

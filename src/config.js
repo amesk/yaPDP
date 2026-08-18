@@ -19,6 +19,10 @@
  *                    ~33 chars/sec). Applied live, no reboot needed.
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
+ *   - hum:           ambient PDP-11 power-supply hum + fan noise while the
+ *                    machine is powered on. Synthesized on a dedicated Web
+ *                    Audio context so it never clashes with the teletype/
+ *                    printer or VT52 key-click sounds. Applied immediately.
  *   - photoBackdrop: whether the PDP-11 machine-room photo is shown behind
  *                    the pages. Applied immediately, no reboot needed.
  *
@@ -43,6 +47,7 @@ var Config = (function () {
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
         keyClick: false,         // boolean (VT52 key click)
+        hum: true,               // boolean (ambient power-supply hum + fan noise)
         photoBackdrop: true      // boolean (PDP-11 photo behind the pages)
     });
 
@@ -97,6 +102,11 @@ var Config = (function () {
             // Absent/garbage falls back to 'authentic' (the real Model 33 ASR speed).
             teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
             keyClick: Boolean(o.keyClick),
+            // Absent key falls back to the default (keeps the ambient hum on
+            // for old configs saved before the "hum" option existed).
+            hum: typeof o.hum === "undefined"
+                ? DEFAULTS.hum
+                : Boolean(o.hum),
             // Absent key falls back to true (keeps the photo on for old configs).
             photoBackdrop: typeof o.photoBackdrop === "undefined"
                 ? DEFAULTS.photoBackdrop

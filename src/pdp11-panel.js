@@ -197,6 +197,9 @@ function examineDeposit(data) {
       }
       var key = document.getElementById('key');
       if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
+      // Powering off silences the ambient hum at once (the module also
+      // re-checks state on its own timer, so this is just for immediacy).
+      if (window.Hum) window.Hum.update();
     });
   }
 
@@ -305,6 +308,8 @@ function examineDeposit(data) {
           flushG60Console();
         }
       }
+      // Reflect the new RUN/HALT state in the ambient hum immediately.
+      if (window.Hum) window.Hum.update();
     });
   }
 
@@ -330,6 +335,8 @@ function examineDeposit(data) {
           }
         }
       }
+      // Starting the machine raises the hum back to full level at once.
+      if (window.Hum) window.Hum.update();
     });
   }
 
