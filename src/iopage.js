@@ -1947,6 +1947,16 @@ async function diskIO(controlBlock, operation, position, address, count, options
     iopage.scheduleCallback(controlBlock.callback, controlBlock, 0, position, address, count, options); // Success
 }
 
+/// --- ptrUrlFor() ---
+// Resolve the value of the "Paper tape reader file" select into a media URL.
+// Static HTML options store bare base names (e.g. "DEC-11-AJPB-PB"), while
+// options added dynamically for dropped .ptap images already carry the full
+// name. Appending ".ptap" unconditionally would double the suffix, so the
+// resolution keeps already-suffixed names as-is.
+function ptrUrlFor(name) {
+    return /\.ptap$/i.test(name) ? name : `${name}.ptap`;
+}
+
 
 
 // ================================================================
@@ -1994,11 +2004,29 @@ iopage.register(0o17777550, 2, (function() {
     const PTR_IE   = 0x0040; // Interrupt enable
     const PTR_GO   = 0x0001; // Start operation
 
+    // --- PTP11 (paper tape punch) constants ---
+    // The punch shares the same 8‑byte I/O slot as the reader (17777550),
+    // so both devices live in one access handler. Vector 074, priority 4.
+    const PTP_VECTOR   = 0o074;   // Interrupt vector
+    const PTP_PRIORITY = 4 << 5;  // Interrupt priority
+
+    // --- PTPCS (Control/Status Register) bits ---
+    const PTP_ERR  = 0x8000; // Error
+    const PTP_BUSY = 0x0800; // Busy
+    const PTP_DONE = 0x0080; // Operation complete
+    const PTP_IE   = 0x0040; // Interrupt enable
+    const PTP_GO   = 0x0001; // Start operation
+
     // --- PTR11 State ---
     let ptrcs;           // Control/Status register
     let ptrdb;           // Data buffer
     let iMask;           // Interrupt pending mask
     let ptControlblock;  // Disk I/O control block
+
+    // --- PTP11 State ---
+    let ptpcs;           // Control/Status register
+    let ptpdb;           // Data buffer
+    let ptpIMask;        // Interrupt pending mask
 
     // --- initPTR() ---
     // Initialize PTR11 paper tape reader state.
@@ -2018,6 +2046,23 @@ iopage.register(0o17777550, 2, (function() {
 
         // Forget any existing tape control block
         ptControlblock = undefined;
+
+        // PTP11 punch state: always ready (DONE set) — there is no physical
+        // tape output, so bytes are accepted and discarded.
+        ptpcs = PTP_DONE;
+        ptpdb = 0;
+        ptpIMask = 0;
+    }
+
+    // --- punchByte() ---
+    // Complete a punch operation: the byte is accepted and discarded, the
+    // operation finishes immediately and an interrupt is raised if enabled.
+    function punchByte() {
+        ptpcs = (ptpcs | PTP_DONE) & ~PTP_BUSY;
+        if (ptpcs & PTP_IE) {
+            ptpIMask = 1;
+            requestInterrupt();
+        }
     }
 
     // --- ptCallback() ---
@@ -2049,6 +2094,52 @@ iopage.register(0o17777550, 2, (function() {
     }
 
     initPTR();
+
+    // --- rewindTape() ---
+    // Rewind the loaded paper tape: forget the current I/O control block and
+    // clear error/busy state so the next read starts from the beginning of
+    // the tape. Wired to the "#ptr" select change (choosing a tape) and to
+    // the "Rewind tape" button in the Storage page.
+    function rewindTape() {
+        ptControlblock = undefined;
+        ptrcs &= ~(PTR_ERR | PTR_BUSY | PTR_GO);
+        iMask = 0;
+        ptpcs &= ~(PTP_ERR | PTP_BUSY | PTP_GO);
+        ptpIMask = 0;
+        updateTapeState(document.getElementById("ptr").value === "" ? "none" : "at-start");
+    }
+
+    // Rewind when the user picks a (different) paper tape in Storage.
+    var ptrSelect = document.getElementById("ptr");
+    if (ptrSelect) {
+        ptrSelect.addEventListener("change", rewindTape);
+    }
+    // Expose for the "Rewind tape" button in the Storage page.
+    window.ptrRewindTape = rewindTape;
+
+    // --- updateTapeState() ---
+    // Update the paper tape state indicator in the Storage page. States:
+    // "none" (no tape), "at-start" (tape at the beginning), "ready" (reading
+    // in progress) and "consumed" (tape fully read). The DOM is refreshed
+    // only on an actual state change to avoid per-byte updates.
+    let tapeState = "none";
+    function updateTapeState(state) {
+        if (tapeState === state) return;
+        tapeState = state;
+        const el = document.getElementById("ptr-state");
+        if (!el) return;
+        const label = {
+            "none": "No tape",
+            "at-start": "At start",
+            "ready": "Reading",
+            "consumed": "Consumed (end)"
+        };
+        el.textContent = label[state] || state;
+        el.className = "tape-state " + state;
+    }
+
+    // Reflect the initially selected tape.
+    updateTapeState(ptrSelect && ptrSelect.value !== "" ? "at-start" : "none");
 
     // --- Device interface ---
     return {
@@ -2088,7 +2179,7 @@ iopage.register(0o17777550, 2, (function() {
                                 ptControlblock = {
                                     cache: [],
                                     callback: ptCallback,
-                                    url: `${ptrName}.ptap`,
+                                    url: ptrUrlFor(ptrName),
                                     position: 0
                                 };
                             }
@@ -2097,7 +2188,22 @@ iopage.register(0o17777550, 2, (function() {
                         // If GO set, not ERR, not BUSY → start read
                         if ((ptrcs & (PTR_ERR | PTR_BUSY | PTR_GO)) === PTR_GO) {
                             ptrcs = (ptrcs & ~PTR_GO) | PTR_BUSY;
-                            diskIO(ptControlblock, OP_BYTE, ptControlblock.position, 0o17777552, 1, null);
+                            // End of a mounted tape: signal end‑of‑tape (ERR) so
+                            // the guest OS driver finishes the transfer instead
+                            // of waiting forever on a reader that can never
+                            // deliver another byte.
+                            const localTape = DataLoader.get(ptControlblock.url);
+                            if (localTape !== undefined && ptControlblock.position >= localTape.length) {
+                                ptrcs = (ptrcs & ~PTR_BUSY) | PTR_ERR | PTR_DONE;
+                                updateTapeState("consumed");
+                                if (ptrcs & PTR_IE) {
+                                    iMask = 1;
+                                    requestInterrupt();
+                                }
+                            } else {
+                                updateTapeState("ready");
+                                diskIO(ptControlblock, OP_BYTE, ptControlblock.position, 0o17777552, 1, null);
+                            }
                         }
                     }
                     break;
@@ -2107,6 +2213,42 @@ iopage.register(0o17777550, 2, (function() {
                     if (result >= 0) {
                         // Clear DONE on read
                         ptrcs &= ~PTR_DONE;
+                    }
+                    break;
+
+                case 0o4: // PTPCS – Paper Tape Punch Control/Status
+                    result = insertData(ptpcs, pa, data, byteFlag);
+                    if (result >= 0 && data >= 0) {
+                        // Interrupt enable edge behavior
+                        if ((result ^ ptpcs) & PTP_IE) {
+                            if (result & PTP_IE) {
+                                ptpIMask = 1;
+                                requestInterrupt();
+                            } else {
+                                ptpIMask = 0;
+                            }
+                        }
+
+                        // Update IE + GO bits only
+                        ptpcs = (ptpcs & ~(PTP_IE | PTP_GO | PTP_BUSY)) |
+                                (result & (PTP_IE | PTP_GO));
+
+                        // On GO, punch the buffered byte immediately (instant
+                        // device), then clear GO.
+                        if (ptpcs & PTP_GO) {
+                            ptpcs = (ptpcs & ~PTP_GO) | PTP_BUSY;
+                            punchByte();
+                        }
+                    }
+                    break;
+
+                case 0o6: // PTPDB – Paper Tape Punch Data Buffer
+                    result = insertData(ptpdb, pa, data, byteFlag);
+                    if (data >= 0) {
+                        ptpdb = result & 0xFF;
+                        // A punch started by GO before the data byte arrived
+                        // completes when the byte is written.
+                        if (ptpcs & PTP_BUSY) punchByte();
                     }
                     break;
 
@@ -2125,14 +2267,19 @@ iopage.register(0o17777550, 2, (function() {
         //   • Drops any pending interrupts if IE cleared
         poll: function(takeInterrupt) {
             if (takeInterrupt) {
-                // Service command completion interrupt
-                iMask = 0; // Clear mask after servicing
-                return PTR_VECTOR; // Interrupt vector
+                // Service reader (070) or punch (074) completion interrupt.
+                if (iMask) {
+                    iMask = 0; // Clear mask after servicing
+                    return PTR_VECTOR; // Reader interrupt vector
+                }
+                ptpIMask = 0;
+                return PTP_VECTOR; // Punch interrupt vector
             } else {
-                // If interrupts disabled, clear mask
+                // If interrupts disabled, clear masks
                 if (!(ptrcs & PTR_IE)) iMask = 0;
+                if (!(ptpcs & PTP_IE)) ptpIMask = 0;
                 // Return priority level + pending flag
-                return PTR_PRIORITY | (iMask ? 1 : 0);
+                return PTR_PRIORITY | ((iMask || ptpIMask) ? 1 : 0);
             }
         },
 
@@ -2144,7 +2291,6 @@ iopage.register(0o17777550, 2, (function() {
         reset: initPTR
     };
 })());
-
 
 
 // ================================================================

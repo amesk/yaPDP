@@ -1520,6 +1520,40 @@ body.crt-effects .vt52-crt::after {
     color: #8a857a;
 }
 
+/* Paper tape reader state indicator (Storage page). */
+.tape-state {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    vertical-align: middle;
+}
+
+.tape-state.none {
+    color: #8a857a;
+}
+
+.tape-state.at-start {
+    color: #7fbf7f;
+    border-color: #4a7a4a;
+    background: rgba(79, 122, 79, 0.15);
+}
+
+.tape-state.ready {
+    color: #7fb8d8;
+    border-color: #3a6a8a;
+    background: rgba(63, 106, 138, 0.15);
+}
+
+.tape-state.consumed {
+    color: #d08080;
+    border-color: #8a4a4a;
+    background: rgba(138, 74, 74, 0.15);
+}
+
 /* CONFIG page tabbed layout: a top tab bar splits the growing configuration
    into Equipment (hardware) and Visual enhancements (look & feel) panels.
    Both panels live in the same grid cell (the inactive one is hidden with

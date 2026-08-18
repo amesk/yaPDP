@@ -920,7 +920,12 @@
               <option value="lander">Lunar Lander</option>
               <option value="bootcode">Bootcode</option>
             </select>
-            <span class="config-hint">Loaded as <code>name.ptap</code> from the media directory.</span>
+            &nbsp;
+            <button type="button" id="ptr-rewind" onclick="ptrRewindTape()"
+              title="Rewind the paper tape to the beginning">Rewind tape</button>
+            <span id="ptr-state" class="tape-state none">No tape</span>
+            <span class="config-hint">Loaded as <code>name.ptap</code> from the media directory. Dropped
+              <code>.ptap</code> files also appear here. Rewind restarts the tape.</span>
           </div>
         </div>
 

@@ -25,7 +25,7 @@
 (function () {
     // Known device image URL shapes used for user feedback.
     // (Not an allow-list — any name is mounted; this only improves hints.)
-    var KNOWN_URL_RE = /^(rk[0-4]|rl[0-3]|rp[0-4]|tm[0-3]|ra[0-2])\.(dsk|tap)$/;
+    var KNOWN_URL_RE = /^(rk[0-4]|rl[0-3]|rp[0-4]|tm[0-3]|ra[0-2])\.(dsk|tap)$|\.ptap$/;
 
     // Total number of images the user has mounted this session (via
     // drag & drop or restored from IndexedDB). Kept separate from the
@@ -247,6 +247,48 @@
         }
         select.disabled = urls.length === 0;
         if (remove) remove.disabled = urls.length === 0;
+
+        // Keep the "Paper tape reader file" list in sync so a .ptap image
+        // imported via drag & drop (or restored from IndexedDB) can be chosen
+        // as the tape read by the PTR11 reader.
+        refreshPtrList();
+    }
+
+    // Rebuild the dynamic (dropped) part of the "Paper tape reader file"
+    // select (#ptr). Static HTML options are preserved; options added here
+    // are tagged with data-drop="1" and re-created on every refresh.
+    // Duplicates against the static base names are skipped.
+    function refreshPtrList() {
+        var select = document.getElementById("ptr");
+        if (!select) return;
+
+        // Remove previously added dynamic options and collect the base names
+        // (lower-cased, without the ".ptap" suffix) already offered statically.
+        var existing = {};
+        // Copy the live HTMLOptionsCollection first so removing dynamic
+        // options during iteration does not shift indices and skip entries.
+        Array.prototype.slice.call(select.options).forEach(function (opt) {
+            if (opt.getAttribute("data-drop") === "1") {
+                select.removeChild(opt);
+            } else {
+                var base = String(opt.value || "").toLowerCase();
+                if (base.endsWith(".ptap")) base = base.slice(0, -5);
+                existing[base] = true;
+            }
+        });
+
+        DataLoader.list().forEach(function (url) {
+            var base = String(url).toLowerCase();
+            if (!base.endsWith(".ptap")) return;
+            base = base.slice(0, -5);
+            if (existing[base]) return;
+            existing[base] = true;
+            var opt = document.createElement("option");
+            opt.value = url; // full url so PTR11 resolves it as-is
+            opt.textContent = url;
+            opt.setAttribute("data-drop", "1");
+            select.appendChild(opt);
+        });
     }
 
     function removeMounted(url) {

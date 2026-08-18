@@ -231,6 +231,40 @@ async function run() {
     console.log("PASS test 6: createCache packs bytes little-endian");
   }
 
+  // ---- Test 7: ptrUrlFor resolves paper-tape select values ---------
+  {
+    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    const fn = extractBlock(src, "function ptrUrlFor(name)");
+    const sb = buildSandbox();
+    vm.createContext(sb);
+    vm.runInContext(fn, sb);
+
+    assert.strictEqual(sb.ptrUrlFor("DEC-11-AJPB-PB"), "DEC-11-AJPB-PB.ptap");
+    assert.strictEqual(sb.ptrUrlFor("lander"), "lander.ptap");
+    assert.strictEqual(sb.ptrUrlFor("bootcode"), "bootcode.ptap");
+    assert.strictEqual(sb.ptrUrlFor("foo.ptap"), "foo.ptap");
+    assert.strictEqual(sb.ptrUrlFor("MYTAPE.PTAP"), "MYTAPE.PTAP");
+    console.log("PASS test 7: ptrUrlFor resolves paper-tape select values");
+  }
+
+  // ---- Test 8: fetchBlock serves a mounted .ptap without network ---
+  {
+    const sb = buildSandbox();
+    makeContext(sb, sections);
+
+    const bytes = new Uint8Array([0x55, 0xAA, 0x01, 0x02]);
+    sb.DataLoader.mount("foo.ptap", bytes);
+
+    const ctrl = { cache: [], url: "foo.ptap" };
+    const status = await sb.fetchBlock(ctrl, 0);
+
+    assert.strictEqual(status, 200);
+    assert.strictEqual(sb.__fetchCalls, 0, "HTTP fetch must NOT be called for mounted .ptap");
+    assert.strictEqual(ctrl.cache[0][0], 0xAA55); // little-endian packed word
+    assert.strictEqual(ctrl.cache[0][1], 0x0201);
+    console.log("PASS test 8: fetchBlock serves mounted .ptap without HTTP");
+  }
+
   console.log("\nAll DataLoader tests passed.");
 }
 
