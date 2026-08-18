@@ -487,12 +487,11 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
     }
     term.clearScreen();
 
-    // Size canvas to match font metrics for 80x24
+    // Size canvas to match font metrics for 80x24 (plus the inner margin).
+    // resizeCanvas() keeps the geometry (grid + screenPadding) in one place.
     var charW = term.canvas.charWidth;
     if (charW > 0) {
-      canvas.width = 80 * charW;
-      canvas.height = 24 * term.fontHeight;
-      term.resetCanvasContext(term.canvas.ctx);
+      term.resizeCanvas();
       term.renderCanvas();
     }
 

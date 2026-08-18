@@ -317,7 +317,7 @@
         constructor({ unit, receiveRoutine, textArea, screenCanvas,
                       rows = DEFAULT_ROWS, cols = DEFAULT_COLS,
                       allowCanvas = false, noHardcopyFallback = false,
-                      fontSize = 16 }) {
+                      fontSize = 16, screenPadding = 12 }) {
 
             // External wiring
             this.unit = unit;
@@ -365,6 +365,11 @@
             this.textFont   = this.fontSize + "px monospace";
             this.boldFont   = "bold " + this.fontSize + "px monospace";
             this.underlineHeight = Math.max(1, Math.floor(this.fontSize / 8));
+
+            // Inner margin (px) around the cell grid so glyphs don't touch the
+            // CRT bezel edge. The canvas is widened by 2*screenPadding and the
+            // margin is painted with the background colour (renderCanvas).
+            this.screenPadding = screenPadding;
 
             // Sparse screen buffer:
             // Each row is an array of { c: charCode, a: attributes }.
@@ -548,6 +553,31 @@
         }
 
         // ---------------------------------------------------------------------------
+        // Cell-to-pixel helpers
+        // ---------------------------------------------------------------------------
+        // Every cell is offset by the inner margin (screenPadding) so that glyphs
+        // sit clear of the CRT bezel edge on all four sides.
+        cellX(col) {
+            return this.screenPadding + col * this.canvas.charWidth;
+        }
+        cellY(row) {
+            return this.screenPadding + row * this.fontHeight;
+        }
+
+        // ---------------------------------------------------------------------------
+        // Size the canvas to the current grid plus the inner margin
+        // ---------------------------------------------------------------------------
+        // Resizing a canvas wipes its drawing state (font/fillStyle), so the
+        // context is restored afterwards. Single source of truth for the size,
+        // used on startup (host) and on DECCOLM 80/132 switching.
+        resizeCanvas() {
+            if (!this.allowCanvas || !this.screenCanvas) return;
+            this.screenCanvas.width  = this.screenPadding * 2 + this.cols * this.canvas.charWidth;
+            this.screenCanvas.height = this.screenPadding * 2 + this.rows * this.fontHeight;
+            this.resetCanvasContext(this.canvas.ctx);
+        }
+
+        // ---------------------------------------------------------------------------
         // Render a run of text with like attributes
         // ---------------------------------------------------------------------------
         // This draws:
@@ -557,8 +587,8 @@
         renderText(row, col, attr, string) {
             const ctx = this.canvas.ctx;
             const h = this.fontHeight;
-            const x = col * this.canvas.charWidth;
-            const y = row * h;
+            const x = this.cellX(col);
+            const y = this.cellY(row);
             const w = string.length * this.canvas.charWidth;
 
             // Background (reverse video swaps fg/bg)
@@ -589,8 +619,8 @@
         renderClear(row, col, end) {
             const ctx = this.canvas.ctx;
             const h = this.fontHeight;
-            const x = col * this.canvas.charWidth;
-            const y = row * h;
+            const x = this.cellX(col);
+            const y = this.cellY(row);
             const w = (end - col) * this.canvas.charWidth;
 
             this.setForeground(false); // background colour
@@ -664,8 +694,8 @@
 
             const ctx = this.canvas.ctx;
             const h = this.fontHeight;
-            const x = col * this.canvas.charWidth;
-            const y = row * h;
+            const x = this.cellX(col);
+            const y = this.cellY(row);
 
             if (this.canvas.blinkCycle) {
                 // Cursor ON
@@ -1435,9 +1465,7 @@
                         this.clearScreen();
 
                         if (this.allowCanvas) {
-                            this.screenCanvas.width  = this.cols * this.canvas.charWidth;
-                            this.screenCanvas.height = this.rows * this.fontHeight;
-                            this.resetCanvasContext(this.canvas.ctx);
+                            this.resizeCanvas();
                         }
                         break;
 

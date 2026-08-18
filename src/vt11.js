@@ -31,6 +31,15 @@ iopage.register(0o17772000, 4, (function () {
     const WIDTH = 1024;
     const HEIGHT = 768;
 
+    // Visual padding (px) inset between the emulated 1024x768 drawing area and
+    // the CRT bezel, so vectors/text don't touch the screen edge. A uniform
+    // scale keeps geometry undistorted; because the canvas is 4:3, the
+    // horizontal inset ends up a bit wider than the vertical one.
+    const VT11_PAD = 24;                                  // vertical inset (px)
+    const VT11_SCALE = (HEIGHT - 2 * VT11_PAD) / HEIGHT;  // uniform scale factor
+    const VT11_PAD_X = (WIDTH - WIDTH * VT11_SCALE) / 2;  // horizontal inset (px)
+    const VT11_PAD_Y = VT11_PAD;
+
     // Timing model (soft, not cycle-accurate)
     const PROCESSOR_TIMESLICE_MS = 4;
     const PROCESSOR_RESCHEDULE_MS = 15;
@@ -364,6 +373,18 @@ iopage.register(0o17772000, 4, (function () {
         let ctxFG = null;
         let initialized = false;
 
+        // Map the emulated 1024x768 space into a padded viewport (VT11_PAD)
+        // so vectors and text are inset from the CRT bezel. A uniform scale
+        // preserves geometry. Guarded so test stubs (contexts without transform
+        // methods) keep working.
+        function applyViewTransform(ctx) {
+            if (ctx && typeof ctx.translate === "function" &&
+                typeof ctx.scale === "function") {
+                ctx.translate(VT11_PAD_X, VT11_PAD_Y);
+                ctx.scale(VT11_SCALE, VT11_SCALE);
+            }
+        }
+
         function initDOM() {
             if (initialized) return;
 
@@ -376,6 +397,7 @@ iopage.register(0o17772000, 4, (function () {
             ctxBG.strokeStyle = "#80FF80";   // bright green vectors
             ctxBG.fillStyle = "#55BB55";     // slightly softer text
             ctxBG.font = "12px monospace";
+            applyViewTransform(ctxBG);
 
             canvasFG = document.createElement('canvas');
             canvasFG.width = WIDTH;
@@ -393,6 +415,7 @@ iopage.register(0o17772000, 4, (function () {
             container.appendChild(canvasFG);
 
             ctxFG = canvasFG.getContext("2d");
+            applyViewTransform(ctxFG);
 
             initialized = true;
         }
@@ -516,8 +539,14 @@ iopage.register(0o17772000, 4, (function () {
                 let rect = canvasFG.getBoundingClientRect();
                 let scaleX = rect.width > 0 ? canvasFG.width / rect.width : 1;
                 let scaleY = rect.height > 0 ? canvasFG.height / rect.height : 1;
-                mouseX = (evt.clientX - rect.left) * scaleX;
-                mouseY = (evt.clientY - rect.top) * scaleY;
+                let rawX = (evt.clientX - rect.left) * scaleX;
+                let rawY = (evt.clientY - rect.top) * scaleY;
+
+                // Invert the render view transform (translate + uniform scale)
+                // to recover the emulated VT coordinates (top-left origin),
+                // which is the space the light-pen hit test runs in.
+                mouseX = (rawX - VT11_PAD_X) / VT11_SCALE;
+                mouseY = (rawY - VT11_PAD_Y) / VT11_SCALE;
             }, false);
         }
 
