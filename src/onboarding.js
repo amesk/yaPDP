@@ -216,13 +216,14 @@ var Onboarding = (function () {
                 '<span class="onboard-title">Welcome to yaPDP — the PDP-11/70</span>' +
                 '<p class="onboard-intro">Here is how to get going in 30 seconds:</p>' +
                 '<ol class="onboard-steps">' +
-                    '<li>Open the <b>Teletype</b> page in the left sidebar.</li>' +
+                    '<li>Open the <b>Console</b> page in the left sidebar.</li>' +
                     '<li>At the <code>Boot></code> prompt type one of:</li>' +
                 '</ol>' +
                 '<ul class="onboard-boots" id="onboard-boots"></ul>' +
                 '<p class="onboard-drag">Missing an OS? Drag a <code>.dsk</code> / ' +
-                    '<code>.tap</code> / <code>.ptap</code> image into the <b>Drop zone</b> ' +
-                    'on the Panel, or open <b>Info</b> for the full OS list.</p>' +
+                    '<code>.tap</code> / <code>.ptap</code> / <code>.zst</code> image ' +
+                    'into the <b>Drop zone</b> on the <b>Storage</b> page, or open ' +
+                    '<b>Info</b> for the full OS list.</p>' +
                 '<button type="button" class="onboard-close">Got it</button>' +
             '</div>'
         );
