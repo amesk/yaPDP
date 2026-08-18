@@ -8,8 +8,9 @@
  *
  * The flag is written to localStorage only when the user dismisses the
  * overlay, so closing the app before reading it shows the hint again on
- * the next launch. A "Show first-run hint again" button on the Info page
- * calls showAgain(), which clears the flag and re-opens the overlay.
+ * the next launch. A "Show first-run hint" checkbox on the CONFIG|BEHAVIOUR
+ * page calls setEnabled(), which clears or sets the flag, so the hint can be
+ * re-shown on the next launch at any time.
  *
  * Single source of truth:
  *   The url -> OS -> boot-command mapping is NOT copied here. It is parsed
@@ -70,6 +71,23 @@ var Onboarding = (function () {
         try {
             storage.removeItem(ONBOARDING_KEY);
         } catch (err) { /* ignore */ }
+    }
+
+    // Whether the first-run hint should appear at launch: true while the
+    // "seen" flag is unset. Backs the CONFIG|BEHAVIOUR "Show first-run hint"
+    // checkbox (see syncHintCheckbox in the overlay section).
+    function isEnabled() {
+        return shouldShowOnboarding(getStorage());
+    }
+
+    // Turn the first-run hint on (clear the seen flag so it shows again on the
+    // next launch) or off (mark it as seen so it stays hidden).
+    function setEnabled(enabled) {
+        if (enabled) {
+            clearFlag(getStorage());
+        } else {
+            markSeen(getStorage());
+        }
     }
 
     // Devices whose boot loader prompts with a symbol other than `Boot>`.
@@ -174,7 +192,6 @@ var Onboarding = (function () {
 
     var overlay = null;
     var refreshTimer = null;
-    var wired = false;
 
     function ensureOverlay() {
         if (overlay) return overlay;
@@ -286,6 +303,15 @@ var Onboarding = (function () {
         stopRefresh();
         if (overlay) overlay.classList.remove("visible");
         markSeen(getStorage());
+        syncHintCheckbox();
+    }
+
+    // Keep the CONFIG|BEHAVIOUR "Show first-run hint" checkbox in sync with the
+    // underlying flag: dismissing the overlay marks the hint as seen, so the
+    // checkbox must reflect that it will not auto-show on the next launch.
+    function syncHintCheckbox() {
+        var cb = document.getElementById("config-showFirstRunHint");
+        if (cb) cb.checked = isEnabled();
     }
 
     // Called from pdp11-app.js during bootstrap — first-run gate.
@@ -293,22 +319,9 @@ var Onboarding = (function () {
         if (bootTable === null) {
             bootTable = loadBootTable(document.getElementById("guest-os-table"));
         }
-        if (!wired) {
-            wired = true;
-            // Wire the "Show first-run hint again" button on the Info page.
-            document.addEventListener("click", function (e) {
-                var btn = e.target.closest && e.target.closest("#onboard-show-again");
-                if (btn) showAgain();
-            });
-        }
         if (shouldShowOnboarding(getStorage())) {
             show();
         }
-    }
-
-    function showAgain() {
-        clearFlag(getStorage());
-        show();
     }
 
     return {
@@ -316,7 +329,8 @@ var Onboarding = (function () {
         init: init,
         show: show,
         hide: hide,
-        showAgain: showAgain,
+        isEnabled: isEnabled,
+        setEnabled: setEnabled,
         shouldShowOnboarding: shouldShowOnboarding,
         markSeen: markSeen,
         clearFlag: clearFlag,

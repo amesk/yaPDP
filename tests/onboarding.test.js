@@ -22,9 +22,11 @@ const assert = require("assert");
 
 const SOURCE_PATH = path.join(__dirname, "..", "src", "onboarding.js");
 
-function loadModule() {
+// `extra` lets tests provide a mock window (e.g. window.localStorage) so the
+// isEnabled/setEnabled bridge, which reads the module's own storage, is testable.
+function loadModule(extra) {
     const code = fs.readFileSync(SOURCE_PATH, "utf8");
-    const sandbox = { console };
+    const sandbox = Object.assign({ console }, extra || {});
     vm.createContext(sandbox);
     vm.runInContext(code, sandbox);
     // `var Onboarding = ...` at top level becomes a property of the sandbox.
@@ -98,6 +100,25 @@ function run() {
         On.clearFlag(s);
         assert.strictEqual(On.shouldShowOnboarding(s), true,
             "clearFlag should reset the flag");
+    }
+
+    // ---- isEnabled / setEnabled (CONFIG|BEHAVIOUR checkbox bridge) -----
+    {
+        const storage = makeStorage();
+        const On2 = loadModule({ window: { localStorage: storage } });
+        assert.strictEqual(On2.isEnabled(), true, "no flag -> hint enabled");
+        On2.setEnabled(false);
+        assert.strictEqual(On2.isEnabled(), false, "setEnabled(false) marks seen");
+        assert.strictEqual(On2.shouldShowOnboarding(storage), false,
+            "setEnabled(false) should persist the seen flag");
+        On2.setEnabled(true);
+        assert.strictEqual(On2.isEnabled(), true, "setEnabled(true) clears the flag");
+        assert.strictEqual(On2.shouldShowOnboarding(storage), true,
+            "setEnabled(true) should persist the cleared flag");
+        // Storage unavailable -> isEnabled falls back to false, setEnabled no-ops.
+        const On3 = loadModule();
+        assert.strictEqual(On3.isEnabled(), false, "no storage -> hint disabled");
+        On3.setEnabled(true); // must not throw
     }
 
     // ---- parseBootRow ----------------------------------------------

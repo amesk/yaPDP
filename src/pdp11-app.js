@@ -672,6 +672,7 @@ function initConfigForm() {
   var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
   var confirmRebootEl = document.getElementById('config-confirmReboot');
+  var firstRunEl = document.getElementById('config-showFirstRunHint');
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
 
@@ -695,6 +696,11 @@ function initConfigForm() {
   if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   if (confirmRebootEl) confirmRebootEl.checked = cfg.confirmReboot;
+  // The first-run hint is not part of the persisted Config: its state lives in
+  // the onboarding flag, so read it straight from the Onboarding module.
+  if (firstRunEl && typeof Onboarding !== 'undefined') {
+    firstRunEl.checked = Onboarding.isEnabled();
+  }
   applyPhotoBackdrop(cfg.photoBackdrop);
   applyCRTEffects(cfg.crtEffects);
 
@@ -886,6 +892,14 @@ function initConfigForm() {
     confirmRebootEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ confirmReboot: this.checked });
       updateDirtyUI();
+    });
+  }
+  // First-run hint applies immediately (no reload): toggling the checkbox
+  // clears/sets the onboarding "seen" flag, so the welcome overlay shows or
+  // stays hidden on the next launch.
+  if (firstRunEl && typeof Onboarding !== 'undefined') {
+    firstRunEl.addEventListener('change', function () {
+      Onboarding.setEnabled(this.checked);
     });
   }
 
