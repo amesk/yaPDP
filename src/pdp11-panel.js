@@ -341,14 +341,70 @@ function examineDeposit(data) {
   }
 
   // --- REBOOT button (data-action="reboot") ---
-  var reboot = document.querySelector('[data-action="reboot"]');
-  if (reboot) {
-    reboot.addEventListener('click', function () {
-      if (g60Console) g60Console.writeChar(10);
-      // Stop any runaway teletype output backlog before restarting the CPU,
-      // so the Boot> prompt is immediately visible and usable.
-      flushG60Console();
-      boot();
-    });
+  // The button lives on both console pages (teletype + VT52), so bind the same
+  // handler to every instance. Unless the user disabled the confirmation on the
+  // CONFIG -> Behaviour tab, ask first so a stray click near the console cannot
+  // wipe a running guest.
+  function doReboot() {
+    if (g60Console) g60Console.writeChar(10);
+    // Stop any runaway teletype output backlog before restarting the CPU,
+    // so the Boot> prompt is immediately visible and usable.
+    flushG60Console();
+    boot();
   }
+
+  // Confirmation overlay (reuses the onboarding modal style, see css/pdp11.css).
+  var rebootConfirmOverlay = null;
+
+  function ensureRebootConfirm() {
+    if (rebootConfirmOverlay) return rebootConfirmOverlay;
+    rebootConfirmOverlay = document.createElement('div');
+    rebootConfirmOverlay.id = 'reboot-confirm-overlay';
+    rebootConfirmOverlay.className = 'onboard-overlay';
+    rebootConfirmOverlay.innerHTML =
+      '<div class="onboard-box">' +
+        '<span class="onboard-title">Reboot the machine?</span>' +
+        '<p class="onboard-intro">This restarts the emulated PDP-11 and boots the ' +
+        'built-in default loader.</p>' +
+        '<label class="onboard-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
+        'Don\'t show this warning anymore</label>' +
+        '<button type="button" class="onboard-close" data-reboot-action="cancel">Cancel</button>' +
+        '<button type="button" class="onboard-close" data-reboot-action="reboot">Reboot</button>' +
+      '</div>';
+    rebootConfirmOverlay.addEventListener('click', function (e) {
+      var action = e.target.getAttribute && e.target.getAttribute('data-reboot-action');
+      if (action === 'cancel' || e.target === rebootConfirmOverlay) {
+        rebootConfirmOverlay.classList.remove('visible');
+        return;
+      }
+      if (action === 'reboot') {
+        var dontAsk = document.getElementById('reboot-dont-ask');
+        if (dontAsk && dontAsk.checked && typeof Config !== 'undefined') {
+          Config.set({ confirmReboot: false });
+        }
+        rebootConfirmOverlay.classList.remove('visible');
+        doReboot();
+      }
+    });
+    document.body.appendChild(rebootConfirmOverlay);
+    return rebootConfirmOverlay;
+  }
+
+  function showRebootConfirm() {
+    var overlay = ensureRebootConfirm();
+    var dontAsk = document.getElementById('reboot-dont-ask');
+    if (dontAsk) dontAsk.checked = false; // never carry a stale "don't ask" tick
+    overlay.classList.add('visible');
+  }
+
+  document.querySelectorAll('[data-action="reboot"]').forEach(function (reboot) {
+    reboot.addEventListener('click', function () {
+      var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+      if (!cfg || cfg.confirmReboot === false) {
+        doReboot();
+        return;
+      }
+      showRebootConfirm();
+    });
+  });
 })();

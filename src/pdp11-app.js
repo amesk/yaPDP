@@ -671,6 +671,7 @@ function initConfigForm() {
   var crtEl = document.getElementById('config-crtEffects');
   var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
+  var confirmRebootEl = document.getElementById('config-confirmReboot');
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
 
@@ -693,6 +694,7 @@ function initConfigForm() {
   if (crtEl) crtEl.checked = cfg.crtEffects;
   if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
+  if (confirmRebootEl) confirmRebootEl.checked = cfg.confirmReboot;
   applyPhotoBackdrop(cfg.photoBackdrop);
   applyCRTEffects(cfg.crtEffects);
 
@@ -719,7 +721,8 @@ function initConfigForm() {
       vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
       crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
       hum: (humEl) ? humEl.checked : cfg.hum,
-      photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop
+      photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop,
+      confirmReboot: (confirmRebootEl) ? confirmRebootEl.checked : cfg.confirmReboot
     };
   }
 
@@ -741,7 +744,8 @@ function initConfigForm() {
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
       form.crtEffects !== current.crtEffects ||
       form.hum !== current.hum ||
-      form.photoBackdrop !== current.photoBackdrop;
+      form.photoBackdrop !== current.photoBackdrop ||
+      form.confirmReboot !== current.confirmReboot;
   }
 
   // Re-tune the live console/printer instances from a full config snapshot.
@@ -876,6 +880,14 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // Reboot confirmation applies immediately (no reload): the REBOOT handler
+  // re-reads the config on every click.
+  if (confirmRebootEl) {
+    confirmRebootEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ confirmReboot: this.checked });
+      updateDirtyUI();
+    });
+  }
 
   if (resetBtn) {
     resetBtn.addEventListener('click', function () {
@@ -893,6 +905,7 @@ function initConfigForm() {
       if (crtEl) crtEl.checked = d.crtEffects;
       if (humEl) humEl.checked = d.hum;
       if (pbEl) pbEl.checked = d.photoBackdrop;
+      if (confirmRebootEl) confirmRebootEl.checked = d.confirmReboot;
       // The form now shows factory values; nothing is persisted until Apply.
       updateDirtyUI();
     });

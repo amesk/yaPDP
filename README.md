@@ -186,7 +186,7 @@ Use the sidebar to switch between:
 - **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
 - **Printer** — the LP11 line printer page, shown only when configured
 - **Display** — the VT11 vector-graphics CRT page, shown only when configured
-- **Control** — machine management: reboot, paper-tape reader, disk/tape image import and mounted images
+- **Storage** — storage media: paper-tape reader, disk/tape image import and mounted images
 - **Config** — configure the emulated peripherals (persisted between sessions)
 - **Info** — detailed instructions and OS reference
 
@@ -205,10 +205,10 @@ shimmer and a vertical-hold roll band), the ambient PDP-11 power-supply hum and
 fan noise while the machine is on, and the PDP-11 machine-room photo backdrop
 behind the pages. The LP11 line printer defaults to the authentic 132-column
 width.
-The form is split into two tabs — **Equipment** (console terminal, user
-terminals, LP11 printer, VT11 display, print widths and teletype speed) and
+The form is split into three tabs — **Equipment** (console terminal, user
+terminals, LP11 printer, VT11 display, print widths and teletype speed),
 **Visual enhancements** (key click, reverse video, CRT effects, machine hum,
-photo backdrop) — with the
+photo backdrop) and **Behaviour** (reboot confirmation) — with the
 **Apply** and **Restore defaults** actions in a bar below the tabs.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
@@ -219,10 +219,17 @@ factory values (committed by **Apply**).
 The hum is synthesized with Web Audio on its own audio channel, so it never
 cuts off the teletype/printer or the VT52 key-click sounds.
 
-The **Control** page manages the running machine: **Reboot**, the paper-tape
-reader file selector, the drag & drop disk/tape image drop zone and the
+The **Storage** page manages the storage media: the paper-tape reader file
+selector, the drag & drop disk/tape image drop zone and the
 mounted-images/Unmount list. Images dropped there are mounted into DataLoader
 and persist in IndexedDB across sessions.
+
+The **REBOOT** button is pinned to the top-right corner of the window
+(mirroring the fullscreen toggle in the bottom-right corner). Pressing it
+restarts the machine and boots the built-in default loader; by default a
+confirmation dialog asks first, with a "Don't show this warning anymore"
+option. The warning can be restored at any time from the Config page's
+**Behaviour** tab.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer

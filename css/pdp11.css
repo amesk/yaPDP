@@ -362,6 +362,23 @@
     background: #3a3224;
 }
 
+/* Reboot confirmation dialog: the "don't ask again" checkbox above the buttons. */
+.onboard-dontask {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 16px;
+    font-size: 13px;
+    color: #b8b0a0;
+    cursor: pointer;
+    user-select: none;
+}
+
+.onboard-dontask input {
+    accent-color: #c8a860;
+    cursor: pointer;
+}
+
 /* Config "unapplied changes" dialog: side-by-side action buttons. */
 #config-leave-overlay .onboard-close+.onboard-close {
     margin-left: 10px;
@@ -1011,6 +1028,35 @@ body {
     overflow: hidden;
 }
 
+/* ===== REBOOT button (floating, top-right of the window) ===== */
+/* Mirrors the fullscreen toggle (bottom-right): a single fixed button above
+   the app content but below the modal overlays so they keep focus. Styled
+   like the old Control-page button (config-control button look). */
+.console-reboot {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+    user-select: none;
+}
+
+.console-reboot:hover {
+    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+    border-color: #ffd27f;
+    color: #fff3d6;
+}
+
 /* Real-printer actions (Print / Save .txt) below the machine */
 .printer-actions {
     margin-top: 8px;
@@ -1373,8 +1419,8 @@ body.crt-effects .vt52-crt::after {
     line-height: 1.5;
 }
 
-/* ===== Control page (machine management) ===== */
-#page-control.active {
+/* ===== Storage page (media management) ===== */
+#page-storage.active {
     display: block;
     overflow-y: auto;
     overflow-x: hidden;
@@ -1387,16 +1433,16 @@ body.crt-effects .vt52-crt::after {
     background: rgba(28, 25, 21, 0.82);
 }
 
-#page-control.active h2,
-#page-control.active h3 {
+#page-storage.active h2,
+#page-storage.active h3 {
     color: #f0e6c8;
 }
 
-#page-control.active p {
+#page-storage.active p {
     line-height: 1.5;
 }
 
-#page-control.active code {
+#page-storage.active code {
     color: #d4c4a0;
     background: rgba(0, 0, 0, 0.3);
     padding: 1px 4px;
@@ -1574,7 +1620,7 @@ body.no-photo-bg .app-layout {
 }
 
 body.no-photo-bg #page-config.active,
-body.no-photo-bg #page-control.active,
+body.no-photo-bg #page-storage.active,
 body.no-photo-bg #page-instructions.active {
     /* Solid card on the dark backdrop: keeps the form readable and separates
        it from the window background (there is no photo to sit a translucent

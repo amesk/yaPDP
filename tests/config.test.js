@@ -13,7 +13,8 @@
  *   teletypeSpeed (authentic/fast), keyClick (bool),
  *   vt52ReverseVideo (bool, historical VT52 reverse-video mode),
  *   crtEffects (bool, pure-CSS CRT flicker/roll simulation),
- *   hum (bool, ambient power-supply hum), photoBackdrop (bool).
+ *   hum (bool, ambient power-supply hum), photoBackdrop (bool),
+ *   confirmReboot (bool, reboot confirmation dialog).
  *
  * Run with:  node tests/config.test.js
  *
@@ -73,6 +74,7 @@ function run() {
             crtEffects: true,
             hum: true,
             photoBackdrop: true,
+            confirmReboot: true,
         }, "defaults should match the documented values");
     }
 
@@ -147,6 +149,12 @@ function run() {
         assert.strictEqual(C.validate({}).photoBackdrop, true);
         assert.strictEqual(C.validate({ photoBackdrop: 1 }).photoBackdrop, true);
         assert.strictEqual(C.validate({ photoBackdrop: 0 }).photoBackdrop, false);
+
+        // confirmReboot: absent -> true (keeps the confirmation on for old
+        // configs), otherwise coerced to boolean.
+        assert.strictEqual(C.validate({}).confirmReboot, true);
+        assert.strictEqual(C.validate({ confirmReboot: 1 }).confirmReboot, true);
+        assert.strictEqual(C.validate({ confirmReboot: 0 }).confirmReboot, false);
     }
 
     // ---- load / save round-trip ------------------------------------
@@ -165,6 +173,7 @@ function run() {
             crtEffects: false,
             hum: true,
             photoBackdrop: false,
+            confirmReboot: false,
         };
         C.save(cfg, s);
         assert.deepStrictEqual(plain(C.load(s)), cfg,

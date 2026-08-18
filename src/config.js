@@ -28,6 +28,8 @@
  *   - crtEffects:    pure-CSS CRT simulation on VT52 terminals: brightness
  *                    flicker, scanline shimmer and a vertical-hold roll band.
  *                    Applied immediately, no reboot needed.
+ *   - confirmReboot: whether the REBOOT button asks for confirmation before
+ *                    restarting the machine (BEHAVIOUR tab of the CONFIG page).
  *
  * Persistence uses localStorage under the key "yapdp.config.v1" (the same
  * pattern as Onboarding in onboarding.js). The pure helpers validate/load/
@@ -53,7 +55,8 @@ var Config = (function () {
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
         crtEffects: true,        // boolean (VT52 pure-CSS CRT flicker/roll simulation)
         hum: true,               // boolean (ambient power-supply hum + fan noise)
-        photoBackdrop: true      // boolean (PDP-11 photo behind the pages)
+        photoBackdrop: true,     // boolean (PDP-11 photo behind the pages)
+        confirmReboot: true      // boolean (ask before rebooting the machine)
     });
 
     // LP11 line-printer widths (a real LP11 is a 132-column machine).
@@ -121,7 +124,12 @@ var Config = (function () {
             // Absent key falls back to true (keeps the photo on for old configs).
             photoBackdrop: typeof o.photoBackdrop === "undefined"
                 ? DEFAULTS.photoBackdrop
-                : Boolean(o.photoBackdrop)
+                : Boolean(o.photoBackdrop),
+            // Absent key falls back to true (keeps the reboot confirmation on
+            // for old configs saved before the option existed).
+            confirmReboot: typeof o.confirmReboot === "undefined"
+                ? DEFAULTS.confirmReboot
+                : Boolean(o.confirmReboot)
         };
     }
 

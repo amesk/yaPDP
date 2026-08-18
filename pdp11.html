@@ -82,11 +82,13 @@
         <circle cx="7" cy="9" r="1" fill="currentColor" opacity="0.6" />
         <circle cx="9.4" cy="9" r="1" fill="currentColor" opacity="0.6" />
       </symbol>
-      <symbol id="icon-control" viewBox="0 0 24 24">
-        <!-- power symbol: arc open at the top -->
-        <path d="M8 7.5a6 6 0 1 0 8 0" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"
-          opacity="0.9" />
-        <line x1="12" y1="2.5" x2="12" y2="8.5" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" />
+      <symbol id="icon-storage" viewBox="0 0 24 24">
+        <!-- disk stack (three platters) -->
+        <ellipse cx="12" cy="6" rx="9" ry="2.6" fill="currentColor" opacity="0.15" stroke="currentColor"
+          stroke-width="1.3" />
+        <ellipse cx="12" cy="6" rx="5" ry="1.4" fill="none" stroke="currentColor" stroke-width="1" opacity="0.5" />
+        <path d="M3 6v12c0 1.4 4 2.6 9 2.6s9-1.2 9-2.6V6" fill="none" stroke="currentColor" stroke-width="1.3" />
+        <path d="M3 12c0 1.4 4 2.6 9 2.6s9-1.2 9-2.6" fill="none" stroke="currentColor" stroke-width="1.3" />
       </symbol>
       <symbol id="icon-config" viewBox="0 0 24 24">
         <!-- gear ring -->
@@ -178,11 +180,11 @@
           </svg></span>
         Display
       </div>
-      <div class="nav-btn" data-page="control">
+      <div class="nav-btn" data-page="storage">
         <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
-            <use href="#icon-control" />
+            <use href="#icon-storage" />
           </svg></span>
-        Control
+        Storage
       </div>
       <div class="nav-btn" data-page="config">
         <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
@@ -720,6 +722,8 @@
           <button type="button" class="config-tab" id="config-tab-visual" role="tab" aria-selected="false"
             aria-controls="config-panel-visual" data-config-tab="visual">Visual
             enhancements</button>
+          <button type="button" class="config-tab" id="config-tab-behaviour" role="tab" aria-selected="false"
+            aria-controls="config-panel-behaviour" data-config-tab="behaviour">Behaviour</button>
         </div>
 
         <div class="config-tab-panel active" id="config-panel-equipment" role="tabpanel"
@@ -850,6 +854,21 @@
           </div>
         </div>
 
+        <div class="config-tab-panel" id="config-panel-behaviour" role="tabpanel"
+          aria-labelledby="config-tab-behaviour">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">Reboot confirmation</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-confirmReboot"> Ask for confirmation before rebooting the
+                  machine</label>
+                <span class="config-hint">Applied immediately. When disabled, the REBOOT button restarts the machine
+                  without warning.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="config-actions">
           <div class="config-form">
             <div class="config-field">
@@ -873,22 +892,14 @@
       </div>
 
     </div>
-    <div class="page" id="page-control">
-      <h2>Machine Control</h2>
+    <div class="page" id="page-storage">
+      <h2>Storage</h2>
       <p>
-        Manage the running machine: reboot it, load a paper tape, import disk or
-        tape images by drag & drop, and unmount mounted images.
+        Manage storage media: load a paper tape, import disk or tape images by
+        drag & drop, and unmount mounted images.
       </p>
 
       <div class="config-form">
-        <div class="config-field">
-          <span class="config-label">Reboot</span>
-          <div class="config-control">
-            <button type="button" data-action="reboot">REBOOT</button>
-            <span class="config-hint">Restarts the machine; the console teletype echoes a line feed.</span>
-          </div>
-        </div>
-
         <div class="config-field">
           <span class="config-label">Paper tape reader file</span>
           <div class="config-control">
@@ -1314,6 +1325,12 @@ Hello world
       <span class="drop-overlay-hint">.dsk &nbsp;.tap &nbsp;.ptap &nbsp;.zst</span>
     </div>
   </div>
+
+  <!-- Floating REBOOT toggle — top-right of the window (mirroring the
+       fullscreen toggle in the bottom-right corner). Wired up by
+       src/pdp11-panel.js via data-action="reboot". -->
+  <button type="button" id="reboot-btn" class="console-reboot" data-action="reboot"
+    title="Restart the machine. Boots the built-in default loader.">REBOOT</button>
 
   <!-- Floating fullscreen toggle — hides the browser/system chrome
        (browser Fullscreen API; native window fullscreen in the Tauri app).
