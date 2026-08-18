@@ -10,8 +10,9 @@
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
  *   vt11 (bool, VT11 graphics display), printWidth (72/80, Model 33 ASR
  *   teletype), printerWidth (72/80/100/132, LP11),
- *   teletypeSpeed (authentic/fast), keyClick (bool), hum (bool, ambient
- *   power-supply hum), photoBackdrop (bool).
+ *   teletypeSpeed (authentic/fast), keyClick (bool),
+ *   vt52ReverseVideo (bool, historical VT52 reverse-video mode),
+ *   hum (bool, ambient power-supply hum), photoBackdrop (bool).
  *
  * Run with:  node tests/config.test.js
  *
@@ -67,6 +68,7 @@ function run() {
             printerWidth: 132,
             teletypeSpeed: "authentic",
             keyClick: false,
+            vt52ReverseVideo: false,
             hum: true,
             photoBackdrop: true,
         }, "defaults should match the documented values");
@@ -122,6 +124,9 @@ function run() {
         assert.strictEqual(C.validate({ vt11: 0 }).vt11, false);
         assert.strictEqual(C.validate({ keyClick: 1 }).keyClick, true);
         assert.strictEqual(C.validate({ keyClick: 0 }).keyClick, false);
+        // vt52ReverseVideo (historical VT52 reverse video) coerced to boolean.
+        assert.strictEqual(C.validate({ vt52ReverseVideo: 1 }).vt52ReverseVideo, true);
+        assert.strictEqual(C.validate({ vt52ReverseVideo: 0 }).vt52ReverseVideo, false);
 
         // hum: absent -> default (true, keeps the ambient hum on for old
         // configs), otherwise coerced to boolean.
@@ -148,6 +153,7 @@ function run() {
             printerWidth: 80,
             teletypeSpeed: "fast",
             keyClick: true,
+            vt52ReverseVideo: true,
             hum: true,
             photoBackdrop: false,
         };
@@ -177,6 +183,7 @@ function run() {
             printerWidth: 100,
             teletypeSpeed: "fast",
             keyClick: true,
+            vt52ReverseVideo: true,
             hum: false,
             photoBackdrop: true,
         }, s);

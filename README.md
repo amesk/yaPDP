@@ -32,7 +32,7 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 |---------|-------------|
 | **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
 | **Model 33 ASR Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph (e.g. a 2.11 BSD boot countdown) leaves the real dark overstrike blot a hard-copy terminal makes. Long lines faithfully jam the carriage at the right margin (72 or 80 columns; characters overstrike the last column instead of wrapping, no scrollbar), and the paper width follows the selected width so a full line reaches the paper edge. The console echo speed is selectable in the CONFIG page: **authentic 110 baud (~10 chars/sec)** or a fast development pace (~33 chars/sec). |
-| **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so `clear` and multi-page nroff/man output start each page from the top row. |
+| **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so `clear` and multi-page nroff/man output start each page from the top row. |
 | **VT11 Display** | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
@@ -199,12 +199,14 @@ The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11 line printer and the
 VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
 most 80 columns), the printer print width (72/80/100/132), optional VT100-style
-key-click sound for VT52 terminals, the ambient PDP-11 power-supply hum and fan
-noise while the machine is on, and the PDP-11 machine-room photo backdrop behind
-the pages. The LP11 line printer defaults to the authentic 132-column width.
+key-click sound for VT52 terminals, the historical VT52 reverse-video mode
+(black text on white), the ambient PDP-11 power-supply hum and fan noise while
+the machine is on, and the PDP-11 machine-room photo backdrop behind the pages.
+The LP11 line printer defaults to the authentic 132-column width.
 The form is split into two tabs — **Equipment** (console terminal, user
 terminals, LP11 printer, VT11 display, print widths and teletype speed) and
-**Visual enhancements** (key click, machine hum, photo backdrop) — with the
+**Visual enhancements** (key click, reverse video, machine hum, photo
+backdrop) — with the
 **Apply** and **Restore defaults** actions in a bar below the tabs.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated

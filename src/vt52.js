@@ -91,8 +91,10 @@
     const CSI_PRIVATE = 63;
 
     // Canvas rendering parameters (defaults — overridden by instance properties)
-    const BG_COLOR    = "#000"; // Black background
-    const FG_COLOR    = "#0F0"; // Green writing
+    // A real DECscope VT52 uses a white (P4) phosphor, not green: the text is
+    // a light-grey / cold-white (#E0E0E0 / #F0F8FF) on a pure black tube.
+    const BG_COLOR    = "#000";     // Pure black CRT background
+    const FG_COLOR    = "#E0E0E0";  // Light-grey P4 phosphor writing
 
     // Attribute bitmask flags (SGR)
     const ATTR_BOLD       = 1;
@@ -371,6 +373,13 @@
             // margin is painted with the background colour (renderCanvas).
             this.screenPadding = screenPadding;
 
+            // Phosphor colours: normal mode is white/grey (P4) text on black.
+            // The historical DECscope reverse-video mode swaps them (black text
+            // on white/grey) and is enabled via setReverseVideo().
+            this.reverseVideo = false;
+            this.fgColor = FG_COLOR;
+            this.bgColor = BG_COLOR;
+
             // Sparse screen buffer:
             // Each row is an array of { c: charCode, a: attributes }.
             // Rows and columns are allocated lazily.
@@ -432,7 +441,20 @@
             this.parser = { buffer: [], state: 0 };
 
             this.clearScreen();
-            this.enterHardcopyMode();
+
+            if (this.noHardcopyFallback) {
+                // VT52 CRT (RIS / ESC c): stay on the canvas screen. Falling
+                // back to the hardcopy <textarea> would swap the authentic
+                // P4 phosphor for the browser's default monospace rendering.
+                this.modes.screen = true;
+                if (this.allowCanvas) {
+                    this.textArea.style.display = "none";
+                    this.screenCanvas.style.display = "block";
+                    this.renderCanvas();
+                }
+            } else {
+                this.enterHardcopyMode();
+            }
         }
 
         // ============================================================================
@@ -441,8 +463,15 @@
         enterHardcopyMode() {
             if (this.modes.screen) {
                 if (this.allowCanvas) {
-                    this.textArea.style.display = "block";
-                    this.screenCanvas.style.display = "none";
+                    if (this.noHardcopyFallback) {
+                        // VT52 CRT: never reveal the hardcopy <textarea> in
+                        // place of the authentic white/grey canvas phosphor.
+                        this.textArea.style.display = "none";
+                        this.screenCanvas.style.display = "block";
+                    } else {
+                        this.textArea.style.display = "block";
+                        this.screenCanvas.style.display = "none";
+                    }
                 }
 
                 // If switching from screen mode, dump the screen buffer into the textarea
@@ -518,7 +547,7 @@
             // Reset all canvas drawing state after a resize or mode switch.
             // Canvas resets wipe font, fillStyle, and baseline, so we restore them.
             ctx.textBaseline = "top";
-            ctx.fillStyle = BG_COLOR;
+            ctx.fillStyle = this.bgColor;
             ctx.font = this.textFont;
 
             // Track current drawing modes so we can avoid redundant state changes.
@@ -529,15 +558,33 @@
         // ---------------------------------------------------------------------------
         // Foreground / background colour switching
         // ---------------------------------------------------------------------------
-        // fg = true  → draw using FG_COLOR
-        // fg = false → draw using BG_COLOR
+        // fg = true  → draw using the foreground phosphor colour
+        // fg = false → draw using the background phosphor colour
+        // The active colours depend on the reverse-video mode (setReverseVideo).
         setForeground(fg) {
             if (fg) {
-                if (!this.fgMode) this.canvas.ctx.fillStyle = FG_COLOR;
+                if (!this.fgMode) this.canvas.ctx.fillStyle = this.fgColor;
             } else {
-                if (this.fgMode) this.canvas.ctx.fillStyle = BG_COLOR;
+                if (this.fgMode) this.canvas.ctx.fillStyle = this.bgColor;
             }
             this.fgMode = fg;
+        }
+
+        // ---------------------------------------------------------------------------
+        // Historical reverse-video mode (DECscope VT52)
+        // ---------------------------------------------------------------------------
+        // With reverse video the whole screen swaps its phosphor colours: black
+        // text on the white/grey tube instead of the normal white/grey text on
+        // black. Enabled from the CONFIG page; repaints the canvas immediately.
+        setReverseVideo(reverse) {
+            this.reverseVideo = !!reverse;
+            this.fgColor = this.reverseVideo ? BG_COLOR : FG_COLOR;
+            this.bgColor = this.reverseVideo ? FG_COLOR : BG_COLOR;
+
+            if (this.allowCanvas) {
+                this.resetCanvasContext(this.canvas.ctx);
+                this.renderCanvas();
+            }
         }
 
         // ---------------------------------------------------------------------------

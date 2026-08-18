@@ -47,6 +47,7 @@ var Config = (function () {
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
         keyClick: false,         // boolean (VT52 key click)
+        vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
         hum: true,               // boolean (ambient power-supply hum + fan noise)
         photoBackdrop: true      // boolean (PDP-11 photo behind the pages)
     });
@@ -102,6 +103,7 @@ var Config = (function () {
             // Absent/garbage falls back to 'authentic' (the real Model 33 ASR speed).
             teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
             keyClick: Boolean(o.keyClick),
+            vt52ReverseVideo: Boolean(o.vt52ReverseVideo),
             // Absent key falls back to the default (keeps the ambient hum on
             // for old configs saved before the "hum" option existed).
             hum: typeof o.hum === "undefined"

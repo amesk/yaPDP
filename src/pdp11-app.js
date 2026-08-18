@@ -555,6 +555,17 @@ function applyPhotoBackdrop(enabled) {
   document.body.classList.toggle('no-photo-bg', !enabled);
 }
 
+// Apply the configured reverse-video mode to every live VT52 terminal
+// (console + user terminals). Non-canvas terminals simply ignore it.
+function applyVT52ReverseVideo(enabled) {
+  for (var u = 0; u <= 2; u++) {
+    var t = (typeof window.vt52Get === 'function') ? window.vt52Get(u) : null;
+    if (t && typeof t.setReverseVideo === 'function') {
+      t.setReverseVideo(!!enabled);
+    }
+  }
+}
+
 // ---- Leaving the CONFIG page with uncommitted changes ----
 // Confirmation dialog reusing the onboarding overlay style (onboard-* classes,
 // see css/pdp11.css) so it matches the first-run hint. onLeave() runs when the
@@ -649,6 +660,7 @@ function initConfigForm() {
   var pwEl = document.getElementById('config-printWidth');
   var pwrEl = document.getElementById('config-printerWidth');
   var kcEl = document.getElementById('config-keyClick');
+  var vt52RevEl = document.getElementById('config-vt52ReverseVideo');
   var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
   var applyBtn = document.getElementById('config-apply');
@@ -669,6 +681,7 @@ function initConfigForm() {
   if (pwEl) pwEl.value = String(cfg.printWidth);
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   if (kcEl) kcEl.checked = cfg.keyClick;
+  if (vt52RevEl) vt52RevEl.checked = cfg.vt52ReverseVideo;
   if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   applyPhotoBackdrop(cfg.photoBackdrop);
@@ -693,6 +706,7 @@ function initConfigForm() {
       printerWidth: (pwrEl) ? Number(pwrEl.value) : cfg.printerWidth,
       teletypeSpeed: teletypeSpeed,
       keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
+      vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
       hum: (humEl) ? humEl.checked : cfg.hum,
       photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop
     };
@@ -713,6 +727,7 @@ function initConfigForm() {
       form.printerWidth !== current.printerWidth ||
       form.teletypeSpeed !== current.teletypeSpeed ||
       form.keyClick !== current.keyClick ||
+      form.vt52ReverseVideo !== current.vt52ReverseVideo ||
       form.hum !== current.hum ||
       form.photoBackdrop !== current.photoBackdrop;
   }
@@ -726,6 +741,7 @@ function initConfigForm() {
     if (window.lp11G60Printer && window.lp11G60Printer.setMaxCols) {
       window.lp11G60Printer.setMaxCols(f.printerWidth);
     }
+    applyVT52ReverseVideo(f.vt52ReverseVideo);
     applyPhotoBackdrop(f.photoBackdrop);
   }
 
@@ -814,6 +830,14 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // VT52 reverse video applies immediately to the live terminals (no reload).
+  if (vt52RevEl) {
+    vt52RevEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ vt52ReverseVideo: this.checked });
+      applyVT52ReverseVideo(this.checked);
+      updateDirtyUI();
+    });
+  }
   // Ambient power-supply hum applies immediately (no reload): persist the
   // choice; Hum.update() re-reads the config on its next tick.
   if (humEl) {
@@ -843,6 +867,7 @@ function initConfigForm() {
       if (pwEl) pwEl.value = String(d.printWidth);
       if (pwrEl) pwrEl.value = String(d.printerWidth);
       if (kcEl) kcEl.checked = d.keyClick;
+      if (vt52RevEl) vt52RevEl.checked = d.vt52ReverseVideo;
       if (humEl) humEl.checked = d.hum;
       if (pbEl) pbEl.checked = d.photoBackdrop;
       // The form now shows factory values; nothing is persisted until Apply.
@@ -885,6 +910,9 @@ if (__appCfg && __appCfg.userTerminals >= 1) {
 if (__appCfg && __appCfg.userTerminals >= 2) {
   initVT52Page(2, 'page-vt52-2', 'vt52-2-screen', 'tty2_textarea');
 }
+
+// Apply the configured VT52 reverse-video mode to the live terminals.
+applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);
 
 applyVisibility();
 initConfigForm();

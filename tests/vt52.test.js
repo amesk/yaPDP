@@ -178,6 +178,72 @@ function run() {
         assert.strictEqual(term.overHang, 0, "line feed clears pending overstrike");
     }
 
+    // ---- reset() with noHardcopyFallback keeps the canvas screen mode ------
+    // A VT52 CRT terminal (allowCanvas + noHardcopyFallback) must never fall
+    // back to the hardcopy <textarea> on RIS (ESC c): that would swap the
+    // authentic white/grey phosphor for the browser's default monospace text.
+    {
+        const sandbox = { console, window: {} };
+        vm.createContext(sandbox);
+        vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+
+        const textArea = {
+            value: "", tabIndex: 0, style: {},
+            setSelectionRange() {}, addEventListener() {}, focus() {},
+            scrollTop: 0, scrollHeight: 0,
+        };
+
+        const unit = 9;
+        sandbox.window.vt52Initialize(unit, () => {}, textArea, null,
+            { noHardcopyFallback: true });
+        const term = sandbox.window.vt52Get(unit);
+
+        // Simulate an active screen-mode VT52 CRT before RIS.
+        term.modes.screen = true;
+        term.screen = [[{ c: 65, a: 0 }]];
+
+        term.reset();
+
+        assert.strictEqual(term.modes.screen, true,
+            "reset() with noHardcopyFallback keeps screen mode");
+        assert.strictEqual(term.screen.length, 0,
+            "reset() clears the screen buffer");
+    }
+
+    // ---- Control: without noHardcopyFallback reset() falls back to hardcopy --
+    {
+        const sandbox = { console, window: {} };
+        vm.createContext(sandbox);
+        vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+
+        const textArea = {
+            value: "", tabIndex: 0, style: {},
+            setSelectionRange() {}, addEventListener() {}, focus() {},
+            scrollTop: 0, scrollHeight: 0,
+        };
+
+        const unit = 10;
+        sandbox.window.vt52Initialize(unit, () => {}, textArea, null, {});
+        const term = sandbox.window.vt52Get(unit);
+
+        term.modes.screen = true;
+        term.reset();
+
+        assert.strictEqual(term.modes.screen, false,
+            "reset() without noHardcopyFallback enters hardcopy mode");
+    }
+
+    // ---- Historical reverse-video mode (CONFIG) swaps the phosphor colours --
+    {
+        const { term } = makeTerminal();
+        term.setReverseVideo(true);
+        assert.strictEqual(term.fgColor, "#000", "reverse video: black text");
+        assert.strictEqual(term.bgColor, "#E0E0E0", "reverse video: white/grey background");
+        term.setReverseVideo(false);
+        assert.strictEqual(term.fgColor, "#E0E0E0", "reverse video off restores grey text");
+        assert.strictEqual(term.bgColor, "#000", "reverse video off restores black background");
+    }
+
     console.log("vt52.test.js: all overstrike tests passed");
 }
 
