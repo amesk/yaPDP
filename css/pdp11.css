@@ -1367,6 +1367,77 @@ body {
     color: #8a857a;
 }
 
+/* CONFIG page tabbed layout: a top tab bar splits the growing configuration
+   into Equipment (hardware) and Visual enhancements (look & feel) panels.
+   Both panels live in the same grid cell (the inactive one is hidden with
+   visibility:hidden, so it still occupies space), which makes the row as
+   tall as the tallest panel. The Defaults/Apply action bar sits right below
+   that row, so it never jumps vertically when a tab is selected. */
+.config-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+.config-tab-bar {
+    grid-row: 1;
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    margin-bottom: 4px;
+}
+
+.config-tab {
+    background: transparent;
+    color: #a89e8c;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+}
+
+.config-tab:hover {
+    color: #f0e6c8;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.config-tab.active {
+    color: #f0e6c8;
+    background: rgba(28, 25, 21, 0.6);
+    border-color: rgba(255, 255, 255, 0.12);
+    /* Blend the active tab into the translucent page slab underneath. */
+    border-bottom-color: rgba(28, 25, 21, 0.82);
+}
+
+.config-tab-panel {
+    grid-row: 2;
+    grid-column: 1;
+    /* Hidden panels still take part in the grid sizing (visibility keeps the
+       layout box), so the row always matches the tallest panel. */
+    visibility: hidden;
+}
+
+.config-tab-panel.active {
+    visibility: visible;
+}
+
+.config-actions {
+    grid-row: 3;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* The last field of a tab panel would otherwise double up with the action
+   bar's top border when the panel is as tall as the tallest one, producing
+   two stacked lines before the Defaults/Apply buttons. */
+.config-tab-panel .config-field:last-child {
+    border-bottom: none;
+}
+
 /* ===== Photo backdrop toggle (CONFIG) ===== */
 /* body.no-photo-bg — the PDP-11 machine-room photo is switched off: restore
    the plain dark background. The whole .app-layout is painted a deep

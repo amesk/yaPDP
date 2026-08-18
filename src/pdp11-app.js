@@ -593,6 +593,49 @@ window.configConfirmLeave = function (onLeave, onStay) {
   __configLeaveOverlay.classList.add('visible');
 };
 
+// ---- CONFIG page tabs: switch between the grouped config panels ----
+function initConfigTabs() {
+  var tabs = document.querySelectorAll('.config-tab');
+  if (!tabs.length) return;
+
+  function indexOf(tab) {
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i] === tab) return i;
+    }
+    return -1;
+  }
+
+  function selectTab(tab) {
+    for (var i = 0; i < tabs.length; i++) {
+      var t = tabs[i];
+      var active = (t === tab);
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+      t.tabIndex = active ? 0 : -1;
+      var panel = document.getElementById(t.getAttribute('aria-controls'));
+      if (panel) panel.classList.toggle('active', active);
+    }
+    if (tab) tab.focus();
+  }
+
+  for (var j = 0; j < tabs.length; j++) {
+    tabs[j].addEventListener('click', function () { selectTab(this); });
+  }
+
+  // Arrow-key navigation within the tab list (WAI-ARIA tabs pattern).
+  for (var k = 0; k < tabs.length; k++) {
+    tabs[k].addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      var idx = indexOf(this);
+      var next = (e.key === 'ArrowRight') ? idx + 1 : idx - 1;
+      if (next < 0) next = tabs.length - 1;
+      if (next >= tabs.length) next = 0;
+      selectTab(tabs[next]);
+    });
+  }
+}
+
 // ---- CONFIG page form: populate controls and wire up events ----
 function initConfigForm() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
@@ -845,6 +888,7 @@ if (__appCfg && __appCfg.userTerminals >= 2) {
 
 applyVisibility();
 initConfigForm();
+initConfigTabs();
 boot();
 
 // First-run onboarding hint (no-op after the user has dismissed it once)

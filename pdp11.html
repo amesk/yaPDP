@@ -713,117 +713,137 @@
         speed, key click and the photo backdrop apply immediately.
       </p>
 
-      <div class="config-form">
-        <div class="config-field">
-          <span class="config-label">Console terminal</span>
-          <div class="config-control config-radios">
-            <label><input type="radio" name="consoleType" value="teletype"> Teletype (Model 33 ASR)</label>
-            <label><input type="radio" name="consoleType" value="vt52"> VT52 (TT0:)</label>
+      <div class="config-tabs">
+        <div class="config-tab-bar" role="tablist" aria-label="Configuration sections">
+          <button type="button" class="config-tab active" id="config-tab-equipment" role="tab" aria-selected="true"
+            aria-controls="config-panel-equipment" data-config-tab="equipment">Equipment</button>
+          <button type="button" class="config-tab" id="config-tab-visual" role="tab" aria-selected="false"
+            aria-controls="config-panel-visual" data-config-tab="visual">Visual
+            enhancements</button>
+        </div>
+
+        <div class="config-tab-panel active" id="config-panel-equipment" role="tabpanel"
+          aria-labelledby="config-tab-equipment">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">Console terminal</span>
+              <div class="config-control config-radios">
+                <label><input type="radio" name="consoleType" value="teletype"> Teletype (Model 33 ASR)</label>
+                <label><input type="radio" name="consoleType" value="vt52"> VT52 (TT0:)</label>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">User terminals</span>
+              <div class="config-control">
+                <select id="config-userTerminals">
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+                <span class="config-hint">Each terminal gets its own sidebar page.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Line printer (LP11)</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-printer"> Install an LP11 printer</label>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">VT11 graphics display</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-vt11"> Install a VT11 vector-graphics display</label>
+                <span class="config-hint">DEC VT11 vector graphics terminal on its own Display page.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Teletype print width</span>
+              <div class="config-control">
+                <select id="config-printWidth">
+                  <option value="72">72</option>
+                  <option value="80">80</option>
+                </select>
+                <span class="config-hint">A Model 33 ASR is at most 80 columns; the
+                  wider 100/132 widths are for the LP11 printer.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Teletype speed</span>
+              <div class="config-control config-radios">
+                <label><input type="radio" name="teletypeSpeed" value="authentic"> Authentic (10 chars/sec — Model 33
+                  ASR at 110 baud)</label>
+                <label><input type="radio" name="teletypeSpeed" value="fast"> Fast (33 chars/sec)</label>
+                <span class="config-hint">Authentic is the real Model 33 ASR speed —
+                  booting 2.11 BSD prints for a very long time. Applied immediately.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Printer width</span>
+              <div class="config-control">
+                <select id="config-printerWidth">
+                  <option value="72">72</option>
+                  <option value="80">80</option>
+                  <option value="100">100</option>
+                  <option value="132">132</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="config-field">
-          <span class="config-label">User terminals</span>
-          <div class="config-control">
-            <select id="config-userTerminals">
-              <option value="0">0</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-            </select>
-            <span class="config-hint">Each terminal gets its own sidebar page.</span>
+        <div class="config-tab-panel" id="config-panel-visual" role="tabpanel" aria-labelledby="config-tab-visual">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">VT52 key click</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-keyClick"> Audible key click on VT52 terminals</label>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Machine hum</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-hum"> Power-supply hum and fan noise while the machine is
+                  on</label>
+                <span class="config-hint">Applied immediately; on its own audio channel so the teletype and terminal
+                  sounds stay clear.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Photo backdrop</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-photoBackdrop"> Show PDP-11 photo behind the pages</label>
+                <span class="config-hint">Applied immediately; you can turn the backdrop off.</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="config-field">
-          <span class="config-label">Line printer (LP11)</span>
-          <div class="config-control">
-            <label><input type="checkbox" id="config-printer"> Install an LP11 printer</label>
-          </div>
-        </div>
+        <div class="config-actions">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">Defaults</span>
+              <div class="config-control">
+                <button type="button" id="config-reset">Restore defaults</button>
+                <span class="config-hint">Fills the form with factory values; press Apply to commit.</span>
+              </div>
+            </div>
 
-        <div class="config-field">
-          <span class="config-label">VT11 graphics display</span>
-          <div class="config-control">
-            <label><input type="checkbox" id="config-vt11"> Install a VT11 vector-graphics display</label>
-            <span class="config-hint">DEC VT11 vector graphics terminal on its own Display page.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Teletype print width</span>
-          <div class="config-control">
-            <select id="config-printWidth">
-              <option value="72">72</option>
-              <option value="80">80</option>
-            </select>
-            <span class="config-hint">A Model 33 ASR is at most 80 columns; the
-              wider 100/132 widths are for the LP11 printer.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Teletype speed</span>
-          <div class="config-control config-radios">
-            <label><input type="radio" name="teletypeSpeed" value="authentic"> Authentic (10 chars/sec — Model 33 ASR at
-              110
-              baud)</label>
-            <label><input type="radio" name="teletypeSpeed" value="fast"> Fast (33 chars/sec)</label>
-            <span class="config-hint">Authentic is the real Model 33 ASR speed —
-              booting 2.11 BSD prints for a very long time. Applied immediately.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Printer width</span>
-          <div class="config-control">
-            <select id="config-printerWidth">
-              <option value="72">72</option>
-              <option value="80">80</option>
-              <option value="100">100</option>
-              <option value="132">132</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">VT52 key click</span>
-          <div class="config-control">
-            <label><input type="checkbox" id="config-keyClick"> Audible key click on VT52 terminals</label>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Machine hum</span>
-          <div class="config-control">
-            <label><input type="checkbox" id="config-hum"> Power-supply hum and fan noise while the machine is
-              on</label>
-            <span class="config-hint">Applied immediately; on its own audio channel so the teletype and terminal
-              sounds stay clear.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Photo backdrop</span>
-          <div class="config-control">
-            <label><input type="checkbox" id="config-photoBackdrop"> Show PDP-11 photo behind the pages</label>
-            <span class="config-hint">Applied immediately; you can turn the backdrop off.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Defaults</span>
-          <div class="config-control">
-            <button type="button" id="config-reset">Restore defaults</button>
-            <span class="config-hint">Fills the form with factory values; press Apply to commit.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Apply changes</span>
-          <div class="config-control">
-            <button type="button" id="config-apply">Apply</button>
-            <span class="config-hint">Commits all pending changes at once.
-              Structural changes (console, terminals, printer) restart the machine.</span>
+            <div class="config-field">
+              <span class="config-label">Apply changes</span>
+              <div class="config-control">
+                <button type="button" id="config-apply">Apply</button>
+                <span class="config-hint">Commits all pending changes at once.
+                  Structural changes (console, terminals, printer) restart the machine.</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

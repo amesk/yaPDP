@@ -202,6 +202,10 @@ most 80 columns), the printer print width (72/80/100/132), optional VT100-style
 key-click sound for VT52 terminals, the ambient PDP-11 power-supply hum and fan
 noise while the machine is on, and the PDP-11 machine-room photo backdrop behind
 the pages. The LP11 line printer defaults to the authentic 132-column width.
+The form is split into two tabs — **Equipment** (console terminal, user
+terminals, LP11 printer, VT11 display, print widths and teletype speed) and
+**Visual enhancements** (key click, machine hum, photo backdrop) — with the
+**Apply** and **Restore defaults** actions in a bar below the tabs.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
 hardware matches the configuration; print widths, the teletype speed, the key
