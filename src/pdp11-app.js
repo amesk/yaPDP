@@ -728,7 +728,13 @@ function initConfigForm() {
       crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
       hum: (humEl) ? humEl.checked : cfg.hum,
       photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop,
-      confirmReboot: (confirmRebootEl) ? confirmRebootEl.checked : cfg.confirmReboot
+      // confirmReboot is a live setting that can also be toggled from the
+      // reboot confirmation dialog (pdp11-panel.js), which never touches the
+      // form DOM. Read it from the persisted config so a stale checkbox cannot
+      // mark the form as dirty or be overwritten by Apply.
+      confirmReboot: (typeof Config !== 'undefined')
+          ? Config.get().confirmReboot
+          : cfg.confirmReboot
     };
   }
 

@@ -388,6 +388,11 @@ function examineDeposit(data) {
         var dontAsk = document.getElementById('reboot-dont-ask');
         if (dontAsk && dontAsk.checked && typeof Config !== 'undefined') {
           Config.set({ confirmReboot: false });
+          // Keep the CONFIG page checkbox in sync: confirmReboot is a live
+          // setting that can be toggled from here, so the form must not show a
+          // stale value (which would trip the uncommitted-changes warning).
+          var confirmRebootEl = document.getElementById('config-confirmReboot');
+          if (confirmRebootEl) confirmRebootEl.checked = false;
         }
         rebootConfirmOverlay.classList.remove('visible');
         doReboot();
