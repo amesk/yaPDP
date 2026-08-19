@@ -11,7 +11,10 @@
  *   - writing DPC initialises the renderer and starts the processor
  *     (the DSR stop bit is cleared) and stores the even word address;
  *   - poll() reports IPL 4 and the 0320/0324 vectors;
- *   - reset() restores the stopped state and clears DPC.
+ *   - reset() restores the stopped state and clears DPC;
+ *   - the view transform is applied to the drawing context (BG) only, not the
+ *     compositing context (FG) — guards against a double transform that would
+ *     desync the light pen from the mouse.
  *
  * The helper globals the device relies on (insertData, requestInterrupt) are
  * extracted verbatim from src/iopage.js so the test never drifts from the
@@ -71,7 +74,9 @@ function extractBlock(src, startMarker, tail) {
 }
 
 // Stub DOM element used by the VT11 renderer (canvas / stats panel / label).
-function makeEl() {
+// When trackContexts is given, every getContext() result is recorded so tests
+// can assert which context receives the renderer's view transform.
+function makeEl(trackContexts) {
     return {
         style: {},
         checked: false,
@@ -83,8 +88,24 @@ function makeEl() {
             return child;
         },
         getContext: function () {
-            // Plain object: the renderer only assigns stroke/fill/font props.
-            return {};
+            // Transform-tracking stub: the renderer assigns stroke/fill/font
+            // props on BG and calls translate/scale when the transform is on.
+            const ctx = {
+                translateCalls: 0,
+                scaleCalls: 0,
+                translate: function (x, y) {
+                    this.translateCalls++;
+                    this.translateX = x;
+                    this.translateY = y;
+                },
+                scale: function (x, y) {
+                    this.scaleCalls++;
+                    this.scaleX = x;
+                    this.scaleY = y;
+                },
+            };
+            if (trackContexts) trackContexts.push(ctx);
+            return ctx;
         },
         width: 0,
         height: 0,
@@ -100,7 +121,7 @@ function loadVT11(opts) {
     const requestInterrupt = extractBlock(iopageSrc, "function requestInterrupt", "");
 
     const registrations = [];
-    const container = makeEl();
+    const container = makeEl(opts.trackContexts);
 
     const sandbox = {};
     sandbox.CPU = { interruptRequested: 0, runState: 0 };
@@ -115,9 +136,9 @@ function loadVT11(opts) {
     };
     sandbox.readWordByPhysical = function () { return -1; };
     sandbox.document = {
-        body: makeEl(),
+        body: makeEl(opts.trackContexts),
         getElementById: function (id) { return id === "vt11" ? container : null; },
-        createElement: function () { return makeEl(); },
+        createElement: function () { return makeEl(opts.trackContexts); },
         createTextNode: function (t) { return { textContent: t }; },
     };
     // Timers must NOT actually run the VT11 processor loop.
@@ -211,6 +232,30 @@ function run() {
             "reset clears DPC");
         assert.strictEqual(dev.access(DSR, -1, false), 0x8000,
             "reset restores the stopped state");
+    }
+
+    // ------------------------------------------------------------------
+    // Test 7: the view transform is applied to the drawing context only.
+    // Regression guard for the "inner screen padding" change: applying the
+    // transform to the compositing context (ctxFG) too scaled/padded the
+    // composited image a second time and desynced the light pen from the
+    // mouse, so hovering over a vector never produced a pen hit.
+    // ------------------------------------------------------------------
+    {
+        const trackContexts = [];
+        const t = loadVT11({ vt11: true, trackContexts: trackContexts });
+        const dev = t.registrations[0].device;
+        dev.access(DPC, 0o1000, false); // triggers renderer.initDOM()
+        assert.strictEqual(trackContexts.length, 2,
+            "renderer creates exactly two canvas contexts (BG + FG)");
+        const ctxBG = trackContexts[0];
+        const ctxFG = trackContexts[1];
+        assert.ok(ctxBG.translateCalls >= 1 && ctxBG.scaleCalls >= 1,
+            "drawing context (BG) receives the view transform");
+        assert.strictEqual(ctxFG.translateCalls, 0,
+            "compositing context (FG) must stay untransformed");
+        assert.strictEqual(ctxFG.scaleCalls, 0,
+            "compositing context (FG) must stay unscaled");
     }
 
     console.log("vt11 tests: all passed");

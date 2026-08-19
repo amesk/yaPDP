@@ -415,8 +415,12 @@ iopage.register(0o17772000, 4, (function () {
             container.appendChild(canvasFG);
 
             ctxFG = canvasFG.getContext("2d");
-            applyViewTransform(ctxFG);
 
+            // The view transform is applied ONLY to the drawing context
+            // (ctxBG). ctxFG stays untransformed so commitFrame() composites
+            // the already padded canvasBG 1:1. Applying the transform here too
+            // would scale and pad the picture a second time, which desynced
+            // the light pen's mouse coordinates from the visible vectors.
             initialized = true;
         }
 
