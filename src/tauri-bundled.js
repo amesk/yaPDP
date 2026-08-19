@@ -92,11 +92,6 @@
     function init() {
         if (!isTauri()) return; // regular browser — nothing to do
 
-        // Block the webview's native context menu in the desktop app.
-        window.addEventListener("contextmenu", function (e) {
-            e.preventDefault();
-        });
-
         if (typeof DataLoader === "undefined") {
             console.warn("DataLoader not available; skipping bundled images");
             return;
