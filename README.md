@@ -6,19 +6,9 @@
 
 ## Foreword: A Personal Note
 
-I first saw DEC minicomputers as a child at my parents' workplace. The blinking lights, the whir of disk drives, the smell of ozone and paper — it left an impression that never faded.
+I first saw DEC minicomputers as a child, and later worked hands‑on with their Soviet clones — the **SM‑4** and **SM‑1420** running **RSX‑11M**. Decades later, thanks to the incredible work of Paul Nankervis, it is possible to boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E and RT‑11 in a browser.
 
-My real hands‑on encounter came later, when I found myself in front of the Soviet clones of DEC hardware — the **SM‑4** and **SM‑1420** — running **RSX‑11M**. And with them came C. The language that lets you feel the machine. It was love at first sight.
-
-That was forty years ago.
-
-I went on to become a professional programmer, eventually leading large projects. But the feeling of powering up an SM‑4 with my own hands, watching the console lights dance, then walking to the next room to sit at a terminal — that stayed with me. I've been trying to bring it back ever since.
-
-I never got to run **real UNIX** on those machines. The Soviet replicas lived under RSX‑11M, and by the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
-
-This repository is the result: **yaPDP**, a fully fledged PDP‑11/70 emulator that runs right in your browser, with an authentic front panel and a connected **Model 33 ASR teletype** — the operator's console I always dreamed of having next to my desk.
-
-Welcome to the machine.
+This repository is the result: **yaPDP**. Welcome to the machine.
 
 ---
 
