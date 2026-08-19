@@ -4,6 +4,55 @@
     --ledColor: radial-gradient(circle at 4px 4px, yellow, red);
 }
 
+/* ===== Global scrollbar theming (DEC 1960s palette) =====
+   Every scrolling container in the app (quick-boot OS list, Info / Config /
+   Storage pages, teletype & LP11 paper) gets the same look, so no native
+   scrollbar sticks out of the dark amber scheme. Chromium / Edge / Safari /
+   WKWebView (Tauri desktop) use the WebKit pseudo-elements; Firefox uses the
+   standards-based properties below. */
+
+* {
+    scrollbar-width: thin;
+    /* Firefox: narrow scrollbar */
+    scrollbar-color: #8a7650 #1a1815;
+    /* Firefox: thumb, track */
+}
+
+/* WebKit / Blink / WebView scrollbars */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    /* horizontal bars, e.g. Info page <pre> */
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1815;
+    border: 1px solid #4a453a;
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #8a7650, #6b5a40);
+    border: 2px solid #1a1815;
+    /* inset "bevel" look like the buttons */
+    border-radius: 6px;
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.12);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #c8a860, #a89060);
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.2);
+}
+
+::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, #e8d080, #c8a860);
+}
+
+::-webkit-scrollbar-corner {
+    background: #1a1815;
+    /* no white square where axes meet */
+}
+
 .frame {
     width: calc(var(--unitWidth) * 272);
     height: calc(var(--unitHeight) * 93);
