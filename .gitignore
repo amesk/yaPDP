@@ -12,8 +12,3 @@ desktop/
 # ---- Node tooling (npm) ----
 node_modules/
 
-# ---- OS / editor junk ----
-Thumbs.db
-Desktop.ini
-nul
-.DS_Store
