@@ -145,13 +145,46 @@ when the boot finishes, as soon as the operator presses any key, or the moment
 an image fails to load (the wizard stops typing and the "Image load
 interrupted" dialog takes over).
 
+### Installing the toolchain (Windows)
+
+Building the desktop app on a fresh Windows machine requires the following
+components:
+
+1. **Node.js ≥ 18** — download the LTS release from <https://nodejs.org>, or
+   `winget install OpenJS.NodeJS.LTS`.
+2. **Rust (MSVC toolchain)** — install via <https://rustup.rs>
+   (or `winget install Rustlang.Rustup`); the default host target
+   `stable-x86_64-pc-windows-msvc` is exactly what this project needs.
+3. **Microsoft C++ Build Tools / Visual Studio 2019 or 2022** with the
+   **"Desktop development with C++"** workload — both the Rust MSVC linker and
+   the Tauri CLI require it. The Community edition is free and sufficient.
+4. **WebView2 Runtime** — built into Windows 11; on Windows 10 install the
+   Evergreen Runtime from the
+   [Microsoft WebView2](https://developer.microsoft.com/microsoft-edge/webview2/)
+   page.
+5. **Tauri CLI v2** — `cargo install tauri-cli --version "^2"`.
+
+Verify every component is on the `PATH` before building:
+
+```bash
+node --version    # >= 18
+cargo --version   # stable MSVC toolchain
+cargo tauri --version
+```
+
+The Tauri bundler downloads the WiX and NSIS tools automatically on the first
+build, so no extra setup is needed to produce the `.msi` and `.exe` installers.
+Then stage and build either variant:
+
+```bash
+npm run desktop:minimal   # yaPDP-Minimal: rk0/rk1/bootcode
+npm run desktop:full      # yaPDP-Full: every disk/tape image
+```
+
 ### Building the desktop app
 
-Prerequisites (Windows): Rust (MSVC toolchain), Visual Studio 2019/2022 with "Desktop
-development with C++", WebView2 (built into Windows 11), `tauri-cli`
-(`cargo install tauri-cli --version "^2"`), and Node.js >= 18.
-
-The build is orchestrated through npm scripts — the repo has no npm dependencies,
+Once the [toolchain above](#installing-the-toolchain-windows) is installed, the
+build is orchestrated through npm scripts — the repo has no npm dependencies,
 just plain Node tooling. Run `npm run` to list every target:
 
 | Script | Action |
