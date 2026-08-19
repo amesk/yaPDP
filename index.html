@@ -19,6 +19,19 @@
        only adapt the content slab (mirroring #page-instructions) and the
        hero / call-to-action blocks. -->
     <style>
+        /* Landing-page-only backdrop: override the shared emulator body photo
+           (Kernighan & Ritchie) with the PDP-11 machine-room photo. Only this
+           page is affected; the emulator keeps its original backdrop.
+           Paths are relative to index.html at the repo root. */
+        body {
+            background-image:
+                linear-gradient(rgba(24, 21, 17, 0.82), rgba(24, 21, 17, 0.82)),
+                url("assets/images/pdp11-machine-room.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
         /* Content slab — mirrors the emulator's Info page (dark translucent card
        over the machine-room photo, block layout, readable column width). */
         .landing-page {
