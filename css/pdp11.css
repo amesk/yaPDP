@@ -552,13 +552,14 @@
     font-size: 11px;
 }
 
-/* "Autoloading in progress" toast (quickboot.js) — floats above the content
-   but below the modal overlays, so it never covers the OS picker dialog. */
+/* "Autoloading in progress" toast (quickboot.js) — centered on screen, above
+   the content but below the modal overlays, so it never covers the OS picker
+   dialog. */
 .quickboot-balloon {
     position: fixed;
     left: 50%;
-    top: 24px;
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     z-index: 50000;
     display: none;
     padding: 16px 28px;
