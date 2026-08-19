@@ -391,6 +391,40 @@ async function run() {
     console.log("PASS test 13: HTTP image URLs are page-relative (media/…), not ../media");
   }
 
+  // ---- Test 14: paper-tape blocks use the .zst fast path like disks ----
+  // PTR11 marks its control block `compressed: true` (same as RK/RL/RP/TM),
+  // so fetchBlock() must try the bundled `.ptap.zst` FIRST. Before that flag
+  // a missing raw `.ptap` was probed with a Range request; a SPA-fallback
+  // server could answer it with 200 HTML, filling the cache with garbage that
+  // never raises a load error — the boot hung silently instead of showing the
+  // "Image load interrupted" overlay.
+  {
+    const sb = buildSandbox();
+    sb.fzstd.decompress = (buf) => new Uint8Array(buf);
+    makeContext(sb, sections, [
+      "var _fetchedUrls = [];",
+      "async function __fetch(url) { _fetchedUrls.push(String(url)); return { ok:false, status:404, arrayBuffer: async () => new ArrayBuffer(0) }; }",
+      "fetch = __fetch;",
+    ].join("\n"));
+    Object.defineProperty(sb, "__fetchedUrls", { get: () => sb._fetchedUrls });
+
+    const ctrl = { cache: [], url: "DEC-11-AJPB-PB.ptap", compressed: true };
+    let caught = null;
+    try {
+      await sb.fetchBlock(ctrl, 0);
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught, "unavailable .zst paper tape should throw");
+    assert.strictEqual(caught.imageReason, "network",
+      "unreachable .ptap.zst should be reported as 'network'");
+    const urls = sb.__fetchedUrls || [];
+    assert.ok(urls.length >= 1, "HTTP fetch should be attempted");
+    assert.strictEqual(urls[0], "media/DEC-11-AJPB-PB.ptap.zst",
+      "compressed paper tape must fetch the .zst file first, got: " + urls[0]);
+    console.log("PASS test 14: paper-tape blocks use the .zst fast path");
+  }
+
   console.log("\nAll DataLoader tests passed.");
 }
 

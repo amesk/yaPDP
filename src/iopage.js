@@ -2301,6 +2301,16 @@ iopage.register(0o17777550, 2, (function() {
                                     cache: [],
                                     callback: ptCallback,
                                     url: ptrUrlFor(ptrName),
+                                    // Bundled paper tapes ship as .zst (e.g.
+                                    // DEC-11-AJPB-PB.ptap.zst), so mark the block
+                                    // compressed to make fetchBlock() take the same
+                                    // direct .zst path the disk/tape controllers use.
+                                    // Without this flag the raw `.ptap` probe could be
+                                    // answered with a 200 SPA fallback page, filling the
+                                    // cache with garbage that never raises a load error —
+                                    // the boot would hang silently instead of showing the
+                                    // "Image load interrupted" overlay.
+                                    compressed: true,
                                     position: 0
                                 };
                             }
