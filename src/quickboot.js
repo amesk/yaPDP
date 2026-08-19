@@ -149,6 +149,18 @@ var QuickBoot = (function () {
         if (balloon) balloon.classList.remove("visible");
     }
 
+    // Autoload abort token: bumped by every new launch() and by abortAutoload().
+    // Timers capture the token they belong to and stop as soon as it no longer
+    // matches, so a failed image load (imgerror.js) or a second launch can
+    // neither leave the balloon up nor keep typing stale steps into a console
+    // that is not responding.
+    var autoloadToken = 0;
+
+    function abortAutoload() {
+        autoloadToken++;
+        hideBalloon();
+    }
+
     function updateList() {
         var listEl = overlay.querySelector(".quickboot-list");
         if (!listEl) return;
@@ -243,7 +255,10 @@ var QuickBoot = (function () {
         return (index === 0) ? base * 2 : base;
     }
 
-    function runSteps(steps, index, base) {
+    function runSteps(steps, index, base, token) {
+        // A stale token means this sequence was aborted or superseded by a
+        // newer launch — stop silently (abortAutoload already hid the balloon).
+        if (token !== autoloadToken) return;
         if (index >= steps.length) {
             // All steps typed — the autoload is finished.
             hideBalloon();
@@ -251,26 +266,28 @@ var QuickBoot = (function () {
         }
         var step = steps[index];
         if (step.waitFor) {
-            waitForPrompt(steps, index, base, step.waitFor, Date.now());
+            waitForPrompt(steps, index, base, step.waitFor, Date.now(), token);
         } else {
             setTimeout(function () {
+                if (token !== autoloadToken) return; // aborted or superseded
                 sendBytes(stepBytes(step));
-                runSteps(steps, index + 1, base);
+                runSteps(steps, index + 1, base, token);
             }, delayFor(index, base));
         }
     }
 
-    function waitForPrompt(steps, index, base, needle, startedAt) {
+    function waitForPrompt(steps, index, base, needle, startedAt, token) {
+        if (token !== autoloadToken) return; // aborted or superseded
         if (outputContains(needle) || Date.now() - startedAt > WAIT_TIMEOUT_MS) {
             // Prompt seen (or timed out): send the input and move on.
             sendBytes(stepBytes(steps[index]));
             setTimeout(function () {
-                runSteps(steps, index + 1, base);
+                runSteps(steps, index + 1, base, token);
             }, base);
             return;
         }
         setTimeout(function () {
-            waitForPrompt(steps, index, base, needle, startedAt);
+            waitForPrompt(steps, index, base, needle, startedAt, token);
         }, WAIT_POLL_MS);
     }
 
@@ -354,8 +371,10 @@ var QuickBoot = (function () {
         for (var i = 0; i < seq.length; i++) {
             steps.push(seq[i]);
         }
+        // Own token for this run: a newer launch or an abort cancels it.
+        var token = ++autoloadToken;
         showBalloon();
-        runSteps(steps, 0, base);
+        runSteps(steps, 0, base, token);
     }
 
     // --- Wiring: the magic-wand button lives in pdp11.html on the Panel page
@@ -391,6 +410,11 @@ var QuickBoot = (function () {
     // Capture console output for prompt-waiting steps (called by iopage.js).
     window.__consoleOutputHook = pushOutput;
 
+    // Publish the autoload abort hook. imgerror.js is loaded BEFORE this module
+    // (see pdp11.html) and calls it at runtime when an image fetch fails, so no
+    // load-order coupling is needed.
+    window.__autoloadAbort = abortAutoload;
+
     if (typeof document !== "undefined" && document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
     } else {
@@ -408,6 +432,7 @@ var QuickBoot = (function () {
         requirementText: requirementText,
         show: show,
         hide: hide,
-        launch: launch
+        launch: launch,
+        abortAutoload: abortAutoload
     };
 })();

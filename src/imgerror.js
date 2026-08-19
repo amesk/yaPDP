@@ -104,6 +104,15 @@ var ImageError = (function () {
 
     function show(url, reason) {
         if (typeof document === "undefined") return;
+        // A failed image fetch invalidates any in-flight autoload: the guest
+        // cannot boot, so "don't touch the keyboard" no longer applies. Abort
+        // the wizard's typing chain and hide its balloon (quickboot.js). The
+        // hook is published by quickboot.js at load time and guarded here so a
+        // load-order change never throws.
+        if (typeof window !== "undefined" &&
+            typeof window.__autoloadAbort === "function") {
+            window.__autoloadAbort();
+        }
         if (!overlay) {
             overlay = document.createElement("div");
             overlay.id = "imgerror-overlay";

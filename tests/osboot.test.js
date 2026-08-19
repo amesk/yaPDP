@@ -216,6 +216,45 @@ function run() {
             "no requirements should produce no badge text");
     }
 
+    // ---- QuickBoot abortAutoload -------------------------------------
+    // A failed image load (imgerror.js) calls window.__autoloadAbort(), which
+    // must stop the typing chain: any already-scheduled step timer is
+    // invalidated and nothing more is sent to the console. A capture setTimeout
+    // is used so no real timers run.
+    {
+        const pendingTimers = [];
+        const sent = [];
+        const sandbox = {
+            console,
+            window: {
+                dlReceiveQueue: (unit, bytes) => sent.push(bytes)
+            },
+            setTimeout: (fn, ms) => {
+                pendingTimers.push({ fn, ms });
+                return pendingTimers.length;
+            },
+            Date
+        };
+        vm.createContext(sandbox);
+        vm.runInContext(fs.readFileSync(OSBOOT_PATH, "utf8"), sandbox);
+        vm.runInContext(fs.readFileSync(QUICKBOOT_PATH, "utf8"), sandbox);
+
+        // A real launch schedules the first step timer (the boot command).
+        sandbox.QuickBoot.launch("rk0", true);
+        assert.ok(pendingTimers.length >= 1,
+            "launch should schedule the first step timer");
+
+        // Simulate the image-load failure the way imgerror.js does.
+        assert.strictEqual(typeof sandbox.window.__autoloadAbort, "function",
+            "quickboot should publish window.__autoloadAbort for imgerror.js");
+        sandbox.window.__autoloadAbort();
+
+        // Drain every pending timer: after the abort none may send bytes.
+        while (pendingTimers.length) pendingTimers.shift().fn();
+        assert.deepStrictEqual(plain(sent), [],
+            "abort should stop all pending step timers from sending bytes");
+    }
+
     console.log("osboot tests passed");
 }
 

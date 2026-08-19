@@ -141,7 +141,9 @@ Each wizard boot starts "on a fresh page": the teletype and LP11 paper and the
 VT52 screens are cleared before the machine reboots, so the boot banner lands
 on clean output. While the sequence is being typed a small toast warns
 "Autoloading in progress — don't touch the teletype/keyboard"; it disappears
-when the boot finishes or as soon as the operator presses any key.
+when the boot finishes, as soon as the operator presses any key, or the moment
+an image fails to load (the wizard stops typing and the "Image load
+interrupted" dialog takes over).
 
 ### Building the desktop app
 
