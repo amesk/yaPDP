@@ -1175,6 +1175,12 @@ function dl11(vt52Unit, deviceVector) {
                                 } else if (typeof g60ConsoleWrite !== 'undefined') {
                                     g60ConsoleWrite(xbuf);
                                 }
+                                // Console output hook (quick-boot wizard):
+                                // feeds every console character to prompt-waiting
+                                // logic, which types login when it sees "login:".
+                                if (typeof window !== 'undefined' && window.__consoleOutputHook) {
+                                    window.__consoleOutputHook(xbuf);
+                                }
                             } else {
                                 vt52Write(unit, xbuf);
                             }

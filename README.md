@@ -109,6 +109,39 @@ explains that the browser blocks fetching the media directory (and suggests a
 local web server), while the Tauri **Minimal** build explains that the image is
 not shipped and points to the Drop zone.
 
+### Quick boot (magic wand)
+
+A magic-wand button pinned to the top-right corner of the **Panel** page opens
+a picker for every guest OS. Choosing one switches to the operator console,
+reboots the machine and types `boot <dev>` — and where the credentials are
+known, the login too (e.g. Unix V5: `boot rk0` → `unix` → `root`). The boot
+sequences live in [`src/osboot.js`](src/osboot.js) (a hand-curated
+machine-readable config, so the picker never has to parse the free-text Info
+table); the flow itself is implemented in [`src/quickboot.js`](src/quickboot.js)
+and feeds the console through the same input queue the physical keyboard uses.
+
+Login steps are prompt-aware: instead of firing on a timer, the wizard watches
+the console output and types only when the guest prints `login:` (with a
+timeout fallback), so slow boots with lots of output (e.g. 2.11 BSD) still
+reach the login prompt reliably.
+
+Each OS also declares the machine profile it wants (`hardware` in
+`src/osboot.js`): e.g. Unix V5 / BSD / RT-11 / ULTRIX force a teletype
+console, and RT-11 / RSX / RSTS enable the LP11 line printer. If the current
+configuration differs, the wizard applies the profile (like the CONFIG Apply
+button), reloads, and resumes the boot automatically.
+
+Paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander) live in the same picker:
+the wizard selects the tape in the Storage `#ptr` select and boots it via
+`boot pr`. Lunar Lander additionally enables the VT11 vector display and
+switches to the **Display** page so the landing module is visible.
+
+Each wizard boot starts "on a fresh page": the teletype and LP11 paper and the
+VT52 screens are cleared before the machine reboots, so the boot banner lands
+on clean output. While the sequence is being typed a small toast warns
+"Autoloading in progress — don't touch the teletype/keyboard"; it disappears
+when the boot finishes or as soon as the operator presses any key.
+
 ### Building the desktop app
 
 Prerequisites (Windows): Rust (MSVC toolchain), Visual Studio 2019/2022 with "Desktop
@@ -123,7 +156,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + image-load error + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -304,7 +337,9 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
 | [`src/dragdrop.js`](src/dragdrop.js) | Drag & drop disk/tape image import — mounts files into DataLoader, persists them in IndexedDB |
 | [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
-| [`src/imgerror.js`](src/imgerror.js) | Onboarding-style dialog shown when a disk/tape image fails to load (dropped connection, truncated or corrupt `.zst`) — explains the failure and links to the Storage page |
+| [`src/imgerror.js`](src/imgerror.js) | Shared modal dialog shown when a disk/tape image fails to load (dropped connection, truncated or corrupt `.zst`) — explains the failure and links to the Storage page |
+| [`src/osboot.js`](src/osboot.js) | Guest OS boot scenarios for the quick-boot wizard — hand-curated `boot` commands and auto-login steps per device |
+| [`src/quickboot.js`](src/quickboot.js) | Quick-boot magic-wand button on the Panel page — OS picker dialog, reboot + typed boot/login sequence via the console input queue |
 | [`src/fullscreen.js`](src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
@@ -315,6 +350,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |
 | [`tests/hum.test.js`](tests/hum.test.js) | Machine-hum state-to-gain mapping modular tests — run with `node tests/hum.test.js` |
 | [`tests/imgerror.test.js`](tests/imgerror.test.js) | ImageError `messageFor()` modular tests (network/truncated/decompress wording) — run with `node tests/imgerror.test.js` |
+| [`tests/osboot.test.js`](tests/osboot.test.js) | OSBoot scenarios + QuickBoot pure-helper modular tests (bytes, console page, step delay, mounted filter) — run with `node tests/osboot.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

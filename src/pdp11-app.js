@@ -940,7 +940,10 @@ function initConfigForm() {
   window.isConfigDirty = isDirty;
 
   // Warn before closing/reloading the page with uncommitted config changes.
+  // The quick-boot wizard sets __allowConfigReload before its intentional
+  // profile-driven reload, so the browser does not ask "Reload site?".
   window.addEventListener('beforeunload', function (e) {
+    if (window.__allowConfigReload) return;
     if (!window.isConfigDirty || !window.isConfigDirty()) return;
     e.preventDefault();
     e.returnValue = '';

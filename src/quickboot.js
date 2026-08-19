@@ -1,0 +1,413 @@
+/**
+ * yaPDP — Quick boot wizard (magic wand)
+ *
+ * A small button pinned to the top-right corner of the Panel page opens a
+ * modal dialog (shared modal-* style) listing every guest OS scenario from
+ * osboot.js. Picking one boots the machine into that OS with a single click —
+ * and, where credentials are known, types the login for you.
+ *
+ * Flow:
+ *   1. If the OS needs a different machine profile (teletype vs VT52 console,
+ *      LP11 printer present), the wizard persists the pending boot, applies
+ *      the profile via Config.set() and reloads — devices are registered at
+ *      load time, so a layout change needs a reload (same as CONFIG Apply).
+ *      After the reload the wizard resumes the boot automatically.
+ *   2. Switch to the operator console page (teletype or VT52 console).
+ *   3. Reboot the machine (boot()) so the loader prints Boot>.
+ *   4. Type `boot <dev>`, then each follow-up step (kernel name, Ctrl-D,
+ *      login/password) with a delay that respects the configured teletype
+ *      speed.
+ *
+ * Prompt-aware steps: a step with `waitFor` (e.g. "login:") is not sent on a
+ * timer — the wizard watches the console output and types only once the
+ * prompt appears (with a generous timeout fallback), so slow boots with lots
+ * of output (2.11 BSD) still reach the login. The console output is captured
+ * through window.__consoleOutputHook, which iopage.js feeds for every console
+ * character (both teletype and VT52 console).
+ *
+ * Console input goes through the same global queue the physical keyboard
+ * uses (window.dlReceiveQueue(0, bytes)), so it works for both the Model 33
+ * ASR teletype and the VT52 console. Enter = 13, Ctrl-D = 4.
+ *
+ * Must be loaded AFTER osboot.js, config.js, pdp11-panel.js (switchPage) and
+ * bootcode.js (boot); BEFORE pdp11-app.js.
+ */
+"use strict";
+
+var QuickBoot = (function () {
+    var overlay = null;
+
+    // Pending boot device persisted across a config-driven reload.
+    var PENDING_KEY = "yapdp.quickboot.pending";
+
+    // Console output sniffer: iopage.js feeds every console character through
+    // window.__consoleOutputHook; we keep the tail so prompt-waiting steps can
+    // detect "login:" etc. instead of guessing timings.
+    var MAX_BUFFER = 4096;
+    var outputBuffer = "";
+
+    // ------------------------------------------------------------------
+    // Pure helpers (no DOM) — unit-testable in Node
+    // ------------------------------------------------------------------
+
+    // Which console page hosts the operator console for the given config.
+    function consolePageFor(cfg) {
+        return (cfg && cfg.consoleType === "vt52") ? "vt52-console" : "teletype";
+    }
+
+    // Delay between typed steps; the authentic 110-baud teletype is slow, so
+    // it gets more time for the guest to reach the next prompt.
+    function stepDelayMs(speed) {
+        return (speed === "authentic") ? 1600 : 800;
+    }
+
+    // Console bytes for one scenario step: plain text + Enter, or ^D (4).
+    function stepBytes(step) {
+        if (step && step.ctrlD) return [4];
+        var text = (step && step.send) ? step.send : "";
+        return OSBoot.stringToBytes(text).concat([13]);
+    }
+
+    // True when the accumulated console output contains needle.
+    function bufferContains(buffer, needle) {
+        return !!needle && buffer.indexOf(needle) !== -1;
+    }
+
+    // The hardware profile a scenario requires; every scenario declares it
+    // explicitly, with null meaning "keep the user's current setting".
+    function profileOf(scenario) {
+        return (scenario && scenario.hardware) || {};
+    }
+
+    // Merge a scenario's hardware profile over the current config. Keys set
+    // to null in the profile are left untouched. Pure — unit-testable.
+    function mergeHardware(cfg, profile) {
+        var out = {};
+        Object.keys(cfg || {}).forEach(function (k) { out[k] = cfg[k]; });
+        if (profile.console) out.consoleType = profile.console;
+        if (typeof profile.printer === "boolean") out.printer = profile.printer;
+        if (typeof profile.vt11 === "boolean") out.vt11 = profile.vt11;
+        return out;
+    }
+
+    // True when the current config differs from the profile's requirements.
+    function hardwareDirty(cfg, profile) {
+        if (!profile) return false;
+        if (profile.console && cfg.consoleType !== profile.console) return true;
+        if (typeof profile.printer === "boolean" &&
+            cfg.printer !== profile.printer) return true;
+        if (typeof profile.vt11 === "boolean" &&
+            cfg.vt11 !== profile.vt11) return true;
+        return false;
+    }
+
+    // Human-readable summary of a scenario's hardware requirements (shown in
+    // the picker list). Pure — unit-testable in Node.
+    function requirementText(profile) {
+        var parts = [];
+        if (profile.console === "teletype") parts.push("teletype console");
+        else if (profile.console === "vt52") parts.push("VT52 console");
+        if (profile.printer === true) parts.push("LP11 printer");
+        else if (profile.printer === false) parts.push("no printer");
+        // Only positive requirements are shown — "no VT11" would be printed
+        // for nearly every OS and just add noise (VT11 is off by default).
+        if (profile.vt11 === true) parts.push("VT11 display");
+        return parts.join(" · ");
+    }
+
+    // ------------------------------------------------------------------
+    // Overlay DOM (browser only — not exercised by the Node tests)
+    // ------------------------------------------------------------------
+
+    function hide() {
+        if (overlay) overlay.classList.remove("visible");
+    }
+
+    // --- "Autoloading in progress" balloon ------------------------------
+    // A small toast shown while the wizard types the boot sequence, warning
+    // the operator not to touch the teletype/keyboard. It disappears when the
+    // sequence finishes or the user intervenes (any key press).
+    var balloon = null;
+
+    function ensureBalloon() {
+        if (balloon) return balloon;
+        balloon = document.createElement("div");
+        balloon.id = "quick-boot-balloon";
+        balloon.className = "quickboot-balloon";
+        balloon.textContent =
+            "Autoloading in progress — don't touch the teletype/keyboard";
+        document.body.appendChild(balloon);
+        return balloon;
+    }
+
+    function showBalloon() {
+        if (typeof document === "undefined") return;
+        ensureBalloon().classList.add("visible");
+    }
+
+    function hideBalloon() {
+        if (balloon) balloon.classList.remove("visible");
+    }
+
+    function updateList() {
+        var listEl = overlay.querySelector(".quickboot-list");
+        if (!listEl) return;
+        listEl.innerHTML = "";
+        var scenarios = (typeof OSBoot !== "undefined" && OSBoot.BOOT_SCENARIOS)
+            ? OSBoot.BOOT_SCENARIOS : [];
+        scenarios.forEach(function (s) {
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "quickboot-option";
+            btn.setAttribute("data-quickboot-device", s.device);
+            var name = document.createElement("span");
+            name.className = "quickboot-name";
+            name.textContent = s.label;
+            var cmd = document.createElement("span");
+            cmd.className = "quickboot-cmd";
+            cmd.textContent = s.boot + (s.autoLogin ? "  + auto-login" : "");
+            btn.appendChild(name);
+            btn.appendChild(cmd);
+            var req = requirementText(profileOf(s));
+            if (req) {
+                var reqEl = document.createElement("span");
+                reqEl.className = "quickboot-req";
+                reqEl.textContent = req;
+                btn.appendChild(reqEl);
+            }
+            btn.addEventListener("click", function () {
+                launch(s.device);
+            });
+            listEl.appendChild(btn);
+        });
+    }
+
+    function show() {
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "quick-boot-overlay";
+            overlay.className = "modal-overlay";
+            overlay.addEventListener("click", function (e) {
+                if (e.target === overlay ||
+                    (e.target.closest && e.target.closest(".quickboot-close"))) {
+                    hide();
+                }
+            });
+            document.body.appendChild(overlay);
+        }
+        overlay.innerHTML =
+            '<div class="modal-box quickboot-box">' +
+                '<span class="modal-title">Quick boot</span>' +
+                '<p class="modal-intro">Pick a guest OS to boot it in one ' +
+                    'click — credentials are typed automatically where known, ' +
+                    'and the machine is reconfigured to suit the OS.</p>' +
+                '<div class="quickboot-list"></div>' +
+                '<button type="button" class="modal-close quickboot-close">Close</button>' +
+            '</div>';
+        updateList();
+        overlay.classList.add("visible");
+    }
+
+    // --- Console output capture -----------------------------------------
+
+    function pushOutput(ch) {
+        outputBuffer += String.fromCharCode(ch & 0x7F);
+        if (outputBuffer.length > MAX_BUFFER) {
+            outputBuffer = outputBuffer.slice(outputBuffer.length - MAX_BUFFER);
+        }
+    }
+
+    function clearOutput() {
+        outputBuffer = "";
+    }
+
+    function outputContains(needle) {
+        return bufferContains(outputBuffer, needle);
+    }
+
+    // --- Typing / orchestration -----------------------------------------
+
+    function sendBytes(bytes) {
+        if (typeof window.dlReceiveQueue === "function") {
+            window.dlReceiveQueue(0, bytes);
+        }
+    }
+
+    // Wait budget for a prompt; after this the step is sent anyway so the
+    // sequence never stalls on a guest that does not print the expected text.
+    var WAIT_TIMEOUT_MS = 45000;
+    var WAIT_POLL_MS = 200;
+
+    // First step (boot) needs extra time for the Boot> prompt to appear.
+    function delayFor(index, base) {
+        return (index === 0) ? base * 2 : base;
+    }
+
+    function runSteps(steps, index, base) {
+        if (index >= steps.length) {
+            // All steps typed — the autoload is finished.
+            hideBalloon();
+            return;
+        }
+        var step = steps[index];
+        if (step.waitFor) {
+            waitForPrompt(steps, index, base, step.waitFor, Date.now());
+        } else {
+            setTimeout(function () {
+                sendBytes(stepBytes(step));
+                runSteps(steps, index + 1, base);
+            }, delayFor(index, base));
+        }
+    }
+
+    function waitForPrompt(steps, index, base, needle, startedAt) {
+        if (outputContains(needle) || Date.now() - startedAt > WAIT_TIMEOUT_MS) {
+            // Prompt seen (or timed out): send the input and move on.
+            sendBytes(stepBytes(steps[index]));
+            setTimeout(function () {
+                runSteps(steps, index + 1, base);
+            }, base);
+            return;
+        }
+        setTimeout(function () {
+            waitForPrompt(steps, index, base, needle, startedAt);
+        }, WAIT_POLL_MS);
+    }
+
+    // Wipe the operator console buffers so every wizard boot starts "on a
+    // fresh page": the teletype paper and LP11 paper are cleared, and every
+    // VT52 screen (console + user terminals) is cleared.
+    function clearConsole() {
+        var g60 = (typeof window !== "undefined") ? window.g60printer : null;
+        if (g60 && typeof g60.clear === "function") g60.clear();
+        if (typeof window !== "undefined" && window.lp11G60Printer &&
+            typeof window.lp11G60Printer.clear === "function") {
+            window.lp11G60Printer.clear();
+        }
+        if (typeof window !== "undefined" && typeof window.vt52Get === "function") {
+            for (var u = 0; u <= 2; u++) {
+                var t = window.vt52Get(u);
+                if (t && typeof t.clearScreen === "function") t.clearScreen();
+            }
+        }
+    }
+
+    // Type the boot sequence for a scenario. `force` skips the hardware
+    // profile check — used when resuming a pending boot after a reload.
+    function launch(device, force) {
+        var scenario = (typeof OSBoot !== "undefined" && OSBoot.scenarioFor)
+            ? OSBoot.scenarioFor(device) : null;
+        if (!scenario) return;
+
+        var cfg = (typeof Config !== "undefined" && Config.get)
+            ? Config.get() : null;
+        var profile = profileOf(scenario);
+
+        // Apply the machine profile if the current config differs. Device
+        // registration happens at load time, so a layout change reloads the
+        // page (same as the CONFIG Apply button); the boot resumes afterwards.
+        if (!force && cfg && hardwareDirty(cfg, profile)) {
+            try {
+                if (window.localStorage) window.localStorage.setItem(PENDING_KEY, device);
+            } catch (err) { /* ignore */ }
+            if (typeof Config.set === "function") {
+                Config.set(mergeHardware(cfg, profile));
+            }
+            // This is an intentional reload: suppress the beforeunload warning
+            // that would otherwise ask "Reload site?" (the CONFIG form is not
+            // in sync with the freshly applied profile).
+            window.__allowConfigReload = true;
+            window.location.reload();
+            return;
+        }
+
+        hide();
+
+        // Select the paper tape (if any) and rewind it so the boot loader
+        // reads it from the start.
+        if (scenario.paperTape) {
+            var ptrSelect = (typeof document !== "undefined")
+                ? document.getElementById("ptr") : null;
+            if (ptrSelect) ptrSelect.value = scenario.paperTape;
+            if (typeof window.ptrRewindTape === "function") window.ptrRewindTape();
+        }
+
+        // Show the operator console — or the scenario's target page (e.g. the
+        // VT11 Display page for Lunar Lander) — so the output is visible.
+        if (typeof switchPage === "function") {
+            switchPage(scenario.page || consolePageFor(cfg));
+        }
+
+        // Start "on a fresh page": clear teletype/LP11 paper and VT52 screens
+        // before the reboot, so the boot banner lands on clean output.
+        clearConsole();
+
+        // Reboot the machine so the boot loader reaches the Boot> prompt.
+        if (typeof boot === "function") boot();
+
+        // Forget any old console output so waitFor cannot match stale text.
+        clearOutput();
+
+        var base = stepDelayMs(cfg && cfg.teletypeSpeed);
+        var steps = [{ send: scenario.boot }];
+        var seq = scenario.steps || []; // paper tapes have no follow-up steps
+        for (var i = 0; i < seq.length; i++) {
+            steps.push(seq[i]);
+        }
+        showBalloon();
+        runSteps(steps, 0, base);
+    }
+
+    // --- Wiring: the magic-wand button lives in pdp11.html on the Panel page
+    function init() {
+        if (typeof document === "undefined") return; // Node tests
+
+        // Always wire the button — a deferred resume below must not leave it
+        // dead, otherwise the wizard cannot be re-opened after a reload.
+        var btn = document.getElementById("quick-boot-btn");
+        if (btn) btn.addEventListener("click", show);
+
+        // Resume a boot that was deferred by a config-driven reload.
+        var pending = null;
+        try {
+            if (window.localStorage) pending = window.localStorage.getItem(PENDING_KEY);
+        } catch (err) { /* ignore */ }
+        if (pending) {
+            try {
+                if (window.localStorage) window.localStorage.removeItem(PENDING_KEY);
+            } catch (err) { /* ignore */ }
+            // Defer so the page/app is fully wired before typing starts.
+            setTimeout(function () { launch(pending, true); }, 0);
+        }
+
+        // Any operator keystroke ends the autoload warning — from there the
+        // user types on their own ("don't touch the keyboard" no longer
+        // applies). Idempotent: hides nothing when no balloon is shown.
+        document.addEventListener("keydown", function () {
+            hideBalloon();
+        });
+    }
+
+    // Capture console output for prompt-waiting steps (called by iopage.js).
+    window.__consoleOutputHook = pushOutput;
+
+    if (typeof document !== "undefined" && document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+
+    return {
+        consolePageFor: consolePageFor,
+        stepDelayMs: stepDelayMs,
+        stepBytes: stepBytes,
+        bufferContains: bufferContains,
+        profileOf: profileOf,
+        mergeHardware: mergeHardware,
+        hardwareDirty: hardwareDirty,
+        requirementText: requirementText,
+        show: show,
+        hide: hide,
+        launch: launch
+    };
+})();

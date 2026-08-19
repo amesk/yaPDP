@@ -224,6 +224,9 @@ var Onboarding = (function () {
                     '<code>.tap</code> / <code>.ptap</code> / <code>.zst</code> image ' +
                     'into the <b>Drop zone</b> on the <b>Storage</b> page, or open ' +
                     '<b>Info</b> for the full OS list.</p>' +
+                '<p class="modal-drag">In a hurry? Use the <b>magic wand</b> on ' +
+                    'the <b>Panel</b> page to boot a guest OS automatically — ' +
+                    'the hardware is reconfigured and the login is typed for you.</p>' +
                 '<button type="button" class="modal-close">Got it</button>' +
             '</div>'
         );

@@ -201,6 +201,23 @@
       <div class="dec-logo">digital</div>
     </div>
     <div class="page active" id="page-panel">
+      <!-- Quick-boot magic wand: pinned to the top-right of the Panel page.
+           Opens the OS picker dialog (src/quickboot.js). Monochrome SVG so it
+           matches the amber front-panel palette instead of a coloured emoji. -->
+      <button type="button" id="quick-boot-btn" class="quick-boot-btn" title="Quick boot a guest OS"
+        aria-label="Quick boot a guest OS">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <!-- wand shaft -->
+          <path d="M4 20 L14.5 9.5" />
+          <!-- star tip -->
+          <path d="M15.5 4.5 L17 8 L20.5 9.5 L17 11 L15.5 14.5 L14 11 L10.5 9.5 L14 8 Z" fill="currentColor"
+            stroke="none" />
+          <!-- sparkle -->
+          <path d="M19 1.5 L20 3.5 L22 4.5 L20 5.5 L19 7.5 L18 5.5 L16 4.5 L18 3.5 Z" fill="currentColor"
+            stroke="none" />
+        </svg>
+      </button>
       <div class=frame>
         <div class=decBase>
           <span class=smallSpace></span>
@@ -1382,6 +1399,8 @@ Hello world
   <script src='src/fullscreen.js'></script>
   <script src='src/onboarding.js'></script>
   <script src='src/imgerror.js'></script>
+  <script src='src/osboot.js'></script>
+  <script src='src/quickboot.js'></script>
   <script src='src/pdp11-app.js'></script>
 </body>
 

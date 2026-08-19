@@ -365,6 +365,12 @@
     color: #b8b0a0;
 }
 
+/* Emphasised words inside modal dialogs use the dialog-title amber instead of
+   the global bold default (b { color: blue } used to bleed through). */
+.modal-box b {
+    color: #c8a860;
+}
+
 .modal-close {
     display: inline-block;
     padding: 8px 28px;
@@ -402,6 +408,124 @@
 /* Config "unapplied changes" dialog: side-by-side action buttons. */
 #config-leave-overlay .modal-close+.modal-close {
     margin-left: 10px;
+}
+
+/* Modal dialogs: amber selection and focus ring (matching the dialog title)
+   instead of the browser's blue default, which clashed with the theme. */
+.modal-overlay ::selection {
+    background: #c8a860;
+    color: #1c1814;
+}
+
+.modal-overlay button:focus-visible {
+    outline: 2px solid #c8a860;
+    outline-offset: 1px;
+}
+
+/* Quick-boot magic wand — pinned to the top-right corner of the Panel page. */
+#page-panel {
+    position: relative;
+}
+
+.quick-boot-btn {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    z-index: 50;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #c8a860;
+    border-radius: 50%;
+    background: #2c261c;
+    color: #ffd27f;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.quick-boot-btn:hover {
+    background: #3a3224;
+}
+
+/* Quick-boot OS picker list inside the shared modal box. */
+.quickboot-box {
+    max-width: 480px;
+}
+
+.quickboot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 4px 0 16px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.quickboot-option {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 2px 12px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #4a4438;
+    border-radius: 5px;
+    background: #241f18;
+    color: #e0d8c8;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.quickboot-option:hover {
+    border-color: #c8a860;
+    background: #2f2820;
+}
+
+.quickboot-name {
+    font-weight: bold;
+    color: #ffd27f;
+}
+
+.quickboot-cmd {
+    color: #9a9488;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.quickboot-req {
+    flex-basis: 100%;
+    color: #8f8878;
+    font-size: 11px;
+}
+
+/* "Autoloading in progress" toast (quickboot.js) — floats above the content
+   but below the modal overlays, so it never covers the OS picker dialog. */
+.quickboot-balloon {
+    position: fixed;
+    left: 50%;
+    top: 24px;
+    transform: translateX(-50%);
+    z-index: 50000;
+    display: none;
+    padding: 16px 28px;
+    border: 2px solid #d84a3f;
+    border-radius: 10px;
+    background: rgba(62, 16, 12, 0.6);
+    color: #ffd7d0;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7);
+}
+
+.quickboot-balloon.visible {
+    display: block;
 }
 
 .floatLeft {
@@ -827,7 +951,7 @@ pre {
 }
 
 b {
-    color: blue;
+    color: inherit;
 }
 
 /* ===== Page layout & sidebar (DEC 1960s style) ===== */
