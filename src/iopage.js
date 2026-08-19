@@ -1815,25 +1815,38 @@ async function fetchBlock(controlBlock, block) {
         // one level too high when the site is deployed under a subpath (e.g.
         // GitVerse Pages serves the repo under /yapdp/, where ../media lands on
         // the SPA fallback instead of the real binary file).
-        const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
-        if (zstResponse.ok) {
-            const buffer = await zstResponse.arrayBuffer();
-            assertCompleteImage(zstResponse, buffer, controlBlock.url);
-            if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
-                throw new Error("fzstd decompression library not loaded");
+        //
+        // Paper tapes may ship compressed (.ptap.zst) or raw (.ptap). A
+        // missing/unusable .zst probe is NOT fatal for them: some hosts answer
+        // non-existent .zst paths with a 200 SPA fallback page, so the
+        // decompression below would throw even though the raw .ptap is
+        // available. On a .ptap failure we fall through to the raw-file probe
+        // below instead of failing the load. Disk/tape images have no raw
+        // file to fall back to, so their errors surface immediately.
+        const isPaperTape = /\.ptap$/i.test(controlBlock.url);
+        try {
+            const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
+            if (zstResponse.ok) {
+                const buffer = await zstResponse.arrayBuffer();
+                assertCompleteImage(zstResponse, buffer, controlBlock.url);
+                if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
+                    throw new Error("fzstd decompression library not loaded");
+                }
+                let decompressed;
+                try {
+                    decompressed = fzstd.decompress(new Uint8Array(buffer));
+                } catch (err) {
+                    throw imageError("decompress",
+                        `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
+                }
+                createCache(controlBlock.cache, block, decompressed);
+                downLoadAdd(controlBlock.url, controlBlock.cache);
+                return zstResponse.status;
             }
-            let decompressed;
-            try {
-                decompressed = fzstd.decompress(new Uint8Array(buffer));
-            } catch (err) {
-                throw imageError("decompress",
-                    `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
-            }
-            createCache(controlBlock.cache, block, decompressed);
-            downLoadAdd(controlBlock.url, controlBlock.cache);
-            return zstResponse.status;
+        } catch (err) {
+            if (!isPaperTape) throw err;
         }
-        // .zst file missing: fall through to the raw-file probe below.
+        // .zst file missing or unusable: fall through to the raw-file probe below.
     }
 
     const rangeHeader = `bytes=${block * IO_BLOCKSIZE}-${(block + 1) * IO_BLOCKSIZE - 1}`;

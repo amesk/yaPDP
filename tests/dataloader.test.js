@@ -425,6 +425,47 @@ async function run() {
     console.log("PASS test 14: paper-tape blocks use the .zst fast path");
   }
 
+  // ---- Test 15: raw .ptap fallback when the .zst probe is a SPA page ----
+  // A host that answers non-existent .zst paths with a 200 SPA fallback page
+  // would otherwise make decompression throw even though the raw .ptap is
+  // available (e.g. Lunar Lander ships raw). A .ptap failure must fall through
+  // to the raw-file probe and boot from the real bytes.
+  {
+    const sb = buildSandbox();
+    sb.fzstd.decompress = (buf) => {
+      throw new Error("not a zst frame");
+    };
+    makeContext(sb, sections, [
+      "var _fetchedUrls = [];",
+      "async function __fetch(url) {",
+      "  _fetchedUrls.push(String(url));",
+      // .zst probe answered 200 with an HTML page (SPA fallback)
+      "  if (String(url).indexOf('.zst') !== -1) {",
+      "    return { ok:true, status:200, headers: { get: () => null }, arrayBuffer: async () => new Uint8Array([0x3c,0x21,0x44,0x4f]).buffer };",
+      "  }",
+      // raw .ptap answered with the real tape bytes
+      "  return { ok:true, status:206, headers: { get: () => null }, arrayBuffer: async () => new Uint8Array([0x55,0xAA,0x01,0x02]).buffer };",
+      "}",
+      "fetch = __fetch;",
+    ].join("\n"));
+    Object.defineProperty(sb, "__fetchedUrls", { get: () => sb._fetchedUrls });
+
+    const ctrl = { cache: [], url: "lander.ptap", compressed: true };
+    let status = 0;
+    let caught = null;
+    try {
+      status = await sb.fetchBlock(ctrl, 0);
+    } catch (err) {
+      caught = err;
+    }
+    assert.strictEqual(caught, null,
+      "raw .ptap must not fail when the .zst probe is a SPA page");
+    assert.strictEqual(status, 206, "raw .ptap probe must provide the image");
+    assert.strictEqual(ctrl.cache[0][0], 0xAA55,
+      "cache must be filled from the raw .ptap bytes");
+    console.log("PASS test 15: raw .ptap fallback when .zst probe is a SPA page");
+  }
+
   console.log("\nAll DataLoader tests passed.");
 }
 
