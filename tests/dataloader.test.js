@@ -78,20 +78,30 @@ function loadSections() {
   const dataLoader = extractBlock(src, "var DataLoader = (() => {", ")();");
   const createCache = extractBlock(src, "function createCache(cache, block, dataView)");
   const fetchBlock = extractBlock(src, "async function fetchBlock(controlBlock, block)");
+  const imageError = extractBlock(src, "function imageError(reason, message)");
+  const assertCompleteImage = extractBlock(src, "function assertCompleteImage(response, buffer, url)");
 
-  return { ioBlockSize, dataLoader, createCache, fetchBlock };
+  return { ioBlockSize, dataLoader, createCache, fetchBlock, imageError, assertCompleteImage };
 }
 
-function makeContext(sandbox, sections) {
+// fetchCode, when provided, is a string of VM code that defines `fetch`
+// (e.g. a stub returning a full, truncated or failing response). The default
+// stub counts calls and answers 404 so the HTTP path is observable.
+function makeContext(sandbox, sections, fetchCode) {
+  const fetchImpl = fetchCode || [
+    "var _fetchCalls = 0;",
+    "async function __fetch() { _fetchCalls++; return { ok:false, status:404, arrayBuffer: async () => new ArrayBuffer(0) }; }",
+    "fetch = __fetch;",
+  ].join("\n");
   const code = [
     sections.ioBlockSize,
     "var DataLoader;",
     sections.dataLoader,
     sections.createCache,
+    sections.imageError,
+    sections.assertCompleteImage,
     sections.fetchBlock,
-    "var _fetchCalls = 0;",
-    "async function __fetch() { _fetchCalls++; return { ok:false, status:404, arrayBuffer: async () => new ArrayBuffer(0) }; }",
-    "fetch = __fetch;",
+    fetchImpl,
   ].join("\n");
 
   vm.createContext(sandbox);
@@ -280,6 +290,78 @@ async function run() {
     sb.punchTapeAppend(buf, 0x1ff); // only the low 8 bits are kept
     assert.deepStrictEqual(buf, [0x41, 0x0d, 0x0a, 0xff]);
     console.log("PASS test 9: punchTapeAppend accumulates raw punch bytes");
+  }
+
+  // ---- Test 10: fetchBlock flags a truncated .zst download ----------
+  {
+    const sb = buildSandbox();
+    // Decompress would succeed if reached; the truncation check must trip first.
+    sb.fzstd.decompress = (buf) => new Uint8Array(buf);
+    makeContext(sb, sections, [
+      "fetch = async () => ({",
+      "  ok: true,",
+      "  status: 200,",
+      "  headers: { get: (name) => (name === 'content-length' ? '100' : null) },",
+      "  arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer",
+      "});",
+    ].join("\n"));
+
+    const ctrl = { cache: [], url: "rp1.dsk", compressed: true };
+    let caught = null;
+    try {
+      await sb.fetchBlock(ctrl, 0);
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught, "truncated download should throw");
+    assert.strictEqual(caught.imageReason, "truncated",
+      "truncated download should be reported as 'truncated'");
+    console.log("PASS test 10: fetchBlock detects a truncated .zst download");
+  }
+
+  // ---- Test 11: fetchBlock flags a corrupt .zst body -----------------
+  {
+    const sb = buildSandbox();
+    sb.fzstd.decompress = () => { throw new Error("bad zst frame"); };
+    makeContext(sb, sections, [
+      "fetch = async () => ({",
+      "  ok: true,",
+      "  status: 200,",
+      "  headers: { get: () => null },",
+      "  arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer",
+      "});",
+    ].join("\n"));
+
+    const ctrl = { cache: [], url: "rp1.dsk", compressed: true };
+    let caught = null;
+    try {
+      await sb.fetchBlock(ctrl, 0);
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught, "corrupt .zst should throw");
+    assert.strictEqual(caught.imageReason, "decompress",
+      "corrupt .zst body should be reported as 'decompress'");
+    console.log("PASS test 11: fetchBlock flags a corrupt .zst body");
+  }
+
+  // ---- Test 12: fetchBlock reports an unreachable .zst as network ----
+  {
+    const sb = buildSandbox();
+    sb.fzstd.decompress = (buf) => new Uint8Array(buf);
+    makeContext(sb, sections); // default 404 stub
+
+    const ctrl = { cache: [], url: "rp1.dsk", compressed: true };
+    let caught = null;
+    try {
+      await sb.fetchBlock(ctrl, 0);
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught, "missing .zst should throw");
+    assert.strictEqual(caught.imageReason, "network",
+      "unreachable .zst should be reported as 'network'");
+    console.log("PASS test 12: fetchBlock reports an unreachable .zst as network");
   }
 
   console.log("\nAll DataLoader tests passed.");

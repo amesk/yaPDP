@@ -196,13 +196,13 @@ var Onboarding = (function () {
     function ensureOverlay() {
         if (overlay) return overlay;
         overlay = document.createElement("div");
-        overlay.id = "onboard-overlay";
-        overlay.className = "onboard-overlay";
+        overlay.id = "modal-overlay";
+        overlay.className = "modal-overlay";
         // Delegate clicks: the "Got it" button and a click on the backdrop
         // both dismiss the overlay.
         overlay.addEventListener("click", function (e) {
             if (e.target === overlay ||
-                (e.target.closest && e.target.closest(".onboard-close"))) {
+                (e.target.closest && e.target.closest(".modal-close"))) {
                 hide();
             }
         });
@@ -212,19 +212,19 @@ var Onboarding = (function () {
 
     function boxHtml() {
         return (
-            '<div class="onboard-box">' +
-                '<span class="onboard-title">Welcome to yaPDP — the PDP-11/70</span>' +
-                '<p class="onboard-intro">Here is how to get going in 30 seconds:</p>' +
-                '<ol class="onboard-steps">' +
+            '<div class="modal-box">' +
+                '<span class="modal-title">Welcome to yaPDP — the PDP-11/70</span>' +
+                '<p class="modal-intro">Here is how to get going in 30 seconds:</p>' +
+                '<ol class="modal-steps">' +
                     '<li>Open the <b>Console</b> page in the left sidebar.</li>' +
                     '<li>At the <code>Boot></code> prompt type one of:</li>' +
                 '</ol>' +
-                '<ul class="onboard-boots" id="onboard-boots"></ul>' +
-                '<p class="onboard-drag">Missing an OS? Drag a <code>.dsk</code> / ' +
+                '<ul class="modal-boots" id="modal-boots"></ul>' +
+                '<p class="modal-drag">Missing an OS? Drag a <code>.dsk</code> / ' +
                     '<code>.tap</code> / <code>.ptap</code> / <code>.zst</code> image ' +
                     'into the <b>Drop zone</b> on the <b>Storage</b> page, or open ' +
                     '<b>Info</b> for the full OS list.</p>' +
-                '<button type="button" class="onboard-close">Got it</button>' +
+                '<button type="button" class="modal-close">Got it</button>' +
             '</div>'
         );
     }
@@ -239,12 +239,12 @@ var Onboarding = (function () {
                 extra = ' &mdash; then type <code>' + row.next + '</code>';
             }
         }
-        return '<li class="onboard-boot"><code>' + row.boot +
+        return '<li class="modal-boot"><code>' + row.boot +
             '</code> &mdash; ' + row.label + extra + '</li>';
     }
 
     function updateBoots() {
-        var el = document.getElementById("onboard-boots");
+        var el = document.getElementById("modal-boots");
         if (!el) return;
         var table = bootTable || [];
         var images = mountedImages();
@@ -254,7 +254,7 @@ var Onboarding = (function () {
         if (rows.length) {
             rows.forEach(function (r) { html += bootListItem(r); });
             if (total > rows.length) {
-                html += '<li class="onboard-boot onboard-more">+ ' +
+                html += '<li class="modal-boot modal-more">+ ' +
                     (total - rows.length) + ' more on the Info page</li>';
             }
         } else if (table.length) {
@@ -263,7 +263,7 @@ var Onboarding = (function () {
             // — show the first two documented suggestions anyway.
             table.slice(0, 2).forEach(function (r) { html += bootListItem(r); });
         } else {
-            html += '<li class="onboard-boot">Type <code>boot rk0</code> (Unix V5) ' +
+            html += '<li class="modal-boot">Type <code>boot rk0</code> (Unix V5) ' +
                 'or <code>boot rk1</code> (RT-11)</li>';
         }
         el.innerHTML = html;

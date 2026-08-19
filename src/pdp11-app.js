@@ -574,7 +574,7 @@ function applyVT52ReverseVideo(enabled) {
 }
 
 // ---- Leaving the CONFIG page with uncommitted changes ----
-// Confirmation dialog reusing the onboarding overlay style (onboard-* classes,
+// Confirmation dialog reusing the shared modal overlay style (modal-* classes,
 // see css/pdp11.css) so it matches the first-run hint. onLeave() runs when the
 // user confirms leaving; onStay() when they cancel or click the backdrop.
 var __configLeaveCallbacks = { onLeave: null, onStay: null };
@@ -586,14 +586,14 @@ window.configConfirmLeave = function (onLeave, onStay) {
   if (!__configLeaveOverlay) {
     __configLeaveOverlay = document.createElement('div');
     __configLeaveOverlay.id = 'config-leave-overlay';
-    __configLeaveOverlay.className = 'onboard-overlay';
+    __configLeaveOverlay.className = 'modal-overlay';
     __configLeaveOverlay.innerHTML =
-      '<div class="onboard-box">' +
-        '<span class="onboard-title">Unapplied configuration</span>' +
-        '<p class="onboard-intro">You have uncommitted configuration changes. ' +
+      '<div class="modal-box">' +
+        '<span class="modal-title">Unapplied configuration</span>' +
+        '<p class="modal-intro">You have uncommitted configuration changes. ' +
         'Press Apply on the Config page to commit them before leaving.</p>' +
-        '<button type="button" class="onboard-close" data-leave-action="stay">Stay</button>' +
-        '<button type="button" class="onboard-close" data-leave-action="leave">Leave</button>' +
+        '<button type="button" class="modal-close" data-leave-action="stay">Stay</button>' +
+        '<button type="button" class="modal-close" data-leave-action="leave">Leave</button>' +
       '</div>';
     __configLeaveOverlay.addEventListener('click', function (e) {
       var action = e.target.getAttribute && e.target.getAttribute('data-leave-action');

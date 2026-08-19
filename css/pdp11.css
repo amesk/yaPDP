@@ -220,7 +220,7 @@
 }
 
 /* Floating fullscreen toggle — bottom-right, above the app content but below
-   the drop/onboarding overlays so they keep focus while they are active. */
+   the drop/modal overlays so they keep focus while they are active. */
 .fullscreen-btn {
     position: fixed;
     bottom: 12px;
@@ -262,8 +262,10 @@
     display: block;
 }
 
-/* First-run onboarding modal overlay */
-.onboard-overlay {
+/* Shared modal dialog overlay — used by the first-run onboarding hint, the
+   reboot confirmation, the CONFIG leave dialog and the image-load error
+   dialog (imgerror.js). */
+.modal-overlay {
     position: fixed;
     inset: 0;
     z-index: 100000;
@@ -273,11 +275,11 @@
     background: rgba(10, 8, 6, 0.72);
 }
 
-.onboard-overlay.visible {
+.modal-overlay.visible {
     display: flex;
 }
 
-.onboard-box {
+.modal-box {
     max-width: 540px;
     padding: 28px 34px;
     border: 1px solid #c8a860;
@@ -288,45 +290,16 @@
     line-height: 1.5;
 }
 
-.onboard-title {
-    display: block;
-    font-size: 22px;
-    font-weight: bold;
-    letter-spacing: 1px;
-    color: #c8a860;
-    margin-bottom: 12px;
+/* Image load error dialog (imgerror.js): error accent on the modal box. */
+.modal-box.error {
+    border-color: #b5544a;
 }
 
-.onboard-intro {
-    margin: 0 0 10px;
-    font-size: 14px;
-    color: #cfc7b8;
+.modal-box.error .modal-title {
+    color: #ff9b8a;
 }
 
-.onboard-steps {
-    margin: 0 0 6px 22px;
-    padding: 0;
-    font-size: 14px;
-}
-
-.onboard-steps li {
-    margin: 4px 0;
-}
-
-.onboard-boots {
-    list-style: none;
-    margin: 2px 0 8px;
-    padding: 6px 0 6px 10px;
-    border-left: 3px solid #c8a860;
-    background: rgba(200, 168, 96, 0.07);
-    font-size: 13px;
-}
-
-.onboard-boots li {
-    margin: 3px 0;
-}
-
-.onboard-boot code {
+.modal-box.error code {
     background: #2a2a2a;
     color: #ffd27f;
     border: 1px solid #4a4438;
@@ -335,17 +308,64 @@
     font-family: "Courier New", Courier, monospace;
 }
 
-.onboard-boot.onboard-more {
+.modal-title {
+    display: block;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #c8a860;
+    margin-bottom: 12px;
+}
+
+.modal-intro {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #cfc7b8;
+}
+
+.modal-steps {
+    margin: 0 0 6px 22px;
+    padding: 0;
+    font-size: 14px;
+}
+
+.modal-steps li {
+    margin: 4px 0;
+}
+
+.modal-boots {
+    list-style: none;
+    margin: 2px 0 8px;
+    padding: 6px 0 6px 10px;
+    border-left: 3px solid #c8a860;
+    background: rgba(200, 168, 96, 0.07);
+    font-size: 13px;
+}
+
+.modal-boots li {
+    margin: 3px 0;
+}
+
+.modal-boot code {
+    background: #2a2a2a;
+    color: #ffd27f;
+    border: 1px solid #4a4438;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+.modal-boot.modal-more {
     color: #9a9488;
 }
 
-.onboard-drag {
+.modal-drag {
     margin: 8px 0 16px;
     font-size: 13px;
     color: #b8b0a0;
 }
 
-.onboard-close {
+.modal-close {
     display: inline-block;
     padding: 8px 28px;
     border: 1px solid #c8a860;
@@ -358,12 +378,12 @@
     cursor: pointer;
 }
 
-.onboard-close:hover {
+.modal-close:hover {
     background: #3a3224;
 }
 
 /* Reboot confirmation dialog: the "don't ask again" checkbox above the buttons. */
-.onboard-dontask {
+.modal-dontask {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -374,13 +394,13 @@
     user-select: none;
 }
 
-.onboard-dontask input {
+.modal-dontask input {
     accent-color: #c8a860;
     cursor: pointer;
 }
 
 /* Config "unapplied changes" dialog: side-by-side action buttons. */
-#config-leave-overlay .onboard-close+.onboard-close {
+#config-leave-overlay .modal-close+.modal-close {
     margin-left: 10px;
 }
 

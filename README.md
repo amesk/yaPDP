@@ -93,6 +93,22 @@ flowchart LR
     E --> F[Block cache] --> G[yaPDP]
 ```
 
+### When an image cannot be loaded
+
+If a guest OS image cannot be fetched completely — a big BSD image dropped by
+the hosting server mid-download, or an image that is not bundled in the
+**Minimal** desktop build — the emulator doesn't stall silently. A dialog in
+the same shared modal style as the first-run hint explains that the image is
+incomplete and offers **Open Storage**, which jumps straight to the Drop zone
+for a manual drag & drop of the downloaded file. Detection covers truncated
+HTTP responses (a `Content-Length` mismatch or an empty body) and corrupted or
+partial `.zst` data that `fzstd` cannot decompress.
+
+The wording adapts to the environment: a page opened as a local `file://`
+explains that the browser blocks fetching the media directory (and suggests a
+local web server), while the Tauri **Minimal** build explains that the image is
+not shipped and points to the Drop zone.
+
 ### Building the desktop app
 
 Prerequisites (Windows): Rust (MSVC toolchain), Visual Studio 2019/2022 with "Desktop
@@ -107,7 +123,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
+| `npm test` | Run the modular tests (Config + DataLoader + onboarding + image-load error + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -288,6 +304,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/bootcode.js`](src/bootcode.js) | The custom bootstrap loader program |
 | [`src/dragdrop.js`](src/dragdrop.js) | Drag & drop disk/tape image import — mounts files into DataLoader, persists them in IndexedDB |
 | [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
+| [`src/imgerror.js`](src/imgerror.js) | Onboarding-style dialog shown when a disk/tape image fails to load (dropped connection, truncated or corrupt `.zst`) — explains the failure and links to the Storage page |
 | [`src/fullscreen.js`](src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
@@ -297,6 +314,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/vt11.test.js`](tests/vt11.test.js) | VT11 display register/gating modular tests — run with `node tests/vt11.test.js` |
 | [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |
 | [`tests/hum.test.js`](tests/hum.test.js) | Machine-hum state-to-gain mapping modular tests — run with `node tests/hum.test.js` |
+| [`tests/imgerror.test.js`](tests/imgerror.test.js) | ImageError `messageFor()` modular tests (network/truncated/decompress wording) — run with `node tests/imgerror.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

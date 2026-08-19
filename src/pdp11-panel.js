@@ -166,7 +166,7 @@ function examineDeposit(data) {
 
   // --- Sidebar navigation (data-page) ---
   // Leaving the CONFIG page with uncommitted changes asks for confirmation via
-  // the onboarding-style overlay (window.configConfirmLeave) so the user does
+  // the shared modal overlay (window.configConfirmLeave) so the user does
   // not silently lose pending structural edits.
   document.querySelectorAll('.nav-btn[data-page]').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -360,23 +360,23 @@ function examineDeposit(data) {
     boot();
   }
 
-  // Confirmation overlay (reuses the onboarding modal style, see css/pdp11.css).
+  // Confirmation overlay (reuses the shared modal style, see css/pdp11.css).
   var rebootConfirmOverlay = null;
 
   function ensureRebootConfirm() {
     if (rebootConfirmOverlay) return rebootConfirmOverlay;
     rebootConfirmOverlay = document.createElement('div');
     rebootConfirmOverlay.id = 'reboot-confirm-overlay';
-    rebootConfirmOverlay.className = 'onboard-overlay';
+    rebootConfirmOverlay.className = 'modal-overlay';
     rebootConfirmOverlay.innerHTML =
-      '<div class="onboard-box">' +
-        '<span class="onboard-title">Reboot the machine?</span>' +
-        '<p class="onboard-intro">This restarts the emulated PDP-11 and boots the ' +
+      '<div class="modal-box">' +
+        '<span class="modal-title">Reboot the machine?</span>' +
+        '<p class="modal-intro">This restarts the emulated PDP-11 and boots the ' +
         'built-in default loader.</p>' +
-        '<label class="onboard-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
+        '<label class="modal-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
         'Don\'t show this warning anymore</label>' +
-        '<button type="button" class="onboard-close" data-reboot-action="cancel">Cancel</button>' +
-        '<button type="button" class="onboard-close" data-reboot-action="reboot">Reboot</button>' +
+        '<button type="button" class="modal-close" data-reboot-action="cancel">Cancel</button>' +
+        '<button type="button" class="modal-close" data-reboot-action="reboot">Reboot</button>' +
       '</div>';
     rebootConfirmOverlay.addEventListener('click', function (e) {
       var action = e.target.getAttribute && e.target.getAttribute('data-reboot-action');

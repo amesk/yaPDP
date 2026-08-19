@@ -1737,6 +1737,30 @@ function createCache(cache, block, dataView) {
     }
 }
 
+// --- image error helpers ---
+// Build a fetch/decode error carrying the machine-readable reason that the
+// image load dialog (imgerror.js) uses to phrase its message. iopage.js only
+// needs the reason string; the actual dialog lives in the UI layer.
+function imageError(reason, message) {
+    const err = new Error(message);
+    err.imageReason = reason;
+    return err;
+}
+
+// After response.arrayBuffer(): detect a connection that was dropped before
+// the full body arrived. A server that closes the connection mid-body can
+// still resolve fetch() with a short (or empty) body instead of rejecting it,
+// so compare against the advertised Content-Length when one is present.
+function assertCompleteImage(response, buffer, url) {
+    const contentLength = parseInt(response.headers.get("content-length"), 10);
+    const length = buffer.byteLength || 0;
+    if (length === 0 ||
+        (Number.isFinite(contentLength) && contentLength > 0 && length < contentLength)) {
+        throw imageError("truncated",
+            `Incomplete image download for ${url} (got ${length} of ${contentLength} bytes)`);
+    }
+}
+
 // --- fetchBlock() ---
 // Fetch a cache block from disk/tape image.
 // - For known-compressed images (controlBlock.compressed): fetches the .zst
@@ -1783,10 +1807,17 @@ async function fetchBlock(controlBlock, block) {
         const zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
         if (zstResponse.ok) {
             const buffer = await zstResponse.arrayBuffer();
+            assertCompleteImage(zstResponse, buffer, controlBlock.url);
             if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
                 throw new Error("fzstd decompression library not loaded");
             }
-            const decompressed = fzstd.decompress(new Uint8Array(buffer));
+            let decompressed;
+            try {
+                decompressed = fzstd.decompress(new Uint8Array(buffer));
+            } catch (err) {
+                throw imageError("decompress",
+                    `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
+            }
             createCache(controlBlock.cache, block, decompressed);
             downLoadAdd(controlBlock.url, controlBlock.cache);
             return zstResponse.status;
@@ -1817,18 +1848,30 @@ async function fetchBlock(controlBlock, block) {
     }
 
     // --- Fallback path: fetch compressed .zst file ---
-    const zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
+    let zstResponse;
+    try {
+        zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
+    } catch (err) {
+        throw imageError("network", `Network error fetching .zst for ${controlBlock.url}`);
+    }
     if (!zstResponse.ok) {
-        throw new Error(`Network error fetching .zst for ${controlBlock.url}`);
+        throw imageError("network", `Network error fetching .zst for ${controlBlock.url}`);
     }
 
     const buffer = await zstResponse.arrayBuffer();
+    assertCompleteImage(zstResponse, buffer, controlBlock.url);
     if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
         throw new Error("fzstd decompression library not loaded");
     }
 
     // Decompress and fill cache
-    const decompressed = fzstd.decompress(new Uint8Array(buffer));
+    let decompressed;
+    try {
+        decompressed = fzstd.decompress(new Uint8Array(buffer));
+    } catch (err) {
+        throw imageError("decompress",
+            `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
+    }
     createCache(controlBlock.cache, block, decompressed);
 
     // Register cache for download/export
@@ -1938,6 +1981,11 @@ async function diskIO(controlBlock, operation, position, address, count, options
             // a double trap while the guest OS is mid-boot.
             iopage.scheduleCallback(diskIO, controlBlock, operation, position, address, count, options);
         } catch (err) {
+            // Surface the failure to the operator (imgerror.js overlay) before
+            // signalling the device with the usual network/fetch error code.
+            if (typeof window !== "undefined" && typeof window.reportImageLoadError === "function") {
+                window.reportImageLoadError(controlBlock.url, (err && err.imageReason) || "network");
+            }
             iopage.scheduleCallback(controlBlock.callback, controlBlock, 9, position, address, count, options); // Network/fetch error
         }
         return;
