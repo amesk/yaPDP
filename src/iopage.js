@@ -1810,7 +1810,12 @@ async function fetchBlock(controlBlock, block) {
     // decompress them directly to avoid a wasted (and console-logged) 404
     // probe of the non-existent raw file.
     if (controlBlock.compressed) {
-        const zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
+        // Media images live next to the emulator page (repo root), so resolve
+        // them relative to the document URL — NOT `../media`, which would point
+        // one level too high when the site is deployed under a subpath (e.g.
+        // GitVerse Pages serves the repo under /yapdp/, where ../media lands on
+        // the SPA fallback instead of the real binary file).
+        const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
         if (zstResponse.ok) {
             const buffer = await zstResponse.arrayBuffer();
             assertCompleteImage(zstResponse, buffer, controlBlock.url);
@@ -1835,7 +1840,7 @@ async function fetchBlock(controlBlock, block) {
 
     try {
         // --- Primary path: fetch raw .dsk file slice ---
-        const response = await fetch(`../media/${controlBlock.url}`, {
+        const response = await fetch(`media/${controlBlock.url}`, {
             headers: { "Range": rangeHeader }
         });
 
@@ -1856,7 +1861,7 @@ async function fetchBlock(controlBlock, block) {
     // --- Fallback path: fetch compressed .zst file ---
     let zstResponse;
     try {
-        zstResponse = await fetch(`../media/${controlBlock.url}.zst`);
+        zstResponse = await fetch(`media/${controlBlock.url}.zst`);
     } catch (err) {
         throw imageError("network", `Network error fetching .zst for ${controlBlock.url}`);
     }

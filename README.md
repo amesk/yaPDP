@@ -87,6 +87,13 @@ flowchart LR
     E --> F[Block cache] --> G[yaPDP]
 ```
 
+On a static host, disk/tape images are fetched from the `media/` directory
+**relative to the emulator page** (`fetch("media/…")`), not from `../media/`.
+Keeping the path page-relative is what lets the emulator run when the repository
+is served from a subpath — e.g. GitVerse Pages publishes it under `/yapdp/`,
+where `../media` would resolve one level too high and hit the SPA fallback page
+instead of the real binary file.
+
 ### When an image cannot be loaded
 
 If a guest OS image cannot be fetched completely — a big BSD image dropped by

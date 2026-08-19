@@ -364,6 +364,33 @@ async function run() {
     console.log("PASS test 12: fetchBlock reports an unreachable .zst as network");
   }
 
+  // ---- Test 13: HTTP image URLs are page-relative (media/…), not ../media ----
+  // The image URL is resolved relative to the document URL, so it must start
+  // with "media/" — a "../media/" prefix would break whenever the repository is
+  // served from a subpath (e.g. GitVerse Pages under /yapdp/).
+  {
+    const sb = buildSandbox();
+    makeContext(sb, sections, [
+      "var _fetchedUrls = [];",
+      "async function __fetch(url) { _fetchedUrls.push(String(url)); return { ok:false, status:404, arrayBuffer: async () => new ArrayBuffer(0) }; }",
+      "fetch = __fetch;",
+    ].join("\n"));
+    Object.defineProperty(sb, "__fetchedUrls", { get: () => sb._fetchedUrls });
+
+    const ctrl = { cache: [], url: "rp1.dsk", compressed: true };
+    try {
+      await sb.fetchBlock(ctrl, 0);
+    } catch (err) { /* 404 stub: expected to fail */ }
+
+    const urls = sb.__fetchedUrls || [];
+    assert.ok(urls.length >= 1, "HTTP fetch should be attempted for unmounted image");
+    const first = urls[0];
+    assert.ok(/^media\/rp1\.dsk\.zst$/.test(first),
+      "image URL must be page-relative media/…, got: " + first);
+    assert.ok(first.indexOf("../") === -1, "image URL must not use ../media");
+    console.log("PASS test 13: HTTP image URLs are page-relative (media/…), not ../media");
+  }
+
   console.log("\nAll DataLoader tests passed.");
 }
 
