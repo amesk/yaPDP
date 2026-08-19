@@ -4,6 +4,11 @@
     "private": true,
     "type": "commonjs",
     "description": "yaPDP - Yet Another PDP-11/70 web emulator - development & build scripts",
+    "license": "MIT",
+    "author": {
+        "name": "Alexei Eskenazi",
+        "email": "alexei.eskenazi@gmail.com"
+    },
     "engines": {
         "node": ">=18"
     },

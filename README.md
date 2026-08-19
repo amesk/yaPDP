@@ -369,6 +369,14 @@ Disk (`.dsk`), tape (`.tap`), and paper tape (`.ptap`) images live in the [`medi
 
 ---
 
+## License
+
+This project is released under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Alexei Eskenazi
+
+---
+
 ## Acknowledgments
 
 This project stands on the shoulders of giants.
