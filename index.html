@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset="UTF-8">
+    <title>yaPDP — Yet Another PDP‑11/70 Web Emulator</title>
+    <meta name="description"
+        content="yaPDP — Yet Another PDP‑11/70 Emulator. An authentic front panel, a Model 33 ASR teletype operator console, VT52 terminals, an LP11 line printer and 16 vintage guest operating systems — right in your browser.">
+    <meta name="keywords"
+        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,RT-11,RSX-11M,RSTS,BSD,Unix">
+    <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+
+    <!-- Same stylesheet as the emulator, so the landing page shares the exact
+       DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
+    <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
+
+    <!-- Landing-page-only rules. The base pdp11.css already supplies the body
+       photo backdrop, fonts and the .app-layout chrome; here we
+       only adapt the content slab (mirroring #page-instructions) and the
+       hero / call-to-action blocks. -->
+    <style>
+        /* Content slab — mirrors the emulator's Info page (dark translucent card
+       over the machine-room photo, block layout, readable column width). */
+        .landing-page {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            color: #e0d8c8;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 16px 24px 32px 24px;
+            background: rgba(28, 25, 21, 0.82);
+        }
+
+        .landing-page h1,
+        .landing-page h2,
+        .landing-page h3,
+        .landing-page h4 {
+            color: #f0e6c8;
+        }
+
+        .landing-page a {
+            color: #c8a860;
+        }
+
+        .landing-page a:hover {
+            color: #e8d080;
+        }
+
+        .landing-page code {
+            color: #d4c4a0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .landing-page pre {
+            color: #d0c8b8;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            overflow-x: auto;
+        }
+
+        .landing-page table {
+            color: #e0d8c8;
+            border-collapse: collapse;
+        }
+
+        .landing-page table thead {
+            color: #f0e6c8;
+        }
+
+        .landing-page table td,
+        .landing-page table th {
+            padding: 5px 10px;
+            border-bottom: 1px solid #3a3528;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .landing-page blockquote {
+            margin: 12px 0;
+            padding: 6px 14px;
+            border-left: 3px solid #c8a860;
+            border-radius: 0 4px 4px 0;
+            background: rgba(0, 0, 0, 0.2);
+            color: #d4c4a0;
+        }
+
+        .landing-page hr {
+            border: 0;
+            border-top: 1px solid #4a453a;
+            margin: 26px 0;
+        }
+
+        .landing-page b,
+        .landing-page strong {
+            color: inherit;
+        }
+
+        /* Hero block */
+        .hero {
+            text-align: center;
+        }
+
+        .hero img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            border: 1px solid #4a453a;
+        }
+
+        .hero .tagline {
+            color: #c8b890;
+            font-style: italic;
+            font-size: 15px;
+            margin: 10px 0 4px 0;
+        }
+
+        /* Zero-friction promise: the whole point is instant immersion. */
+        .hero .zero-setup {
+            color: #c8a860;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            margin: 8px 0 0 0;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 18px 0 6px 0;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 10px 18px;
+            background: linear-gradient(180deg, #5a4a30, #3a3528);
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            color: #f0e6c8;
+            font-weight: bold;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 11px;
+            box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        .cta-btn:hover {
+            background: linear-gradient(180deg, #6a5838, #4a4030);
+            border-color: #e0c880;
+            color: #fff6e0;
+        }
+
+        /* Inline icon inside a CTA button (e.g. the YouTube logo) */
+        .cta-btn .cta-icon {
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        .hero-note {
+            font-size: 12px;
+            color: #9a9488;
+            margin-top: 10px;
+        }
+
+        /* Small feature badges in the feature table (reuses .disk/.system) */
+        .landing-page td.disk {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Hidden SVG sprite: button icons -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="icon-youtube" viewBox="0 0 24 24">
+                <!-- YouTube play-button logo: red rounded rectangle with a white play triangle -->
+                <rect x="1.5" y="5" width="21" height="14" rx="4" fill="#ff0000" />
+                <path d="M10 9.2 L16 12 L10 14.8 Z" fill="#ffffff" />
+            </symbol>
+        </defs>
+    </svg>
+
+    <div class="app-layout">
+        <div class="landing-page">
+
+            <div class="hero">
+                <h1>yaPDP — Yet Another PDP‑11/70 Web Emulator</h1>
+                <p class="tagline">Step into the machine room of 1970s computing — a fully immersive DEC experience,
+                    with zero installation and zero configuration.</p>
+                <p class="zero-setup">No plugins. No downloads. No setup. Just open the page and you're standing in
+                    front of a PDP‑11.</p>
+                <p>
+                    <img src="assets/pdp1170-large.png" alt="PDP‑11/70 Front Panel">
+                </p>
+                <div class="cta-row">
+                    <a class="cta-btn" href="pdp11.html">Launch the Emulator Online</a>
+                    <a class="cta-btn" href="https://gitverse.ru/amesk/yaPDP/releases">Download</a>
+                    <a class="cta-btn" href="https://www.youtube.com/watch?v=m3dpBLgbYOM">
+                        <svg class="cta-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+                            focusable="false">
+                            <use href="#icon-youtube" />
+                        </svg>
+                        Watch the Demo
+                    </a>
+                </div>
+                <p class="hero-note">
+                    A hosted copy of the original upstream project: <a
+                        href="https://paulnank.github.io/pdp11-js/pdp11.html">Live demo</a>
+                </p>
+            </div>
+
+            <hr>
+
+            <h2>About This Project</h2>
+
+            <p>
+                This is a <b>PDP‑11/70</b> emulator that just works out of the box — no plugins, no downloads, no
+                configuration. Just open the page and you're standing in front of a DEC minicomputer.
+            </p>
+
+            <h3>What makes it special</h3>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">Authentic Front Panel</td>
+                        <td>Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the
+                            way DEC
+                            engineers did in the 1970s.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Model 33 ASR Teletype</td>
+                        <td>A fully animated Google60-style teletype connected as the operator console — complete with
+                            paper
+                            printing, keypunch sounds, line-feed whirs and authentic nroff/man overstrike rendering.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">VT52 Terminal</td>
+                        <td>A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video
+                            terminals.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">VT11 Display</td>
+                        <td>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page,
+                            enabled
+                            from the CONFIG page.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">16 Guest OSes</td>
+                        <td>Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11,
+                            XXDP diagnostics, and more.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Persistent Storage</td>
+                        <td>All disk and tape images are preloaded. Changes to disk contents persist in browser storage
+                            across
+                            sessions.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Paper Tape Reader</td>
+                        <td>Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Desktop App</td>
+                        <td>The same emulator is packaged as a native offline <a href="https://tauri.app/">Tauri</a>
+                            desktop
+                            application — see the README for the two installer variants.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                PDP‑11 emulators are plentiful today. They span every platform and every level of ambition — from
+                lightweight interpreters to cycle‑accurate recreations. But for all their differences they share the
+                same sore spot: getting one up and running is a struggle. Configuration screens full of cryptic
+                options, an engineer's interface built for utility rather than for the experience, and the eternal hunt
+                for a disk image that actually works with this particular emulator — the part that should be effortless
+                usually turns out to be the hardest.
+            </p>
+
+            <p>
+                Solving those problems is necessary, but it is not the whole story. The other half of the equation is
+                what emulation is really about — immersion. The spirit of the era, the hum of the power supply, paper
+                rattling through the teletype, the soft glow of a phosphor screen. We emulate not merely to run old
+                software, but to feel, for a while, what it was like to work with it.
+            </p>
+
+            <p>
+                That is exactly what yaPDP sets out to do. It pairs a zero‑configuration, instant start — open the page
+                and you're standing at the console of a PDP‑11/70 — with an authenticity that reaches down to the
+                smallest detail, even the sound: the drone of the machine, the clatter of the Model 33 ASR, the rhythm
+                of the line printer. Not just a faithful emulator. A faithful experience.
+            </p>
+
+            <hr>
+
+            <h2>Who Is This For?</h2>
+
+            <p>As it turns out, rather a lot of people:</p>
+
+            <ul>
+                <li><b>Those who were there.</b> If you remember the clatter of a line printer or the smell of a warm
+                    front panel, this is a one‑way ticket back to the machine room — no time machine, no soldering
+                    iron and no security clearance required.</li>
+                <li><b>Those who arrived later.</b> If you were born after the PDP‑11 was gently retired, this is where
+                    a surprising share of today's mainstream ideas began: time‑sharing, multiuser systems, hierarchical
+                    file systems, the C language, Unix itself. It all started somewhere. This is that somewhere.</li>
+                <li><b>Museums of computing history.</b> An interactive exhibit that never needs dusting, winding, or a
+                    helpful gentleman in the basement with a box of spare transistors.</li>
+                <li><b>Students and the merely curious.</b> A fine instrument for learning — from the days when trees
+                    were green, the sky was blue, and a computer announced its thinking with a sound you could actually
+                    hear and lights that actually showed something useful.</li>
+            </ul>
+
+            <hr>
+
+            <h2>A Personal Note</h2>
+
+            <p>
+                I first saw DEC minicomputers as a child at my parents' workplace. The blinking lights, the whir of disk
+                drives, the smell of ozone and paper — it left an impression that never faded.
+            </p>
+
+            <p>
+                My real hands‑on encounter came later, when I found myself in front of the Soviet clones of DEC hardware
+                —
+                the <b>SM‑4</b> and <b>SM‑1420</b> — running <b>RSX‑11M</b>. And with them came C. The language that
+                lets you
+                feel the machine. It was love at first sight.
+            </p>
+
+            <p>
+                That was forty years ago.
+            </p>
+
+            <p>
+                I went on to become a professional software developer — starting with low‑level programming, then
+                building bare metal systems programming tools for x86, working on space communication systems and
+                onboard navigation systems, and eventually leading projects of considerable size.
+                But the feeling of powering up an SM‑4 with my own hands, watching the console lights dance,
+                then walking to the next room to sit at a terminal — that stayed with me.
+                I've been trying to bring it back ever since.
+            </p>
+
+            <p>
+                I never got to run <b>real UNIX</b> on those machines. The Soviet replicas lived under RSX‑11M, and by
+                the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But
+                decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot
+                Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
+            </p>
+
+            <p>
+                This project is the result: <b>yaPDP</b>, a fully fledged PDP‑11/70 emulator that runs right in your
+                browser,
+                with an authentic front panel and a connected Model 33 ASR teletype — the operator's console I
+                always dreamed of having next to my desk.
+            </p>
+
+            <p>
+                Welcome to the machine.
+            </p>
+
+            <hr>
+
+            <h2>Get Started</h2>
+
+            <h3>Quick boot</h3>
+
+            <ol>
+                <li>Open the <a href="pdp11.html">PDP‑11/70 emulator</a>.</li>
+            </ol>
+
+            <p>
+                <b>In a hurry?</b> Use the <b>magic wand</b> button pinned to the top-right corner of the
+                <b>Panel</b> page — it does it all in one click: picks a guest OS, reconfigures the machine, reboots
+                it, and types the boot (and login) for you.
+            </p>
+
+            <p>Otherwise, go the classic way:</p>
+
+            <ol>
+                <li>At the <code>Boot></code> prompt, type <code>boot rp1</code> and press ENTER.</li>
+                <li>BSD 2.11 will autoboot into multiuser mode. Login as <code>root</code> (no password).</li>
+                <li>Try <code>ls</code>, <code>ps -aux</code>, <code>df</code> — or compile a C program with
+                    <code>cc</code>.
+                </li>
+            </ol>
+
+            <h3>Links & downloads</h3>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">yaPDP emulator (this repo)</td>
+                        <td><a href="pdp11.html">pdp11.html</a></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Hosted live demo (upstream)</td>
+                        <td><a
+                                href="https://paulnank.github.io/pdp11-js/pdp11.html">https://paulnank.github.io/pdp11-js/pdp11.html</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Source code</td>
+                        <td><a href="https://gitverse.ru/amesk/yaPDP">https://gitverse.ru/amesk/yaPDP</a></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">README</td>
+                        <td><a href="README.md">README.md</a> — build instructions, guest OS table, desktop app variants
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Original pdp11-js</td>
+                        <td><a href="https://github.com/paulnank/pdp11-js/">https://github.com/paulnank/pdp11-js/</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Google60 (mass:werk)</td>
+                        <td><a href="https://www.masswerk.at/google60/">https://www.masswerk.at/google60/</a></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                The native desktop application (Windows x64) is built locally with
+                <code>npm run desktop:full</code> — it produces NSIS/MSI installers plus a portable executable, either
+                in a
+                tiny <b>Minimal</b> variant or a fully-offline <b>Full</b> variant with every disk/tape image bundled.
+                See the README for details.
+            </p>
+
+            <hr>
+
+            <h2 id="download">Download</h2>
+
+            <p>
+                Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64
+                with <a href="https://tauri.app/">Tauri</a>. Two installer variants are available, so you can pick
+                between a tiny download and a fully-offline bundle with every disk/tape image:
+            </p>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Variant</th>
+                        <th>Ships</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">Minimal</td>
+                        <td>rk0, rk1, bootcode</td>
+                        <td>Small download (~3 MB). All other images are dragged & dropped at runtime.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Full</td>
+                        <td>every image — RK/RL/RP/RA disks, TM tapes, all paper tapes</td>
+                        <td>Larger download, but all 16 guest OSes boot offline with zero extra steps.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Download the latest binaries from the <a href="https://gitverse.ru/amesk/yaPDP/releases">releases
+                    page</a>.
+            </p>
+
+            <hr>
+
+            <h2>Acknowledgments</h2>
+
+            <p>This project stands on the shoulders of giants.</p>
+
+            <h3>Paul Nankervis — Original PDP‑11 Emulator</h3>
+
+            <p>
+                Paul wrote the original <a href="https://github.com/paulnank/pdp11-js">pdp11-js</a> emulator, which this
+                repository is forked from. His meticulous work — cycle‑accurate CPU emulation, beautifully rendered
+                front
+                panels, and a meticulously curated collection of vintage operating systems — made this project possible.
+            </p>
+
+            <blockquote>
+                <em>"I met my core objective — I can now see the RSTS/E console light pattern that I was looking
+                    for."</em>
+                <br>— Paul Nankervis
+            </blockquote>
+
+            <h3>Norbert Landsteiner (mass:werk) — Google60 Teletype</h3>
+
+            <p>
+                The Model 33 ASR teletype emulation is adapted from <a
+                    href="https://www.masswerk.at/google60/">Google60</a> by
+                <b>Norbert Landsteiner</b> of <a href="https://www.masswerk.at/">mass:werk</a>. Google60 is a brilliant
+                simulation of the Google search interface as it would have appeared on a Model 33 ASR Teletype in the
+                1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance animation
+                and
+                authentic sound effects — brings the teletype to life. This project repurposes his engine as the
+                operator
+                console for the PDP‑11.
+            </p>
+
+            <h3>Additional Sources</h3>
+
+            <ul>
+                <li><a href="http://bitsavers.org/pdf/dec/pdp11/">Bitsavers</a> — DEC PDP‑11 documentation archive</li>
+                <li><a href="http://bitsavers.org/bits/DEC/pdp11/">Bitsavers Software</a> — PDP‑11 software and disk
+                    images</li>
+                <li><a href="https://www.tuhs.org/">The Unix Heritage Society (TUHS)</a> — Preserving UNIX history</li>
+                <li><a href="http://www.rsts.org/">RSTS.ORG</a> — RSTS/E community and software preservation</li>
+            </ul>
+
+            <hr>
+
+            <p><em>Happy emulating!</em></p>
+
+            <p>
+                — Alexei (<em>author and maintainer of yaPDP</em>)<br>
+                — <em>Fork maintained with love for the DEC era</em>
+            </p>
+
+        </div>
+    </div>
+</body>
+
+</html>

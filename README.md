@@ -24,7 +24,7 @@ Welcome to the machine.
 
 ## About This Project
 
-This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just open the page and you're standing in front of a DEC minicomputer.
+This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just run the emulator and you're standing in front of a DEC minicomputer.
 
 ### What makes it special
 
@@ -41,6 +41,10 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 ### Live Demo
 
 - [**yaPDP**](https://paulnank.github.io/pdp11-js/pdp11.html)
+
+The repository root also contains [`index.html`](index.html) — a landing page in the
+same DEC style as the emulator itself, telling the story behind the project and
+linking to the live demo, the source code and the original authors.
 
 ---
 
