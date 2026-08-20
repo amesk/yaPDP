@@ -1855,6 +1855,15 @@ body.crt-effects .vt52-crt::after {
     border-bottom: none;
 }
 
+/* Conditionally hidden CONFIG fields (Equipment tab: teletype-only parameters,
+   LP11 printer width) keep their layout box via visibility instead of
+   display:none — mirroring how inactive tab panels hide. This keeps the panel
+   row as tall as the tallest panel, so the Defaults/Apply action bar below it
+   never jumps vertically when the console/printer choice changes. */
+.config-field.config-hidden {
+    visibility: hidden;
+}
+
 /* ===== Photo backdrop toggle (CONFIG) ===== */
 /* body.no-photo-bg — the PDP-11 machine-room photo is switched off: restore
    the plain dark background. The whole .app-layout is painted a deep

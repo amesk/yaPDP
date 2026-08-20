@@ -755,6 +755,31 @@
               </div>
             </div>
 
+            <!-- The teletype-only fields are hidden by initConfigForm when the
+                 console terminal is a VT52 (see .config-field.config-hidden). -->
+            <div class="config-field" id="config-field-printWidth">
+              <span class="config-label">Teletype print width</span>
+              <div class="config-control">
+                <select id="config-printWidth">
+                  <option value="72">72</option>
+                  <option value="80">80</option>
+                </select>
+                <span class="config-hint">A Model 33 ASR is at most 80 columns; the
+                  wider 100/132 widths are for the LP11 printer.</span>
+              </div>
+            </div>
+
+            <div class="config-field" id="config-field-teletypeSpeed">
+              <span class="config-label">Teletype speed</span>
+              <div class="config-control config-radios">
+                <label><input type="radio" name="teletypeSpeed" value="authentic"> Authentic (10 chars/sec — Model 33
+                  ASR at 110 baud)</label>
+                <label><input type="radio" name="teletypeSpeed" value="fast"> Fast (33 chars/sec)</label>
+                <span class="config-hint">Authentic is the real Model 33 ASR speed —
+                  booting 2.11 BSD prints for a very long time. Applied immediately.</span>
+              </div>
+            </div>
+
             <div class="config-field">
               <span class="config-label">User terminals</span>
               <div class="config-control">
@@ -774,38 +799,9 @@
               </div>
             </div>
 
-            <div class="config-field">
-              <span class="config-label">VT11 graphics display</span>
-              <div class="config-control">
-                <label><input type="checkbox" id="config-vt11"> Install a VT11 vector-graphics display</label>
-                <span class="config-hint">DEC VT11 vector graphics terminal on its own Display page.</span>
-              </div>
-            </div>
-
-            <div class="config-field">
-              <span class="config-label">Teletype print width</span>
-              <div class="config-control">
-                <select id="config-printWidth">
-                  <option value="72">72</option>
-                  <option value="80">80</option>
-                </select>
-                <span class="config-hint">A Model 33 ASR is at most 80 columns; the
-                  wider 100/132 widths are for the LP11 printer.</span>
-              </div>
-            </div>
-
-            <div class="config-field">
-              <span class="config-label">Teletype speed</span>
-              <div class="config-control config-radios">
-                <label><input type="radio" name="teletypeSpeed" value="authentic"> Authentic (10 chars/sec — Model 33
-                  ASR at 110 baud)</label>
-                <label><input type="radio" name="teletypeSpeed" value="fast"> Fast (33 chars/sec)</label>
-                <span class="config-hint">Authentic is the real Model 33 ASR speed —
-                  booting 2.11 BSD prints for a very long time. Applied immediately.</span>
-              </div>
-            </div>
-
-            <div class="config-field">
+            <!-- Printer width is hidden by initConfigForm when no LP11 is
+                 installed (see .config-field.config-hidden). -->
+            <div class="config-field" id="config-field-printerWidth">
               <span class="config-label">Printer width</span>
               <div class="config-control">
                 <select id="config-printerWidth">
@@ -814,6 +810,14 @@
                   <option value="100">100</option>
                   <option value="132">132</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">VT11 graphics display</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-vt11"> Install a VT11 vector-graphics display</label>
+                <span class="config-hint">DEC VT11 vector graphics terminal on its own Display page.</span>
               </div>
             </div>
           </div>

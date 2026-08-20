@@ -828,6 +828,7 @@ function initConfigForm() {
   }
   applyPhotoBackdrop(cfg.photoBackdrop);
   applyCRTEffects(cfg.crtEffects);
+  updateEquipmentVisibility();
 
   // Read every control into a full config-shaped object. The values come from
   // the fixed option lists, so they always survive Config.validate() unchanged.
@@ -912,6 +913,27 @@ function initConfigForm() {
     updateDirtyUI();
   }
 
+  // Conditional visibility on the Equipment tab: teletype-only parameters are
+  // shown only when the console terminal is a teletype, and the printer width
+  // only when an LP11 is installed. Hidden fields keep their layout box
+  // (visibility:hidden — see .config-field.config-hidden in css/pdp11.css), so
+  // the panel row — and the Defaults/Apply bar below it — never jumps.
+  function updateEquipmentVisibility() {
+    var teletype = false;
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked && radios[i].value === 'teletype') teletype = true;
+    }
+    var ttyFields = [
+      document.getElementById('config-field-printWidth'),
+      document.getElementById('config-field-teletypeSpeed')
+    ];
+    for (var k = 0; k < ttyFields.length; k++) {
+      if (ttyFields[k]) ttyFields[k].classList.toggle('config-hidden', !teletype);
+    }
+    var pwField = document.getElementById('config-field-printerWidth');
+    if (pwField) pwField.classList.toggle('config-hidden', !(printerEl && printerEl.checked));
+  }
+
   // Apply: persist the whole form in one Config.set() call, then reload only
   // when the hardware layout changed (so iopage.js re-registers the devices).
   function applyForm() {
@@ -938,14 +960,20 @@ function initConfigForm() {
 
   for (var i = 0; i < radios.length; i++) {
     radios[i].addEventListener('change', function () {
-      if (this.checked) markStructural();
+      if (this.checked) {
+        markStructural();
+        updateEquipmentVisibility();
+      }
     });
   }
   if (userTerm) {
     userTerm.addEventListener('change', markStructural);
   }
   if (printerEl) {
-    printerEl.addEventListener('change', markStructural);
+    printerEl.addEventListener('change', function () {
+      markStructural();
+      updateEquipmentVisibility();
+    });
   }
   if (vt11El) {
     vt11El.addEventListener('change', markStructural);
@@ -1065,6 +1093,7 @@ function initConfigForm() {
       if (pbEl) pbEl.checked = d.photoBackdrop;
       if (confirmRebootEl) confirmRebootEl.checked = d.confirmReboot;
       // The form now shows factory values; nothing is persisted until Apply.
+      updateEquipmentVisibility();
       updateDirtyUI();
     });
   }
