@@ -1784,11 +1784,12 @@ body.crt-effects .vt52-crt::after {
 }
 
 /* CONFIG page tabbed layout: a top tab bar splits the growing configuration
-   into Equipment (hardware) and Visual enhancements (look & feel) panels.
-   Both panels live in the same grid cell (the inactive one is hidden with
-   visibility:hidden, so it still occupies space), which makes the row as
-   tall as the tallest panel. The Defaults/Apply action bar sits right below
-   that row, so it never jumps vertically when a tab is selected. */
+   into Equipment (hardware), Look & sound (presentation: visual + audio),
+   Behaviour (dialogs) and Development (dev aids) panels. Every panel lives in
+   the same grid cell (the inactive ones are hidden with visibility:hidden, so
+   the row stays as tall as the tallest panel). The Defaults/Apply action bar
+   sits right below that row, so it never jumps vertically when a tab is
+   selected. */
 .config-tabs {
     display: grid;
     grid-template-columns: 1fr;

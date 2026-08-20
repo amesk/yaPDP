@@ -291,11 +291,12 @@ text field with native Windows Clipboard — Ctrl+C/Ctrl+V/right-click paste —
 fast source-code entry), the ambient PDP-11 power-supply hum and fan noise while
 the machine is on, and the PDP-11 machine-room photo backdrop behind the pages.
 The LP11 line printer defaults to the authentic 132-column width.
-The form is split into three tabs — **Equipment** (console terminal, user
+The form is split into four tabs — **Equipment** (console terminal, user
 terminals, LP11 printer, VT11 display, print widths and teletype speed),
-**Visual enhancements** (key click, reverse video, CRT effects, VT52 text mode,
-machine hum, photo backdrop) and **Behaviour** (reboot confirmation) — with the
-**Apply** and **Restore defaults** actions in a bar below the tabs.
+**Look & sound** (key click, reverse video, CRT effects, machine hum, photo
+backdrop), **Behaviour** (reboot confirmation) and **Development** (VT52 text
+mode) — with the **Apply** and **Restore defaults** actions in a bar below the
+tabs.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
 hardware matches the configuration; print widths, the teletype speed, the key

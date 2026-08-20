@@ -737,10 +737,11 @@
           <button type="button" class="config-tab active" id="config-tab-equipment" role="tab" aria-selected="true"
             aria-controls="config-panel-equipment" data-config-tab="equipment">Equipment</button>
           <button type="button" class="config-tab" id="config-tab-visual" role="tab" aria-selected="false"
-            aria-controls="config-panel-visual" data-config-tab="visual">Visual
-            enhancements</button>
+            aria-controls="config-panel-visual" data-config-tab="visual">Look & sound</button>
           <button type="button" class="config-tab" id="config-tab-behaviour" role="tab" aria-selected="false"
             aria-controls="config-panel-behaviour" data-config-tab="behaviour">Behaviour</button>
+          <button type="button" class="config-tab" id="config-tab-development" role="tab" aria-selected="false"
+            aria-controls="config-panel-development" data-config-tab="development">Development</button>
         </div>
 
         <div class="config-tab-panel active" id="config-panel-equipment" role="tabpanel"
@@ -852,18 +853,6 @@
             </div>
 
             <div class="config-field">
-              <span class="config-label">VT52 text mode</span>
-              <div class="config-control">
-                <label><input type="checkbox" id="config-vt52TextMode"> Plain text input instead of the canvas CRT
-                  (native Clipboard)</label>
-                <span class="config-hint">Renders VT52 terminals as a text field: native text selection and
-                  Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) speed up
-                  source-code entry. Loses SGR attributes (bold/underline/reverse).
-                  Applied immediately.</span>
-              </div>
-            </div>
-
-            <div class="config-field">
               <span class="config-label">Machine hum</span>
               <div class="config-control">
                 <label><input type="checkbox" id="config-hum"> Power-supply hum and fan noise while the machine is
@@ -902,6 +891,23 @@
                 <label><input type="checkbox" id="config-showFirstRunHint"> Show the first-run hint at startup</label>
                 <span class="config-hint">Replays the welcome overlay with the quick-start boot suggestions on the
                   next launch.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-tab-panel" id="config-panel-development" role="tabpanel"
+          aria-labelledby="config-tab-development">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">VT52 text mode</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-vt52TextMode"> Plain text input instead of the canvas CRT
+                  (native Clipboard)</label>
+                <span class="config-hint">Development aid: renders VT52 terminals as a text field, giving native
+                  text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click
+                  paste) for fast source-code entry. Loses SGR attributes
+                  (bold/underline/reverse). Applied immediately.</span>
               </div>
             </div>
           </div>
