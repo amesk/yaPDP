@@ -28,6 +28,11 @@
  *   - crtEffects:    pure-CSS CRT simulation on VT52 terminals: brightness
  *                    flicker, scanline shimmer and a vertical-hold roll band.
  *                    Applied immediately, no reboot needed.
+ *   - vt52TextMode:  render VT52 terminals as a plain <textarea> instead of the
+ *                    canvas CRT. Loses SGR attributes (bold/underline/blink/
+ *                    reverse) but enables native text selection and Windows
+ *                    Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast
+ *                    source-code entry. Applied immediately, no reboot needed.
  *   - confirmReboot: whether the REBOOT button asks for confirmation before
  *                    restarting the machine (BEHAVIOUR tab of the CONFIG page).
  *
@@ -53,6 +58,7 @@ var Config = (function () {
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
         keyClick: false,         // boolean (VT52 key click)
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
+        vt52TextMode: false,     // boolean (VT52 plain <textarea> instead of canvas)
         crtEffects: true,        // boolean (VT52 pure-CSS CRT flicker/roll simulation)
         hum: true,               // boolean (ambient power-supply hum + fan noise)
         photoBackdrop: true,     // boolean (PDP-11 photo behind the pages)
@@ -111,6 +117,11 @@ var Config = (function () {
             teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
             keyClick: Boolean(o.keyClick),
             vt52ReverseVideo: Boolean(o.vt52ReverseVideo),
+            // Absent key falls back to the default (keeps the authentic canvas
+            // CRT for old configs saved before the option existed).
+            vt52TextMode: typeof o.vt52TextMode === "undefined"
+                ? DEFAULTS.vt52TextMode
+                : Boolean(o.vt52TextMode),
             // Absent key falls back to the default (keeps the CRT effects on
             // for old configs saved before the option existed).
             crtEffects: typeof o.crtEffects === "undefined"

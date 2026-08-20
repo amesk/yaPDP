@@ -22,7 +22,7 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 |---------|-------------|
 | **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
 | **Model 33 ASR Teletype** | A fully animated Google60-style teletype connected as the operator console — complete with paper printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph (e.g. a 2.11 BSD boot countdown) leaves the real dark overstrike blot a hard-copy terminal makes. Long lines faithfully jam the carriage at the right margin (72 or 80 columns; characters overstrike the last column instead of wrapping, no scrollbar), and the paper width follows the selected width so a full line reaches the paper edge. The console echo speed is selectable in the CONFIG page: **authentic 110 baud (~10 chars/sec)** or a fast development pace (~33 chars/sec). |
-| **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so `clear` and multi-page nroff/man output start each page from the top row. An optional pure-CSS CRT simulation adds brightness flicker, scanline shimmer and a vertical-hold roll band. |
+| **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so `clear` and multi-page nroff/man output start each page from the top row. An optional pure-CSS CRT simulation adds brightness flicker, scanline shimmer and a vertical-hold roll band. An optional **text mode** renders the terminal as a plain text field instead of the canvas, enabling native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering. |
 | **VT11 Display** | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
@@ -192,7 +192,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
+| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -286,21 +286,22 @@ VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
 most 80 columns), the printer print width (72/80/100/132), optional VT100-style
 key-click sound for VT52 terminals, the historical VT52 reverse-video mode
 (black text on white), a pure-CSS CRT simulation (brightness flicker, scanline
-shimmer and a vertical-hold roll band), the ambient PDP-11 power-supply hum and
-fan noise while the machine is on, and the PDP-11 machine-room photo backdrop
-behind the pages. The LP11 line printer defaults to the authentic 132-column
-width.
+shimmer and a vertical-hold roll band), an optional VT52 **text mode** (plain
+text field with native Windows Clipboard — Ctrl+C/Ctrl+V/right-click paste — for
+fast source-code entry), the ambient PDP-11 power-supply hum and fan noise while
+the machine is on, and the PDP-11 machine-room photo backdrop behind the pages.
+The LP11 line printer defaults to the authentic 132-column width.
 The form is split into three tabs — **Equipment** (console terminal, user
 terminals, LP11 printer, VT11 display, print widths and teletype speed),
-**Visual enhancements** (key click, reverse video, CRT effects, machine hum,
-photo backdrop) and **Behaviour** (reboot confirmation) — with the
+**Visual enhancements** (key click, reverse video, CRT effects, VT52 text mode,
+machine hum, photo backdrop) and **Behaviour** (reboot confirmation) — with the
 **Apply** and **Restore defaults** actions in a bar below the tabs.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
 hardware matches the configuration; print widths, the teletype speed, the key
-click, the reverse video, the CRT effects, the machine hum and the photo
-backdrop apply immediately. A **Restore defaults** button fills the form with
-factory values (committed by **Apply**).
+click, the reverse video, the CRT effects, the VT52 text mode, the machine hum
+and the photo backdrop apply immediately. A **Restore defaults** button fills the
+form with factory values (committed by **Apply**).
 The hum is synthesized with Web Audio on its own audio channel, so it never
 cuts off the teletype/printer or the VT52 key-click sounds.
 
@@ -377,7 +378,9 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/osboot.js`](src/osboot.js) | Guest OS boot scenarios for the quick-boot wizard — hand-curated `boot` commands and auto-login steps per device |
 | [`src/quickboot.js`](src/quickboot.js) | Quick-boot magic-wand button on the Panel page — OS picker dialog, reboot + typed boot/login sequence via the console input queue |
 | [`src/fullscreen.js`](src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
+| [`src/pasteutil.js`](src/pasteutil.js) | Shared clipboard paste helper — CR/LF normalization + 7-bit byte mapping + DL11 receive-queue routing, used by every terminal paste path |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
+| [`tests/pasteutil.test.js`](tests/pasteutil.test.js) | PasteUtil clipboard normalization/routing modular tests — run with `node tests/pasteutil.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 overstrike (bold/underline) modular tests — run with `node tests/vt52.test.js` |
 | [`tests/g60printer-flush.test.js`](tests/g60printer-flush.test.js) | G60Printer `flushCharBuffer()` backlog-flush modular tests — run with `node tests/g60printer-flush.test.js` |

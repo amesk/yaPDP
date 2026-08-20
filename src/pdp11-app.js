@@ -338,14 +338,9 @@ var g60Keyboard = (function () {
       pane.addEventListener('paste', function (e) {
         e.preventDefault();
         var text = (e.clipboardData || window.clipboardData).getData('text');
-        if (text) {
-          text = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
-          var bytes = [];
-          for (var i = 0; i < text.length; i++) {
-            bytes.push(text.charCodeAt(i) & 0x7F);
-          }
-          sendDL(bytes);
-        }
+        // Route through the shared PasteUtil helper (CR/LF -> CR, 7-bit bytes);
+        // unit 0 is the operator console teletype.
+        if (text) PasteUtil.pasteIntoUnit(0, text);
       });
     }
   }
@@ -400,6 +395,23 @@ function installVT52Keyboard(unit, pageId) {
     if (code === 13) { sendToUnit([13]); e.preventDefault(); return; }
     if (code === 8) { sendToUnit([8]); e.preventDefault(); return; }
 
+    // Ctrl+V: paste from the native clipboard into the terminal. In canvas mode
+    // the browser has no native paste shortcut (focus sits on the canvas), so
+    // read the clipboard explicitly and feed the bytes through the receive
+    // queue with CR/LF normalization. In text mode this handler never runs
+    // (focus is on the textarea), where the native paste event is used instead.
+    if (e.ctrlKey && !e.altKey && (e.key === 'v' || e.key === 'V' || code === 86)) {
+      e.preventDefault();
+      if (typeof navigator !== 'undefined' && navigator.clipboard &&
+          typeof navigator.clipboard.readText === 'function') {
+        navigator.clipboard.readText().then(function (text) {
+          // PasteUtil normalizes CR/LF to CR and routes the bytes to the unit.
+          PasteUtil.pasteIntoUnit(unit, text);
+        }).catch(function () { /* clipboard permission denied: ignore */ });
+      }
+      return;
+    }
+
     // Ctrl+letter → control codes
     if (e.ctrlKey && code >= 65 && code <= 90) {
       sendToUnit([code - 64]); e.preventDefault(); return;
@@ -432,15 +444,7 @@ function installVT52Keyboard(unit, pageId) {
     crt.addEventListener('paste', function (e) {
       e.preventDefault();
       var text = (e.clipboardData || window.clipboardData).getData('text');
-      if (text) {
-        text = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
-        var bytes = [];
-        for (var i = 0; i < text.length; i++) {
-          bytes.push(text.charCodeAt(i) & 0x7F);
-        }
-        var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
-        if (typeof q === 'function') q(unit, bytes);
-      }
+      if (text) PasteUtil.pasteIntoUnit(unit, text);
     });
   }
 }
@@ -450,54 +454,105 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   var canvas = document.getElementById(canvasId);
   if (!canvas) return;
 
-  // Create a hidden textarea for the VT52 to use as a backing store
+  var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+  var textMode = !!(cfg && cfg.vt52TextMode);
+
+  // Create a textarea for the VT52 to use as a backing store. In text mode it
+  // becomes the visible "plain input" terminal (native selection + clipboard);
+  // otherwise it stays hidden and only the authentic canvas CRT is shown. It is
+  // inserted as a sibling of the canvas inside .vt52-crt so the CRT bezel and
+  // the scanline overlays (pointer-events: none) keep framing the input.
+  var crt = canvas.parentElement;
   var textarea = document.createElement('textarea');
   textarea.id = textareaId;
-  textarea.style.display = 'none';
-  document.body.appendChild(textarea);
+  textarea.className = 'vt52-textarea';
+  textarea.setAttribute('autocomplete', 'off');
+  textarea.setAttribute('autocorrect', 'off');
+  textarea.setAttribute('autocapitalize', 'off');
+  textarea.setAttribute('spellcheck', 'false');
+  textarea.style.display = textMode ? 'block' : 'none';
+  (crt || document.body).appendChild(textarea);
 
-  // Initialize the VT52 terminal with canvas enabled.
-  // receiveRoutine feeds input back through the unit's global queue.
+  // Initialize the VT52 terminal. In text mode the screen buffer is rendered
+  // through the visible textarea; in canvas mode through the CRT canvas.
   window.vt52Initialize(unit, function (unit, bytes) {
     var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
     if (typeof q === 'function') q(unit, bytes);
   }, textarea, canvas, {
-    allowCanvas: true,
+    allowCanvas: !textMode,
     noHardcopyFallback: true,
     fontSize: 20,
     cols: 80,
     rows: 24
   });
 
-  // Install keyboard handler for this page
+  // Intercept the native paste in the textarea (which would otherwise edit the
+  // textarea DOM) and feed the emulator the clipboard bytes through the shared
+  // PasteUtil helper (CR/LF normalization + DL11 receive-queue routing).
+  textarea.addEventListener('paste', function (e) {
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text');
+    if (text) PasteUtil.pasteIntoUnit(unit, text);
+  });
+
+  // Allow the native context menu on this textarea only, so right-click paste
+  // works; the page-wide block in contextmenu.js stays untouched elsewhere.
+  textarea.addEventListener('contextmenu', function (e) { e.stopPropagation(); });
+
+  // Install keyboard handler for this page.
   installVT52Keyboard(unit, pageId);
 
-  // Force terminal into screen mode with canvas visible immediately.
-  // Without this, the terminal starts in hardcopy mode (output to hidden textarea)
-  // and only switches to canvas upon receiving an escape sequence.
+  // Force terminal into screen mode with the right element visible immediately.
+  // Without this, the terminal starts in hardcopy mode (output to the textarea)
+  // and only switches to screen mode upon receiving an escape sequence.
   var term = window.vt52Get(unit);
   if (term) {
+    // Keep a reference to the terminal's built-in key handler: text mode wraps
+    // it for native-clipboard behaviour, canvas mode silences it (the global
+    // installVT52Keyboard() handles keys there).
+    term._builtinKey = term.handleKey.bind(term);
     term.modes.screen = true;
     term.rows = 24;
     term.cols = 80;
-    if (term.allowCanvas) {
-      term.textArea.style.display = 'none';
-      term.screenCanvas.style.display = 'block';
-      term.screenCanvas.focus();
-    }
     term.clearScreen();
 
-    // Size canvas to match font metrics for 80x24 (plus the inner margin).
-    // resizeCanvas() keeps the geometry (grid + screenPadding) in one place.
-    var charW = term.canvas.charWidth;
-    if (charW > 0) {
-      term.resizeCanvas();
-      term.renderCanvas();
-    }
+    if (textMode) {
+      // Plain textarea terminal: native clipboard and text selection. Size the
+      // textarea to mirror the canvas cell grid (see resizeCanvas in vt52.js).
+      term.allowCanvas = false;
+      canvas.style.display = 'none';
+      textarea.style.display = 'block';
+      if (term.canvas && term.canvas.charWidth > 0) {
+        textarea.style.width = (term.screenPadding * 2 + term.cols * term.canvas.charWidth) + 'px';
+        textarea.style.height = (term.screenPadding * 2 + term.rows * term.fontHeight) + 'px';
+      }
+      // Keep the terminal's built-in key handler so typing reaches the emulator,
+      // but let Ctrl+V always fall through to the native paste (the paste
+      // listener routes it into the emulator) and Ctrl+C copy when a selection
+      // exists, mirroring Windows Terminal; otherwise Ctrl+C stays ^C.
+      term.handleKey = makeTextModeKeyHandler(term, textarea);
+      textarea.focus();
+    } else {
+      // Canvas CRT terminal.
+      term.allowCanvas = true;
+      textarea.style.display = 'none';
+      canvas.style.display = 'block';
+      canvas.focus();
 
-    // Disable vt52's built-in keydown handler on the canvas to avoid double-sending.
-    // The global installVT52Keyboard() captures physical keyboard input instead.
-    term.handleKey = function () { };
+      // Size canvas to match font metrics for 80x24 (plus the inner margin).
+      // resizeCanvas() keeps the geometry (grid + screenPadding) in one place.
+      var charW = term.canvas.charWidth;
+      if (charW > 0) {
+        term.resizeCanvas();
+        term.renderCanvas();
+      }
+
+      // Disable vt52's built-in keydown handler on the canvas to avoid
+      // double-sending; the global installVT52Keyboard() captures physical
+      // keyboard input instead. In text mode the built-in handler is kept so
+      // typing into the focused textarea reaches the emulator.
+      term.handleKey = function () { };
+    }
   }
 }
 
@@ -570,6 +625,74 @@ function applyVT52ReverseVideo(enabled) {
     if (t && typeof t.setReverseVideo === 'function') {
       t.setReverseVideo(!!enabled);
     }
+  }
+}
+
+// Build the text-mode key handler for a VT52 terminal: the terminal's built-in
+// handler routes typing to the emulator, but Ctrl+V always falls through to the
+// native paste (routed by the textarea paste listener) and Ctrl+C copies when a
+// selection exists, mirroring Windows Terminal; otherwise Ctrl+C stays ^C
+// (interrupt), which interactive DEC software relies on.
+function makeTextModeKeyHandler(term, ta) {
+  var builtin = (typeof term._builtinKey === 'function')
+      ? term._builtinKey
+      : term.handleKey.bind(term);
+  return function (ev) {
+    var codeV = ev.keyCode || ev.which;
+    var isPaste = ev.ctrlKey && (ev.key === 'v' || ev.key === 'V' || codeV === 86);
+    var isCopy = ev.ctrlKey && (ev.key === 'c' || ev.key === 'C' || codeV === 67);
+    if (isPaste) return; // native paste (routed by the textarea paste listener)
+    if (isCopy && (ta.selectionEnd - ta.selectionStart) > 0) return; // native copy
+    builtin(ev);
+  };
+}
+
+// Apply the configured text-mode preference to every live VT52 terminal
+// (console + user terminals). When enabled each terminal renders through its
+// visible <textarea>, giving native text selection and Windows Clipboard
+// (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry; otherwise
+// the authentic canvas CRT is shown again. The DOM elements are created by
+// initVT52Page() (textarea is a sibling of the canvas inside .vt52-crt).
+function applyVT52TextMode(enabled) {
+  enabled = !!enabled;
+  for (var u = 0; u <= 2; u++) {
+    var t = (typeof window.vt52Get === 'function') ? window.vt52Get(u) : null;
+    if (!t) continue;
+    var canvas = t.screenCanvas;
+    var ta = t.textArea;
+    if (!canvas || !ta) continue;
+    if (enabled) {
+      t.allowCanvas = false;
+      canvas.style.display = 'none';
+      ta.style.display = 'block';
+      // Restore the text-mode key handler so typing reaches the emulator and
+      // Ctrl+V / Ctrl+C behave like Windows Terminal (native clipboard).
+      if (typeof t._builtinKey === 'function') t.handleKey = makeTextModeKeyHandler(t, ta);
+      // Mirror the canvas cell grid so the textarea keeps the same geometry as
+      // the CRT path (see resizeCanvas in src/vt52.js).
+      if (t.canvas && t.canvas.charWidth > 0) {
+        ta.style.width = (t.screenPadding * 2 + t.cols * t.canvas.charWidth) + 'px';
+        ta.style.height = (t.screenPadding * 2 + t.rows * t.fontHeight) + 'px';
+      }
+      if (typeof ta.focus === 'function') ta.focus();
+    } else {
+      t.allowCanvas = true;
+      ta.style.display = 'none';
+      canvas.style.display = 'block';
+      // Size the canvas to the current grid first: the buffer may still hold
+      // the raw HTML attribute dimensions (1280x384) when the terminal was
+      // started in text mode and initVT52Page's canvas branch never ran, which
+      // would otherwise render a squashed, wide-flat CRT. resizeCanvas() is
+      // idempotent, so re-sizing an already-correct canvas is harmless.
+      if (typeof t.resizeCanvas === 'function') t.resizeCanvas();
+      // Canvas mode relies on the global installVT52Keyboard() handler, so the
+      // terminal's built-in keydown listener is silenced to avoid double
+      // sending (mirrors initVT52Page's canvas branch).
+      t.handleKey = function () { };
+      if (typeof canvas.focus === 'function') canvas.focus();
+    }
+    // Redraw the whole screen in the newly active rendering path.
+    if (typeof t.render === 'function') t.render(true);
   }
 }
 
@@ -669,6 +792,7 @@ function initConfigForm() {
   var kcEl = document.getElementById('config-keyClick');
   var vt52RevEl = document.getElementById('config-vt52ReverseVideo');
   var crtEl = document.getElementById('config-crtEffects');
+  var textModeEl = document.getElementById('config-vt52TextMode');
   var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
   var confirmRebootEl = document.getElementById('config-confirmReboot');
@@ -693,6 +817,7 @@ function initConfigForm() {
   if (kcEl) kcEl.checked = cfg.keyClick;
   if (vt52RevEl) vt52RevEl.checked = cfg.vt52ReverseVideo;
   if (crtEl) crtEl.checked = cfg.crtEffects;
+  if (textModeEl) textModeEl.checked = cfg.vt52TextMode;
   if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   if (confirmRebootEl) confirmRebootEl.checked = cfg.confirmReboot;
@@ -726,6 +851,7 @@ function initConfigForm() {
       keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
       vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
       crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
+      vt52TextMode: (textModeEl) ? textModeEl.checked : cfg.vt52TextMode,
       hum: (humEl) ? humEl.checked : cfg.hum,
       photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop,
       // confirmReboot is a live setting that can also be toggled from the
@@ -755,6 +881,7 @@ function initConfigForm() {
       form.keyClick !== current.keyClick ||
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
       form.crtEffects !== current.crtEffects ||
+      form.vt52TextMode !== current.vt52TextMode ||
       form.hum !== current.hum ||
       form.photoBackdrop !== current.photoBackdrop ||
       form.confirmReboot !== current.confirmReboot;
@@ -770,6 +897,7 @@ function initConfigForm() {
       window.lp11G60Printer.setMaxCols(f.printerWidth);
     }
     applyVT52ReverseVideo(f.vt52ReverseVideo);
+    applyVT52TextMode(f.vt52TextMode);
     applyCRTEffects(f.crtEffects);
     applyPhotoBackdrop(f.photoBackdrop);
   }
@@ -876,6 +1004,15 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // VT52 text mode applies immediately (no reload): switch every live VT52
+  // terminal between the canvas CRT and a plain <textarea> (native clipboard).
+  if (textModeEl) {
+    textModeEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ vt52TextMode: this.checked });
+      applyVT52TextMode(this.checked);
+      updateDirtyUI();
+    });
+  }
   // Ambient power-supply hum applies immediately (no reload): persist the
   // choice; Hum.update() re-reads the config on its next tick.
   if (humEl) {
@@ -923,6 +1060,7 @@ function initConfigForm() {
       if (kcEl) kcEl.checked = d.keyClick;
       if (vt52RevEl) vt52RevEl.checked = d.vt52ReverseVideo;
       if (crtEl) crtEl.checked = d.crtEffects;
+      if (textModeEl) textModeEl.checked = d.vt52TextMode;
       if (humEl) humEl.checked = d.hum;
       if (pbEl) pbEl.checked = d.photoBackdrop;
       if (confirmRebootEl) confirmRebootEl.checked = d.confirmReboot;
@@ -972,6 +1110,10 @@ if (__appCfg && __appCfg.userTerminals >= 2) {
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);
+
+// Apply the configured VT52 text mode to the live terminals (idempotent with
+// the mode chosen inside initVT52Page, but also covers late-created ones).
+applyVT52TextMode(__appCfg && __appCfg.vt52TextMode);
 
 // Apply the configured CRT-effects mode (pure-CSS flicker/roll simulation).
 applyCRTEffects(__appCfg && __appCfg.crtEffects);

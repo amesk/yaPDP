@@ -944,15 +944,9 @@ function dl11(vt52Unit, deviceVector) {
 
     // paste handler
     function handlePasteText(unit, text) {
-        // Apply CR/LF normalization if enabled
-        if (pasteCR) {
-            text = text.replace(/\r\n/g, "\r");
-            text = text.replace(/\n/g, "\r");
-        }
-        const bytes = [];
-        for (const ch of text) {
-            bytes.push(ch.charCodeAt(0) & 0x7F);
-        }
+        // Normalize CR/LF to CR when enabled and map to 7-bit bytes through the
+        // shared PasteUtil helper, then deliver via this unit's own queue.
+        const bytes = PasteUtil.textToBytes(text, pasteCR);
         dlReceiveQueue(unit, bytes);
     }
 

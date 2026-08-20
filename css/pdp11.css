@@ -1346,6 +1346,31 @@ body {
     outline: none;
 }
 
+/* Plain text-mode terminal (CONFIG → Visual → "VT52 text mode"): the terminal
+   renders through a real <textarea> instead of the canvas, so native text
+   selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) work.
+   It is styled to echo the P4-phosphor CRT — black tube, light-grey text, the
+   same monospace grid and inner margin (screenPadding) as the canvas path.
+   The scanline/glow overlays (::after/::before, pointer-events: none) stay on
+   top, so the tube keeps its CRT flair without blocking the input. */
+.vt52-crt textarea.vt52-textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    border: 0;
+    outline: none;
+    resize: none;
+    background: #000;
+    color: #e0e0e0;
+    caret-color: #e0e0e0;
+    font-family: monospace;
+    font-size: 20px;
+    line-height: 20px;
+    overflow: auto;
+}
+
 /* Subtle phosphor shimmer animation */
 @keyframes phosphor-shimmer {
 

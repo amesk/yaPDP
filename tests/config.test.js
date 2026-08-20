@@ -71,6 +71,7 @@ function run() {
             teletypeSpeed: "authentic",
             keyClick: false,
             vt52ReverseVideo: false,
+            vt52TextMode: false,
             crtEffects: true,
             hum: true,
             photoBackdrop: true,
@@ -132,6 +133,13 @@ function run() {
         assert.strictEqual(C.validate({ vt52ReverseVideo: 1 }).vt52ReverseVideo, true);
         assert.strictEqual(C.validate({ vt52ReverseVideo: 0 }).vt52ReverseVideo, false);
 
+        // vt52TextMode: absent -> default (false, keeps the authentic canvas
+        // CRT for old configs saved before the option existed), otherwise bool.
+        assert.strictEqual(C.validate({}).vt52TextMode, false);
+        assert.strictEqual(C.validate({ vt52TextMode: 1 }).vt52TextMode, true);
+        assert.strictEqual(C.validate({ vt52TextMode: "yes" }).vt52TextMode, true);
+        assert.strictEqual(C.validate({ vt52TextMode: 0 }).vt52TextMode, false);
+
         // crtEffects: absent -> default (true, keeps the CRT effects on for
         // old configs saved before the option existed), otherwise boolean.
         assert.strictEqual(C.validate({}).crtEffects, true);
@@ -170,6 +178,7 @@ function run() {
             teletypeSpeed: "fast",
             keyClick: true,
             vt52ReverseVideo: true,
+            vt52TextMode: true,
             crtEffects: false,
             hum: true,
             photoBackdrop: false,
@@ -202,6 +211,7 @@ function run() {
             teletypeSpeed: "fast",
             keyClick: true,
             vt52ReverseVideo: true,
+            vt52TextMode: true,
             crtEffects: true,
             hum: false,
             photoBackdrop: true,

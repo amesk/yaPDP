@@ -852,6 +852,18 @@
             </div>
 
             <div class="config-field">
+              <span class="config-label">VT52 text mode</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-vt52TextMode"> Plain text input instead of the canvas CRT
+                  (native Clipboard)</label>
+                <span class="config-hint">Renders VT52 terminals as a text field: native text selection and
+                  Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) speed up
+                  source-code entry. Loses SGR attributes (bold/underline/reverse).
+                  Applied immediately.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
               <span class="config-label">Machine hum</span>
               <div class="config-control">
                 <label><input type="checkbox" id="config-hum"> Power-supply hum and fan noise while the machine is
@@ -1355,6 +1367,7 @@ Hello world
   <script src='src/vt52.js'></script>
   <script src='src/pdp11.js'></script>
   <script src='src/fpp.js'></script>
+  <script src='src/pasteutil.js'></script>
   <script src='src/iopage.js'></script>
   <script src='src/hum.js'></script>
   <script src='src/vt11.js'></script>
