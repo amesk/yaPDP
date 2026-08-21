@@ -53,11 +53,19 @@ function switchPage(page) {
     if (canvas) canvas.focus();
   }
 
-  // The floating REBOOT button is a console action: show it only on the
-  // operator console page (teletype or VT52 console) where commands are typed.
+  // The floating REBOOT button is an operator action: show it on the console
+  // teletype, the VT52 terminal (TTY 1) and the front Panel page.
   var rebootBtn = document.getElementById('reboot-btn');
   if (rebootBtn) {
-    rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52-console'));
+    rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52' || page === 'panel'));
+  }
+
+  // The floating quick-boot (magic wand) button is a global action: show it on
+  // every page except the INFO page (instructions), whose long-form help text
+  // already explains the wizard.
+  var quickBootBtn = document.getElementById('quick-boot-btn');
+  if (quickBootBtn) {
+    quickBootBtn.classList.toggle('hidden', page === 'instructions');
   }
 }
 
@@ -348,15 +356,53 @@ function examineDeposit(data) {
   }
 
   // --- REBOOT button (data-action="reboot") ---
-  // The button lives on both console pages (teletype + VT52), so bind the same
-  // handler to every instance. Unless the user disabled the confirmation on the
-  // CONFIG -> Behaviour tab, ask first so a stray click near the console cannot
-  // wipe a running guest.
+  // A single floating button (top-left of the window) shown on the Panel,
+  // teletype and VT52 (TTY 1) pages. Unless the user disabled the confirmation
+  // on the CONFIG -> Behaviour tab, ask first so a stray click near the
+  // console cannot wipe a running guest.
+  // Reset the physical front-panel controls to their powered-on default state
+  // so a reboot cannot leave the panel inconsistent with the machine — e.g.
+  // the ENABLE/HALT switch still in HALT while the RUN light is lit.
+  function resetPanelControls() {
+    panel.halt = 0; // ENABLE/HALT switch -> ENABLE (run) position
+    var enableHalt = document.querySelector('[data-action="enableHalt"]');
+    if (enableHalt) moveSwitch(enableHalt, 0);
+
+    panel.step = 0; // S INST/S BUS switch -> S INST position
+    var step = document.querySelector('[data-action="step"]');
+    if (step) moveSwitch(step, 0);
+
+    panel.lampTest = 0; // LAMP TEST switch -> off
+    var lampTest = document.querySelector('.switch.white');
+    if (lampTest) moveSwitch(lampTest, 0);
+
+    CPU.switchRegister = 0; // Data/address switches -> all cleared
+    document.querySelectorAll('.switch[data-weight]').forEach(function (el) {
+      moveSwitch(el, 0);
+    });
+
+    panel.rotary0 = 0; // Rotary switches -> position 0
+    panel.rotary1 = 0;
+    panel.autoIncr = 0;
+    var rotary0 = document.querySelector('.rotaryTopPanel .rotarySwitch');
+    if (rotary0) rotary0.style.transform = 'rotate(-45deg)';
+    var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
+    if (rotary1) rotary1.style.transform = 'rotate(-45deg)';
+
+    panel.powerSwitch = 0; // Power lock -> RUN position (powered on)
+    var key = document.getElementById('key');
+    if (key) key.style.transform = 'rotate(-45deg)';
+
+    // Reflect the powered-on RUN state in the ambient hum immediately.
+    if (window.Hum) window.Hum.update();
+  }
+
   function doReboot() {
     if (g60Console) g60Console.writeChar(10);
     // Stop any runaway teletype output backlog before restarting the CPU,
     // so the Boot> prompt is immediately visible and usable.
     flushG60Console();
+    resetPanelControls();
     boot();
   }
 

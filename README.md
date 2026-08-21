@@ -112,8 +112,9 @@ not shipped and points to the Drop zone.
 
 ### Quick boot (magic wand)
 
-A magic-wand button pinned to the top-right corner of the **Panel** page opens
-a picker for every guest OS. Choosing one switches to the operator console,
+A magic-wand button in the top-right corner of the window (visible on every
+page except the **Info** page) opens a picker for every guest OS. Choosing one
+switches to the operator console,
 reboots the machine and types `boot <dev>` — and where the credentials are
 known, the login too (e.g. Unix V5: `boot rk0` → `unix` → `root`). The boot
 sequences live in [`src/osboot.js`](src/osboot.js) (a hand-curated
@@ -315,12 +316,13 @@ selector, the drag & drop disk/tape image drop zone and the
 mounted-images/Unmount list. Images dropped there are mounted into DataLoader
 and persist in IndexedDB across sessions.
 
-The **REBOOT** button is pinned to the top-right corner of the window
-(mirroring the fullscreen toggle in the bottom-right corner). Pressing it
-restarts the machine and boots the built-in default loader; by default a
-confirmation dialog asks first, with a "Don't show this warning anymore"
-option. The warning can be restored at any time from the Config page's
-**Behaviour** tab.
+The **REBOOT** button is a round button with a restart icon, pinned to the
+top-left corner of the window just right of the navigation sidebar (mirroring
+the sound-mute button in the bottom-left corner; a tooltip describes it).
+Pressing it restarts the machine and boots the built-in default loader; by
+default a confirmation dialog asks first, with a "Don't show this warning
+anymore" option. The warning can be restored at any time from the Config
+page's **Behaviour** tab.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
@@ -385,7 +387,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/tauri-bundled.js`](src/tauri-bundled.js) | Tauri desktop: loads the bundled boot images via the Rust `load_bundled_image` command |
 | [`src/imgerror.js`](src/imgerror.js) | Shared modal dialog shown when a disk/tape image fails to load (dropped connection, truncated or corrupt `.zst`) — explains the failure and links to the Storage page |
 | [`src/osboot.js`](src/osboot.js) | Guest OS boot scenarios for the quick-boot wizard — hand-curated `boot` commands and auto-login steps per device |
-| [`src/quickboot.js`](src/quickboot.js) | Quick-boot magic-wand button on the Panel page — OS picker dialog, reboot + typed boot/login sequence via the console input queue |
+| [`src/quickboot.js`](src/quickboot.js) | Quick-boot magic-wand button — floating in the top-right corner (every page except Info), OS picker dialog, reboot + typed boot/login sequence via the console input queue |
 | [`src/fullscreen.js`](src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
 | [`src/pasteutil.js`](src/pasteutil.js) | Shared clipboard paste helper — CR/LF normalization + 7-bit byte mapping + DL11 receive-queue routing, used by every terminal paste path |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |

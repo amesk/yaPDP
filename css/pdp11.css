@@ -464,31 +464,41 @@
     outline-offset: 1px;
 }
 
-/* Quick-boot magic wand — pinned to the top-right corner of the Panel page. */
+/* Front-panel page stays a positioning context for its inner layers (the
+   .frame tree provides the actual relative containing blocks). */
 #page-panel {
     position: relative;
 }
 
+/* Quick-boot magic wand — floating button in the top-right corner of the
+   window, visible on every page except INFO (toggled via the .hidden class
+   by switchPage() in src/pdp11-panel.js). */
 .quick-boot-btn {
-    position: absolute;
+    position: fixed;
     top: 12px;
     right: 14px;
-    z-index: 50;
+    z-index: 1000;
     width: 42px;
     height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #c8a860;
+    border: 1px solid #5a554a;
     border-radius: 50%;
-    background: #2c261c;
-    color: #ffd27f;
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    color: #b8b0a0;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
 .quick-boot-btn:hover {
-    background: #3a3224;
+    background: linear-gradient(180deg, #4a453a, #3a352a);
+    border-color: #8a7a5a;
+    color: #e0d8c8;
+}
+
+.quick-boot-btn.hidden {
+    display: none !important;
 }
 
 /* Global sound mute — round magic-wand-style button fixed to the bottom-left
@@ -506,22 +516,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #c8a860;
+    border: 1px solid #5a554a;
     border-radius: 50%;
-    background: #2c261c;
-    color: #ffd27f;
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    color: #b8b0a0;
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
     transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .mute-btn:hover {
-    background: #3a3224;
+    background: linear-gradient(180deg, #4a453a, #3a352a);
+    border-color: #8a7a5a;
+    color: #e0d8c8;
 }
 
 /* Muted state — dimmed like an unlit DEC lamp, slash shown, waves hidden. */
 .mute-btn.muted {
-    border-color: #5a554a;
+    border-color: #3a352a;
     background: #241f18;
     color: #6a655a;
 }
@@ -1250,37 +1262,46 @@ body {
     overflow: hidden;
 }
 
-/* ===== REBOOT button (floating, top-right of the window) ===== */
-/* Mirrors the fullscreen toggle (bottom-right): a single fixed button above
-   the app content but below the modal overlays so they keep focus. Styled
-   like the old Control-page button (config-control button look). */
+/* ===== REBOOT button (round, floating, top-left of the window) ===== */
+/* Round magic-wand-style button fixed to the top-left corner, just right of
+   the navigation sidebar (78px wide + 12px gap) — mirrors the sound-mute
+   button in the bottom-left corner. Shown only on the operator console pages
+   (teletype / VT52 console); switchPage() toggles the .hidden class. */
 .console-reboot {
     position: fixed;
     top: 12px;
-    right: 12px;
+    left: 90px;
     z-index: 1000;
-    background: linear-gradient(180deg, #5a4a30, #3a3528);
-    color: #f0e6c8;
-    border: 1px solid #c8a860;
-    border-radius: 4px;
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #5a554a;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    color: #b8b0a0;
     cursor: pointer;
-    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+    padding: 0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
     transition: background 0.2s, border-color 0.2s, color 0.2s;
     user-select: none;
 }
 
 .console-reboot:hover {
-    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
-    border-color: #ffd27f;
-    color: #fff3d6;
+    background: linear-gradient(180deg, #4a453a, #3a352a);
+    border-color: #8a7a5a;
+    color: #e0d8c8;
 }
 
-/* The REBOOT action only makes sense on the operator console page (teletype /
-   VT52 console) where commands are typed; switchPage() toggles this class. */
+.console-reboot .console-reboot-icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+/* The REBOOT action is offered on the Panel, teletype and VT52 (TTY 1) pages;
+   switchPage() toggles this class. */
 .console-reboot.hidden {
     display: none !important;
 }
