@@ -1152,18 +1152,6 @@ body {
     opacity: 1;
 }
 
-.app-sidebar .dec-logo {
-    width: 40px;
-    margin-top: auto;
-    margin-bottom: 12px;
-    opacity: 0.3;
-    font-size: 9px;
-    color: #6a655a;
-    text-align: center;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-}
-
 .page {
     display: none;
     flex: 1;
