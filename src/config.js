@@ -23,6 +23,11 @@
  *                    machine is powered on. Synthesized on a dedicated Web
  *                    Audio context so it never clashes with the teletype/
  *                    printer or VT52 key-click sounds. Applied immediately.
+ *   - mute:          global all-sounds mute. A round magic-wand-style button
+ *                    on the Panel page toggles it like a checkbox; every
+ *                    sound source (hum, VT52 key click, bell, teletype/LP11,
+ *                    paper feed/tear) is gated on this flag at play time.
+ *                    Applied immediately, no reboot needed.
  *   - photoBackdrop: whether the PDP-11 machine-room photo is shown behind
  *                    the pages. Applied immediately, no reboot needed.
  *   - crtEffects:    pure-CSS CRT simulation on VT52 terminals: brightness
@@ -61,6 +66,7 @@ var Config = (function () {
         vt52TextMode: false,     // boolean (VT52 plain <textarea> instead of canvas)
         crtEffects: true,        // boolean (VT52 pure-CSS CRT flicker/roll simulation)
         hum: true,               // boolean (ambient power-supply hum + fan noise)
+        mute: false,             // boolean (global all-sounds mute)
         photoBackdrop: true,     // boolean (PDP-11 photo behind the pages)
         confirmReboot: true      // boolean (ask before rebooting the machine)
     });
@@ -132,6 +138,11 @@ var Config = (function () {
             hum: typeof o.hum === "undefined"
                 ? DEFAULTS.hum
                 : Boolean(o.hum),
+            // Absent key falls back to false (keeps the sounds on for old
+            // configs saved before the "mute" option existed).
+            mute: typeof o.mute === "undefined"
+                ? DEFAULTS.mute
+                : Boolean(o.mute),
             // Absent key falls back to true (keeps the photo on for old configs).
             photoBackdrop: typeof o.photoBackdrop === "undefined"
                 ? DEFAULTS.photoBackdrop

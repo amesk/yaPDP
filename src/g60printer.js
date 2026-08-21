@@ -20,6 +20,15 @@
     // Cloning the Audio element for each play avoids overlap/restart issues:
     // each clone plays independently once and is garbage-collected.
     // ====================================================================
+    // The global CONFIG "mute" flag silences every sound source. Evaluated at
+    // call time (not load time) because config.js loads AFTER this module in
+    // pdp11.html; the audio manager only runs once the page is live.
+    function audioMuted() {
+        try {
+            return (typeof Config !== 'undefined') && !!Config.get().mute;
+        } catch (e) { return false; }
+    }
+
     var G60Audio = {
         _sounds: {},
 
@@ -36,6 +45,7 @@
          * The clone plays independently, so rapid calls never collide.
          */
         playCloned: function(name) {
+            if (audioMuted()) return;
             try {
                 var s = this._sounds[name];
                 if (s) {
@@ -47,6 +57,7 @@
         },
 
         play: function(name) {
+            if (audioMuted()) return;
             try {
                 var s = this._sounds[name];
                 if (s) { s.currentTime = 0; s.play().catch(function() {}); }
@@ -59,6 +70,10 @@
         // the element's paused state so an autoplay-blocked attempt is retried
         // on the next tick once the user gesture unlocks audio.
         startWhirr: function() {
+            // Global mute: silence a running whirr right away and never
+            // (re)start it. Called on every print tick, so a whirr that was
+            // already playing stops within one tick of muting.
+            if (audioMuted()) { this.stopWhirr(); return; }
             try {
                 var s = this._sounds['whirr'];
                 if (s && s.paused) { s.loop = true; s.currentTime = 0; s.play().catch(function() {}); }

@@ -491,6 +491,57 @@
     background: #3a3224;
 }
 
+/* Global sound mute — round magic-wand-style button fixed to the bottom-left
+   corner, just right of the navigation sidebar (78px wide + 12px gap). Acts
+   like a checkbox: the muted state dims the button and shows the diagonal
+   slash instead of the sound waves (toggled via the .muted class by
+   initMuteButton in src/pdp11-app.js). */
+.mute-btn {
+    position: fixed;
+    bottom: 12px;
+    left: 90px;
+    z-index: 1000;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #c8a860;
+    border-radius: 50%;
+    background: #2c261c;
+    color: #ffd27f;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.mute-btn:hover {
+    background: #3a3224;
+}
+
+/* Muted state — dimmed like an unlit DEC lamp, slash shown, waves hidden. */
+.mute-btn.muted {
+    border-color: #5a554a;
+    background: #241f18;
+    color: #6a655a;
+}
+
+.mute-btn .mute-waves {
+    display: block;
+}
+
+.mute-btn .mute-slash {
+    display: none;
+}
+
+.mute-btn.muted .mute-waves {
+    display: none;
+}
+
+.mute-btn.muted .mute-slash {
+    display: block;
+}
+
 /* Quick-boot OS picker list inside the shared modal box. */
 .quickboot-box {
     max-width: 480px;

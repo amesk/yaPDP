@@ -125,7 +125,11 @@ var Hum = (function () {
         var powerOn = false;
         var runState = STATE_RUN;
         try {
-            if (typeof Config !== 'undefined') enabled = !!Config.get().hum;
+            // The global "mute" flag silences every sound source, so the hum
+            // is enabled only when both the "hum" flag and "mute" are off.
+            if (typeof Config !== 'undefined') {
+                enabled = !!Config.get().hum && !Config.get().mute;
+            }
         } catch (err) { enabled = false; }
         try {
             if (typeof panel !== 'undefined') powerOn = (panel.powerSwitch >= 0);

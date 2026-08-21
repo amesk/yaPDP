@@ -1442,10 +1442,19 @@ iopage.register(0o17777510, 2, (function() {
     // internal line-feed sound. These keys therefore play a short mechanical
     // whirr themselves, so nudging the paper is audible.
 
+    // The global CONFIG "mute" flag silences every sound source. Evaluated at
+    // call time so the value is always current.
+    function audioMuted() {
+        try {
+            return (typeof Config !== "undefined") && !!Config.get().mute;
+        } catch (e) { return false; }
+    }
+
     // Play a brief mechanical whirr (the LP11 print-cycle sound, cut short) on
     // a manual Paper Feed / Top of Form. Lazy-loaded inside the click handler
     // so autoplay is not blocked; the playback is truncated after ~0.4 s.
     function playFeedSound() {
+        if (audioMuted()) return;
         try {
             if (!feedAudio && typeof Audio !== "undefined") {
                 feedAudio = new Audio('assets/sounds/teletype33-print.mp3');
@@ -1482,6 +1491,7 @@ iopage.register(0o17777510, 2, (function() {
     // The Audio element is created lazily on the first tear (inside the click
     // handler, so autoplay is not blocked) and replayed from 0 on each tear.
     function playTearSound() {
+        if (audioMuted()) return;
         try {
             if (!tearAudio && typeof Audio !== "undefined") {
                 tearAudio = new Audio('assets/sounds/paper-rip-sound-effect.mp3');

@@ -305,6 +305,10 @@ and the photo backdrop apply immediately. A **Restore defaults** button fills th
 form with factory values (committed by **Apply**).
 The hum is synthesized with Web Audio on its own audio channel, so it never
 cuts off the teletype/printer or the VT52 key-click sounds.
+A round **mute** button pinned to the bottom-left corner (just right of the
+navigation sidebar) toggles *all* sounds at once — hum, teletype/LP11, paper
+feed/tear, key clicks and the bell — like a checkbox; its state is persisted
+with the rest of the configuration.
 
 The **Storage** page manages the storage media: the paper-tape reader file
 selector, the drag & drop disk/tape image drop zone and the

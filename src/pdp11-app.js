@@ -671,7 +671,8 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   var audioCtx = null;
   window.playKeyClick = function () {
     var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-    if (!cfg || !cfg.keyClick) return;
+    // The global "mute" flag silences every sound source, including this one.
+    if (!cfg || !cfg.keyClick || cfg.mute) return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
@@ -702,6 +703,10 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
 (function installBell() {
   var audioCtx = null;
   window.playBell = function () {
+    // The global "mute" flag silences the bell too, but return false so the
+    // VT52 visual bell flash (src/vt52.js) still fires as a fallback.
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return false;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return false;
@@ -1379,6 +1384,32 @@ function installLP11Scaling() {
   ro.observe(page);
 }
 
+// ---- Global sound mute button (bottom-left, magic-wand style) ----
+// Toggles the CONFIG "mute" flag like a checkbox: syncs aria-pressed and the
+// .muted CSS class from the persisted config, persists on every click and
+// nudges Hum.update() so the ambient hum silences/restores instantly.
+function initMuteButton() {
+  var btn = document.getElementById('mute-btn');
+  if (!btn) return;
+
+  function sync() {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    var muted = !!(cfg && cfg.mute);
+    btn.classList.toggle('muted', muted);
+    btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+  }
+
+  sync();
+  btn.addEventListener('click', function () {
+    if (typeof Config === 'undefined') return;
+    Config.set({ mute: !Config.get().mute });
+    sync();
+    // The hum follows the config on its next tick anyway; updating now makes
+    // the toggle feel instant.
+    if (window.Hum && typeof window.Hum.update === 'function') window.Hum.update();
+  });
+}
+
 // ---- Bootstrap ----
 var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
 
@@ -1416,6 +1447,7 @@ applyCRTEffects(__appCfg && __appCfg.crtEffects);
 
 applyVisibility();
 initConfigForm();
+initMuteButton();
 initConfigTabs();
 boot();
 

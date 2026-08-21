@@ -13,7 +13,8 @@
  *   teletypeSpeed (authentic/fast), keyClick (bool),
  *   vt52ReverseVideo (bool, historical VT52 reverse-video mode),
  *   crtEffects (bool, pure-CSS CRT flicker/roll simulation),
- *   hum (bool, ambient power-supply hum), photoBackdrop (bool),
+ *   hum (bool, ambient power-supply hum), mute (bool, global all-sounds
+ *   mute), photoBackdrop (bool),
  *   confirmReboot (bool, reboot confirmation dialog).
  *
  * Run with:  node tests/config.test.js
@@ -74,6 +75,7 @@ function run() {
             vt52TextMode: false,
             crtEffects: true,
             hum: true,
+            mute: false,
             photoBackdrop: true,
             confirmReboot: true,
         }, "defaults should match the documented values");
@@ -152,6 +154,12 @@ function run() {
         assert.strictEqual(C.validate({ hum: 1 }).hum, true);
         assert.strictEqual(C.validate({ hum: 0 }).hum, false);
 
+        // mute: absent -> false (keeps the sounds on for old configs),
+        // otherwise coerced to boolean.
+        assert.strictEqual(C.validate({}).mute, false);
+        assert.strictEqual(C.validate({ mute: 1 }).mute, true);
+        assert.strictEqual(C.validate({ mute: 0 }).mute, false);
+
         // photoBackdrop: absent -> true (keeps the photo for old configs),
         // otherwise coerced to boolean.
         assert.strictEqual(C.validate({}).photoBackdrop, true);
@@ -181,6 +189,7 @@ function run() {
             vt52TextMode: true,
             crtEffects: false,
             hum: true,
+            mute: true,
             photoBackdrop: false,
             confirmReboot: false,
         };
@@ -214,6 +223,7 @@ function run() {
             vt52TextMode: true,
             crtEffects: true,
             hum: false,
+            mute: true,
             photoBackdrop: true,
         }, s);
         const resetCfg = C.reset(s);

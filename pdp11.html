@@ -200,6 +200,25 @@
       </div>
       <div class="dec-logo">digital</div>
     </div>
+    <!-- Global sound mute: round magic-wand-style button fixed to the
+         bottom-left corner just right of the navigation sidebar. Toggles the
+         CONFIG "mute" flag like a checkbox (aria-pressed reflects the state);
+         the diagonal slash is shown only while muted (see css/pdp11.css).
+         Wired in src/pdp11-app.js. -->
+    <button type="button" id="mute-btn" class="mute-btn" title="Mute all sounds" aria-label="Mute all sounds"
+      aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <!-- speaker body -->
+        <path d="M11 5 L6 9 H3 V15 H6 L11 19 Z" fill="currentColor" stroke="none" />
+        <!-- sound waves (hidden while muted) -->
+        <path class="mute-waves" d="M15 9.5 A4 4 0 0 1 15 14.5" />
+        <path class="mute-waves" d="M17.5 7 A8 8 0 0 1 17.5 17" />
+        <!-- small diagonal cross, same stroke as the waves, entirely to the
+             right of the speaker body (shown only while muted) -->
+        <path class="mute-slash" d="M14.5 9.5 L18.5 14.5 M18.5 9.5 L14.5 14.5" />
+      </svg>
+    </button>
     <div class="page active" id="page-panel">
       <!-- Quick-boot magic wand: pinned to the top-right of the Panel page.
            Opens the OS picker dialog (src/quickboot.js). Monochrome SVG so it
