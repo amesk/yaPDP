@@ -337,6 +337,10 @@
                 screen: false,   // false = hardcopy mode
                 ansi:   false,   // VT100/ANSI mode vs VT52 mode
                 origin: false,   // DECOM (origin mode)
+                insert: false,   // IRM (insert/replace mode, CSI 4 h/l)
+                wrap: true,      // DECAWM (auto-wrap at the right margin)
+                appCursor: false,// DECCKM (application cursor keys)
+                cursorVisible: true, // DECTCEM (cursor on/off)
                 keypad: false    // Application keypad mode
             };
 
@@ -357,6 +361,13 @@
             // Cursor state
             this.cursorRow = 0;
             this.cursorCol = 0;
+
+            // DECSC/DECRC (ESC 7 / ESC 8) saved cursor position + attributes
+            this.savedCursor = { row: 0, col: 0, sgr: 0 };
+
+            // DECAWM pending wrap: armed when a printable lands on the last
+            // column; the next printable wraps to the start of the next line.
+            this.wrapPending = false;
 
             // Hardcopy overhang:
             // Number of characters after the cursor in the textarea (bumped by CR/BS)
@@ -431,13 +442,16 @@
         // Reset terminal to power‑on state
         // ============================================================================
         reset() {
-            this.modes    = { screen: false, ansi: false, origin: false, keypad: false };
+            this.modes    = { screen: false, ansi: false, origin: false, insert: false,
+                              wrap: true, appCursor: false, cursorVisible: true, keypad: false };
             this.graphics = { vt52: false, activeSet: 0, enabled: [false, false], sgr: 0 };
             this.margin   = { top: 0, bottom: this.rows };
 
             this.cursorRow = 0;
             this.cursorCol = 0;
             this.overHang  = 0;
+            this.savedCursor = { row: 0, col: 0, sgr: 0 };
+            this.wrapPending = false;
 
             this.parser = { buffer: [], state: 0 };
 
@@ -730,6 +744,18 @@
         // The cursor is drawn as a full block when blinkCycle = true.
         // When blinkCycle = false, the underlying cell is redrawn.
         drawCursor() {
+            // DECTCEM (CSI ? 25 l) hides the cursor: erase any previously
+            // drawn block cursor and do not repaint it.
+            if (!this.modes.cursorVisible) {
+                const lr = this.canvas.lastCursor.row;
+                const lc = this.canvas.lastCursor.col;
+                if (lr >= 0) {
+                    this.renderCell(lr, lc);
+                    this.canvas.lastCursor = { row: -1, col: -1 };
+                }
+                return;
+            }
+
             const row = this.cursorRow;
             const col = this.cursorCol;
 
@@ -901,8 +927,10 @@
         // ---------------------------------------------------------------------------
         moveCursor(row, col) {
             // Any absolute/relative cursor motion ends a pending overstrike
-            // run (started by BS/CR). Only carriageReturn re-arms it afterwards.
+            // run (started by BS/CR) and a pending auto-wrap. Only
+            // carriageReturn re-arms the overstrike afterwards.
             this.overHang = 0;
+            this.wrapPending = false;
 
             if (this.modes.origin) {
                 // Origin mode clamps cursor to the active scroll region
@@ -923,6 +951,7 @@
         // Scroll region upward by n lines (DECSTBM)
         // ---------------------------------------------------------------------------
         scrollUp(n = 1) {
+            this.wrapPending = false;
             for (let i = 0; i < n; i++) {
                 // Remove top line of region
                 this.screen.splice(this.margin.top, 1);
@@ -936,6 +965,7 @@
         // Scroll region downward by n lines (DECSTBM)
         // ---------------------------------------------------------------------------
         scrollDown(n = 1) {
+            this.wrapPending = false;
             for (let i = 0; i < n; i++) {
                 // Insert blank line at top of region
                 this.screen.splice(this.margin.top, 0, []);
@@ -1142,13 +1172,44 @@
             // Screen Mode (textarea or canvas)
             // ------------------------------------------------------------------------
             if (this.modes.screen) {
+                // DECAWM: a pending wrap (a printable landed on the right
+                // margin) advances to the start of the next line, scrolling
+                // when already on the bottom line.
+                if (this.wrapPending) {
+                    this.wrapPending = false;
+                    if (this.cursorRow >= this.margin.bottom - 1) {
+                        this.scrollUp(1);
+                    } else {
+                        this.cursorRow++;
+                    }
+                    this.cursorCol = 0;
+                }
+
                 const row = this.cursorRow;
                 const col = this.cursorCol;
+
+                // Sparse buffer: ensure the target row exists. The wrap path
+                // (DECAWM) may advance to a row that has not been allocated
+                // yet, and direct cursor addressing can land beyond the rows
+                // that have content.
+                if (!this.screen[row]) {
+                    this.screen[row] = [];
+                }
 
                 if (this.debug) {
                     console.log(
                         `addChar (${row},${col}) [${this.graphics.sgr}] '${String.fromCharCode(ch)}'`
                     );
+                }
+
+                // Insert/replace mode (IRM, CSI 4 h): shift the remainder of the
+                // line right so the new character is inserted instead of
+                // overwriting the existing text. Full-screen editors such as vi
+                // rely on this when their termcap advertises insert mode
+                // (im/mi), i.e. they print characters and expect the terminal
+                // to make room for them.
+                if (this.modes.insert) {
+                    this.insertChars(1);
                 }
 
                 // Ensure cell exists
@@ -1190,15 +1251,24 @@
                 // written, whether the cell existed or was freshly appended).
                 if (this.overHang > 0) this.overHang--;
 
+                // Cursor advance. With DECAWM (auto-wrap) on, a character on
+                // the last column arms a pending wrap so the next printable
+                // lands on the following line; with auto-wrap off the last
+                // column is simply overwritten.
+                if (col < this.cols - 1) {
+                    this.cursorCol++;
+                    this.wrapPending = false;
+                } else if (this.modes.wrap) {
+                    this.wrapPending = true;
+                } else {
+                    this.wrapPending = false;
+                }
+
                 // Canvas: redraw only the changed cell
                 if (this.allowCanvas) {
                     this.renderCell(row, col);
-                    if (col < this.cols - 1) this.cursorCol++;
-                }
-
-                // Textarea: must redraw entire buffer
-                else {
-                    if (col < this.cols - 1) this.cursorCol++;
+                } else {
+                    // Textarea: must redraw entire buffer
                     this.render(true);
                 }
             }
@@ -1332,6 +1402,35 @@
         }
 
         // ---------------------------------------------------------------------------
+        // Bell (BEL, 0x07)
+        // ---------------------------------------------------------------------------
+        // BEL is emitted by programs to grab the operator's attention. If the
+        // application installs a window.playBell hook (mirroring playKeyClick)
+        // it is used for audio; otherwise the canvas briefly flashes the whole
+        // glass in reverse colours as a visual bell.
+        // ---------------------------------------------------------------------------
+        bell() {
+            if (typeof window.playBell === "function") {
+                window.playBell();
+                return;
+            }
+            if (this.allowCanvas) {
+                const oldFg = this.fgColor;
+                const oldBg = this.bgColor;
+                this.fgColor = oldBg;
+                this.bgColor = oldFg;
+                this.resetCanvasContext(this.canvas.ctx);
+                this.renderCanvas();
+                setTimeout(() => {
+                    this.fgColor = oldFg;
+                    this.bgColor = oldBg;
+                    this.resetCanvasContext(this.canvas.ctx);
+                    this.renderCanvas();
+                }, 120);
+            }
+        }
+
+        // ---------------------------------------------------------------------------
         // Reverse Index (RI) — VT100
         // ---------------------------------------------------------------------------
         // Moves cursor up, scrolling region downward if at top margin.
@@ -1368,6 +1467,7 @@
                 case LF:  return this.lineFeed();
                 case FF:  return this.formFeed();
                 case CR:  return this.carriageReturn();
+                case 7:   return this.bell(); // BEL — audible/visual bell
 
                 case ESC:
                     // Begin new escape sequence
@@ -1498,10 +1598,12 @@
                 switch (key) {
 
                     // ---------------------------------------------------------------
-                    // VT52 / ANSI mode toggle
+                    // DECANM — VT52 / ANSI mode toggle.
+                    // Per DEC: CSI ? 2 h selects VT52 mode, CSI ? 2 l selects
+                    // ANSI mode, i.e. modes.ansi = !action.
                     // ---------------------------------------------------------------
                     case "?2":
-                        this.modes.ansi = action;
+                        this.modes.ansi = !action;
                         break;
 
                     // ---------------------------------------------------------------
@@ -1527,9 +1629,53 @@
                         break;
 
                     // ---------------------------------------------------------------
+                    // DECCKM — Application cursor keys (CSI ? 1 h/l).
+                    // When set, the arrow keys transmit ESC O A/B/C/D instead
+                    // of ESC [ A/B/C/D (handled in handleKey).
+                    // ---------------------------------------------------------------
+                    case "?1":
+                        this.modes.appCursor = action;
+                        break;
+
+                    // ---------------------------------------------------------------
+                    // DECSCNM — Reverse screen (CSI ? 5 h/l).
+                    // Swaps the phosphor colours, like the CONFIG reverse-video
+                    // mode (setReverseVideo repaints the canvas when present).
+                    // ---------------------------------------------------------------
+                    case "?5":
+                        this.setReverseVideo(action);
+                        break;
+
+                    // ---------------------------------------------------------------
+                    // DECAWM — Auto-wrap mode (CSI ? 7 h/l).
+                    // When set (default) a printable on the last column wraps to
+                    // the next line; when reset the margin column is overwritten.
+                    // ---------------------------------------------------------------
+                    case "?7":
+                        this.modes.wrap = action;
+                        break;
+
+                    // ---------------------------------------------------------------
+                    // DECTCEM — Cursor visibility (CSI ? 25 h/l).
+                    // Full-screen programs hide the cursor while redrawing.
+                    // ---------------------------------------------------------------
+                    case "?25":
+                        this.modes.cursorVisible = action;
+                        break;
+
+                    // ---------------------------------------------------------------
+                    // IRM — Insert/Replace mode (CSI 4 h / CSI 4 l)
+                    // Needed by vi: with the insert-capable vt100 termcap it
+                    // enters insert mode via im=\E[4h and types characters,
+                    // relying on the terminal to shift the rest of the line.
+                    // ---------------------------------------------------------------
+                    case "4":
+                        this.modes.insert = action;
+                        break;
+
+                    // ---------------------------------------------------------------
                     // Ignored modes (not required by DEC software)
                     // ---------------------------------------------------------------
-                    case "4":   // Jump scroll
                     case "?8":  // Auto‑repeat
                         break;
 
@@ -1629,10 +1775,20 @@
                 case 'H': this.moveCursor(0, 0); break;
 
                 // ---------------------------------------------------------------
-                // Reverse index (VT52 uses ESC I or ESC M)
+                // Reverse line feed (VT52 ESC I): cursor up one line, scrolling
+                // the screen downward when the cursor is at the top margin.
                 // ---------------------------------------------------------------
-                case 'I':
-                case 'M': this.reverseIndex(); break;
+                case 'I': this.reverseIndex(); break;
+
+                // ---------------------------------------------------------------
+                // VT52 Insert Line (ESC L) and Delete Line (ESC M).
+                // These are required by full-screen editors such as vi, which
+                // use the termcap "al"/"dl" capabilities for the o/O (open
+                // line) and dd (delete line) commands. NOTE: in VT100, ESC M is
+                // Reverse Index, but in VT52 ESC M is Delete Line.
+                // ---------------------------------------------------------------
+                case 'L': this.insertLines(1); break;
+                case 'M': this.deleteLines(1); break;
 
                 // ---------------------------------------------------------------
                 // Erase in display / erase in line (VT52)
@@ -1665,10 +1821,30 @@
                     return;
 
                 // ---------------------------------------------------------------
-                // ESC Z — Identify terminal ESC / Z  ->  VT100
+                // ESC 7 / ESC 8 — Save / Restore cursor (DECSC/DECRC).
+                // Programs use these to remember the cursor position and SGR
+                // attributes across a redraw or a sub-operation.
+                // ---------------------------------------------------------------
+                case '7':
+                    this.savedCursor = {
+                        row: this.cursorRow,
+                        col: this.cursorCol,
+                        sgr: this.graphics.sgr
+                    };
+                    break;
+
+                case '8':
+                    this.graphics.sgr = this.savedCursor.sgr;
+                    this.moveCursor(this.savedCursor.row, this.savedCursor.col);
+                    break;
+
+                // ---------------------------------------------------------------
+                // ESC Z — Identify terminal. A plain DECscope VT52 (no hardcopy
+                // unit) responds ESC / K; the copier-equipped model responds
+                // ESC / Z.
                 // ---------------------------------------------------------------
                 case 'Z':
-                    this.receiveRoutine(this.unit, [ESC, 47, 90]);
+                    this.receiveRoutine(this.unit, [ESC, 47, 75]); // ESC / K
                     this.parser.buffer = [];
                     return;
 
@@ -1885,6 +2061,44 @@
                     break;
 
                 // ---------------------------------------------------------------
+                // Cursor position report (CPR) — CSI 6 n
+                // Responds with the 1-based cursor position as ESC [ row ; col R.
+                // ---------------------------------------------------------------
+                case 'n':
+                    if (this.parameterValue(0, 0) === 6) {
+                        const resp = `\x1b[${this.cursorRow + 1};${this.cursorCol + 1}R`;
+                        this.receiveRoutine(this.unit,
+                            Array.from(resp, ch => ch.charCodeAt(0)));
+                    }
+                    break;
+
+                // ---------------------------------------------------------------
+                // Row / column addressing variants and scrolling
+                //   d — VPA (vertical position absolute)
+                //   G — CHA (cursor horizontal absolute)
+                //   E — CNL (cursor next line), F — CPL (cursor previous line)
+                //   S — SU (scroll up), T — SD (scroll down)
+                // ---------------------------------------------------------------
+                case 'd':
+                    this.moveCursor(this.parameterValue(0, 1) - 1, this.cursorCol);
+                    break;
+                case 'G':
+                    this.moveCursor(this.cursorRow, this.parameterValue(0, 1) - 1);
+                    break;
+                case 'E':
+                    this.moveCursor(this.cursorRow + this.parameterValue(0, 1), 0);
+                    break;
+                case 'F':
+                    this.moveCursor(this.cursorRow - this.parameterValue(0, 1), 0);
+                    break;
+                case 'S':
+                    this.scrollUp(this.parameterValue(0, 1));
+                    break;
+                case 'T':
+                    this.scrollDown(this.parameterValue(0, 1));
+                    break;
+
+                // ---------------------------------------------------------------
                 // Unknown CSI
                 // ---------------------------------------------------------------
                 default:
@@ -1949,6 +2163,18 @@
             let bytes =
                 (!this.modes.keypad && map.noKeypad[ev.code]) ||
                 map.keyMap[ev.code];
+
+            // DECCKM (CSI ? 1 h): application cursor keys — the arrow keys
+            // transmit SS3 (ESC O A..D) instead of CSI (ESC [ A..D).
+            if (this.modes.ansi && this.modes.appCursor) {
+                const appArrows = {
+                    ArrowUp:    [ESC, 79, 65], // ESC O A
+                    ArrowDown:  [ESC, 79, 66], // ESC O B
+                    ArrowRight: [ESC, 79, 67], // ESC O C
+                    ArrowLeft:  [ESC, 79, 68]  // ESC O D
+                };
+                if (appArrows[ev.code]) bytes = appArrows[ev.code];
+            }
 
             // Printable characters or Ctrl+key combinations
             if (!bytes && ev.key.length === 1) {

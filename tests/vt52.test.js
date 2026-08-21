@@ -70,6 +70,43 @@ function makeTerminal() {
     };
 }
 
+/**
+ * Create a fresh Terminal instance that records every byte sent back to the
+ * emulator (receiveRoutine), for testing terminal responses (CPR, ESC Z
+ * identify) and keyboard translation (handleKey).
+ */
+function makeCapturingTerminal() {
+    const sandbox = { console, window: {} };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+
+    const textArea = {
+        value: "", tabIndex: 0, style: {},
+        setSelectionRange() {}, addEventListener() {}, focus() {},
+        scrollTop: 0, scrollHeight: 0,
+    };
+
+    const unit = 77;
+    const sent = [];
+    sandbox.window.vt52Initialize(unit, (u, bytes) => {
+        sent.push(...bytes);
+    }, textArea, null, {});
+    const term = sandbox.window.vt52Get(unit);
+
+    term.modes.screen = true;
+    term.screen = [[]];
+    term.cursorRow = 0;
+    term.cursorCol = 0;
+    term.overHang = 0;
+
+    return {
+        sandbox,
+        term,
+        sent,
+        write: (data) => sandbox.window.vt52Write(unit, data),
+    };
+}
+
 function cell(term, col) {
     return term.screen[0][col];
 }
@@ -242,6 +279,230 @@ function run() {
         term.setReverseVideo(false);
         assert.strictEqual(term.fgColor, "#E0E0E0", "reverse video off restores grey text");
         assert.strictEqual(term.bgColor, "#141914", "reverse video off restores dark grey-green background");
+    }
+
+    // ---- VT52 ESC L inserts a blank line at the cursor ----------------------
+    // Full-screen editors (vi termcap "al") use ESC L for the o/O (open line)
+    // commands: a blank row is spliced at the cursor and content shifts down.
+    {
+        const { term, write } = makeTerminal();
+        term.screen = [
+            [{ c: 65, a: 0 }], // 'A'
+            [{ c: 66, a: 0 }], // 'B'
+            [{ c: 67, a: 0 }]  // 'C'
+        ];
+        term.cursorRow = 1;
+        term.cursorCol = 0;
+        write(ESC + "L");
+        assert.strictEqual(term.screen.length, 4, "ESC L adds a row");
+        // render() guarantees the cursor cell exists in the sparse buffer, so
+        // the inserted row holds one blank space at the cursor column.
+        assert.strictEqual(term.screen[1][0].c, 32, "inserted row cell is blank");
+        assert.strictEqual(term.screen[2][0].c, 66, "'B' shifts down after ESC L");
+        assert.strictEqual(term.screen[3][0].c, 67, "'C' shifts down after ESC L");
+    }
+
+    // ---- VT52 ESC M deletes the line at the cursor ---------------------------
+    // vi termcap "dl" uses ESC M for dd: the cursor row is removed and the
+    // lines below it shift up (a blank line would appear at the bottom of a
+    // full 24-row screen; the sparse buffer simply drops it).
+    {
+        const { term, write } = makeTerminal();
+        term.screen = [
+            [{ c: 65, a: 0 }], // 'A'
+            [{ c: 66, a: 0 }], // 'B'
+            [{ c: 67, a: 0 }]  // 'C'
+        ];
+        term.cursorRow = 1;
+        term.cursorCol = 0;
+        write(ESC + "M");
+        // deleteLines() removes the cursor row and appends a blank line at the
+        // bottom (splice clamps to the end of the sparse array), which is how a
+        // full 24-row screen would show a fresh bottom row.
+        assert.strictEqual(term.screen.length, 3, "ESC M shifts content up and adds a trailing blank row");
+        assert.strictEqual(term.screen[0][0].c, 65, "'A' stays in place after ESC M");
+        assert.strictEqual(term.screen[1][0].c, 67, "'C' moves up after ESC M");
+        assert.strictEqual(term.screen[2].length, 0, "trailing blank row after ESC M");
+    }
+
+    // ---- Regression: VT52 ESC I still performs reverse line feed -------------
+    // ESC I must remain Reverse Index (cursor up / scroll down); it must not
+    // be conflated with ESC M (delete line).
+    {
+        const { term, write } = makeTerminal();
+        term.screen = [
+            [{ c: 65, a: 0 }],
+            [{ c: 66, a: 0 }]
+        ];
+        term.cursorRow = 1;
+        term.cursorCol = 0;
+        write(ESC + "I");
+        assert.strictEqual(term.cursorRow, 0, "ESC I moves the cursor up one row");
+        assert.strictEqual(term.screen.length, 2, "ESC I does not delete a line");
+    }
+
+    // ---- VT100 IRM insert mode (CSI 4 h): typed chars insert, not overwrite --
+    // vi with the insert-capable vt100 termcap enters insert mode via im=\E[4h
+    // and prints characters, relying on the terminal to shift the rest of the
+    // line right. Before this fix CSI 4 h was ignored, so typing overwrote the
+    // existing text instead of inserting.
+    {
+        const { term, write } = makeTerminal();
+        write(ESC + "[4h");                 // IRM set (insert mode)
+        write("AB");                        // type at (0,0) and (0,1)
+        write(ESC + "Y" + String.fromCharCode(32) + String.fromCharCode(33)); // cursor to (0,1)
+        write("X");                         // must insert, shifting 'B' right
+        assert.strictEqual(term.screen[0][0].c, 65, "IRM keeps 'A'");
+        assert.strictEqual(term.screen[0][1].c, 88, "IRM inserts 'X' at the cursor");
+        assert.strictEqual(term.screen[0][2].c, 66, "IRM shifts 'B' right");
+
+        // Replace mode (CSI 4 l) restores overwrite behaviour
+        write(ESC + "[4l");                 // IRM reset (replace mode)
+        write(ESC + "Y" + String.fromCharCode(32) + String.fromCharCode(33));
+        write("Y");
+        assert.strictEqual(term.screen[0][1].c, 89, "replace mode overwrites 'X' with 'Y'");
+        assert.strictEqual(term.screen[0][2].c, 66, "replace mode leaves 'B' in place (no extra insert)");
+    }
+
+    // ---- ESC 7 / ESC 8 save & restore cursor (DECSC/DECRC) ---------------
+    {
+        const { term, write } = makeTerminal();
+        term.screen = [[{ c: 65, a: 0 }], [{ c: 66, a: 0 }]];
+        term.cursorRow = 1;
+        term.cursorCol = 0;
+        write(ESC + "7");   // save (1,0)
+        write(ESC + "Y" + String.fromCharCode(32) + String.fromCharCode(33)); // move (0,1)
+        assert.strictEqual(term.cursorRow, 0, "ESC 7: cursor moved to row 0");
+        assert.strictEqual(term.cursorCol, 1, "ESC 7: cursor moved to col 1");
+        write(ESC + "8");   // restore (1,0)
+        assert.strictEqual(term.cursorRow, 1, "ESC 8 restores the row");
+        assert.strictEqual(term.cursorCol, 0, "ESC 8 restores the column");
+    }
+
+    // ---- CSI ?25 h/l toggles cursor visibility (DECTCEM) -----------------
+    {
+        const { term, write } = makeTerminal();
+        assert.strictEqual(term.modes.cursorVisible, true, "cursor visible by default");
+        write(ESC + "[?25l");
+        assert.strictEqual(term.modes.cursorVisible, false, "CSI ?25 l hides the cursor");
+        write(ESC + "[?25h");
+        assert.strictEqual(term.modes.cursorVisible, true, "CSI ?25 h shows the cursor");
+    }
+
+    // ---- CSI ?7 h/l controls auto-wrap (DECAWM) --------------------------
+    {
+        const { term, write } = makeTerminal();
+        // With wrap on (default), a printable on the last column arms a
+        // pending wrap; the next printable lands on the next line.
+        write("A".repeat(80));
+        assert.strictEqual(term.cursorCol, 79, "cursor rests on the last column");
+        assert.strictEqual(term.wrapPending, true, "wrap is pending at the right margin");
+        write("B");
+        assert.strictEqual(term.cursorRow, 1, "DECAWM wraps to the next line");
+        assert.strictEqual(term.screen[1][0].c, 66, "wrapped character lands at column 0");
+
+        // With wrap off, the last column is overwritten in place.
+        write(ESC + "[?7l");
+        write(ESC + "Y" + String.fromCharCode(32 + 1) + String.fromCharCode(32 + 79)); // (1,79)
+        write("X");
+        assert.strictEqual(term.cursorCol, 79, "DECAWM off: cursor stays at the last column");
+        assert.strictEqual(term.wrapPending, false, "DECAWM off: no pending wrap");
+        assert.strictEqual(term.screen[1][79].c, 88, "DECAWM off: margin column overwritten");
+    }
+
+    // ---- CSI 6 n reports the cursor position (CPR) -----------------------
+    {
+        const { term, sent, write } = makeCapturingTerminal();
+        term.screen = [[{ c: 65, a: 0 }, { c: 66, a: 0 }]];
+        term.cursorRow = 0;
+        term.cursorCol = 1;
+        write(ESC + "[6n");
+        assert.deepStrictEqual(sent, [27, 91, 49, 59, 50, 82],
+            "CPR answers ESC [ 1 ; 2 R");
+    }
+
+    // ---- ESC Z identifies as a VT52 without copier (ESC / K) -------------
+    {
+        const { sent, write } = makeCapturingTerminal();
+        write(ESC + "Z");
+        assert.deepStrictEqual(sent, [27, 47, 75], "ESC Z answers ESC / K");
+    }
+
+    // ---- BEL invokes the playBell hook -----------------------------------
+    {
+        const { sandbox, write } = makeCapturingTerminal();
+        let bellCount = 0;
+        sandbox.window.playBell = () => bellCount++;
+        write("\x07");
+        assert.strictEqual(bellCount, 1, "BEL triggers window.playBell once");
+    }
+
+    // ---- CSI d / G position rows and columns (VPA / CHA) -----------------
+    {
+        const { term, write } = makeTerminal();
+        term.cursorCol = 5;
+        write(ESC + "[3d");
+        assert.strictEqual(term.cursorRow, 2, "CSI 3 d moves to row 3");
+        assert.strictEqual(term.cursorCol, 5, "CSI d keeps the column");
+        write(ESC + "[5G");
+        assert.strictEqual(term.cursorCol, 4, "CSI 5 G moves to column 5");
+        assert.strictEqual(term.cursorRow, 2, "CSI G keeps the row");
+    }
+
+    // ---- CSI ?2 h/l selects VT52 / ANSI mode (DECANM) --------------------
+    {
+        const { term, write } = makeTerminal();
+        term.modes.ansi = true;
+        write(ESC + "[?2h");
+        assert.strictEqual(term.modes.ansi, false, "CSI ?2 h selects VT52 mode");
+        write(ESC + "[?2l");
+        assert.strictEqual(term.modes.ansi, true, "CSI ?2 l selects ANSI mode");
+    }
+
+    // ---- CSI ?1 h/l toggles application cursor keys (DECCKM) -------------
+    {
+        const { term, sent, write } = makeCapturingTerminal();
+        term.modes.ansi = true;
+        const fire = (code) =>
+            term.handleKey({ code, key: "ArrowUp", ctrlKey: false, preventDefault() {} });
+
+        fire("ArrowUp");
+        assert.deepStrictEqual([...sent], [27, 91, 65], "default arrow sends ESC [ A");
+        sent.length = 0;
+
+        write(ESC + "[?1h");   // DECCKM set
+        assert.strictEqual(term.modes.appCursor, true, "CSI ?1 h enables app cursor keys");
+        fire("ArrowUp");
+        assert.deepStrictEqual([...sent], [27, 79, 65], "DECCKM arrow sends ESC O A");
+        sent.length = 0;
+
+        write(ESC + "[?1l");   // DECCKM reset
+        assert.strictEqual(term.modes.appCursor, false, "CSI ?1 l disables app cursor keys");
+        fire("ArrowUp");
+        assert.deepStrictEqual([...sent], [27, 91, 65], "arrow returns to CSI after DECCKM reset");
+    }
+
+    // ---- vi VT52 tail-rewrite (TERM=vt52, no insert mode) -----------------
+    // On a terminal without insert capability vi keeps the screen correct by
+    // reprinting the tail after the inserted character: it positions with cm
+    // (ESC Y), types the inserted char, then repositions and types each
+    // shifted character of the original tail.
+    {
+        const { term, write } = makeTerminal();
+        term.screen = [[{ c: 65, a: 0 }, { c: 66, a: 0 }, { c: 67, a: 0 }]]; // "ABC"
+        term.cursorRow = 0;
+        term.cursorCol = 1;
+        // vi: cm to (0,1), type 'X', then cm to (0,2) type 'B', cm to (0,3) type 'C'
+        write(ESC + "Y" + String.fromCharCode(32) + String.fromCharCode(33)); // (0,1)
+        write("X");
+        write(ESC + "Y" + String.fromCharCode(32) + String.fromCharCode(34)); // (0,2)
+        write("B");
+        write(ESC + "Y" + String.fromCharCode(32) + String.fromCharCode(35)); // (0,3)
+        write("C");
+        assert.strictEqual(term.screen[0][0].c, 65, "tail rewrite keeps 'A'");
+        assert.strictEqual(term.screen[0][1].c, 88, "tail rewrite keeps the inserted 'X'");
+        assert.strictEqual(term.screen[0][2].c, 66, "tail rewrite shifts 'B' right");
+        assert.strictEqual(term.screen[0][3].c, 67, "tail rewrite shifts 'C' right");
     }
 
     console.log("vt52.test.js: all overstrike tests passed");
