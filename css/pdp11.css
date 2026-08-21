@@ -1437,6 +1437,38 @@ body {
         0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
+/* DEC "digital" wordmark stamped at the top of the dark side panel, echoing
+   the boxed letters of the front panel's .decLetter block, light on dark. */
+.vt52-dec-logo {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 2px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.vt52-dec-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 18px;
+    border: 1px solid #8a8274;
+    /* Light bottom edge so the full square reads on the dark panel and the
+       letters look debossed (bright lower rim catches the top light). */
+    border-bottom-color: #b6ae9c;
+    border-radius: 2px;
+    color: #d0c9b6;
+    font-family: arial, helvetica, sans-serif;
+    font-weight: 100;
+    font-size: 11px;
+    line-height: 1;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
 /* CRT tube (the glass area) */
 .vt52-crt {
     position: relative;

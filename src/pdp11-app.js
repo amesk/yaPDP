@@ -480,6 +480,20 @@ function buildVT52Cabinet(unit, cabinet, crt) {
   // cabinet embraces both the screen and the panel as one piece.
   var sidePlastic = document.createElement('div');
   sidePlastic.className = 'vt52-side-plastic';
+
+  // DEC "digital" wordmark stamped at the top of the dark side panel,
+  // echoing the boxed letters of the front panel's .decLetter block.
+  var decLogo = document.createElement('div');
+  decLogo.className = 'vt52-dec-logo';
+  var brand = 'digital';
+  for (var i = 0; i < brand.length; i++) {
+    var letter = document.createElement('span');
+    letter.className = 'vt52-dec-letter';
+    letter.textContent = brand.charAt(i);
+    decLogo.appendChild(letter);
+  }
+  sidePlastic.appendChild(decLogo);
+
   var ridge = document.createElement('div');
   ridge.className = 'vt52-side-ridge';
   sidePlastic.appendChild(ridge);
