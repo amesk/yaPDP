@@ -773,10 +773,14 @@
        fresh line stays at 153px under the (also moved) print head. max-height
        is viewport-relative (~a cabinet-height offset) so the paper keeps
        growing upward until its top edge reaches the top of the window; the
-       paper's own scrollbar then appears right at that moment. */
+       paper's own scrollbar then appears right at that moment. The whole
+       cabinet is CSS-scaled down on narrow windows (--lp11-scale, set by
+       installLP11Scaling in pdp11-app.js), so max-height is divided by the
+       live scale — after the transform the fanfold still climbs the same
+       fraction of the viewport it would at full size. */
     bottom: 60px;
     height: auto;
-    max-height: calc(100vh - 200px);
+    max-height: calc((100vh - 200px) / var(--lp11-scale, 1));
     overflow-y: auto;
     overflow-x: hidden;
 }

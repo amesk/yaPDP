@@ -192,7 +192,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 overstrike + LP11 text + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
+| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 overstrike + LP11 text + LP11 scaling + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -326,7 +326,11 @@ authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
 original's ~300 lines/min. Both the teletype and the printer size their paper
 to the configured print width (centred in the machine body), so a full line
 always reaches the paper edge. Both also advance the carriage to the next
-8-column tab stop on TAB, matching real Model 33 ASR / LP11 behaviour.
+8-column tab stop on TAB, matching real Model 33 ASR / LP11 behaviour. Like the
+VT52 console, the LP11 cabinet auto-scales down proportionally to fit the
+window when it gets too small (transform: scale, driven by a ResizeObserver),
+so the full-width machine is never clipped on narrow screens — and the rising
+fanfold paper still climbs the same fraction of the window after scaling.
 
 Both also honour form feed (FF, 0x0C): the 2.11BSD spooler (`lpr`/`lpd`) sends
 FF between print jobs so each starts on a fresh page. The LP11 ejects to the
@@ -385,6 +389,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
 | [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 overstrike (bold/underline) modular tests — run with `node tests/vt52.test.js` |
 | [`tests/g60printer-flush.test.js`](tests/g60printer-flush.test.js) | G60Printer `flushCharBuffer()` backlog-flush modular tests — run with `node tests/g60printer-flush.test.js` |
+| [`tests/lp11-scaling.test.js`](tests/lp11-scaling.test.js) | LP11 printer-cabinet `lp11FitScale()` proportional-scaling modular tests — run with `node tests/lp11-scaling.test.js` |
 | [`tests/dl11-recv.test.js`](tests/dl11-recv.test.js) | DL11 console receive-path modular tests (^C delivery, RBUF/DONE, vector 60 interrupt) — run with `node tests/dl11-recv.test.js` |
 | [`tests/vt11.test.js`](tests/vt11.test.js) | VT11 display register/gating modular tests — run with `node tests/vt11.test.js` |
 | [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |

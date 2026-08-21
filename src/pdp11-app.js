@@ -1209,6 +1209,77 @@ function installVT52Scaling() {
   });
 }
 
+// ---- Proportional scaling of the LP11 printer cabinet ----
+// Mirrors installVT52Scaling: when the window is too small for the full-width
+// (1160px) LP11 cabinet, scale it down proportionally (transform: scale)
+// instead of clipping it. The cabinet is pinned to the bottom of the page
+// (margin-top:auto), so its reserved layout height is shrunk to natH*s and the
+// flex column keeps exactly the visual footprint — no dead space, no bottom
+// clipping. The live --lp11-scale variable is consumed by g60printer.css so
+// the paper's viewport-relative max-height is divided by the scale, keeping
+// the fanfold climbing the same fraction of the window after scaling. Hidden
+// pages (display:none → offsetWidth 0) are skipped and re-sized once they
+// become visible.
+function lp11FitScale(availW, availH, natW, natH, fixedH) {
+  if (!natW || !natH) return 1;
+  var s = Math.min(1, (availW > 0) ? availW / natW : 1);
+  // Only constrain vertically when there is actually room left over for the
+  // cabinet after the fixed (unscaled) spacer + actions rows are accounted for.
+  var spaceH = availH - fixedH;
+  if (spaceH > 0 && natH > spaceH) {
+    s = Math.min(s, spaceH / natH);
+  }
+  if (s < 0.1) s = 0.1; // never collapse below readability
+  return s;
+}
+
+function installLP11Scaling() {
+  if (typeof ResizeObserver === 'undefined') return;
+  var page = document.getElementById('page-printer');
+  if (!page) return;
+  var cabinet = page.querySelector('.lp11-cabinet');
+  var spacer = page.querySelector('p.clear');
+  var actions = page.querySelector('.printer-actions');
+  if (!cabinet || !actions) return;
+
+  function apply() {
+    // Clear the transform, reserved geometry and margins before measuring, so
+    // offsetHeight always returns the natural (unscaled) size. Leaving the
+    // previously applied scale/height/margin in place would make each pass
+    // compound on the last (offsetHeight would already be the shrunk height)
+    // and the cabinet would never restore when the window grows back.
+    cabinet.style.transform = '';
+    cabinet.style.height = '';
+    cabinet.style.marginBottom = '';
+    cabinet.style.setProperty('--lp11-scale', 1);
+    var natW = cabinet.offsetWidth;
+    var natH = cabinet.offsetHeight;
+    if (!natW || !natH) return; // hidden page — skip until visible
+
+    // Unscaled chrome (top spacer + actions row) keeps its full layout height.
+    var fixedH = (spacer ? spacer.offsetHeight : 0) +
+                 (actions ? actions.offsetHeight : 0);
+    var s = lp11FitScale(page.clientWidth - 24, page.clientHeight - 24,
+                         natW, natH, fixedH);
+
+    cabinet.style.transformOrigin = 'top center';
+    cabinet.style.transform = (s < 1) ? 'scale(' + s + ')' : '';
+    // Keep the cabinet at its natural height so its beige background covers the
+    // full content (mechanics bay + operator console) and scales uniformly with
+    // it. Reserving the height here would double-shrink the background (the
+    // scale is applied again by the transform) and leave the console strip
+    // sticking out below the cabinet. Transform does not affect layout, so pull
+    // the following actions row up by the now-empty bottom (natH*(1-s)) with a
+    // negative margin: the scaled cabinet sits flush above the actions row.
+    cabinet.style.marginBottom = (s < 1) ? (-(natH * (1 - s))) + 'px' : '';
+    cabinet.style.setProperty('--lp11-scale', s);
+  }
+
+  apply();
+  var ro = new ResizeObserver(apply);
+  ro.observe(page);
+}
+
 // ---- Bootstrap ----
 var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
 
@@ -1229,6 +1300,10 @@ if (__appCfg && __appCfg.userTerminals >= 2) {
 
 // Fit the VT52 cabinets to the available window size (proportional scaling).
 installVT52Scaling();
+
+// Fit the LP11 printer cabinet to the available window size (proportional
+// scaling, mirroring the VT52 cabinets above).
+installLP11Scaling();
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);
