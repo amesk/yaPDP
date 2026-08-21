@@ -74,8 +74,9 @@ function run() {
 
         const rp1 = OSBoot.scenarioFor("rp1");
         assert.deepStrictEqual(plain(rp1.steps),
-            [{ send: "" }, { send: "root", waitFor: "login:" }],
-            "BSD 2.11 should interrupt the boot countdown and wait for login");
+            [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
+                { send: "root", waitFor: "login:" }],
+            "BSD 2.11 should press Enter at the boot prompt and wait for login");
 
         assert.strictEqual(OSBoot.scenarioFor("nope"), undefined,
             "unknown device should resolve to undefined");
@@ -211,9 +212,22 @@ function run() {
             { console: "vt52", printer: false, vt11: false }),
             "VT52 console · no printer",
             "a disabled VT11 should not add a badge");
+        // The description ALWAYS states the console type and the printer
+        // state; null profile keys keep the user's current setting, and
+        // without a config the fallback is a teletype console, no printer.
         assert.strictEqual(QuickBoot.requirementText(
-            { console: null, printer: null, vt11: null }), "",
-            "no requirements should produce no badge text");
+            { console: null, printer: null, vt11: null }),
+            "teletype console · no printer",
+            "the description should always state the terminal and the printer");
+        assert.strictEqual(QuickBoot.requirementText(
+            { console: null, printer: null, vt11: null }, base),
+            "VT52 console · no printer",
+            "a null console should keep the user's VT52 console");
+        assert.strictEqual(QuickBoot.requirementText(
+            { console: null, printer: null, vt11: null },
+            { consoleType: "teletype", printer: true }),
+            "teletype console · LP11 printer",
+            "a null printer should keep the user's enabled printer");
     }
 
     // ---- QuickBoot abortAutoload -------------------------------------

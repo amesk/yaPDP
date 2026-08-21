@@ -101,17 +101,20 @@ var QuickBoot = (function () {
         return false;
     }
 
-    // Human-readable summary of a scenario's hardware requirements (shown in
-    // the picker list). Pure — unit-testable in Node.
-    function requirementText(profile) {
+    // Human-readable summary of the hardware the machine will actually boot
+    // with for a scenario: the scenario's profile merged over the current
+    // config (null profile keys keep the user's current setting). Always
+    // states the console type and whether the LP11 printer is present.
+    // Pure — unit-testable in Node.
+    function requirementText(profile, cfg) {
+        var merged = mergeHardware(cfg, profile);
         var parts = [];
-        if (profile.console === "teletype") parts.push("teletype console");
-        else if (profile.console === "vt52") parts.push("VT52 console");
-        if (profile.printer === true) parts.push("LP11 printer");
-        else if (profile.printer === false) parts.push("no printer");
+        if (merged.consoleType === "vt52") parts.push("VT52 console");
+        else parts.push("teletype console");
+        parts.push(merged.printer ? "LP11 printer" : "no printer");
         // Only positive requirements are shown — "no VT11" would be printed
         // for nearly every OS and just add noise (VT11 is off by default).
-        if (profile.vt11 === true) parts.push("VT11 display");
+        if (merged.vt11 === true) parts.push("VT11 display");
         return parts.join(" · ");
     }
 
@@ -167,6 +170,8 @@ var QuickBoot = (function () {
         listEl.innerHTML = "";
         var scenarios = (typeof OSBoot !== "undefined" && OSBoot.BOOT_SCENARIOS)
             ? OSBoot.BOOT_SCENARIOS : [];
+        var cfg = (typeof Config !== "undefined" && Config.get)
+            ? Config.get() : null;
         scenarios.forEach(function (s) {
             var btn = document.createElement("button");
             btn.type = "button";
@@ -180,7 +185,7 @@ var QuickBoot = (function () {
             cmd.textContent = s.boot + (s.autoLogin ? "  + auto-login" : "");
             btn.appendChild(name);
             btn.appendChild(cmd);
-            var req = requirementText(profileOf(s));
+            var req = requirementText(profileOf(s), cfg);
             if (req) {
                 var reqEl = document.createElement("span");
                 reqEl.className = "quickboot-req";

@@ -125,10 +125,13 @@ var OSBoot = (function () {
             autoLogin: true,
             hardware: { console: "teletype", printer: null, vt11: false } },
         // BSD 2.11 — historically a teletype console. The loader prints a lot
-        // before "login:" and shows a countdown; an Enter interrupts it and the
-        // login waits for the prompt instead of firing on a fixed timer.
+        // before "login:" and waits at a "Press <CR> to boot, or any other key
+        // to abort:" countdown; an Enter sent as soon as that prompt appears
+        // skips the countdown and starts the kernel, then the login waits for
+        // the prompt instead of firing on a fixed timer.
         { device: "rp1", label: "BSD 2.11", boot: "boot rp1",
-            steps: [{ send: "" }, { send: "root", waitFor: "login:" }],
+            steps: [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
+                { send: "root", waitFor: "login:" }],
             autoLogin: true,
             hardware: { console: "vt52", printer: true, vt11: false } },
         // RSTS/E v9.6 — LP11 line printer.
