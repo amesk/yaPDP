@@ -449,6 +449,48 @@ function installVT52Keyboard(unit, pageId) {
   }
 }
 
+// ---- DECscope VT52 cabinet builder ----
+// Recreates the recognisable DEC VT52 front: a slanted off-white moulded-plastic
+// monoblock with a vent grille, a deep bezel around the tube, a plain plastic
+// side panel with a raised ridge, and a keyboard deck (main block + keypad +
+// PF1–PF4 + the d.i.g.i.t.a.l brand). The keys are clickable: each click feeds
+// the same bytes the physical keyboard would send through the unit's DL11
+// receive queue, then returns focus to the canvas so typing keeps working.
+function buildVT52Cabinet(unit, cabinet, crt) {
+  // The earlier decorative badge/controls are superseded by the full cabinet.
+  var oldBadge = cabinet.querySelector('.vt52-badge');
+  if (oldBadge) oldBadge.remove();
+  var oldControls = cabinet.querySelector('.vt52-controls');
+  if (oldControls) oldControls.remove();
+
+  // Vent grille (drawn purely in CSS via repeating-linear-gradient).
+  var vents = document.createElement('div');
+  vents.className = 'vt52-vents';
+
+  // Top section: screen bezel (left) + plastic side (right).
+  var top = document.createElement('div');
+  top.className = 'vt52-top';
+
+  var bezel = document.createElement('div');
+  bezel.className = 'vt52-bezel';
+
+  if (crt) bezel.appendChild(crt); // move the existing tube inside the bezel
+
+  // The dark side panel is a recessed insert INSIDE the beige bezel, so the
+  // cabinet embraces both the screen and the panel as one piece.
+  var sidePlastic = document.createElement('div');
+  sidePlastic.className = 'vt52-side-plastic';
+  var ridge = document.createElement('div');
+  ridge.className = 'vt52-side-ridge';
+  sidePlastic.appendChild(ridge);
+  bezel.appendChild(sidePlastic);
+
+  top.appendChild(bezel);
+
+  cabinet.appendChild(vents);
+  cabinet.appendChild(top);
+}
+
 // ---- Initialize a VT52 terminal on the given page ----
 function initVT52Page(unit, pageId, canvasId, textareaId) {
   var canvas = document.getElementById(canvasId);
@@ -472,6 +514,14 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   textarea.setAttribute('spellcheck', 'false');
   textarea.style.display = textMode ? 'block' : 'none';
   (crt || document.body).appendChild(textarea);
+
+  // Build the authentic DECscope cabinet shell once per page (vent grille,
+  // slanted bezel around the tube, right plastic side, keyboard deck, brand and
+  // power indicator). The tube (.vt52-crt) is moved inside the bezel.
+  var cabinet = crt ? crt.parentElement : null;
+  if (cabinet && !cabinet.querySelector('.vt52-top')) {
+    buildVT52Cabinet(unit, cabinet, crt);
+  }
 
   // Initialize the VT52 terminal. In text mode the screen buffer is rendered
   // through the visible textarea; in canvas mode through the CRT canvas.
@@ -1119,6 +1169,46 @@ function initConfigForm() {
   updateDirtyUI();
 }
 
+// ---- Proportional scaling of the VT52 cabinet ----
+// When the browser window is too small for the full-size DECscope cabinet,
+// scale it down proportionally (transform: scale) instead of clipping it.
+// The natural (unscaled) size is measured on every pass after clearing the
+// transform, so hidden pages (display:none → offsetWidth 0) are simply
+// skipped and get sized once they become visible. The container's height is
+// reserved to match the scaled cabinet (transform does not affect layout),
+// so there is no dead space or overlap.
+function installVT52Scaling() {
+  if (typeof ResizeObserver === 'undefined') return;
+
+  ['page-vt52', 'page-vt52-console', 'page-vt52-2'].forEach(function (pageId) {
+    var page = document.getElementById(pageId);
+    if (!page) return;
+    var container = page.querySelector('.vt52-container');
+    var terminal = page.querySelector('.vt52-terminal');
+    if (!container || !terminal) return;
+
+    function apply() {
+      // Clear the transform to measure natural (unscaled) geometry.
+      terminal.style.transform = '';
+      var natW = terminal.offsetWidth;
+      var natH = terminal.offsetHeight;
+      if (!natW || !natH) return; // hidden page — skip until visible
+      // Height reserved for the status row below the cabinet.
+      var statusPad = Math.max(0, container.offsetHeight - natH);
+
+      var s = Math.min(1, (page.clientWidth - 24) / natW);
+      if (s < 0.1) s = 0.1; // never collapse below readability
+      terminal.style.transformOrigin = 'top center';
+      terminal.style.transform = (s < 1) ? 'scale(' + s + ')' : '';
+      container.style.height = (natH * s + statusPad) + 'px';
+    }
+
+    apply();
+    var ro = new ResizeObserver(apply);
+    ro.observe(page);
+  });
+}
+
 // ---- Bootstrap ----
 var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
 
@@ -1136,6 +1226,9 @@ if (__appCfg && __appCfg.userTerminals >= 1) {
 if (__appCfg && __appCfg.userTerminals >= 2) {
   initVT52Page(2, 'page-vt52-2', 'vt52-2-screen', 'tty2_textarea');
 }
+
+// Fit the VT52 cabinets to the available window size (proportional scaling).
+installVT52Scaling();
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);

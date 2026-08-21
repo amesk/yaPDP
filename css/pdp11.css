@@ -1282,19 +1282,60 @@ body {
     flex-direction: column;
     align-items: center;
     box-sizing: border-box;
+    /* Do not let the page's centering flexbox squeeze the cabinet below its
+       content — otherwise the side panel would spill out of the case. */
+    flex-shrink: 0;
 }
 
-.vt52-terminal,
+/* The VT11 keeps its own dark cabinet (built from HTML, not initVT52Page). */
 .vt11-terminal {
     position: relative;
-    background: linear-gradient(180deg, #3a352a 0%, #2a2722 100%);
-    border: 3px solid #5a554a;
-    border-radius: 18px 18px 14px 14px;
-    padding: 16px 20px 20px 20px;
+    background:
+        linear-gradient(180deg, #4a4438 0%, #3a352a 22%, #2b2822 100%);
+    border: 1px solid #6a655a;
+    border-top-color: #7b756a;
+    border-radius: 16px 16px 12px 12px;
+    padding: 14px 18px 18px 18px;
     box-shadow:
-        inset 0 0 20px rgba(0, 0, 0, 0.8),
-        0 8px 32px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10),
+        inset 0 0 26px rgba(0, 0, 0, 0.6),
+        0 8px 32px rgba(0, 0, 0, 0.65),
         0 0 0 1px #6a655a;
+}
+
+/* DECscope VT52 cabinet (built by buildVT52Cabinet in pdp11-app.js). A slanted
+   off-white (beige) moulded-plastic monoblock: the top recedes with a soft
+   catch-light while the keyboard deck below sits on a dark base. */
+.vt52-terminal {
+    position: relative;
+    /* Size to content so the side panel always sits inside the case. */
+    width: fit-content;
+    background:
+        radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.38), transparent 55%),
+        linear-gradient(180deg, #e8e2d4 0%, #ddd6c6 20%, #d0c9b6 60%, #c0b8a2 100%);
+    border: 1px solid #a89f88;
+    border-top-color: #ece6d8;
+    border-radius: 18px 18px 12px 12px;
+    padding: 14px 18px 10px 18px;
+    box-shadow:
+        inset 0 2px 6px rgba(255, 255, 255, 0.35),
+        inset 0 0 30px rgba(0, 0, 0, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.45),
+        0 26px 44px rgba(0, 0, 0, 0.5);
+}
+
+/* Upper-face highlight: soft light suggesting the top of the cabinet recedes
+   backwards — pure lighting, so the rounded corners and drop shadow survive. */
+.vt52-terminal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24%;
+    border-radius: 18px 18px 0 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0));
+    pointer-events: none;
 }
 
 /* DEC badge on terminal bezel */
@@ -1303,27 +1344,140 @@ body {
     font-family: arial, helvetica, sans-serif;
     font-size: 9px;
     letter-spacing: 2px;
-    color: #6a655a;
+    color: #8a8274;
     text-transform: uppercase;
     margin-bottom: 6px;
     user-select: none;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+/* ===== DECscope VT52 cabinet detail styles ===== */
+/* Vent grille: a row of short vertical slots on the top panel, drawn with a
+   repeating gradient so no per-slot DOM is needed. */
+.vt52-vents {
+    height: 10px;
+    width: 100%;
+    margin: -2px auto 12px auto;
+    border-radius: 2px;
+    background: repeating-linear-gradient(90deg,
+            transparent 0px,
+            transparent 3px,
+            #7d7565 3px,
+            #7d7565 4px);
+    box-shadow:
+        inset 0 1px 2px rgba(0, 0, 0, 0.35),
+        0 1px 0 rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+/* Top section: screen bezel (left) + plain plastic side (right). */
+.vt52-top {
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+}
+
+.vt52-screen-side {
+    flex: 1 1 auto;
+    /* Never squeeze the screen column below its tube: this is what previously
+       let the right side panel overlap the right edge of the display. */
+    min-width: fit-content;
+    display: flex;
+}
+
+/* Deep, wide bezel around the tube — the screen sits recessed inside it. */
+.vt52-bezel {
+    position: relative;
+    flex: 1 1 auto;
+    /* Never squeeze the bezel below its contents: the canvas keeps its native
+       80x24 aspect and the dark side panel sits inside the same beige bezel,
+       so the cabinet embraces both as one piece. */
+    min-width: fit-content;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #e2dbc9 0%, #d4ccb8 60%, #c4bba5 100%);
+    border: 1px solid #a89f88;
+    box-shadow:
+        inset 0 4px 12px rgba(0, 0, 0, 0.28),
+        inset 0 -4px 10px rgba(255, 255, 255, 0.35),
+        0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Right plastic side panel — very dark charcoal, recessed beside the screen. */
+.vt52-side-plastic {
+    flex: 0 0 180px;
+    align-self: stretch;
+    position: relative;
+    /* Square corners, like the real DECscope side panel. */
+    border-radius: 0;
+    background: linear-gradient(180deg, #3a3a3a, #1b1b1b);
+    border: 1px solid #0e0e0e;
+    box-shadow:
+        inset 0 3px 8px rgba(0, 0, 0, 0.5),
+        0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* A single raised horizontal ridge, sitting just above the lower edge. */
+.vt52-side-ridge {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: 14px;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #6e6e6e 0%, #3e3e3e 45%, #262626 100%);
+    box-shadow:
+        0 1px 1px rgba(255, 255, 255, 0.18),
+        0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 /* CRT tube (the glass area) */
 .vt52-crt {
     position: relative;
+    /* Keep the 80x24 canvas at its native size inside the bezel so the screen
+       proportions never stretch or get clipped by the side panel. */
+    flex-shrink: 0;
     border-radius: 10px;
     overflow: hidden;
-    background: #000;
-    border: 2px solid #1a1a1a;
+    /* The real VT52 faceplate is very dark grey-green glass, not pure black. */
+    background: #141914;
+    border: 2px solid #151515;
     box-shadow:
-        inset 0 0 40px rgba(0, 0, 0, 0.25),
-        inset 0 0 80px rgba(0, 0, 0, 0.6),
-        0 0 30px rgba(255, 255, 255, 0.05);
+        /* Vignette + glass curvature */
+        inset 0 0 40px rgba(0, 0, 0, 0.30),
+        inset 0 0 90px rgba(0, 0, 0, 0.65),
+        inset 0 2px 6px rgba(255, 255, 255, 0.06),
+        /* Tube edge highlight and depth */
+        0 0 0 1px rgba(0, 0, 0, 0.9),
+        0 0 26px rgba(0, 0, 0, 0.7),
+        0 0 30px rgba(255, 255, 255, 0.06);
     cursor: text;
 }
 
-/* Scanlines overlay */
+/* Glass reflection: a soft curved highlight swept across the tube plus a faint
+   diagonal glare. Painted as ::before so it sits above the canvas but below
+   the scanlines and never grabs pointer events. When CRT effects are enabled
+   this layer is repurposed as the animated vertical-hold roll band (see
+   body.crt-effects .vt52-crt::before). */
+.vt52-crt::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% -25%, rgba(255, 255, 255, 0.09), transparent 62%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 42%);
+}
+
+/* Scanlines overlay (a genuine CRT texture in normal mode). */
 .vt52-crt::after {
     content: "";
     position: absolute;
@@ -1342,7 +1496,8 @@ body {
 
 .vt52-crt canvas {
     display: block;
-    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.12));
+    /* Phosphor halo: a soft glow around the white (P4) writing. */
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.30));
     outline: none;
 }
 
@@ -1362,7 +1517,7 @@ body {
     border: 0;
     outline: none;
     resize: none;
-    background: #000;
+    background: #141914;
     color: #e0e0e0;
     caret-color: #e0e0e0;
     font-family: monospace;

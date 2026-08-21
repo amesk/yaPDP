@@ -237,11 +237,11 @@ function run() {
     {
         const { term } = makeTerminal();
         term.setReverseVideo(true);
-        assert.strictEqual(term.fgColor, "#000", "reverse video: black text");
+        assert.strictEqual(term.fgColor, "#141914", "reverse video: dark grey-green text");
         assert.strictEqual(term.bgColor, "#E0E0E0", "reverse video: white/grey background");
         term.setReverseVideo(false);
         assert.strictEqual(term.fgColor, "#E0E0E0", "reverse video off restores grey text");
-        assert.strictEqual(term.bgColor, "#000", "reverse video off restores black background");
+        assert.strictEqual(term.bgColor, "#141914", "reverse video off restores dark grey-green background");
     }
 
     console.log("vt52.test.js: all overstrike tests passed");

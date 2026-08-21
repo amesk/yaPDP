@@ -92,8 +92,9 @@
 
     // Canvas rendering parameters (defaults — overridden by instance properties)
     // A real DECscope VT52 uses a white (P4) phosphor, not green: the text is
-    // a light-grey / cold-white (#E0E0E0 / #F0F8FF) on a pure black tube.
-    const BG_COLOR    = "#000";     // Pure black CRT background
+    // a light-grey / cold-white (#E0E0E0 / #F0F8FF) on a very dark grey-green
+    // glass tube (the actual VT52 faceplate, not pure black).
+    const BG_COLOR    = "#141914";  // Dark grey-green CRT glass background
     const FG_COLOR    = "#E0E0E0";  // Light-grey P4 phosphor writing
 
     // Attribute bitmask flags (SGR)
