@@ -192,7 +192,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
+| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -390,6 +390,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/vt52.test.js`](tests/vt52.test.js) | VT52 terminal modular tests (overstrike/SGR bold/underline — VT52 mode must not draw them, ANSI mode still does; ESC L/M, IRM insert mode, DECSC/DECRC, DECAWM, CPR, DECCKM, DECANM, BEL) — run with `node tests/vt52.test.js` |
 | [`tests/g60printer-flush.test.js`](tests/g60printer-flush.test.js) | G60Printer `flushCharBuffer()` backlog-flush modular tests — run with `node tests/g60printer-flush.test.js` |
 | [`tests/lp11-scaling.test.js`](tests/lp11-scaling.test.js) | LP11 printer-cabinet `lp11FitScale()` proportional-scaling modular tests — run with `node tests/lp11-scaling.test.js` |
+| [`tests/vt52-cabinet-css.test.js`](tests/vt52-cabinet-css.test.js) | VT52 cabinet CSS sizing contract tests (case must keep CRT + dark side panel inside — absolute side panel with width reserved in the bezel padding, guarding the Windows 10 WebView2 flexbox `max-content` overflow regression) — run with `node tests/vt52-cabinet-css.test.js` |
 | [`tests/dl11-recv.test.js`](tests/dl11-recv.test.js) | DL11 console receive-path modular tests (^C delivery, RBUF/DONE, vector 60 interrupt) — run with `node tests/dl11-recv.test.js` |
 | [`tests/vt11.test.js`](tests/vt11.test.js) | VT11 display register/gating modular tests — run with `node tests/vt11.test.js` |
 | [`tests/fullscreen.test.js`](tests/fullscreen.test.js) | Fullscreen toggle runtime-detection modular tests — run with `node tests/fullscreen.test.js` |

@@ -1303,8 +1303,13 @@ body {
    catch-light while the keyboard deck below sits on a dark base. */
 .vt52-terminal {
     position: relative;
-    /* Size to content so the side panel always sits inside the case. */
-    width: fit-content;
+    /* Size to content so the side panel always sits inside the case. Use
+       max-content rather than fit-content: fit-content clamps the case to the
+       viewport when the window is narrower than the cabinet, so the CRT and
+       the dark side panel overflow the case edge — and the proportional
+       scaler never compensates because it measures the already-clamped width
+       (see installVT52Scaling in pdp11-app.js). */
+    width: max-content;
     background:
         radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.38), transparent 55%),
         linear-gradient(180deg, #e8e2d4 0%, #ddd6c6 20%, #d0c9b6 60%, #c0b8a2 100%);
@@ -1375,8 +1380,11 @@ body {
 .vt52-screen-side {
     flex: 1 1 auto;
     /* Never squeeze the screen column below its tube: this is what previously
-       let the right side panel overlap the right edge of the display. */
-    min-width: fit-content;
+       let the right side panel overlap the right edge of the display. Use
+       max-content, not fit-content — fit-content in min-width is unreliable
+       inside flex containers in older WebView2 (Windows 10) and lets the
+       column collapse, overflowing the dark side panel past the case edge. */
+    min-width: max-content;
     display: flex;
 }
 
@@ -1386,13 +1394,21 @@ body {
     flex: 1 1 auto;
     /* Never squeeze the bezel below its contents: the canvas keeps its native
        80x24 aspect and the dark side panel sits inside the same beige bezel,
-       so the cabinet embraces both as one piece. */
-    min-width: fit-content;
+       so the cabinet embraces both as one piece. max-content is the reliable
+       spelling of this guard (fit-content in min-width misbehaves in older
+       WebView2 on Windows 10, letting the side panel spill out of the case). */
+    min-width: max-content;
     display: flex;
     align-items: center;
-    justify-content: center;
+    /* The dark side panel is absolutely positioned against the right edge, so
+       its fixed width must be reserved inside the padding: flexbox max-content
+       measurement of this bezel ignores flex-basis-length items (flex: 0 0
+       180px) in older WebView2 on Windows 10 and collapses the bezel, letting
+       the panel spill past the case edge. Reserved slot = 180px panel + 14px
+       gap, mirrored by the 16px padding on the left. */
     gap: 14px;
     padding: 16px;
+    padding-right: calc(16px + 14px + 180px);
     border-radius: 12px;
     background: linear-gradient(180deg, #e2dbc9 0%, #d4ccb8 60%, #c4bba5 100%);
     border: 1px solid #a89f88;
@@ -1404,9 +1420,15 @@ body {
 
 /* Right plastic side panel — very dark charcoal, recessed beside the screen. */
 .vt52-side-plastic {
-    flex: 0 0 180px;
-    align-self: stretch;
-    position: relative;
+    /* Out of the flex flow: anchored to the bezel's right edge so the bezel
+       width is decided by its padding reservation (see .vt52-bezel) instead
+       of a flex max-content measurement that older WebView2 on Windows 10
+       gets wrong. */
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    bottom: 16px;
+    width: 180px;
     /* Square corners, like the real DECscope side panel. */
     border-radius: 0;
     background: linear-gradient(180deg, #3a3a3a, #1b1b1b);
