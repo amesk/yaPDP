@@ -202,26 +202,6 @@
     margin-left: 6px;
 }
 
-.drop-zone-status {
-    display: block;
-    font-size: 11px;
-    color: #9a9488;
-    margin-top: 2px;
-    white-space: normal;
-}
-
-.drop-zone-status.ok {
-    color: #7fbf7f;
-}
-
-.drop-zone-status.warn {
-    color: #d8c070;
-}
-
-.drop-zone-status.error {
-    color: #d08080;
-}
-
 /* Full-window drop overlay — shown while dragging files over the page */
 .drop-overlay {
     position: fixed;
@@ -2080,8 +2060,9 @@ body.crt-effects .vt52-crt::after {
     background: rgba(138, 74, 74, 0.15);
 }
 
-/* Punch tape size indicator (Storage page). */
-.punch-size {
+/* Punch tape size / mounted image count indicators (Storage page). */
+.punch-size,
+.mounted-count {
     display: inline-block;
     margin-left: 8px;
     font-size: 11px;

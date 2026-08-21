@@ -23,14 +23,10 @@
 "use strict";
 
 (function () {
-    // Known device image URL shapes used for user feedback.
-    // (Not an allow-list — any name is mounted; this only improves hints.)
-    var KNOWN_URL_RE = /^(rk[0-4]|rl[0-3]|rp[0-4]|tm[0-3]|ra[0-2])\.(dsk|tap)$|\.ptap$/;
-
-    // Total number of images the user has mounted this session (via
-    // drag & drop or restored from IndexedDB). Kept separate from the
-    // per-call counters so the status line accumulates across drops.
-    var userMounted = 0;
+    // Images the user has mounted this session (via drag & drop or restored
+    // from IndexedDB), keyed by canonical URL. Bundled desktop images are NOT
+    // tracked here, so the "Mounted images" counter reflects user images only.
+    var userImages = {};
 
     function plural(n) {
         return n === 1 ? "image" : "images";
@@ -122,19 +118,6 @@
         return name;
     }
 
-    function isKnownUrl(url) {
-        return KNOWN_URL_RE.test(url);
-    }
-
-    function setStatus(zone, text, cls) {
-        if (!zone) return;
-        var el = zone.querySelector(".drop-zone-status");
-        if (el) {
-            el.textContent = text || "";
-            el.className = "drop-zone-status" + (cls ? " " + cls : "");
-        }
-    }
-
     function decompressZst(bytes) {
         if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
             return null;
@@ -149,45 +132,26 @@
     // ------------------------------------------------------------------
     // File processing
     // ------------------------------------------------------------------
-    function processFiles(zone, files) {
+    function processFiles(files) {
         var list = Array.prototype.slice.call(files || []);
         if (!list.length) return;
 
-        setStatus(zone, "Processing " + list.length + " file(s)…", "info");
         var done = 0;
-        var ok = 0;
-        var fail = 0;
-        var lastMsg = "";
 
         function finish() {
             if (done !== list.length) return;
             refreshMountedList();
-            if (fail === 0) {
-                lastMsg = userMounted + " " + plural(userMounted) +
-                    " mounted — type e.g. 'boot rp1' at the Boot> prompt";
-                setStatus(zone, lastMsg, "ok");
-            } else {
-                lastMsg = ok + " mounted, " + fail + " failed";
-                setStatus(zone, lastMsg, "error");
-            }
         }
 
-    list.forEach(function (file) {
-        file.arrayBuffer().then(function (buffer) {
-            var bytes = new Uint8Array(buffer);
-            var url = canonicalName(file.name);
-            var isZst = /\.zst$/i.test(file.name);
-            // Was this URL already mounted? Re-dropping the same image
-            // replaces its bytes but must NOT inflate the unique count.
-            var wasMounted = DataLoader.has(url);
+        list.forEach(function (file) {
+            file.arrayBuffer().then(function (buffer) {
+                var bytes = new Uint8Array(buffer);
+                var url = canonicalName(file.name);
+                var isZst = /\.zst$/i.test(file.name);
 
-            var mounted;
                 if (isZst) {
                     var raw = decompressZst(bytes);
                     if (raw === null) {
-                        fail++;
-                        lastMsg = "Failed to decompress '" + file.name + "'";
-                        setStatus(zone, lastMsg, "error");
                         if (++done === list.length) finish();
                         return;
                     }
@@ -195,28 +159,13 @@
                     // Store the decompressed bytes (as an exact-size buffer copy)
                     // so the image stays available offline on the next launch.
                     dbPut(url, raw.slice().buffer);
-                    mounted = true;
                 } else {
                     DataLoader.mount(url, bytes);
                     dbPut(url, buffer);
-                    mounted = true;
                 }
-
-                if (mounted) {
-                    ok++;
-                    if (!wasMounted) userMounted++;
-                    if (isKnownUrl(url)) {
-                        lastMsg = "Mounted '" + url + "' — ready to boot";
-                    } else {
-                        lastMsg = "Mounted as '" + url + "' — rename to a known device (e.g. rp1.dsk) to boot it";
-                    }
-                    setStatus(zone, lastMsg, isKnownUrl(url) ? "ok" : "warn");
-                }
+                userImages[url] = true;
                 if (++done === list.length) finish();
             }).catch(function () {
-                fail++;
-                lastMsg = "Failed to read '" + file.name + "'";
-                setStatus(zone, lastMsg, "error");
                 if (++done === list.length) finish();
             });
         });
@@ -247,6 +196,15 @@
         }
         select.disabled = urls.length === 0;
         if (remove) remove.disabled = urls.length === 0;
+
+        // Show how many user-mounted images there are next to the Unmount
+        // button (drag & drop + IndexedDB restores only, not bundled desktop
+        // images), mirroring the "EXPORT PAPER TAPE" size indicator style.
+        var count = document.getElementById("mounted-count");
+        if (count) {
+            var n = Object.keys(userImages).length;
+            count.textContent = n + " " + plural(n);
+        }
 
         // Keep the "Paper tape reader file" list in sync so a .ptap image
         // imported via drag & drop (or restored from IndexedDB) can be chosen
@@ -295,9 +253,8 @@
         if (!url) return;
         DataLoader.unmount(url);
         dbDelete(url);
-        if (userMounted > 0) userMounted--;
+        delete userImages[url];
         refreshMountedList();
-        setStatus(document.getElementById("drop-zone"), "Unmounted '" + url + "'", "info");
     }
 
     // ------------------------------------------------------------------
@@ -312,13 +269,9 @@
         dbGetAll().then(function (items) {
             items.forEach(function (item) {
                 DataLoader.mount(item.key, item.bytes);
-                userMounted++;
+                userImages[item.key] = true;
             });
             refreshMountedList();
-            if (items.length) {
-                setStatus(zone, items.length + " " + plural(items.length) +
-                    " restored from storage", "info");
-            }
         });
 
         // Clicking the small control-bar zone opens the file picker.
@@ -329,7 +282,7 @@
         }
         if (input) {
             input.addEventListener("change", function () {
-                processFiles(zone, input.files);
+                processFiles(input.files);
                 input.value = "";
             });
         }
@@ -367,7 +320,7 @@
                 e.preventDefault();
                 e.stopPropagation();
                 zone.classList.remove("dragover");
-                processFiles(zone, e.dataTransfer && e.dataTransfer.files);
+                processFiles(e.dataTransfer && e.dataTransfer.files);
             });
         }
 
@@ -409,7 +362,7 @@
         window.addEventListener("drop", function (e) {
             e.preventDefault();
             hideOverlay();
-            processFiles(zone, e.dataTransfer && e.dataTransfer.files);
+            processFiles(e.dataTransfer && e.dataTransfer.files);
         });
         window.addEventListener("dragend", function (e) {
             e.preventDefault();
