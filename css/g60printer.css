@@ -803,3 +803,286 @@
 #lp11_printer div#lp11g60paper_topshadow {
     display: none;
 }
+
+/* ==================================================================
+   Model 33 ASR — tape reader / punch unit and the punched paper tape.
+   The ASR block sits to the LEFT of the printer + keyboard (see the
+   #page-teletype markup in pdp11.html). Every byte echoed to the
+   console punches one row of holes on the tape (#punchtape), which
+   grows downwards; once it overflows the window a scrollbar appears
+   and the view follows the freshly punched row (see punchtape.js).
+   ================================================================== */
+#teletype-rig {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+    gap: 12px;
+}
+
+#asr-tape-unit {
+    position: relative;
+    /* Cabinet: punch (left) and reader (right) side by side in one row;
+       the punched tape hangs below the punch. Wide enough for the punch's
+       ON/OFF/BSP/REL buttons. The cabinet's top is aligned with the top of
+       the keyboard block (printer 470px + its 2×8px margins), as on a real
+       ASR where the reader/punch sit at keyboard level. */
+    width: 300px;
+    height: 132px;
+    margin-top: 486px;
+    background-color: #2a2023;
+    border: 1px solid #444;
+    overflow: visible;
+    /* let the punched tape spill past the cabinet */
+    align-self: flex-start;
+}
+
+#asr-mech {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+/* Punch: on the left — same size as the reader (each half of the row). */
+#asr-punch {
+    position: relative;
+    flex: 1 1 0;
+    background: linear-gradient(180deg, #3a2b2f 0%, #241a1d 100%);
+    border-right: 1px solid #111;
+}
+
+/* Reader: on the right — same size as the punch. */
+#asr-reader {
+    position: relative;
+    flex: 1 1 0;
+    background: linear-gradient(180deg, #45343a 0%, #2c2023 100%);
+}
+
+.asr-label {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #c9bfa8;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.asr-slot {
+    position: absolute;
+    left: 50%;
+    top: 70px;
+    /* Wider than the punched tape (97px) but clearly narrower than the
+       punch/reader cabinet, so the opening's dark walls stay visible around
+       the tape as it passes through (the tape draws on top of the slot). */
+    width: 104px;
+    height: 12px;
+    margin-left: -52px;
+    background: #0a0a0a;
+    border: 1px solid #555;
+    border-radius: 2px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* The punch tape-out slot ends a little further LEFT of the cabinet centre
+   (the reader slot stays centred). */
+#asr-punch .asr-slot {
+    left: 44%;
+}
+
+/* Punch operator buttons (ON/OFF/BSP/REL), in the punch cabinet BETWEEN the
+   TAPE PUNCH label and the tape-out slot, so the tape spilling from the slot
+   never covers them. ON/OFF toggle the punch (OFF by default); BSP backspaces
+   the tape one step; REL releases the tape. */
+.asr-punch-buttons {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 34px;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+}
+
+.asr-btn {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    border: 1px solid #c8a860;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 9px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.asr-btn:hover {
+    filter: brightness(1.15);
+}
+
+/* Punch is ON: the ON button lights up. */
+.asr-btn.active {
+    background: linear-gradient(180deg, #8a6a30, #5a4a28);
+    color: #ffe9a8;
+    border-color: #e8c878;
+}
+
+/* ---- The hanging punched tape ----
+   #punchtape hangs from the TAPE PUNCH slot down to the bottom of the
+   window. It is absolutely positioned (out of the flow), so a growing tape
+   never resizes the teletype page. The fresh row is prepended at the top
+   (right under the punch head); the tape spills downwards until its lower
+   end reaches the bottom of the window, at which point its own scrollbar
+   appears (overflow-y: auto). punchtape.js sets max-height so the tape
+   reaches the window edge; 60vh is only the pre-JS fallback. */
+#punchtape {
+    position: absolute;
+    /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 70px + half
+       slot height 6px = 76px), horizontally centred on the punch. */
+    top: 76px;
+    left: 17px;
+    z-index: 1;
+    /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
+       transparent background: scrollbar-gutter: stable reserves the gutter
+       up front in EVERY browser, so the scrollbar never resizes the tape or
+       shifts it left, and there is no dark gutter strip (the tape sits on the
+       page background on both sides). */
+    width: 107px;
+    max-width: 100%;
+    height: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+}
+
+.punchtape__body {
+    display: flex;
+    flex-direction: column;
+    /* Left-aligned: the tape hugs the punch slot, and the reserved scrollbar
+       gutter sits on its right without covering the tape. */
+    align-items: flex-start;
+    padding: 0;
+}
+
+/* Ragged bottom edge of the tape, matching the teletype paper edge.
+   The paper-edge.png strip is the teletype's TOP paper edge; flip it
+   vertically so it becomes the tape's ragged BOTTOM edge. */
+.punchtape__body::after {
+    content: "";
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 5px;
+    background-image: url('../assets/images/paper-edge.png');
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    transform: scaleY(-1);
+}
+
+/* ---- One punched row ----
+   Rows are packed edge-to-edge (no vertical margin), so the tape reads as a
+   continuous strip: each row is exactly one 10-char-per-inch tape step. */
+.pt-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    height: 12px;
+    padding: 0 1px;
+    box-sizing: border-box;
+    /* Solid white tape body — no per-row gradient and no side borders, so
+       the packed rows read as one continuous plain (unstriped) paper tape. */
+    background: #f6f1e5;
+}
+
+/* Narrow blank margins on both sides of the tape (real tape has small
+   unpunched edges, not wide fields) */
+.pt-cell {
+    flex: 0 0 2px;
+    width: 2px;
+    height: 12px;
+    background-color: transparent;
+}
+
+/* Data holes (tracks Д1..Д8) */
+.pt-hole {
+    flex: 0 0 8px;
+    width: 8px;
+    height: 12px;
+    margin: 0 1px;
+    box-sizing: border-box;
+}
+
+.pt-hole.on {
+    background: radial-gradient(circle at 50% 50%, #1c1712 0%, #1c1712 45%, transparent 60%);
+    background-size: 7px 7px;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+}
+
+/* Feed (sprocket) hole — always punched, between tracks Д3 and Д4 */
+.pt-sprocket {
+    flex: 0 0 7px;
+    width: 7px;
+    height: 12px;
+    margin: 0 2px;
+    background: radial-gradient(circle at 50% 50%, #1c1712 0%, #1c1712 42%, transparent 58%);
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+    background-position: 50% 50%;
+}
+
+/* ==================================================================
+   Model 33 ASR operator controls (LOCAL/LINE, Tear tape, Tear paper,
+   Save tape). A single row of push-buttons under the machine, styled
+   to match the real-printer action buttons (see .printer-actions
+   button in css/pdp11.css) so the teletype and LP11 pages look alike.
+   ================================================================== */
+#teletype-controls {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.tty-btn {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0 6px;
+}
+
+.tty-btn:hover {
+    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+}
+
+/* Active mode (LINE is the default; LOCAL lights up when selected) —
+   a lit-DEC-lamp accent over the printer-button body. */
+.tty-btn.active {
+    background: linear-gradient(180deg, #8a6a30, #5a4a28);
+    color: #ffe9a8;
+    border-color: #e8c878;
+}
+
+.tty-sep {
+    display: inline-block;
+    vertical-align: middle;
+    width: 1px;
+    height: 22px;
+    background: #555;
+    margin: 0 4px;
+}

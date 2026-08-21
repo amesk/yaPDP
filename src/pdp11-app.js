@@ -26,7 +26,25 @@ function teletypeDelay(speed) {
   return TELETYPE_CHAR_DELAY_MS[speed] || 30;
 }
 
+// Punch enable flag. On a real Model 33 ASR the punch is OFF by default and
+// is switched on by the operator (ON button) or by the machine sending DC2.
+// While OFF, printed output is NOT duplicated onto the paper tape.
+function setTtyPunch(on) {
+  window.ttyPunchEnabled = !!on;
+  var onBtn = document.getElementById('punch-on');
+  var offBtn = document.getElementById('punch-off');
+  if (onBtn) onBtn.classList.toggle('active', !!on);
+  if (offBtn) offBtn.classList.toggle('active', !on);
+}
+
 function g60ConsoleWrite(code) {
+  // In LOCAL mode the teletype is disconnected from the machine line: output
+  // from the machine is ignored (it neither prints nor punches).
+  if (window.ttyLocalMode) return;
+  // Programmatic punch control: DC2 (0x12) engages the punch, DC4 (0x14)
+  // disengages it. These control bytes are not printed themselves.
+  if (code === 0x12) { setTtyPunch(true); return; }
+  if (code === 0x14) { setTtyPunch(false); return; }
   if (g60Console) g60Console.writeChar(code);
 }
 
@@ -49,10 +67,22 @@ function initG60Printer() {
   // The Model 33 ASR console teletype used a smooth paper ROLL (no fanfold folds),
   // so it must NOT draw the LP11 fold-marker on form feed — only advance the
   // paper. The LP11 printer page keeps the marker (fanfold paper).
+  // The Model 33 ASR console punches one row of holes on its paper tape for
+  // every byte it renders — both the per-character echo (printChar) and the
+  // line-based boot/program output (print()). Control codes (CR/LF/BS/TAB/FF)
+  // are punched by their dedicated render handlers inside G60Printer. The
+  // punch is OFF by default (see setTtyPunch) and only engages when the
+  // operator presses ON or the machine sends DC2. The LP11 line printer has
+  // no punch, so it never receives this callback.
   g60printer = new G60Printer('g60printer', {
     maxCols: maxCols,
     pageBreakMarker: false,
-    charPrintDelay: teletypeDelay((cfg) ? cfg.teletypeSpeed : null)
+    charPrintDelay: teletypeDelay((cfg) ? cfg.teletypeSpeed : null),
+    onChar: function (code) {
+      if (window.ttyPunchEnabled && window.paperTape) {
+        window.paperTape.punchChar(code);
+      }
+    }
   });
   g60Console = createG60Console(g60printer);
 }
@@ -345,11 +375,25 @@ var g60Keyboard = (function () {
     }
   }
   function sendChar(code) {
+    // LOCAL mode: the keyboard is not connected to the machine — the typed
+    // character is printed locally (paper + tape) instead of being sent.
+    if (window.ttyLocalMode) {
+      if (g60Console) g60Console.writeChar(code);
+      return;
+    }
     if (typeof window.dlReceiveQueue === 'function') {
       window.dlReceiveQueue(0, [code]);
     }
   }
   function sendDL(bytes) {
+    if (window.ttyLocalMode) {
+      if (g60Console) {
+        for (var i = 0; i < bytes.length; i++) {
+          g60Console.writeChar(bytes[i]);
+        }
+      }
+      return;
+    }
     if (typeof window.dlReceiveQueue === 'function') {
       window.dlReceiveQueue(0, bytes);
     }
@@ -1410,11 +1454,113 @@ function initMuteButton() {
   });
 }
 
+// Play the paper-tear sound (same asset as the LP11 Tear paper button on the
+// PRINTER page). The Audio element is created lazily on the first tear (inside
+// the click handler, so autoplay is not blocked) and replayed from 0 each time.
+var tearAudio = null;
+function playTearSound() {
+  try {
+    if (typeof Config !== 'undefined' && Config.get().mute) return;
+    if (!tearAudio && typeof Audio !== 'undefined') {
+      tearAudio = new Audio('assets/sounds/paper-rip-sound-effect.mp3');
+      tearAudio.preload = 'auto';
+    }
+    if (tearAudio) {
+      tearAudio.currentTime = 0;
+      tearAudio.play().catch(function () {});
+    }
+  } catch (e) { /* ignore audio errors */ }
+}
+
+// ---- Model 33 ASR operator controls (LOCAL/LINE, Tear tape/paper, Save) ----
+// Wires the #teletype-controls buttons. LOCAL disconnects the teletype from
+// the machine line (keyboard types are printed locally, machine output is
+// ignored); LINE is the normal connected mode. Tear tape rewinds the punched
+// tape, Tear paper clears the printed paper, Save tape downloads the punched
+// bytes as a .ptap file.
+function initTtyControls() {
+  var localBtn = document.getElementById('tty-local');
+  var lineBtn = document.getElementById('tty-line');
+  if (!localBtn || !lineBtn) return;
+
+  function setLocal(on) {
+    window.ttyLocalMode = !!on;
+    localBtn.classList.toggle('active', !!on);
+    lineBtn.classList.toggle('active', !on);
+  }
+
+  localBtn.addEventListener('click', function () { setLocal(true); });
+  lineBtn.addEventListener('click', function () { setLocal(false); });
+
+  var tearTapeBtn = document.getElementById('tty-tear-tape');
+  if (tearTapeBtn) {
+    tearTapeBtn.addEventListener('click', function () {
+      playTearSound();
+      if (window.paperTape && typeof window.paperTape.clear === 'function') {
+        window.paperTape.clear();
+      }
+    });
+  }
+
+  var tearPaperBtn = document.getElementById('tty-tear-paper');
+  if (tearPaperBtn) {
+    tearPaperBtn.addEventListener('click', function () {
+      playTearSound();
+      if (g60printer && typeof g60printer.clear === 'function') {
+        g60printer.clear();
+      }
+    });
+  }
+
+  var saveTapeBtn = document.getElementById('tty-save-tape');
+  if (saveTapeBtn) {
+    saveTapeBtn.addEventListener('click', function () {
+      if (window.paperTape && typeof window.paperTape.save === 'function') {
+        window.paperTape.save();
+      }
+    });
+  }
+
+  // Punch operator buttons (ON/OFF/BSP/REL).
+  var punchOnBtn = document.getElementById('punch-on');
+  var punchOffBtn = document.getElementById('punch-off');
+  var punchBspBtn = document.getElementById('punch-bsp');
+  var punchRelBtn = document.getElementById('punch-rel');
+  if (punchOnBtn) {
+    punchOnBtn.addEventListener('click', function () { setTtyPunch(true); });
+  }
+  if (punchOffBtn) {
+    punchOffBtn.addEventListener('click', function () { setTtyPunch(false); });
+  }
+  if (punchBspBtn) {
+    punchBspBtn.addEventListener('click', function () {
+      if (window.paperTape && typeof window.paperTape.undo === 'function') {
+        window.paperTape.undo();
+      }
+    });
+  }
+  // REL releases the tape for manual pull-out — no visual state in the
+  // emulator, kept as an operator affordance.
+  if (punchRelBtn) {
+    punchRelBtn.addEventListener('click', function () { /* release (no-op) */ });
+  }
+
+  // LINE is the default mode; the punch is OFF by default.
+  setLocal(false);
+  setTtyPunch(false);
+}
+
 // ---- Bootstrap ----
 var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
 
 initG60Printer();
 g60Keyboard.init();
+// Prepare the ASR paper tape (finds #punchtape and creates the tape body).
+if (window.paperTape && typeof window.paperTape.init === 'function') {
+  window.paperTape.init();
+}
+// Wire the LOCAL/LINE, Tear tape/paper and Save tape operator controls.
+initTtyControls();
 
 // Console terminal: teletype (already initialized above) or VT52 on tty0.
 if (__appCfg && __appCfg.consoleType === 'vt52') {

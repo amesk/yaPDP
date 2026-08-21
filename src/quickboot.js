@@ -302,6 +302,12 @@ var QuickBoot = (function () {
     function clearConsole() {
         var g60 = (typeof window !== "undefined") ? window.g60printer : null;
         if (g60 && typeof g60.clear === "function") g60.clear();
+        // Rewind the ASR paper tape so the boot banner punches onto a fresh
+        // tape, matching the "on a fresh page" teletype paper reset.
+        if (typeof window !== "undefined" && window.paperTape &&
+            typeof window.paperTape.clear === "function") {
+            window.paperTape.clear();
+        }
         if (typeof window !== "undefined" && window.lp11G60Printer &&
             typeof window.lp11G60Printer.clear === "function") {
             window.lp11G60Printer.clear();

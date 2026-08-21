@@ -676,9 +676,62 @@
     </div>
     <div class="page" id="page-teletype">
       <p class=clear><br>
-      <div id="g60printer"></div>
-      <div id="punchkeypane">
-        <div id="punchkeyboard"></div>
+      <div id="teletype-rig">
+        <!-- Model 33 ASR: the tape reader / punch unit sits to the LEFT of
+             the printer + keyboard, with the punched tape spilling from the
+             punch down into a scrollable tape window. -->
+        <div id="asr-tape-unit">
+          <!-- On a real Model 33 ASR the reader and punch sit side by side on
+               the left of the cabinet. The punch carries four mechanical
+               buttons: ON/OFF (punch enable, OFF by default), BSP (backspace
+               one tape step, punching RUBOUT) and REL (release the tape). -->
+          <div id="asr-mech">
+            <div id="asr-punch">
+              <div class="asr-label">TAPE PUNCH</div>
+              <div class="asr-slot"></div>
+              <div class="asr-punch-buttons">
+                <button type="button" class="asr-btn" id="punch-on"
+                  title="Punch ON — duplicate all output onto the paper tape">ON</button>
+                <button type="button" class="asr-btn" id="punch-off"
+                  title="Punch OFF — disable the punch (default)">OFF</button>
+                <button type="button" class="asr-btn" id="punch-bsp"
+                  title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
+                <button type="button" class="asr-btn" id="punch-rel"
+                  title="REL — release the tape for manual pull-out">REL</button>
+              </div>
+            </div>
+            <div id="asr-reader">
+              <div class="asr-label">TAPE READER</div>
+              <div class="asr-slot"></div>
+            </div>
+          </div>
+          <!-- The tape spills from the punch head downwards, hanging past the
+               cabinet down to the window edge; its own scrollbar appears once
+               the tape reaches the bottom of the window. Rows are injected by
+               punchtape.js into #punchtape__body. -->
+          <div id="punchtape"></div>
+        </div>
+        <div id="teletype-main">
+          <div id="g60printer"></div>
+          <div id="punchkeypane">
+            <div id="punchkeyboard"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Model 33 ASR operator controls: LOCAL/LINE line switch, tape/paper
+           tear and tape save. Wired up by initTtyControls() in pdp11-app.js. -->
+      <div id="teletype-controls">
+        <button type="button" class="tty-btn" id="tty-local"
+          title="LOCAL — disconnected from the machine; keyboard types are printed locally">LOCAL</button>
+        <button type="button" class="tty-btn active" id="tty-line" title="LINE — connected to the machine">LINE</button>
+        <span class="tty-sep"></span>
+        <button type="button" class="tty-btn" id="tty-tear-tape"
+          title="Tear the punched tape off (rewind the tape)">Tear tape</button>
+        <button type="button" class="tty-btn" id="tty-tear-paper"
+          title="Tear the printed paper off (clear the paper)">Tear paper</button>
+        <span class="tty-sep"></span>
+        <button type="button" class="tty-btn" id="tty-save-tape" title="Download the punched tape as a .ptap file">Save
+          tape</button>
       </div>
       <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
       <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
@@ -1432,6 +1485,7 @@ Hello world
   <script src='src/imgerror.js'></script>
   <script src='src/osboot.js'></script>
   <script src='src/quickboot.js'></script>
+  <script src='src/punchtape.js'></script>
   <script src='src/pdp11-app.js'></script>
 </body>
 

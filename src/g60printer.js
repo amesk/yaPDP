@@ -172,6 +172,13 @@
         // steady noise), stopping when the buffer drains. The Model 33 ASR console
         // keeps per-character clicks (charSound) instead.
         var printWhirr = (opts.printWhirr === true);
+        // Optional per-byte callback, fired whenever a character is actually
+        // rendered — both by the character-echo path (printChar/doPrintChar)
+        // and by the line-based path (print()/getLine). The console teletype
+        // uses it to punch a matching row on the ASR paper tape; the LP11 (no
+        // punch) omits it. Control bytes (CR/LF/BS/TAB/FF) are punched from
+        // their dedicated handlers so every printed byte lands on the tape.
+        var onChar = (typeof opts.onChar === 'function') ? opts.onChar : null;
         // Form feed (FF, 0x0C): a real line printer advances the paper to the
         // top of the next page. On the continuous G60 paper this is rendered
         // as `pageLength` empty lines (filling the rest of the sheet) followed
@@ -420,6 +427,7 @@
          * This is the actual rendering logic, separated from the pacing queue.
          */
         function doPrintChar(c) {
+            if (onChar) onChar(c.charCodeAt(0));
             if (!currentLineEl) {
                 currentLineEl = document.createElement('p');
                 printArea.appendChild(currentLineEl);
@@ -540,6 +548,7 @@
          * (used by nroff/man for bold output, e.g. "N\bN").
          */
         function doBackspace() {
+            if (onChar) onChar(8);
             if (currentCharPos > 0) {
                 currentCharPos--;
                 overHang++;
@@ -556,6 +565,7 @@
          * existing glyphs instead of appending at the end of the line.
          */
         function doCarriageReturn() {
+            if (onChar) onChar(13);
             if (currentCharPos > 0) {
                 overHang += currentCharPos;
                 currentCharPos = 0;
@@ -654,6 +664,7 @@
          * be scheduled as a buffered item in the pacing queue.
          */
         function doPrintln() {
+            if (onChar) onChar(10);
             // Start a new paragraph (line)
             currentLineEl = document.createElement('p');
             printArea.appendChild(currentLineEl);
@@ -724,6 +735,7 @@
          * used a smooth paper roll, so it advances without the fold marker.
          */
         function doFormFeed() {
+            if (onChar) onChar(12);
             // The page eject must appear at the FF position in the logical
             // stream — i.e. BEFORE any content already queued after the FF
             // (such as the next job / man page body). The filler is therefore
@@ -859,7 +871,13 @@
             // line must not widen the paper / create a horizontal scrollbar.
             while (pos < maxCols) {
                 c = textBuffer.charAt(textPos++);
-                if (c === '\n' || c === '') break;
+                if (c === '\n') {
+                    // Line break in the line-based path: punch the LF byte.
+                    if (onChar) onChar(10);
+                    break;
+                }
+                if (c === '') break;
+                if (onChar) onChar(c.charCodeAt(0));
                 space = (c === ' ');
                 el = document.createElement('span');
                 if (!space && pos > 2 && ++missCnt > missPause && Math.random() < 0.05) {
