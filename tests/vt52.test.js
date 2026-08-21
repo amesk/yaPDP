@@ -113,6 +113,35 @@ function cell(term, col) {
     return term.screen[0][col];
 }
 
+/**
+ * Create a fresh Terminal instance and bolt a mock canvas pipeline onto it so
+ * renderText() can be exercised without a real <canvas> (which would start the
+ * 500ms blink interval and keep the Node process alive). Returns { term, calls }
+ * where calls records every ctx.fillText / ctx.fillRect plus the ctx.font in
+ * effect when each glyph was drawn.
+ */
+function makeCanvasTerminal() {
+    const { term } = makeTerminal();
+    term.allowCanvas = true;
+
+    const calls = { fillText: [], fillRect: [] };
+    const ctx = {
+        fillStyle: "",
+        font: "",
+        fillRect: (x, y, w, h) => calls.fillRect.push({ x, y, w, h }),
+        fillText: (s, x, y) => calls.fillText.push({ s, x, y, font: ctx.font }),
+    };
+    term.canvas = {
+        ctx,
+        charWidth: 8,
+        blinkCycle: false,
+        lastCursor: { row: -1, col: -1 },
+    };
+    term.glyphBaselineOffset = 0;
+
+    return { term, calls };
+}
+
 function run() {
     // ---- Bold via backspace overstrike: "N\bN" ----------------------
     {
@@ -511,6 +540,41 @@ function run() {
         assert.strictEqual(term.screen[0][1].c, 88, "tail rewrite keeps the inserted 'X'");
         assert.strictEqual(term.screen[0][2].c, 66, "tail rewrite shifts 'B' right");
         assert.strictEqual(term.screen[0][3].c, 67, "tail rewrite shifts 'C' right");
+    }
+
+    // ---- VT52 mode never draws bold/underline (historical accuracy) ---------
+    // A DECscope VT52 has no SGR emphasis: bold and underline are VT100-only
+    // attributes (DECANM / modes.ansi). Even if a cell carries those attribute
+    // bits (via SGR or an nroff/man overstrike), renderText() must mask them
+    // out in VT52 mode and draw a plain glyph. In ANSI mode the emphasis is
+    // still drawn (regression guard).
+    {
+        const { term, calls } = makeCanvasTerminal();
+        const ATTR_BOTH = ATTR_BOLD | ATTR_UNDERSCORE;
+
+        // VT52 mode (modes.ansi === false): plain single-strike glyph, no underline
+        term.modes.ansi = false;
+        term.renderText(0, 0, ATTR_BOTH, "X");
+        assert.strictEqual(calls.fillText.length, 1,
+            "VT52 draws one strike, not a bold double-strike");
+        assert.ok(!calls.fillText[0].font.includes("bold"),
+            "VT52 uses the normal font, never bold");
+        assert.strictEqual(
+            calls.fillRect.filter(r => r.h === term.underlineHeight).length, 0,
+            "VT52 draws no underline bar");
+        calls.fillText.length = 0;
+        calls.fillRect.length = 0;
+
+        // ANSI mode (modes.ansi === true): bold double-strike + underline bar
+        term.modes.ansi = true;
+        term.renderText(0, 0, ATTR_BOTH, "X");
+        assert.strictEqual(calls.fillText.length, 2,
+            "ANSI bold still draws a double strike");
+        assert.ok(calls.fillText[0].font.includes("bold"),
+            "ANSI bold still uses the bold font");
+        assert.strictEqual(
+            calls.fillRect.filter(r => r.h === term.underlineHeight).length, 1,
+            "ANSI underline still draws the underline bar");
     }
 
     console.log("vt52.test.js: all overstrike tests passed");

@@ -706,6 +706,15 @@
             const h = this.fontHeight;
             const x = this.cellX(col);
             const y = this.cellY(row);
+
+            // VT52 (DECscope) has no SGR emphasis: bold and underline are
+            // VT100-only attributes (DECANM / modes.ansi). In VT52 mode they
+            // must never be drawn, no matter how they reached the cell
+            // (overstrike or SGR), so mask them out before rendering.
+            if (!this.modes.ansi) {
+                attr &= ~(ATTR_BOLD | ATTR_UNDERSCORE);
+            }
+
             // Glyphs are drawn at the computed baseline so their visual centre
             // lines up with the cell centre (and the block cursor) for any font.
             const ty = y + (this.glyphBaselineOffset || 0);
