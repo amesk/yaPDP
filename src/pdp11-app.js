@@ -648,6 +648,49 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   };
 })();
 
+// ==================================================================
+// Audible VT52 bell (BEL, 0x07). Synthesized with Web Audio on a
+// dedicated context so it never clashes with the key-click sound. The
+// "ding" is modelled as a mechanical bell: a bright fundamental plus
+// two metallic partials that decay over ~0.4 s. Returns true when a
+// sound was actually produced (false when audio is unavailable), so
+// src/vt52.js keeps the visual flash as a fallback. Always on — the
+// bell is authentic VT52 hardware behaviour, unlike keyClick.
+// ==================================================================
+(function installBell() {
+  var audioCtx = null;
+  window.playBell = function () {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return false;
+      audioCtx = audioCtx || new Ctx();
+      // Browsers start an AudioContext suspended until a user gesture;
+      // the operator is typing by the time a program rings the bell, so
+      // resuming here keeps the very first bell audible too.
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      [
+        [880, 0.5],   // fundamental
+        [1760, 0.25], // first metallic partial
+        [2637, 0.12]  // second metallic partial
+      ].forEach(function (p) {
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = p[0];
+        gain.gain.setValueAtTime(0.08 * p[1], t0);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.4);
+      });
+      return true;
+    } catch (err) { /* ignore audio errors */ }
+    return false;
+  };
+})();
+
 // ---- Sidebar visibility according to the configuration ----
 function setNavVisible(page, visible) {
   var btn = document.querySelector('.nav-btn[data-page="' + page + '"]');

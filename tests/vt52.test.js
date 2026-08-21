@@ -84,6 +84,8 @@ function makeCapturingTerminal() {
         value: "", tabIndex: 0, style: {},
         setSelectionRange() {}, addEventListener() {}, focus() {},
         scrollTop: 0, scrollHeight: 0,
+        offsetWidth: 0,
+        classList: { add() {}, remove() {} },
     };
 
     const unit = 77;
@@ -428,13 +430,19 @@ function run() {
         assert.deepStrictEqual(sent, [27, 47, 75], "ESC Z answers ESC / K");
     }
 
-    // ---- BEL invokes the playBell hook -----------------------------------
+    // ---- BEL invokes the playBell hook and flashes the textarea ----------
+    // In textarea mode (no canvas) the visual bell falls back to a CSS class
+    // on the textarea; with a playBell hook installed both must happen.
     {
-        const { sandbox, write } = makeCapturingTerminal();
+        const { sandbox, term, write } = makeCapturingTerminal();
         let bellCount = 0;
         sandbox.window.playBell = () => bellCount++;
+        const added = [];
+        term.textArea.classList.add = (c) => added.push(c);
         write("\x07");
         assert.strictEqual(bellCount, 1, "BEL triggers window.playBell once");
+        assert.deepStrictEqual(added, ["vt52-bell-flash"],
+            "BEL flashes the textarea via the .vt52-bell-flash class");
     }
 
     // ---- CSI d / G position rows and columns (VPA / CHA) -----------------

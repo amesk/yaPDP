@@ -1159,7 +1159,11 @@ function dl11(vt52Unit, deviceVector) {
                             textArea = ensureTtyUI(unit); // lazy creation
                         }
                         xbuf = result & 0x7f;
-                        if (xbuf >= 8 && xbuf < 127) {
+                        // Route everything from BEL (0x07) up to DEL (exclusive).
+                        // The lower bound was lowered from 8 to 7 so that BEL
+                        // reaches the terminal too — without it `printf "\a"`
+                        // would never ring the bell.
+                        if (xbuf >= 7 && xbuf < 127) {
                             // Route console (tty0) to the configured terminal type;
                             // user terminals (1+) always use VT52.
                             if (unit === 0) {

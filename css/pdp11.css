@@ -1540,6 +1540,26 @@ body {
     overflow: auto;
 }
 
+/* Visual bell flash for the plain text-mode terminal (vt52TextMode): a
+   one-shot reverse-video blink driven by a CSS animation, since there is no
+   canvas to invert. Added/removed by bell() in src/vt52.js; removal happens
+   on animationend so consecutive bells restart the animation. */
+.vt52-textarea.vt52-bell-flash {
+    animation: vt52-bell-flash 0.15s steps(2) 2 alternate;
+}
+
+@keyframes vt52-bell-flash {
+    from {
+        background: #e0e0e0;
+        color: #141914;
+    }
+
+    to {
+        background: #141914;
+        color: #e0e0e0;
+    }
+}
+
 /* Subtle phosphor shimmer animation */
 @keyframes phosphor-shimmer {
 

@@ -1406,14 +1406,19 @@
         // ---------------------------------------------------------------------------
         // BEL is emitted by programs to grab the operator's attention. If the
         // application installs a window.playBell hook (mirroring playKeyClick)
-        // it is used for audio; otherwise the canvas briefly flashes the whole
-        // glass in reverse colours as a visual bell.
+        // it is used for audio; otherwise the visual bell below is the only
+        // feedback. The visual bell ALWAYS runs, so a muted or blocked audio
+        // context still gives the operator a flash on the glass.
+        //
+        // Canvas CRT: the whole screen briefly flashes in reverse colours.
+        // Plain textarea mode: there is no canvas to invert, so the textarea
+        // flashes through the .vt52-bell-flash CSS class (css/pdp11.css).
         // ---------------------------------------------------------------------------
         bell() {
             if (typeof window.playBell === "function") {
                 window.playBell();
-                return;
             }
+
             if (this.allowCanvas) {
                 const oldFg = this.fgColor;
                 const oldBg = this.bgColor;
@@ -1427,6 +1432,19 @@
                     this.resetCanvasContext(this.canvas.ctx);
                     this.renderCanvas();
                 }, 120);
+            } else if (this.textArea && this.textArea.classList) {
+                // One-shot reverse-video blink driven by a CSS animation. The
+                // class is removed on animationend so consecutive bells restart
+                // the animation (a reflow forces the restart to apply).
+                const ta = this.textArea;
+                ta.classList.remove("vt52-bell-flash");
+                void ta.offsetWidth;
+                ta.classList.add("vt52-bell-flash");
+                const done = () => {
+                    ta.classList.remove("vt52-bell-flash");
+                    ta.removeEventListener("animationend", done);
+                };
+                ta.addEventListener("animationend", done);
             }
         }
 
