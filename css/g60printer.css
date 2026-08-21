@@ -452,7 +452,7 @@
 #lp11_printer {
     position: relative;
     width: 1160px;
-    height: 470px;
+    height: 235px;
     background-color: #2a2a2a;
     overflow: hidden;
     border: 1px solid #444;
@@ -464,7 +464,7 @@
     top: 0;
     left: 0;
     width: 1160px;
-    height: 464px;
+    height: 229px;
     background-color: #6f323d;
     background-image: url('../assets/images/printer_bg.gif');
     background-repeat: repeat;
@@ -473,7 +473,9 @@
 #lp11_printer #lp11g60printheadarea {
     display: block;
     position: absolute;
-    top: 388px;
+    /* Halved bay height keeps the head at the same distance from the bay's
+       bottom (464 - 388 = 76px → 229 - 76 = 153px). */
+    top: 153px;
     left: 67px;
     width: 994px;
     max-width: 994px;
@@ -597,7 +599,10 @@
 }
 
 #lp11_printer td#lp11g60papermargin_left {
-    background-position: -3px 0;
+    /* Align the left perforation exactly like the right one (0 0): the old
+       -3px shift left a ~3px transparent sliver between the perforation and
+       the print area, through which the cabinet showed in the rising paper. */
+    background-position: 0 0;
 }
 
 #lp11_printer td#lp11g60papermargin_right {
@@ -714,4 +719,83 @@
 #lp11_printer div#lp11g60paper_topshadow {
     background-position: 0 -21px;
     z-index: 10;
+}
+
+/* ==================================================================
+   LP11 DEC cabinet — mechanism bay
+   The DEC-style enclosure (.lp11-cabinet in pdp11.css) provides the
+   cabinet; here the Google60 machine skin is hidden so the LP11 reads
+   as a real DEC line printer: a dark mechanics bay showing the fanfold
+   paper and the moving print head. Paper + print head keep their
+   geometry and animation untouched (applyPaperGeometry uses the JS
+   LEFT/RIGHT_SKIN_WIDTH constants, not these elements' sizes).
+   These overrides live in THIS file because it is linked AFTER
+   pdp11.css, so the same-specificity rules win the cascade.
+   ================================================================== */
+#lp11_printer {
+    background: #26231d;
+    border: 1px solid #0f0e0c;
+    border-radius: 6px;
+    /* visible (not hidden): the rising fanfold paper must be allowed to leave
+       the bay through the top slot and climb above the cabinet. */
+    overflow: visible;
+    box-shadow:
+        inset 0 0 26px rgba(0, 0, 0, 0.85),
+        0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+#lp11_printer div#lp11g60printer {
+    background: linear-gradient(180deg, #2c2922 0%, #1f1d18 100%);
+}
+
+#lp11_printer div#lp11g60printer_left,
+#lp11_printer div#lp11g60printer_right,
+#lp11_printer div#lp11g60printer_frontpannel {
+    display: none;
+}
+
+/* ---- LP11: paper rises above the cabinet ----
+   Anchor the paper to the BOTTOM of the mechanics bay (its bottom sits at
+   404px, right at the print head which stays fixed at 388px), so the fresh
+   line always prints under the carriage and older lines ride upward out of
+   the top slot. The window grows upward with the content (height:auto) until
+   it reaches max-height (its top pokes ~300px above the cabinet); from then
+   on the window is fixed and its own scrollbar (belonging to the paper)
+   appears, exactly when the paper's top edge reaches the top of the window.
+   The Google60 top spacer is removed — otherwise it would shove the fresh
+   line up away from the carriage. Scoped to #lp11_printer; the console
+   teletype (#g60printer) is untouched. */
+#lp11_printer div#lp11g60paper,
+#lp11_printer div#lp11g60paper.paperNoScroll,
+#lp11_printer div#lp11g60paper.paperScroll {
+    top: auto;
+    /* Bay height halved: bottom:60px keeps the paper's bottom at 169px so the
+       fresh line stays at 153px under the (also moved) print head. max-height
+       is viewport-relative (~a cabinet-height offset) so the paper keeps
+       growing upward until its top edge reaches the top of the window; the
+       paper's own scrollbar then appears right at that moment. */
+    bottom: 60px;
+    height: auto;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* No blank paper tail above the first line (the 345px Google60 top spacer). */
+#lp11_printer div#lp11g60paper_topspacer {
+    display: none;
+}
+
+/* Drop the print-area's 57px top padding so line 1 starts right at the
+   top of the paper and the fresh line lands exactly on the carriage. */
+#lp11_printer td#lp11g60paper_printarea {
+    padding: 4px 18px 1px 18px;
+}
+
+/* Hide the Google60 paper-edge overlays: they sit at the TOP of the bay and,
+   being above the paper in z-order, would draw "over" the fanfold rising out
+   of the slot. */
+#lp11_printer div#lp11g60printer_topoverlay,
+#lp11_printer div#lp11g60paper_topshadow {
+    display: none;
 }

@@ -699,10 +699,26 @@
     </div>
     <div class="page" id="page-printer">
       <p class="clear"><br>
-      <div id="lp11_printer"></div>
+        <!-- DEC-style LP11 cabinet: an authentic beige/grey enclosure around the
+           unchanged G60 paper + print head. The Google60 machine skin (side
+           skins, front panel, printer_bg.gif) is hidden in g60printer.css and
+           replaced by the CSS-drawn cabinet below. -->
+      <div class="lp11-cabinet">
+        <div class="lp11-badge">digital lp11</div>
+        <div id="lp11_printer"></div>
+        <div class="lp11-console">
+          <span class="lp11-led lp11-led-ready" id="lp11-ready-led"></span>
+          <span class="lp11-label">lp11 line printer</span>
+          <button type="button" class="lp11-key" onclick="window.lp11TopOfForm && window.lp11TopOfForm()">TOP OF
+            FORM</button>
+          <button type="button" class="lp11-key" onclick="window.lp11PaperFeed && window.lp11PaperFeed()">PAPER
+            FEED</button>
+        </div>
+      </div>
       <p class="printer-actions">
         <button type="button" onclick="window.lp11Print && window.lp11Print()">Print</button>
         <button type="button" onclick="window.lp11Save && window.lp11Save()">Save .txt</button>
+        <button type="button" onclick="window.lp11TearPaper && window.lp11TearPaper()">Tear paper</button>
       </p>
     </div>
     <div class="page" id="page-vt11">

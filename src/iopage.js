@@ -1272,6 +1272,8 @@ iopage.register(0o17777510, 2, (function() {
     let lp11Buffer = [];       // completed lines
     let lp11CurrentLine = "";  // line being built
     let lp11Col = 0;           // cursor column within the current line (CR/BS)
+    let tearAudio = null;      // lazily-loaded paper-tear sound (mp3)
+    let feedAudio = null;      // lazily-loaded paper-feed (mechanical whirr) sound
 
     // Pure plain-text accumulation for the LP11 job copy (Print / Save .txt).
     // Operates on a state object { buffer, line, col } so the logic is free of
@@ -1425,9 +1427,90 @@ iopage.register(0o17777510, 2, (function() {
         URL.revokeObjectURL(url);
     }
 
+    // Operator-panel keys (see .lp11-console in pdp11.html): they advance the
+    // paper exactly like the physical buttons on a real line printer, WITHOUT
+    // printing anything and WITHOUT touching lp11Buffer — so the text captured
+    // by lp11GetText() (Print / Save .txt) never gets form-feed or blank-line
+    // noise from a human nudging the paper.
+    //
+    // The G60 printer is created with charSound:false (a fast line printer
+    // makes continuous noise, not per-char ticks), which also silences its
+    // internal line-feed sound. These keys therefore play a short mechanical
+    // whirr themselves, so nudging the paper is audible.
+
+    // Play a brief mechanical whirr (the LP11 print-cycle sound, cut short) on
+    // a manual Paper Feed / Top of Form. Lazy-loaded inside the click handler
+    // so autoplay is not blocked; the playback is truncated after ~0.4 s.
+    function playFeedSound() {
+        try {
+            if (!feedAudio && typeof Audio !== "undefined") {
+                feedAudio = new Audio('assets/sounds/teletype33-print.mp3');
+                feedAudio.preload = 'auto';
+            }
+            if (feedAudio) {
+                feedAudio.currentTime = 0;
+                feedAudio.play().catch(function() {});
+                clearTimeout(feedAudio._stopT);
+                feedAudio._stopT = setTimeout(function() {
+                    try { feedAudio.pause(); feedAudio.currentTime = 0; } catch (e) {}
+                }, 400);
+            }
+        } catch (e) { /* ignore audio errors */ }
+    }
+
+    function lp11PaperFeed() {
+        ensureUI();
+        playFeedSound();
+        if (lp11Printer && typeof lp11Printer.println === "function") {
+            lp11Printer.println();
+        }
+    }
+
+    function lp11TopOfForm() {
+        ensureUI();
+        playFeedSound();
+        if (lp11Printer && typeof lp11Printer.formFeed === "function") {
+            lp11Printer.formFeed();
+        }
+    }
+
+    // Play the real paper-tear sound (assets/sounds/paper-rip-sound-effect.mp3).
+    // The Audio element is created lazily on the first tear (inside the click
+    // handler, so autoplay is not blocked) and replayed from 0 on each tear.
+    function playTearSound() {
+        try {
+            if (!tearAudio && typeof Audio !== "undefined") {
+                tearAudio = new Audio('assets/sounds/paper-rip-sound-effect.mp3');
+                tearAudio.preload = 'auto';
+            }
+            if (tearAudio) {
+                tearAudio.currentTime = 0;
+                tearAudio.play().catch(function() {});
+            }
+        } catch (e) { /* ignore audio errors */ }
+    }
+
+    // Tear off the printed paper (operator key): clears the animated paper so
+    // a fresh blank sheet starts at the carriage, and discards the plain-text
+    // buffer — Print / Save .txt no longer include the torn-off job, just like
+    // an operator tearing the fanfold away from a real line printer.
+    function lp11TearPaper() {
+        ensureUI();
+        playTearSound();
+        if (lp11Printer && typeof lp11Printer.reset === "function") {
+            lp11Printer.reset();
+        }
+        lp11Buffer = [];
+        lp11CurrentLine = "";
+        lp11Col = 0;
+    }
+
     window.lp11Print = lp11Print;
     window.lp11Save = lp11Save;
     window.lp11GetText = lp11GetText;
+    window.lp11PaperFeed = lp11PaperFeed;
+    window.lp11TopOfForm = lp11TopOfForm;
+    window.lp11TearPaper = lp11TearPaper;
 
     // --- Device interface ---
     return {
