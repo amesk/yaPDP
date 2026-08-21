@@ -991,7 +991,7 @@ function dl11(vt52Unit, deviceVector) {
                 style="display:none; border:1px solid #ccc"></canvas>
 
         <textarea id="${textareaId}" cols="132" rows="24"
-            style="font-family:monospace"
+            style="font-family:'VT52', monospace"
             autocomplete="off" autocorrect="off"
             autocapitalize="off" spellcheck="false"></textarea><br />
 

@@ -320,7 +320,8 @@
         constructor({ unit, receiveRoutine, textArea, screenCanvas,
                       rows = DEFAULT_ROWS, cols = DEFAULT_COLS,
                       allowCanvas = false, noHardcopyFallback = false,
-                      fontSize = 16, screenPadding = 12 }) {
+                      fontSize = 16, screenPadding = 12,
+                      fontFamily = 'monospace' }) {
 
             // External wiring
             this.unit = unit;
@@ -373,12 +374,17 @@
             // Number of characters after the cursor in the textarea (bumped by CR/BS)
             this.overHang = 0;
 
-            // Font metrics (may be overridden via fontSize option)
+            // Font metrics (may be overridden via fontSize / fontFamily options)
+            // fontFamily is a full CSS font stack; 'monospace' is the built-in
+            // fallback used until the authentic VT52 webfont finishes loading.
             this.fontSize   = fontSize;
+            this.fontFamily = fontFamily;
             this.fontHeight = this.fontSize;
-            this.textFont   = this.fontSize + "px monospace";
-            this.boldFont   = "bold " + this.fontSize + "px monospace";
+            this.textFont   = this.fontSize + "px " + fontFamily;
+            this.boldFont   = "bold " + this.fontSize + "px " + fontFamily;
             this.underlineHeight = Math.max(1, Math.floor(this.fontSize / 8));
+            // Vertical centring offset for glyphs (see computeGlyphBaselineOffset).
+            this.glyphBaselineOffset = 0;
 
             // Inner margin (px) around the cell grid so glyphs don't touch the
             // CRT bezel edge. The canvas is widened by 2*screenPadding and the
@@ -421,6 +427,7 @@
                     blinkCycle: false,
                     lastCursor: { row: -1, col: -1 }
                 };
+                this.computeGlyphBaselineOffset();
 
                 // Bind keyboard events for canvas mode
                 this.bindEvents(this.screenCanvas);
@@ -561,7 +568,9 @@
         resetCanvasContext(ctx) {
             // Reset all canvas drawing state after a resize or mode switch.
             // Canvas resets wipe font, fillStyle, and baseline, so we restore them.
-            ctx.textBaseline = "top";
+            // "middle" lets renderText vertically centre each glyph via the
+            // measured glyphBaselineOffset, keeping it aligned with the cursor.
+            ctx.textBaseline = "middle";
             ctx.fillStyle = this.bgColor;
             ctx.font = this.textFont;
 
@@ -640,6 +649,52 @@
         }
 
         // ---------------------------------------------------------------------------
+        // Vertical glyph centring within the cell
+        // ---------------------------------------------------------------------------
+        // Raster terminal fonts (e.g. vt52.otf) often carry internal padding above
+        // and below the visible glyph inside their em box. Anchoring text at the
+        // em-box top ("top" baseline) then leaves the glyph shifted low inside the
+        // cell, so the block cursor (a full-height rectangle starting at cellY)
+        // visibly pokes out above the character. Centring on the measured glyph
+        // bounding box keeps glyphs aligned with the cursor for any font, while a
+        // single constant offset (not per-glyph) preserves a fixed baseline across
+        // a whole row. Falls back to 0 (cell-middle anchor) when metrics are
+        // unavailable.
+        computeGlyphBaselineOffset() {
+            this.glyphBaselineOffset = 0;
+            if (!this.canvas) return;
+            try {
+                const m = this.canvas.ctx.measureText("M");
+                const ascent  = m.actualBoundingBoxAscent  || 0;
+                const descent = m.actualBoundingBoxDescent || 0;
+                this.glyphBaselineOffset = this.fontHeight / 2 + (ascent - descent) / 2;
+            } catch (err) {
+                this.glyphBaselineOffset = 0;
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // Switch the canvas font after the webfont finishes loading
+        // ---------------------------------------------------------------------------
+        // The terminal is constructed with the monospace fallback so the page never
+        // blocks on the font fetch; once the authentic VT52 webfont is ready, the
+        // host (pdp11-app.js) calls this to re-measure the cell width from "M",
+        // re-size the canvas to the new grid and repaint the CRT.
+        setFont(fontFamily) {
+            if (!fontFamily) return;
+            this.fontFamily = fontFamily;
+            this.textFont   = this.fontSize + "px " + fontFamily;
+            this.boldFont   = "bold " + this.fontSize + "px " + fontFamily;
+            if (this.canvas) {
+                this.canvas.ctx.font = this.textFont;
+                this.canvas.charWidth = this.canvas.ctx.measureText("M").width;
+                this.computeGlyphBaselineOffset();
+                this.resizeCanvas();   // re-applies ctx.font and re-sizes the grid
+                this.render(true);     // full repaint with the new metrics
+            }
+        }
+
+        // ---------------------------------------------------------------------------
         // Render a run of text with like attributes
         // ---------------------------------------------------------------------------
         // This draws:
@@ -651,6 +706,9 @@
             const h = this.fontHeight;
             const x = this.cellX(col);
             const y = this.cellY(row);
+            // Glyphs are drawn at the computed baseline so their visual centre
+            // lines up with the cell centre (and the block cursor) for any font.
+            const ty = y + (this.glyphBaselineOffset || 0);
             const w = string.length * this.canvas.charWidth;
 
             // Background (reverse video swaps fg/bg)
@@ -664,9 +722,9 @@
             // face), and it matches how nroff overstrike produces bold.
             this.setForeground(!(attr & ATTR_REVERSE));
             this.setBold(attr & ATTR_BOLD);
-            ctx.fillText(string, x, y);
+            ctx.fillText(string, x, ty);
             if (attr & ATTR_BOLD) {
-                ctx.fillText(string, x + 1, y);
+                ctx.fillText(string, x + 1, ty);
             }
 
             // Underline (drawn as a solid bar at bottom of cell)

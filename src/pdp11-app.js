@@ -505,6 +505,30 @@ function buildVT52Cabinet(unit, cabinet, crt) {
   cabinet.appendChild(top);
 }
 
+// ==================================================================
+// Authentic VT52 display font
+// ------------------------------------------------------------------
+// The webfont 'VT52' (declared via @font-face in css/pdp11.css, asset at
+// assets/fonts/vt52.otf) reproduces the DECscope's bitmap-style glyphs.
+// loadVT52Font() waits for it with the CSS Font Loading API before the CRT
+// re-measures its cell grid, so the canvas never renders with the wrong
+// metrics. It always resolves: on failure the terminals keep 'monospace'.
+// ==================================================================
+var VT52_FONT_FAMILY = 'VT52';
+var VT52_FONT_STACK  = "'" + VT52_FONT_FAMILY + "', monospace";
+
+function loadVT52Font() {
+  try {
+    if (document.fonts && typeof document.fonts.load === 'function') {
+      var loaded = document.fonts.load('20px "' + VT52_FONT_FAMILY + '"');
+      if (loaded && typeof loaded.then === 'function') {
+        return loaded.catch(function () { /* font unavailable — keep fallback */ });
+      }
+    }
+  } catch (err) { /* ignore */ }
+  return Promise.resolve();
+}
+
 // ---- Initialize a VT52 terminal on the given page ----
 function initVT52Page(unit, pageId, canvasId, textareaId) {
   var canvas = document.getElementById(canvasId);
@@ -546,6 +570,7 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
     allowCanvas: !textMode,
     noHardcopyFallback: true,
     fontSize: 20,
+    fontFamily: VT52_FONT_STACK,
     cols: 80,
     rows: 24
   });
@@ -618,6 +643,23 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
       term.handleKey = function () { };
     }
   }
+
+  // Apply the authentic VT52 webfont once the browser has loaded it. The
+  // terminal is first measured with the monospace fallback so the page never
+  // blocks on the font fetch; setFont() re-measures the cell width from "M",
+  // re-sizes the CRT canvas and repaints. In text mode the <textarea> grid is
+  // mirrored to the new metrics too (the CSS font-family picks the font up by
+  // itself, so no DOM re-render is needed there).
+  loadVT52Font().then(function () {
+    var t = (typeof window.vt52Get === 'function') ? window.vt52Get(unit) : null;
+    if (!t || typeof t.setFont !== 'function') return;
+    t.setFont(VT52_FONT_STACK);
+    if (t.textArea && t.textArea.style.display !== 'none' &&
+        t.canvas && t.canvas.charWidth > 0) {
+      t.textArea.style.width = (t.screenPadding * 2 + t.cols * t.canvas.charWidth) + 'px';
+      t.textArea.style.height = (t.screenPadding * 2 + t.rows * t.fontHeight) + 'px';
+    }
+  });
 }
 
 // ==================================================================

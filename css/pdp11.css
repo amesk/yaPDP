@@ -4,6 +4,19 @@
     --ledColor: radial-gradient(circle at 4px 4px, yellow, red);
 }
 
+/* ===== Authentic VT52 display font (fritzm/vt52) =====
+   Declared globally so every VT52 rendering path uses the same bitmap-style
+   glyphs: the canvas CRT (ctx.font in src/vt52.js) and the text-mode
+   <textarea> (CSS font-family). 'monospace' stays the fallback until the
+   webfont has finished loading (see loadVT52Font in src/pdp11-app.js). */
+@font-face {
+    font-family: 'VT52';
+    src: url('../assets/fonts/vt52.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ===== Global scrollbar theming (DEC 1960s palette) =====
    Every scrolling container in the app (quick-boot OS list, Info / Config /
    Storage pages, teletype & LP11 paper) gets the same look, so no native
@@ -1534,7 +1547,7 @@ body {
     background: #141914;
     color: #e0e0e0;
     caret-color: #e0e0e0;
-    font-family: monospace;
+    font-family: 'VT52', monospace;
     font-size: 20px;
     line-height: 20px;
     overflow: auto;
