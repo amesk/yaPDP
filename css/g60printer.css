@@ -1230,10 +1230,10 @@
 }
 
 /* ==================================================================
-   Model 33 ASR operator controls (LOCAL/LINE, Tear tape, Tear paper,
-   Save tape). A single row of push-buttons under the machine, styled
-   to match the real-printer action buttons (see .printer-actions
-   button in css/pdp11.css) so the teletype and LP11 pages look alike.
+   Model 33 ASR operator controls (Tear tape, Tear paper, Save tape).
+   A single row of push-buttons under the machine, styled to match the
+   real-printer action buttons (see .printer-actions button in
+   css/pdp11.css) so the teletype and LP11 pages look alike.
    ================================================================== */
 #teletype-controls {
     margin-top: 8px;
@@ -1256,14 +1256,6 @@
     background: linear-gradient(180deg, #6a5a38, #4a3a2c);
 }
 
-/* Active mode (LINE is the default; LOCAL lights up when selected) —
-   a lit-DEC-lamp accent over the printer-button body. */
-.tty-btn.active {
-    background: linear-gradient(180deg, #8a6a30, #5a4a28);
-    color: #ffe9a8;
-    border-color: #e8c878;
-}
-
 .tty-sep {
     display: inline-block;
     vertical-align: middle;
@@ -1271,4 +1263,120 @@
     height: 22px;
     background: #555;
     margin: 0 4px;
+}
+
+/* ==================================================================
+   Model 33 ASR Call Control Unit (CCU) — rotary LINE/OFF/LOCAL switch.
+   On a real Model 33 ASR the line switch is a round dark-plastic knob
+   with a protruding "beak" pointer, mounted on a small flat plastic
+   apron to the RIGHT of the keyboard, level with its lower edge. The
+   knob has three fixed detents: LINE (left), OFF (centre, power
+   fully off) and LOCAL (right). The apron sits in the lower-right
+   corner of the keyboard deck (#punchkeypane), clear of the keys.
+   ================================================================== */
+#ccu-apron {
+    position: absolute;
+    right: 14px;
+    bottom: 10px;
+    width: 118px;
+    height: 66px;
+    background: linear-gradient(180deg, #3a3a3e 0%, #2a2a2d 100%);
+    border: 1px solid #4c4c50;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+}
+
+.ccu-switch {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Round knob: a circle with a thick gray ring and a light centre. The
+   whole knob (disc + beak) rotates around its OWN centre like a real
+   rotary knob: the small triangular beak is a child of the disc, so it
+   orbits the centre as the knob turns. LINE = -60°, OFF = 0° (up),
+   LOCAL = +60°. */
+.ccu-switch-disc {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    width: 34px;
+    height: 34px;
+    margin-left: -17px;
+    border-radius: 50%;
+    /* Light centre inside a thick gray ring, drawn as one radial
+       gradient (no border, so the beak's bottom:100% lands exactly on
+       the knob's outer edge). Symmetric (50% 50%) so rotating the knob
+       is invisible except for the beak. */
+    background: radial-gradient(circle at 50% 50%,
+            #f6f6f6 0%,
+            #e0e0e0 58%,
+            #8a8a8a 68%,
+            #7e7e7e 94%,
+            #949494 100%);
+    box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.12),
+        0 2px 3px rgba(0, 0, 0, 0.4);
+    transform-origin: 50% 50%;
+    transition: transform 0.2s;
+    z-index: 2;
+}
+
+/* Small triangular beak that sticks out of the gray ring. As a child of
+   the disc it rotates with the knob around the disc centre: its base
+   sits on the ring (bottom:100% = the knob's outer edge) and the tip
+   points outward. */
+.ccu-switch-lever {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    width: 10px;
+    height: 8px;
+    margin-left: -5px;
+    background: linear-gradient(180deg, #d0d0d0 0%, #8a8a8a 100%);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* Position labels around the knob, drawn on the apron body. */
+.ccu-switch-pos {
+    position: absolute;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: #c9bfa8;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 7px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+/* OFF sits above the knob, centred. */
+.ccu-switch-pos[data-tty-mode="off"] {
+    left: 50%;
+    top: 2px;
+    transform: translateX(-50%);
+}
+
+/* LINE sits to the left of the knob. */
+.ccu-switch-pos[data-tty-mode="line"] {
+    left: 5px;
+    top: 26px;
+}
+
+/* LOCAL sits to the right of the knob. */
+.ccu-switch-pos[data-tty-mode="local"] {
+    right: 5px;
+    top: 26px;
+}
+
+.ccu-switch-pos.active {
+    color: #ffe9a8;
+    text-shadow: 0 0 4px rgba(255, 233, 168, 0.5);
 }

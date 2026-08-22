@@ -36,6 +36,9 @@ function setRelHeld(on) {
   if (relBtn) relBtn.classList.toggle('active', ttyRelHeld);
 }
 function setTtyPunch(on) {
+  // While the CCU is in OFF the whole unit is powered down, so the punch
+  // cannot be engaged (its motor is dead) even if the operator presses ON.
+  if (on && window.ttyMode === 'off') return;
   window.ttyPunchEnabled = !!on;
   var onBtn = document.getElementById('punch-on');
   var offBtn = document.getElementById('punch-off');
@@ -53,14 +56,22 @@ function setTtyPunch(on) {
 // only while DC1/X-ON has been received, stopping on DC3/X-OFF).
 var readerModes = ['start', 'stop', 'free', 'auto'];
 var readerAutoFeed = false; // DC1/DC3 latch, only used in AUTO
+
+// Recompute whether the ASR reader may feed bytes, honouring the CCU power
+// state. START always feeds; STOP/FREE never; AUTO follows the DC1 (X-ON) /
+// DC3 (X-OFF) latch received over the line. In CCU OFF the unit is powered
+// down, so the reader never feeds.
+function updateReaderCanFeed() {
+  if (window.ttyMode === 'off') { window.ttyReaderCanFeed = false; return; }
+  if (window.ttyReaderMode === 'start') window.ttyReaderCanFeed = true;
+  else if (window.ttyReaderMode === 'stop' || window.ttyReaderMode === 'free') window.ttyReaderCanFeed = false;
+  else window.ttyReaderCanFeed = readerAutoFeed; // AUTO
+}
+
 function setReaderMode(mode) {
   if (readerModes.indexOf(mode) === -1) return;
   window.ttyReaderMode = mode;
-  // Can the reader feed bytes? START always; STOP/FREE never; AUTO follows
-  // the DC1 (X-ON) / DC3 (X-OFF) latch received over the line.
-  if (mode === 'start') window.ttyReaderCanFeed = true;
-  else if (mode === 'stop' || mode === 'free') window.ttyReaderCanFeed = false;
-  else window.ttyReaderCanFeed = readerAutoFeed; // AUTO
+  updateReaderCanFeed();
   var pos = document.querySelectorAll('.asr-switch-pos');
   for (var i = 0; i < pos.length; i++) {
     pos[i].classList.toggle('active', pos[i].getAttribute('data-reader-mode') === mode);
@@ -70,10 +81,51 @@ function setReaderMode(mode) {
   if (lever) lever.style.transform = 'rotate(' + (readerModes.indexOf(mode) * 90) + 'deg)';
 }
 
+// ---- CCU (Call Control Unit) line switch: LINE / OFF / LOCAL -----------
+// On a real Model 33 ASR the mode is chosen with the rotary knob of the
+// Call Control Unit: LINE (connected to the machine), OFF (power fully off
+// — teletype, punch and reader are all disabled) and LOCAL (closed local
+// loop — the keyboard prints locally and machine output is ignored). The
+// knob's "beak" pointer sweeps from -60° (LINE, left) through 0° (OFF, up)
+// to +60° (LOCAL, right). Default is LINE so the console is live until the
+// operator moves the knob.
+var ttyModes = ['line', 'off', 'local'];
+window.ttyMode = 'line';
+
+// Pointer angle per CCU detent: LINE -60°, OFF 0° (straight up), LOCAL +60°.
+function ttyLeverAngle(mode) {
+  if (mode === 'line') return -60;
+  if (mode === 'local') return 60;
+  return 0;
+}
+
+function setTtyMode(mode) {
+  if (ttyModes.indexOf(mode) === -1) return;
+  window.ttyMode = mode;
+  // Light the active position label and rotate the knob (disc + beak)
+  // around its own centre so the beak points at the active position.
+  var pos = document.querySelectorAll('.ccu-switch-pos');
+  for (var i = 0; i < pos.length; i++) {
+    pos[i].classList.toggle('active', pos[i].getAttribute('data-tty-mode') === mode);
+  }
+  var knob = document.getElementById('ccu-switch-disc');
+  if (knob) knob.style.transform = 'rotate(' + ttyLeverAngle(mode) + 'deg)';
+  // OFF cuts power to the whole unit: disengage the punch and stop the
+  // reader from feeding. Returning to LINE/LOCAL restores the reader's feed
+  // permission according to the reader-mode switch.
+  if (mode === 'off') {
+    setTtyPunch(false);
+    window.ttyReaderCanFeed = false;
+  } else {
+    updateReaderCanFeed();
+  }
+}
+
 function g60ConsoleWrite(code) {
   // In LOCAL mode the teletype is disconnected from the machine line: output
-  // from the machine is ignored (it neither prints nor punches).
-  if (window.ttyLocalMode) return;
+  // from the machine is ignored (it neither prints nor punches). In OFF the
+  // unit is powered down, so machine output is ignored too.
+  if (window.ttyMode !== 'line') return;
   // Programmatic punch control: DC2 (0x12) engages the punch, DC4 (0x14)
   // disengages it. These control bytes are not printed themselves.
   if (code === 0x12) { setTtyPunch(true); return; }
@@ -116,7 +168,7 @@ function initG60Printer() {
     pageBreakMarker: false,
     charPrintDelay: teletypeDelay((cfg) ? cfg.teletypeSpeed : null),
     onChar: function (code) {
-      if (window.ttyPunchEnabled && window.paperTape) {
+      if (window.ttyMode !== 'off' && window.ttyPunchEnabled && window.paperTape) {
         window.paperTape.punchChar(code);
       }
     }
@@ -379,7 +431,7 @@ var g60Keyboard = (function () {
   // BREAK: open the line for >150 ms — signals the console DL11's break
   // condition (see window.dlConsoleBreak in iopage.js).
   function sendBreak() {
-    if (window.ttyLocalMode) return; // LOCAL: no line, no break
+    if (window.ttyMode !== 'line') return; // LOCAL/OFF: no line, no break
     if (typeof window.dlConsoleBreak === 'function') window.dlConsoleBreak();
   }
 
@@ -387,7 +439,8 @@ var g60Keyboard = (function () {
   // sequence (CR LF ACK <station id> CR LF) into the line.
   function sendHereIs() {
     var bytes = MODEL33_ANSWERBACK;
-    if (window.ttyLocalMode) {
+    if (window.ttyMode === 'off') return; // powered down: the drum is silent
+    if (window.ttyMode === 'local') {
       if (g60Console) {
         for (var i = 0; i < bytes.length; i++) g60Console.writeChar(bytes[i]);
       }
@@ -475,9 +528,11 @@ var g60Keyboard = (function () {
     }
   }
   function sendChar(code) {
-    // LOCAL mode: the keyboard is not connected to the machine — the typed
-    // character is printed locally (paper + tape) instead of being sent.
-    if (window.ttyLocalMode) {
+    // OFF: the unit is powered down — the key does nothing. LOCAL mode: the
+    // keyboard is not connected to the machine — the typed character is
+    // printed locally (paper + tape) instead of being sent.
+    if (window.ttyMode === 'off') return;
+    if (window.ttyMode === 'local') {
       if (g60Console) g60Console.writeChar(code);
       return;
     }
@@ -486,7 +541,9 @@ var g60Keyboard = (function () {
     }
   }
   function sendDL(bytes) {
-    if (window.ttyLocalMode) {
+    // OFF: powered down — nothing typed is echoed or transmitted.
+    if (window.ttyMode === 'off') return;
+    if (window.ttyMode === 'local') {
       if (g60Console) {
         for (var i = 0; i < bytes.length; i++) {
           g60Console.writeChar(bytes[i]);
@@ -1618,25 +1675,24 @@ function playTearSound() {
   } catch (e) { /* ignore audio errors */ }
 }
 
-// ---- Model 33 ASR operator controls (LOCAL/LINE, Tear tape/paper, Save) ----
-// Wires the #teletype-controls buttons. LOCAL disconnects the teletype from
-// the machine line (keyboard types are printed locally, machine output is
-// ignored); LINE is the normal connected mode. Tear tape rewinds the punched
-// tape, Tear paper clears the printed paper, Save tape downloads the punched
-// bytes as a .ptap file.
+// ---- Model 33 ASR operator controls (CCU LINE/OFF/LOCAL, Tear, Save) ----
+// Wires the #teletype-controls buttons and the CCU rotary switch. The CCU
+// knob (LINE/OFF/LOCAL) selects the unit's mode: LINE is the normal connected
+// mode, OFF powers the unit fully down (teletype, punch and reader), LOCAL
+// disconnects it from the machine (keyboard types are printed locally, machine
+// output is ignored). Tear tape rewinds the punched tape, Tear paper clears
+// the printed paper, Save tape downloads the punched bytes as a .ptap file.
 function initTtyControls() {
-  var localBtn = document.getElementById('tty-local');
-  var lineBtn = document.getElementById('tty-line');
-  if (!localBtn || !lineBtn) return;
-
-  function setLocal(on) {
-    window.ttyLocalMode = !!on;
-    localBtn.classList.toggle('active', !!on);
-    lineBtn.classList.toggle('active', !on);
+  // CCU rotary line switch (LINE / OFF / LOCAL) on the apron right of the
+  // keyboard; each position label is a hit target that rotates the knob.
+  var ccuPos = document.querySelectorAll('.ccu-switch-pos');
+  for (var ci = 0; ci < ccuPos.length; ci++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        setTtyMode(btn.getAttribute('data-tty-mode'));
+      });
+    })(ccuPos[ci]);
   }
-
-  localBtn.addEventListener('click', function () { setLocal(true); });
-  lineBtn.addEventListener('click', function () { setLocal(false); });
 
   var tearTapeBtn = document.getElementById('tty-tear-tape');
   if (tearTapeBtn) {
@@ -1710,7 +1766,7 @@ function initTtyControls() {
 
   // LINE is the default mode; the punch is OFF; the reader switch starts in
   // STOP (reading is not active until the operator or the machine engages it).
-  setLocal(false);
+  setTtyMode('line');
   setTtyPunch(false);
   setReaderMode('stop');
 }

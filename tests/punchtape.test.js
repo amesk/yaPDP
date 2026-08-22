@@ -130,10 +130,22 @@ function testMarkup() {
     "pdp11.html must contain the hanging tape (#punchtape)");
   assert.ok(html.indexOf('id="teletype-controls"') !== -1,
     "pdp11.html must contain the operator controls panel (#teletype-controls)");
-  for (const id of ["tty-local", "tty-line", "tty-tear-tape", "tty-tear-paper", "tty-save-tape"]) {
+  for (const id of ["tty-tear-tape", "tty-tear-paper", "tty-save-tape"]) {
     assert.ok(html.indexOf('id="' + id + '"') !== -1,
       "pdp11.html must contain the operator button (#" + id + ")");
   }
+  // CCU (Call Control Unit) rotary line switch (LINE/OFF/LOCAL) on the apron
+  // right of the keyboard, replacing the old LOCAL/LINE push-buttons.
+  assert.ok(html.indexOf('id="ccu-switch-lever"') !== -1,
+    "pdp11.html must contain the CCU switch lever (#ccu-switch-lever)");
+  for (const mode of ["line", "off", "local"]) {
+    assert.ok(html.indexOf('data-tty-mode="' + mode + '"') !== -1,
+      "pdp11.html must contain the CCU switch position '" + mode + "'");
+  }
+  assert.ok(html.indexOf('id="tty-local"') === -1,
+    "pdp11.html must NOT contain the removed #tty-local button");
+  assert.ok(html.indexOf('id="tty-line"') === -1,
+    "pdp11.html must NOT contain the removed #tty-line button");
   // Punch operator buttons (ON/OFF/BSP/REL) on the TAPE PUNCH cabinet.
   for (const id of ["punch-on", "punch-off", "punch-bsp", "punch-rel"]) {
     assert.ok(html.indexOf('id="' + id + '"') !== -1,
@@ -163,7 +175,11 @@ function testCss() {
     "#punchtape",
     "#teletype-controls",
     ".tty-btn",
-    ".tty-btn.active",
+    "#ccu-apron",
+    ".ccu-switch",
+    ".ccu-switch-disc",
+    ".ccu-switch-lever",
+    ".ccu-switch-pos",
     ".asr-punch-buttons",
     ".asr-btn",
     ".asr-btn.active",
@@ -177,6 +193,11 @@ function testCss() {
     assert.ok(css.indexOf(selector + " {") !== -1,
       "css/g60printer.css must define '" + selector + "'");
   }
+
+  // The LOCAL/LINE buttons were replaced by the CCU rotary switch, so the
+  // old `.tty-btn.active` accent rule must be gone.
+  assert.ok(css.indexOf(".tty-btn.active") === -1,
+    "css/g60printer.css must NOT define the removed .tty-btn.active (LOCAL/LINE buttons are gone)");
 
   // The cabinet must be reader+punch only and let the tape hang past it.
   {

@@ -728,16 +728,28 @@
           <div id="g60printer"></div>
           <div id="punchkeypane">
             <div id="punchkeyboard"></div>
+            <!-- Call Control Unit (CCU) line switch: a rotary knob on the apron
+                 right of the keyboard, with three positions LINE / OFF / LOCAL
+                 (wired by setTtyMode() in pdp11-app.js). -->
+            <div id="ccu-apron" title="Call Control Unit — LINE / OFF / LOCAL">
+              <div class="ccu-switch">
+                <button type="button" class="ccu-switch-pos" data-tty-mode="line"
+                  title="LINE — connected to the machine">LINE</button>
+                <button type="button" class="ccu-switch-pos" data-tty-mode="off"
+                  title="OFF — power off (teletype, punch and reader are disabled)">OFF</button>
+                <button type="button" class="ccu-switch-pos" data-tty-mode="local"
+                  title="LOCAL — disconnected from the machine; keyboard prints locally">LOCAL</button>
+                <div class="ccu-switch-disc" id="ccu-switch-disc">
+                  <div class="ccu-switch-lever" id="ccu-switch-lever"></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <!-- Model 33 ASR operator controls: LOCAL/LINE line switch, tape/paper
-           tear and tape save. Wired up by initTtyControls() in pdp11-app.js. -->
+      <!-- Model 33 ASR operator controls: tape/paper tear and tape save.
+           Wired up by initTtyControls() in pdp11-app.js. -->
       <div id="teletype-controls">
-        <button type="button" class="tty-btn" id="tty-local"
-          title="LOCAL — disconnected from the machine; keyboard types are printed locally">LOCAL</button>
-        <button type="button" class="tty-btn active" id="tty-line" title="LINE — connected to the machine">LINE</button>
-        <span class="tty-sep"></span>
         <button type="button" class="tty-btn" id="tty-tear-tape"
           title="Tear the punched tape off (rewind the tape)">Tear tape</button>
         <button type="button" class="tty-btn" id="tty-tear-paper"
