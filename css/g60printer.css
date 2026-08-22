@@ -400,6 +400,32 @@
     color: #c8cdd2;
 }
 
+/* Keys carrying BOTH a shift symbol and a CTRL-code name (P @ DLE,
+   K [ VT, N ^ SO, M ] CR): the shift symbol and the CTRL name sit on the
+   SAME line near the top of the round keycap, compact enough to stay
+   inside it (total ~28px within the ~29px usable chord at that height). */
+#punchkeyboard .m33-key.dual .m33-shift {
+    position: absolute;
+    top: 7px;
+    left: 2px;
+    width: 12px;
+    text-align: right;
+    font-size: 5px;
+    font-weight: bold;
+    line-height: 1;
+    color: #5a4a3a;
+    pointer-events: none;
+    font-family: arial, helvetica, sans-serif;
+}
+
+#punchkeyboard .m33-key.dual .m33-top {
+    top: 7px;
+    left: 14px;
+    width: 16px;
+    text-align: left;
+    font-size: 5px;
+}
+
 #punchkeyboard .m33-key .m33-center {
     position: absolute;
     bottom: 3px;

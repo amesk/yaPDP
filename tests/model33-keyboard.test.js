@@ -10,6 +10,12 @@
  *     current modifier state (shifted/ctrl) to the byte it transmits.
  *     Base glyphs, SHIFT symbols (digit row, N, M, `,`, `.`, `/`, `;`),
  *     CTRL control codes (DC1..STX) and special-key tokens are covered.
+ *   - model33StickyMods(mods, def): the sticky-modifier state transition —
+ *     CTRL/SHIFT latch when pressed (a second press does NOT cancel) and
+ *     any other key releases both latches.
+ *   - m33EchoPunches(code): whether the console print path punches the byte
+ *     itself (printable + BS/TAB/LF/FF/CR); the keyboard transmit punch uses
+ *     this to avoid double-punching and covers the dropped control codes.
  *   - model33UpperOnly(ch, upperCaseOnly): folds lower-case letters to
  *     upper case when the physical-keyboard Upper-Case-Only flag is set.
  *
@@ -56,8 +62,10 @@ function loadHelpers() {
   vm.createContext(sandbox);
   const code =
     extractBlock(src, "function model33KeyCode") + "\n" +
+    extractBlock(src, "function model33StickyMods") + "\n" +
+    extractBlock(src, "function m33EchoPunches") + "\n" +
     extractBlock(src, "function model33UpperOnly") + "\n" +
-    "; this.m33 = { keyCode: model33KeyCode, upperOnly: model33UpperOnly };";
+    "; this.m33 = { keyCode: model33KeyCode, stickyMods: model33StickyMods, echoPunches: m33EchoPunches, upperOnly: model33UpperOnly };";
   vm.runInContext(code, sandbox);
   return sandbox.m33;
 }
@@ -70,6 +78,10 @@ function letter(label, ctrlName, ctrlCode) {
 function shifted(label, shiftLabel, shiftCode) {
   return { label, code: label.charCodeAt(0), top: shiftLabel, shiftCode, cls: "alpha" };
 }
+function both(label, shiftLabel, shiftCode, ctrlName, ctrlCode) {
+  return { label, code: label.charCodeAt(0), shiftLabel, shiftCode,
+    ctrlLabel: ctrlName, ctrlCode, cls: "alpha" };
+}
 function plain(label) {
   return { label, code: label.charCodeAt(0), cls: "alpha" };
 }
@@ -78,7 +90,7 @@ function special(label, token, code) {
 }
 
 function run() {
-  const { keyCode, upperOnly } = loadHelpers();
+  const { keyCode, stickyMods, echoPunches, upperOnly } = loadHelpers();
   const none = { shifted: false, ctrl: false };
   const ctrl = { shifted: false, ctrl: true };
   const shft = { shifted: true, ctrl: false };
@@ -141,6 +153,21 @@ function run() {
   assert.strictEqual(keyCode(letter("Q", "DC1", 0x11),
     { shifted: true, ctrl: true }), 0x11);
 
+  // --- Triple-named keys (shift symbol + CTRL code on the same cap) ----
+  // P @ DLE, K [ VT, N ^ SO, M ] CR: base stays plain, SHIFT gives the
+  // symbol, CTRL gives the control code; CTRL wins when both are held.
+  assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10), none), 0x50);
+  assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10), shft), 0x40);
+  assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10), ctrl), 0x10);
+  assert.strictEqual(keyCode(both("K", "[", 0x5B, "VT", 0x0B), shft), 0x5B);
+  assert.strictEqual(keyCode(both("K", "[", 0x5B, "VT", 0x0B), ctrl), 0x0B);
+  assert.strictEqual(keyCode(both("N", "^", 0x5E, "SO", 0x0E), shft), 0x5E);
+  assert.strictEqual(keyCode(both("N", "^", 0x5E, "SO", 0x0E), ctrl), 0x0E);
+  assert.strictEqual(keyCode(both("M", "]", 0x5D, "CR", 0x0D), shft), 0x5D);
+  assert.strictEqual(keyCode(both("M", "]", 0x5D, "CR", 0x0D), ctrl), 0x0D);
+  assert.strictEqual(keyCode(both("K", "[", 0x5B, "VT", 0x0B),
+    { shifted: true, ctrl: true }), 0x0B, "CTRL beats SHIFT on K");
+
   // --- Special keys return their token ---------------------------------
   assert.strictEqual(keyCode(special("ESC", "esc", 0x1B), none), "esc");
   assert.strictEqual(keyCode(special("LINE FEED", "lf", 0x0A), none), "lf");
@@ -154,6 +181,59 @@ function run() {
   assert.strictEqual(keyCode(special("HERE IS", "hereis", null), none), "hereis");
   // Defensive: a missing/empty def never crashes the mapper.
   assert.strictEqual(keyCode(null, none), null);
+
+  // --- Sticky CTRL/SHIFT latch -----------------------------------------
+  // The helper runs in a VM realm, so deepStrictEqual on its result objects
+  // would trip on the sandbox prototype; re-wrap the primitive fields here.
+  function stickyFields(state, def) {
+    const s = stickyMods(state, def);
+    return { shifted: !!s.shifted, ctrl: !!s.ctrl };
+  }
+  // Pressing CTRL latches it; a second press does NOT cancel the latch.
+  assert.deepStrictEqual(stickyFields(none, special("CTRL", "ctrl", null)),
+    { shifted: false, ctrl: true }, "CTRL latches");
+  assert.deepStrictEqual(stickyFields({ shifted: false, ctrl: true }, special("CTRL", "ctrl", null)),
+    { shifted: false, ctrl: true }, "second CTRL press does not cancel");
+  // Pressing SHIFT latches it; a second press does NOT cancel the latch.
+  assert.deepStrictEqual(stickyFields(none, special("SHIFT", "shift", null)),
+    { shifted: true, ctrl: false }, "SHIFT latches");
+  assert.deepStrictEqual(stickyFields({ shifted: true, ctrl: false }, special("SHIFT", "shift", null)),
+    { shifted: true, ctrl: false }, "second SHIFT press does not cancel");
+  // Either modifier can be added on top of the other (CTRL+SHIFT combined).
+  assert.deepStrictEqual(stickyFields({ shifted: false, ctrl: true }, special("SHIFT", "shift", null)),
+    { shifted: true, ctrl: true }, "SHIFT adds to a latched CTRL");
+  assert.deepStrictEqual(stickyFields({ shifted: true, ctrl: false }, special("CTRL", "ctrl", null)),
+    { shifted: true, ctrl: true }, "CTRL adds to a latched SHIFT");
+  // Any other key (character or function key) trips both latches.
+  assert.deepStrictEqual(stickyFields({ shifted: true, ctrl: true }, plain("A")),
+    { shifted: false, ctrl: false }, "character key releases both latches");
+  ["esc", "lf", "cr", "del", "space", "break", "hereis"].forEach(function (token) {
+    assert.deepStrictEqual(stickyFields({ shifted: true, ctrl: true }, special("F", token, null)),
+      { shifted: false, ctrl: false }, "function key " + token + " releases both latches");
+  });
+  // REPT is a repeat latch, not a printing key: it leaves the sticky
+  // modifiers alone.
+  assert.deepStrictEqual(stickyFields({ shifted: true, ctrl: true }, special("REPT", "rept", null)),
+    { shifted: true, ctrl: true }, "REPT leaves sticky modifiers untouched");
+
+  // --- m33EchoPunches (which bytes the console print path punches) ------
+  // Printable ASCII and BS/TAB/LF/FF/CR are punched by the print path; the
+  // keyboard transmit punch must NOT double-punch them.
+  assert.strictEqual(echoPunches(0x41), true, "A punched by print path");
+  assert.strictEqual(echoPunches(0x20), true, "SPACE punched by print path");
+  assert.strictEqual(echoPunches(0x7E), true, "~ punched by print path");
+  [8, 9, 10, 12, 13].forEach(function (c) {
+    assert.strictEqual(echoPunches(c), true, "control " + c + " punched by print path");
+  });
+  // The dropped control codes are the keyboard punch's job (EOT=4, NUL, BEL,
+  // VT, SO..US, DEL) — otherwise they would never reach the tape.
+  assert.strictEqual(echoPunches(4), false, "EOT (CTRL+D) needs the keyboard punch");
+  assert.strictEqual(echoPunches(0), false, "NUL needs the keyboard punch");
+  assert.strictEqual(echoPunches(7), false, "BEL needs the keyboard punch");
+  assert.strictEqual(echoPunches(11), false, "VT needs the keyboard punch");
+  assert.strictEqual(echoPunches(14), false, "SO needs the keyboard punch");
+  assert.strictEqual(echoPunches(31), false, "US needs the keyboard punch");
+  assert.strictEqual(echoPunches(127), false, "DEL needs the keyboard punch");
 
   // --- Upper Case Only normalisation -----------------------------------
   // With the flag on, a-z folds to A-Z; everything else passes through.

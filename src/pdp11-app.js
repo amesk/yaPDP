@@ -217,6 +217,29 @@ function model33KeyCode(def, state) {
   return def.code;
 }
 
+// Model 33 CTRL/SHIFT keys are sticky modifiers: pressing one latches it
+// (a second press does NOT cancel it), and pressing any OTHER key releases
+// both latches. `mods` is { shifted, ctrl }; `def.special` selects the
+// transition: 'ctrl'/'shift' latch their flag, 'rept' leaves them alone,
+// and any other key trips both latches. Pure and unit-testable.
+function model33StickyMods(mods, def) {
+  var special = def && def.special;
+  if (special === 'ctrl') return { shifted: mods.shifted, ctrl: true };
+  if (special === 'shift') return { shifted: true, ctrl: mods.ctrl };
+  if (special === 'rept') return { shifted: mods.shifted, ctrl: mods.ctrl };
+  return { shifted: false, ctrl: false };
+}
+
+// Does the console print path punch this byte on the ASR tape by itself?
+// Printable ASCII (32..126) goes through printChar -> onChar; BS/TAB/LF/FF/CR
+// are punched by their dedicated render handlers (TAB as the equivalent
+// spaces). The keyboard transmit punch only needs to cover the remaining
+// control codes (NUL..BEL, VT, SO..US, DEL) that the print path drops.
+function m33EchoPunches(code) {
+  if (code >= 32 && code < 127) return true;
+  return code === 8 || code === 9 || code === 10 || code === 12 || code === 13;
+}
+
 // ---- Key definition helpers ---------------------------------------
 // letter: upper-case glyph with a small CTRL-code name printed at the top
 // of the cap and the letter itself drawn low (as on a real Model 33). A
@@ -230,6 +253,15 @@ function m33Letter(label, ctrlName, ctrlCode) {
 function m33Shifted(label, shiftLabel, shiftCode) {
   return { label: label, code: label.charCodeAt(0), top: shiftLabel,
     shiftCode: shiftCode, cls: 'alpha' };
+}
+// both: key carrying BOTH a shift symbol and a CTRL-code name on the cap
+// (P @ DLE, K [ VT, N ^ SO, M ] CR). The mapper honours CTRL first, then
+// SHIFT, exactly like the real Model 33 keyboard.
+function m33Both(label, shiftLabel, shiftCode, ctrlLabel, ctrlCode) {
+  return { label: label, code: label.charCodeAt(0), shiftLabel: shiftLabel,
+    shiftCode: shiftCode, ctrlLabel: ctrlLabel, ctrlCode: ctrlCode, cls: 'alpha',
+    title: 'CTRL ' + ctrlLabel + ' (0x' + ctrlCode.toString(16).toUpperCase() +
+      ') / SHIFT ' + shiftLabel };
 }
 // plain: ordinary key without a top legend.
 function m33Plain(label, cls) {
@@ -257,7 +289,7 @@ var MODEL33_KEYS = [
     m33Letter('E', 'ENQ', 0x05), m33Letter('R', 'DC2', 0x12),
     m33Letter('T', 'DC4', 0x14), m33Letter('Y', 'EM', 0x19),
     m33Letter('U', 'NAK', 0x15), m33Letter('I', 'HT', 0x09),
-    m33Letter('O', 'SI', 0x0F), m33Letter('P', 'DLE', 0x10),
+    m33Letter('O', 'SI', 0x0F), m33Both('P', '@', 0x40, 'DLE', 0x10),
     m33Special('LINE\nFEED', 'lf', 0x0A),
     m33Special('RE-\nTURN', 'cr', 0x0D)
   ]},
@@ -266,7 +298,7 @@ var MODEL33_KEYS = [
     m33Letter('A', 'SOH', 0x01), m33Letter('S', 'DC3', 0x13),
     m33Letter('D', 'EOT', 0x04), m33Letter('F', 'ACK', 0x06),
     m33Letter('G', 'BELL', 0x07), m33Letter('H', 'BS', 0x08),
-    m33Letter('J', 'LF', 0x0A), m33Letter('K', 'VT', 0x0B),
+    m33Letter('J', 'LF', 0x0A), m33Both('K', '[', 0x5B, 'VT', 0x0B),
     m33Letter('L', 'FF', 0x0C),
     m33Shifted(';', '+', 0x2B),
     m33Special('DE-\nLETE', 'del', 0x7F),
@@ -278,7 +310,7 @@ var MODEL33_KEYS = [
     m33Letter('Z', 'SUB', 0x1A), m33Letter('X', 'CAN', 0x18),
     m33Letter('C', 'ETX', 0x03), m33Letter('V', 'SYN', 0x16),
     m33Letter('B', 'STX', 0x02),
-    m33Shifted('N', '^', 0x5E), m33Shifted('M', ']', 0x5D),
+    m33Both('N', '^', 0x5E, 'SO', 0x0E), m33Both('M', ']', 0x5D, 'CR', 0x0D),
     m33Shifted(',', '<', 0x3C), m33Shifted('.', '>', 0x3E),
     m33Shifted('/', '?', 0x3F),
     m33Special('SHIFT', 'shift', null)
@@ -311,6 +343,16 @@ var g60Keyboard = (function () {
   var reptHeld = false;
   var repeatTimer = null;
 
+  // Is the given modifier special-token currently latched? The mouseleave
+  // handler uses this so it does not clear the 'down' visual of a latched
+  // CTRL/SHIFT/REPT key (which would make the latch look un-stuck).
+  function isLatched(sp) {
+    if (sp === 'ctrl') return ctrlHeld;
+    if (sp === 'shift') return shifted;
+    if (sp === 'rept') return reptHeld;
+    return false;
+  }
+
   function buildKeyboard() {
     var kbd = document.getElementById('punchkeyboard');
     if (!kbd) return;
@@ -333,7 +375,19 @@ var g60Keyboard = (function () {
           el.className = 'm33-key ' + (def.cls === 'alpha' ? 'alpha' : 'mod');
           if (def.title) el.title = def.title;
           if (def.label) {
-            if (def.top) {
+            if (def.ctrlLabel && def.shiftLabel) {
+              // Triple-named cap (P @ DLE, K [ VT, N ^ SO, M ] CR): the
+              // shift symbol sits on the left, the CTRL name on the right.
+              el.classList.add('dual');
+              var sh = document.createElement('span');
+              sh.className = 'm33-shift';
+              sh.textContent = def.shiftLabel;
+              el.appendChild(sh);
+              var ctl = document.createElement('span');
+              ctl.className = 'm33-top';
+              ctl.textContent = def.ctrlLabel;
+              el.appendChild(ctl);
+            } else if (def.top) {
               var top = document.createElement('span');
               top.className = 'm33-top';
               top.textContent = def.top;
@@ -357,7 +411,13 @@ var g60Keyboard = (function () {
           activateKey(this._def);
         });
         el.addEventListener('mouseleave', function (e) {
-          if (this.classList.contains('down')) this.classList.remove('down');
+          // Latch-driven modifiers (CTRL/SHIFT/REPT) keep their pressed
+          // state owned by updateMods(); only a momentary press clears
+          // 'down' when the cursor drags off before release.
+          var sp = this._def && this._def.special;
+          if (this.classList.contains('down') && !isLatched(sp)) {
+            this.classList.remove('down');
+          }
         });
 
         kbd.appendChild(el);
@@ -365,7 +425,18 @@ var g60Keyboard = (function () {
     }
   }
 
-  // Send the byte a key produces, honouring the modifier latch state and
+  // Apply the sticky modifier transition for the pressed key, updating the
+  // on-screen CTRL/SHIFT key lighting when the latch state changes.
+  function applyStickyMods(def) {
+    var next = model33StickyMods({ shifted: shifted, ctrl: ctrlHeld }, def);
+    if (next.shifted !== shifted || next.ctrl !== ctrlHeld) {
+      shifted = next.shifted;
+      ctrlHeld = next.ctrl;
+      updateMods();
+    }
+  }
+
+  // Send the byte a key produces, honouring the sticky modifier latch and
   // the REPT auto-repeat. `def.special` keys (ctrl/shift/rept/break/hereis/
   // esc/lf/cr/del/space) are dispatched here.
   function activateKey(def) {
@@ -373,14 +444,14 @@ var g60Keyboard = (function () {
     if (def.special) {
       switch (def.special) {
         case 'ctrl':
-          ctrlHeld = !ctrlHeld;
-          if (!ctrlHeld) stopRepeat();
-          updateMods();
+          // Model 33 CTRL latches when pressed; a second click does not
+          // cancel it — only another keypress trips the latch.
+          applyStickyMods(def);
           return;
         case 'shift':
-          shifted = !shifted;
-          if (!shifted) stopRepeat();
-          updateMods();
+          // Model 33 SHIFT latches when pressed; a second click does not
+          // cancel it — only another keypress trips the latch.
+          applyStickyMods(def);
           return;
         case 'rept':
           reptHeld = !reptHeld;
@@ -389,15 +460,19 @@ var g60Keyboard = (function () {
           return;
         case 'break':
           sendBreak();
+          applyStickyMods(def);
           return;
         case 'hereis':
           sendHereIs();
+          applyStickyMods(def);
           return;
         case 'space':
           if (reptHeld) startRepeat(def.code); else sendChar(def.code);
+          applyStickyMods(def);
           return;
         default: // esc / lf / cr / del
           sendChar(def.code);
+          applyStickyMods(def);
           return;
       }
     }
@@ -407,10 +482,9 @@ var g60Keyboard = (function () {
     } else {
       sendChar(code);
     }
-    // One-shot modifiers (the Model 33 CTRL/SHIFT are momentary): release
-    // after the key that used them.
-    if (ctrlHeld && def.ctrlCode != null) { ctrlHeld = false; updateMods(); }
-    if (shifted && def.shiftCode != null) { shifted = false; updateMods(); }
+    // Sticky Model 33 CTRL/SHIFT release after the next keypress of any
+    // other key (character or function key).
+    applyStickyMods(def);
   }
 
   // REPT: repeat a character key at the teletype's 10 chars/sec while the
@@ -527,7 +601,30 @@ var g60Keyboard = (function () {
       });
     }
   }
+  // Mechanical ASR transmit punch: on a real Model 33 the punch is coupled to
+  // the keyboard, so every key pressed punches the tape directly whenever the
+  // punch is engaged — in LOCAL and LINE alike. Bytes the console print path
+  // already punches (printable + BS/TAB/LF/FF/CR) are left to that path to
+  // avoid a double row; only the dropped control codes (NUL..BEL, VT, SO..US,
+  // DEL) are punched here so they are not lost.
+  function punchKeyboard(code) {
+    if (window.ttyMode === 'off') return;
+    if (!window.ttyPunchEnabled) return;
+    if (!window.paperTape) return;
+    if (m33EchoPunches(code)) return;
+    window.paperTape.punchChar(code);
+  }
+  // Model 33 keyboard bell: typing BEL (CTRL+G, 0x07) rings the teletype
+  // gong mechanically on the keyboard — in LOCAL and LINE alike, and
+  // independent of the punch. Reuses the shared synthesized bell.
+  function bellKeyboard(code) {
+    if (code !== 7) return;
+    if (window.ttyMode === 'off') return;
+    if (typeof window.playBell === 'function') window.playBell();
+  }
   function sendChar(code) {
+    bellKeyboard(code);
+    punchKeyboard(code);
     // OFF: the unit is powered down — the key does nothing. LOCAL mode: the
     // keyboard is not connected to the machine — the typed character is
     // printed locally (paper + tape) instead of being sent.
@@ -541,11 +638,12 @@ var g60Keyboard = (function () {
     }
   }
   function sendDL(bytes) {
+    for (var i = 0; i < bytes.length; i++) { bellKeyboard(bytes[i]); punchKeyboard(bytes[i]); }
     // OFF: powered down — nothing typed is echoed or transmitted.
     if (window.ttyMode === 'off') return;
     if (window.ttyMode === 'local') {
       if (g60Console) {
-        for (var i = 0; i < bytes.length; i++) {
+        for (i = 0; i < bytes.length; i++) {
           g60Console.writeChar(bytes[i]);
         }
       }
