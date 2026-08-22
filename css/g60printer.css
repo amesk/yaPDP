@@ -1112,7 +1112,10 @@
 }
 
 /* Four-position tape reader switch (START/STOP/FREE/AUTO) styled like the
-   front-panel POWER/LOCK key: a round disc with a rotating handle. */
+   CCU line switch (LINE/OFF/LOCAL): a round rotary knob with a light centre,
+   a gray ring and a protruding triangular beak that points at the active
+   position. The JS rotates #reader-switch-lever (0/90/180/270°), so the beak
+   orbits the disc centre and lands on START/STOP/FREE/AUTO. */
 .asr-reader-switch {
     position: absolute;
     /* Centre the switch in the TAPE READER cabinet: the reader is half of
@@ -1131,34 +1134,31 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(15deg, #808080, #383838);
-    border: 1px solid #707070;
+    /* Light centre inside a thick gray ring, matching the CCU knob. */
+    background: radial-gradient(circle at 50% 50%,
+            #f6f6f6 0%,
+            #e0e0e0 58%,
+            #8a8a8a 68%,
+            #7e7e7e 94%,
+            #949494 100%);
+    box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.12),
+        0 2px 3px rgba(0, 0, 0, 0.4);
 }
 
-.asr-switch-disc::before {
-    content: "";
-    position: absolute;
-    left: 7px;
-    top: 7px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: linear-gradient(15deg, #101010, silver);
-    border: 2px solid #11100e;
-    box-shadow: 0 0 0 1px #404040;
-}
-
-/* Rotating handle (like the POWER/LOCK key). */
+/* Triangular beak, like the CCU knob, sticking out of the disc. It rotates
+   around the disc centre: the beak box sits at top:-8px, so an origin 26px
+   below its top lands exactly on the disc centre (13px + 18px). */
 .asr-switch-lever {
     position: absolute;
     left: 50%;
-    top: 0;
-    width: 3px;
-    height: 16px;
-    margin-left: -1.5px;
-    background: #b0b0b0;
-    border: 1px solid #101010;
-    transform-origin: 50% 110%;
+    top: -8px;
+    width: 10px;
+    height: 8px;
+    margin-left: -5px;
+    background: linear-gradient(180deg, #d0d0d0 0%, #8a8a8a 100%);
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    transform-origin: 50% 26px;
     transition: transform 0.2s;
     pointer-events: none;
     z-index: 2;
@@ -1186,10 +1186,10 @@
     transform: translateX(-50%);
 }
 
-/* STOP sits to the right of the disc: its vertical centre aligns with the
-   disc centre (Y = 8 + 36/2 = 26px). */
+/* STOP sits to the right of the disc, clear of the rotating beak: its
+   vertical centre aligns with the disc centre (Y = 8 + 36/2 = 26px). */
 .asr-switch-pos[data-reader-mode="stop"] {
-    left: 66px;
+    left: 76px;
     top: 31px;
     transform: translateY(-50%);
 }
@@ -1202,16 +1202,18 @@
     transform: translateX(-50%);
 }
 
-/* AUTO sits to the left of the disc: its vertical centre aligns with the
-   disc centre (Y = 26px). */
+/* AUTO sits to the left of the disc, clear of the rotating beak: its
+   vertical centre aligns with the disc centre (Y = 26px). */
 .asr-switch-pos[data-reader-mode="auto"] {
-    left: 0;
+    left: -14px;
     top: 31px;
     transform: translateY(-50%);
 }
 
 .asr-switch-pos.active {
-    color: #ffe9a8;
+    /* Same highlighted colour as the CCU LINE/OFF/LOCAL active state. */
+    color: #7a5a20;
+    text-shadow: 0 0 4px rgba(122, 90, 32, 0.5);
 }
 
 /* ---- The hanging punched tape ----
@@ -1330,13 +1332,16 @@
 #teletype-controls {
     margin-top: 8px;
     text-align: center;
+    /* Centre the button row under the KEYBOARD deck (#punchkeypane), not the
+       page: the deck starts 312px into the rig (300px ASR + 12px gap), so
+       shifting the centred row right by 156px (300/2 + 6) aligns the centres. */
+    transform: translateX(156px);
 }
 
 .tty-btn {
-    /* Cream operator buttons to match the light ASR33 body. */
-    background: linear-gradient(180deg, #e6e0cf 0%, #cfc8b4 100%);
-    color: #4a4434;
-    border: 1px solid #a89f87;
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    border: 1px solid #c8a860;
     border-radius: 4px;
     padding: 6px 16px;
     font-size: 12px;
@@ -1346,16 +1351,7 @@
 }
 
 .tty-btn:hover {
-    background: linear-gradient(180deg, #efe9d8 0%, #d9d2bf 100%);
-}
-
-.tty-sep {
-    display: inline-block;
-    vertical-align: middle;
-    width: 1px;
-    height: 22px;
-    background: #555;
-    margin: 0 4px;
+    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
 }
 
 /* ==================================================================
