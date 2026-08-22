@@ -19,7 +19,9 @@
 /* Printer container – replaces the old console textarea */
 #g60printer {
     position: relative;
-    width: 940px;
+    /* Width reduced by 2 × #printer_right (2 × 66px = 132px) to slim the
+       printer body and match the narrower keyboard deck. */
+    width: 808px;
     height: 380px;
     /* Light cream/beige ASR33 body instead of the dark Google60 machine. */
     background-color: #ddd6c4;
@@ -34,7 +36,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 940px;
+    width: 808px;
     height: 374px;
     background: linear-gradient(180deg, #ece6d6 0%, #dfd8c7 45%, #d0c9b5 100%);
     /* Round the top corners to match the #g60printer body radius. */
@@ -46,8 +48,8 @@
     position: absolute;
     top: 298px;
     left: 67px;
-    width: 807px;
-    max-width: 807px;
+    width: 741px;
+    max-width: 741px;
     height: 30px;
     max-height: 30px;
     padding: 0;
@@ -69,7 +71,7 @@
     position: absolute;
     top: 305px;
     left: 67px;
-    width: 807px;
+    width: 741px;
     height: 69px;
     /* Light lower face plate (no Google60 bitmap skin). */
     background: linear-gradient(180deg, #d6cfbc 0%, #beb6a1 100%);
@@ -93,7 +95,7 @@
 #g60printer div#printer_right {
     position: absolute;
     top: 0;
-    left: 874px;
+    left: 742px;
     width: 66px;
     height: 374px;
     background: linear-gradient(270deg, #c9c1ab 0%, #ddd6c4 100%);
@@ -161,7 +163,7 @@
     position: absolute;
     top: 0;
     left: 67px;
-    width: 839px;
+    width: 741px;
     height: 400px;
     max-height: 400px;
     vertical-align: top;
@@ -379,7 +381,8 @@
 
 #punchkeypane {
     position: relative;
-    width: 940px;
+    /* Same slim width as the printer (940px − 2 × 66px). */
+    width: 808px;
     height: 240px;
     /* Cream ASR33 deck (no dark keyboardbg.jpg texture). The deck sits
        directly under the (now lowered) printer body — no gap between them. */
@@ -395,7 +398,9 @@
 #punchkeyboard {
     position: absolute;
     top: 14px;
-    left: 180px;
+    /* Shifted left so the rightmost keys — including BREAK in the middle row —
+       clear the CCU apron (LINE/OFF/LOCAL) on the right side of the deck. */
+    left: 70px;
 }
 
 /* ---- Round keycaps (diameter 36px, pitch 40px) ---- */
