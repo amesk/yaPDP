@@ -805,6 +805,60 @@
 }
 
 /* ==================================================================
+   Model 33 ASR console teletype — paper grows upward like the LP11.
+   The console paper behaves exactly like the LP11 printer page: it is
+   anchored to the BOTTOM of the machine (its bottom sits right at the
+   carriage, which stays fixed at ~400px), so the fresh line always
+   prints under the carriage and older lines ride upward out of the top
+   of the machine. The paper window grows upward with the content
+   (height:auto) until it reaches max-height — set by
+   installTeletypePaperGrowth() in pdp11-app.js so the paper's top edge
+   reaches the TOP of the browser window; from then on the window is
+   fixed and its own scrollbar appears, exactly like the LP11 fanfold.
+   The Google60 top spacer is removed — otherwise it would shove the
+   fresh line up away from the carriage. Scoped to #g60printer; the
+   LP11 printer page (#lp11_printer) is untouched.
+   ================================================================== */
+/* Let the rising paper leave the top of the machine body. */
+#g60printer {
+    overflow: visible;
+}
+
+/* Anchor the paper to the bottom (bottom:64px keeps its lower edge at
+   the original 400px mark: 464px machine height - 64px = 400px, right
+   at the carriage). max-height is viewport-driven via the CSS variable
+   set by installTeletypePaperGrowth(); 400px is the pre-JS fallback. */
+#g60printer div#paper,
+#g60printer div#paper.paperNoScroll,
+#g60printer div#paper.paperScroll {
+    top: auto;
+    bottom: 64px;
+    height: auto;
+    max-height: var(--tty-paper-max, 400px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* No blank paper tail above the first line (the 345px Google60 top spacer). */
+#g60printer div#paper_topspacer {
+    display: none;
+}
+
+/* Drop the print-area's 57px top padding so line 1 starts right at the
+   top of the paper and the fresh line lands exactly on the carriage. */
+#g60printer td#paper_printarea {
+    padding: 4px 18px 1px 18px;
+}
+
+/* Hide the Google60 paper-edge overlays: they sit at the TOP of the
+   machine and, being above the paper in z-order, would draw "over" the
+   paper rising out of the top. */
+#g60printer div#printer_topoverlay,
+#g60printer div#paper_topshadow {
+    display: none;
+}
+
+/* ==================================================================
    Model 33 ASR — tape reader / punch unit and the punched paper tape.
    The ASR block sits to the LEFT of the printer + keyboard (see the
    #page-teletype markup in pdp11.html). Every byte echoed to the

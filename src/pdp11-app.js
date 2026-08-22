@@ -1465,6 +1465,47 @@ function installLP11Scaling() {
   ro.observe(page);
 }
 
+// ---- Model 33 ASR console paper: grow upward to the top of the window ----
+// Mirrors the LP11 printer page: the console paper is anchored to the
+// carriage and grows upward (height:auto, bottom:64px in g60printer.css)
+// until its top edge reaches the top of the browser window, at which point
+// the paper's own scrollbar appears. The teletype page is vertically
+// centred (justify-content:center), so the carriage-to-window-top distance
+// is NOT a fixed constant (unlike the LP11 cabinet, which is pinned to the
+// bottom of the page) — it must be measured live. The paper bottom (== the
+// carriage) in viewport coordinates is exactly the max height that lets the
+// paper top reach y=0, so it is applied as --tty-paper-max.
+// Kept as a standalone, DOM-free helper so it can be extracted and
+// unit-tested in Node (see tests/teletype-paper-growth.test.js).
+function teletypePaperMaxHeight(carriageBottomPx, topReservePx) {
+  var max = Number(carriageBottomPx) - (Number(topReservePx) || 0);
+  return max > 0 ? max : 0;
+}
+
+// Measure the carriage's distance to the top of the window and size the
+// console paper's growth ceiling accordingly (CSS variable --tty-paper-max,
+// consumed by css/g60printer.css). Hidden pages (display:none → rect 0) are
+// skipped and re-sized once they become visible, because the ResizeObserver
+// fires when the page's layout size changes.
+function installTeletypePaperGrowth() {
+  if (typeof ResizeObserver === 'undefined') return;
+  var page = document.getElementById('page-teletype');
+  var container = document.getElementById('g60printer');
+  var paper = document.getElementById('paper');
+  if (!page || !container || !paper) return;
+
+  function apply() {
+    var bottom = paper.getBoundingClientRect().bottom;
+    if (bottom <= 0) return; // hidden page — skip until visible
+    container.style.setProperty('--tty-paper-max',
+        teletypePaperMaxHeight(bottom, 0) + 'px');
+  }
+
+  apply();
+  var ro = new ResizeObserver(apply);
+  ro.observe(page);
+}
+
 // ---- Global sound mute button (bottom-left, magic-wand style) ----
 // Toggles the CONFIG "mute" flag like a checkbox: syncs aria-pressed and the
 // .muted CSS class from the persisted config, persists on every click and
@@ -1636,6 +1677,10 @@ installVT52Scaling();
 // Fit the LP11 printer cabinet to the available window size (proportional
 // scaling, mirroring the VT52 cabinets above).
 installLP11Scaling();
+
+// Make the Model 33 ASR console paper grow up to the top of the window
+// (viewport-driven max-height), like the LP11 printer page.
+installTeletypePaperGrowth();
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);

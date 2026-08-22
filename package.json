@@ -13,7 +13,7 @@
         "node": ">=18"
     },
     "scripts": {
-        "test": "node tests/config.test.js && node tests/punchtape.test.js && node tests/pasteutil.test.js && node tests/paper-geometry.test.js && node tests/lp11-text.test.js && node tests/lp11-scaling.test.js && node tests/vt52-cabinet-css.test.js && node tests/dataloader.test.js && node tests/onboarding.test.js && node tests/imgerror.test.js && node tests/osboot.test.js && node tests/vt52.test.js && node tests/g60printer-flush.test.js && node tests/dl11-recv.test.js && node tests/vt11.test.js && node tests/contextmenu.test.js && node tests/fullscreen.test.js && node tests/hum.test.js",
+        "test": "node tests/config.test.js && node tests/punchtape.test.js && node tests/pasteutil.test.js && node tests/paper-geometry.test.js && node tests/lp11-text.test.js && node tests/lp11-scaling.test.js && node tests/teletype-paper-css.test.js && node tests/teletype-paper-growth.test.js && node tests/vt52-cabinet-css.test.js && node tests/dataloader.test.js && node tests/onboarding.test.js && node tests/imgerror.test.js && node tests/osboot.test.js && node tests/vt52.test.js && node tests/g60printer-flush.test.js && node tests/dl11-recv.test.js && node tests/vt11.test.js && node tests/contextmenu.test.js && node tests/fullscreen.test.js && node tests/hum.test.js",
         "rebuild-boot": "node tools/rebuild-bootcode.js",
         "stage": "node tools/build-desktop.js",
         "desktop": "node tools/build-desktop.js && node tools/tauri-build.js",
