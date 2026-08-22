@@ -702,6 +702,19 @@
             </div>
             <div id="asr-reader">
               <div class="asr-label">TAPE READER</div>
+              <!-- Four-position reader switch (START/STOP/FREE/AUTO) in the
+                   style of the front-panel POWER/LOCK key: a round disc whose
+                   handle rotates to the active position (wired by
+                   setReaderMode() in pdp11-app.js). -->
+              <div class="asr-reader-switch">
+                <div class="asr-switch-disc">
+                  <div class="asr-switch-lever" id="reader-switch-lever"></div>
+                </div>
+                <button type="button" class="asr-switch-pos" data-reader-mode="start">START</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="stop">STOP</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="free">FREE</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="auto">AUTO</button>
+              </div>
               <div class="asr-slot"></div>
             </div>
           </div>

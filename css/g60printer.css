@@ -880,7 +880,7 @@
 .asr-slot {
     position: absolute;
     left: 50%;
-    top: 70px;
+    top: 86px;
     /* Wider than the punched tape (97px) but clearly narrower than the
        punch/reader cabinet, so the opening's dark walls stay visible around
        the tape as it passes through (the tape draws on top of the slot). */
@@ -902,7 +902,8 @@
 /* Punch operator buttons (ON/OFF/BSP/REL), in the punch cabinet BETWEEN the
    TAPE PUNCH label and the tape-out slot, so the tape spilling from the slot
    never covers them. ON/OFF toggle the punch (OFF by default); BSP backspaces
-   the tape one step; REL releases the tape. */
+   the tape one step; REL releases the tape. On a real Model 33 ASR these are
+   round (circular) push-buttons. */
 .asr-punch-buttons {
     position: absolute;
     left: 0;
@@ -917,10 +918,19 @@
     background: linear-gradient(180deg, #5a4a30, #3a3528);
     color: #f0e6c8;
     border: 1px solid #c8a860;
-    border-radius: 3px;
-    padding: 2px 6px;
+    /* Round push-button: fixed width == height with 50% radius gives a true
+       circle (a pill would only be an ellipse); text is centred via flex.
+       Generous diameter so the 3-letter legends (ON/OFF/BSP/REL) sit well
+       clear of the circle edge. */
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-family: arial, helvetica, sans-serif;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: bold;
     cursor: pointer;
 }
@@ -936,6 +946,109 @@
     border-color: #e8c878;
 }
 
+/* Four-position tape reader switch (START/STOP/FREE/AUTO) styled like the
+   front-panel POWER/LOCK key: a round disc with a rotating handle. */
+.asr-reader-switch {
+    position: absolute;
+    /* Centre the switch in the TAPE READER cabinet: the reader is half of
+       the 300px cabinet (150px), so its centre sits at 75px; with a 92px
+       switch that means left = 75 - 46 = 29px. */
+    left: 29px;
+    top: 22px;
+    width: 92px;
+    height: 62px;
+}
+
+.asr-switch-disc {
+    position: absolute;
+    left: 26px;
+    top: 13px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(15deg, #808080, #383838);
+    border: 1px solid #707070;
+}
+
+.asr-switch-disc::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 7px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(15deg, #101010, silver);
+    border: 2px solid #11100e;
+    box-shadow: 0 0 0 1px #404040;
+}
+
+/* Rotating handle (like the POWER/LOCK key). */
+.asr-switch-lever {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 3px;
+    height: 16px;
+    margin-left: -1.5px;
+    background: #b0b0b0;
+    border: 1px solid #101010;
+    transform-origin: 50% 110%;
+    transition: transform 0.2s;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Position labels around the disc, kept clear of the disc. */
+.asr-switch-pos {
+    position: absolute;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: #c9bfa8;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 7px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+/* START sits above the disc: its horizontal centre aligns with the disc
+   centre (X = 26 + 36/2 = 44px). */
+.asr-switch-pos[data-reader-mode="start"] {
+    left: 44px;
+    top: 0;
+    transform: translateX(-50%);
+}
+
+/* STOP sits to the right of the disc: its vertical centre aligns with the
+   disc centre (Y = 8 + 36/2 = 26px). */
+.asr-switch-pos[data-reader-mode="stop"] {
+    left: 66px;
+    top: 31px;
+    transform: translateY(-50%);
+}
+
+/* FREE sits below the disc: its horizontal centre aligns with the disc
+   centre (X = 44px). */
+.asr-switch-pos[data-reader-mode="free"] {
+    left: 44px;
+    bottom: 0;
+    transform: translateX(-50%);
+}
+
+/* AUTO sits to the left of the disc: its vertical centre aligns with the
+   disc centre (Y = 26px). */
+.asr-switch-pos[data-reader-mode="auto"] {
+    left: 0;
+    top: 31px;
+    transform: translateY(-50%);
+}
+
+.asr-switch-pos.active {
+    color: #ffe9a8;
+}
+
 /* ---- The hanging punched tape ----
    #punchtape hangs from the TAPE PUNCH slot down to the bottom of the
    window. It is absolutely positioned (out of the flow), so a growing tape
@@ -946,9 +1059,9 @@
    reaches the window edge; 60vh is only the pre-JS fallback. */
 #punchtape {
     position: absolute;
-    /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 70px + half
-       slot height 6px = 76px), horizontally centred on the punch. */
-    top: 76px;
+    /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 86px + half
+       slot height 6px = 92px), horizontally centred on the punch. */
+    top: 92px;
     left: 17px;
     z-index: 1;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a

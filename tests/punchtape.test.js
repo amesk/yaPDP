@@ -139,6 +139,13 @@ function testMarkup() {
     assert.ok(html.indexOf('id="' + id + '"') !== -1,
       "pdp11.html must contain the punch button (#" + id + ")");
   }
+  // Four-position reader switch (START/STOP/FREE/AUTO) on the TAPE READER.
+  assert.ok(html.indexOf('id="reader-switch-lever"') !== -1,
+    "pdp11.html must contain the reader switch lever (#reader-switch-lever)");
+  for (const mode of ["start", "stop", "free", "auto"]) {
+    assert.ok(html.indexOf('data-reader-mode="' + mode + '"') !== -1,
+      "pdp11.html must contain the reader switch position '" + mode + "'");
+  }
   assert.ok(html.indexOf("src='src/punchtape.js'") !== -1,
     "pdp11.html must load src/punchtape.js");
 
@@ -160,6 +167,9 @@ function testCss() {
     ".asr-punch-buttons",
     ".asr-btn",
     ".asr-btn.active",
+    ".asr-reader-switch",
+    ".asr-switch-pos",
+    ".asr-switch-lever",
     ".pt-row",
     ".pt-hole",
     ".pt-sprocket",
@@ -183,8 +193,8 @@ function testCss() {
   const tapeRule = extractBlock(css, "#punchtape {", "");
   assert.ok(/position\s*:\s*absolute\s*;/.test(tapeRule),
     "#punchtape must be absolutely positioned (out of flow, no page resize):\n" + tapeRule);
-  assert.ok(/top\s*:\s*76px\s*;/.test(tapeRule),
-    "#punchtape must emerge from the MIDDLE of the TAPE PUNCH slot (top: 76px = slot top 70px + half slot):\n" + tapeRule);
+  assert.ok(/top\s*:\s*92px\s*;/.test(tapeRule),
+    "#punchtape must emerge from the MIDDLE of the TAPE PUNCH slot (top: 92px = slot top 86px + half slot):\n" + tapeRule);
   assert.ok(/overflow-y\s*:\s*auto\s*;/.test(tapeRule),
     "#punchtape must scroll vertically once it reaches the window edge (overflow-y: auto):\n" + tapeRule);
 

@@ -29,12 +29,45 @@ function teletypeDelay(speed) {
 // Punch enable flag. On a real Model 33 ASR the punch is OFF by default and
 // is switched on by the operator (ON button) or by the machine sending DC2.
 // While OFF, printed output is NOT duplicated onto the paper tape.
+var ttyRelHeld = false; // the REL (release) button is latched
+function setRelHeld(on) {
+  ttyRelHeld = !!on;
+  var relBtn = document.getElementById('punch-rel');
+  if (relBtn) relBtn.classList.toggle('active', ttyRelHeld);
+}
 function setTtyPunch(on) {
   window.ttyPunchEnabled = !!on;
   var onBtn = document.getElementById('punch-on');
   var offBtn = document.getElementById('punch-off');
   if (onBtn) onBtn.classList.toggle('active', !!on);
-  if (offBtn) offBtn.classList.toggle('active', !on);
+  // While REL is latched the punch is disengaged through RELEASE, not OFF,
+  // so the OFF button stays unlit (pressed-out).
+  if (offBtn) offBtn.classList.toggle('active', !on && !ttyRelHeld);
+  // Engaging the punch releases the latched REL (release) button.
+  if (on) setRelHeld(false);
+}
+
+// Tape reader switch state. On a real Model 33 ASR the reader has a
+// four-position switch: START (continuous reading), STOP (pause), FREE
+// (tape released for manual pull) and AUTO (remote control: reading runs
+// only while DC1/X-ON has been received, stopping on DC3/X-OFF).
+var readerModes = ['start', 'stop', 'free', 'auto'];
+var readerAutoFeed = false; // DC1/DC3 latch, only used in AUTO
+function setReaderMode(mode) {
+  if (readerModes.indexOf(mode) === -1) return;
+  window.ttyReaderMode = mode;
+  // Can the reader feed bytes? START always; STOP/FREE never; AUTO follows
+  // the DC1 (X-ON) / DC3 (X-OFF) latch received over the line.
+  if (mode === 'start') window.ttyReaderCanFeed = true;
+  else if (mode === 'stop' || mode === 'free') window.ttyReaderCanFeed = false;
+  else window.ttyReaderCanFeed = readerAutoFeed; // AUTO
+  var pos = document.querySelectorAll('.asr-switch-pos');
+  for (var i = 0; i < pos.length; i++) {
+    pos[i].classList.toggle('active', pos[i].getAttribute('data-reader-mode') === mode);
+  }
+  // Rotate the POWER/LOCK-style handle: START 0°, STOP 90°, FREE 180°, AUTO 270°.
+  var lever = document.getElementById('reader-switch-lever');
+  if (lever) lever.style.transform = 'rotate(' + (readerModes.indexOf(mode) * 90) + 'deg)';
 }
 
 function g60ConsoleWrite(code) {
@@ -44,7 +77,11 @@ function g60ConsoleWrite(code) {
   // Programmatic punch control: DC2 (0x12) engages the punch, DC4 (0x14)
   // disengages it. These control bytes are not printed themselves.
   if (code === 0x12) { setTtyPunch(true); return; }
-  if (code === 0x14) { setTtyPunch(false); return; }
+  if (code === 0x14) { setRelHeld(false); setTtyPunch(false); return; }
+  // Remote reader control in AUTO: DC1 / X-ON (0x11) starts reading,
+  // DC3 / X-OFF (0x13) stops it.
+  if (code === 0x11) { readerAutoFeed = true; if (window.ttyReaderMode === 'auto') window.ttyReaderCanFeed = true; return; }
+  if (code === 0x13) { readerAutoFeed = false; if (window.ttyReaderMode === 'auto') window.ttyReaderCanFeed = false; return; }
   if (g60Console) g60Console.writeChar(code);
 }
 
@@ -1530,7 +1567,10 @@ function initTtyControls() {
     punchOnBtn.addEventListener('click', function () { setTtyPunch(true); });
   }
   if (punchOffBtn) {
-    punchOffBtn.addEventListener('click', function () { setTtyPunch(false); });
+    punchOffBtn.addEventListener('click', function () {
+      setRelHeld(false);
+      setTtyPunch(false);
+    });
   }
   if (punchBspBtn) {
     punchBspBtn.addEventListener('click', function () {
@@ -1539,15 +1579,31 @@ function initTtyControls() {
       }
     });
   }
-  // REL releases the tape for manual pull-out — no visual state in the
-  // emulator, kept as an operator affordance.
+  // REL is a latching button: it releases the tape for manual pull-out, which
+  // keeps the punch mechanically disengaged (functionally like OFF). Clicking
+  // again (or pressing ON) unlatches it.
   if (punchRelBtn) {
-    punchRelBtn.addEventListener('click', function () { /* release (no-op) */ });
+    punchRelBtn.addEventListener('click', function () {
+      setRelHeld(!ttyRelHeld);
+      if (ttyRelHeld) setTtyPunch(false);
+    });
   }
 
-  // LINE is the default mode; the punch is OFF by default.
+  // Four-position tape reader switch (START/STOP/FREE/AUTO).
+  var switchPos = document.querySelectorAll('.asr-switch-pos');
+  for (var si = 0; si < switchPos.length; si++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        setReaderMode(btn.getAttribute('data-reader-mode'));
+      });
+    })(switchPos[si]);
+  }
+
+  // LINE is the default mode; the punch is OFF; the reader switch starts in
+  // STOP (reading is not active until the operator or the machine engages it).
   setLocal(false);
   setTtyPunch(false);
+  setReaderMode('stop');
 }
 
 // ---- Bootstrap ----
