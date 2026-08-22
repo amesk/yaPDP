@@ -1795,9 +1795,9 @@ function initTtyControls() {
   var tearTapeBtn = document.getElementById('tty-tear-tape');
   if (tearTapeBtn) {
     tearTapeBtn.addEventListener('click', function () {
-      playTearSound();
+      // Play the rip sound only if there was actually punched tape to tear off.
       if (window.paperTape && typeof window.paperTape.clear === 'function') {
-        window.paperTape.clear();
+        if (window.paperTape.clear()) playTearSound();
       }
     });
   }
@@ -1805,9 +1805,9 @@ function initTtyControls() {
   var tearPaperBtn = document.getElementById('tty-tear-paper');
   if (tearPaperBtn) {
     tearPaperBtn.addEventListener('click', function () {
-      playTearSound();
+      // Play the rip sound only if printed paper was actually torn off.
       if (g60printer && typeof g60printer.clear === 'function') {
-        g60printer.clear();
+        if (g60printer.clear()) playTearSound();
       }
     });
   }

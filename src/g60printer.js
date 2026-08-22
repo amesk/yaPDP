@@ -1039,7 +1039,31 @@
             }
         }
 
+        // A sheet has printed content when the print area holds anything more
+        // than the single blank leading line resetPrinter() creates for a
+        // fresh sheet: extra lines, a page-break seam, or characters beyond
+        // the leading NBSP spacer. Queued-but-not-yet-rendered output also
+        // counts — it would have reached the paper next. Used by clear() to
+        // decide whether a real tear happened (so the rip sound only plays
+        // when paper was actually torn off).
+        function hasPrintedContent() {
+            if (textBuffer && textBuffer.length > 0) return true;
+            if (lines && lines.length > 0) return true;
+            if (charBuffer && charBuffer.length > 0) return true;
+            if (pageHasContent) return true;
+            if (printArea) {
+                var rows = printArea.children;
+                if (rows.length > 1) return true;
+                for (var i = 0; i < rows.length; i++) {
+                    if (rows[i].className === 'pageBreak') return true;
+                    if (rows[i].children.length > 1) return true;
+                }
+            }
+            return false;
+        }
+
         function resetPrinter(unloading) {
+            var hadContent = hasPrintedContent();
             // Cancel pending character pacing
             if (charPrintTimer) {
                 clearTimeout(charPrintTimer);
@@ -1088,6 +1112,8 @@
                 // the first line will appear at the bottom of the paper area.
                 paper.className = 'paperNoScroll';
             }
+            // Tell the caller whether a real tear happened (paper was torn off).
+            return hadContent;
         }
 
         function stopPrinter() {
@@ -1177,7 +1203,9 @@
         this.reset = function() { resetPrinter(); };
         this.stop = function() { stopPrinter(); };
         this.destroy = function() { destroyPrinter(); };
-        this.clear = function() { resetPrinter(); };
+        // clear() reports whether anything was actually torn off, so the caller
+        // can play the paper-rip sound only when paper was really removed.
+        this.clear = function() { return resetPrinter(); };
 
         // Flush only the pending (buffered) output queue — discard any
         // characters/line-feeds still waiting to be paced onto the paper,

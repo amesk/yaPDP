@@ -147,11 +147,19 @@
 
     /**
      * clear() - Tear the tape off / rewind: drop all punched rows and bytes.
+     * Returns true if there was actually something to tear off (punched rows on
+     * the tape or bytes in the buffer), false if the tape was already empty.
      */
     function clear() {
         if (!body) init();
-        if (body) body.innerHTML = '';
+        var torn = false;
+        if (body) {
+            torn = body.childNodes.length > 0;
+            body.innerHTML = '';
+        }
+        torn = torn || buffer.length > 0;
         buffer = [];
+        return torn;
     }
 
     /**

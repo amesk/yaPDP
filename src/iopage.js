@@ -1536,10 +1536,14 @@ iopage.register(0o17777510, 2, (function() {
     // an operator tearing the fanfold away from a real line printer.
     function lp11TearPaper() {
         ensureUI();
-        playTearSound();
+        // Play the rip sound only if printed paper was actually torn off: any
+        // text captured in the buffers, or printed content on the paper sheet
+        // (reset() reports whether it cleared a non-blank sheet).
+        var torn = (lp11Buffer.length > 0 || lp11CurrentLine.length > 0);
         if (lp11Printer && typeof lp11Printer.reset === "function") {
-            lp11Printer.reset();
+            if (lp11Printer.reset()) torn = true;
         }
+        if (torn) playTearSound();
         lp11Buffer = [];
         lp11CurrentLine = "";
         lp11Col = 0;
