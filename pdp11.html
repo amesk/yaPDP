@@ -816,11 +816,34 @@
            skins, front panel, printer_bg.gif) is hidden in g60printer.css and
            replaced by the CSS-drawn cabinet below. -->
       <div class="lp11-cabinet">
-        <div class="lp11-badge">digital lp11</div>
+        <!-- Top cover with a vent grille: the fanfold rises through the central
+             paper slot. The paper element sits LATER in the DOM (#lp11_printer),
+             so it draws over the dark slot and reads as paper coming out of the
+             seam of the cover — the vent grilles either side stay visible. The
+             dark slot carries the DEC "digital" wordmark, letters in frames like
+             the front-panel .decLetter block. -->
+        <div class="lp11-hood">
+          <div class="lp11-vents"></div>
+          <div class="lp11-paper-slot">
+            <span class="lp11-dec-letter">d</span>
+            <span class="lp11-dec-letter">i</span>
+            <span class="lp11-dec-letter">g</span>
+            <span class="lp11-dec-letter">i</span>
+            <span class="lp11-dec-letter">t</span>
+            <span class="lp11-dec-letter">a</span>
+            <span class="lp11-dec-letter">l</span>
+          </div>
+          <div class="lp11-vents"></div>
+        </div>
         <div id="lp11_printer"></div>
         <div class="lp11-console">
-          <span class="lp11-led lp11-led-ready" id="lp11-ready-led"></span>
           <span class="lp11-label">lp11 line printer</span>
+          <span class="lp11-led lp11-led-ready" id="lp11-ready-led"></span>
+          <!-- The amber ONLINE indicator is built into the LEFT side of the
+               ON LINE key, like a lamp inside the keycap. -->
+          <button type="button" class="lp11-key lp11-key-online" id="lp11-online-key"
+            onclick="window.lp11OnLine && window.lp11OnLine()"><span class="lp11-led lp11-led-online"
+              id="lp11-online-led"></span>ON LINE</button>
           <button type="button" class="lp11-key" onclick="window.lp11TopOfForm && window.lp11TopOfForm()">TOP OF
             FORM</button>
           <button type="button" class="lp11-key" onclick="window.lp11PaperFeed && window.lp11PaperFeed()">PAPER

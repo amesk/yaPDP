@@ -1958,11 +1958,15 @@ body.crt-effects .vt52-crt::after {
     letter-spacing: 1px;
     text-transform: uppercase;
     color: #d8cfba;
-    margin-right: 6px;
+    /* Pin the name plate to the LEFT of the operator console; the auto margin
+       absorbs the free space so the LEDs and keys sit on the RIGHT. */
+    margin-right: auto;
     user-select: none;
 }
 
-/* Ready indicator — green LED, decorative */
+/* Ready indicator — green LED: steady while the printer is ready/idle and
+   blinking while a line is printing (the .busy class is toggled by the LP11
+   operator-panel ticker in src/iopage.js). */
 .lp11-led {
     display: inline-block;
     width: 8px;
@@ -1977,8 +1981,25 @@ body.crt-effects .vt52-crt::after {
     box-shadow: 0 0 6px #3f3, inset 0 1px 1px rgba(255, 255, 255, 0.5);
 }
 
+/* While a line prints, blink the READY LED to show the machine is busy. */
+.lp11-led-ready.busy {
+    background: #4c4;
+    box-shadow: 0 0 8px #4c4, inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    animation: lp11-ready-blink 0.4s steps(2, start) infinite;
+}
+
+@keyframes lp11-ready-blink {
+    to {
+        opacity: 0.2;
+    }
+}
+
 /* DEC-style operator keys */
 .lp11-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
     background: linear-gradient(180deg, #8f8672 0%, #6f6754 100%);
     color: #2a261e;
     border: 1px solid #4a4436;
@@ -1998,6 +2019,115 @@ body.crt-effects .vt52-crt::after {
 .lp11-key:active {
     background: linear-gradient(180deg, #6f6754 0%, #8f8672 100%);
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Top cover (hood) with a vent grille: a beige metal lid drawn with gradients
+   above the mechanics bay. The fanfold rises through the central dark paper
+   slot; the vent grilles run down either side of the slot. */
+.lp11-hood {
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 6px;
+    border: 1px solid #a89f88;
+    border-bottom-color: #8f876f;
+    border-radius: 6px 6px 2px 2px;
+    background: linear-gradient(180deg, #e8e2d4 0%, #d8d1c0 70%, #c9c1ac 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -3px 6px rgba(0, 0, 0, 0.12),
+        0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Vent grille: a row of short vertical slots drawn with a repeating gradient,
+   so no per-slot DOM is needed (mirrors .vt52-vents, taller for the LP11). */
+.lp11-vents {
+    flex: 1 1 0;
+    height: 22px;
+    background: repeating-linear-gradient(90deg,
+            transparent 0px,
+            transparent 5px,
+            #6f6754 5px,
+            #6f6754 7px);
+    box-shadow:
+        inset 0 1px 3px rgba(0, 0, 0, 0.35),
+        0 1px 0 rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+/* Paper slot in the hood through which the fanfold rises. The paper element is
+   later in the DOM, so it draws over this slot. Its backing is the same beige
+   as the surrounding hood (transparent — the hood shows through), and it
+   carries the DEC "digital" wordmark (dark letters, see .lp11-dec-letter). */
+.lp11-paper-slot {
+    flex: 0 0 100px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: transparent;
+    border-left: 1px solid #a89f88;
+    border-right: 1px solid #a89f88;
+}
+
+/* DEC "digital" wordmark letters in frames, echoing the front-panel .decLetter
+   block: each letter sits in its own dark frame, stamped dark on the beige
+   cover (matching the surrounding hood background). */
+.lp11-dec-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 9px;
+    height: 14px;
+    border: 1px solid #6b6350;
+    background: transparent;
+    color: #4a4436;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 8px;
+    font-weight: bold;
+    line-height: 1;
+    text-transform: uppercase;
+    user-select: none;
+}
+
+/* Amber ONLINE indicator — lit while the printer is on line; the .off modifier
+   dims it (operator pressed ON LINE → OFF LINE). */
+.lp11-led-online {
+    background: #fa0;
+    box-shadow: 0 0 6px #fa0, inset 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+/* Any indicator when its function is off (applies to the ONLINE LED). */
+.lp11-led.off {
+    background: #1a1a1a;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* ON LINE key: engaged (pressed) look while the printer is on line — the key
+   reads as pushed in, matching the lit ONLINE LED. */
+.lp11-key-online {
+    background: linear-gradient(180deg, #6f6754 0%, #8f8672 100%);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4),
+        0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* The amber ONLINE LED is built into the LEFT side of the ON LINE keycap
+   (a small lamp inside the key), so it must be smaller than the free-standing
+   READY LED and keep the key's text aligned. */
+.lp11-key-online .lp11-led {
+    width: 6px;
+    height: 6px;
+    margin: 0;
+    flex: none;
+}
+
+/* OFF LINE (key released): the key pops back out to the normal raised look,
+   and the ONLINE LED is dimmed (.lp11-led.off). */
+.lp11-key-online.off {
+    background: linear-gradient(180deg, #8f8672 0%, #6f6754 100%);
+    color: #2a261e;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* ===== Hidden sidebar buttons (toggled by the CONFIG page) ===== */

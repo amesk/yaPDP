@@ -840,19 +840,71 @@
    pdp11.css, so the same-specificity rules win the cascade.
    ================================================================== */
 #lp11_printer {
-    background: #26231d;
-    border: 1px solid #0f0e0c;
+    /* Beige mechanics bay in the DEC palette (like the cabinet body), with the
+       fanfold rising out of a dark slot at the top (see #lp11_printer::before). */
+    background: #d6cfbd;
+    border: 1px solid #a89f88;
     border-radius: 6px;
     /* visible (not hidden): the rising fanfold paper must be allowed to leave
        the bay through the top slot and climb above the cabinet. */
     overflow: visible;
     box-shadow:
-        inset 0 0 26px rgba(0, 0, 0, 0.85),
-        0 1px 0 rgba(255, 255, 255, 0.08);
+        inset 0 0 26px rgba(0, 0, 0, 0.30),
+        0 1px 0 rgba(255, 255, 255, 0.10);
 }
 
 #lp11_printer div#lp11g60printer {
-    background: linear-gradient(180deg, #2c2922 0%, #1f1d18 100%);
+    background: linear-gradient(180deg, #e0dac9 0%, #cfc7b2 100%);
+}
+
+/* Dark paper opening: a recessed slot right at the carriage, out of which the
+   fanfold climbs — the same "indentation" look as the Model 33 ASR punch slot
+   (.asr-slot in this file): a black rectangle with rounded corners and an
+   inset shadow. It sits BEHIND the paper (z-index 4 < 5), so the sheet never
+   disappears behind it while feeding, and is only as tall as the opening
+   itself — its bottom edge (bottom:60px) sits where the paper's bottom meets
+   the carriage, so the sheet visibly rises out of it instead of the whole bay
+   being dark. */
+#lp11_printer::before {
+    content: "";
+    position: absolute;
+    bottom: 60px;
+    left: 55px;
+    width: 1050px;
+    height: 16px;
+    background: #0a0a0a;
+    border: 1px solid #555;
+    border-radius: 2px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 4;
+    pointer-events: none;
+}
+
+/* Carriage observation window, exactly like the Model 33 ASR's glass window
+   (#g60printer::after): a translucent framed pane AROUND the fanfold right at
+   the carriage, so the sheet rises out of it. Drawn above the paper/slot
+   (z-index 7 > 5), but its background is translucent, so the paper and print
+   head stay visible through the pane. */
+#lp11_printer::after {
+    content: "";
+    position: absolute;
+    /* Frame the whole paper opening: slightly wider than the dark slot (which
+       runs left:55px → width:1050px) and with its bottom edge a little BELOW
+       the slot's bottom (bottom:60px), so the slot fits entirely inside it. */
+    left: 40px;
+    right: 40px;
+    bottom: 52px;
+    height: 44px;
+    border: 2px solid rgba(176, 168, 144, 0.55);
+    border-radius: 5px;
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.22) 0%,
+            rgba(255, 255, 255, 0.05) 45%,
+            rgba(140, 128, 104, 0.12) 100%);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.18),
+        0 1px 0 rgba(255, 255, 255, 0.5);
+    z-index: 7;
+    pointer-events: none;
 }
 
 #lp11_printer div#lp11g60printer_left,
@@ -909,6 +961,15 @@
 #lp11_printer div#lp11g60printer_topoverlay,
 #lp11_printer div#lp11g60paper_topshadow {
     display: none;
+}
+
+/* The rising fanfold and the moving print head must stay above the DEC hood
+   (.lp11-hood in css/pdp11.css): the hood is drawn in the cabinet BEFORE the
+   mechanics bay in the DOM, so give the paper/head an explicit z-index above
+   it — the paper visibly climbs out of the hood's central paper slot. */
+#lp11_printer div#lp11g60paper,
+#lp11_printer #lp11g60printheadarea {
+    z-index: 5;
 }
 
 /* ==================================================================

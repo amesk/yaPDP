@@ -1214,6 +1214,15 @@
         // backlog stops printing immediately and the operator regains control.
         this.flush = function() { flushCharBuffer(); };
 
+        // Report whether the printer is currently rendering output (a line is
+        // printing, or characters are still queued) vs idle. Used by the LP11
+        // operator panel to drive the READY LED: it blinks while busy.
+        this.isBusy = function() {
+            return !idle || (lines && lines.length > 0) ||
+                (textBuffer && textBuffer.length > 0) ||
+                (charBuffer && charBuffer.length > 0) || !!charPrintTimer;
+        };
+
         // Change the printable column count (72/80/100) and re-render the
         // paper. Invalid values are ignored.
         this.setMaxCols = function(n) {

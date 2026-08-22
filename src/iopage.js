@@ -1302,6 +1302,7 @@ iopage.register(0o17777510, 2, (function() {
     let lp11Buffer = [];       // completed lines
     let lp11CurrentLine = "";  // line being built
     let lp11Col = 0;           // cursor column within the current line (CR/BS)
+    let lp11Online = true;     // ON LINE operator state (false = OFF LINE)
     let tearAudio = null;      // lazily-loaded paper-tear sound (mp3)
     let feedAudio = null;      // lazily-loaded paper-feed (mechanical whirr) sound
 
@@ -1549,12 +1550,56 @@ iopage.register(0o17777510, 2, (function() {
         lp11Col = 0;
     }
 
+    // Pure toggle helper for the ON LINE operator key, kept DOM-free so it can
+    // be unit-tested (see tests/lp11-online.test.js).
+    function lp11OnlineToggle(current) {
+        return !current;
+    }
+
+    // ON LINE operator key: toggles whether the printer is on line. When OFF
+    // LINE the mechanism is disabled — characters written to LPDB are consumed
+    // (DONE stays set, so the OS never blocks) but not printed and not added to
+    // the plain-text job copy, exactly like an operator taking a real LP11 off
+    // line. The ONLINE LED and key reflect the state via the ".off" class.
+    function lp11OnLine() {
+        var wasOnline = lp11Online;
+        lp11Online = lp11OnlineToggle(lp11Online);
+        // Taking the printer OFF LINE while it is mid-print stops the current
+        // print cycle immediately — a real operator pulling the LP11 off line
+        // halts the paper/platen, it does not keep running the backlog.
+        if (wasOnline && !lp11Online && lp11Printer &&
+            typeof lp11Printer.stop === "function") {
+            lp11Printer.stop();
+        }
+        var led = document.getElementById("lp11-online-led");
+        if (led) led.classList.toggle("off", !lp11Online);
+        var key = document.getElementById("lp11-online-key");
+        if (key) key.classList.toggle("off", !lp11Online);
+    }
+
     window.lp11Print = lp11Print;
     window.lp11Save = lp11Save;
     window.lp11GetText = lp11GetText;
     window.lp11PaperFeed = lp11PaperFeed;
     window.lp11TopOfForm = lp11TopOfForm;
     window.lp11TearPaper = lp11TearPaper;
+    window.lp11OnLine = lp11OnLine;
+
+    // Drive the READY LED on the operator panel: lit (steady) while the printer
+    // is ready/idle and BLINKING while a line is printing (see
+    // .lp11-led-ready.busy in css/pdp11.css). The G60 renderer has no explicit
+    // "print started/stopped" event, so a short poll is the simplest reliable
+    // way to keep the LED in sync with the machine.
+    function lp11ReadyTick() {
+        var led = document.getElementById("lp11-ready-led");
+        if (!led) return;
+        var busy = !!(lp11Printer &&
+            typeof lp11Printer.isBusy === "function" && lp11Printer.isBusy());
+        if (led.classList.contains("busy") !== busy) {
+            led.classList.toggle("busy", busy);
+        }
+    }
+    setInterval(lp11ReadyTick, 120);
 
     // --- Device interface ---
     return {
@@ -1593,34 +1638,41 @@ iopage.register(0o17777510, 2, (function() {
                         ensureUI();
                         lpdb = result & 0x7F; // 7‑bit ASCII
 
-                        // Feed the characters the animated printer understands
-                        // into the G60 console adapter: backspace, TAB, LF, CR
-                        // (carriage return — nroff/man renders bold/underline via
-                        // "text\rtext" overstrike, not backspace) and printable
-                        // ASCII. Other control codes are dropped.
-                        var isBackspace = (lpdb === 0o10);
-                        var isTab = (lpdb === 0o11);
-                        var isLf = (lpdb === 0o12);
-                        var isFormFeed = (lpdb === 0o14);
-                        var isCr = (lpdb === 0o15);
-                        var isPrintable = (lpdb >= 0x20 && lpdb < 0x7F);
-                        if (lp11Console && (isBackspace || isTab || isLf || isCr || isPrintable || isFormFeed)) {
-                            lp11Console.writeChar(lpdb);
-                        }
+                        // When OFF LINE (operator pressed the ON LINE key) the
+                        // printer mechanism is disabled: the byte is consumed but
+                        // nothing prints and it does not reach the plain-text job
+                        // copy — exactly like a real LP11 taken off line. DONE
+                        // stays set, so the OS never blocks on an offline printer.
+                        if (lp11Online) {
+                            // Feed the characters the animated printer understands
+                            // into the G60 console adapter: backspace, TAB, LF, CR
+                            // (carriage return — nroff/man renders bold/underline via
+                            // "text\rtext" overstrike, not backspace) and printable
+                            // ASCII. Other control codes are dropped.
+                            var isBackspace = (lpdb === 0o10);
+                            var isTab = (lpdb === 0o11);
+                            var isLf = (lpdb === 0o12);
+                            var isFormFeed = (lpdb === 0o14);
+                            var isCr = (lpdb === 0o15);
+                            var isPrintable = (lpdb >= 0x20 && lpdb < 0x7F);
+                            if (lp11Console && (isBackspace || isTab || isLf || isCr || isPrintable || isFormFeed)) {
+                                lp11Console.writeChar(lpdb);
+                            }
 
-                        // Accumulate a plain-text copy for Print / Save .txt.
-                        // The pure lp11TextPut() state machine handles
-                        // BS/TAB/LF/CR/printable and form feed (FF, 0o14, sent
-                        // by 2.11BSD lpd between jobs → recorded as a "\f"
-                        // marker so the exported text keeps real page breaks).
-                        // `buffer` is shared by reference; the primitive
-                        // `line`/`col` come back via the returned state.
-                        var lp11TextState = lp11TextPut(
-                            { buffer: lp11Buffer, line: lp11CurrentLine, col: lp11Col },
-                            lpdb
-                        );
-                        lp11CurrentLine = lp11TextState.line;
-                        lp11Col = lp11TextState.col;
+                            // Accumulate a plain-text copy for Print / Save .txt.
+                            // The pure lp11TextPut() state machine handles
+                            // BS/TAB/LF/CR/printable and form feed (FF, 0o14, sent
+                            // by 2.11BSD lpd between jobs → recorded as a "\f"
+                            // marker so the exported text keeps real page breaks).
+                            // `buffer` is shared by reference; the primitive
+                            // `line`/`col` come back via the returned state.
+                            var lp11TextState = lp11TextPut(
+                                { buffer: lp11Buffer, line: lp11CurrentLine, col: lp11Col },
+                                lpdb
+                            );
+                            lp11CurrentLine = lp11TextState.line;
+                            lp11Col = lp11TextState.col;
+                        }
 
                         // Raise interrupt if IE set
                         if (lpcs & LP_LPCS_IE) {
