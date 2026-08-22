@@ -498,7 +498,9 @@
     line-height: 16px;
     color: #e8e4da;
     pointer-events: none;
-    font-family: 'Courier New', monospace;
+    /* Authentic ASR33 keycaps: the base glyph uses a bold sans-serif grotesk
+       (not the monospace Courier), matching the other legends on the caps. */
+    font-family: arial, helvetica, sans-serif;
 }
 
 /* Dark modifier keys carry longer multi-word labels (LINE/FEED, RE-/TURN,
