@@ -20,10 +20,13 @@
 #g60printer {
     position: relative;
     width: 940px;
-    height: 470px;
-    background-color: #2a2a2a;
+    height: 380px;
+    /* Light cream/beige ASR33 body instead of the dark Google60 machine. */
+    background-color: #ddd6c4;
     overflow: hidden;
-    border: 1px solid #444;
+    border: 1px solid #b3ab94;
+    border-radius: 12px 12px 4px 4px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.65);
     margin: 8px 0;
 }
 
@@ -32,16 +35,16 @@
     top: 0;
     left: 0;
     width: 940px;
-    height: 464px;
-    background-color: #6f323d;
-    background-image: url('../assets/images/printer_bg.gif');
-    background-repeat: repeat;
+    height: 374px;
+    background: linear-gradient(180deg, #ece6d6 0%, #dfd8c7 45%, #d0c9b5 100%);
+    /* Round the top corners to match the #g60printer body radius. */
+    border-radius: 12px 12px 0 0;
 }
 
 #g60printer #printheadarea {
     display: block;
     position: absolute;
-    top: 388px;
+    top: 298px;
     left: 67px;
     width: 807px;
     max-width: 807px;
@@ -64,13 +67,14 @@
 
 #g60printer div#printer_frontpannel {
     position: absolute;
-    top: 395px;
+    top: 305px;
     left: 67px;
     width: 807px;
     height: 69px;
-    background-image: url('../assets/images/printerskin.png');
-    background-repeat: repeat-x;
-    background-position: 0 -465px;
+    /* Light lower face plate (no Google60 bitmap skin). */
+    background: linear-gradient(180deg, #d6cfbc 0%, #beb6a1 100%);
+    border-top: 1px solid #a89f87;
+    border-radius: 0 0 8px 8px;
     z-index: 2;
 }
 
@@ -79,9 +83,11 @@
     top: 0;
     left: 0;
     width: 67px;
-    height: 464px;
-    background-image: url('../assets/images/printerskin.png');
-    background-repeat: no-repeat;
+    height: 374px;
+    background: linear-gradient(90deg, #c9c1ab 0%, #ddd6c4 100%);
+    border-right: 1px solid #b0a890;
+    /* Round the top-left corner to match the #g60printer body radius. */
+    border-radius: 12px 0 0 0;
 }
 
 #g60printer div#printer_right {
@@ -89,19 +95,66 @@
     top: 0;
     left: 874px;
     width: 66px;
-    height: 464px;
-    background-image: url('../assets/images/printerskin.png');
-    background-repeat: no-repeat;
-    background-position: -67px 0;
+    height: 374px;
+    background: linear-gradient(270deg, #c9c1ab 0%, #ddd6c4 100%);
+    border-left: 1px solid #b0a890;
+    /* Round the top-right corner to match the #g60printer body radius. */
+    border-radius: 0 12px 0 0;
 }
 
-@media screen and (-webkit-min-device-pixel-ratio:0) {
+/* Model 33 ASR paper roll, poking out of the top of the body. Drawn BEHIND
+   the rising sheet (z-index 0, below #paper's 1): while the paper is still low
+   the roll is visible as a dome above it, and as the sheet grows upward it
+   passes OVER the roll and closes over it — so the sheet is never interrupted
+   by the roll (a roll in front, z-index 4, would cut the sheet with a break). */
+#g60printer::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    margin-left: -160px;
+    top: -32px;
+    width: 320px;
+    height: 40px;
+    border-radius: 40px 40px 0 0;
+    background: linear-gradient(180deg, #f2ecdc 0%, #ded7c5 60%, #cfc8b5 100%);
+    border: 1px solid #b0a890;
+    border-bottom: none;
+    box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.18), 0 -2px 6px rgba(0, 0, 0, 0.15);
+    z-index: 0;
+    pointer-events: none;
+}
 
-    #g60printer div#printer_frontpannel,
-    #g60printer div#printer_left,
-    #g60printer div#printer_right {
-        background-image: url('../assets/images/printerskin_webkit.png');
-    }
+/* Carriage observation window: a real Model 33 ASR has a glass window through
+   which the operator sees the print head advance. A translucent pane sits right
+   above the carriage so the print head (z-index 3) stays visible underneath. */
+#g60printer::after {
+    content: "";
+    position: absolute;
+    left: 67px;
+    right: 67px;
+    bottom: 64px;
+    height: 44px;
+    border: 2px solid rgba(176, 168, 144, 0.55);
+    border-radius: 5px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.05) 45%, rgba(140, 128, 104, 0.12) 100%);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255, 255, 255, 0.5);
+    z-index: 6;
+    pointer-events: none;
+}
+
+/* Brand plate on the lower face plate, like the stamped Teletype nameplate. */
+#g60printer div#printer_frontpannel::after {
+    content: "MODEL 33 ASR";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b6350;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    pointer-events: none;
 }
 
 #g60printer div#paper {
@@ -320,21 +373,23 @@
 
 /* ==================================================================
    Model 33 ASR console keyboard — historical Teletype layout
-   Placed below the paper printer on the console page. Round two-tone
-   keys (light alphanumeric, dark modifiers) with two-line legends.
+   Placed below the paper printer on the console page. Round DARK
+   keycaps with light legends on a cream deck, as on a real Model 33.
    ================================================================== */
 
 #punchkeypane {
     position: relative;
     width: 940px;
     height: 240px;
-    background-color: #3a1018;
-    background-image: url('../assets/images/keyboardbg.jpg');
-    background-repeat: repeat-x;
+    /* Cream ASR33 deck (no dark keyboardbg.jpg texture). The deck sits
+       directly under the (now lowered) printer body — no gap between them. */
+    background: linear-gradient(180deg, #d9d2bf 0%, #cbc4ae 100%);
     margin: 0;
     padding: 0;
-    border: 1px solid #444;
+    border: 1px solid #b3ab94;
     border-top: none;
+    border-radius: 0 0 12px 12px;
+    box-shadow: inset 0 10px 16px rgba(0, 0, 0, 0.16);
 }
 
 #punchkeyboard {
@@ -353,20 +408,20 @@
     box-sizing: border-box;
     cursor: default;
     user-select: none;
-    /* Cylindrical key with a slightly concave dish on top. */
-    background: radial-gradient(circle at 50% 28%, #f2efe4 0%, #d9d4c4 42%, #b9b2a0 100%);
-    border: 1px solid #6b6557;
+    /* Cylindrical key with a slightly concave dish on top. All caps are
+       DARK plastic (like a real Model 33) with light printed legends. */
+    background: radial-gradient(circle at 50% 28%, #757a81 0%, #54595f 42%, #393d43 100%);
+    border: 1px solid #26292e;
     box-shadow:
-        inset 0 -3px 4px rgba(0, 0, 0, 0.35),
-        inset 0 3px 3px rgba(255, 255, 255, 0.7),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.4),
+        inset 0 3px 3px rgba(255, 255, 255, 0.14),
         0 2px 2px rgba(0, 0, 0, 0.45);
 }
 
-/* Dark modifier keys (CTRL, SHIFT, RETURN, LINE FEED, ESC, DELETE,
-   REPT, BREAK, HERE IS). */
+/* Modifier keys are the same dark plastic, just a touch deeper. */
 #punchkeyboard .m33-key.mod {
-    background: radial-gradient(circle at 50% 28%, #5f6b78 0%, #46505b 42%, #333b44 100%);
-    border-color: #222830;
+    background: radial-gradient(circle at 50% 28%, #5b6169 0%, #41464d 42%, #2b2f35 100%);
+    border-color: #1b1e22;
 }
 
 /* Pressed state: the keycap sinks into the deck. */
@@ -390,7 +445,7 @@
     font-size: 6px;
     font-weight: bold;
     line-height: 1;
-    color: #5a4a3a;
+    color: #d8dbe0;
     pointer-events: none;
     font-family: arial, helvetica, sans-serif;
     letter-spacing: 0.5px;
@@ -413,7 +468,7 @@
     font-size: 5px;
     font-weight: bold;
     line-height: 1;
-    color: #5a4a3a;
+    color: #d8dbe0;
     pointer-events: none;
     font-family: arial, helvetica, sans-serif;
 }
@@ -436,7 +491,7 @@
     font-size: 13px;
     font-weight: bold;
     line-height: 16px;
-    color: #3a3428;
+    color: #e8e4da;
     pointer-events: none;
     font-family: 'Courier New', monospace;
 }
@@ -473,11 +528,11 @@
     box-sizing: border-box;
     cursor: pointer;
     user-select: none;
-    background: radial-gradient(circle at 50% 28%, #f2efe4 0%, #d9d4c4 42%, #b9b2a0 100%);
-    border: 1px solid #6b6557;
+    background: radial-gradient(circle at 50% 28%, #757a81 0%, #54595f 42%, #393d43 100%);
+    border: 1px solid #26292e;
     box-shadow:
-        inset 0 -3px 4px rgba(0, 0, 0, 0.35),
-        inset 0 3px 3px rgba(255, 255, 255, 0.7),
+        inset 0 -3px 4px rgba(0, 0, 0, 0.4),
+        inset 0 3px 3px rgba(255, 255, 255, 0.14),
         0 2px 2px rgba(0, 0, 0, 0.45);
 }
 
@@ -924,13 +979,16 @@
     /* Cabinet: punch (left) and reader (right) side by side in one row;
        the punched tape hangs below the punch. Wide enough for the punch's
        ON/OFF/BSP/REL buttons. The cabinet's top is aligned with the top of
-       the keyboard block (printer 470px + its 2×8px margins), as on a real
+       the keyboard block (printer 380px + its 2×8px margins), as on a real
        ASR where the reader/punch sit at keyboard level. */
     width: 300px;
     height: 132px;
-    margin-top: 486px;
-    background-color: #2a2023;
-    border: 1px solid #444;
+    margin-top: 396px;
+    /* Cream ASR33 body, matching the printer + keyboard deck. */
+    background-color: #ddd6c4;
+    border: 1px solid #b3ab94;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
     overflow: visible;
     /* let the punched tape spill past the cabinet */
     align-self: flex-start;
@@ -945,21 +1003,29 @@
     display: flex;
     flex-direction: row;
     align-items: stretch;
+    /* Same gap between the punch and the reader as between the reader and
+       the teletype keyboard (see the 12px gap on #teletype-rig), so the
+       punch sits a little further LEFT of the reader. With flex:1 children
+       the gap is carved out of the 300px cabinet and the reader's right
+       edge stays put, keeping reader->keyboard spacing unchanged. */
+    gap: 12px;
 }
 
 /* Punch: on the left — same size as the reader (each half of the row). */
 #asr-punch {
     position: relative;
     flex: 1 1 0;
-    background: linear-gradient(180deg, #3a2b2f 0%, #241a1d 100%);
-    border-right: 1px solid #111;
+    background: linear-gradient(180deg, #e6e0d0 0%, #d3ccb8 100%);
+    border-right: 1px solid #a89f87;
+    border-radius: 8px 0 0 8px;
 }
 
 /* Reader: on the right — same size as the punch. */
 #asr-reader {
     position: relative;
     flex: 1 1 0;
-    background: linear-gradient(180deg, #45343a 0%, #2c2023 100%);
+    background: linear-gradient(180deg, #eae4d4 0%, #d3ccb8 100%);
+    border-radius: 0 8px 8px 0;
 }
 
 .asr-label {
@@ -972,8 +1038,8 @@
     font-size: 10px;
     font-weight: bold;
     letter-spacing: 2px;
-    color: #c9bfa8;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    color: #5c5442;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .asr-slot {
@@ -1104,7 +1170,7 @@
     background: transparent;
     border: 0;
     padding: 0;
-    color: #c9bfa8;
+    color: #5c5442;
     font-family: arial, helvetica, sans-serif;
     font-size: 7px;
     font-weight: bold;
@@ -1267,9 +1333,10 @@
 }
 
 .tty-btn {
-    background: linear-gradient(180deg, #5a4a30, #3a3528);
-    color: #f0e6c8;
-    border: 1px solid #c8a860;
+    /* Cream operator buttons to match the light ASR33 body. */
+    background: linear-gradient(180deg, #e6e0cf 0%, #cfc8b4 100%);
+    color: #4a4434;
+    border: 1px solid #a89f87;
     border-radius: 4px;
     padding: 6px 16px;
     font-size: 12px;
@@ -1279,7 +1346,7 @@
 }
 
 .tty-btn:hover {
-    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+    background: linear-gradient(180deg, #efe9d8 0%, #d9d2bf 100%);
 }
 
 .tty-sep {
@@ -1306,10 +1373,10 @@
     bottom: 10px;
     width: 118px;
     height: 66px;
-    background: linear-gradient(180deg, #3a3a3e 0%, #2a2a2d 100%);
-    border: 1px solid #4c4c50;
+    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
+    border: 1px solid #b3ab94;
     border-radius: 4px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 3px rgba(0, 0, 0, 0.35);
     z-index: 2;
 }
 
@@ -1375,7 +1442,7 @@
     background: transparent;
     border: 0;
     padding: 0;
-    color: #c9bfa8;
+    color: #5c5442;
     font-family: arial, helvetica, sans-serif;
     font-size: 7px;
     font-weight: bold;
@@ -1403,6 +1470,6 @@
 }
 
 .ccu-switch-pos.active {
-    color: #ffe9a8;
-    text-shadow: 0 0 4px rgba(255, 233, 168, 0.5);
+    color: #7a5a20;
+    text-shadow: 0 0 4px rgba(122, 90, 32, 0.5);
 }
