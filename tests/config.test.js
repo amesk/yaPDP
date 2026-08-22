@@ -10,7 +10,9 @@
  *   consoleType (teletype/vt52), userTerminals (0-2), printer (bool),
  *   vt11 (bool, VT11 graphics display), printWidth (72/80, Model 33 ASR
  *   teletype), printerWidth (72/80/100/132, LP11),
- *   teletypeSpeed (authentic/fast), keyClick (bool),
+ *   teletypeSpeed (authentic/fast),
+ *   upperCaseOnly (bool, physical-keyboard upper-case normalisation),
+ *   keyClick (bool),
  *   vt52ReverseVideo (bool, historical VT52 reverse-video mode),
  *   crtEffects (bool, pure-CSS CRT flicker/roll simulation),
  *   hum (bool, ambient power-supply hum), mute (bool, global all-sounds
@@ -70,6 +72,7 @@ function run() {
             printWidth: 72,
             printerWidth: 132,
             teletypeSpeed: "authentic",
+            upperCaseOnly: false,
             keyClick: false,
             vt52ReverseVideo: false,
             vt52TextMode: false,
@@ -131,6 +134,10 @@ function run() {
         assert.strictEqual(C.validate({ vt11: 0 }).vt11, false);
         assert.strictEqual(C.validate({ keyClick: 1 }).keyClick, true);
         assert.strictEqual(C.validate({ keyClick: 0 }).keyClick, false);
+        // upperCaseOnly (physical keyboard upper-case normalisation) coerced.
+        assert.strictEqual(C.validate({}).upperCaseOnly, false);
+        assert.strictEqual(C.validate({ upperCaseOnly: 1 }).upperCaseOnly, true);
+        assert.strictEqual(C.validate({ upperCaseOnly: 0 }).upperCaseOnly, false);
         // vt52ReverseVideo (historical VT52 reverse video) coerced to boolean.
         assert.strictEqual(C.validate({ vt52ReverseVideo: 1 }).vt52ReverseVideo, true);
         assert.strictEqual(C.validate({ vt52ReverseVideo: 0 }).vt52ReverseVideo, false);
@@ -184,6 +191,7 @@ function run() {
             printWidth: 80,
             printerWidth: 80,
             teletypeSpeed: "fast",
+            upperCaseOnly: true,
             keyClick: true,
             vt52ReverseVideo: true,
             vt52TextMode: true,

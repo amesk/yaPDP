@@ -852,6 +852,11 @@ function dl11(vt52Unit, deviceVector) {
     // --- RCSR (Receive Control/Status) bits ---
     const DL_RCSR_DONE = 0x80; // Receive done
     const DL_RCSR_IE = 0x40; // Receive interrupt enable
+    // Emulated break-detected bit. The console model keeps DONE at bit 7 of
+    // the low byte (as its byte-oriented guest drivers expect); the real
+    // DL11-A has DONE at bit 15 and BREAK at bit 7, so here the break flag
+    // occupies a free low-byte bit (0x20) to avoid colliding with DONE/IE.
+    const DL_RCSR_BREAK = 0x20; // Break detected (emulated, console only)
 
     // --- XCSR (Transmit Control/Status) bits ---
     const DL_XCSR_DONE = 0x80; // Transmit done
@@ -915,11 +920,32 @@ function dl11(vt52Unit, deviceVector) {
         dlPump(unit);
     }
 
+    // --- Operator BREAK handling (console teletype only) ---
+    // The Model 33 ASR BREAK key opens the 20 mA loop for >150 ms; the DL11
+    // detects the resulting "break" condition. Model it as a break flag in
+    // the console RCSR, a receive interrupt at the console vector (060) when
+    // receive interrupts are enabled, and a flush of any runaway teletype
+    // output so the break is immediately visible even if the guest OS
+    // ignores the break bit.
+    function dlConsoleBreak() {
+        rcsr |= DL_RCSR_BREAK;
+        if (rcsr & DL_RCSR_IE) {
+            iMask |= DL_IMASK_RECEIVE;
+            requestInterrupt();
+        }
+        if (typeof flushG60Console === 'function') {
+            flushG60Console();
+        }
+        // Clear the break flag after the ~150 ms loop-open duration.
+        setTimeout(() => { rcsr &= ~DL_RCSR_BREAK; }, 150);
+    }
+
     // Expose globally for the visual punch-keyboard (and inline handlers)
     // Unit 0 → global dlReceiveQueue (console)
     // Unit N → global dlReceiveQueueN (VT52 user terminals)
     if (unit === 0) {
         window.dlReceiveQueue = dlReceiveQueue;
+        window.dlConsoleBreak = dlConsoleBreak;
     } else {
         window["dlReceiveQueue" + unit] = dlReceiveQueue;
     }

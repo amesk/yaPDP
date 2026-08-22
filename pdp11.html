@@ -895,6 +895,18 @@
               </div>
             </div>
 
+            <!-- Teletype-only field: hidden when the console terminal is a
+                 VT52 (see .config-field.config-hidden). -->
+            <div class="config-field" id="config-field-upperCaseOnly">
+              <span class="config-label">Upper Case Only</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-upperCaseOnly"> Send letters from the physical keyboard in
+                  upper case (authentic Model 33 ASR)</label>
+                <span class="config-hint">A real Model 33 ASR only prints upper case. Off by default
+                  so lower case passes through (e.g. 2.11 BSD). Applied immediately.</span>
+              </div>
+            </div>
+
             <div class="config-field">
               <span class="config-label">User terminals</span>
               <div class="config-control">

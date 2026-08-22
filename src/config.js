@@ -17,6 +17,10 @@
  *   - teletypeSpeed: console teletype echo speed, 'authentic' (real Model 33 ASR,
  *                    110 baud = 10 chars/sec) or 'fast' (accelerated dev pace,
  *                    ~33 chars/sec). Applied live, no reboot needed.
+ *   - upperCaseOnly: force the physical keyboard to send letters in upper case
+ *                    (0x41-0x5A), matching the Upper-Case-Only Model 33 ASR.
+ *                    Off by default so lower-case passes through (e.g. 2.11 BSD,
+ *                    which needs lower-case file names). Applied live, no reboot.
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
  *   - hum:           ambient PDP-11 power-supply hum + fan noise while the
@@ -61,6 +65,7 @@ var Config = (function () {
         printWidth: 72,          // 72 | 80 (console teletype, Model 33 ASR)
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
+        upperCaseOnly: false,    // boolean (physical keyboard upper-case only)
         keyClick: false,         // boolean (VT52 key click)
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
         vt52TextMode: false,     // boolean (VT52 plain <textarea> instead of canvas)
@@ -121,6 +126,7 @@ var Config = (function () {
             printerWidth: normalizePrintWidth(o.printerWidth, DEFAULTS.printerWidth),
             // Absent/garbage falls back to 'authentic' (the real Model 33 ASR speed).
             teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
+            upperCaseOnly: Boolean(o.upperCaseOnly),
             keyClick: Boolean(o.keyClick),
             vt52ReverseVideo: Boolean(o.vt52ReverseVideo),
             // Absent key falls back to the default (keeps the authentic canvas

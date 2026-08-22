@@ -319,10 +319,9 @@
 }
 
 /* ==================================================================
-   Google60-style punch keyboard for PDP-11 terminal input
-   Placed below the line printer in the terminal page.
-   Sprite-based 3D keys (keys.png + keyfaces.png) matching the
-   original Google60 keypunch keyboard.
+   Model 33 ASR console keyboard — historical Teletype layout
+   Placed below the paper printer on the console page. Round two-tone
+   keys (light alphanumeric, dark modifiers) with two-line legends.
    ================================================================== */
 
 #punchkeypane {
@@ -344,100 +343,120 @@
     left: 180px;
 }
 
-/* ---- Sprite-based keys (Google60 style) ---- */
+/* ---- Round keycaps (diameter 36px, pitch 40px) ---- */
 
-#punchkeyboard .key {
+#punchkeyboard .m33-key {
     position: absolute;
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    box-sizing: border-box;
     cursor: default;
+    user-select: none;
+    /* Cylindrical key with a slightly concave dish on top. */
+    background: radial-gradient(circle at 50% 28%, #f2efe4 0%, #d9d4c4 42%, #b9b2a0 100%);
+    border: 1px solid #6b6557;
+    box-shadow:
+        inset 0 -3px 4px rgba(0, 0, 0, 0.35),
+        inset 0 3px 3px rgba(255, 255, 255, 0.7),
+        0 2px 2px rgba(0, 0, 0, 0.45);
 }
 
-/* Key 3D background sprite (keys.png) */
-#punchkeyboard .key .keybg {
-    position: absolute;
-    width: 45px;
-    height: 58px;
-    left: -4px;
-    top: -12px;
-    background-image: url('../assets/images/keys.png');
-    background-repeat: no-repeat;
-    background-position: 0 0;
+/* Dark modifier keys (CTRL, SHIFT, RETURN, LINE FEED, ESC, DELETE,
+   REPT, BREAK, HERE IS). */
+#punchkeyboard .m33-key.mod {
+    background: radial-gradient(circle at 50% 28%, #5f6b78 0%, #46505b 42%, #333b44 100%);
+    border-color: #222830;
 }
 
-/* Key face character sprite (keyfaces.png) */
-#punchkeyboard .key .keyface {
+/* Pressed state: the keycap sinks into the deck. */
+#punchkeyboard .m33-key.down {
+    transform: translateY(2px);
+    box-shadow:
+        inset 0 -2px 3px rgba(0, 0, 0, 0.35),
+        inset 0 2px 2px rgba(255, 255, 255, 0.5),
+        0 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+/* Two-line legend: the small top label is the CTRL-code name (letters)
+   or the shift symbol (digit row / shifted keys); the base glyph is drawn
+   LOW on the cap, as on a real Model 33. */
+#punchkeyboard .m33-key .m33-top {
     position: absolute;
-    top: 0;
+    top: 6px;
     left: 0;
-    width: 37px;
-    height: 35px;
-    z-index: 2;
-    background-image: url('../assets/images/keyfaces.png');
-    background-repeat: no-repeat;
-    pointer-events: none;
-}
-
-/* Pressed state: shift keybg sprite down, keyface shifts down */
-#punchkeyboard .key:active .keybg,
-#punchkeyboard .key.key_down .keybg {
-    background-position: 0 -59px !important;
-}
-
-#punchkeyboard .key:active .keyface,
-#punchkeyboard .key.key_down .keyface {
-    top: 4px;
-}
-
-/* Ctrl label pressed state: shift down 4px to follow the 3D body */
-#punchkeyboard .key:active .keylabel_ctrl,
-#punchkeyboard .key.key_down .keylabel_ctrl {
-    top: 8px;
-}
-
-/* ---- Ctrl key (text label over sprite body) ---- */
-#punchkeyboard .key .keylabel_ctrl {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    width: 30px;
-    height: 30px;
-    font-size: 9px;
-    font-weight: bold;
-    font-family: arial, helvetica, sans-serif;
-    color: #e0d8c8;
-    line-height: 30px;
+    width: 36px;
     text-align: center;
-    z-index: 2;
+    font-size: 6px;
+    font-weight: bold;
+    line-height: 1;
+    color: #5a4a3a;
     pointer-events: none;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    font-family: arial, helvetica, sans-serif;
     letter-spacing: 0.5px;
 }
 
-/* ---- Space bar (sprite-based) ---- */
-
-#punchkeyboard .key_blank {
-    position: absolute;
-    width: 187px;
-    height: 35px;
-    cursor: pointer;
+#punchkeyboard .m33-key.mod .m33-top {
+    color: #c8cdd2;
 }
 
-#punchkeyboard .key_blank .key_blank_bg {
+#punchkeyboard .m33-key .m33-center {
     position: absolute;
-    width: 195px;
-    height: 58px;
-    left: -4px;
-    top: -12px;
-    background-image: url('../assets/images/keys.png');
-    background-repeat: no-repeat;
-    background-position: -46px 0;
+    bottom: 3px;
+    left: 0;
+    width: 36px;
+    height: 16px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 16px;
+    color: #3a3428;
     pointer-events: none;
+    font-family: 'Courier New', monospace;
 }
 
-#punchkeyboard .key_blank:active .key_blank_bg,
-#punchkeyboard .key_blank_down .key_blank_bg {
-    background-position: -46px -59px !important;
+/* Dark modifier keys carry longer multi-word labels (LINE/FEED, RE-/TURN,
+   DE-/LETE, HERE/IS, ...): render them smaller, respect the explicit line
+   break baked into the label, and centre the block within the whole keycap
+   (they have no small top legend, so nothing sits above to offset). */
+#punchkeyboard .m33-key.mod .m33-center {
+    color: #e8e4da;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 7px;
+    line-height: 1.15;
+    top: 0;
+    bottom: auto;
+    height: 36px;
+    box-sizing: border-box;
+    padding: 0 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: pre-line;
+}
+
+/* ---- Space bar: long horizontal bar under the bottom row ---- */
+
+#punchkeyboard .m33-space {
+    position: absolute;
+    /* As tall as the other keys (36px) and spanning the bottom row from
+       the V key to the comma key (196px wide). */
+    width: 196px;
+    height: 36px;
+    border-radius: 18px;
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+    background: radial-gradient(circle at 50% 28%, #f2efe4 0%, #d9d4c4 42%, #b9b2a0 100%);
+    border: 1px solid #6b6557;
+    box-shadow:
+        inset 0 -3px 4px rgba(0, 0, 0, 0.35),
+        inset 0 3px 3px rgba(255, 255, 255, 0.7),
+        0 2px 2px rgba(0, 0, 0, 0.45);
+}
+
+#punchkeyboard .m33-space.down {
+    transform: translateY(2px);
 }
 
 /* ==================================================================

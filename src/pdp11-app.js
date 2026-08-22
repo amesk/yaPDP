@@ -125,243 +125,301 @@ function initG60Printer() {
 }
 
 // ==================================================================
-// Google60-style punch-keyboard for PDP-11 terminal input
+// Model 33 ASR console keyboard — historical Teletype layout
 // ==================================================================
-// Renders a keypunch-style keyboard using sprite-based 3D keys
-// (keys.png / keyfaces.png) matching the original Google60 keypunch.
+// Renders the authentic Model 33 ASR keyboard: round two-tone keys
+// (light alphanumeric, dark modifiers) with two-line legends — the
+// base glyph in the centre and the CTRL-code name or shift symbol
+// above it. Upper Case Only: the keycaps carry only upper-case glyphs
+// (0x41-0x5A). The on-screen keyboard always sends upper case; the
+// PHYSICAL keyboard normalizes letters to upper case only when
+// Config.upperCaseOnly is set (off by default so 2.11 BSD receives
+// lower case).
 // ==================================================================
+
+// Pure DOM-free helpers (unit-testable in Node, see
+// tests/model33-keyboard.test.js).
+
+// Fold a lower-case letter (a-z) to upper case when upperCaseOnly is
+// on; otherwise pass the character code through unchanged. Used by the
+// physical keyboard handler so a Model 33 console behaves like the
+// Upper-Case-Only hardware only when the operator asks for it.
+function model33UpperOnly(ch, upperCaseOnly) {
+  if (upperCaseOnly && ch >= 0x61 && ch <= 0x7A) return ch - 0x20;
+  return ch;
+}
+
+// Map a Model 33 key definition plus the current modifier state to the
+// byte it produces. `def` carries: code (base byte), shiftCode,
+// ctrlCode and `special` (esc|lf|cr|del|space|hereis|break|rept|ctrl|
+// shift) for keys that do not map through modifiers. `state` is
+// { shifted, ctrl }. Returns the byte to transmit, or the special key
+// token for modifier/mechanical keys the caller must handle itself.
+function model33KeyCode(def, state) {
+  if (!def) return null;
+  if (def.special) return def.special;
+  var shifted = state && state.shifted;
+  var ctrl = state && state.ctrl;
+  if (ctrl && def.ctrlCode != null) return def.ctrlCode;
+  if (shifted && def.shiftCode != null) return def.shiftCode;
+  return def.code;
+}
+
+// ---- Key definition helpers ---------------------------------------
+// letter: upper-case glyph with a small CTRL-code name printed at the top
+// of the cap and the letter itself drawn low (as on a real Model 33). A
+// hover tooltip repeats the CTRL function together with its hex code.
+function m33Letter(label, ctrlName, ctrlCode) {
+  return { label: label, code: label.charCodeAt(0), top: ctrlName,
+    ctrlCode: ctrlCode, cls: 'alpha',
+    title: 'CTRL ' + ctrlName + ' (0x' + ctrlCode.toString(16).toUpperCase() + ')' };
+}
+// shifted: key whose SHIFT variant shows a symbol (digit row, N, M, ...).
+function m33Shifted(label, shiftLabel, shiftCode) {
+  return { label: label, code: label.charCodeAt(0), top: shiftLabel,
+    shiftCode: shiftCode, cls: 'alpha' };
+}
+// plain: ordinary key without a top legend.
+function m33Plain(label, cls) {
+  return { label: label, code: label.charCodeAt(0), cls: cls || 'alpha' };
+}
+// special: dark modifier/function key (ESC, RETURN, CTRL, BREAK, ...).
+function m33Special(label, special, code, cls) {
+  return { label: label, special: special, code: code, cls: cls || 'mod' };
+}
+
+// ---- Layout (staggered rows; key pitch 40px, diameter 36px) -------
+var MODEL33_KEYS = [
+  { top: 0, left: 0, keys: [
+    m33Shifted('1', '!', 0x21), m33Shifted('2', '"', 0x22),
+    m33Shifted('3', '#', 0x23), m33Shifted('4', '$', 0x24),
+    m33Shifted('5', '%', 0x25), m33Shifted('6', '&', 0x26),
+    m33Shifted('7', "'", 0x27), m33Shifted('8', '(', 0x28),
+    m33Shifted('9', ')', 0x29), m33Plain('0'),
+    m33Shifted(':', '*', 0x2A), m33Shifted('-', '=', 0x3D),
+    m33Special('HERE\nIS', 'hereis', null)
+  ]},
+  { top: 44, left: 20, keys: [
+    m33Special('ESC', 'esc', 0x1B),
+    m33Letter('Q', 'DC1', 0x11), m33Letter('W', 'ETB', 0x17),
+    m33Letter('E', 'ENQ', 0x05), m33Letter('R', 'DC2', 0x12),
+    m33Letter('T', 'DC4', 0x14), m33Letter('Y', 'EM', 0x19),
+    m33Letter('U', 'NAK', 0x15), m33Letter('I', 'HT', 0x09),
+    m33Letter('O', 'SI', 0x0F), m33Letter('P', 'DLE', 0x10),
+    m33Special('LINE\nFEED', 'lf', 0x0A),
+    m33Special('RE-\nTURN', 'cr', 0x0D)
+  ]},
+  { top: 88, left: 20, keys: [
+    m33Special('CTRL', 'ctrl', null),
+    m33Letter('A', 'SOH', 0x01), m33Letter('S', 'DC3', 0x13),
+    m33Letter('D', 'EOT', 0x04), m33Letter('F', 'ACK', 0x06),
+    m33Letter('G', 'BELL', 0x07), m33Letter('H', 'BS', 0x08),
+    m33Letter('J', 'LF', 0x0A), m33Letter('K', 'VT', 0x0B),
+    m33Letter('L', 'FF', 0x0C),
+    m33Shifted(';', '+', 0x2B),
+    m33Special('DE-\nLETE', 'del', 0x7F),
+    m33Special('REPT', 'rept', null),
+    m33Special('BREAK', 'break', null)
+  ]},
+  { top: 132, left: 0, keys: [
+    m33Special('SHIFT', 'shift', null),
+    m33Letter('Z', 'SUB', 0x1A), m33Letter('X', 'CAN', 0x18),
+    m33Letter('C', 'ETX', 0x03), m33Letter('V', 'SYN', 0x16),
+    m33Letter('B', 'STX', 0x02),
+    m33Shifted('N', '^', 0x5E), m33Shifted('M', ']', 0x5D),
+    m33Shifted(',', '<', 0x3C), m33Shifted('.', '>', 0x3E),
+    m33Shifted('/', '?', 0x3F),
+    m33Special('SHIFT', 'shift', null)
+  ]},
+  // The space bar is as tall as the other keys and spans the bottom row
+  // from the V key (x=160) to the comma key (right edge x=356).
+  { top: 176, left: 160, keys: [
+    { space: true, special: 'space', code: 0x20 }
+  ]}
+];
+
+// HERE IS (answerback drum): CR LF ACK <station id> CR LF, up to 20
+// characters. The station id is a constant by default.
+var MODEL33_ANSWERBACK = [13, 10, 6]; // CR LF ACK
+(function () {
+  var id = 'PDP-11/70';
+  for (var i = 0; i < id.length; i++) MODEL33_ANSWERBACK.push(id.charCodeAt(i));
+  MODEL33_ANSWERBACK.push(13, 10); // CR LF
+})();
 
 var g60Keyboard = (function () {
   'use strict';
 
-  // Row definitions: { top, left, keys[] }
-  // key = [label, shiftLabel] or {label, code, shift, space}
-  var keyRows = [
-    {
-      top: 4, left: 0, keys: [
-        ['1', '!'], ['2', '"'], ['3', '#'], ['4', '$'], ['5', '%'],
-        ['6', '&'], ['7', '\''], ['8', '('], ['9', ')'], ['0'],
-        [':', '*'], ['-', '=']
-      ]
-    },
-    {
-      top: 44, left: 20, keys: [
-        { label: 'CTRL', cls: 'func', ctrl: true },
-        null,
-        ['Q'], ['W'], ['E'], ['R'], ['T'], ['Y'],
-        ['U'], ['I', '_'], ['O', '_'], ['P', '@'],
-        null, { label: 'DISCARD', code: 8, cls: 'func' }
-      ]
-    },
-    {
-      top: 84, left: 40, keys: [
-        ['A'], ['S'], ['D'], ['F'], ['G'], ['H'],
-        ['J'], ['K', '['], ['L', '\\'], [';', '+'],
-        null, { label: 'RETURN', code: 13, cls: 'func' }
-      ]
-    },
-    {
-      top: 124, left: 2, keys: [
-        { label: 'PICS', shift: true, cls: 'shift' }, null,
-        ['Z'], ['X'], ['C'], ['V'], ['B'],
-        ['N', '^'], ['M', ']'], [',', '<'], ['.', '>'], ['/', '?'],
-        null, { label: 'PICS', shift: true, cls: 'shift' }
-      ]
-    },
-    {
-      top: 172, left: 221, keys: [
-        { label: '', code: 32, space: true }
-      ]
-    }
-  ];
+  // Key geometry: pitch 40px, visible diameter 36px (the layout data lives
+  // in MODEL33_KEYS above; positions are absolute within #punchkeyboard).
+  var KEY_W = 40;
 
   var shifted = false;
   var ctrlHeld = false;
+  var reptHeld = false;
+  var repeatTimer = null;
 
   function buildKeyboard() {
     var kbd = document.getElementById('punchkeyboard');
     if (!kbd) return;
     kbd.innerHTML = '';
 
-    for (var ri = 0; ri < keyRows.length; ri++) {
-      var row = keyRows[ri];
-      var keys = row.keys;
-      // Sprite row index for keyfaces.png: bgy = ri * 35
-      var bgy = ri * 35;
-      var bgx = 0;
+    for (var ri = 0; ri < MODEL33_KEYS.length; ri++) {
+      var row = MODEL33_KEYS[ri];
+      for (var ci = 0; ci < row.keys.length; ci++) {
+        var def = row.keys[ci];
+        var x = row.left + ci * KEY_W;
 
-      // x starts at row.left, decrements by 44 per null spacer
-      // position = x + ci*50
-      var x = row.left;
-
-      for (var ci = 0; ci < keys.length; ci++) {
-        var def = keys[ci];
-        if (!def) { x -= 44; continue; }
-
-        var pos = x + ci * 50;
-
-        if (def.space === true) {
-          // ---- Space bar (sprite-based) ----
-          var el = document.createElement('div');
-          el.className = 'key_blank';
-          var bg = document.createElement('div');
-          bg.className = 'key_blank_bg';
-          el.appendChild(bg);
-          el.style.left = pos + 'px';
-          el.style.top = row.top + 'px';
-          el._code = 32;
-
-          el.addEventListener('mousedown', function (e) {
-            e.preventDefault();
-            this.classList.add('key_blank_down');
-          });
-          el.addEventListener('mouseup', function (e) {
-            e.preventDefault();
-            if (!this.classList.contains('key_blank_down')) return;
-            this.classList.remove('key_blank_down');
-            sendChar(this._code);
-          });
-          el.addEventListener('mouseleave', function (e) {
-            if (this.classList.contains('key_blank_down')) {
-              this.classList.remove('key_blank_down');
-            }
-          });
-
-          kbd.appendChild(el);
-          bgx += 37;
-          continue;
-        }
-
-        if (def.ctrl === true) {
-          // ---- CTRL key: text label over sprite body (no keyface) ----
-          var el = document.createElement('div');
-          el.className = 'key';
-          var bg = document.createElement('div');
-          bg.className = 'keybg';
-          el.appendChild(bg);
-          var label = document.createElement('span');
-          label.className = 'keylabel_ctrl';
-          label.textContent = def.label;
-          el.appendChild(label);
-          el.style.left = pos + 'px';
-          el.style.top = row.top + 'px';
-          el._ctrl = true;
-          el.id = 'key_ctrl';
-
-          el.addEventListener('mousedown', function (e) {
-            e.preventDefault();
-            ctrlHeld = !ctrlHeld;
-            updateCtrlVisual();
-          });
-
-          kbd.appendChild(el);
-          // Do NOT increment bgx — keep sprite positions aligned for subsequent keys
-          continue;
-        }
-
-        if (def.shift === true) {
-          // ---- PICS (shift) key: sprite-based (keybg + keyface) ----
-          var el = document.createElement('div');
-          el.className = 'key';
-          var bg = document.createElement('div');
-          bg.className = 'keybg';
-          el.appendChild(bg);
-          var face = document.createElement('div');
-          face.className = 'keyface';
-          face.style.backgroundPosition = '-' + bgx + 'px -' + bgy + 'px';
-          el.appendChild(face);
-          el.style.left = pos + 'px';
-          el.style.top = row.top + 'px';
-          el._shift = true;
-          el.id = (ri === 3 && ci === 0) ? 'key_shift_1' : 'key_shift_2';
-
-          el.addEventListener('mousedown', function (e) {
-            e.preventDefault();
-            shifted = !shifted;
-            updateShiftVisual();
-          });
-
-          kbd.appendChild(el);
-          bgx += 37;
-          continue;
-        }
-
-        // ---- Regular key (character or function): keybg + keyface sprites ----
         var el = document.createElement('div');
-        el.className = 'key';
-        // 3D key body from keys.png sprite
-        var bg = document.createElement('div');
-        bg.className = 'keybg';
-        el.appendChild(bg);
-        // Character face from keyfaces.png sprite
-        var face = document.createElement('div');
-        face.className = 'keyface';
-        face.style.backgroundPosition = '-' + bgx + 'px -' + bgy + 'px';
-        el.appendChild(face);
-        el.style.left = pos + 'px';
+        el._def = def;
+        el.style.left = x + 'px';
         el.style.top = row.top + 'px';
 
-        // Set character codes
-        if (Array.isArray(def)) {
-          el._code = def[0].charCodeAt(0);
-          el._shiftCode = def[1] ? def[1].charCodeAt(0) : el._code;
-          el._shiftLabel = def[1] || null;
-        } else if (typeof def.code === 'number') {
-          el._code = def.code;
-          el._shiftCode = def.code;
-          el._shiftLabel = null;
+        if (def.space) {
+          el.className = 'm33-space';
+        } else {
+          el.className = 'm33-key ' + (def.cls === 'alpha' ? 'alpha' : 'mod');
+          if (def.title) el.title = def.title;
+          if (def.label) {
+            if (def.top) {
+              var top = document.createElement('span');
+              top.className = 'm33-top';
+              top.textContent = def.top;
+              el.appendChild(top);
+            }
+            var center = document.createElement('span');
+            center.className = 'm33-center';
+            center.textContent = def.label;
+            el.appendChild(center);
+          }
         }
 
         el.addEventListener('mousedown', function (e) {
           e.preventDefault();
-          this.classList.add('key_down');
+          this.classList.add('down');
         });
-
         el.addEventListener('mouseup', function (e) {
           e.preventDefault();
-          if (!this.classList.contains('key_down')) return;
-          this.classList.remove('key_down');
-          var send = (shifted && this._shiftCode) ? this._shiftCode : this._code;
-          if (ctrlHeld) {
-            send = send & 0x1F;        // Ctrl clears bits 6 and 7
-            ctrlHeld = false;
-            updateCtrlVisual();
-          }
-          sendChar(send);
-          if (shifted && this._shiftLabel) {
-            shifted = false;
-            updateShiftVisual();
-          }
+          if (!this.classList.contains('down')) return;
+          this.classList.remove('down');
+          activateKey(this._def);
         });
-
         el.addEventListener('mouseleave', function (e) {
-          if (this.classList.contains('key_down')) {
-            this.classList.remove('key_down');
-          }
+          if (this.classList.contains('down')) this.classList.remove('down');
         });
 
         kbd.appendChild(el);
-        bgx += 37;
       }
     }
   }
 
-  function updateShiftVisual() {
-    // Shift keys use key_down class to shift sprite to pressed position
-    var el1 = document.getElementById('key_shift_1');
-    var el2 = document.getElementById('key_shift_2');
-    if (el1) el1.className = 'key' + (shifted ? ' key_down' : '');
-    if (el2) el2.className = 'key' + (shifted ? ' key_down' : '');
+  // Send the byte a key produces, honouring the modifier latch state and
+  // the REPT auto-repeat. `def.special` keys (ctrl/shift/rept/break/hereis/
+  // esc/lf/cr/del/space) are dispatched here.
+  function activateKey(def) {
+    if (!def) return;
+    if (def.special) {
+      switch (def.special) {
+        case 'ctrl':
+          ctrlHeld = !ctrlHeld;
+          if (!ctrlHeld) stopRepeat();
+          updateMods();
+          return;
+        case 'shift':
+          shifted = !shifted;
+          if (!shifted) stopRepeat();
+          updateMods();
+          return;
+        case 'rept':
+          reptHeld = !reptHeld;
+          if (!reptHeld) stopRepeat();
+          updateMods();
+          return;
+        case 'break':
+          sendBreak();
+          return;
+        case 'hereis':
+          sendHereIs();
+          return;
+        case 'space':
+          if (reptHeld) startRepeat(def.code); else sendChar(def.code);
+          return;
+        default: // esc / lf / cr / del
+          sendChar(def.code);
+          return;
+      }
+    }
+    var code = model33KeyCode(def, { shifted: shifted, ctrl: ctrlHeld });
+    if (reptHeld) {
+      startRepeat(code);
+    } else {
+      sendChar(code);
+    }
+    // One-shot modifiers (the Model 33 CTRL/SHIFT are momentary): release
+    // after the key that used them.
+    if (ctrlHeld && def.ctrlCode != null) { ctrlHeld = false; updateMods(); }
+    if (shifted && def.shiftCode != null) { shifted = false; updateMods(); }
   }
 
-  function updateCtrlVisual() {
-    // Ctrl key uses key_down class for pressed visual
-    var el = document.getElementById('key_ctrl');
-    if (el) el.className = 'key' + (ctrlHeld ? ' key_down' : '');
+  // REPT: repeat a character key at the teletype's 10 chars/sec while the
+  // repeat latch stays engaged.
+  function startRepeat(code) {
+    stopRepeat();
+    sendChar(code);
+    repeatTimer = setInterval(function () { sendChar(code); }, 100);
+  }
+
+  function stopRepeat() {
+    if (repeatTimer) {
+      clearInterval(repeatTimer);
+      repeatTimer = null;
+    }
+  }
+
+  // BREAK: open the line for >150 ms — signals the console DL11's break
+  // condition (see window.dlConsoleBreak in iopage.js).
+  function sendBreak() {
+    if (window.ttyLocalMode) return; // LOCAL: no line, no break
+    if (typeof window.dlConsoleBreak === 'function') window.dlConsoleBreak();
+  }
+
+  // HERE IS: the answerback drum mechanically "taps out" its fixed
+  // sequence (CR LF ACK <station id> CR LF) into the line.
+  function sendHereIs() {
+    var bytes = MODEL33_ANSWERBACK;
+    if (window.ttyLocalMode) {
+      if (g60Console) {
+        for (var i = 0; i < bytes.length; i++) g60Console.writeChar(bytes[i]);
+      }
+      return;
+    }
+    if (typeof window.dlReceiveQueue === 'function') {
+      window.dlReceiveQueue(0, bytes);
+    }
+  }
+
+  function updateMods() {
+    var keys = document.querySelectorAll('#punchkeyboard .m33-key');
+    for (var i = 0; i < keys.length; i++) {
+      var sp = keys[i]._def && keys[i]._def.special;
+      if (sp === 'ctrl') keys[i].classList.toggle('down', ctrlHeld);
+      else if (sp === 'shift') keys[i].classList.toggle('down', shifted);
+      else if (sp === 'rept') keys[i].classList.toggle('down', reptHeld);
+    }
   }
 
   // Physical keyboard handlers
   function installPhysicalKeyboard() {
+    // Does the operator want the historical Upper-Case-Only behaviour for
+    // the PHYSICAL keyboard (Config.upperCaseOnly)? Off by default so
+    // lower case passes through (2.11 BSD file names, etc.).
+    function upperOnly() {
+      if (typeof Config !== 'undefined' && Config.get()) {
+        return !!Config.get().upperCaseOnly;
+      }
+      return false;
+    }
+
     document.addEventListener('keydown', function (e) {
       if (/^(input|textarea)$/i.test(e.target.tagName)) return;
 
@@ -370,11 +428,14 @@ var g60Keyboard = (function () {
       var termPage = document.getElementById('page-teletype');
       if (!termPage || !termPage.classList.contains('active')) return;
 
-      // Special keys: Enter, Backspace, Tab
+      // Special keys: Enter, Backspace, Tab, Escape, Delete.
       var code = e.keyCode || e.which;
       if (code === 13) { sendDL([13]); e.preventDefault(); return; }
       if (code === 8) { sendDL([8]); e.preventDefault(); return; }
       if (code === 9) { sendDL([9]); e.preventDefault(); return; }
+      if (code === 27) { sendDL([27]); e.preventDefault(); return; }
+      // The physical Delete key maps to the Model 33 DELETE (0x7F) key.
+      if (code === 46) { sendDL([127]); e.preventDefault(); return; }
       if (e.ctrlKey && code >= 65 && code <= 90) {
         sendDL([code - 64]); e.preventDefault(); return;
       }
@@ -395,6 +456,8 @@ var g60Keyboard = (function () {
       }
 
       if (ch >= 32 && ch < 127) {
+        // Historical Upper-Case-Only: fold a-z to A-Z when requested.
+        ch = model33UpperOnly(ch, upperOnly());
         sendDL([ch]);
         e.preventDefault();
       }
@@ -1025,6 +1088,7 @@ function initConfigForm() {
   var pwEl = document.getElementById('config-printWidth');
   var pwrEl = document.getElementById('config-printerWidth');
   var kcEl = document.getElementById('config-keyClick');
+  var upperCaseEl = document.getElementById('config-upperCaseOnly');
   var vt52RevEl = document.getElementById('config-vt52ReverseVideo');
   var crtEl = document.getElementById('config-crtEffects');
   var textModeEl = document.getElementById('config-vt52TextMode');
@@ -1050,6 +1114,7 @@ function initConfigForm() {
   if (pwEl) pwEl.value = String(cfg.printWidth);
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   if (kcEl) kcEl.checked = cfg.keyClick;
+  if (upperCaseEl) upperCaseEl.checked = cfg.upperCaseOnly;
   if (vt52RevEl) vt52RevEl.checked = cfg.vt52ReverseVideo;
   if (crtEl) crtEl.checked = cfg.crtEffects;
   if (textModeEl) textModeEl.checked = cfg.vt52TextMode;
@@ -1085,6 +1150,7 @@ function initConfigForm() {
       printerWidth: (pwrEl) ? Number(pwrEl.value) : cfg.printerWidth,
       teletypeSpeed: teletypeSpeed,
       keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
+      upperCaseOnly: (upperCaseEl) ? upperCaseEl.checked : cfg.upperCaseOnly,
       vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
       crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
       vt52TextMode: (textModeEl) ? textModeEl.checked : cfg.vt52TextMode,
@@ -1115,6 +1181,7 @@ function initConfigForm() {
       form.printerWidth !== current.printerWidth ||
       form.teletypeSpeed !== current.teletypeSpeed ||
       form.keyClick !== current.keyClick ||
+      form.upperCaseOnly !== current.upperCaseOnly ||
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
       form.crtEffects !== current.crtEffects ||
       form.vt52TextMode !== current.vt52TextMode ||
@@ -1160,7 +1227,8 @@ function initConfigForm() {
     }
     var ttyFields = [
       document.getElementById('config-field-printWidth'),
-      document.getElementById('config-field-teletypeSpeed')
+      document.getElementById('config-field-teletypeSpeed'),
+      document.getElementById('config-field-upperCaseOnly')
     ];
     for (var k = 0; k < ttyFields.length; k++) {
       if (ttyFields[k]) ttyFields[k].classList.toggle('config-hidden', !teletype);
