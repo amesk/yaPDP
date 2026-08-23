@@ -1052,11 +1052,13 @@
        the historical machine), and the punched tape hangs below the punch.
        The cabinet is only as wide as the punch/reader blocks, which keep
        their original ~144px width, so the tape hangs centred under the
-       punch. The cabinet's top is aligned with the top of the keyboard
-       block (printer 380px + its 2×8px margins), as on a real ASR where
-       the reader/punch sit at keyboard level. */
+       punch. The taller 300px cabinet (blocks of 144px) gives the punch
+       block breathing room between its label and its buttons. The cabinet's
+       top is aligned with the top of the keyboard block (printer 380px +
+       its 2×8px margins), as on a real ASR where the reader/punch sit at
+       keyboard level. */
     width: 170px;
-    height: 260px;
+    height: 300px;
     margin-top: 396px;
     /* Cream ASR33 body, matching the printer + keyboard deck. */
     background-color: #ddd6c4;
@@ -1081,8 +1083,8 @@
     align-items: center;
     /* Same gap between the punch and the reader as between the reader and
        the teletype keyboard (see the 12px gap on #teletype-rig). With
-       flex:1 children the gap is carved out of the 260px cabinet, so the
-       punch and the reader each get (260 - 12) / 2 = 124px. */
+       flex:1 children the gap is carved out of the 300px cabinet, so the
+       punch and the reader each get (300 - 12) / 2 = 144px. */
     gap: 12px;
 }
 
@@ -1111,7 +1113,7 @@
 
 .asr-label {
     position: absolute;
-    top: 6px;
+    top: 3px;
     left: 0;
     right: 0;
     text-align: center;
@@ -1126,10 +1128,12 @@
 .asr-slot {
     position: absolute;
     left: 50%;
-    top: 86px;
+    top: 106px;
     /* Wider than the punched tape (97px) but clearly narrower than the
        punch/reader cabinet, so the opening's dark walls stay visible around
-       the tape as it passes through (the tape draws on top of the slot). */
+       the tape as it passes through (the tape draws on top of the slot).
+       top:106px keeps the slot's distance to the block BOTTOM (26px) the
+       same as before the cabinet was made taller. */
     width: 104px;
     height: 12px;
     margin-left: -52px;
@@ -1137,6 +1141,28 @@
     border: 1px solid #555;
     border-radius: 2px;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* Triangular tongue sitting ON TOP of the punch tape-out slot, forming one
+   solid piece with the punch cabinet (same gradient): a full triangle whose
+   BASE is as wide as the slot itself (104px), attached to the TOP edge of
+   the slot, and whose NOSE points straight DOWN, reaching the BOTTOM edge
+   of the slot. top:-1px makes the base overlap the slot's 1px top border so
+   no hairline crack shows between the tongue and the cabinet above. The
+   dark slot walls show through as the two triangular notches on either side
+   of the nose. It draws ABOVE the hanging tape, so the punched tape appears
+   to pass out from UNDER it. */
+#asr-punch .asr-slot::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -1px;
+    transform: translateX(-50%);
+    width: 104px;
+    height: 13px;
+    background: linear-gradient(180deg, #e6e0d0 0%, #d3ccb8 100%);
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    z-index: 20;
 }
 
 /* Both slots stay centred on their block (left:50% from the base rule): the
@@ -1149,20 +1175,36 @@
    wraps into two rows — REL OFF on the top, BSP ON below — matching the
    historical machine. REL releases the tape; BSP backspaces the tape one
    step; OFF/ON toggle the punch (OFF by default). On a real Model 33 ASR
-   these are round (circular) push-buttons. */
+   these are round (circular) push-buttons.
+   The 2x2 block spans exactly the width of the tape-out slot below it
+   (104px, same left offset): with justify-content: space-between the left
+   column (REL/BSP) hugs the slot's LEFT edge and the right column (OFF/ON)
+   hugs the slot's RIGHT edge. */
 .asr-punch-buttons {
     position: absolute;
     left: 50%;
     top: 18px;
-    transform: translateX(-50%);
-    /* Two rows of two 28px round buttons with a 4px gap (2*28 + 4 = 60px). */
-    width: 60px;
-    height: 60px;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-content: flex-start;
-    gap: 4px;
+    margin-left: -52px;
+    /* Matches the slot's OUTER (border-box) width exactly: the slot is
+       width:104px content + 2px borders = 106px, so with box-sizing:
+       border-box and the same left offset the buttons span the full slot
+       width and their outer edges align with the slot's outer edges.
+       A 2x2 CSS grid (guaranteeing exactly two buttons per row) with
+       justify-content: space-between presses the left column (REL/BSP) to
+       the slot's LEFT edge and the right column (OFF/ON) to its RIGHT edge,
+       leaving only a 4px row gap between the two rows. */
+    width: 106px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 30px 30px;
+    grid-auto-rows: 30px;
+    justify-content: space-between;
+    align-content: start;
+    row-gap: 4px;
+    /* top:38px keeps the 2x2 block's distance to the block BOTTOM (42px)
+       the same as before the cabinet was made taller; the extra height now
+       sits between the TAPE PUNCH label and the buttons. */
+    top: 38px;
 }
 
 .asr-btn {
@@ -1206,11 +1248,13 @@
     position: absolute;
     /* Centre the switch in the TAPE READER cabinet: the reader keeps its
        original 144px width, so its switch centre sits at 75px; with a 92px
-       switch that means left = 75 - 46 = 29px. The hanging punch tape draws
-       ABOVE it (see #punchtape z-index), as a punched tape always passes in
-       front of the reader mechanism. */
+       switch that means left = 75 - 46 = 29px. top:42px keeps the switch's
+       distance to the block BOTTOM (40px) the same as before the cabinet
+       was made taller. The hanging punch tape draws ABOVE it (see
+       #punchtape z-index), as a punched tape always passes in front of the
+       reader mechanism. */
     left: 29px;
-    top: 22px;
+    top: 42px;
     width: 92px;
     height: 62px;
 }
@@ -1314,13 +1358,13 @@
    reaches the window edge; 60vh is only the pre-JS fallback. */
 #punchtape {
     position: absolute;
-    /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 86px + half
-       slot height 6px = 92px), horizontally centred on the punch: the punch
+    /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 106px + half
+       slot height 6px = 112px), horizontally centred on the punch: the punch
        block is 144px wide centred in the 170px cabinet, so its centre sits
        at 85px; tape left = 85 - 48.5 ≈ 36px. Draws ABOVE every other element
        of the ASR unit (the reader switch, the slots), so the punched tape
        always passes in front of the mechanism. */
-    top: 92px;
+    top: 112px;
     left: 36px;
     z-index: 10;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
