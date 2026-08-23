@@ -144,18 +144,22 @@
     pointer-events: none;
 }
 
-/* Brand plate on the lower face plate, like the stamped Teletype nameplate. */
+/* Brand plate on the lower face plate: a real Model 33 ASR carries the
+   Teletype Corporation wordmark (lightning-bolt emblem + TELETYPE) stamped
+   on the cabinet, NOT a "MODEL 33 ASR" text label — matching historical
+   photos. The wordmark is drawn from assets/images/teletype-corp-logo.svg. */
 #g60printer div#printer_frontpannel::after {
-    content: "MODEL 33 ASR";
+    content: "";
     position: absolute;
     left: 14px;
-    top: 50%;
+    top: 57%;
     transform: translateY(-50%);
-    color: #6b6350;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 2px;
+    width: 60px;
+    height: 24px;
+    background-image: url('../assets/images/teletype-corp-logo.svg');
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-position: left center;
     pointer-events: none;
 }
 
