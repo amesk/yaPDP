@@ -1039,11 +1039,21 @@
     cursor: pointer;
 }
 
+/* Keep the POWER / LOCK labels above the key disc (.lock) so a click always
+   lands on the label for a direct selection; the disc itself stays clickable
+   for the old cycling reaction but never steals label clicks. */
+.lockPanelPos[data-power-state="run"],
+.lockPanelPos[data-power-state="lock"] {
+    position: relative;
+    z-index: 2;
+}
+
 /* OFF label anchors to the bottom-left corner. .atBottom only pins the
    vertical edge; an explicit left keeps it in place when rendered as an
    inline button instead of a block div. */
 .lockPanelPos[data-power-state="off"] {
     left: 0;
+    z-index: 2;
 }
 
 .rotaryPanel {

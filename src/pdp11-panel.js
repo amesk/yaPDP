@@ -234,6 +234,31 @@ function examineDeposit(data) {
     })(lockPos[li]);
   }
 
+  // Old Paul-emulator reaction: clicking the POWER LOCK key itself cycles the
+  // state OFF -> POWER -> LOCK (plain click) or back (Shift+click), kept in
+  // addition to the direct label clicks above so familiar users are not
+  // surprised. The shared applyMachinePower() only distinguishes on/off, so
+  // after it runs we restore the exact cycled key position (LOCK = +1 =>
+  // 45deg) so the key points where the operator turned it.
+  var lockEl = document.querySelector('.lock');
+  if (lockEl) {
+    lockEl.addEventListener('click', function (e) {
+      if (typeof panel === 'undefined') return;
+      // Never steal a direct label click (the labels may overlap the disc).
+      if (e.target && e.target.closest && e.target.closest('.lockPanelPos')) return;
+      var next = panel.powerSwitch;
+      next = e.shiftKey
+        ? (next - 1 < -1 ? 1 : next - 1)
+        : (next + 1 > 1 ? -1 : next + 1);
+      setPowerState(next < 0 ? 'off' : (next === 0 ? 'run' : 'lock'));
+      if (next !== 0) {
+        panel.powerSwitch = next;
+        var key = document.getElementById('key');
+        if (key) key.style.transform = 'rotate(' + (next * 90 - 45) + 'deg)';
+      }
+    });
+  }
+
   // Default to the powered-on RUN position so the active label matches the
   // initial panel state. Deferred: `panel` is created by pdp11.js, which is
   // loaded after this module.
