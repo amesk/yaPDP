@@ -198,25 +198,41 @@ function examineDeposit(data) {
     });
   });
 
-  // --- Power lock (class="lock") ---
-  var lockEl = document.querySelector('.lock');
-  if (lockEl) {
-    lockEl.addEventListener('click', function (e) {
-      if (e.shiftKey) {
-        if (--panel.powerSwitch < -1) panel.powerSwitch = 1;
-      } else {
-        if (++panel.powerSwitch > 1) panel.powerSwitch = -1;
-      }
-      if (panel.powerSwitch < 0) {
-        CPU.runState = STATE_HALT;
-      }
-      var key = document.getElementById('key');
-      if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
-      // Powering off silences the ambient hum at once (the module also
-      // re-checks state on its own timer, so this is just for immediacy).
-      if (window.Hum) window.Hum.update();
-    });
+  // --- Power lock (OFF / POWER / LOCK) ---
+  // The position labels are the hit targets: clicking a label selects that
+  // state directly, mirroring the CCU LINE/OFF/LOCAL switch of the Model 33
+  // teletype (click the states, not the switch itself). The lock key stays
+  // decorative and rotates to point at the selected position.
+  var powerStates = { off: -1, run: 0, lock: 1 };
+
+  function setPowerState(state) {
+    if (!(state in powerStates) || typeof panel === 'undefined') return;
+    panel.powerSwitch = powerStates[state];
+    if (panel.powerSwitch < 0) {
+      CPU.runState = STATE_HALT;
+    }
+    var key = document.getElementById('key');
+    if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
+    // Powering off silences the ambient hum at once (the module also
+    // re-checks state on its own timer, so this is just for immediacy).
+    if (window.Hum) window.Hum.update();
   }
+
+  var lockPos = document.querySelectorAll('.lockPanelPos');
+  for (var li = 0; li < lockPos.length; li++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        setPowerState(btn.getAttribute('data-power-state'));
+      });
+    })(lockPos[li]);
+  }
+
+  // Default to the powered-on RUN position so the active label matches the
+  // initial panel state. Deferred: `panel` is created by pdp11.js, which is
+  // loaded after this module.
+  setTimeout(function () {
+    setPowerState('run');
+  }, 0);
 
   // --- Rotary switch 0 (class="rotarySwitch" in rotaryTopPanel) ---
   var rotary0 = document.querySelector('.rotaryTopPanel .rotarySwitch');
@@ -389,9 +405,7 @@ function examineDeposit(data) {
     var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
     if (rotary1) rotary1.style.transform = 'rotate(-45deg)';
 
-    panel.powerSwitch = 0; // Power lock -> RUN position (powered on)
-    var key = document.getElementById('key');
-    if (key) key.style.transform = 'rotate(-45deg)';
+    setPowerState('run'); // Power lock -> RUN position (powered on)
 
     // Reflect the powered-on RUN state in the ambient hum immediately.
     if (window.Hum) window.Hum.update();

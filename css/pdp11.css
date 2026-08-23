@@ -843,6 +843,26 @@
     transition: 0.5s;
 }
 
+/* OFF / POWER / LOCK position labels are clickable states: clicking one
+   selects that position directly (mirroring the CCU LINE/OFF/LOCAL switch
+   of the Model 33 teletype). The lock key itself stays decorative and shows
+   the current position, so the labels are never "lit up". */
+.lockPanelPos {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+/* OFF label anchors to the bottom-left corner. .atBottom only pins the
+   vertical edge; an explicit left keeps it in place when rendered as an
+   inline button instead of a block div. */
+.lockPanelPos[data-power-state="off"] {
+    left: 0;
+}
+
 .rotaryPanel {
     width: calc(var(--unitWidth) * 88);
     height: calc(var(--unitHeight) * 12);

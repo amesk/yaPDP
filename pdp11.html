@@ -439,12 +439,15 @@
                   <div class=blankLine></div>
                   <div class=clear>
                     <div class=lockPanel>
-                      <div class=floatLeft>POWER</div>
-                      <div class=floatRight>LOCK</div>
+                      <button type="button" class="floatLeft lockPanelPos" data-power-state="run"
+                        title="POWER — machine powered on (RUN)">POWER</button>
+                      <button type="button" class="floatRight lockPanelPos" data-power-state="lock"
+                        title="LOCK — operator lock">LOCK</button>
                       <div class=lock>
                         <div id=key class=lockKey></div>
                       </div>
-                      <div class=atBottom>OFF</div>
+                      <button type="button" class="atBottom lockPanelPos" data-power-state="off"
+                        title="OFF — machine powered down">OFF</button>
                     </div>
                     <div class=floatRight>
                       <span class="ledBlock double">
