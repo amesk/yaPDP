@@ -1528,12 +1528,19 @@
    css/pdp11.css) so the teletype and LP11 pages look alike.
    ================================================================== */
 #teletype-controls {
-    margin-top: 8px;
-    text-align: center;
-    /* Centre the button row under the KEYBOARD deck (#punchkeypane), not the
-       page: the deck starts 312px into the rig (300px ASR + 12px gap), so
-       shifting the centred row right by 156px (300/2 + 6) aligns the centres. */
-    transform: translateX(156px);
+    /* Pin the operator buttons to the bottom of the screen, centred on the
+       page rather than under the teletype — same treatment as the front-panel
+       action buttons (.panel-actions in css/pdp11.css): absolute inside
+       #page-teletype (which is position: relative), a full-width flex row
+       centred with the same 12px bottom offset as the PANEL buttons. */
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 0;
 }
 
 .tty-btn {

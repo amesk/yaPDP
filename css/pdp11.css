@@ -1493,6 +1493,10 @@ body {
 #page-teletype.active {
     justify-content: center;
     overflow: hidden;
+    /* Positioning context for the operator buttons (#teletype-controls), so
+       their absolute bottom-centring is relative to the screen page, exactly
+       like #page-panel is for its .panel-actions buttons. */
+    position: relative;
 }
 
 /* ===== REBOOT button (round, floating, top-left of the window) ===== */
