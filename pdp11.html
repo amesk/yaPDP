@@ -259,6 +259,25 @@
     </button>
     <div class="page active" id="page-panel">
       <div class=frame>
+        <!-- Operator's hand-written sticky note taped to the cabinet, left of
+             the front panel: the bootstrap loader plus the boot commands for
+             the two most useful demo disks (see css/pdp11.css). Purely
+             decorative — pointer-events:none — so it never blocks the panel. -->
+        <div class="panel-sticker" aria-hidden="true">
+          <div class="panel-sticker-tape"></div>
+          <div class="panel-sticker-title">PDP-11/70 BOOTSTRAP</div>
+          <div class="panel-sticker-step">Deposit words @ 001000 — LOAD ADDR, then DEP each (addr auto-increments):
+          </div>
+          <pre class="panel-sticker-code">012700  173000  010040
+012710  177560  105710
+100376  112001  000005
+000000</pre>
+          <div class="panel-sticker-step">Run — switches = 001000, LOAD ADDR, START.</div>
+          <div class="panel-sticker-note">Console:
+            boot rk1 — RT-11 v4.0
+            boot rp1 — BSD 2.11</div>
+          <span class="panel-sticker-hint">Press "Help Me!" button below to hide the sticker</span>
+        </div>
         <div class=decBase>
           <span class=smallSpace></span>
           <span class=decLetter>d</span>
@@ -681,6 +700,12 @@
           </div>
         </div>
       </div>
+      <div class="panel-actions">
+        <button type="button" id="panel-sticker-btn" class="panel-action-btn"
+          title="Show or hide the operator's bootstrap sticky note" aria-pressed="false">Help Me!</button>
+        <button type="button" id="panel-boot-btn" class="panel-action-btn"
+          title="Reboot the machine and switch to the operator console">Bootstrap now!</button>
+      </div>
     </div>
     <div class="page" id="page-teletype">
       <p class=clear><br>
@@ -1057,6 +1082,16 @@
                   machine</label>
                 <span class="config-hint">Applied immediately. When disabled, the REBOOT button restarts the machine
                   without warning.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Help Me! sticker</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-panelSticker"> Show the operator's bootstrap sticky note on
+                  the Panel page</label>
+                <span class="config-hint">Applied immediately. The Help Me! button on the Panel page toggles the
+                  hand-written bootstrap sticker and persists the same setting here.</span>
               </div>
             </div>
 

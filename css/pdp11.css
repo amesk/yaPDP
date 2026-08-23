@@ -470,6 +470,187 @@
     position: relative;
 }
 
+/* Operator's hand-written sticky note taped to the cabinet, left of the
+   front panel (see pdp11.html .panel-sticker). Purely decorative: it must
+   never swallow clicks, hence pointer-events: none. Anchored to the LEFT of
+   .frame (right:100% = just outside the frame's left edge), so it stays put
+   regardless of how the page is centred. The note tilts like a real stuck-on
+   Post-it; the text is handwritten (system cursive) — only the machine-code
+   listing stays monospaced so the address columns line up. */
+.panel-sticker {
+    position: absolute;
+    right: calc(100% + var(--unitWidth) * 2);
+    top: calc(var(--unitHeight) * 11);
+    width: 260px;
+    padding: 24px 20px 20px;
+    background: linear-gradient(135deg, #fff59d 0%, #ffeb3b 50%, #fdd835 100%);
+    box-shadow:
+        0 4px 6px rgba(0, 0, 0, 0.3),
+        0 10px 20px rgba(0, 0, 0, 0.2),
+        inset 0 -20px 40px rgba(0, 0, 0, 0.05);
+    transform: rotate(-3deg);
+    font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #1a1a1a;
+    /* auto: the note sits to the LEFT of the panel (right:100%), so letting
+       the pointer hover it for the hide-tooltip never conflicts with panel
+       clicks. The hint itself keeps pointer-events:none. */
+    pointer-events: auto;
+    user-select: none;
+    z-index: 5;
+}
+
+/* Folded-in corner flap: a dark triangle tucked into the bottom-right corner
+   of the (rectangular) note, drawn on top of the paper. Its hypotenuse runs
+   from the right edge down to the bottom edge (a clean 45° fold), and it
+   carries no shadow of its own, so nothing sticks out beyond the note. */
+.panel-sticker::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 42px;
+    height: 42px;
+    background: #7a6a38;
+    /* dark folded flap */
+    clip-path: polygon(100% 100%, 100% 0, 0 100%);
+}
+
+/* Hover tooltip on the note telling the operator how to hide it. The note is
+   decorative, so the hint appears only while the pointer is over it. */
+.panel-sticker-hint {
+    position: absolute;
+    bottom: 44px;
+    left: 10px;
+    right: 10px;
+    padding: 4px 8px;
+    background: rgba(20, 18, 14, 0.85);
+    color: #ffe9a8;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 9px;
+    line-height: 1.35;
+    text-align: center;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    visibility: hidden;
+    /* Dismiss quickly when the pointer leaves the note. */
+    transition: opacity 0.15s ease, visibility 0s;
+}
+
+/* Tooltips normally appear after a short delay: fade the hint in ~0.45s after
+   the pointer settles on the note, then keep it visible while hovering. */
+.panel-sticker:hover .panel-sticker-hint {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.15s ease 0.45s, visibility 0s 0.45s;
+}
+
+/* Translucent tape holding the note to the cabinet. */
+.panel-sticker-tape {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.32);
+    border: 1px solid rgba(200, 200, 200, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+}
+
+.panel-sticker-title {
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+    text-decoration: underline;
+    color: #111;
+}
+
+.panel-sticker-step {
+    font-size: 11px;
+    color: #111;
+    margin: 6px 0;
+}
+
+/* The listing inherits the handwritten font from .panel-sticker: it is a
+   hand-written cheat sheet, so every line (words and boot commands) is in
+   the same black ink. */
+.panel-sticker-code {
+    font-size: 11px;
+    white-space: pre;
+    margin: 6px 0;
+    color: #111;
+    letter-spacing: 0.5px;
+}
+
+.panel-sticker-note {
+    font-size: 11px;
+    margin-top: 10px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.2);
+    padding-top: 8px;
+    color: #111;
+    white-space: pre;
+}
+
+/* The sticker is hidden through the Sticker button (choice persisted across
+   sessions in localStorage). Scoped to .panel-sticker so it stays independent
+   of the .hidden toggles used by .quick-boot-btn / .console-reboot. */
+.panel-sticker.hidden {
+    display: none;
+}
+
+/* Action buttons pinned to the bottom of the front-panel page (absolute in
+   #page-panel, which is a relative flex column filling the viewport): the
+   Help Me! sticker toggle and the Boot now! button. Same look as the shared
+   modal buttons (.modal-close), so they belong to the amber-on-dark style. */
+.panel-actions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 0;
+}
+
+.panel-action-btn {
+    padding: 6px 16px;
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    color: #f0e6c8;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.panel-action-btn:hover {
+    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
+    border-color: #e0c070;
+}
+
+/* Help Me! works like a checkbox: the lit state (sticker visible) glows a
+   brighter amber, matching the printer buttons' hover but kept on while on. */
+.panel-action-btn.active {
+    background: linear-gradient(180deg, #7a6a40, #5a4a30);
+    border-color: #e0c070;
+    color: #fff3d0;
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.panel-action-btn:focus-visible {
+    outline: 2px solid #c8a860;
+    outline-offset: 1px;
+}
+
 /* Quick-boot magic wand — floating button in the top-right corner of the
    window, visible on every page except INFO (toggled via the .hidden class
    by switchPage() in src/pdp11-panel.js). */

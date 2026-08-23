@@ -44,6 +44,10 @@
  *                    source-code entry. Applied immediately, no reboot needed.
  *   - confirmReboot: whether the REBOOT button asks for confirmation before
  *                    restarting the machine (BEHAVIOUR tab of the CONFIG page).
+ *   - panelSticker:  whether the operator's hand-written bootstrap sticky note
+ *                    is shown on the Panel page (BEHAVIOUR tab of the CONFIG
+ *                    page). Hidden by default; the Help Me! button toggles it
+ *                    live and persists the choice here.
  *
  * Persistence uses localStorage under the key "yapdp.config.v1" (the same
  * pattern as Onboarding in onboarding.js). The pure helpers validate/load/
@@ -73,7 +77,8 @@ var Config = (function () {
         hum: true,               // boolean (ambient power-supply hum + fan noise)
         mute: false,             // boolean (global all-sounds mute)
         photoBackdrop: true,     // boolean (PDP-11 photo behind the pages)
-        confirmReboot: true      // boolean (ask before rebooting the machine)
+        confirmReboot: true,     // boolean (ask before rebooting the machine)
+        panelSticker: false      // boolean (Help Me! sticker on the Panel page)
     });
 
     // LP11 line-printer widths (a real LP11 is a 132-column machine).
@@ -157,7 +162,12 @@ var Config = (function () {
             // for old configs saved before the option existed).
             confirmReboot: typeof o.confirmReboot === "undefined"
                 ? DEFAULTS.confirmReboot
-                : Boolean(o.confirmReboot)
+                : Boolean(o.confirmReboot),
+            // Absent key falls back to false (the sticker is hidden on the
+            // very first start, until the operator asks for help).
+            panelSticker: typeof o.panelSticker === "undefined"
+                ? DEFAULTS.panelSticker
+                : Boolean(o.panelSticker)
         };
     }
 

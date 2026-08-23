@@ -1260,6 +1260,21 @@ function initConfigTabs() {
   }
 }
 
+// ---- Help Me! sticker visibility (CONFIG -> Behaviour) ----
+// Shows/hides the operator's hand-written bootstrap sticky note on the Panel
+// page. Shared by the Help Me! button (pdp11-panel.js) and the Behaviour-tab
+// checkbox, so both stay in sync. Live: no reload needed.
+function applyPanelSticker(visible) {
+  var sticker = document.querySelector('.panel-sticker');
+  if (sticker) sticker.classList.toggle('hidden', !visible);
+  var btn = document.getElementById('panel-sticker-btn');
+  if (btn) {
+    btn.classList.toggle('active', !!visible);
+    btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+  }
+}
+window.applyPanelSticker = applyPanelSticker;
+
 // ---- CONFIG page form: populate controls and wire up events ----
 function initConfigForm() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
@@ -1280,6 +1295,7 @@ function initConfigForm() {
   var humEl = document.getElementById('config-hum');
   var pbEl = document.getElementById('config-photoBackdrop');
   var confirmRebootEl = document.getElementById('config-confirmReboot');
+  var panelStickerEl = document.getElementById('config-panelSticker');
   var firstRunEl = document.getElementById('config-showFirstRunHint');
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
@@ -1306,6 +1322,7 @@ function initConfigForm() {
   if (humEl) humEl.checked = cfg.hum;
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   if (confirmRebootEl) confirmRebootEl.checked = cfg.confirmReboot;
+  if (panelStickerEl) panelStickerEl.checked = cfg.panelSticker;
   // The first-run hint is not part of the persisted Config: its state lives in
   // the onboarding flag, so read it straight from the Onboarding module.
   if (firstRunEl && typeof Onboarding !== 'undefined') {
@@ -1347,7 +1364,12 @@ function initConfigForm() {
       // mark the form as dirty or be overwritten by Apply.
       confirmReboot: (typeof Config !== 'undefined')
           ? Config.get().confirmReboot
-          : cfg.confirmReboot
+          : cfg.confirmReboot,
+      // panelSticker is live (toggled by the Help Me! button outside this
+      // form), so read it from the persisted config like confirmReboot.
+      panelSticker: (typeof Config !== 'undefined')
+          ? Config.get().panelSticker
+          : cfg.panelSticker
     };
   }
 
@@ -1388,6 +1410,7 @@ function initConfigForm() {
     applyVT52TextMode(f.vt52TextMode);
     applyCRTEffects(f.crtEffects);
     applyPhotoBackdrop(f.photoBackdrop);
+    applyPanelSticker(f.panelSticker);
   }
 
   function updateDirtyUI() {
@@ -1553,6 +1576,15 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // Help Me! sticker applies immediately (no reload): the Panel-page button
+  // persists the same CONFIG option.
+  if (panelStickerEl) {
+    panelStickerEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ panelSticker: this.checked });
+      applyPanelSticker(this.checked);
+      updateDirtyUI();
+    });
+  }
   // First-run hint applies immediately (no reload): toggling the checkbox
   // clears/sets the onboarding "seen" flag, so the welcome overlay shows or
   // stays hidden on the next launch.
@@ -1580,6 +1612,7 @@ function initConfigForm() {
       if (humEl) humEl.checked = d.hum;
       if (pbEl) pbEl.checked = d.photoBackdrop;
       if (confirmRebootEl) confirmRebootEl.checked = d.confirmReboot;
+      if (panelStickerEl) panelStickerEl.checked = d.panelSticker;
       // The form now shows factory values; nothing is persisted until Apply.
       updateEquipmentVisibility();
       updateDirtyUI();
@@ -1943,6 +1976,9 @@ applyVT52TextMode(__appCfg && __appCfg.vt52TextMode);
 
 // Apply the configured CRT-effects mode (pure-CSS flicker/roll simulation).
 applyCRTEffects(__appCfg && __appCfg.crtEffects);
+
+// Apply the configured Help Me! sticker visibility (CONFIG -> Behaviour).
+applyPanelSticker(__appCfg && __appCfg.panelSticker);
 
 applyVisibility();
 initConfigForm();

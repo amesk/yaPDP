@@ -17,7 +17,8 @@
  *   crtEffects (bool, pure-CSS CRT flicker/roll simulation),
  *   hum (bool, ambient power-supply hum), mute (bool, global all-sounds
  *   mute), photoBackdrop (bool),
- *   confirmReboot (bool, reboot confirmation dialog).
+ *   confirmReboot (bool, reboot confirmation dialog),
+ *   panelSticker (bool, Help Me! sticky note on the Panel page).
  *
  * Run with:  node tests/config.test.js
  *
@@ -81,6 +82,7 @@ function run() {
             mute: false,
             photoBackdrop: true,
             confirmReboot: true,
+            panelSticker: false,
         }, "defaults should match the documented values");
     }
 
@@ -178,6 +180,12 @@ function run() {
         assert.strictEqual(C.validate({}).confirmReboot, true);
         assert.strictEqual(C.validate({ confirmReboot: 1 }).confirmReboot, true);
         assert.strictEqual(C.validate({ confirmReboot: 0 }).confirmReboot, false);
+
+        // panelSticker: absent -> false (the sticker stays hidden on the very
+        // first start), otherwise coerced to boolean.
+        assert.strictEqual(C.validate({}).panelSticker, false);
+        assert.strictEqual(C.validate({ panelSticker: 1 }).panelSticker, true);
+        assert.strictEqual(C.validate({ panelSticker: 0 }).panelSticker, false);
     }
 
     // ---- load / save round-trip ------------------------------------
@@ -200,6 +208,7 @@ function run() {
             mute: true,
             photoBackdrop: false,
             confirmReboot: false,
+            panelSticker: true,
         };
         C.save(cfg, s);
         assert.deepStrictEqual(plain(C.load(s)), cfg,

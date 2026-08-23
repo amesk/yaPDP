@@ -479,4 +479,75 @@ function examineDeposit(data) {
       showRebootConfirm();
     });
   });
+
+  // --- Panel action buttons (Help Me! / Bootstrap now!) ------------------
+  // "Help Me!" toggles the operator's sticky note; the choice is the
+  // "panelSticker" CONFIG option (BEHAVIOUR tab), applied live by
+  // pdp11-app.js and hidden by default on the very first start. "Boot now!"
+  // reboots the machine and switches to the operator console (teletype or
+  // VT52, per config).
+  var stickerBtn = document.getElementById('panel-sticker-btn');
+  var stickerEl = document.querySelector('.panel-sticker');
+  if (stickerBtn && stickerEl) {
+    stickerBtn.addEventListener('click', function () {
+      // Toggle: a hidden sticker must be shown, a visible one hidden.
+      var show = stickerEl.classList.contains('hidden');
+      if (typeof Config !== 'undefined') Config.set({ panelSticker: show });
+      if (typeof window.applyPanelSticker === 'function') {
+        window.applyPanelSticker(show);
+      } else {
+        // Fallback before pdp11-app.js has loaded: keep the UI in sync.
+        stickerEl.classList.toggle('hidden', !show);
+        stickerBtn.classList.toggle('active', show);
+        stickerBtn.setAttribute('aria-pressed', show ? 'true' : 'false');
+      }
+    });
+  }
+
+  // --- Bootstrap now! power-off guard ---------------------------------
+  // The machine must be powered on to boot. If the POWER LOCK switch is OFF
+  // (panel.powerSwitch < 0), show an onboarding-style dialog asking the
+  // operator to power the machine on first, instead of silently halting.
+  var powerOffOverlay = null;
+
+  function ensurePowerOffDialog() {
+    if (powerOffOverlay) return powerOffOverlay;
+    powerOffOverlay = document.createElement('div');
+    powerOffOverlay.id = 'power-off-overlay';
+    powerOffOverlay.className = 'modal-overlay';
+    powerOffOverlay.innerHTML =
+      '<div class="modal-box">' +
+        '<span class="modal-title">The machine is powered off</span>' +
+        '<p class="modal-intro">Turn the <b>POWER LOCK</b> switch on the front ' +
+          'panel to <b>POWER</b> (or click the POWER label) to power the machine ' +
+          'on, then press <b>Bootstrap now!</b> again.</p>' +
+        '<button type="button" class="modal-close" data-power-off-action="ok">Got it</button>' +
+      '</div>';
+    powerOffOverlay.addEventListener('click', function (e) {
+      if (e.target === powerOffOverlay ||
+          (e.target.getAttribute && e.target.getAttribute('data-power-off-action'))) {
+        powerOffOverlay.classList.remove('visible');
+      }
+    });
+    document.body.appendChild(powerOffOverlay);
+    return powerOffOverlay;
+  }
+
+  function showPowerOffDialog() {
+    ensurePowerOffDialog().classList.add('visible');
+  }
+
+  var panelBootBtn = document.getElementById('panel-boot-btn');
+  if (panelBootBtn) {
+    panelBootBtn.addEventListener('click', function () {
+      if (typeof panel !== 'undefined' && panel.powerSwitch < 0) {
+        showPowerOffDialog();
+        return;
+      }
+      var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+      var consolePage = (cfg && cfg.consoleType === 'vt52') ? 'vt52-console' : 'teletype';
+      doReboot();
+      switchPage(consolePage);
+    });
+  }
 })();
