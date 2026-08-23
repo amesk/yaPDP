@@ -1380,6 +1380,15 @@ body {
     animation: nav-led-blink 0.4s steps(2, start) infinite;
 }
 
+/* Power lamp on the Panel nav button: lit steadily (no blink) while the
+   machine is powered on. Toggled by applyMachinePower in pdp11-app.js. */
+.app-sidebar .nav-btn .nav-led.power-on {
+    opacity: 1;
+    background: #4c4;
+    box-shadow: 0 0 8px #4c4, inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    animation: none;
+}
+
 @keyframes nav-led-blink {
     to {
         opacity: 0.15;

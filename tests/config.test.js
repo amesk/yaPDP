@@ -18,7 +18,9 @@
  *   hum (bool, ambient power-supply hum), mute (bool, global all-sounds
  *   mute), photoBackdrop (bool),
  *   confirmReboot (bool, reboot confirmation dialog),
- *   panelSticker (bool, Help Me! sticky note on the Panel page).
+ *   panelSticker (bool, Help Me! sticky note on the Panel page),
+ *   powerOn (bool, machine powered on at startup), autoBoot (bool, start the
+ *   default bootstrap on power-on).
  *
  * Run with:  node tests/config.test.js
  *
@@ -83,6 +85,8 @@ function run() {
             photoBackdrop: true,
             confirmReboot: true,
             panelSticker: false,
+            powerOn: false,
+            autoBoot: false,
         }, "defaults should match the documented values");
     }
 
@@ -186,6 +190,18 @@ function run() {
         assert.strictEqual(C.validate({}).panelSticker, false);
         assert.strictEqual(C.validate({ panelSticker: 1 }).panelSticker, true);
         assert.strictEqual(C.validate({ panelSticker: 0 }).panelSticker, false);
+
+        // powerOn: absent -> false (the machine powers up off), otherwise
+        // coerced to boolean.
+        assert.strictEqual(C.validate({}).powerOn, false);
+        assert.strictEqual(C.validate({ powerOn: 1 }).powerOn, true);
+        assert.strictEqual(C.validate({ powerOn: 0 }).powerOn, false);
+
+        // autoBoot: absent -> false (no automatic bootstrap), otherwise
+        // coerced to boolean.
+        assert.strictEqual(C.validate({}).autoBoot, false);
+        assert.strictEqual(C.validate({ autoBoot: 1 }).autoBoot, true);
+        assert.strictEqual(C.validate({ autoBoot: 0 }).autoBoot, false);
     }
 
     // ---- load / save round-trip ------------------------------------
@@ -209,6 +225,8 @@ function run() {
             photoBackdrop: false,
             confirmReboot: false,
             panelSticker: true,
+            powerOn: true,
+            autoBoot: true,
         };
         C.save(cfg, s);
         assert.deepStrictEqual(plain(C.load(s)), cfg,

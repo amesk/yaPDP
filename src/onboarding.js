@@ -214,10 +214,13 @@ var Onboarding = (function () {
         return (
             '<div class="modal-box">' +
                 '<span class="modal-title">Welcome to yaPDP — the PDP-11/70</span>' +
-                '<p class="modal-intro">Here is how to get going in 30 seconds:</p>' +
+                '<p class="modal-intro">Power the machine on first, then boot it. Here is how:</p>' +
                 '<ol class="modal-steps">' +
-                    '<li>Open the <b>Console</b> page in the left sidebar.</li>' +
-                    '<li>At the <code>Boot></code> prompt type one of:</li>' +
+                    '<li>Power the machine on: on the <b>Panel</b> page turn the <b>POWER LOCK</b> ' +
+                        'switch to <b>POWER</b> — it starts powered off.</li>' +
+                    '<li>Boot it — enter bootstrap or press <b>Bootstrap now!</b> under the panel and type one of the ' +
+                        'commands below at the <code>Boot></code> prompt on the <b>Console</b> page ' +
+                        '(the hand-written sticker on the Panel shows the bootstrap words):</li>' +
                 '</ol>' +
                 '<ul class="modal-boots" id="modal-boots"></ul>' +
                 '<p class="modal-drag">Missing an OS? Drag a <code>.dsk</code> / ' +
@@ -225,7 +228,7 @@ var Onboarding = (function () {
                     'into the <b>Drop zone</b> on the <b>Storage</b> page, or open ' +
                     '<b>Info</b> for the full OS list.</p>' +
                 '<p class="modal-drag">In a hurry? Use the <b>magic wand</b> on ' +
-                    'the <b>Panel</b> page to boot a guest OS automatically — ' +
+                    'the <b>Panel</b> page to power up and boot a guest OS automatically — ' +
                     'the hardware is reconfigured and the login is typed for you.</p>' +
                 '<button type="button" class="modal-close">Got it</button>' +
             '</div>'

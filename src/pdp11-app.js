@@ -1275,6 +1275,40 @@ function applyPanelSticker(visible) {
 }
 window.applyPanelSticker = applyPanelSticker;
 
+// ---- Machine power (CONFIG -> Behaviour) -----------------------------
+// Powers the PDP-11 on/off: turns the front-panel POWER LOCK key, halts the
+// CPU when powering down and silences the ambient hum. Shared by the
+// Behaviour-tab "Machine power" checkbox and the front-panel POWER LOCK labels
+// (pdp11-panel.js). With the "auto-boot" option set, turning the machine ON
+// starts the default bootstrap; otherwise the operator presses Bootstrap now!
+// on the Panel page or types a boot command on the console. `skipAutoBoot`
+// suppresses that for programmatic power-ons that already reboot (e.g.
+// resetPanelControls during doReboot). Live: no reload needed.
+function applyMachinePower(powerOn, skipAutoBoot) {
+  if (typeof panel === 'undefined') return;
+  var wasOn = panel.powerSwitch >= 0;
+  panel.powerSwitch = powerOn ? 0 : -1;
+  if (!powerOn && typeof CPU !== 'undefined') {
+    CPU.runState = STATE_HALT;
+  }
+  var key = document.getElementById('key');
+  if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
+  if (window.Hum) window.Hum.update();
+  // Toggle the power lamp on the Panel nav button (steadily lit while on).
+  var panelLed = document.querySelector('.nav-btn[data-page="panel"] .nav-led');
+  if (panelLed) panelLed.classList.toggle('power-on', powerOn);
+  // Persist the live power state so it survives reloads and stays in sync
+  // with the Behaviour checkbox.
+  if (typeof Config !== 'undefined') Config.set({ powerOn: powerOn });
+  // Start the default bootstrap when the machine is turned on, unless the
+  // caller already reboots (skipAutoBoot) — gated on the auto-boot option.
+  if (powerOn && !skipAutoBoot && !wasOn &&
+      typeof Config !== 'undefined' && Config.get().autoBoot) {
+    boot();
+  }
+}
+window.applyMachinePower = applyMachinePower;
+
 // ---- CONFIG page form: populate controls and wire up events ----
 function initConfigForm() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
@@ -1296,6 +1330,8 @@ function initConfigForm() {
   var pbEl = document.getElementById('config-photoBackdrop');
   var confirmRebootEl = document.getElementById('config-confirmReboot');
   var panelStickerEl = document.getElementById('config-panelSticker');
+  var powerOnEl = document.getElementById('config-powerOn');
+  var autoBootEl = document.getElementById('config-autoBoot');
   var firstRunEl = document.getElementById('config-showFirstRunHint');
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
@@ -1323,6 +1359,8 @@ function initConfigForm() {
   if (pbEl) pbEl.checked = cfg.photoBackdrop;
   if (confirmRebootEl) confirmRebootEl.checked = cfg.confirmReboot;
   if (panelStickerEl) panelStickerEl.checked = cfg.panelSticker;
+  if (powerOnEl) powerOnEl.checked = cfg.powerOn;
+  if (autoBootEl) autoBootEl.checked = cfg.autoBoot;
   // The first-run hint is not part of the persisted Config: its state lives in
   // the onboarding flag, so read it straight from the Onboarding module.
   if (firstRunEl && typeof Onboarding !== 'undefined') {
@@ -1369,7 +1407,15 @@ function initConfigForm() {
       // form), so read it from the persisted config like confirmReboot.
       panelSticker: (typeof Config !== 'undefined')
           ? Config.get().panelSticker
-          : cfg.panelSticker
+          : cfg.panelSticker,
+      // powerOn is live (the front-panel POWER LOCK updates it outside this
+      // form), so read it from the persisted config like panelSticker.
+      powerOn: (typeof Config !== 'undefined')
+          ? Config.get().powerOn
+          : cfg.powerOn,
+      autoBoot: (typeof Config !== 'undefined')
+          ? Config.get().autoBoot
+          : cfg.autoBoot
     };
   }
 
@@ -1585,6 +1631,23 @@ function initConfigForm() {
       updateDirtyUI();
     });
   }
+  // Machine power applies immediately (no reload): power the PDP-11 on/off
+  // (the front-panel POWER LOCK persists the same option). With auto-boot
+  // set, turning it on starts the default bootstrap.
+  if (powerOnEl) {
+    powerOnEl.addEventListener('change', function () {
+      applyMachinePower(this.checked, false);
+      updateDirtyUI();
+    });
+  }
+  // Auto-boot applies immediately (no reload): it only affects the next
+  // power-on, so just persist the choice.
+  if (autoBootEl) {
+    autoBootEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ autoBoot: this.checked });
+      updateDirtyUI();
+    });
+  }
   // First-run hint applies immediately (no reload): toggling the checkbox
   // clears/sets the onboarding "seen" flag, so the welcome overlay shows or
   // stays hidden on the next launch.
@@ -1613,6 +1676,8 @@ function initConfigForm() {
       if (pbEl) pbEl.checked = d.photoBackdrop;
       if (confirmRebootEl) confirmRebootEl.checked = d.confirmReboot;
       if (panelStickerEl) panelStickerEl.checked = d.panelSticker;
+      if (powerOnEl) powerOnEl.checked = d.powerOn;
+      if (autoBootEl) autoBootEl.checked = d.autoBoot;
       // The form now shows factory values; nothing is persisted until Apply.
       updateEquipmentVisibility();
       updateDirtyUI();
@@ -1984,7 +2049,14 @@ applyVisibility();
 initConfigForm();
 initMuteButton();
 initConfigTabs();
-boot();
+
+// Power the machine per the CONFIG option (default: off). Reset the front
+// panel to OFF first so applyMachinePower sees a genuine power-on transition;
+// with the auto-boot option set, powering on starts the default bootstrap —
+// otherwise the operator presses Bootstrap now! on the Panel page or types a
+// boot command on the console.
+if (typeof panel !== 'undefined') panel.powerSwitch = -1;
+applyMachinePower(__appCfg && __appCfg.powerOn, false);
 
 // First-run onboarding hint (no-op after the user has dismissed it once)
 Onboarding.init();

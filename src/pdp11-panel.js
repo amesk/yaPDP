@@ -205,17 +205,24 @@ function examineDeposit(data) {
   // decorative and rotates to point at the selected position.
   var powerStates = { off: -1, run: 0, lock: 1 };
 
-  function setPowerState(state) {
+  function setPowerState(state, skipAutoBoot) {
     if (!(state in powerStates) || typeof panel === 'undefined') return;
-    panel.powerSwitch = powerStates[state];
-    if (panel.powerSwitch < 0) {
-      CPU.runState = STATE_HALT;
+    var powerOn = powerStates[state] >= 0;
+    if (typeof window.applyMachinePower === 'function') {
+      // pdp11-app.js applies the power state (POWER LOCK key, CPU halt on
+      // power-off, Config.powerOn sync and the auto-boot bootstrap on
+      // power-on). skipAutoBoot suppresses the auto-bootstrap when the caller
+      // already reboots (resetPanelControls inside doReboot).
+      window.applyMachinePower(powerOn, !!skipAutoBoot);
+    } else {
+      // Fallback before pdp11-app.js has loaded (clicks only happen later).
+      panel.powerSwitch = powerStates[state];
+      if (!powerOn) CPU.runState = STATE_HALT;
+      var key = document.getElementById('key');
+      if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
+      if (window.Hum) window.Hum.update();
+      if (typeof Config !== 'undefined') Config.set({ powerOn: powerOn });
     }
-    var key = document.getElementById('key');
-    if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
-    // Powering off silences the ambient hum at once (the module also
-    // re-checks state on its own timer, so this is just for immediacy).
-    if (window.Hum) window.Hum.update();
   }
 
   var lockPos = document.querySelectorAll('.lockPanelPos');
@@ -405,19 +412,29 @@ function examineDeposit(data) {
     var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
     if (rotary1) rotary1.style.transform = 'rotate(-45deg)';
 
-    setPowerState('run'); // Power lock -> RUN position (powered on)
+    // Power lock -> RUN position (powered on). skipAutoBoot: doReboot() starts
+    // the bootstrap itself, so resetting the panel must not trigger the
+    // auto-boot option again.
+    setPowerState('run', true);
 
     // Reflect the powered-on RUN state in the ambient hum immediately.
     if (window.Hum) window.Hum.update();
   }
 
-  function doReboot() {
+  function doReboot(forceBoot) {
     if (g60Console) g60Console.writeChar(10);
     // Stop any runaway teletype output backlog before restarting the CPU,
     // so the Boot> prompt is immediately visible and usable.
     flushG60Console();
     resetPanelControls();
-    boot();
+    // The default bootstrap is started only when the operator explicitly asks
+    // for it (Bootstrap now! passes forceBoot) or when the auto-boot option is
+    // set — otherwise the machine reboots into a halted state and the operator
+    // boots it manually.
+    if (forceBoot ||
+        (typeof Config !== 'undefined' && Config.get().autoBoot)) {
+      boot();
+    }
   }
 
   // Confirmation overlay (reuses the shared modal style, see css/pdp11.css).
@@ -546,7 +563,9 @@ function examineDeposit(data) {
       }
       var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
       var consolePage = (cfg && cfg.consoleType === 'vt52') ? 'vt52-console' : 'teletype';
-      doReboot();
+      // Bootstrap now! always starts the default bootstrap (unlike the generic
+      // REBOOT button, which does so only when the auto-boot option is set).
+      doReboot(true);
       switchPage(consolePage);
     });
   }

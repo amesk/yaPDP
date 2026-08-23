@@ -148,6 +148,9 @@
         <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
             <use href="#icon-panel" />
           </svg></span>
+        <!-- Power lamp: lit steadily while the machine is powered on (see the
+             .power-on rule in css/pdp11.css; toggled by applyMachinePower). -->
+        <span class="nav-led" aria-hidden="true"></span>
         Panel
       </div>
       <div class="nav-btn" data-page="teletype">
@@ -1092,6 +1095,26 @@
                   the Panel page</label>
                 <span class="config-hint">Applied immediately. The Help Me! button on the Panel page toggles the
                   hand-written bootstrap sticker and persists the same setting here.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Machine power</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-powerOn"> Machine is powered on</label>
+                <span class="config-hint">Applied immediately. When off, the PDP-11 is powered down (POWER LOCK in
+                  OFF); turn it on to run. Toggling the POWER LOCK on the Panel page
+                  updates this setting too.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Auto-boot</span>
+              <div class="config-control">
+                <label><input type="checkbox" id="config-autoBoot"> Start the default bootstrap automatically when the
+                  machine is powered on</label>
+                <span class="config-hint">When enabled, powering the machine on starts the default bootstrap;
+                  otherwise use the Bootstrap now! button on the Panel page.</span>
               </div>
             </div>
 

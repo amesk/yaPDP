@@ -78,7 +78,9 @@ var Config = (function () {
         mute: false,             // boolean (global all-sounds mute)
         photoBackdrop: true,     // boolean (PDP-11 photo behind the pages)
         confirmReboot: true,     // boolean (ask before rebooting the machine)
-        panelSticker: false      // boolean (Help Me! sticker on the Panel page)
+        panelSticker: false,     // boolean (Help Me! sticker on the Panel page)
+        powerOn: false,          // boolean (machine powered on at startup)
+        autoBoot: false          // boolean (start default bootstrap on power-on)
     });
 
     // LP11 line-printer widths (a real LP11 is a 132-column machine).
@@ -167,7 +169,17 @@ var Config = (function () {
             // very first start, until the operator asks for help).
             panelSticker: typeof o.panelSticker === "undefined"
                 ? DEFAULTS.panelSticker
-                : Boolean(o.panelSticker)
+                : Boolean(o.panelSticker),
+            // Absent key falls back to false (the machine powers up OFF until
+            // the operator turns the POWER LOCK switch or enables this option).
+            powerOn: typeof o.powerOn === "undefined"
+                ? DEFAULTS.powerOn
+                : Boolean(o.powerOn),
+            // Absent key falls back to false (no automatic bootstrap; the
+            // operator presses Bootstrap now! or types a boot command).
+            autoBoot: typeof o.autoBoot === "undefined"
+                ? DEFAULTS.autoBoot
+                : Boolean(o.autoBoot)
         };
     }
 
