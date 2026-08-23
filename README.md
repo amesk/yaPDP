@@ -34,7 +34,9 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 
 The repository root also contains [`index.html`](index.html) — a landing page in the
 same DEC style as the emulator itself, telling the story behind the project and
-linking to the live demo, the source code and the original authors.
+linking to the live demo, the source code and the original authors — and
+[`manual.html`](manual.html), a step-by-step user manual in the same DEC style,
+linked from the landing page.
 
 ---
 

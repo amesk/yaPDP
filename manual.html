@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+    <meta charset="UTF-8">
+    <title>yaPDP — User Manual</title>
+    <meta name="description"
+        content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 terminals, LP11 line printer, storage, configuration and guest operating systems.">
+    <meta name="keywords"
+        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
+    <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+
+    <!-- Same stylesheet as the emulator, so the manual shares the exact
+       DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
+    <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
+
+    <!-- Manual-page-only rules. Identical to the main page (index.html):
+       the base pdp11.css already supplies the body photo backdrop, fonts and
+       the .app-layout chrome; here we only adapt the content slab and reuse
+       the main-page hero / call-to-action blocks. -->
+    <style>
+        /* Manual-page backdrop: same machine-room photo override as the
+           main page. Only this page is affected; the emulator keeps its
+           original backdrop. Paths are relative to manual.html at the repo
+           root. */
+        body {
+            background-image:
+                linear-gradient(rgba(24, 21, 17, 0.82), rgba(24, 21, 17, 0.82)),
+                url("assets/images/pdp11-machine-room.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Content slab — mirrors the emulator's Info page (dark translucent card
+           over the machine-room photo, block layout, readable column width). */
+        .landing-page {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            color: #e0d8c8;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 16px 24px 32px 24px;
+            background: rgba(28, 25, 21, 0.82);
+        }
+
+        .landing-page h1,
+        .landing-page h2,
+        .landing-page h3,
+        .landing-page h4 {
+            color: #f0e6c8;
+        }
+
+        .landing-page a {
+            color: #c8a860;
+        }
+
+        .landing-page a:hover {
+            color: #e8d080;
+        }
+
+        .landing-page code {
+            color: #d4c4a0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .landing-page pre {
+            color: #d0c8b8;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            overflow-x: auto;
+        }
+
+        .landing-page table {
+            color: #e0d8c8;
+            border-collapse: collapse;
+        }
+
+        .landing-page table thead {
+            color: #f0e6c8;
+        }
+
+        .landing-page table td,
+        .landing-page table th {
+            padding: 5px 10px;
+            border-bottom: 1px solid #3a3528;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .landing-page blockquote {
+            margin: 12px 0;
+            padding: 6px 14px;
+            border-left: 3px solid #c8a860;
+            border-radius: 0 4px 4px 0;
+            background: rgba(0, 0, 0, 0.2);
+            color: #d4c4a0;
+        }
+
+        .landing-page hr {
+            border: 0;
+            border-top: 1px solid #4a453a;
+            margin: 26px 0;
+        }
+
+        .landing-page b,
+        .landing-page strong {
+            color: inherit;
+        }
+
+        /* Hero block */
+        .hero {
+            text-align: center;
+        }
+
+        .hero img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            border: 1px solid #4a453a;
+        }
+
+        .hero .tagline {
+            color: #c8b890;
+            font-style: italic;
+            font-size: 15px;
+            margin: 10px 0 4px 0;
+        }
+
+        /* Zero-friction promise: the whole point is instant immersion. */
+        .hero .zero-setup {
+            color: #c8a860;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            margin: 8px 0 0 0;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 18px 0 6px 0;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 10px 18px;
+            background: linear-gradient(180deg, #5a4a30, #3a3528);
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            color: #f0e6c8;
+            font-weight: bold;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 11px;
+            box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        .cta-btn:hover {
+            background: linear-gradient(180deg, #6a5838, #4a4030);
+            border-color: #e0c880;
+            color: #fff6e0;
+        }
+
+        /* Small feature badges in the feature table (reuses .disk/.system) */
+        .landing-page td.disk {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <div class="landing-page">
+
+            <div class="hero">
+                <h1>yaPDP — User Manual</h1>
+                <p class="tagline">Welcome to the machine. This guide walks you through every page of the emulator —
+                    from the very first boot to the deepest configuration options — so you can spend your time in the
+                    machine room, not in the documentation.</p>
+                <p class="zero-setup">Everything below applies to both the browser version and the Tauri desktop app.
+                </p>
+                <div class="cta-row">
+                    <a class="cta-btn" href="pdp11.html">Launch the Emulator</a>
+                    <a class="cta-btn" href="index.html">Back to the Home Page</a>
+                </div>
+            </div>
+
+            <hr>
+
+            <h2>Table of Contents</h2>
+
+            <ol>
+                <li><a href="#quick-start">Quick Start</a></li>
+                <li><a href="#front-panel">The Front Panel (Panel page)</a></li>
+                <li><a href="#console">The Operator Console</a></li>
+                <li><a href="#user-terminals">User Terminals (TTY 1 / TTY 2)</a></li>
+                <li><a href="#printer">The LP11 Line Printer (Printer page)</a></li>
+                <li><a href="#vt11">The VT11 Vector Display (Display page)</a></li>
+                <li><a href="#storage">Storage (paper tape, disk & tape images)</a></li>
+                <li><a href="#config">Configuration (Config page)</a></li>
+                <li><a href="#guest-oses">Guest Operating Systems</a></li>
+                <li><a href="#controls">Buttons, Shortcuts & Indicators</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#desktop">The Desktop App</a></li>
+            </ol>
+
+            <hr>
+
+            <h2 id="quick-start">Quick Start</h2>
+
+            <h3>The magic wand</h3>
+
+            <p>
+                <b>In a hurry?</b> Use the <b>magic wand</b> button in the top-right corner of the window. It stays on
+                every page except <b>Info</b>. One click does everything:
+            </p>
+
+            <ol>
+                <li>Opens a picker listing every guest operating system (and the paper tapes).</li>
+                <li>Chooses one, switches to the operator console, and reboots the machine.</li>
+                <li>Types the <code>boot <device></code> command — and the login too, where the credentials are
+                    known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login <code>root</code>).</li>
+            </ol>
+
+            <p>
+                The wizard is prompt-aware: it watches the console output and types the login only when the guest
+                actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
+                prompt reliably. Each guest also declares the machine profile it wants — e.g. RT‑11/RSX/RSTS enable the
+                LP11 line printer, and Unix V5/BSD force a teletype console — so the wizard reconfigures the machine if
+                needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and
+                clear screens), and a toast warns
+                <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being
+                typed.
+            </p>
+
+            <h3>The classic way</h3>
+
+            <ol>
+                <li>At the <code>Boot></code> prompt, type <code>boot rp1</code> and press ENTER.</li>
+                <li>BSD 2.11 will autoboot into multiuser mode. Login as <code>root</code> (no password).</li>
+                <li>Try <code>ls</code>, <code>ps -aux</code>, <code>df</code> — or compile a C program with
+                    <code>cc</code>.
+                </li>
+            </ol>
+
+            <hr>
+
+            <h2 id="front-panel">The Front Panel (Panel page)</h2>
+
+            <p>
+                Every switch, LED, and rotary knob of a real PDP‑11/70 is faithfully recreated. The Panel page is where
+                you toggle in a bootstrap loader the way DEC engineers did in the 1970s.
+            </p>
+
+            <h3>Front panel switch sequences</h3>
+
+            <p>A simple light chaser — toggle this in to see the address and data LEDs dance:</p>
+
+            <pre>Switch sequence: HALT, 001000, LOAD ADDRESS
+                 012700, DEPOSIT
+                 000001, DEPOSIT
+                 006100, DEPOSIT
+                 000005, DEPOSIT
+                 000775, DEPOSIT
+                 001000, LOAD ADDRESS, ENABLE, START</pre>
+
+            <p>Restart the bootloader:</p>
+
+            <pre>HALT, 120000, LOAD ADDRESS, ENABLE, START</pre>
+
+            <hr>
+
+            <h2 id="console">The Operator Console</h2>
+
+            <p>
+                The operator console is what the PDP‑11 uses as its <code>TT0:</code> — the machine's own typewriter.
+                Depending on the CONFIG page, it is either a <b>Model 33 ASR teletype</b> or a <b>DECscope VT52</b>.
+            </p>
+
+            <h3>Model 33 ASR teletype</h3>
+
+            <p>
+                The console is rendered as an authentic light-cream/beige Model 33 ASR: a paper roll behind the rising
+                sheet, a glass carriage window, and a stamped Teletype Corporation logo on the lower face plate.
+            </p>
+
+            <ul>
+                <li><b>Keyboard.</b> Round dark keycaps with light two-line legends — the base glyph centred, the
+                    CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN,
+                    DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break
+                    condition).</li>
+                <li><b>Upper Case Only.</b> The on-screen keycaps always send upper-case letters. The physical keyboard
+                    folds <code>a</code>–<code>z</code> to <code>A</code>–<code>Z</code> only when the <b>Upper Case
+                        Only</b> CONFIG option is enabled (off by default, so 2.11 BSD receives lower case).</li>
+                <li><b>Paper printing.</b> Authentic nroff/man overstrike (<code>^H</code>) rendering: re-printing the
+                    same glyph gives bold, underscores give underline, and striking a <em>different</em> glyph leaves
+                    the real dark overstrike blot a hard-copy terminal makes.</li>
+                <li><b>Margins.</b> Long lines faithfully jam the carriage at the right margin (72 or 80 columns);
+                    characters overstrike the last column instead of wrapping. The paper width follows the selected
+                    width so a full line reaches the paper edge. The paper is anchored to the carriage and <b>grows
+                        upward</b> out of the top of the machine body; once its edge reaches the top of the window, a
+                    scrollbar appears and the view follows the freshly printed line.</li>
+                <li><b>ASR reader/punch.</b> Beside the machine sits the ASR tape reader/punch unit. Every byte echoed
+                    to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track
+                    8 = parity). As on a real ASR‑33 the punch is <b>OFF by default</b> — enable it from the CONFIG
+                    page or its own control.</li>
+            </ul>
+
+            <h3>VT52 as the console</h3>
+
+            <p>
+                When the console terminal is set to a VT52, the operator console becomes a DECscope with its authentic
+                white/grey (P4) phosphor on a black tube — see <a href="#user-terminals">User Terminals</a> below for
+                the full behaviour, which is shared.
+            </p>
+
+            <hr>
+
+            <h2 id="user-terminals">User Terminals (TTY 1 / TTY 2)</h2>
+
+            <p>
+                Up to two user <b>VT52</b> terminals (shown only when configured on the CONFIG page) let guest OSes
+                that prefer video terminals run side by side. Each is drawn as an authentic slanted DECscope monoblock:
+                an off-white moulded-plastic cabinet with a vent grille, a recessed screen in a deep bezel, and a plain
+                plastic side panel with a raised ridge. Input comes from the physical keyboard, as on the original
+                DECscope.
+            </p>
+
+            <ul>
+                <li><b>Font.</b> Text is rendered in the authentic <code>fritzm/vt52</code> bitmap display font
+                    (<code>monospace</code> is the fallback until the webfont loads).</li>
+                <li><b>Clear screen.</b> Clear screen (ESC E) and form feed (<code>^L</code>) both wipe the display and
+                    home the cursor, so <code>clear</code> and multi-page nroff/man output start each page from the top
+                    row.</li>
+                <li><b>CRT simulation (optional).</b> A pure-CSS effect adds brightness flicker, scanline shimmer and a
+                    vertical-hold roll band.</li>
+                <li><b>Text mode (optional).</b> Renders the terminal as a plain text field instead of the canvas,
+                    enabling native text selection and Windows Clipboard (<code>Ctrl+C</code>/<code>Ctrl+V</code>/
+                    right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering.</li>
+            </ul>
+
+            <hr>
+
+            <h2 id="printer">The LP11 Line Printer (Printer page)</h2>
+
+            <p>
+                The LP11 is an animated line printer on wide 132-column paper (72/80/100/132 selectable). It has no
+                keyboard — it only prints. Use the <b>Print</b> button to send the accumulated jobs to the real OS
+                printer via the system dialog, or <b>Save .txt</b> to export the output (page breaks are kept as
+                <code>\f</code> markers).
+            </p>
+
+            <ul>
+                <li><b>Speed.</b> Like the real LP11, it echoes characters far faster than the Model 33 ASR console
+                    teletype (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300
+                    lines/min.</li>
+                <li><b>DONE handshake.</b> The LP11 honours the historical DONE handshake: writing LPDB clears DONE and
+                    re-asserts it as each character is consumed by the mechanism, so a guest print job is throttled at
+                    printer speed.</li>
+                <li><b>OFF LINE.</b> When the printer is OFF LINE (or powered off), the controller latches a sticky
+                    ERROR flag in LPCS while keeping DONE set — so a guest OS driver reports an error (e.g.
+                    <code>?LP0: I/O error</code>) instead of silently discarding the job.
+                </li>
+                <li><b>Form feed.</b> The LP11 honours form feed (FF, 0x0C) — the 2.11BSD spooler (<code>lpr</code>/
+                    <code>lpd</code>) sends FF between jobs so each starts on a fresh page: it fills the rest of the
+                    sheet (66 lines at 6 LPI) and closes it with a dashed fold/perforation marker.
+                </li>
+                <li><b>Tabs & paper.</b> The carriage advances to the next 8-column tab stop on TAB, and the paper
+                    is sized to the configured print width (centred in the machine body). The cabinet auto-scales down
+                    proportionally to fit the window when it gets too small, and the rising fanfold paper climbs the
+                    same fraction of the window after scaling.</li>
+            </ul>
+
+            <hr>
+
+            <h2 id="vt11">The VT11 Vector Display (Display page)</h2>
+
+            <p>
+                An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024×768
+                logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. Lunar Lander uses it —
+                the quick-boot wizard enables the display and switches to the Display page automatically.
+            </p>
+
+            <hr>
+
+            <h2 id="storage">Storage (paper tape, disk & tape images)</h2>
+
+            <p>The Storage page manages every kind of storage media:</p>
+
+            <ul>
+                <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11, ODT‑11,
+                    ED‑11, or Lunar Lander from simulated paper tape — then boot with <code>boot pr</code>.</li>
+                <li><b>Drag & drop drop zone.</b> Drop any disk/tape image here — <code>.dsk</code>,
+                    <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are supported.
+                </li>
+                <li><b>Mounted images / Unmount list.</b> Shows currently mounted images and lets you unmount them.
+                    Mounted images persist in browser storage (IndexedDB) and are re-mounted automatically on the next
+                    launch — changes to disk contents survive across sessions.</li>
+            </ul>
+
+            <blockquote>
+                <em>Note:</em> the paper-tape reader is driven by the console bytes — every byte echoed to the console
+                punches a matching row of holes on the ASR paper tape.
+            </blockquote>
+
+            <hr>
+
+            <h2 id="config">Configuration (Config page)</h2>
+
+            <p>
+                The Config page controls the emulated peripherals and is persisted between sessions. The form is split
+                into four tabs, with the <b>Apply</b> and <b>Restore defaults</b> actions in a bar below the tabs:
+            </p>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Tab</th>
+                        <th>Controls</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">Equipment</td>
+                        <td>Console terminal type (teletype or VT52), number of user terminals (0–2), LP11 line
+                            printer, VT11 graphics display, print widths (teletype 72/80, printer 72/80/100/132),
+                            teletype speed, and the Upper Case Only keyboard flag.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Look & sound</td>
+                        <td>VT100-style key-click sound for VT52 terminals, historical VT52 reverse-video mode (black
+                            text on white), pure-CSS CRT simulation, ambient PDP‑11 power-supply hum and fan noise
+                            while the machine is on, and the PDP‑11 machine-room photo backdrop.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Behaviour</td>
+                        <td>Reboot confirmation ("Don't show this warning anymore" can be restored here at any time).
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Development</td>
+                        <td>VT52 text mode (plain text field with native Windows Clipboard).</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                <b>Structural changes</b> (console type, terminals, printer, VT11 display) are committed with
+                <b>Apply</b>, which restarts the machine so the emulated hardware matches the configuration. Print
+                widths, teletype speed, the Upper Case Only flag, key click, reverse video, CRT effects, VT52 text
+                mode, machine hum and the photo backdrop apply immediately. <b>Restore defaults</b> fills the form with
+                factory values (committed by <b>Apply</b>).
+            </p>
+
+            <p>
+                The hum is synthesized with Web Audio on its own audio channel, so it never cuts off the
+                teletype/printer or the VT52 key-click sounds.
+            </p>
+
+            <hr>
+
+            <h2 id="guest-oses">Guest Operating Systems</h2>
+
+            <p>The emulator ships with ready-to-boot disk and tape images. Just type <code>boot <device></code>
+                at the <code>Boot></code> prompt — or pick one with the magic wand.</p>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Disk</th>
+                        <th>Operating System</th>
+                        <th>How to Boot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">RK0</td>
+                        <td>Unix V5</td>
+                        <td><code>boot rk0</code> → <code>unix</code> → login as <code>root</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RK1</td>
+                        <td>RT‑11 v4.0</td>
+                        <td><code>boot rk1</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RK2</td>
+                        <td>RSTS V06C‑03</td>
+                        <td><code>boot rk2</code> — login <code>11,70</code> password <code>PDP</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RK3</td>
+                        <td>XXDP (diagnostics)</td>
+                        <td><code>boot rk3</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RK4</td>
+                        <td>RT‑11 3B Distribution</td>
+                        <td><code>boot rk4</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">TM0</td>
+                        <td>RSTS 4B‑17 (tape)</td>
+                        <td><code>boot tm0</code> — follow ROLLIN restore procedure</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RL0</td>
+                        <td>BSD 2.9</td>
+                        <td><code>boot rl0</code> → <code>rl(0,0)rlunix</code> → CTRL/D → login <code>root</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RL1</td>
+                        <td>RSX‑11M v3.2</td>
+                        <td><code>boot rl1</code> — login <code>1,2</code> password <code>SYSTEM</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RL2</td>
+                        <td>RSTS/E v7.0</td>
+                        <td><code>boot rl2</code> — login <code>11,70</code> password <code>PDP</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RL3</td>
+                        <td>XXDP (extended)</td>
+                        <td><code>boot rl3</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RP0</td>
+                        <td>ULTRIX‑11 V3.1</td>
+                        <td><code>boot rp0</code> → CTRL/D → login <code>root</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RP1</td>
+                        <td>BSD 2.11</td>
+                        <td><code>boot rp1</code> — autoboots to multiuser, login <code>root</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RP2</td>
+                        <td>RSTS/E v9.6</td>
+                        <td><code>boot rp2</code> — answer prompts, login <code>11,70</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RP3</td>
+                        <td>RSX‑11M v4.6</td>
+                        <td><code>boot rp3</code> — auto-logs <code>1,2</code> SYSTEM</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">RP4</td>
+                        <td>RSTS/E v10.1</td>
+                        <td><code>boot rp4</code> — answer prompts, login <code>11,70</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <hr>
+
+            <h2 id="controls">Buttons, Shortcuts & Indicators</h2>
+
+            <h3>Switching pages</h3>
+
+            <p>Use the sidebar to switch between:</p>
+
+            <ul>
+                <li><b>Panel</b> — the front panel with switches and LEDs.</li>
+                <li><b>Console</b> — the operator console: a Model 33 ASR teletype (or a DECscope VT52, when the
+                    console terminal is a VT52).</li>
+                <li><b>TTY 1 / TTY 2</b> — user VT52 terminals, shown only when configured.</li>
+                <li><b>Printer</b> — the LP11 line printer page, shown only when configured.</li>
+                <li><b>Display</b> — the VT11 vector-graphics CRT page, shown only when configured.</li>
+                <li><b>Storage</b> — paper-tape reader, disk/tape image import and mounted images.</li>
+                <li><b>Config</b> — configure the emulated peripherals (persisted between sessions).</li>
+                <li><b>Info</b> — detailed instructions and OS reference.</li>
+            </ul>
+
+            <h3>Floating controls</h3>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Control</th>
+                        <th>Where</th>
+                        <th>What it does</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">Magic wand</td>
+                        <td>Top-right corner (every page except Info)</td>
+                        <td>Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">REBOOT</td>
+                        <td>Top-left corner, just right of the sidebar</td>
+                        <td>Round button with a restart icon. Restarts the machine and boots the built-in default
+                            loader. By default a confirmation dialog asks first, with a "Don't show this warning
+                            anymore" option.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Mute</td>
+                        <td>Bottom-left corner, just right of the sidebar</td>
+                        <td>Round button that toggles <em>all</em> sounds at once — hum, teletype/LP11, paper
+                            feed/tear, key clicks and the bell. State is persisted with the rest of the configuration.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Fullscreen</td>
+                        <td>Bottom-right corner of the window</td>
+                        <td>Floating button that hides the browser/system chrome (address bar, OS window frame,
+                            taskbar) while leaving the emulator UI untouched. Press again or Esc to return.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Sidebar activity lamps</h3>
+
+            <p>
+                Each output sidebar button has a small blinking green LED in its top-right corner: it pulses while the
+                PDP‑11 writes output to that console/terminal (and blinks for the whole print job on the Printer
+                button), then switches off about half a second after the output stops.
+            </p>
+
+            <hr>
+
+            <h2 id="troubleshooting">Troubleshooting</h2>
+
+            <h3>An image cannot be loaded</h3>
+
+            <p>
+                If a guest OS image cannot be fetched completely — a big BSD image dropped by the hosting server
+                mid-download, or an image that is not bundled in the Minimal desktop build — the emulator doesn't stall
+                silently. A dialog in the same shared modal style as the first-run hint explains that the image is
+                incomplete and offers <b>Open Storage</b>, which jumps straight to the drop zone for a manual
+                drag & drop of the downloaded file.
+            </p>
+
+            <p>
+                The wording adapts to the environment: a page opened as a local <code>file://</code> explains that the
+                browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal
+                build explains that the image is not shipped and points to the drop zone.
+            </p>
+
+            <hr>
+
+            <h2 id="desktop">The Desktop App</h2>
+
+            <p>
+                Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64
+                with Tauri. Two installer variants are available:
+            </p>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Variant</th>
+                        <th>Ships</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">Minimal</td>
+                        <td>rk0, rk1, bootcode</td>
+                        <td>Small download (~3 MB). All other images are dragged & dropped at runtime.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Full</td>
+                        <td>every image — RK/RL/RP/RA disks, TM tapes, all paper tapes</td>
+                        <td>Larger download, but all 16 guest OSes boot offline with zero extra steps.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <hr>
+
+            <p><em>Happy emulating!</em></p>
+
+            <p>
+                — <em>yaPDP User Manual</em><br>
+                — <em>Fork maintained with love for the DEC era</em>
+            </p>
+
+        </div>
+    </div>
+</body>
+
+</html>

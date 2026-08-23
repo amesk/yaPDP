@@ -10,16 +10,16 @@
         content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,RT-11,RSX-11M,RSTS,BSD,Unix">
     <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 
-    <!-- Same stylesheet as the emulator, so the landing page shares the exact
+    <!-- Same stylesheet as the emulator, so this page shares the exact
        DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
     <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
 
-    <!-- Landing-page-only rules. The base pdp11.css already supplies the body
+    <!-- Main-page-only rules. The base pdp11.css already supplies the body
        photo backdrop, fonts and the .app-layout chrome; here we
        only adapt the content slab (mirroring #page-instructions) and the
        hero / call-to-action blocks. -->
     <style>
-        /* Landing-page-only backdrop: override the shared emulator body photo
+        /* Main-page-only backdrop: override the shared emulator body photo
            (Kernighan & Ritchie) with the PDP-11 machine-room photo. Only this
            page is affected; the emulator keeps its original backdrop.
            Paths are relative to index.html at the repo root. */
@@ -212,6 +212,7 @@
                 </p>
                 <div class="cta-row">
                     <a class="cta-btn" href="pdp11.html">Launch the Emulator Online</a>
+                    <a class="cta-btn" href="manual.html">User Manual</a>
                     <a class="cta-btn" href="https://gitverse.ru/amesk/yaPDP">Project Page</a>
                     <a class="cta-btn" href="https://gitverse.ru/amesk/yaPDP/releases">Download</a>
                     <a class="cta-btn" href="https://www.youtube.com/watch?v=m3dpBLgbYOM">
@@ -437,6 +438,10 @@
                         <td class="disk">README</td>
                         <td><a href="README.md">README.md</a> — build instructions, guest OS table, desktop app variants
                         </td>
+                    </tr>
+                    <tr>
+                        <td class="disk">User manual</td>
+                        <td><a href="manual.html">manual.html</a> — step-by-step user guide for the emulator</td>
                     </tr>
                     <tr>
                         <td class="disk">Original pdp11-js</td>
