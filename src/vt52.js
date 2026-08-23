@@ -72,6 +72,10 @@
     const MAX_COLS_132 = 132;     // DECCOLM 80/132 column mode
     const MAX_BUFFER   = 20000;   // Hardcopy scrollback limit
 
+    // Authentic DEC VT52 tube aspect ratio (width / height): the 80x24 grid is
+    // drawn on a 4:3 CRT, so character cells are taller than they are wide.
+    const CRT_ASPECT = 4 / 3;
+
     // Control characters (7‑bit ASCII)
     const BS  = 8;    // Backspace
     const TAB = 9;    // Horizontal tab
@@ -574,6 +578,13 @@
             ctx.fillStyle = this.bgColor;
             ctx.font = this.textFont;
 
+            // Horizontal squeeze to fill the authentic 4:3 tube: cells and glyphs
+            // are drawn in logical grid units and mapped onto the physical canvas
+            // by setTransform. setTransform replaces (not compounds) the previous
+            // transform, so repeated resizes never accumulate a scale.
+            const sx = (this.canvas && this.canvas.scaleX) || 1;
+            ctx.setTransform(sx, 0, 0, 1, 0, 0);
+
             // Track current drawing modes so we can avoid redundant state changes.
             this.fgMode = false;   // false = background colour, true = foreground colour
             this.boldMode = false; // false = normal font, true = bold font
@@ -636,6 +647,26 @@
         }
 
         // ---------------------------------------------------------------------------
+        // Authentic 4:3 tube geometry for the current grid
+        // ---------------------------------------------------------------------------
+        // A real DEC VT52 drew its 80x24 grid on a 4:3 CRT, so the natural
+        // monospace grid (cols x charWidth by rows x fontHeight) is wider than
+        // the tube. The canvas path squeezes it horizontally via
+        // ctx.setTransform(scaleX); the text-mode <textarea> mirrors the same
+        // scaleX as a CSS transform. Single source of truth for both the canvas
+        // (resizeCanvas) and the host (pdp11-app.js).
+        gridMetrics() {
+            if (!this.canvas) {
+                return { logicalW: 0, logicalH: 0, width: 0, height: 0, scaleX: 1 };
+            }
+            const logicalW = this.screenPadding * 2 + this.cols * this.canvas.charWidth;
+            const logicalH = this.screenPadding * 2 + this.rows * this.fontHeight;
+            const width    = Math.round(logicalH * CRT_ASPECT);
+            const scaleX   = logicalW > 0 ? width / logicalW : 1;
+            return { logicalW, logicalH, width, height: logicalH, scaleX };
+        }
+
+        // ---------------------------------------------------------------------------
         // Size the canvas to the current grid plus the inner margin
         // ---------------------------------------------------------------------------
         // Resizing a canvas wipes its drawing state (font/fillStyle), so the
@@ -643,8 +674,10 @@
         // used on startup (host) and on DECCOLM 80/132 switching.
         resizeCanvas() {
             if (!this.allowCanvas || !this.screenCanvas) return;
-            this.screenCanvas.width  = this.screenPadding * 2 + this.cols * this.canvas.charWidth;
-            this.screenCanvas.height = this.screenPadding * 2 + this.rows * this.fontHeight;
+            const m = this.gridMetrics();
+            this.canvas.scaleX = m.scaleX;
+            this.screenCanvas.width  = m.width;
+            this.screenCanvas.height = m.height;
             this.resetCanvasContext(this.canvas.ctx);
         }
 
@@ -870,9 +903,14 @@
         renderCanvas() {
             const ctx = this.canvas.ctx;
 
-            // Clear entire canvas
+            // Clear the whole physical canvas in device pixels first (identity
+            // transform), then restore the horizontal squeeze for cell drawing —
+            // otherwise the squeezed fillRect would only cover scaleX of the
+            // width, leaving a stale band on the right edge.
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
             this.setForeground(false);
             ctx.fillRect(0, 0, this.screenCanvas.width, this.screenCanvas.height);
+            ctx.setTransform((this.canvas.scaleX || 1), 0, 0, 1, 0, 0);
 
             // Redraw all rows
             for (let row = 0; row < this.screen.length; row++) {

@@ -577,6 +577,86 @@ function run() {
             "ANSI underline still draws the underline bar");
     }
 
+    // ---- Authentic 4:3 tube geometry (CRT_ASPECT) --------------------------
+    // A DEC VT52 drew its 80x24 grid on a 4:3 CRT. resizeCanvas() must size the
+    // canvas to 4:3 (width = height * 4/3) and store a horizontal squeeze
+    // scaleX < 1 so the wide monospace grid maps onto the tube without
+    // stretching. gridMetrics() is the single source used by both the canvas
+    // path and the text-mode <textarea> mirror (applyVT52TextGeometry).
+    {
+        const { term } = makeTerminal();
+        term.allowCanvas = true;
+        term.screenPadding = 12;
+        term.cols = 80;
+        term.rows = 24;
+        term.fontHeight = 20;
+
+        const transforms = [];
+        const ctx = {
+            fillStyle: "",
+            font: "",
+            textBaseline: "",
+            setTransform: (a, b, c, d, e, f) => transforms.push([a, b, c, d, e, f]),
+            fillRect() {},
+            fillText() {},
+            measureText: () => ({ width: 12 }),
+        };
+        term.canvas = {
+            ctx,
+            charWidth: 12,
+            blinkCycle: false,
+            lastCursor: { row: -1, col: -1 },
+        };
+        term.screenCanvas = { width: 0, height: 0 };
+
+        term.resizeCanvas();
+
+        // 12*2 + 24*20 = 504 tall; 504 * 4/3 = 672 wide → exactly 4:3.
+        assert.strictEqual(term.screenCanvas.height, 504, "canvas height = grid + padding");
+        assert.strictEqual(term.screenCanvas.width, 672, "canvas width = height * 4/3");
+        const aspect = term.screenCanvas.width / term.screenCanvas.height;
+        assert.ok(Math.abs(aspect - 4 / 3) < 1e-6,
+            "canvas aspect must be 4:3, got " + aspect);
+        assert.ok(term.canvas.scaleX < 1,
+            "wide grid must be squeezed horizontally, got scaleX " + term.canvas.scaleX);
+        // resetCanvasContext applies the squeeze via setTransform.
+        const last = transforms[transforms.length - 1];
+        assert.strictEqual(last[0], term.canvas.scaleX,
+            "ctx.setTransform applies the stored scaleX");
+
+        // gridMetrics() mirrors the canvas size for the text-mode <textarea>.
+        const m = term.gridMetrics();
+        assert.strictEqual(m.width, 672, "gridMetrics width matches the canvas");
+        assert.strictEqual(m.height, 504, "gridMetrics height matches the canvas");
+        assert.strictEqual(m.scaleX, term.canvas.scaleX,
+            "gridMetrics scaleX matches the canvas");
+    }
+
+    // ---- 132-column DECCOLM keeps the 4:3 tube -------------------------------
+    {
+        const { term } = makeTerminal();
+        term.allowCanvas = true;
+        term.screenPadding = 12;
+        term.cols = 132;
+        term.rows = 24;
+        term.fontHeight = 20;
+        const ctx = {
+            fillStyle: "", font: "", textBaseline: "",
+            setTransform() {}, fillRect() {}, fillText() {},
+            measureText: () => ({ width: 12 }),
+        };
+        term.canvas = {
+            ctx, charWidth: 12, blinkCycle: false, lastCursor: { row: -1, col: -1 },
+        };
+        term.screenCanvas = { width: 0, height: 0 };
+        term.resizeCanvas();
+        const aspect = term.screenCanvas.width / term.screenCanvas.height;
+        assert.ok(Math.abs(aspect - 4 / 3) < 1e-6,
+            "132-column canvas must stay 4:3, got " + aspect);
+        assert.ok(term.canvas.scaleX < 1,
+            "132-column grid is squeezed even harder, got scaleX " + term.canvas.scaleX);
+    }
+
     console.log("vt52.test.js: all overstrike tests passed");
 }
 

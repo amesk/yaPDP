@@ -905,15 +905,12 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
     term.clearScreen();
 
     if (textMode) {
-      // Plain textarea terminal: native clipboard and text selection. Size the
-      // textarea to mirror the canvas cell grid (see resizeCanvas in vt52.js).
+      // Plain textarea terminal: native clipboard and text selection. Mirror the
+      // authentic 4:3 canvas CRT onto the textarea (logical grid + scaleX).
       term.allowCanvas = false;
       canvas.style.display = 'none';
       textarea.style.display = 'block';
-      if (term.canvas && term.canvas.charWidth > 0) {
-        textarea.style.width = (term.screenPadding * 2 + term.cols * term.canvas.charWidth) + 'px';
-        textarea.style.height = (term.screenPadding * 2 + term.rows * term.fontHeight) + 'px';
-      }
+      applyVT52TextGeometry(term);
       // Keep the terminal's built-in key handler so typing reaches the emulator,
       // but let Ctrl+V always fall through to the native paste (the paste
       // listener routes it into the emulator) and Ctrl+C copy when a selection
@@ -953,10 +950,10 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
     var t = (typeof window.vt52Get === 'function') ? window.vt52Get(unit) : null;
     if (!t || typeof t.setFont !== 'function') return;
     t.setFont(VT52_FONT_STACK);
-    if (t.textArea && t.textArea.style.display !== 'none' &&
-        t.canvas && t.canvas.charWidth > 0) {
-      t.textArea.style.width = (t.screenPadding * 2 + t.cols * t.canvas.charWidth) + 'px';
-      t.textArea.style.height = (t.screenPadding * 2 + t.rows * t.fontHeight) + 'px';
+    if (t.textArea && t.textArea.style.display !== 'none') {
+      // After the webfont re-measures the cell width, re-apply the mirrored
+      // 4:3 textarea geometry (logical grid + scaleX + tube size).
+      applyVT52TextGeometry(t);
     }
   });
 }
@@ -1100,6 +1097,40 @@ function makeTextModeKeyHandler(term, ta) {
   };
 }
 
+// ---- Mirror the authentic 4:3 canvas geometry onto the text-mode <textarea> ----
+// The textarea keeps its logical 80x24 grid (so monospace text still lays out
+// in 80 columns) and is then squeezed to the 4:3 tube with the same horizontal
+// scale the canvas path applies via ctx.setTransform (gridMetrics in vt52.js).
+// The .vt52-crt is pinned to the visible footprint so the cabinet and the
+// auto-scaler (installVT52Scaling) measure the same proportions as the canvas.
+function applyVT52TextGeometry(t) {
+  if (!t || typeof t.gridMetrics !== 'function') return;
+  var m = t.gridMetrics();
+  if (!m || m.logicalW <= 0) return;
+  if (t.textArea) {
+    t.textArea.style.width = m.logicalW + 'px';
+    t.textArea.style.height = m.logicalH + 'px';
+    t.textArea.style.transformOrigin = 'left top';
+    t.textArea.style.transform = (m.scaleX < 1) ? 'scaleX(' + m.scaleX + ')' : '';
+  }
+  var crt = t.screenCanvas ? t.screenCanvas.parentElement : null;
+  if (crt) {
+    crt.style.width = m.width + 'px';
+    crt.style.height = m.height + 'px';
+  }
+}
+
+// ---- Undo the text-mode geometry when switching back to the canvas CRT ----
+function clearVT52TextGeometry(t) {
+  if (!t) return;
+  if (t.textArea) t.textArea.style.transform = '';
+  var crt = t.screenCanvas ? t.screenCanvas.parentElement : null;
+  if (crt) {
+    crt.style.width = '';
+    crt.style.height = '';
+  }
+}
+
 // Apply the configured text-mode preference to every live VT52 terminal
 // (console + user terminals). When enabled each terminal renders through its
 // visible <textarea>, giving native text selection and Windows Clipboard
@@ -1121,19 +1152,18 @@ function applyVT52TextMode(enabled) {
       // Restore the text-mode key handler so typing reaches the emulator and
       // Ctrl+V / Ctrl+C behave like Windows Terminal (native clipboard).
       if (typeof t._builtinKey === 'function') t.handleKey = makeTextModeKeyHandler(t, ta);
-      // Mirror the canvas cell grid so the textarea keeps the same geometry as
-      // the CRT path (see resizeCanvas in src/vt52.js).
-      if (t.canvas && t.canvas.charWidth > 0) {
-        ta.style.width = (t.screenPadding * 2 + t.cols * t.canvas.charWidth) + 'px';
-        ta.style.height = (t.screenPadding * 2 + t.rows * t.fontHeight) + 'px';
-      }
+      // Mirror the authentic 4:3 canvas CRT onto the textarea (logical grid +
+      // horizontal scaleX), keeping the tube the same proportions as the canvas.
+      applyVT52TextGeometry(t);
       if (typeof ta.focus === 'function') ta.focus();
     } else {
       t.allowCanvas = true;
       ta.style.display = 'none';
       canvas.style.display = 'block';
+      // Drop the text-mode squeeze so the canvas path fully controls the tube.
+      clearVT52TextGeometry(t);
       // Size the canvas to the current grid first: the buffer may still hold
-      // the raw HTML attribute dimensions (1280x384) when the terminal was
+      // the raw HTML attribute dimensions (672x504) when the terminal was
       // started in text mode and initVT52Page's canvas branch never ran, which
       // would otherwise render a squashed, wide-flat CRT. resizeCanvas() is
       // idempotent, so re-sizing an already-correct canvas is harmless.
