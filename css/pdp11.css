@@ -789,14 +789,16 @@
     font-size: 11px;
 }
 
-/* "Autoloading in progress" toast (quickboot.js) — centered on screen, above
+/* "Autoloading in progress" toast (quickboot.js) — pinned to the top centre
+   of the window, below the floating round buttons (magic wand / REBOOT), so
+   it stays visible without covering the middle of the console output. Above
    the content but below the modal overlays, so it never covers the OS picker
    dialog. */
 .quickboot-balloon {
     position: fixed;
     left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    top: 64px;
+    transform: translateX(-50%);
     z-index: 50000;
     display: none;
     padding: 16px 28px;
