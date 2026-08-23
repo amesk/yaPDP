@@ -194,33 +194,57 @@
             margin: 2px 0 14px 0;
         }
 
-        /* Floating-button strip: the four corner buttons side by side. */
-        .landing-page .btn-strip {
+        /* Floating-button thumbnails inside the controls table. */
+        .landing-page .control-cell {
             display: flex;
-            gap: 16px;
-            justify-content: center;
-            align-items: flex-end;
-            flex-wrap: wrap;
-            margin: 14px 0 4px 0;
-        }
-
-        .landing-page .btn-strip figure {
-            margin: 0;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
             text-align: center;
         }
 
-        .landing-page .btn-strip img {
-            display: block;
-            margin: 0 auto;
+        .landing-page .control-btn {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
             border: 1px solid #4a453a;
             border-radius: 4px;
             background: rgba(0, 0, 0, 0.25);
         }
 
-        .landing-page .btn-strip figcaption {
-            color: #c8b890;
-            font-size: 11px;
-            margin-top: 4px;
+        .landing-page .control-name {
+            color: #f0e6c8;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Config-tab illustrations: each screenshot beside its description. */
+        .landing-page .config-item {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin: 18px 0;
+        }
+
+        .landing-page .config-item-img {
+            flex: 0 0 46%;
+            max-width: 46%;
+            height: auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+        }
+
+        .landing-page .config-item-text {
+            flex: 1 1 auto;
+        }
+
+        .landing-page .config-item-text h3 {
+            margin-top: 0;
+        }
+
+        .landing-page .config-item-text p {
+            margin: 6px 0 0 0;
         }
     </style>
 </head>
@@ -265,6 +289,14 @@
 
             <h2 id="quick-start">Quick Start</h2>
 
+            <p>
+                On your very first launch the emulator greets you with a short onboarding hint that explains what to do
+                right away — which page to open, the mounted guest OSes and their boot commands:
+            </p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="First-run onboarding hint"></p>
+            <p class="shot-caption">The first-run onboarding hint.</p>
+
             <h3>The magic wand</h3>
 
             <p>
@@ -279,6 +311,9 @@
                     known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login <code>root</code>).</li>
             </ol>
 
+            <p><img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Quick boot picker"></p>
+            <p class="shot-caption">The quick-boot picker lists every guest OS and paper tape.</p>
+
             <p>
                 The wizard is prompt-aware: it watches the console output and types the login only when the guest
                 actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
@@ -289,6 +324,10 @@
                 <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being
                 typed.
             </p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast"></p>
+            <p class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the
+                teletype/keyboard.</p>
 
             <h3>The classic way</h3>
 
@@ -327,6 +366,14 @@
             <p>Restart the bootloader:</p>
 
             <pre>HALT, 120000, LOAD ADDRESS, ENABLE, START</pre>
+
+            <p>
+                The <b>Bootstrap now!</b> button refuses to start the machine while it is powered off:
+            </p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! power-off guard">
+            </p>
+            <p class="shot-caption">Bootstrap now! requires the machine to be powered on first.</p>
 
             <hr>
 
@@ -455,8 +502,8 @@
                 the quick-boot wizard enables the display and switches to the Display page automatically.
             </p>
 
-            <p><img class="shot" src="assets/images/manual/vt11.png" alt="The VT11 vector display"></p>
-            <p class="shot-caption">The VT11 vector-graphics CRT page.</p>
+            <p><img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display"></p>
+            <p class="shot-caption">Lunar Lander drawn on the VT11 vector-graphics CRT.</p>
 
             <hr>
 
@@ -492,40 +539,55 @@
                 into four tabs, with the <b>Apply</b> and <b>Restore defaults</b> actions in a bar below the tabs:
             </p>
 
-            <p><img class="shot" src="assets/images/manual/config.png" alt="The Config page"></p>
-            <p class="shot-caption">The Config page with its four tabs and Apply / Restore defaults bar.</p>
+            <div class="config-item">
+                <img class="config-item-img" src="assets/images/manual/config-equipment.png"
+                    alt="CONFIG - Equipment tab">
+                <div class="config-item-text">
+                    <h3>Equipment</h3>
+                    <p>Console terminal type (teletype or VT52), the number of user terminals (0–2), the LP11 line
+                        printer, the VT11 graphics display, print widths (teletype 72/80, printer 72/80/100/132),
+                        teletype speed and the Upper Case Only keyboard flag.</p>
+                </div>
+            </div>
 
-            <table style="margin-left:0; padding:3px;">
-                <thead>
-                    <tr>
-                        <th>Tab</th>
-                        <th>Controls</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="disk">Equipment</td>
-                        <td>Console terminal type (teletype or VT52), number of user terminals (0–2), LP11 line
-                            printer, VT11 graphics display, print widths (teletype 72/80, printer 72/80/100/132),
-                            teletype speed, and the Upper Case Only keyboard flag.</td>
-                    </tr>
-                    <tr>
-                        <td class="disk">Look & sound</td>
-                        <td>VT100-style key-click sound for VT52 terminals, historical VT52 reverse-video mode (black
-                            text on white), pure-CSS CRT simulation, ambient PDP‑11 power-supply hum and fan noise
-                            while the machine is on, and the PDP‑11 machine-room photo backdrop.</td>
-                    </tr>
-                    <tr>
-                        <td class="disk">Behaviour</td>
-                        <td>Reboot confirmation ("Don't show this warning anymore" can be restored here at any time).
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="disk">Development</td>
-                        <td>VT52 text mode (plain text field with native Windows Clipboard).</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="config-item">
+                <img class="config-item-img" src="assets/images/manual/config-visual.png"
+                    alt="CONFIG - Look & sound tab">
+                <div class="config-item-text">
+                    <h3>Look & sound</h3>
+                    <p>VT100-style key-click sound for VT52 terminals, historical VT52 reverse-video mode (black text
+                        on white), pure-CSS CRT simulation, ambient PDP‑11 power-supply hum and fan noise while the
+                        machine is on, and the PDP‑11 machine-room photo backdrop.</p>
+                </div>
+            </div>
+
+            <div class="config-item">
+                <img class="config-item-img" src="assets/images/manual/config-behaviour.png"
+                    alt="CONFIG - Behaviour tab">
+                <div class="config-item-text">
+                    <h3>Behaviour</h3>
+                    <p>Reboot confirmation — the "Don't show this warning anymore" option can be restored here at any
+                        time.</p>
+                </div>
+            </div>
+
+            <div class="config-item">
+                <img class="config-item-img" src="assets/images/manual/config-development.png"
+                    alt="CONFIG - Development tab">
+                <div class="config-item-text">
+                    <h3>Development</h3>
+                    <p>VT52 text mode — renders VT52 terminals as a plain text field with native Windows Clipboard for
+                        fast source-code entry.</p>
+                </div>
+            </div>
+
+            <p>
+                Leaving the Config page with uncommitted changes asks for confirmation, so nothing is lost silently:
+            </p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-config-leave.png"
+                    alt="Unapplied configuration warning"></p>
+            <p class="shot-caption">The emulator warns before leaving Config with uncommitted changes.</p>
 
             <p>
                 <b>Structural changes</b> (console type, terminals, printer, VT11 display) are committed with
@@ -657,25 +719,6 @@
 
             <h3>Floating controls</h3>
 
-            <div class="btn-strip">
-                <figure>
-                    <img src="assets/images/manual/btn-magicwand.png" alt="Quick-boot (magic wand) button">
-                    <figcaption>Magic wand</figcaption>
-                </figure>
-                <figure>
-                    <img src="assets/images/manual/btn-reboot.png" alt="REBOOT button">
-                    <figcaption>REBOOT</figcaption>
-                </figure>
-                <figure>
-                    <img src="assets/images/manual/btn-mute.png" alt="Mute button">
-                    <figcaption>Mute</figcaption>
-                </figure>
-                <figure>
-                    <img src="assets/images/manual/btn-fullscreen.png" alt="Fullscreen button">
-                    <figcaption>Fullscreen</figcaption>
-                </figure>
-            </div>
-
             <table style="margin-left:0; padding:3px;">
                 <thead>
                     <tr>
@@ -686,33 +729,50 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="disk">Magic wand</td>
+                        <td class="disk control-cell">
+                            <img class="control-btn" src="assets/images/manual/btn-magicwand.png"
+                                alt="Magic wand button">
+                            <span class="control-name">Magic wand</span>
+                        </td>
                         <td>Top-right corner (every page except Info)</td>
                         <td>Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login.
                         </td>
                     </tr>
                     <tr>
-                        <td class="disk">REBOOT</td>
+                        <td class="disk control-cell">
+                            <img class="control-btn" src="assets/images/manual/btn-reboot.png" alt="REBOOT button">
+                            <span class="control-name">REBOOT</span>
+                        </td>
                         <td>Top-left corner, just right of the sidebar</td>
                         <td>Round button with a restart icon. Restarts the machine and boots the built-in default
                             loader. By default a confirmation dialog asks first, with a "Don't show this warning
                             anymore" option.</td>
                     </tr>
                     <tr>
-                        <td class="disk">Mute</td>
+                        <td class="disk control-cell">
+                            <img class="control-btn" src="assets/images/manual/btn-mute.png" alt="Mute button">
+                            <span class="control-name">Mute</span>
+                        </td>
                         <td>Bottom-left corner, just right of the sidebar</td>
                         <td>Round button that toggles <em>all</em> sounds at once — hum, teletype/LP11, paper
                             feed/tear, key clicks and the bell. State is persisted with the rest of the configuration.
                         </td>
                     </tr>
                     <tr>
-                        <td class="disk">Fullscreen</td>
+                        <td class="disk control-cell">
+                            <img class="control-btn" src="assets/images/manual/btn-fullscreen.png"
+                                alt="Fullscreen button">
+                            <span class="control-name">Fullscreen</span>
+                        </td>
                         <td>Bottom-right corner of the window</td>
                         <td>Floating button that hides the browser/system chrome (address bar, OS window frame,
                             taskbar) while leaving the emulator UI untouched. Press again or Esc to return.</td>
                     </tr>
                 </tbody>
             </table>
+
+            <p><img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog"></p>
+            <p class="shot-caption">The REBOOT button asks for confirmation by default.</p>
 
             <h3>Sidebar activity lamps</h3>
 
@@ -741,6 +801,9 @@
                 browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal
                 build explains that the image is not shipped and points to the drop zone.
             </p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Image load failure dialog"></p>
+            <p class="shot-caption">An incomplete image triggers this dialog with an Open Storage shortcut.</p>
 
             <hr>
 
@@ -772,15 +835,6 @@
                     </tr>
                 </tbody>
             </table>
-
-            <hr>
-
-            <p><em>Happy emulating!</em></p>
-
-            <p>
-                — <em>yaPDP User Manual</em><br>
-                — <em>Fork maintained with love for the DEC era</em>
-            </p>
 
         </div>
     </div>
