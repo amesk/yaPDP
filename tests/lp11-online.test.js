@@ -89,6 +89,52 @@ function run() {
     assert.ok(/classList\.toggle\("busy",\s*busy\)/.test(src),
         "READY LED must get the .busy class while the printer is printing");
 
+    // --- Historically-accurate DONE throttling ------------------------------
+    // The LP11 must NOT keep DONE always set: writing a printable byte to LPDB
+    // clears DONE and the renderer's onChar callback re-asserts it as the
+    // character is consumed, throttling the CPU at printer speed. Dropped
+    // (unprintable) bytes and any byte while OFF LINE are consumed instantly
+    // and keep DONE set, so the OS never blocks or hangs.
+    {
+        // onChar must be wired into the LP11 printer instance.
+        const lp11OptsStart = src.indexOf('new window.G60Printer("lp11_printer"');
+        assert.ok(lp11OptsStart !== -1, "LP11 must create its G60Printer instance");
+        const lp11OptsEnd = src.indexOf("});", lp11OptsStart);
+        assert.ok(lp11OptsEnd !== -1 && lp11OptsEnd > lp11OptsStart,
+            "LP11 G60 options block must be closed");
+        const lp11Opts = src.slice(lp11OptsStart, lp11OptsEnd);
+        assert.ok(/onChar:\s*function\s*\(\s*\)/.test(lp11Opts),
+            "LP11 G60 instance must wire an onChar callback that re-asserts DONE");
+        assert.ok(/charsPerTick:\s*3/.test(lp11Opts),
+            "LP11 G60 instance must keep the fast charsPerTick pacing");
+
+        // A printable LPDB write must clear DONE to throttle the CPU...
+        assert.ok(/lpcs\s*&=\s*~LP_LPCS_DONE/.test(src),
+            "LPDB write of a printable byte must clear DONE (throttle the CPU)");
+        // ...and DONE must be re-asserted when the character is consumed or
+        // when a dropped byte is consumed instantly.
+        assert.ok(/lpcs\s*\|=\s*LP_LPCS_DONE/.test(src),
+            "DONE must be re-asserted on character consumption / instant drop");
+        // Not ready (OFF LINE / powered off): the byte is consumed instantly,
+        // DONE stays set so the OS never blocks, and the sticky ERROR flag is
+        // latched so the OS driver can report an error.
+        assert.ok(/consumed instantly, DONE stays set/.test(src),
+            "not-ready LPDB path must consume the byte instantly");
+        assert.ok(/const\s+LP_LPCS_ERR\s*=/.test(src),
+            "LPCS must define a sticky ERROR bit");
+        assert.ok(/LP_LPCS_DONE\s*\|\s*LP_LPCS_ERR/.test(src),
+            "not-ready LPDB write must latch the ERROR flag (DONE stays set)");
+        assert.ok(/A read clears the sticky ERROR flag/.test(src),
+            "an LPCS read must clear the sticky ERROR flag");
+        assert.ok(/clear any latched/.test(src),
+            "returning ON LINE must clear the latched ERROR flag");
+        assert.ok(/\(lpcs & \(LP_LPCS_DONE \| LP_LPCS_ERR\)\)/.test(src),
+            "an LPCS write must preserve DONE and ERROR (only IE is updated)");
+        // Going OFF LINE mid-print must restore DONE (release a throttled guest).
+        assert.ok(/Going OFF LINE stops the renderer's pacing timer/.test(src),
+            "OFF LINE transition must restore DONE after stopping the renderer");
+    }
+
     console.log("lp11-online.test.js: all tests passed");
 }
 

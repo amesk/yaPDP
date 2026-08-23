@@ -194,7 +194,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum) |
+| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
@@ -331,7 +331,7 @@ keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
 via the system dialog) and **Save .txt** buttons. Like the real LP11, it echoes
 characters far faster than the Model 33 ASR console teletype (the console keeps its
 authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
-original's ~300 lines/min. Both the teletype and the printer size their paper
+original's ~300 lines/min. The LP11 also honours the historical DONE handshake: writing LPDB clears DONE and re-asserts it as each character is actually consumed by the mechanism, so a guest print job is throttled at printer speed instead of being dumped into the buffer ahead of the paper. When the printer is OFF LINE (or powered off) the controller latches a sticky ERROR flag in LPCS while keeping DONE set, so a guest OS driver reports an error (e.g. `?LP0: I/O error`) instead of silently discarding the job. Both the teletype and the printer size their paper
 to the configured print width (centred in the machine body), so a full line
 always reaches the paper edge. Both also advance the carriage to the next
 8-column tab stop on TAB, matching real Model 33 ASR / LP11 behaviour. Like the
@@ -393,6 +393,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`src/quickboot.js`](src/quickboot.js) | Quick-boot magic-wand button — floating in the top-right corner (every page except Info), OS picker dialog, reboot + typed boot/login sequence via the console input queue |
 | [`src/fullscreen.js`](src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
 | [`src/pasteutil.js`](src/pasteutil.js) | Shared clipboard paste helper — CR/LF normalization + 7-bit byte mapping + DL11 receive-queue routing, used by every terminal paste path |
+| [`src/navactivity.js`](src/navactivity.js) | Sidebar activity lamps — `pulse()` lights a blinking green LED in the top-right corner of the matching sidebar button while the PDP-11 writes output to a console / terminal (auto-off 0.5s after the output stops); `set()` drives the Printer lamp from the LP11 busy ticker so it blinks for the whole print job |
 | [`tests/config.test.js`](tests/config.test.js) | Config validation/persistence modular tests — run with `node tests/config.test.js` |
 | [`tests/pasteutil.test.js`](tests/pasteutil.test.js) | PasteUtil clipboard normalization/routing modular tests — run with `node tests/pasteutil.test.js` |
 | [`tests/dataloader.test.js`](tests/dataloader.test.js) | DataLoader/`fetchBlock` modular tests — run with `node tests/dataloader.test.js` |
@@ -410,6 +411,8 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 | [`tests/hum.test.js`](tests/hum.test.js) | Machine-hum state-to-gain mapping modular tests — run with `node tests/hum.test.js` |
 | [`tests/imgerror.test.js`](tests/imgerror.test.js) | ImageError `messageFor()` modular tests (network/truncated/decompress wording) — run with `node tests/imgerror.test.js` |
 | [`tests/osboot.test.js`](tests/osboot.test.js) | OSBoot scenarios + QuickBoot pure-helper modular tests (bytes, console page, step delay, mounted filter) — run with `node tests/osboot.test.js` |
+| [`tests/navactivity.test.js`](tests/navactivity.test.js) | NavActivity `pulse()`/page-mapping modular tests (`pageForConsole`/`pageForTerminal`, lamp on/off timing, re-arm on continuous output) — run with `node tests/navactivity.test.js` |
+| [`tests/nav-led-css.test.js`](tests/nav-led-css.test.js) | Sidebar activity-lamp CSS/HTML contract tests (`.nav-led` in every output button, `position:relative` anchor, blinking `nav-led-blink` keyframe, `navactivity.js` loaded before `iopage.js`) — run with `node tests/nav-led-css.test.js` |
 | [`css/pdp11.css`](css/pdp11.css) | Front panel and application styles |
 | [`css/g60printer.css`](css/g60printer.css) | Teletype printer styles |
 | [`tools/build-desktop.js`](tools/build-desktop.js) | Stages the lightweight Tauri frontend into `desktop/`; `--variant minimal\|full` selects which bundled media images to ship |

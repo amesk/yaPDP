@@ -1208,6 +1208,16 @@ function dl11(vt52Unit, deviceVector) {
                             } else {
                                 vt52Write(unit, xbuf);
                             }
+
+                            // Sidebar activity lamp: blink the button of the
+                            // terminal that just received output (navactivity.js).
+                            if (typeof NavActivity !== 'undefined') {
+                                if (unit === 0) {
+                                    NavActivity.pulseConsole(cfg && cfg.consoleType);
+                                } else {
+                                    NavActivity.pulseTerminal(unit);
+                                }
+                            }
                         }
                         if (xcsr & DL_XCSR_IE) {
                             iMask |= DL_IMASK_TRANSMIT;
@@ -1287,8 +1297,12 @@ iopage.register(0o17777510, 2, (function() {
     const LP_PRIORITY = 4 << 5;  // Interrupt priority
 
     // --- LPCS (Control/Status Register) bits ---
-    const LP_LPCS_DONE = 0x80; // DONE (always set, printer ready)
+    const LP_LPCS_DONE = 0x80; // DONE (printer ready to accept a character)
     const LP_LPCS_IE   = 0x40; // Interrupt enable
+    const LP_LPCS_ERR  = 0x20; // ERROR (sticky) — latched when a character is
+                               // written while the printer is not ready
+                               // (OFF LINE / powered off); cleared by an LPCS
+                               // read or by returning the printer ON LINE.
 
     // --- LP11 State ---
     let lpcs;          // Control/Status register
@@ -1394,7 +1408,19 @@ iopage.register(0o17777510, 2, (function() {
                 charPrintDelay: 3,
                 charSound: false,
                 charsPerTick: 3,
-                printWhirr: true
+                printWhirr: true,
+                // Historically-accurate DONE: re-assert DONE (and raise the
+                // completion interrupt if IE is set) as each character is
+                // actually consumed by the renderer. This throttles the CPU at
+                // printer speed instead of letting it burst the whole job into
+                // the buffer ahead of the mechanism.
+                onChar: function () {
+                    lpcs |= LP_LPCS_DONE;
+                    if (lpcs & LP_LPCS_IE) {
+                        iMask = 1;
+                        requestInterrupt();
+                    }
+                }
             });
             lp11Console = window.createG60Console(lp11Printer);
             // Expose for live print-width changes from the CONFIG page.
@@ -1571,6 +1597,20 @@ iopage.register(0o17777510, 2, (function() {
             typeof lp11Printer.stop === "function") {
             lp11Printer.stop();
         }
+        // Going OFF LINE stops the renderer's pacing timer; restore DONE so a
+        // guest waiting on the previous (throttled) character is released and
+        // never blocks on an offline printer.
+        if (!lp11Online) {
+            lpcs |= LP_LPCS_DONE;
+            if (lpcs & LP_LPCS_IE) {
+                iMask = 1;
+                requestInterrupt();
+            }
+        } else {
+            // Back ON LINE: the printer is ready again, clear any latched
+            // ERROR flag so a subsequent job is not reported as failed.
+            lpcs &= ~LP_LPCS_ERR;
+        }
         var led = document.getElementById("lp11-online-led");
         if (led) led.classList.toggle("off", !lp11Online);
         var key = document.getElementById("lp11-online-key");
@@ -1598,6 +1638,13 @@ iopage.register(0o17777510, 2, (function() {
         if (led.classList.contains("busy") !== busy) {
             led.classList.toggle("busy", busy);
         }
+        // Sidebar activity lamp: mirror the READY LED so the Printer button
+        // blinks for the WHOLE print job (the G60 renderer paces a buffered
+        // backlog even after the CPU finished writing LPDB), not just while
+        // the CPU is pushing bytes. See NavActivity.set() in navactivity.js.
+        if (typeof NavActivity !== 'undefined' && NavActivity.set) {
+            NavActivity.set("printer", busy);
+        }
     }
     setInterval(lp11ReadyTick, 120);
 
@@ -1616,6 +1663,11 @@ iopage.register(0o17777510, 2, (function() {
             switch (pa & 0o6) {
                 case 0o4: // LPCS – Line Printer Control/Status
                     result = insertData(lpcs, pa, data, byteFlag);
+                    // A read clears the sticky ERROR flag (standard DEC LP11
+                    // behaviour); the returned value still carries the error.
+                    if (result >= 0 && data < 0) {
+                        lpcs &= ~LP_LPCS_ERR;
+                    }
                     if (result >= 0 && data >= 0) {
                         // Interrupt enable edge behavior
                         if ((result ^ lpcs) & LP_LPCS_IE) {
@@ -1626,8 +1678,11 @@ iopage.register(0o17777510, 2, (function() {
                                 iMask = 0;
                             }
                         }
-                        // DONE always set, IE preserved
-                        lpcs = LP_LPCS_DONE | (result & LP_LPCS_IE);
+                        // An LPCS write updates only IE: DONE and the sticky
+                        // ERROR are preserved. A real LP11 keeps DONE throttled
+                        // while the mechanism consumes a character, even if the
+                        // driver re-writes the control/status word in between.
+                        lpcs = (lpcs & (LP_LPCS_DONE | LP_LPCS_ERR)) | (result & LP_LPCS_IE);
                     }
                     break;
 
@@ -1655,8 +1710,18 @@ iopage.register(0o17777510, 2, (function() {
                             var isFormFeed = (lpdb === 0o14);
                             var isCr = (lpdb === 0o15);
                             var isPrintable = (lpdb >= 0x20 && lpdb < 0x7F);
-                            if (lp11Console && (isBackspace || isTab || isLf || isCr || isPrintable || isFormFeed)) {
+                            var lp11Fed = (isBackspace || isTab || isLf || isCr || isPrintable || isFormFeed);
+                            if (lp11Console && lp11Fed) {
                                 lp11Console.writeChar(lpdb);
+                                // Historically-accurate DONE: clear it so the CPU
+                                // waits for the printer mechanism — the onChar
+                                // callback (G60 renderer) re-asserts DONE as each
+                                // character is actually consumed.
+                                lpcs &= ~LP_LPCS_DONE;
+                            } else {
+                                // A dropped (unprintable) byte is consumed by the
+                                // controller instantly: DONE stays set.
+                                lpcs |= LP_LPCS_DONE;
                             }
 
                             // Accumulate a plain-text copy for Print / Save .txt.
@@ -1672,10 +1737,20 @@ iopage.register(0o17777510, 2, (function() {
                             );
                             lp11CurrentLine = lp11TextState.line;
                             lp11Col = lp11TextState.col;
+                        } else {
+                            // Not ready (OFF LINE / powered off): the byte is
+                            // consumed instantly, DONE stays set (the OS never
+                            // blocks) and the sticky ERROR flag is latched so
+                            // the OS driver reports an error instead of silently
+                            // discarding the job.
+                            lpcs |= LP_LPCS_DONE | LP_LPCS_ERR;
                         }
 
-                        // Raise interrupt if IE set
-                        if (lpcs & LP_LPCS_IE) {
+                        // Completion interrupt for a byte consumed instantly (a
+                        // dropped control code, or any byte while OFF LINE): DONE
+                        // is already set, so signal readiness now. Online printable
+                        // bytes cleared DONE and interrupt later via onChar.
+                        if ((lpcs & LP_LPCS_IE) && (lpcs & LP_LPCS_DONE)) {
                             iMask = 1;
                             requestInterrupt();
                         }
@@ -1691,7 +1766,8 @@ iopage.register(0o17777510, 2, (function() {
         // --- poll() ---
         // Interrupt poll handler for LP11.
         // - If takeInterrupt=true: delivers pending interrupt vector
-        //   • Command completion only (DONE always set)
+        //   • Command completion — DONE is throttled: cleared on a fed LPDB
+        //     write and re-asserted as the renderer consumes the character.
         // - If takeInterrupt=false: reports priority level + pending flag
         //   • Drops any pending interrupts if IE cleared
         poll: function(takeInterrupt) {

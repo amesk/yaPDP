@@ -1098,6 +1098,8 @@ body {
 
 .app-sidebar .nav-btn {
     box-sizing: border-box;
+    /* Anchors the absolute .nav-led activity lamp in the top-right corner. */
+    position: relative;
     width: 68px;
     height: 72px;
     margin: 2px 0;
@@ -1150,6 +1152,37 @@ body {
 
 .app-sidebar .nav-btn.active .nav-icon {
     opacity: 1;
+}
+
+/* Activity lamp: a tiny green LED in the top-right corner of a sidebar
+   button. Hidden while the device is idle; NavActivity.pulse() adds the
+   .on class when the PDP-11 writes output, and the CSS animation blinks
+   it like the LP11 READY LED (see .lp11-led-ready.busy). */
+.app-sidebar .nav-btn .nav-led {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.1s;
+    pointer-events: none;
+}
+
+.app-sidebar .nav-btn .nav-led.on {
+    background: #4c4;
+    box-shadow: 0 0 8px #4c4, inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    opacity: 1;
+    animation: nav-led-blink 0.4s steps(2, start) infinite;
+}
+
+@keyframes nav-led-blink {
+    to {
+        opacity: 0.15;
+    }
 }
 
 .page {
