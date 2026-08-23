@@ -20,6 +20,10 @@
         "desktop:minimal": "node tools/build-desktop.js --variant minimal && node tools/tauri-build.js",
         "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
         "serve": "node tools/serve.js",
+        "screenshots:manual": "node tools/screenshots-manual.js",
         "clean": "node tools/build-desktop.js --clean"
+    },
+    "devDependencies": {
+        "puppeteer-core": "^25.8.0"
     }
 }

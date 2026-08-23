@@ -176,6 +176,52 @@
         .landing-page td.disk {
             white-space: nowrap;
         }
+
+        /* Manual page illustrations: inline screenshots and their captions. */
+        .landing-page .shot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            margin: 14px 0 2px 0;
+        }
+
+        .landing-page .shot-caption {
+            color: #c8b890;
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+            margin: 2px 0 14px 0;
+        }
+
+        /* Floating-button strip: the four corner buttons side by side. */
+        .landing-page .btn-strip {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin: 14px 0 4px 0;
+        }
+
+        .landing-page .btn-strip figure {
+            margin: 0;
+            text-align: center;
+        }
+
+        .landing-page .btn-strip img {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .landing-page .btn-strip figcaption {
+            color: #c8b890;
+            font-size: 11px;
+            margin-top: 4px;
+        }
     </style>
 </head>
 
@@ -263,6 +309,9 @@
                 you toggle in a bootstrap loader the way DEC engineers did in the 1970s.
             </p>
 
+            <p><img class="shot" src="assets/images/manual/panel.png" alt="The PDP-11/70 front panel"></p>
+            <p class="shot-caption">The PDP‑11/70 front panel, powered on.</p>
+
             <h3>Front panel switch sequences</h3>
 
             <p>A simple light chaser — toggle this in to see the address and data LEDs dance:</p>
@@ -295,6 +344,10 @@
                 sheet, a glass carriage window, and a stamped Teletype Corporation logo on the lower face plate.
             </p>
 
+            <p><img class="shot" src="assets/images/manual/console-teletype.png"
+                    alt="The Model 33 ASR operator console"></p>
+            <p class="shot-caption">The Model 33 ASR operator console at the Boot> prompt.</p>
+
             <ul>
                 <li><b>Keyboard.</b> Round dark keycaps with light two-line legends — the base glyph centred, the
                     CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN,
@@ -325,6 +378,10 @@
                 the full behaviour, which is shared.
             </p>
 
+            <p><img class="shot" src="assets/images/manual/console-vt52.png"
+                    alt="A DECscope VT52 as the operator console"></p>
+            <p class="shot-caption">A DECscope VT52 as the operator console, showing the Boot> prompt.</p>
+
             <hr>
 
             <h2 id="user-terminals">User Terminals (TTY 1 / TTY 2)</h2>
@@ -336,6 +393,9 @@
                 plastic side panel with a raised ridge. Input comes from the physical keyboard, as on the original
                 DECscope.
             </p>
+
+            <p><img class="shot" src="assets/images/manual/terminal-vt52.png" alt="A user VT52 terminal"></p>
+            <p class="shot-caption">A user VT52 terminal (TTY 1) running an interactive session.</p>
 
             <ul>
                 <li><b>Font.</b> Text is rendered in the authentic <code>fritzm/vt52</code> bitmap display font
@@ -360,6 +420,9 @@
                 printer via the system dialog, or <b>Save .txt</b> to export the output (page breaks are kept as
                 <code>\f</code> markers).
             </p>
+
+            <p><img class="shot" src="assets/images/manual/printer.png" alt="The LP11 line printer"></p>
+            <p class="shot-caption">The LP11 line printer printing a job listing.</p>
 
             <ul>
                 <li><b>Speed.</b> Like the real LP11, it echoes characters far faster than the Model 33 ASR console
@@ -392,11 +455,17 @@
                 the quick-boot wizard enables the display and switches to the Display page automatically.
             </p>
 
+            <p><img class="shot" src="assets/images/manual/vt11.png" alt="The VT11 vector display"></p>
+            <p class="shot-caption">The VT11 vector-graphics CRT page.</p>
+
             <hr>
 
             <h2 id="storage">Storage (paper tape, disk & tape images)</h2>
 
             <p>The Storage page manages every kind of storage media:</p>
+
+            <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page"></p>
+            <p class="shot-caption">The Storage page: paper-tape reader, drop zone and mounted images.</p>
 
             <ul>
                 <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11, ODT‑11,
@@ -422,6 +491,9 @@
                 The Config page controls the emulated peripherals and is persisted between sessions. The form is split
                 into four tabs, with the <b>Apply</b> and <b>Restore defaults</b> actions in a bar below the tabs:
             </p>
+
+            <p><img class="shot" src="assets/images/manual/config.png" alt="The Config page"></p>
+            <p class="shot-caption">The Config page with its four tabs and Apply / Restore defaults bar.</p>
 
             <table style="margin-left:0; padding:3px;">
                 <thead>
@@ -584,6 +656,25 @@
             </ul>
 
             <h3>Floating controls</h3>
+
+            <div class="btn-strip">
+                <figure>
+                    <img src="assets/images/manual/btn-magicwand.png" alt="Quick-boot (magic wand) button">
+                    <figcaption>Magic wand</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/images/manual/btn-reboot.png" alt="REBOOT button">
+                    <figcaption>REBOOT</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/images/manual/btn-mute.png" alt="Mute button">
+                    <figcaption>Mute</figcaption>
+                </figure>
+                <figure>
+                    <img src="assets/images/manual/btn-fullscreen.png" alt="Fullscreen button">
+                    <figcaption>Fullscreen</figcaption>
+                </figure>
+            </div>
 
             <table style="margin-left:0; padding:3px;">
                 <thead>

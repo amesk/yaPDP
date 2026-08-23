@@ -40,6 +40,25 @@ linked from the landing page.
 
 ---
 
+## User Manual
+
+[`manual.html`](manual.html) is a step-by-step user guide in the same DEC style
+as the landing page: quick boot (magic wand), the front panel, the Model 33 ASR
+operator console, VT52 terminals, the LP11 line printer, storage, configuration
+and every guest OS boot command. Its page illustrations are live screenshots of
+the emulator, regenerated with:
+
+```bash
+npm install               # installs the puppeteer-core devDependency
+npm run screenshots:manual
+```
+
+The generator (`tools/screenshots-manual.js`) starts the repository's own static
+server, drives the locally installed Edge/Chrome with `puppeteer-core` (no
+Chromium download) and writes 1280x800 PNGs into `assets/images/manual/`.
+
+---
+
 ## Desktop App (Tauri)
 
 The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/).
@@ -188,8 +207,9 @@ npm run desktop:full      # yaPDP-Full: every disk/tape image
 ### Building the desktop app
 
 Once the [toolchain above](#installing-the-toolchain-windows) is installed, the
-build is orchestrated through npm scripts — the repo has no npm dependencies,
-just plain Node tooling. Run `npm run` to list every target:
+build is orchestrated through npm scripts — the only npm dependency is the
+`puppeteer-core` devDependency behind the manual-screenshot tool. Run
+`npm run` to list every target:
 
 | Script | Action |
 |--------|--------|
@@ -198,6 +218,7 @@ just plain Node tooling. Run `npm run` to list every target:
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
 | `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
+| `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see [User manual](#user-manual) below) |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
 ```bash
