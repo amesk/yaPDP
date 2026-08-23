@@ -681,23 +681,25 @@
              the printer + keyboard, with the punched tape spilling from the
              punch down into a scrollable tape window. -->
         <div id="asr-tape-unit">
-          <!-- On a real Model 33 ASR the reader and punch sit side by side on
+          <!-- On a real Model 33 ASR the punch sits ABOVE the tape reader on
                the left of the cabinet. The punch carries four mechanical
-               buttons: ON/OFF (punch enable, OFF by default), BSP (backspace
-               one tape step, punching RUBOUT) and REL (release the tape). -->
+               buttons arranged in a 2x2 block as on the historical machine
+               (REL OFF on the top row, BSP ON below): ON/OFF (punch enable,
+               OFF by default), BSP (backspace one tape step, punching RUBOUT)
+               and REL (release the tape). -->
           <div id="asr-mech">
             <div id="asr-punch">
               <div class="asr-label">TAPE PUNCH</div>
               <div class="asr-slot"></div>
               <div class="asr-punch-buttons">
-                <button type="button" class="asr-btn" id="punch-on"
-                  title="Punch ON — duplicate all output onto the paper tape">ON</button>
+                <button type="button" class="asr-btn" id="punch-rel"
+                  title="REL — release the tape for manual pull-out">REL</button>
                 <button type="button" class="asr-btn" id="punch-off"
                   title="Punch OFF — disable the punch (default)">OFF</button>
                 <button type="button" class="asr-btn" id="punch-bsp"
                   title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
-                <button type="button" class="asr-btn" id="punch-rel"
-                  title="REL — release the tape for manual pull-out">REL</button>
+                <button type="button" class="asr-btn" id="punch-on"
+                  title="Punch ON — duplicate all output onto the paper tape">ON</button>
               </div>
             </div>
             <div id="asr-reader">

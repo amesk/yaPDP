@@ -151,6 +151,15 @@ function testMarkup() {
     assert.ok(html.indexOf('id="' + id + '"') !== -1,
       "pdp11.html must contain the punch button (#" + id + ")");
   }
+  // The punch buttons must be in the historical 2x2 order (REL OFF on the
+  // top row, BSP ON below) — the DOM order wraps into the two rows.
+  {
+    const ids = ["punch-rel", "punch-off", "punch-bsp", "punch-on"];
+    const pos = ids.map((id) => html.indexOf('id="' + id + '"'));
+    assert.ok(pos.every((p) => p !== -1) &&
+        pos[0] < pos[1] && pos[1] < pos[2] && pos[2] < pos[3],
+      "punch buttons must be ordered REL/OFF/BSP/ON (2x2: REL OFF over BSP ON)");
+  }
   // Four-position reader switch (START/STOP/FREE/AUTO) on the TAPE READER.
   assert.ok(html.indexOf('id="reader-switch-lever"') !== -1,
     "pdp11.html must contain the reader switch lever (#reader-switch-lever)");
@@ -206,6 +215,13 @@ function testCss() {
       "#asr-tape-unit must not stretch (flex-start) so the tape hangs below:\n" + unitRule);
     assert.ok(/overflow\s*:\s*visible\s*;/.test(unitRule),
       "#asr-tape-unit must NOT clip the hanging tape (overflow: visible):\n" + unitRule);
+  }
+
+  // The punch must sit ABOVE the reader, as on the historical machine.
+  {
+    const mechRule = extractBlock(css, "#asr-mech {", "");
+    assert.ok(/flex-direction\s*:\s*column\s*;/.test(mechRule),
+      "#asr-mech must stack the punch ABOVE the reader (flex-direction: column):\n" + mechRule);
   }
 
   // The tape must be absolutely positioned (out of the flow, so the page

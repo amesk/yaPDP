@@ -1048,13 +1048,15 @@
 
 #asr-tape-unit {
     position: relative;
-    /* Cabinet: punch (left) and reader (right) side by side in one row;
-       the punched tape hangs below the punch. Wide enough for the punch's
-       ON/OFF/BSP/REL buttons. The cabinet's top is aligned with the top of
-       the keyboard block (printer 380px + its 2×8px margins), as on a real
-       ASR where the reader/punch sit at keyboard level. */
-    width: 300px;
-    height: 132px;
+    /* Cabinet: the punch sits ABOVE the reader in one vertical stack (as on
+       the historical machine), and the punched tape hangs below the punch.
+       The cabinet is only as wide as the punch/reader blocks, which keep
+       their original ~144px width, so the tape hangs centred under the
+       punch. The cabinet's top is aligned with the top of the keyboard
+       block (printer 380px + its 2×8px margins), as on a real ASR where
+       the reader/punch sit at keyboard level. */
+    width: 170px;
+    height: 260px;
     margin-top: 396px;
     /* Cream ASR33 body, matching the printer + keyboard deck. */
     background-color: #ddd6c4;
@@ -1073,31 +1075,38 @@
     right: 0;
     bottom: 0;
     display: flex;
-    flex-direction: row;
-    align-items: stretch;
+    /* Punch above reader, matching the historical layout. The blocks keep
+       their original narrow width and are centred in the narrow cabinet. */
+    flex-direction: column;
+    align-items: center;
     /* Same gap between the punch and the reader as between the reader and
-       the teletype keyboard (see the 12px gap on #teletype-rig), so the
-       punch sits a little further LEFT of the reader. With flex:1 children
-       the gap is carved out of the 300px cabinet and the reader's right
-       edge stays put, keeping reader->keyboard spacing unchanged. */
+       the teletype keyboard (see the 12px gap on #teletype-rig). With
+       flex:1 children the gap is carved out of the 260px cabinet, so the
+       punch and the reader each get (260 - 12) / 2 = 124px. */
     gap: 12px;
 }
 
-/* Punch: on the left — same size as the reader (each half of the row). */
+/* Punch: on top — same size as the reader, keeping the original narrow
+   width (144px, one half of the former 300px row cabinet). */
 #asr-punch {
     position: relative;
     flex: 1 1 0;
+    width: 144px;
+    align-self: center;
     background: linear-gradient(180deg, #e6e0d0 0%, #d3ccb8 100%);
-    border-right: 1px solid #a89f87;
-    border-radius: 8px 0 0 8px;
+    border-bottom: 1px solid #a89f87;
+    border-radius: 8px 8px 0 0;
 }
 
-/* Reader: on the right — same size as the punch. */
+/* Reader: at the bottom — same size as the punch, keeping the original
+   narrow width. */
 #asr-reader {
     position: relative;
     flex: 1 1 0;
+    width: 144px;
+    align-self: center;
     background: linear-gradient(180deg, #eae4d4 0%, #d3ccb8 100%);
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 0 8px 8px;
 }
 
 .asr-label {
@@ -1130,24 +1139,29 @@
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
 }
 
-/* The punch tape-out slot ends a little further LEFT of the cabinet centre
-   (the reader slot stays centred). */
-#asr-punch .asr-slot {
-    left: 44%;
-}
+/* Both slots stay centred on their block (left:50% from the base rule): the
+   punch slot lets the tape hang straight down from the middle of the punch,
+   and the reader slot sits centred below it. */
 
-/* Punch operator buttons (ON/OFF/BSP/REL), in the punch cabinet BETWEEN the
-   TAPE PUNCH label and the tape-out slot, so the tape spilling from the slot
-   never covers them. ON/OFF toggle the punch (OFF by default); BSP backspaces
-   the tape one step; REL releases the tape. On a real Model 33 ASR these are
-   round (circular) push-buttons. */
+/* Punch operator buttons (REL/OFF/BSP/ON) arranged in a 2x2 block in the
+   punch cabinet BETWEEN the TAPE PUNCH label and the tape-out slot, so the
+   tape spilling from the slot never covers them. The DOM order REL/OFF/BSP/ON
+   wraps into two rows — REL OFF on the top, BSP ON below — matching the
+   historical machine. REL releases the tape; BSP backspaces the tape one
+   step; OFF/ON toggle the punch (OFF by default). On a real Model 33 ASR
+   these are round (circular) push-buttons. */
 .asr-punch-buttons {
     position: absolute;
-    left: 0;
-    right: 0;
-    top: 34px;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    /* Two rows of two 28px round buttons with a 4px gap (2*28 + 4 = 60px). */
+    width: 60px;
+    height: 60px;
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
+    align-content: flex-start;
     gap: 4px;
 }
 
@@ -1190,9 +1204,11 @@
    orbits the disc centre and lands on START/STOP/FREE/AUTO. */
 .asr-reader-switch {
     position: absolute;
-    /* Centre the switch in the TAPE READER cabinet: the reader is half of
-       the 300px cabinet (150px), so its centre sits at 75px; with a 92px
-       switch that means left = 75 - 46 = 29px. */
+    /* Centre the switch in the TAPE READER cabinet: the reader keeps its
+       original 144px width, so its switch centre sits at 75px; with a 92px
+       switch that means left = 75 - 46 = 29px. The hanging punch tape draws
+       ABOVE it (see #punchtape z-index), as a punched tape always passes in
+       front of the reader mechanism. */
     left: 29px;
     top: 22px;
     width: 92px;
@@ -1299,10 +1315,14 @@
 #punchtape {
     position: absolute;
     /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 86px + half
-       slot height 6px = 92px), horizontally centred on the punch. */
+       slot height 6px = 92px), horizontally centred on the punch: the punch
+       block is 144px wide centred in the 170px cabinet, so its centre sits
+       at 85px; tape left = 85 - 48.5 ≈ 36px. Draws ABOVE every other element
+       of the ASR unit (the reader switch, the slots), so the punched tape
+       always passes in front of the mechanism. */
     top: 92px;
-    left: 17px;
-    z-index: 1;
+    left: 36px;
+    z-index: 10;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
        transparent background: scrollbar-gutter: stable reserves the gutter
        up front in EVERY browser, so the scrollbar never resizes the tape or
