@@ -64,8 +64,8 @@ function run() {
     const rule = extractRule(css, "#g60printer div#paper,");
     assert.ok(/top\s*:\s*auto\s*;/.test(rule),
       "paper must be top:auto (bottom-anchored):\n" + rule);
-    assert.ok(/bottom\s*:\s*64px\s*;/.test(rule),
-      "paper must be bottom:64px (carriage stays at 400px):\n" + rule);
+    assert.ok(/bottom\s*:\s*52px\s*;/.test(rule),
+      "paper must be bottom:52px (lower edge at the print-head area bottom, 328px):\n" + rule);
     assert.ok(/height\s*:\s*auto\s*;/.test(rule),
       "paper must grow with its content (height:auto):\n" + rule);
     assert.ok(/max-height\s*:\s*var\(--tty-paper-max,\s*400px\)\s*;/.test(rule),
@@ -83,11 +83,12 @@ function run() {
       "the 345px top spacer must be hidden:\n" + rule);
   }
 
-  // --- Print-area top padding dropped so line 1 lands on the carriage -------
+  // --- Print-area padding: line 1 lands on the carriage, the extra 12px
+  //     bottom padding offsets the extended paper so the baseline stays put ----
   {
     const rule = extractRule(css, "#g60printer td#paper_printarea {", true);
-    assert.ok(/padding\s*:\s*4px\s*18px\s*1px\s*18px\s*;/.test(rule),
-      "print-area top padding must be 4px:\n" + rule);
+    assert.ok(/padding\s*:\s*4px\s*18px\s*13px\s*18px\s*;/.test(rule),
+      "print-area padding must be 4px 18px 13px 18px (12px bottom keeps the carriage position):\n" + rule);
   }
 
   // --- Paper-edge overlays hidden (they would draw over the rising paper) ---

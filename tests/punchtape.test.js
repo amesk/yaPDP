@@ -230,8 +230,8 @@ function testCss() {
   const tapeRule = extractBlock(css, "#punchtape {", "");
   assert.ok(/position\s*:\s*absolute\s*;/.test(tapeRule),
     "#punchtape must be absolutely positioned (out of flow, no page resize):\n" + tapeRule);
-  assert.ok(/top\s*:\s*112px\s*;/.test(tapeRule),
-    "#punchtape must emerge from the MIDDLE of the TAPE PUNCH slot (top: 112px = slot top 106px + half slot 6px):\n" + tapeRule);
+  assert.ok(/top\s*:\s*122px\s*;/.test(tapeRule),
+    "#punchtape must emerge from the MIDDLE of the TAPE PUNCH slot (top: 122px = 10px mech inset + slot top 106px + half slot 6px):\n" + tapeRule);
   assert.ok(/overflow-y\s*:\s*auto\s*;/.test(tapeRule),
     "#punchtape must scroll vertically once it reaches the window edge (overflow-y: auto):\n" + tapeRule);
 

@@ -23,10 +23,12 @@
        printer body and match the narrower keyboard deck. */
     width: 808px;
     height: 380px;
-    /* Light cream/beige ASR33 body instead of the dark Google60 machine. */
-    background-color: #ddd6c4;
+    /* Sand-beige ASR33 body (Model 33 ASR cabinet tone) instead of the dark
+       Google60 machine. The base sand #d1b48c is the shared cabinet colour;
+       the lighter/darker shades below are derived from it. */
+    background-color: #d1b48c;
     overflow: hidden;
-    border: 1px solid #b3ab94;
+    border: 1px solid #a68c66;
     border-radius: 12px 12px 4px 4px;
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.65);
     margin: 8px 0;
@@ -38,9 +40,33 @@
     left: 0;
     width: 808px;
     height: 374px;
-    background: linear-gradient(180deg, #ece6d6 0%, #dfd8c7 45%, #d0c9b5 100%);
+    background: linear-gradient(180deg, #e3cdaa 0%, #d8bd98 45%, #c6a87e 100%);
     /* Round the top corners to match the #g60printer body radius. */
     border-radius: 12px 12px 0 0;
+}
+
+/* Black paper slot: the sheet emerges through a dark horizontal slit. Its
+   BOTTOM edge sits at the top of the lower face plate (305px) and its
+   vertical centre lands on the paper's bottom edge (the carriage line at
+   316px), so the paper appears to come out of the MIDDLE of the slot. The
+   slot is drawn above the face plate but below the paper, so the rising
+   sheet passes in front of its upper half. */
+#g60printer div#printer::after {
+    content: "";
+    position: absolute;
+    left: 67px;
+    /* Ends exactly where the right skin starts (742px − 67px = 675px), so the
+       slot never runs under the side skin — same seam as the lower face plate. */
+    width: 675px;
+    top: 305px;
+    height: 22px;
+    background: #0a0a0a;
+    border-top: 1px solid #3a3a3a;
+    border-bottom: 1px solid #3a3a3a;
+    border-radius: 2px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 3;
+    pointer-events: none;
 }
 
 #g60printer #printheadarea {
@@ -54,7 +80,7 @@
     max-height: 30px;
     padding: 0;
     margin: 0;
-    z-index: 3;
+    z-index: 5;
     overflow: hidden;
 }
 
@@ -71,11 +97,14 @@
     position: absolute;
     top: 305px;
     left: 67px;
-    width: 741px;
+    /* Ends exactly where the right skin starts (742px − 67px = 675px), so
+       the lower face plate meets the side skin in a clean seam instead of
+       tucking under it. */
+    width: 675px;
     height: 69px;
-    /* Light lower face plate (no Google60 bitmap skin). */
-    background: linear-gradient(180deg, #d6cfbc 0%, #beb6a1 100%);
-    border-top: 1px solid #a89f87;
+    /* Sand lower face plate (no Google60 bitmap skin). */
+    background: linear-gradient(180deg, #d2b78f 0%, #b89b71 100%);
+    border-top: 1px solid #a68c66;
     border-radius: 0 0 8px 8px;
     z-index: 2;
 }
@@ -86,8 +115,8 @@
     left: 0;
     width: 67px;
     height: 374px;
-    background: linear-gradient(90deg, #c9c1ab 0%, #ddd6c4 100%);
-    border-right: 1px solid #b0a890;
+    background: linear-gradient(90deg, #b89b71 0%, #d1b48c 100%);
+    border-right: 1px solid #a68c66;
     /* Round the top-left corner to match the #g60printer body radius. */
     border-radius: 12px 0 0 0;
 }
@@ -98,8 +127,8 @@
     left: 742px;
     width: 66px;
     height: 374px;
-    background: linear-gradient(270deg, #c9c1ab 0%, #ddd6c4 100%);
-    border-left: 1px solid #b0a890;
+    background: linear-gradient(270deg, #b89b71 0%, #d1b48c 100%);
+    border-left: 1px solid #a68c66;
     /* Round the top-right corner to match the #g60printer body radius. */
     border-radius: 0 12px 0 0;
 }
@@ -117,9 +146,11 @@
     top: -32px;
     width: 320px;
     height: 40px;
+    /* Top cover dome with two rounded corners: part of the cabinet, so it
+       shares the sand-beige body tone (the sheet rising over it stays paper). */
     border-radius: 40px 40px 0 0;
-    background: linear-gradient(180deg, #f2ecdc 0%, #ded7c5 60%, #cfc8b5 100%);
-    border: 1px solid #b0a890;
+    background: linear-gradient(180deg, #e3cdaa 0%, #d6bb95 60%, #c6a87e 100%);
+    border: 1px solid #a68c66;
     border-bottom: none;
     box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.18), 0 -2px 6px rgba(0, 0, 0, 0.15);
     z-index: 0;
@@ -174,7 +205,10 @@
     text-align: left;
     padding: 0;
     margin: 0;
-    z-index: 1;
+    /* Above the paper slot and the lower face plate so the rising sheet
+       visibly passes in front of them, but below the print head and the
+       carriage window. */
+    z-index: 4;
 }
 
 #g60printer div#paper.paperNoScroll {
@@ -388,12 +422,12 @@
     /* Same slim width as the printer (940px − 2 × 66px). */
     width: 808px;
     height: 240px;
-    /* Cream ASR33 deck (no dark keyboardbg.jpg texture). The deck sits
+    /* Sand ASR33 deck (no dark keyboardbg.jpg texture). The deck sits
        directly under the (now lowered) printer body — no gap between them. */
-    background: linear-gradient(180deg, #d9d2bf 0%, #cbc4ae 100%);
+    background: linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
     margin: 0;
     padding: 0;
-    border: 1px solid #b3ab94;
+    border: 1px solid #a68c66;
     border-top: none;
     border-radius: 0 0 12px 12px;
     box-shadow: inset 0 10px 16px rgba(0, 0, 0, 0.16);
@@ -417,29 +451,30 @@
     box-sizing: border-box;
     cursor: default;
     user-select: none;
-    /* Cylindrical key with a slightly concave dish on top. All caps are
-       DARK plastic (like a real Model 33) with light printed legends. */
-    background: radial-gradient(circle at 50% 28%, #757a81 0%, #54595f 42%, #393d43 100%);
-    border: 1px solid #26292e;
+    /* Cylindrical key with a FLAT circular top: the solid dark base shadow
+       (0 4px 0) reads as the keycap's side wall, and the light hit at 35% 35%
+       gives the flat top its subtle dome. All caps are DARK plastic (like a
+       real Model 33) with light printed legends. */
+    background: radial-gradient(circle at 35% 35%, #6e6458 0%, #403830 100%);
+    border: none;
     box-shadow:
-        inset 0 -3px 4px rgba(0, 0, 0, 0.4),
-        inset 0 3px 3px rgba(255, 255, 255, 0.14),
-        0 2px 2px rgba(0, 0, 0, 0.45);
+        0 4px 0 #241f1a,
+        0 6px 10px rgba(0, 0, 0, 0.5);
 }
 
 /* Modifier keys are the same dark plastic, just a touch deeper. */
 #punchkeyboard .m33-key.mod {
-    background: radial-gradient(circle at 50% 28%, #5b6169 0%, #41464d 42%, #2b2f35 100%);
-    border-color: #1b1e22;
+    background: radial-gradient(circle at 35% 35%, #4a423a 0%, #241f1a 100%);
 }
 
-/* Pressed state: the keycap sinks into the deck. */
+/* Pressed state: the keycap sinks into the deck. The key moves down by the
+   height of the side wall (4px) and the wall collapses, so the cap rests flat
+   on the deck — exactly how a flat-top cylinder key feels when pressed. */
 #punchkeyboard .m33-key.down {
-    transform: translateY(2px);
+    transform: translateY(4px);
     box-shadow:
-        inset 0 -2px 3px rgba(0, 0, 0, 0.35),
-        inset 0 2px 2px rgba(255, 255, 255, 0.5),
-        0 1px 1px rgba(0, 0, 0, 0.4);
+        0 0 0 #241f1a,
+        0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* Two-line legend: the small top label is the CTRL-code name (letters)
@@ -539,16 +574,18 @@
     box-sizing: border-box;
     cursor: pointer;
     user-select: none;
-    background: radial-gradient(circle at 50% 28%, #757a81 0%, #54595f 42%, #393d43 100%);
-    border: 1px solid #26292e;
+    background: radial-gradient(circle at 50% 30%, #6e6458 0%, #403830 100%);
+    border: none;
     box-shadow:
-        inset 0 -3px 4px rgba(0, 0, 0, 0.4),
-        inset 0 3px 3px rgba(255, 255, 255, 0.14),
-        0 2px 2px rgba(0, 0, 0, 0.45);
+        0 4px 0 #241f1a,
+        0 5px 8px rgba(0, 0, 0, 0.4);
 }
 
 #punchkeyboard .m33-space.down {
-    transform: translateY(2px);
+    transform: translateY(4px);
+    box-shadow:
+        0 0 0 #241f1a,
+        0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* ==================================================================
@@ -996,15 +1033,18 @@
     overflow: visible;
 }
 
-/* Anchor the paper to the bottom (bottom:64px keeps its lower edge at
-   the original 400px mark: 464px machine height - 64px = 400px, right
-   at the carriage). max-height is viewport-driven via the CSS variable
-   set by installTeletypePaperGrowth(); 400px is the pre-JS fallback. */
+/* Anchor the paper to the bottom (bottom:52px keeps its lower edge at
+   the BOTTOM of the print-head area, 380px - 52px = 328px). max-height is
+   viewport-driven via the CSS variable set by installTeletypePaperGrowth();
+   400px is the pre-JS fallback. The print-area's extra 12px bottom padding
+   keeps the carriage (the fresh-line baseline) at its original position —
+   the sheet itself just extends 12px further down into the machine, so it
+   reads as one continuous roll with no visible seam. */
 #g60printer div#paper,
 #g60printer div#paper.paperNoScroll,
 #g60printer div#paper.paperScroll {
     top: auto;
-    bottom: 64px;
+    bottom: 52px;
     height: auto;
     max-height: var(--tty-paper-max, 400px);
     overflow-y: auto;
@@ -1017,9 +1057,14 @@
 }
 
 /* Drop the print-area's 57px top padding so line 1 starts right at the
-   top of the paper and the fresh line lands exactly on the carriage. */
+   top of the paper and the fresh line lands exactly on the carriage.
+   The bottom padding is 13px (1px base + 12px extra): because the paper
+   element itself now extends 12px further down (bottom:52px → 328px), the
+   extra bottom padding keeps the fresh-line baseline at its original
+   position while the paper's own background fills the 12px below it —
+   the sheet continues seamlessly into the machine like a paper roll. */
 #g60printer td#paper_printarea {
-    padding: 4px 18px 1px 18px;
+    padding: 4px 18px 13px 18px;
 }
 
 /* Hide the Google60 paper-edge overlays: they sit at the TOP of the
@@ -1052,19 +1097,17 @@
        the historical machine), and the punched tape hangs below the punch.
        The cabinet is only as wide as the punch/reader blocks, which keep
        their original ~144px width, so the tape hangs centred under the
-       punch. The taller 300px cabinet (blocks of 144px) gives the punch
-       block breathing room between its label and its buttons. The cabinet's
-       BOTTOM is aligned with the bottom of the keyboard deck (#punchkeypane:
-       396px top + 240px height = 636px), so with a 300px tall cabinet its
-       top sits at 336px — level with the lower printer body, as on a real
-       ASR where the reader/punch cabinet and the keyboard share a bottom
-       edge. */
+       punch. The BOTTOM is aligned with the bottom of the keyboard deck
+       (#punchkeypane: 396px top + 240px height = 636px); the taller 360px
+       cabinet grows UPWARD (top at 276px) and, together with the 10px
+       top/bottom insets on #asr-mech, leaves clear breathing room above
+       the punch and below the reader. */
     width: 170px;
-    height: 300px;
-    margin-top: 336px;
-    /* Cream ASR33 body, matching the printer + keyboard deck. */
-    background-color: #ddd6c4;
-    border: 1px solid #b3ab94;
+    height: 360px;
+    margin-top: 276px;
+    /* Sand ASR33 body, matching the printer + keyboard deck. */
+    background-color: #d1b48c;
+    border: 1px solid #a68c66;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
     overflow: visible;
@@ -1080,37 +1123,52 @@
     bottom: 0;
     display: flex;
     /* Punch above reader, matching the historical layout. The blocks keep
-       their original narrow width and are centred in the narrow cabinet. */
+       their original narrow width and are centred in the narrow cabinet.
+       10px vertical padding insets BOTH metal panels from the cabinet's top
+       and bottom edges, so neither the punch nor the reader touches the
+       sand cabinet frame. */
     flex-direction: column;
     align-items: center;
+    padding: 10px 0;
     /* Same gap between the punch and the reader as between the reader and
        the teletype keyboard (see the 12px gap on #teletype-rig). With
-       flex:1 children the gap is carved out of the 300px cabinet, so the
-       punch and the reader each get (300 - 12) / 2 = 144px. */
+       flex:1 children the gap is carved out of the padded cabinet, so the
+       punch and the reader each get (360 - 20 - 12) / 2 = 164px. */
     gap: 12px;
 }
 
 /* Punch: on top — same size as the reader, keeping the original narrow
-   width (144px, one half of the former 300px row cabinet). */
+   width (144px, one half of the former 300px row cabinet). The punch and
+   reader surfaces use the SAME cream as the LINE/OFF/LOCAL block
+   (#ccu-apron), so the whole ASR unit reads as one plastic body. */
 #asr-punch {
     position: relative;
     flex: 1 1 0;
     width: 144px;
     align-self: center;
-    background: linear-gradient(180deg, #e6e0d0 0%, #d3ccb8 100%);
-    border-bottom: 1px solid #a89f87;
+    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
+    border-bottom: 1px solid #b3ab94;
     border-radius: 8px 8px 0 0;
+    /* Same drop + inner-top highlight as the LINE/OFF/LOCAL block (#ccu-apron). */
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* Reader: at the bottom — same size as the punch, keeping the original
-   narrow width. */
+   narrow width. Same cream surface as the punch above it and as the
+   LINE/OFF/LOCAL block (#ccu-apron). */
 #asr-reader {
     position: relative;
     flex: 1 1 0;
     width: 144px;
     align-self: center;
-    background: linear-gradient(180deg, #eae4d4 0%, #d3ccb8 100%);
+    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
     border-radius: 0 0 8px 8px;
+    /* Same drop + inner-top highlight as the LINE/OFF/LOCAL block (#ccu-apron). */
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.6),
+        0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .asr-label {
@@ -1162,7 +1220,7 @@
     transform: translateX(-50%);
     width: 104px;
     height: 13px;
-    background: linear-gradient(180deg, #e6e0d0 0%, #d3ccb8 100%);
+    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
     clip-path: polygon(0 0, 100% 0, 50% 100%);
     z-index: 20;
 }
@@ -1360,13 +1418,15 @@
    reaches the window edge; 60vh is only the pre-JS fallback. */
 #punchtape {
     position: absolute;
-    /* Emerge from the MIDDLE of the TAPE PUNCH slot (slot top 106px + half
-       slot height 6px = 112px), horizontally centred on the punch: the punch
-       block is 144px wide centred in the 170px cabinet, so its centre sits
-       at 85px; tape left = 85 - 48.5 ≈ 36px. Draws ABOVE every other element
-       of the ASR unit (the reader switch, the slots), so the punched tape
-       always passes in front of the mechanism. */
-    top: 112px;
+    /* Emerge from the MIDDLE of the TAPE PUNCH slot: the punch block starts
+       at the 10px #asr-mech top inset and the slot sits at top 106px within
+       it, so the slot centre lands at 10 + 106 + 6 = 122px. Horizontally
+       centred on the punch: the punch block is 144px wide centred in the
+       170px cabinet, so its centre sits at 85px; tape left = 85 - 48.5 ≈
+       36px. Draws ABOVE every other element of the ASR unit (the reader
+       switch, the slots), so the punched tape always passes in front of the
+       mechanism. */
+    top: 122px;
     left: 36px;
     z-index: 10;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
