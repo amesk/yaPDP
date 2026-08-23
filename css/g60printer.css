@@ -1054,12 +1054,14 @@
        their original ~144px width, so the tape hangs centred under the
        punch. The taller 300px cabinet (blocks of 144px) gives the punch
        block breathing room between its label and its buttons. The cabinet's
-       top is aligned with the top of the keyboard block (printer 380px +
-       its 2×8px margins), as on a real ASR where the reader/punch sit at
-       keyboard level. */
+       BOTTOM is aligned with the bottom of the keyboard deck (#punchkeypane:
+       396px top + 240px height = 636px), so with a 300px tall cabinet its
+       top sits at 336px — level with the lower printer body, as on a real
+       ASR where the reader/punch cabinet and the keyboard share a bottom
+       edge. */
     width: 170px;
     height: 300px;
-    margin-top: 396px;
+    margin-top: 336px;
     /* Cream ASR33 body, matching the printer + keyboard deck. */
     background-color: #ddd6c4;
     border: 1px solid #b3ab94;
