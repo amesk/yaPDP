@@ -402,6 +402,8 @@ var g60Keyboard = (function () {
 
         el.addEventListener('mousedown', function (e) {
           e.preventDefault();
+          // Every teletype key makes a computer-button click when pressed.
+          playComputerButton();
           this.classList.add('down');
         });
         el.addEventListener('mouseup', function (e) {
@@ -983,6 +985,68 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.03);
+    } catch (err) { /* ignore audio errors */ }
+  };
+})();
+
+// ==================================================================
+// Audible click for the front-panel rotary selectors and the teletype
+// CCU / tape-reader switches. Synthesized with Web Audio on a dedicated
+// context so it never clashes with the teletype/printer, the VT52 key
+// click or the bell. Always on — the click is authentic switch hardware
+// behaviour — but the global "mute" flag silences it like every other
+// sound source. The click models a rotary detent switch ("галетник"):
+// the spring-loaded indexer snapping through the notch as a cascade of
+// crisp micro-ticks. The POWER LOCK key, the ASR punch buttons and every
+// teletype key use their own mp3 assets (playComputerButton / playButtonPress).
+// ==================================================================
+(function installSwitchClick() {
+  var audioCtx = null;
+  var noiseBuf = null; // shared short noise burst (lazy, per context)
+
+  // One metallic tick: band-passed noise with a fast decay.
+  function playTick(ctx, t, gain, center, q, dur) {
+    var src = ctx.createBufferSource();
+    src.buffer = ensureNoise(ctx);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = center;
+    bp.Q.value = q;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(ctx.destination);
+    src.start(t);
+    src.stop(t + dur);
+  }
+
+  function ensureNoise(ctx) {
+    if (noiseBuf) return noiseBuf;
+    var len = Math.max(1, Math.floor(ctx.sampleRate * 0.02));
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = noiseBuf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return noiseBuf;
+  }
+
+  window.playSwitchClick = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = audioCtx || new Ctx();
+      // The operator has just clicked a switch, so the context is usable;
+      // resuming here keeps the very first click audible too.
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      // Rotary detent ("галетник") ratchet: release from the previous
+      // detent, engage the next (loudest), then a settling micro-tick.
+      playTick(audioCtx, t0,         0.14, 3800, 2.4, 0.01);
+      playTick(audioCtx, t0 + 0.026, 0.20, 3000, 2.2, 0.012);
+      playTick(audioCtx, t0 + 0.052, 0.10, 4300, 2.6, 0.009);
     } catch (err) { /* ignore audio errors */ }
   };
 })();
@@ -2079,6 +2143,43 @@ function playTearSound() {
   } catch (e) { /* ignore audio errors */ }
 }
 
+// Play the computer-button press sound (pressing-a-computer-button.mp3): used
+// for the POWER LOCK key on the front panel and for every teletype keyboard
+// key. The Audio element is created lazily on the first press (inside the
+// click handler, so autoplay is not blocked) and replayed from 0 each time.
+var computerButtonAudio = null;
+function playComputerButton() {
+  try {
+    if (typeof Config !== 'undefined' && Config.get().mute) return;
+    if (!computerButtonAudio && typeof Audio !== 'undefined') {
+      computerButtonAudio = new Audio('assets/sounds/pressing-a-computer-button.mp3');
+      computerButtonAudio.preload = 'auto';
+    }
+    if (computerButtonAudio) {
+      computerButtonAudio.currentTime = 0;
+      computerButtonAudio.play().catch(function () {});
+    }
+  } catch (e) { /* ignore audio errors */ }
+}
+
+// Play the ASR punch-button press sound (pressing a ballpoint pen on the
+// table — the crisp click the operator hears when pressing ON/OFF/BSP/REL).
+// Lazy Audio element, same pattern as playComputerButton above.
+var punchButtonAudio = null;
+function playButtonPress() {
+  try {
+    if (typeof Config !== 'undefined' && Config.get().mute) return;
+    if (!punchButtonAudio && typeof Audio !== 'undefined') {
+      punchButtonAudio = new Audio('assets/sounds/pressing-a-button-on-a-ballpoint-pen-on-the-table.mp3');
+      punchButtonAudio.preload = 'auto';
+    }
+    if (punchButtonAudio) {
+      punchButtonAudio.currentTime = 0;
+      punchButtonAudio.play().catch(function () {});
+    }
+  } catch (e) { /* ignore audio errors */ }
+}
+
 // ---- Model 33 ASR operator controls (CCU LINE/OFF/LOCAL, Tear, Save) ----
 // Wires the #teletype-controls buttons and the CCU rotary switch. The CCU
 // knob (LINE/OFF/LOCAL) selects the unit's mode: LINE is the normal connected
@@ -2093,6 +2194,8 @@ function initTtyControls() {
   for (var ci = 0; ci < ccuPos.length; ci++) {
     (function (btn) {
       btn.addEventListener('click', function () {
+        // Only the actual act of switching produces the mechanical click.
+        if (window.ttyMode !== btn.getAttribute('data-tty-mode')) playSwitchClick();
         setTtyMode(btn.getAttribute('data-tty-mode'));
       });
     })(ccuPos[ci]);
@@ -2133,16 +2236,21 @@ function initTtyControls() {
   var punchBspBtn = document.getElementById('punch-bsp');
   var punchRelBtn = document.getElementById('punch-rel');
   if (punchOnBtn) {
-    punchOnBtn.addEventListener('click', function () { setTtyPunch(true); });
+    punchOnBtn.addEventListener('click', function () {
+      playButtonPress();
+      setTtyPunch(true);
+    });
   }
   if (punchOffBtn) {
     punchOffBtn.addEventListener('click', function () {
+      playButtonPress();
       setRelHeld(false);
       setTtyPunch(false);
     });
   }
   if (punchBspBtn) {
     punchBspBtn.addEventListener('click', function () {
+      playButtonPress();
       if (window.paperTape && typeof window.paperTape.undo === 'function') {
         window.paperTape.undo();
       }
@@ -2153,6 +2261,7 @@ function initTtyControls() {
   // again (or pressing ON) unlatches it.
   if (punchRelBtn) {
     punchRelBtn.addEventListener('click', function () {
+      playButtonPress();
       setRelHeld(!ttyRelHeld);
       if (ttyRelHeld) setTtyPunch(false);
     });
@@ -2163,6 +2272,8 @@ function initTtyControls() {
   for (var si = 0; si < switchPos.length; si++) {
     (function (btn) {
       btn.addEventListener('click', function () {
+        // Only the actual act of switching produces the mechanical click.
+        if (window.ttyReaderMode !== btn.getAttribute('data-reader-mode')) playSwitchClick();
         setReaderMode(btn.getAttribute('data-reader-mode'));
       });
     })(switchPos[si]);

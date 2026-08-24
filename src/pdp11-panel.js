@@ -235,6 +235,12 @@ function examineDeposit(data) {
   for (var li = 0; li < lockPos.length; li++) {
     (function (btn) {
       btn.addEventListener('click', function () {
+        // The POWER LOCK key clicks only when the state actually changes.
+        if (typeof panel !== 'undefined' &&
+            typeof window.playComputerButton === 'function' &&
+            panel.powerSwitch !== powerStates[btn.getAttribute('data-power-state')]) {
+          window.playComputerButton();
+        }
         setPowerState(btn.getAttribute('data-power-state'));
       });
     })(lockPos[li]);
@@ -250,6 +256,7 @@ function examineDeposit(data) {
       if (typeof panel === 'undefined') return;
       // Never steal a direct label click (the labels may overlap the disc).
       if (e.target && e.target.closest && e.target.closest('.lockPanelPos')) return;
+      if (typeof window.playComputerButton === 'function') window.playComputerButton();
       var next = panel.powerSwitch;
       next = e.shiftKey
         ? (next - 1 < -1 ? 1 : next - 1)
@@ -269,6 +276,7 @@ function examineDeposit(data) {
   var rotary0 = document.querySelector('.rotaryTopPanel .rotarySwitch');
   if (rotary0) {
     rotary0.addEventListener('click', function (e) {
+      if (typeof window.playSwitchClick === 'function') window.playSwitchClick();
       if (e.shiftKey) {
         if (--panel.rotary0 < 0) panel.rotary0 = 7;
       } else {
@@ -283,6 +291,7 @@ function examineDeposit(data) {
   var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
   if (rotary1) {
     rotary1.addEventListener('click', function (e) {
+      if (typeof window.playSwitchClick === 'function') window.playSwitchClick();
       if (e.shiftKey) {
         if (--panel.rotary1 < 0) panel.rotary1 = 3;
       } else {

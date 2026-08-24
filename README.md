@@ -346,7 +346,8 @@ The hum is synthesized with Web Audio on its own audio channel, so it never
 cuts off the teletype/printer or the VT52 key-click sounds.
 A round **mute** button pinned to the bottom-left corner (just right of the
 navigation sidebar) toggles *all* sounds at once — hum, teletype/LP11, paper
-feed/tear, key clicks and the bell — like a checkbox; its state is persisted
+feed/tear, VT52 key clicks, the bell and the mechanical click of every
+switch, button and teletype key — like a checkbox; its state is persisted
 with the rest of the configuration.
 
 The **Storage** page manages the storage media: the paper-tape reader file
