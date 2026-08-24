@@ -216,7 +216,7 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
+| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + front-panel scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see [User manual](#user-manual) below) |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
@@ -361,7 +361,11 @@ always reaches the paper edge. Both also advance the carriage to the next
 VT52 console, the LP11 cabinet auto-scales down proportionally to fit the
 window when it gets too small (transform: scale, driven by a ResizeObserver),
 so the full-width machine is never clipped on narrow screens — and the rising
-fanfold paper still climbs the same fraction of the window after scaling.
+fanfold paper still climbs the same fraction of the window after scaling. The
+front panel uses the same trick: on narrow windows (or at a high UI zoom) the
+panel and its "Help Me!" bootstrap sticker shrink together — the fit reserves
+the sticker's measured, rotated bounding box — so the note never slides under
+the navigation sidebar.
 
 Both also honour form feed (FF, 0x0C): the 2.11BSD spooler (`lpr`/`lpd`) sends
 FF between print jobs so each starts on a fresh page. The LP11 ejects to the

@@ -1816,6 +1816,89 @@ function installLP11Scaling() {
   ro.observe(page);
 }
 
+// ---- Proportional scaling of the front panel (with the Help Me! sticker) ----
+// The PDP-11/70 front panel (.frame) has a fixed native size and — unlike the
+// VT52 and LP11 cabinets — was never scaled down, so on narrow windows (small
+// viewport or a high UI zoom) the operator's hand-written sticky note, which
+// sticks out ~270px to the LEFT of the panel (see .panel-sticker in
+// css/pdp11.css), slid under the navigation sidebar. This mirrors
+// installLP11Scaling: when the panel page cannot fit the panel plus its
+// sticker, scale the whole .frame (the sticker is a child of .frame, so it
+// scales along) via transform: scale. The frame stays centred, so the sticker
+// needs symmetric room on both sides: the available width must fit
+// natW + 2 * extent. The extent is measured live from the note's rotated
+// bounding box (getBoundingClientRect already includes the -3deg tilt), so
+// the fit always reserves exactly what the note actually needs. A 40px page
+// margin keeps the note M/2 = 20px clear of the page edge — past the
+// sidebar's box-shadow — whenever scaling is active.
+function panelFitScale(availW, availH, natW, natH, stickerExtent) {
+  if (!natW || !natH) return 1;
+  var s = Math.min(1, (availW > 0) ? availW / (natW + 2 * stickerExtent) : 1);
+  if (availH > 0 && natH > availH) {
+    s = Math.min(s, availH / natH);
+  }
+  if (s < 0.1) s = 0.1; // never collapse below readability
+  return s;
+}
+
+function installPanelScaling() {
+  if (typeof ResizeObserver === 'undefined') return;
+  var page = document.getElementById('page-panel');
+  if (!page) return;
+  var frame = page.querySelector('.frame');
+  if (!frame) return;
+  var sticker = page.querySelector('.panel-sticker');
+  // Fallback for the note's left protrusion when it cannot be measured (a
+  // visible note whose layout has not flushed yet): 260px wide note + 8px gap
+  // to the panel edge (see css/pdp11.css .panel-sticker).
+  var fallbackExtent = 268;
+
+  // Measure how far the note's real bounding box reaches to the LEFT of the
+  // frame. getBoundingClientRect already includes the -3deg rotation, so the
+  // swinging top-left corner is accounted for regardless of the note's actual
+  // height or font rendering. Returns 0 while the note is hidden (nothing to
+  // reserve for).
+  function measureExtent() {
+    if (!sticker || sticker.classList.contains('hidden')) return 0;
+    var fr = frame.getBoundingClientRect();
+    var sr = sticker.getBoundingClientRect();
+    if (!sr.width || !sr.height) return 0; // not rendered yet
+    return Math.max(0, fr.left - sr.left);
+  }
+
+  function apply() {
+    // Clear the transform before measuring so offsetWidth returns the natural
+    // (unscaled) size; hidden pages (display:none -> offsetWidth 0) are
+    // skipped and re-sized once they become visible.
+    frame.style.transform = '';
+    var natW = frame.offsetWidth;
+    var natH = frame.offsetHeight;
+    if (!natW || !natH) return; // hidden page - skip until visible
+
+    var extent = measureExtent();
+    if (extent === 0 && sticker && !sticker.classList.contains('hidden')) {
+      extent = fallbackExtent; // visible note, layout not flushed yet
+    }
+    // 40px horizontal margin keeps the note's bounding box M/2 = 20px clear of
+    // the page edge (and past the sidebar's box-shadow) whenever scaling is
+    // active; the same 40px vertical margin mirrors it on the other axis.
+    var s = panelFitScale(page.clientWidth - 40, page.clientHeight - 40,
+                          natW, natH, extent);
+    // 'center center' pivots around the flex-centred layout box, so the
+    // shrunk panel (and its sticker) stay visually centred in the page.
+    frame.style.transformOrigin = 'center center';
+    frame.style.transform = (s < 1) ? 'scale(' + s + ')' : '';
+  }
+
+  apply();
+  var ro = new ResizeObserver(apply);
+  ro.observe(page);
+  // The note is absolute/out-of-flow, so toggling its visibility does not
+  // resize the page; observe it directly so apply() re-runs (and re-measures
+  // the extent) when the Help Me! button shows/hides the sticker.
+  if (sticker) ro.observe(sticker);
+}
+
 // ---- Model 33 ASR console paper: grow upward to the top of the window ----
 // Mirrors the LP11 printer page: the console paper is anchored to the
 // carriage and grows upward (height:auto, bottom:64px in g60printer.css)
@@ -2027,6 +2110,10 @@ installVT52Scaling();
 // Fit the LP11 printer cabinet to the available window size (proportional
 // scaling, mirroring the VT52 cabinets above).
 installLP11Scaling();
+
+// Fit the front panel (and its Help Me! sticker) to the available window size
+// (proportional scaling, mirroring the VT52/LP11 cabinets above).
+installPanelScaling();
 
 // Make the Model 33 ASR console paper grow up to the top of the window
 // (viewport-driven max-height), like the LP11 printer page.
