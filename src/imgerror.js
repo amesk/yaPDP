@@ -155,19 +155,21 @@ var ImageError = (function () {
         intro.appendChild(document.createTextNode(msg.body));
         box.appendChild(intro);
 
-        var storageBtn = document.createElement("button");
-        storageBtn.type = "button";
-        storageBtn.className = "modal-close";
-        storageBtn.setAttribute("data-imgerror-action", "storage");
-        storageBtn.textContent = "Open Storage";
-        box.appendChild(storageBtn);
-
+        // Dismiss first, then the "fix it" action — matching the other modals
+        // (e.g. the reboot dialog's Cancel → Reboot order).
         var gotItBtn = document.createElement("button");
         gotItBtn.type = "button";
         gotItBtn.className = "modal-close";
         gotItBtn.setAttribute("data-imgerror-action", "close");
         gotItBtn.textContent = "Got it";
         box.appendChild(gotItBtn);
+
+        var storageBtn = document.createElement("button");
+        storageBtn.type = "button";
+        storageBtn.className = "modal-close";
+        storageBtn.setAttribute("data-imgerror-action", "storage");
+        storageBtn.textContent = "Open Storage";
+        box.appendChild(storageBtn);
 
         overlay.innerHTML = "";
         overlay.appendChild(box);
