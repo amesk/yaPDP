@@ -216,7 +216,7 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
 | `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
-| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + front-panel scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
+| `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + front-panel scaling + teletype scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see [User manual](#user-manual) below) |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
@@ -365,7 +365,10 @@ fanfold paper still climbs the same fraction of the window after scaling. The
 front panel uses the same trick: on narrow windows (or at a high UI zoom) the
 panel and its "Help Me!" bootstrap sticker shrink together — the fit reserves
 the sticker's measured, rotated bounding box — so the note never slides under
-the navigation sidebar.
+the navigation sidebar. The Model 33 ASR teletype rig scales the same way: on
+short windows it shrinks to stay inside the window top and above the operator
+buttons (its viewport-driven paper and hanging tape divide their max-heights
+by the scale, so they still reach the window edges).
 
 Both also honour form feed (FF, 0x0C): the 2.11BSD spooler (`lpr`/`lpd`) sends
 FF between print jobs so each starts on a fresh page. The LP11 ejects to the

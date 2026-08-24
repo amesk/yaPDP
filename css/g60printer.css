@@ -1450,6 +1450,12 @@
        gutter sits on its right without covering the tape. */
     align-items: flex-start;
     padding: 0;
+    /* Solid tape colour matching .pt-row. Under the rig's transform: scale a
+       12px row lands on a fractional pixel, and the browser rounds each row
+       individually, leaving hairline horizontal seams between them through
+       which the cabinet showed as stripes. Painting the whole body the tape
+       colour makes those subpixel seams invisible (white-on-white). */
+    background: #f6f1e5;
 }
 
 /* Ragged bottom edge of the tape, matching the teletype paper edge.

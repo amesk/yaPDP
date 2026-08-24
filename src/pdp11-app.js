@@ -1931,8 +1931,103 @@ function installTeletypePaperGrowth() {
   function apply() {
     var bottom = paper.getBoundingClientRect().bottom;
     if (bottom <= 0) return; // hidden page — skip until visible
+    // When the whole rig is CSS-scaled (--tty-scale < 1, set by
+    // installTeletypeScaling), the paper's local max-height must be divided by
+    // the scale so its VISUAL top still reaches the top of the window.
+    var scale = 1;
+    var rig = document.getElementById('teletype-rig');
+    if (rig) {
+      var v = window.getComputedStyle(rig).getPropertyValue('--tty-scale');
+      var parsed = parseFloat(v);
+      if (isFinite(parsed) && parsed > 0) scale = parsed;
+    }
     container.style.setProperty('--tty-paper-max',
-        teletypePaperMaxHeight(bottom, 0) + 'px');
+        (teletypePaperMaxHeight(bottom, 0) / scale) + 'px');
+  }
+
+  apply();
+  var ro = new ResizeObserver(apply);
+  ro.observe(page);
+}
+
+// ---- Proportional scaling of the Model 33 ASR teletype rig ----
+// Mirrors installLP11Scaling / installPanelScaling: the teletype machine
+// (#teletype-rig: printer + keyboard + ASR tape unit) has a fixed native size
+// and was never scaled down, so on narrow/short windows it clipped under the
+// page's overflow:hidden (and the pinned operator buttons overlapped it).
+// When the page cannot fit the rig, scale the whole #teletype-rig (paper and
+// hanging tape included — they are children of it) via transform: scale and
+// expose the factor as --tty-scale so the paper and the punchtape can divide
+// their viewport-driven max-heights and still reach the top/bottom of the
+// window. The vertical fit is measured live: the rig's layout centre is
+// flex-centred in the page (a top <p class=clear> spacer shifts it), so the
+// scale keeps the visual inside the window top AND above the operator
+// buttons, whatever the spacer/centring geometry happens to be.
+function teletypeFitScale(availW, availH, natW, natH) {
+  if (!natW || !natH) return 1;
+  var s = Math.min(1, (availW > 0) ? availW / natW : 1);
+  if (availH > 0 && natH > availH) {
+    s = Math.min(s, availH / natH);
+  }
+  if (s < 0.1) s = 0.1; // never collapse below readability
+  return s;
+}
+
+function installTeletypeScaling() {
+  if (typeof ResizeObserver === 'undefined') return;
+  var page = document.getElementById('page-teletype');
+  if (!page) return;
+  var rig = document.getElementById('teletype-rig');
+  var container = document.getElementById('g60printer');
+  var paper = document.getElementById('paper');
+  if (!rig || !container || !paper) return;
+
+  function apply() {
+    // Clear the transform before measuring so offsetWidth returns the natural
+    // (unscaled) size; hidden pages (display:none -> offsetWidth 0) are
+    // skipped and re-sized once they become visible.
+    rig.style.transform = '';
+    var natW = rig.offsetWidth;
+    var natH = rig.offsetHeight;
+    if (!natW || !natH) return; // hidden page - skip until visible
+
+    // Measure the live vertical room around the rig's layout centre (the
+    // page flex-centres the rig, but the top <p class=clear> spacer shifts
+    // it up on short windows). The visual must stay inside the window top
+    // (spaceTop) and above the pinned operator buttons (spaceBottom), so the
+    // available height is 2 * min(spaceTop, spaceBottom). The width side is
+    // symmetric, hence the plain 24px page margin.
+    var controls = document.getElementById('teletype-controls');
+    var controlsTop = controls
+        ? controls.getBoundingClientRect().top
+        : page.clientHeight;
+    var rigTop = rig.getBoundingClientRect().top;
+    var rigCenter = rigTop + natH / 2;
+    // Keep a 24px breathing gap above the rig and above the operator buttons,
+    // so the shrunk machine never touches the window top or the button row.
+    var GAP = 24;
+    var spaceTop = rigCenter - GAP;
+    var spaceBottom = (controlsTop - GAP) - rigCenter;
+    var availH = 2 * Math.min(spaceTop, spaceBottom);
+    if (availH < 0) availH = 0;
+    var s = teletypeFitScale(page.clientWidth - 24, availH, natW, natH);
+
+    rig.style.setProperty('--tty-scale', s);
+    rig.style.transformOrigin = 'center center';
+    rig.style.transform = (s < 1) ? 'scale(' + s + ')' : '';
+
+    // Re-derive the paper's growth ceiling for the new scale (the local
+    // max-height must be divided so the sheet's visual top stays at y=0).
+    var bottom = paper.getBoundingClientRect().bottom;
+    if (bottom > 0) {
+      container.style.setProperty('--tty-paper-max',
+          (teletypePaperMaxHeight(bottom, 0) / s) + 'px');
+    }
+    // The hanging punchtape is measured in the same scaled space; refresh it
+    // so it still reaches the bottom of the window after the scale changes.
+    if (window.paperTape && typeof window.paperTape.refreshHeight === 'function') {
+      window.paperTape.refreshHeight();
+    }
   }
 
   apply();
@@ -2118,6 +2213,10 @@ installPanelScaling();
 // Make the Model 33 ASR console paper grow up to the top of the window
 // (viewport-driven max-height), like the LP11 printer page.
 installTeletypePaperGrowth();
+
+// Fit the Model 33 ASR teletype rig to the available window size
+// (proportional scaling, mirroring the VT52/LP11/panel scalers above).
+installTeletypeScaling();
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);

@@ -89,7 +89,15 @@
         cachedTop = top;
         var maxH = window.innerHeight - top - 12; // 12px bottom margin
         if (maxH < 40) maxH = 40;
-        container.style.maxHeight = Math.floor(maxH) + 'px';
+        // The tape hangs inside the CSS-scaled teletype rig (--tty-scale < 1,
+        // set by installTeletypeScaling in pdp11-app.js): divide the LOCAL
+        // max-height by the scale so the VISUAL tape still reaches the bottom
+        // of the window.
+        var scale = 1;
+        var v = window.getComputedStyle(container).getPropertyValue('--tty-scale');
+        var parsed = parseFloat(v);
+        if (isFinite(parsed) && parsed > 0) scale = parsed;
+        container.style.maxHeight = Math.floor(maxH / scale) + 'px';
     }
 
     function keepPunchVisible() {
@@ -193,12 +201,21 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 
+    // refreshHeight() - Re-measure the tape window after the teletype rig is
+    // CSS-scaled (installTeletypeScaling in pdp11-app.js calls it once the
+    // scale is applied, so the hanging tape still reaches the window bottom).
+    function refreshHeight() {
+        cachedTop = -1;
+        updateMaxHeight();
+    }
+
     window.paperTape = {
         encodePunch: encodePunch,
         init: init,
         punchChar: punchChar,
         undo: undo,
         clear: clear,
-        save: save
+        save: save,
+        refreshHeight: refreshHeight
     };
 })();
