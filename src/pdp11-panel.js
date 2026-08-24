@@ -570,12 +570,26 @@ function examineDeposit(data) {
         '<span class="modal-title">The machine is powered off</span>' +
         '<p class="modal-intro">Turn the <b>POWER LOCK</b> switch on the front ' +
           'panel to <b>POWER</b> (or click the POWER label) to power the machine ' +
-          'on, then press <b>Bootstrap now!</b> again.</p>' +
+          'on, then press <b>Bootstrap now!</b> again — or let the panel do it ' +
+          'for you below.</p>' +
         '<button type="button" class="modal-close" data-power-off-action="ok">Got it</button>' +
+        '<button type="button" class="modal-close" data-power-off-action="power-on-boot">Power on & Bootstrap</button>' +
       '</div>';
     powerOffOverlay.addEventListener('click', function (e) {
-      if (e.target === powerOffOverlay ||
-          (e.target.getAttribute && e.target.getAttribute('data-power-off-action'))) {
+      if (e.target === powerOffOverlay) {
+        powerOffOverlay.classList.remove('visible');
+        return;
+      }
+      var action = e.target.getAttribute && e.target.getAttribute('data-power-off-action');
+      if (action === 'power-on-boot') {
+        // Power the machine on and start the default bootstrap: doReboot(true)
+        // powers on via resetPanelControls and then boots with forceBoot.
+        var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+        var consolePage = (cfg && cfg.consoleType === 'vt52') ? 'vt52-console' : 'teletype';
+        powerOffOverlay.classList.remove('visible');
+        doReboot(true);
+        switchPage(consolePage);
+      } else if (action === 'ok') {
         powerOffOverlay.classList.remove('visible');
       }
     });

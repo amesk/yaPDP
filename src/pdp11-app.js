@@ -1264,11 +1264,19 @@ window.configConfirmLeave = function (onLeave, onStay) {
         'Press Apply on the Config page to commit them before leaving.</p>' +
         '<button type="button" class="modal-close" data-leave-action="stay">Stay</button>' +
         '<button type="button" class="modal-close" data-leave-action="leave">Leave</button>' +
+        '<button type="button" class="modal-close" data-leave-action="apply-leave">Apply & Leave</button>' +
       '</div>';
     __configLeaveOverlay.addEventListener('click', function (e) {
       var action = e.target.getAttribute && e.target.getAttribute('data-leave-action');
       var cb = __configLeaveCallbacks;
-      if (action === 'leave') {
+      if (action === 'apply-leave') {
+        // Commit the pending changes through the form's own Apply button and
+        // then leave the page (switchPage runs as the onLeave callback).
+        __configLeaveOverlay.classList.remove('visible');
+        var applyBtn = document.getElementById('config-apply');
+        if (applyBtn) applyBtn.click();
+        if (cb.onLeave) cb.onLeave();
+      } else if (action === 'leave') {
         __configLeaveOverlay.classList.remove('visible');
         if (cb.onLeave) cb.onLeave();
       } else if (action === 'stay' || e.target === __configLeaveOverlay) {
