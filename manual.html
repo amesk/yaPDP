@@ -246,6 +246,15 @@
         .landing-page .config-item-text p {
             margin: 6px 0 0 0;
         }
+
+        .landing-page .config-item-text ul {
+            margin: 6px 0 0 0;
+            padding-left: 18px;
+        }
+
+        .landing-page .config-item-text li {
+            margin: 3px 0;
+        }
     </style>
 </head>
 
@@ -544,9 +553,23 @@
                     alt="CONFIG - Equipment tab">
                 <div class="config-item-text">
                     <h3>Equipment</h3>
-                    <p>Console terminal type (teletype or VT52), the number of user terminals (0–2), the LP11 line
-                        printer, the VT11 graphics display, print widths (teletype 72/80, printer 72/80/100/132),
-                        teletype speed and the Upper Case Only keyboard flag.</p>
+                    <ul>
+                        <li><b>Console terminal</b> — the operator console (tty0): a Model 33 ASR teletype or a
+                            DECscope VT52.</li>
+                        <li><b>User terminals</b> — 0–2 extra VT52 terminals (TTY 1 / TTY 2), each with its own
+                            sidebar page.</li>
+                        <li><b>Line printer (LP11)</b> — install the animated LP11 line printer on its own Printer
+                            page.</li>
+                        <li><b>VT11 graphics display</b> — install the DEC VT11 vector-graphics terminal on its own
+                            Display page.</li>
+                        <li><b>Teletype print width</b> — 72 or 80 columns for the Model 33 ASR console (a teletype is
+                            at most an 80-column machine).</li>
+                        <li><b>Printer width</b> — 72/80/100/132 columns for the LP11 printer page.</li>
+                        <li><b>Teletype speed</b> — authentic (real 110-baud Model 33 ASR, ~10 chars/sec) or fast
+                            development pace.</li>
+                        <li><b>Upper Case Only</b> — send letters from the physical keyboard in upper case (authentic
+                            Model 33 ASR); off by default so lower-case (e.g. 2.11 BSD file names) passes through.</li>
+                    </ul>
                 </div>
             </div>
 
@@ -555,9 +578,16 @@
                     alt="CONFIG - Look & sound tab">
                 <div class="config-item-text">
                     <h3>Look & sound</h3>
-                    <p>VT100-style key-click sound for VT52 terminals, historical VT52 reverse-video mode (black text
-                        on white), pure-CSS CRT simulation, ambient PDP‑11 power-supply hum and fan noise while the
-                        machine is on, and the PDP‑11 machine-room photo backdrop.</p>
+                    <ul>
+                        <li><b>VT52 key click</b> — audible key-click feedback on VT52 terminals (historically VT100+
+                            only).</li>
+                        <li><b>VT52 reverse video</b> — the historical DECscope reverse-video mode: black text on
+                            white.</li>
+                        <li><b>CRT effects</b> — pure-CSS CRT simulation: brightness flicker, phosphor shimmer and a
+                            vertical-hold roll band.</li>
+                        <li><b>Machine hum</b> — ambient power-supply hum and fan noise while the machine is on.</li>
+                        <li><b>Photo backdrop</b> — show the PDP-11 machine-room photo behind the pages.</li>
+                    </ul>
                 </div>
             </div>
 
@@ -566,8 +596,18 @@
                     alt="CONFIG - Behaviour tab">
                 <div class="config-item-text">
                     <h3>Behaviour</h3>
-                    <p>Reboot confirmation — the "Don't show this warning anymore" option can be restored here at any
-                        time.</p>
+                    <ul>
+                        <li><b>Reboot confirmation</b> — ask before rebooting the machine; the "Don't show this
+                            warning anymore" option can be restored here at any time.</li>
+                        <li><b>Help Me! sticker</b> — show the operator's hand-written bootstrap sticky note on the
+                            Panel page.</li>
+                        <li><b>Machine power</b> — the machine is powered on; switching it off powers down the PDP-11
+                            (POWER LOCK in the off position).</li>
+                        <li><b>Auto-boot</b> — start the default bootstrap automatically when the machine is powered
+                            on.</li>
+                        <li><b>First-run hint</b> — replay the first-run welcome overlay with quick-start boot
+                            suggestions on the next launch.</li>
+                    </ul>
                 </div>
             </div>
 
@@ -576,8 +616,11 @@
                     alt="CONFIG - Development tab">
                 <div class="config-item-text">
                     <h3>Development</h3>
-                    <p>VT52 text mode — renders VT52 terminals as a plain text field with native Windows Clipboard for
-                        fast source-code entry.</p>
+                    <ul>
+                        <li><b>VT52 text mode</b> — render VT52 terminals as a plain text field instead of the canvas
+                            CRT, giving native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click
+                            paste) for fast source-code entry; loses SGR attributes (bold/underline/reverse).</li>
+                    </ul>
                 </div>
             </div>
 
@@ -744,9 +787,9 @@
                             <span class="control-name">REBOOT</span>
                         </td>
                         <td>Top-left corner, just right of the sidebar</td>
-                        <td>Round button with a restart icon. Restarts the machine and boots the built-in default
-                            loader. By default a confirmation dialog asks first, with a "Don't show this warning
-                            anymore" option.</td>
+                        <td>Round button with a restart icon. Restarts the machine; when Auto-boot is enabled it
+                            also boots the built-in default loader. By default a confirmation dialog asks first, with
+                            a "Don't show this warning anymore" option.</td>
                     </tr>
                     <tr>
                         <td class="disk control-cell">
