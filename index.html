@@ -183,6 +183,139 @@
         .landing-page td.disk {
             white-space: nowrap;
         }
+
+        /* Guest-OS screenshot carousel: a row of 200px thumbnails scrolled
+           with transform, plus a lightbox that opens the full-size shot. */
+        .landing-page .carousel {
+            position: relative;
+            margin: 22px 0 6px 0;
+        }
+
+        .landing-page .carousel-viewport {
+            overflow: hidden;
+            margin: 0 44px;
+            /* room for the arrow buttons */
+        }
+
+        .landing-page .carousel-track {
+            display: flex;
+            gap: 12px;
+            transition: transform 0.45s ease;
+            will-change: transform;
+        }
+
+        .landing-page .carousel-item {
+            flex: 0 0 200px;
+            margin: 0;
+            cursor: zoom-in;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .landing-page .carousel-item img {
+            display: block;
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border-bottom: 1px solid #4a453a;
+        }
+
+        .landing-page .carousel-item figcaption {
+            padding: 4px 6px;
+            font-size: 11px;
+            color: #c8b890;
+            text-align: center;
+        }
+
+        .landing-page .carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 36px;
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #5a4a30, #3a3528);
+            color: #f0e6c8;
+            font-size: 16px;
+            line-height: 1;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .landing-page .carousel-arrow:hover {
+            background: linear-gradient(180deg, #6a5838, #4a4030);
+        }
+
+        .landing-page .carousel-arrow.prev {
+            left: 0;
+        }
+
+        .landing-page .carousel-arrow.next {
+            right: 0;
+        }
+
+        .landing-page .carousel-arrow:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        /* Lightbox: fixed full-window overlay showing the clicked screenshot
+           large. Lives outside .landing-page, so it is not clipped by the
+           content slab's overflow. */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 200000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 8, 6, 0.85);
+        }
+
+        .lightbox[hidden] {
+            display: none;
+        }
+
+        .lightbox img {
+            max-width: 92vw;
+            max-height: 84vh;
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            box-shadow: 0 10px 46px rgba(0, 0, 0, 0.6);
+        }
+
+        .lightbox-caption {
+            position: absolute;
+            bottom: 24px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #c8b890;
+            font-style: italic;
+            font-size: 13px;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 18px;
+            right: 22px;
+            width: 40px;
+            height: 40px;
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #5a4a30, #3a3528);
+            color: #f0e6c8;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .lightbox-close:hover {
+            background: linear-gradient(180deg, #6a5838, #4a4030);
+        }
     </style>
 </head>
 
@@ -223,6 +356,49 @@
                         Watch the Demo
                     </a>
                 </div>
+            </div>
+
+            <hr>
+
+            <h2>Guest Operating Systems</h2>
+
+            <p>
+                Screenshots of yaPDP running real guest operating systems — booted inside
+                the emulator through the magic-wand wizard. Click any thumbnail to view it
+                full size.
+            </p>
+
+            <div class="carousel" id="os-carousel">
+                <button class="carousel-arrow prev" type="button" aria-label="Previous">◀</button>
+                <div class="carousel-viewport">
+                    <div class="carousel-track">
+                        <figure class="carousel-item">
+                            <img src="assets/images/os/unix_v5.png" alt="Unix V5" width="200" height="150">
+                            <figcaption>Unix V5</figcaption>
+                        </figure>
+                        <figure class="carousel-item">
+                            <img src="assets/images/os/bsd.png" alt="2.11 BSD" width="200" height="150">
+                            <figcaption>2.11 BSD</figcaption>
+                        </figure>
+                        <figure class="carousel-item">
+                            <img src="assets/images/os/rt11.png" alt="RT-11" width="200" height="150">
+                            <figcaption>RT-11</figcaption>
+                        </figure>
+                        <figure class="carousel-item">
+                            <img src="assets/images/os/rt11-vt52.png" alt="RT-11 on VT52" width="200" height="150">
+                            <figcaption>RT-11 · VT52</figcaption>
+                        </figure>
+                        <figure class="carousel-item">
+                            <img src="assets/images/os/basic.png" alt="DEC BASIC-11" width="200" height="150">
+                            <figcaption>DEC BASIC-11</figcaption>
+                        </figure>
+                        <figure class="carousel-item">
+                            <img src="assets/images/os/lunar-lander.png" alt="Lunar Lander" width="200" height="150">
+                            <figcaption>Lunar Lander</figcaption>
+                        </figure>
+                    </div>
+                </div>
+                <button class="carousel-arrow next" type="button" aria-label="Next">▶</button>
             </div>
 
             <hr>
@@ -557,6 +733,168 @@
 
         </div>
     </div>
+
+    <!-- Lightbox for the guest-OS carousel: shows the clicked screenshot full
+         size; closes on Esc, a backdrop click or the × button. -->
+    <div class="lightbox" id="os-lightbox" hidden>
+        <img src="" alt="">
+        <button class="lightbox-close" type="button" aria-label="Close">×</button>
+        <div class="lightbox-caption"></div>
+    </div>
+
+    <script>
+        // Guest-OS screenshot carousel + lightbox — plain CSS/JS, no libraries.
+        // The carousel is a circular buffer driven by a virtual "start" index
+        // — the index of the first visible real slide. Each step increments or
+        // decrements it modulo the slide count; when it crosses zero the window
+        // unrolls through the end (leading/trailing clones make the wrap
+        // smooth), then snaps to the mirrored real slide. Clicking a thumbnail
+        // opens the full-size image in the lightbox.
+        (function () {
+            var carousel = document.getElementById('os-carousel');
+            if (!carousel) return;
+
+            var track = carousel.querySelector('.carousel-track');
+            var originals = Array.prototype.slice.call(
+                carousel.querySelectorAll('.carousel-item'));
+            var viewport = carousel.querySelector('.carousel-viewport');
+            var prevBtn = carousel.querySelector('.carousel-arrow.prev');
+            var nextBtn = carousel.querySelector('.carousel-arrow.next');
+
+            var GAP = 12; // must match the CSS .carousel-track gap
+            var TRANSITION_MS = 450; // must match the CSS transition duration
+            var count = originals.length;
+            var visible = 1;   // how many slides fit in the viewport
+            var start = 0;     // index of the first visible real slide
+            var pos = 0;       // absolute position in the augmented track
+            var headCount = 0; // leading clones in the track
+            var busy = false;  // ignore clicks while a step animates
+
+            function stepWidth() {
+                var first = originals[0];
+                return first ? first.getBoundingClientRect().width + GAP : 0;
+            }
+
+            function openLightbox(item) {
+                var img = item.querySelector('img');
+                var lightbox = document.getElementById('os-lightbox');
+                if (!img || !lightbox) return;
+                lightbox.querySelector('img').src = img.src;
+                lightbox.querySelector('img').alt = img.alt;
+                var fig = item.querySelector('figcaption');
+                lightbox.querySelector('.lightbox-caption').textContent =
+                    fig ? fig.textContent : img.alt;
+                lightbox.hidden = false;
+            }
+
+            function wire(item) {
+                item.addEventListener('click', function () { openLightbox(item); });
+            }
+
+            function cloneItem(item) {
+                var clone = item.cloneNode(true);
+                wire(clone);
+                return clone;
+            }
+
+            // Absolute track position that shows the given real slide first.
+            function posForStart(s) {
+                return headCount + s;
+            }
+
+            // Build the augmented track: [head clones][originals][tail clones]
+            // and reset the view to the first real slide.
+            function rebuild() {
+                visible = Math.max(1, Math.round(viewport.clientWidth / stepWidth()));
+                visible = Math.min(visible, count);
+                headCount = visible;
+
+                track.innerHTML = '';
+                originals.forEach(wire);
+                originals.slice(-visible).map(cloneItem).forEach(function (el) {
+                    track.appendChild(el);
+                });
+                originals.forEach(function (el) { track.appendChild(el); });
+                originals.slice(0, visible).map(cloneItem).forEach(function (el) {
+                    track.appendChild(el);
+                });
+
+                start = 0;
+                pos = posForStart(start);
+                render(true);
+            }
+
+            function render(immediate) {
+                track.style.transform = 'translateX(' + (-pos * stepWidth()) + 'px)';
+                if (immediate) {
+                    // Snap without animation. Force a reflow so the new
+                    // transform applies before the transition is re-enabled.
+                    track.style.transition = 'none';
+                    void track.offsetHeight;
+                    track.style.transition = '';
+                }
+                prevBtn.disabled = false;
+                nextBtn.disabled = false;
+            }
+
+            // Move the window one slide forward (+1) or backward (-1). When
+            // the start index crosses zero the window unrolls through the
+            // trailing (or leading) clone, then snaps to the mirrored real
+            // slide — a seamless circular buffer.
+            function step(dir) {
+                if (busy) return;
+                busy = true;
+                if (dir > 0) {
+                    var next = (start + 1) % count;
+                    if (next === 0) {
+                        pos = headCount + count; // trailing clone of slide 0
+                        start = 0;
+                        render();
+                    } else {
+                        start = next;
+                        pos = posForStart(start);
+                        render();
+                    }
+                } else {
+                    var prev = (start - 1 + count) % count;
+                    if (prev === count - 1) {
+                        pos = headCount - 1; // leading clone of the last slide
+                        start = count - 1;
+                        render();
+                    } else {
+                        start = prev;
+                        pos = posForStart(start);
+                        render();
+                    }
+                }
+                setTimeout(function () {
+                    busy = false;
+                    pos = posForStart(start);
+                    render(true);
+                }, TRANSITION_MS);
+            }
+
+            prevBtn.addEventListener('click', function () { step(-1); });
+            nextBtn.addEventListener('click', function () { step(1); });
+
+            var lightbox = document.getElementById('os-lightbox');
+            if (lightbox) {
+                lightbox.addEventListener('click', function (e) {
+                    if (e.target === lightbox) lightbox.hidden = true;
+                });
+                lightbox.querySelector('.lightbox-close')
+                    .addEventListener('click', function () {
+                        lightbox.hidden = true;
+                    });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') lightbox.hidden = true;
+                });
+            }
+
+            window.addEventListener('resize', rebuild);
+            rebuild();
+        })();
+    </script>
 </body>
 
 </html>

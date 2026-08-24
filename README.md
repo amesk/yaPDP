@@ -57,6 +57,18 @@ The generator (`tools/screenshots-manual.js`) starts the repository's own static
 server, drives the locally installed Edge/Chrome with `puppeteer-core` (no
 Chromium download) and writes 1280x800 PNGs into `assets/images/manual/`.
 
+The landing page shows a carousel of guest-OS screenshots (Unix V5, 2.11 BSD,
+RT-11 — on both the teletype and a VT52 console, DEC BASIC, Lunar Lander).
+They are produced by
+[`tools/screenshots-os.js`](tools/screenshots-os.js), which boots each OS
+through the quick-boot wizard, waits for the OS to become ready, types a demo
+command and captures a PNG:
+
+```bash
+npm run screenshots:os          # all five guest-OS shots
+npm run screenshots:os bsd      # a single shot (file name or device key)
+```
+
 ---
 
 ## Desktop App (Tauri)
@@ -219,6 +231,7 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + front-panel scaling + teletype scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see [User manual](#user-manual) below) |
+| `npm run screenshots:os` | Boot each guest OS through the quick-boot wizard and capture a screenshot into `assets/images/os/` for the landing-page carousel (Unix V5, 2.11 BSD, RT-11 on teletype & VT52, DEC BASIC, Lunar Lander) |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 
 ```bash

@@ -12,7 +12,9 @@
  * media over HTTP exactly like in production.
  *
  * Usage:
- *   node tools/screenshots-manual.js
+ *   node tools/screenshots-manual.js            # all shots
+ *   node tools/screenshots-manual.js panel      # only the 'panel' shot (file
+ *                                               # name without the .png suffix)
  *   npm run screenshots:manual
  *
  * Output: assets/images/manual/<name>.png
@@ -268,7 +270,7 @@ async function captureScenario(browser, cfg, shots, label) {
 
 // Capture the floating UI buttons (magic wand, REBOOT, mute, fullscreen) as
 // individual close-ups. Runs on the Panel page where all four are visible.
-async function captureButtons(browser) {
+async function captureButtons(browser, wants) {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
     await page.evaluateOnNewDocument((c) => {
@@ -289,7 +291,7 @@ async function captureButtons(browser) {
     await page.evaluate(() => window.switchPage("panel"));
     await sleep(500);
 
-    for (const b of BUTTON_SHOTS) {
+    for (const b of BUTTON_SHOTS.filter((x) => wants(x.file))) {
         try {
             const el = await page.$(b.id);
             if (!el) {
@@ -310,7 +312,7 @@ async function captureButtons(browser) {
 // failure dialog, the Bootstrap now! power-off guard, the unapplied-config
 // leave warning and the reboot confirmation. Each opens a fresh emulator page
 // so the overlay state is deterministic.
-async function captureDialogs(browser) {
+async function captureDialogs(browser, wants) {
     // Powered-off variant for the Bootstrap now! power-off guard.
     const CFG_POWEROFF = Object.assign({}, CFG_TTY, { powerOn: false, autoBoot: false });
 
@@ -358,13 +360,13 @@ async function captureDialogs(browser) {
     console.log("\n== dialogs & overlays ==");
 
     // 1. First-run onboarding hint (fresh profile, no "seen" flag).
-    {
+    if (wants("dialog-onboarding")) {
         const page = await open(CFG_POWEROFF, { firstRun: true });
         await snap(page, "dialog-onboarding.png", 1500);
     }
 
     // 2. Quick-boot picker listing every guest OS.
-    {
+    if (wants("dialog-quickboot")) {
         const page = await open(CFG_TTY);
         await page.evaluate(() => {
             const btn = document.getElementById("quick-boot-btn");
@@ -374,7 +376,7 @@ async function captureDialogs(browser) {
     }
 
     // 3. "Autoloading in progress" balloon while the wizard types the boot.
-    {
+    if (wants("dialog-autoload")) {
         const page = await open(CFG_TTY);
         await page.evaluate(() => {
             const btn = document.getElementById("quick-boot-btn");
@@ -389,7 +391,7 @@ async function captureDialogs(browser) {
     }
 
     // 4. Image load failure dialog (Offered "Open Storage").
-    {
+    if (wants("dialog-imgerror")) {
         const page = await open(CFG_TTY);
         await page.evaluate(() => {
             if (typeof window.reportImageLoadError === "function") {
@@ -400,7 +402,7 @@ async function captureDialogs(browser) {
     }
 
     // 5. Bootstrap now! power-off guard (machine must be powered on).
-    {
+    if (wants("dialog-poweroff")) {
         const page = await open(CFG_POWEROFF);
         await page.evaluate(() => window.switchPage("panel"));
         await sleep(400);
@@ -412,7 +414,7 @@ async function captureDialogs(browser) {
     }
 
     // 6. Unapplied-configuration leave warning (dirty form, no Apply yet).
-    {
+    if (wants("dialog-config-leave")) {
         const page = await open(CFG_TTY);
         await page.evaluate(() => window.switchPage("config"));
         await sleep(400);
@@ -430,7 +432,7 @@ async function captureDialogs(browser) {
     }
 
     // 7. Reboot confirmation dialog.
-    {
+    if (wants("dialog-reboot")) {
         const page = await open(CFG_TTY);
         await page.evaluate(() => {
             const btn = document.getElementById("reboot-btn");
@@ -516,15 +518,38 @@ async function captureVt11Lander(browser) {
     let server = null;
     let browser = null;
     try {
+        // Optional CLI selector: a file name without the .png suffix. When
+        // given, only the matching screenshot is generated, so the slow Lunar
+        // Lander capture does not force the whole manual batch.
+        const selector = (process.argv[2] || "").toLowerCase().replace(/\.png$/, "");
+        function wants(name) {
+            return !selector || name.toLowerCase() === selector;
+        }
+
         fs.mkdirSync(OUT_DIR, { recursive: true });
         server = await ensureServer();
         browser = await launchBrowser();
 
-        await captureScenario(browser, CFG_TTY, SHOTS_TTY, "teletype console");
-        await captureScenario(browser, CFG_VT52, SHOTS_VT52, "VT52 console");
-        await captureButtons(browser);
-        await captureDialogs(browser);
-        await captureVt11Lander(browser);
+        const shotsTTY = SHOTS_TTY.filter((s) => wants(s.file));
+        const shotsVT52 = SHOTS_VT52.filter((s) => wants(s.file));
+        if (shotsTTY.length) {
+            await captureScenario(browser, CFG_TTY, shotsTTY, "teletype console");
+        }
+        if (shotsVT52.length) {
+            await captureScenario(browser, CFG_VT52, shotsVT52, "VT52 console");
+        }
+        if (BUTTON_SHOTS.some((b) => wants(b.file))) {
+            await captureButtons(browser, wants);
+        }
+        if (wants("dialog-onboarding") || wants("dialog-quickboot") ||
+            wants("dialog-autoload") || wants("dialog-imgerror") ||
+            wants("dialog-poweroff") || wants("dialog-config-leave") ||
+            wants("dialog-reboot")) {
+            await captureDialogs(browser, wants);
+        }
+        if (wants("vt11")) {
+            await captureVt11Lander(browser);
+        }
 
         console.log("\nDone. Screenshots written to " +
             path.relative(ROOT, OUT_DIR) + ".");

@@ -21,6 +21,7 @@
         "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
         "serve": "node tools/serve.js",
         "screenshots:manual": "node tools/screenshots-manual.js",
+        "screenshots:os": "node tools/screenshots-os.js",
         "clean": "node tools/build-desktop.js --clean"
     },
     "devDependencies": {
