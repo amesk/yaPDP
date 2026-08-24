@@ -1392,13 +1392,69 @@ body {
     animation: nav-led-blink 0.4s steps(2, start) infinite;
 }
 
-/* Power lamp on the Panel nav button: lit steadily (no blink) while the
-   machine is powered on. Toggled by applyMachinePower in pdp11-app.js. */
+/* Power lamp on the Panel nav button: lit steadily while the machine is
+   powered on (regardless of the CPU run state). Toggled by
+   PanelLed.update() in src/panel-led.js. */
 .app-sidebar .nav-btn .nav-led.power-on {
     opacity: 1;
     background: #4c4;
     box-shadow: 0 0 8px #4c4, inset 0 1px 1px rgba(255, 255, 255, 0.5);
     animation: none;
+}
+
+/* Run-state icon on the Panel nav button: a tiny glyph in the top-left
+   corner showing whether the CPU is halted (pause, the default) or running
+   (play, when the .run class is present). Drawn with pure CSS shapes so it
+   needs no icon font. Toggled by PanelLed.update() in src/panel-led.js. */
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    /* Same size as the power lamp (.nav-led) on the right. */
+    width: 7px;
+    height: 7px;
+    color: #d8d0c0;
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+/* Hidden while the machine is powered off (neither pause nor play). */
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon.off {
+    opacity: 0;
+}
+
+/* Pause (default): two vertical bars. */
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon::before,
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 2px;
+    height: 7px;
+    background: currentColor;
+}
+
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon::before {
+    left: 0;
+}
+
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon::after {
+    right: 0;
+}
+
+/* Play (CPU running): a filled triangle pointing right. */
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon.run::before {
+    left: 0;
+    width: 0;
+    height: 0;
+    background: none;
+    border-top: 3px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 7px solid currentColor;
+}
+
+.app-sidebar .nav-btn[data-page="panel"] .nav-run-icon.run::after {
+    display: none;
 }
 
 @keyframes nav-led-blink {

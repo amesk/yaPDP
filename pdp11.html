@@ -148,9 +148,13 @@
         <span class="nav-icon"><svg class="nav-icon-svg" aria-hidden="true" focusable="false">
             <use href="#icon-panel" />
           </svg></span>
-        <!-- Power lamp: lit steadily while the machine is powered on (see the
-             .power-on rule in css/pdp11.css; toggled by applyMachinePower). -->
+        <!-- Status indicators (driven by PanelLed.update() in
+             src/panel-led.js): the .nav-led power lamp lights steadily while
+             the machine is powered on, and the .nav-run-icon in the top-left
+             corner shows a pause glyph while the CPU is halted or a play
+             glyph while it is running. -->
         <span class="nav-led" aria-hidden="true"></span>
+        <span class="nav-run-icon" aria-hidden="true"></span>
         Panel
       </div>
       <div class="nav-btn" data-page="teletype">
@@ -1599,6 +1603,7 @@ Hello world
   <script src='src/navactivity.js'></script>
   <script src='src/iopage.js'></script>
   <script src='src/hum.js'></script>
+  <script src='src/panel-led.js'></script>
   <script src='src/vt11.js'></script>
   <script src='src/dragdrop.js'></script>
   <script src='src/tauri-bundled.js'></script>

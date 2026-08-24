@@ -1366,9 +1366,10 @@ function applyMachinePower(powerOn, skipAutoBoot) {
   var key = document.getElementById('key');
   if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
   if (window.Hum) window.Hum.update();
-  // Toggle the power lamp on the Panel nav button (steadily lit while on).
-  var panelLed = document.querySelector('.nav-btn[data-page="panel"] .nav-led');
-  if (panelLed) panelLed.classList.toggle('power-on', powerOn);
+  // Sync the Panel nav status indicators immediately (power lamp + run-state
+  // icon — see PanelLed in src/panel-led.js; its timer keeps them in sync as
+  // the CPU run state changes elsewhere).
+  if (window.PanelLed) window.PanelLed.update();
   // Persist the live power state so it survives reloads and stays in sync
   // with the Behaviour checkbox.
   if (typeof Config !== 'undefined') Config.set({ powerOn: powerOn });
@@ -2362,6 +2363,11 @@ initConfigTabs();
 // boot command on the console.
 if (typeof panel !== 'undefined') panel.powerSwitch = -1;
 applyMachinePower(__appCfg && __appCfg.powerOn, false);
+
+// Keep the Panel nav status indicators (power lamp + run-state icon) in sync
+// with the CPU run state even for transitions that originate inside the CPU
+// core (HALT instruction, WAIT, RESET) — see src/panel-led.js.
+if (window.PanelLed) window.PanelLed.start();
 
 // First-run onboarding hint (no-op after the user has dismissed it once)
 Onboarding.init();
