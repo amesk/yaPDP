@@ -199,7 +199,10 @@ async function openPage(browser, shot) {
         userTerminals: 0,
         printer: false,
         vt11: false,
-        teletypeSpeed: "fast", // accelerate console echo during the run
+        // Fast teletype speed: the paper prints at ~30ms/char instead of
+        // ~100ms (authentic), so the whole boot prints ~3x quicker and the
+        // shots generate faster. The screenshot still shows a normal teletype.
+        teletypeSpeed: "fast",
         powerOn: true,         // machine powered on at startup
         autoBoot: false        // the wizard issues the boot itself
     }, OS_CFG[shot.device] || {});
