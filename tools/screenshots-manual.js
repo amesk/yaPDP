@@ -322,7 +322,15 @@ async function captureDialogs(browser) {
         await page.evaluateOnNewDocument((seed) => {
             try {
                 localStorage.setItem("yapdp.config.v1", JSON.stringify(seed.cfg));
-                if (seed.onboarding) localStorage.setItem("yapdp.onboarding.v1", "done");
+                if (seed.onboarding) {
+                    localStorage.setItem("yapdp.onboarding.v1", "done");
+                } else {
+                    // First run: every scenario tab shares one browser-local
+                    // storage for the same origin, so a "seen" flag written by
+                    // an earlier page would otherwise suppress the overlay.
+                    // Explicitly drop it to guarantee a genuine first launch.
+                    localStorage.removeItem("yapdp.onboarding.v1");
+                }
             } catch (err) { /* ignore storage errors */ }
         }, { cfg, onboarding: !(opts && opts.firstRun) });
         await page.goto(`${BASE}/pdp11.html`, { waitUntil: "load", timeout: 60000 });
