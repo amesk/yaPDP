@@ -3,6 +3,7 @@ name = "yapdp"
 version = "0.1.0"
 description = "yaPDP - Yet Another PDP-11/70 web emulator packaged as a desktop app"
 license = "MIT"
+repository = "https://github.com/amesk/yaPDP"
 authors = ["Alexei Eskenazi <alexei.eskenazi@gmail.com>"]
 edition = "2021"
 

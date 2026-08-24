@@ -5,6 +5,10 @@
     "type": "commonjs",
     "description": "yaPDP - Yet Another PDP-11/70 web emulator - development & build scripts",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/amesk/yaPDP.git"
+    },
     "author": {
         "name": "Alexei Eskenazi",
         "email": "alexei.eskenazi@gmail.com"

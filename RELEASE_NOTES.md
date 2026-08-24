@@ -1,13 +1,18 @@
 # yaPDP v0.1.0-alpha2 — Release Notes
 
 - **Release date:** 2026-08-24
-- **Baseline:** [v0.1.0-alpha1](https://gitverse.ru/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1) (2026-08-19)
-- **Full diff:** [releases/v0.1.0-alpha1...v0.1.0-alpha2](https://gitverse.ru/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2)
+- **Baseline:** [v0.1.0-alpha1](https://github.com/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1) (2026-08-19)
+- **Full diff:** [releases/v0.1.0-alpha1...v0.1.0-alpha2](https://github.com/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2)
 
 **yaPDP — Yet Another PDP-11/70 web emulator** with an authentic front panel,
 a Model 33 ASR teletype, DECscope VT52 terminals and a DEC LP11 line printer.
 This alpha focuses on making the peripherals look and behave like the real
 DEC hardware.
+
+## Repository
+
+The yaPDP project has moved to GitHub:
+[`github.com/amesk/yaPDP`](https://github.com/amesk/yaPDP).
 
 ## Highlights
 
@@ -132,4 +137,4 @@ npm run desktop:full   # build the full Tauri desktop app
 ## Feedback
 
 This is an alpha release — expect rough edges. Report issues and suggestions
-via the [yaPDP repository](https://gitverse.ru/amesk/yaPDP).
+via the [yaPDP repository](https://github.com/amesk/yaPDP).
