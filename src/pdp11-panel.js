@@ -208,6 +208,7 @@ function examineDeposit(data) {
   function setPowerState(state, skipAutoBoot) {
     if (!(state in powerStates) || typeof panel === 'undefined') return;
     var powerOn = powerStates[state] >= 0;
+    var position = powerStates[state];
     if (typeof window.applyMachinePower === 'function') {
       // pdp11-app.js applies the power state (POWER LOCK key, CPU halt on
       // power-off, Config.powerOn sync and the auto-boot bootstrap on
@@ -216,13 +217,18 @@ function examineDeposit(data) {
       window.applyMachinePower(powerOn, !!skipAutoBoot);
     } else {
       // Fallback before pdp11-app.js has loaded (clicks only happen later).
-      panel.powerSwitch = powerStates[state];
+      panel.powerSwitch = position;
       if (!powerOn) CPU.runState = STATE_HALT;
-      var key = document.getElementById('key');
-      if (key) key.style.transform = 'rotate(' + (panel.powerSwitch * 90 - 45) + 'deg)';
       if (window.Hum) window.Hum.update();
       if (typeof Config !== 'undefined') Config.set({ powerOn: powerOn });
     }
+    // Always point the key at the exact selected position: applyMachinePower()
+    // collapses every powered-on state to RUN (powerSwitch 0), which would
+    // otherwise leave the key on POWER (ON) instead of LOCK and keep the
+    // front-panel switches enabled while the panel is locked.
+    panel.powerSwitch = position;
+    var key = document.getElementById('key');
+    if (key) key.style.transform = 'rotate(' + (position * 90 - 45) + 'deg)';
   }
 
   var lockPos = document.querySelectorAll('.lockPanelPos');
@@ -237,9 +243,7 @@ function examineDeposit(data) {
   // Old Paul-emulator reaction: clicking the POWER LOCK key itself cycles the
   // state OFF -> POWER -> LOCK (plain click) or back (Shift+click), kept in
   // addition to the direct label clicks above so familiar users are not
-  // surprised. The shared applyMachinePower() only distinguishes on/off, so
-  // after it runs we restore the exact cycled key position (LOCK = +1 =>
-  // 45deg) so the key points where the operator turned it.
+  // surprised. setPowerState() restores the exact cycled key position.
   var lockEl = document.querySelector('.lock');
   if (lockEl) {
     lockEl.addEventListener('click', function (e) {
@@ -251,11 +255,6 @@ function examineDeposit(data) {
         ? (next - 1 < -1 ? 1 : next - 1)
         : (next + 1 > 1 ? -1 : next + 1);
       setPowerState(next < 0 ? 'off' : (next === 0 ? 'run' : 'lock'));
-      if (next !== 0) {
-        panel.powerSwitch = next;
-        var key = document.getElementById('key');
-        if (key) key.style.transform = 'rotate(' + (next * 90 - 45) + 'deg)';
-      }
     });
   }
 
