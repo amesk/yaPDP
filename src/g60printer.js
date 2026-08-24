@@ -29,6 +29,13 @@
         } catch (e) { return false; }
     }
 
+    // How long the line-printer whirr keeps playing after the last output byte
+    // before it is actually paused (see the debounced stopWhirr below). Long
+    // enough to bridge short gaps between bursts without the play/pause race
+    // that aborted the sound (AbortError) when the buffer drained in the same
+    // tick as startWhirr().
+    var WHIRR_STOP_MS = 150;
+
     var G60Audio = {
         _sounds: {},
 
@@ -77,15 +84,34 @@
             try {
                 var s = this._sounds['whirr'];
                 if (s && s.paused) { s.loop = true; s.currentTime = 0; s.play().catch(function() {}); }
+                // Output is flowing again — cancel any pending debounced stop so
+                // a short gap between bursts does not cut the whirr (the stop is
+                // deferred for WHIRR_STOP_MS, see stopWhirr below).
+                if (this._whirrStopTimer) {
+                    clearTimeout(this._whirrStopTimer);
+                    this._whirrStopTimer = null;
+                }
             } catch(e) {}
         },
 
         // Stop the line-printer whirr if it is currently playing.
         stopWhirr: function() {
-            try {
-                var s = this._sounds['whirr'];
-                if (s && !s.paused) { s.pause(); s.currentTime = 0; s.loop = false; }
-            } catch(e) {}
+            var self = this;
+            // Defer the actual pause: the renderer calls startWhirr() and
+            // stopWhirr() in the SAME tick when the print buffer drains within
+            // one render pass (≤charsPerTick characters), so an immediate
+            // pause() would abort the just-started play() (AbortError) and
+            // silence the whirr entirely. Deferring the stop gives play() time
+            // to take effect and leaves a short audible tail after the output
+            // pauses; resumed output cancels the pending stop (startWhirr).
+            if (self._whirrStopTimer) clearTimeout(self._whirrStopTimer);
+            self._whirrStopTimer = setTimeout(function () {
+                self._whirrStopTimer = null;
+                try {
+                    var s = self._sounds['whirr'];
+                    if (s && !s.paused) { s.pause(); s.currentTime = 0; s.loop = false; }
+                } catch(e) {}
+            }, WHIRR_STOP_MS);
         },
 
         stopSound: function(name) {
