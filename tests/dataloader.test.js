@@ -466,6 +466,38 @@ async function run() {
     console.log("PASS test 15: raw .ptap fallback when .zst probe is a SPA page");
   }
 
+  // ---- Test 16: content-encoded .zst must not trip the truncated check ----
+  // GitHub Pages answers .zst files with Content-Encoding: gzip. The browser
+  // decodes the body transparently, so buffer.byteLength (decoded payload)
+  // no longer matches Content-Length (compressed transfer). assertCompleteImage
+  // must not misreport such a fully-received image as truncated.
+  {
+    const sb = buildSandbox();
+    sb.fzstd.decompress = (buf) => new Uint8Array(buf);
+    makeContext(sb, sections, [
+      "fetch = async () => ({",
+      "  ok: true,",
+      "  status: 200,",
+      "  headers: { get: (name) => (name === 'content-length' ? '100' : (name === 'content-encoding' ? 'gzip' : null)) },",
+      "  arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer",
+      "});",
+    ].join("\n"));
+
+    const ctrl = { cache: [], url: "rp1.dsk", compressed: true };
+    let caught = null;
+    let status = 0;
+    try {
+      status = await sb.fetchBlock(ctrl, 0);
+    } catch (err) {
+      caught = err;
+    }
+    assert.strictEqual(caught, null,
+      "content-encoded .zst must NOT be reported as truncated");
+    assert.strictEqual(status, 200, "content-encoded .zst must load successfully");
+    assert.ok(ctrl.cache[0] !== undefined, "cache must be populated");
+    console.log("PASS test 16: content-encoded .zst is not flagged as truncated");
+  }
+
   console.log("\nAll DataLoader tests passed.");
 }
 

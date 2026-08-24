@@ -2006,11 +2006,20 @@ function imageError(reason, message) {
 // the full body arrived. A server that closes the connection mid-body can
 // still resolve fetch() with a short (or empty) body instead of rejecting it,
 // so compare against the advertised Content-Length when one is present.
+// A CDN may serve the .zst image with a Content-Encoding (GitHub Pages
+// answers .zst files as gzip). The browser transparently decodes the body,
+// so buffer.byteLength is the DECODED payload size while Content-Length
+// describes the compressed transfer; comparing them directly would flag
+// every such image as "truncated". Only enforce the Content-Length bound
+// when the transfer is not content-encoded.
 function assertCompleteImage(response, buffer, url) {
+    const encoding = String(response.headers.get("content-encoding") || "")
+        .trim().toLowerCase();
+    const encoded = encoding && encoding !== "identity";
     const contentLength = parseInt(response.headers.get("content-length"), 10);
     const length = buffer.byteLength || 0;
     if (length === 0 ||
-        (Number.isFinite(contentLength) && contentLength > 0 && length < contentLength)) {
+        (!encoded && Number.isFinite(contentLength) && contentLength > 0 && length < contentLength)) {
         throw imageError("truncated",
             `Incomplete image download for ${url} (got ${length} of ${contentLength} bytes)`);
     }
