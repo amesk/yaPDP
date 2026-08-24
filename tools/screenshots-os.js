@@ -86,6 +86,11 @@ const OS_SHOTS = [
     // look, so the carousel shows both console types.
     { device: "rk1vt52", file: "rt11-vt52.png",   width: WIDTH, height: HEIGHT,
         readyWhen: null, stable: 2500, extra: [], settle: 1500 },
+    // XXDP+ diagnostics: answer the date prompt with 09-SEP-78, then wait
+    // for the "." monitor prompt (console output stability).
+    { device: "rk3",    file: "xxdp.png",         width: WIDTH, height: HEIGHT,
+        readyWhen: "ENTER DATE", extra: ["09-SEP-78"],
+        stableAfterExtra: 2500, settle: 1500 },
     // BASIC-11: engage the punch before boot so the program and its RUN
     // output are duplicated onto the paper tape, making the tape visible.
     { device: "basic",  file: "basic.png",        width: WIDTH, height: HEIGHT,
@@ -103,6 +108,7 @@ const OS_CFG = {
     rp1:    { consoleType: "vt52",     printer: true,  vt11: false },
     rk1:    { consoleType: "teletype", printer: true,  vt11: false },
     rk1vt52: { consoleType: "vt52",    printer: true,  vt11: false },
+    rk3:    { consoleType: "teletype", printer: false, vt11: false },
     basic:  { consoleType: "teletype", printer: false, vt11: false },
     lander: { consoleType: "teletype", printer: false, vt11: true }
 };
@@ -352,6 +358,16 @@ async function captureConsoleOS(browser, shot) {
         for (const cmd of shot.extra || []) {
             await typeText(page, cmd);
             await sleep(700);
+        }
+
+        if (shot.stableAfterExtra) {
+            // Some OSes reply to a prompt with a burst of output before the
+            // final prompt (e.g. XXDP after its date answer). Wait until the
+            // console output stops growing so the shot shows that prompt.
+            const ok = await waitStable(page, shot.stableAfterExtra, 60000);
+            if (!ok) {
+                console.error("  WARN: console output never stabilised after extra");
+            }
         }
 
         await sleep(shot.settle || 2000);
