@@ -481,8 +481,8 @@ function examineDeposit(data) {
     rebootConfirmOverlay.innerHTML =
       '<div class="modal-box">' +
         '<span class="modal-title">Reboot the machine?</span>' +
-        '<p class="modal-intro">This restarts the emulated PDP-11 and boots the ' +
-        'built-in default loader.</p>' +
+        '<p class="modal-intro">This restarts the emulated PDP-11. When Auto-boot is ' +
+        'enabled, it also boots the built-in default loader.</p>' +
         '<label class="modal-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
         'Don\'t show this warning anymore</label>' +
         '<button type="button" class="modal-close" data-reboot-action="cancel">Cancel</button>' +
