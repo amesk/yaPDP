@@ -1891,7 +1891,16 @@ iopage.register(0o17777510, 2, (function() {
             if (Array.isArray(state.lp11Buffer)) lp11Buffer = state.lp11Buffer.slice();
             if (typeof state.lp11CurrentLine === "string") lp11CurrentLine = state.lp11CurrentLine;
             if (typeof state.lp11Col === "number") lp11Col = state.lp11Col;
-            if (typeof state.lp11Online === "boolean") lp11Online = state.lp11Online;
+            if (typeof state.lp11Online === "boolean") {
+                lp11Online = state.lp11Online;
+                // The ONLINE LED and operator key are pure UI derived from
+                // lp11Online; re-apply the ".off" class so the panel matches
+                // the restored machine state (OFF LINE survives a reload).
+                var led = document.getElementById("lp11-online-led");
+                if (led) led.classList.toggle("off", !lp11Online);
+                var key = document.getElementById("lp11-online-key");
+                if (key) key.classList.toggle("off", !lp11Online);
+            }
             // Restore the printed paper (rows, page position, head). The
             // printer UI is created lazily; ensureUI() is a no-op when the
             // container or G60Printer is unavailable (e.g. headless tests).

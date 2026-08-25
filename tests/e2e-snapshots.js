@@ -110,6 +110,16 @@ const URL = "http://localhost:1170/pdp11.html";
       return !lp || typeof lp.isBusy !== "function" || !lp.isBusy();
     }, { timeout: 15000 });
     console.log("[3] LP11 idle (paper printed)");
+    // Operator key: take the printer OFF LINE. The snapshot must carry the
+    // OFF LINE state and the panel LED/key must reflect it after reload.
+    await page.evaluate(() => {
+      if (window.lp11OnLine) window.lp11OnLine();
+    });
+    await page.waitForFunction(() => {
+      const led = document.getElementById("lp11-online-led");
+      return led && led.classList.contains("off");
+    }, { timeout: 5000 });
+    console.log("[3] LP11 taken OFF LINE");
 
     const snapId = await page.evaluate(async () => {
       const snap = await SnapshotStore.save("e2e test");
@@ -127,6 +137,7 @@ const URL = "http://localhost:1170/pdp11.html";
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
+      onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
     }));
     console.log(
       `[3] captured: PC=0o${before.pc.toString(8)} SP=0o${before.sp.toString(8)} ` +
@@ -172,6 +183,7 @@ const URL = "http://localhost:1170/pdp11.html";
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
+      onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
       tapeRows: (() => {
         const body = document.getElementById("punchtape__body");
         return body ? body.childNodes.length : -1;
@@ -201,6 +213,7 @@ const URL = "http://localhost:1170/pdp11.html";
                         before.lp11 && before.lp11.rows.some(r => r.text && r.text.indexOf("HELLO") !== -1)],
       ["LP11 pagePos", after.lp11 ? after.lp11.pagePos : -1,
                        before.lp11 ? before.lp11.pagePos : -1],
+      ["LP11 ONLINE led off", after.onlineLedOff, before.onlineLedOff],
     ];
     let ok = true;
     for (const [name, got, want] of checks) {
