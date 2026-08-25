@@ -76,6 +76,7 @@ const URL = "http://localhost:1170/pdp11.html";
       mem100: CPU.memory[100],
       mem1000: CPU.memory[1000],
       memSize: CPU.memory.length,
+      devices: iopage.snapshotDevices(),
     }));
     console.log(
       `[3] captured: PC=0o${before.pc.toString(8)} SP=0o${before.sp.toString(8)} ` +
@@ -88,8 +89,13 @@ const URL = "http://localhost:1170/pdp11.html";
       CPU.registerVal[6] = 0x6666;
       CPU.PSW = 0x1f;
       for (let i = 0; i < 500; i++) CPU.memory[i] = 0xDEAD;
+      // Mutate device registers: RK11 CSR, DL11 RCSR, TM11 MTS
+      iopage.restoreDevices({
+        "17777400": { rkcs: 0x9999, rker: 0, rkds: 0, rkwc: 0, rkba: 0, rkda: 0, iMask: 0 },
+        "17777560": { rcsr: 0x7777, rbuf: 0, xcsr: 0, xbuf: 0, xdelay: 0, iMask: 0, typeAhead: [], receiverBusy: false, pasteCR: true }
+      });
     });
-    console.log("[4] machine state mutated (PC=0x7777, mem filled 0xDEAD)");
+    console.log("[4] machine state mutated (PC=0x7777, mem 0xDEAD, RK11 CSR=0x9999)");
 
     // --- 5. Load: pending key + reload ---
     await page.evaluate((id) => SnapshotStore.load(id), snapId);
@@ -110,6 +116,7 @@ const URL = "http://localhost:1170/pdp11.html";
       mem100: CPU.memory[100],
       mem1000: CPU.memory[1000],
       memSize: CPU.memory.length,
+      devices: iopage.snapshotDevices(),
       pending: (() => { try { return localStorage.getItem("yapdp-pending-snapshot"); } catch (e) { return "n/a"; } })(),
     }));
 
@@ -120,6 +127,12 @@ const URL = "http://localhost:1170/pdp11.html";
       ["mem[100]", after.mem100, before.mem100],
       ["mem[1000]", after.mem1000, before.mem1000],
       ["mem size", after.memSize, before.memSize],
+      ["RK11 rkcs", after.devices["17777400"] && after.devices["17777400"].rkcs,
+                     before.devices["17777400"] && before.devices["17777400"].rkcs],
+      ["DL11 rcsr", after.devices["17777560"] && after.devices["17777560"].rcsr,
+                     before.devices["17777560"] && before.devices["17777560"].rcsr],
+      ["TM11 mts", after.devices["17772520"] && after.devices["17772520"].mts,
+                   before.devices["17772520"] && before.devices["17772520"].mts],
     ];
     let ok = true;
     for (const [name, got, want] of checks) {

@@ -164,6 +164,10 @@ var SnapshotStore = (() => {
 
     function capture(name) {
         return captureMemory().then(function (mem) {
+            var devices = null;
+            if (typeof iopage !== "undefined" && typeof iopage.snapshotDevices === "function") {
+                devices = iopage.snapshotDevices();
+            }
             return {
                 id: "snap-" + Date.now(),
                 name: name || defaultName(),
@@ -174,6 +178,7 @@ var SnapshotStore = (() => {
                 cpu: captureCPU(),
                 memory: mem,
                 mounted: captureMounted(),
+                devices: devices,
                 cpuBytes: 0,
                 memBytes: mem.data.byteLength || 0
             };
@@ -242,6 +247,12 @@ var SnapshotStore = (() => {
         if (!snap) return Promise.resolve(false);
         restoreCPU(snap.cpu);
         return restoreMemory(snap.memory).then(function () {
+            // Device registers (L2) — restore after RAM so devices see
+            // consistent memory; control blocks re-create lazily on I/O.
+            if (snap.devices && typeof iopage !== "undefined" &&
+                typeof iopage.restoreDevices === "function") {
+                iopage.restoreDevices(snap.devices);
+            }
             // Mounted images: DataLoader entries are re-created by
             // dragdrop.init() from the images IDB on startup; nothing to
             // do here (URLs are recorded in the snapshot for the UI).

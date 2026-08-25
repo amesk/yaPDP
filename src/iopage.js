@@ -20,6 +20,7 @@ var iopage = (function() {
     var deviceReset = [];                 // reset() handlers
     var devicePoll  = [];                 // poll() handlers (sorted by priority)
     var deviceAccess = new Array(0o17777 >>> 3); // access() handlers by slot
+    var deviceSnap = [];                  // snapshot()/restore() handlers (L2)
 
     // Pending callback queue — ensures diskIO callbacks execute
     // in CPU context (pdp11Processor loop), not in microtask context.
@@ -152,6 +153,40 @@ var iopage = (function() {
             // Optional reset handler
             if (typeof device.reset === "function") {
                 deviceReset.push(device.reset);
+            }
+
+            // Optional snapshot/restore handlers (machine-state persistence, L2)
+            if (typeof device.snapshot === "function" &&
+                typeof device.restore === "function") {
+                deviceSnap.push({
+                    address: address,
+                    snapshot: device.snapshot,
+                    restore: device.restore
+                });
+            }
+        },
+
+        // ------------------------------------------------------------
+        // snapshotDevices() — capture all device register state (L2)
+        // ------------------------------------------------------------
+        snapshotDevices: function() {
+            var out = {};
+            for (var i = 0; i < deviceSnap.length; i++) {
+                out[deviceSnap[i].address.toString(8)] = deviceSnap[i].snapshot();
+            }
+            return out;
+        },
+
+        // ------------------------------------------------------------
+        // restoreDevices() — restore device register state (L2)
+        // ------------------------------------------------------------
+        restoreDevices: function(state) {
+            if (!state) return;
+            for (var i = 0; i < deviceSnap.length; i++) {
+                var key = deviceSnap[i].address.toString(8);
+                if (Object.prototype.hasOwnProperty.call(state, key)) {
+                    deviceSnap[i].restore(state[key]);
+                }
             }
         },
 
@@ -295,7 +330,15 @@ iopage.register(0o17777770, 4, (function() {
             return result;
         },
 
-        reset: initREG
+        reset: initREG,
+        snapshot: function() {
+            return { microBreak: microBreak };
+        },
+        restore: function(state) {
+            if (state && typeof state.microBreak === "number") {
+                microBreak = state.microBreak & 0xff;
+            }
+        }
     };
 })());
 
@@ -817,7 +860,17 @@ iopage.register(0o17777546, 1, (function() {
             }
         },
 
-        reset: initKW
+        reset: initKW,
+        snapshot: function() {
+            return { csr: csr, iMask: iMask };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.csr === "number") csr = state.csr;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+            // Timer keeps running (started by initKW); MON flag will be
+            // re-set by the next tick.
+        }
     };
 })());
 
@@ -1245,7 +1298,32 @@ function dl11(vt52Unit, deviceVector) {
                 return DL_PRIORITY | (iMask ? 1 : 0);
             }
         },
-        reset: initDL
+        reset: initDL,
+        snapshot: function() {
+            return {
+                rcsr: rcsr,
+                rbuf: rbuf,
+                xcsr: xcsr,
+                xbuf: xbuf,
+                xdelay: xdelay,
+                iMask: iMask,
+                typeAhead: typeAhead.slice(),
+                receiverBusy: receiverBusy,
+                pasteCR: pasteCR
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.rcsr === "number") rcsr = state.rcsr;
+            if (typeof state.rbuf === "number") rbuf = state.rbuf;
+            if (typeof state.xcsr === "number") xcsr = state.xcsr;
+            if (typeof state.xbuf === "number") xbuf = state.xbuf;
+            if (typeof state.xdelay === "number") xdelay = state.xdelay;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+            if (Array.isArray(state.typeAhead)) typeAhead = state.typeAhead.slice();
+            if (typeof state.receiverBusy === "boolean") receiverBusy = state.receiverBusy;
+            if (typeof state.pasteCR === "boolean") pasteCR = state.pasteCR;
+        }
     };
 }
 
@@ -1788,7 +1866,28 @@ iopage.register(0o17777510, 2, (function() {
         // - Reinitializes LP11 state (DONE set, IE clear)
         // - Clears buffer and interrupt mask
         // - Equivalent to power‑on reset
-        reset: initLP
+        reset: initLP,
+        snapshot: function() {
+            return {
+                lpcs: lpcs,
+                lpdb: lpdb,
+                iMask: iMask,
+                lp11Buffer: lp11Buffer.slice(),
+                lp11CurrentLine: lp11CurrentLine,
+                lp11Col: lp11Col,
+                lp11Online: lp11Online
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.lpcs === "number") lpcs = state.lpcs;
+            if (typeof state.lpdb === "number") lpdb = state.lpdb;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+            if (Array.isArray(state.lp11Buffer)) lp11Buffer = state.lp11Buffer.slice();
+            if (typeof state.lp11CurrentLine === "string") lp11CurrentLine = state.lp11CurrentLine;
+            if (typeof state.lp11Col === "number") lp11Col = state.lp11Col;
+            if (typeof state.lp11Online === "boolean") lp11Online = state.lp11Online;
+        }
     };
 })());
 }
@@ -2706,7 +2805,28 @@ iopage.register(0o17777550, 2, (function() {
         // - Reinitializes PTR11 state (all flags cleared)
         // - Clears buffer and interrupt mask
         // - Forgets any loaded tape
-        reset: initPTR
+        reset: initPTR,
+        snapshot: function() {
+            return {
+                ptrcs: ptrcs,
+                ptrdb: ptrdb,
+                iMask: iMask,
+                ptpcs: ptpcs,
+                ptpdb: ptpdb,
+                ptpIMask: ptpIMask,
+                punchBuffer: punchBuffer.slice()
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.ptrcs === "number") ptrcs = state.ptrcs;
+            if (typeof state.ptrdb === "number") ptrdb = state.ptrdb;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+            if (typeof state.ptpcs === "number") ptpcs = state.ptpcs;
+            if (typeof state.ptpdb === "number") ptpdb = state.ptpdb;
+            if (typeof state.ptpIMask === "number") ptpIMask = state.ptpIMask;
+            if (Array.isArray(state.punchBuffer)) punchBuffer = state.punchBuffer.slice();
+        }
     };
 })());
 
@@ -3096,7 +3216,26 @@ iopage.register(0o17772520, 6, (function() {
         // Controller reset handler.
         // - Reinitializes controller and per-drive state
         // - Equivalent to MTC INIT command
-        reset: initTM
+        reset: initTM,
+        snapshot: function() {
+            return {
+                mts: mts,
+                mtc: mtc,
+                mtbrc: mtbrc,
+                mtcma: mtcma,
+                mtrd: mtrd,
+                iMask: iMask
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.mts === "number") mts = state.mts;
+            if (typeof state.mtc === "number") mtc = state.mtc;
+            if (typeof state.mtbrc === "number") mtbrc = state.mtbrc;
+            if (typeof state.mtcma === "number") mtcma = state.mtcma;
+            if (typeof state.mtrd === "number") mtrd = state.mtrd;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+        }
     };
 })());
 
@@ -3457,7 +3596,28 @@ iopage.register(0o17777400, 8, (function() {
         // Controller reset handler.
         // - Reinitializes controller and per-drive state
         // - Equivalent to controller reset command (FUN=0)
-        reset: initRK
+        reset: initRK,
+        snapshot: function() {
+            return {
+                rkds: rkds,
+                rker: rker,
+                rkcs: rkcs,
+                rkwc: rkwc,
+                rkba: rkba,
+                rkda: rkda,
+                iMask: iMask
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.rkds === "number") rkds = state.rkds;
+            if (typeof state.rker === "number") rker = state.rker;
+            if (typeof state.rkcs === "number") rkcs = state.rkcs;
+            if (typeof state.rkwc === "number") rkwc = state.rkwc;
+            if (typeof state.rkba === "number") rkba = state.rkba;
+            if (typeof state.rkda === "number") rkda = state.rkda;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+        }
     };
 })());
 
@@ -3780,7 +3940,26 @@ iopage.register(0o17774400, 4, (function() {
         // Controller reset handler.
         // - Reinitializes controller and per-drive state
         // - Equivalent to controller reset command (FUN=0)
-        reset: initRL
+        reset: initRL,
+        snapshot: function() {
+            return {
+                csr: csr,
+                bar: bar,
+                dar: dar,
+                mpr: mpr,
+                DAR: DAR,
+                iMask: iMask
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.csr === "number") csr = state.csr;
+            if (typeof state.bar === "number") bar = state.bar;
+            if (typeof state.dar === "number") dar = state.dar;
+            if (typeof state.mpr === "number") mpr = state.mpr;
+            if (typeof state.DAR === "number") DAR = state.DAR;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+        }
     };
 })());
 
@@ -4294,7 +4473,30 @@ iopage.register(0o17776700, 20, (function() {
         // Controller reset handler.
         // - Reinitializes controller and per-drive state
         // - Equivalent to Clear command in RPCS2
-        reset: initRP
+        reset: initRP,
+        snapshot: function() {
+            return {
+                rpcs1: rpcs1,
+                rpwc: rpwc,
+                rpba: rpba,
+                rpda: rpda,
+                rpcs2: rpcs2,
+                rpds: Array.from(rpds),
+                rpdc: Array.from(rpdc),
+                iMask: iMask
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.rpcs1 === "number") rpcs1 = state.rpcs1;
+            if (typeof state.rpwc === "number") rpwc = state.rpwc;
+            if (typeof state.rpba === "number") rpba = state.rpba;
+            if (typeof state.rpda === "number") rpda = state.rpda;
+            if (typeof state.rpcs2 === "number") rpcs2 = state.rpcs2;
+            if (Array.isArray(state.rpds)) rpds = state.rpds.slice();
+            if (Array.isArray(state.rpdc)) rpdc = state.rpdc.slice();
+            if (typeof state.iMask === "number") iMask = state.iMask;
+        }
     };
 })());
 
@@ -4797,6 +4999,39 @@ iopage.register(0o17772150, 2, (function() {
             return UDA_PRIORITY | (iMask ? 1 : 0);
         },
 
-        reset: resetUDA
+        reset: resetUDA,
+        snapshot: function() {
+            return {
+                sa: sa,
+                initState: initState,
+                initWord: initWord,
+                vector: vector,
+                irqEnabled: irqEnabled,
+                rspRingBase: rspRingBase,
+                rspRingSize: rspRingSize,
+                cmdRingBase: cmdRingBase,
+                cmdRingSize: cmdRingSize,
+                rspIdx: rspIdx,
+                cmdIdx: cmdIdx,
+                credits: credits,
+                iMask: iMask
+            };
+        },
+        restore: function(state) {
+            if (!state) return;
+            if (typeof state.sa === "number") sa = state.sa;
+            if (typeof state.initState === "number") initState = state.initState;
+            if (typeof state.initWord === "number") initWord = state.initWord;
+            if (typeof state.vector === "number") vector = state.vector;
+            if (typeof state.irqEnabled === "number") irqEnabled = state.irqEnabled;
+            if (typeof state.rspRingBase === "number") rspRingBase = state.rspRingBase;
+            if (typeof state.rspRingSize === "number") rspRingSize = state.rspRingSize;
+            if (typeof state.cmdRingBase === "number") cmdRingBase = state.cmdRingBase;
+            if (typeof state.cmdRingSize === "number") cmdRingSize = state.cmdRingSize;
+            if (typeof state.rspIdx === "number") rspIdx = state.rspIdx;
+            if (typeof state.cmdIdx === "number") cmdIdx = state.cmdIdx;
+            if (typeof state.credits === "number") credits = state.credits;
+            if (typeof state.iMask === "number") iMask = state.iMask;
+        }
     };
 })());

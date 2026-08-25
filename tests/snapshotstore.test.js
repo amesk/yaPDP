@@ -119,6 +119,11 @@ function buildSandbox() {
     DataLoader: {
       list: () => ["rk0.dsk", "rk1.dsk"],
     },
+    iopage: {
+      _devices: { "17777560": { rcsr: 0x80, iMask: 0 }, "17777400": { rkcs: 0x80, iMask: 1 } },
+      snapshotDevices() { return JSON.parse(JSON.stringify(this._devices)); },
+      restoreDevices(state) { this._devices = JSON.parse(JSON.stringify(state)); },
+    },
     DiskStore: { IMAGE_VERSION: "0.1.0" },
     localStorage: {
       _m: new Map(),
@@ -157,6 +162,10 @@ async function run() {
     assert.deepStrictEqual(snap.mounted, ["rk0.dsk", "rk1.dsk"]);
     assert.ok(snap.memory.data instanceof ArrayBuffer, "RAM is ArrayBuffer");
     assert.strictEqual(snap.memory.format, "gzip");
+    assert.deepStrictEqual(snap.devices, {
+      "17777560": { rcsr: 0x80, iMask: 0 },
+      "17777400": { rkcs: 0x80, iMask: 1 },
+    }, "devices captured (L2)");
 
     const items = await SS.list();
     assert.strictEqual(items.length, 1);
@@ -263,6 +272,21 @@ async function run() {
     const items = await SS.list();
     assert.strictEqual(items.length, 10, "store capped at MAX_SNAPSHOTS");
     console.log("PASS test 6: MAX_SNAPSHOTS bound");
+  }
+
+  // ---- Test 7: restore() applies device registers (L2) ---------------
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    const snap = await SS.save("device test");
+    assert.deepStrictEqual(snap.devices["17777400"], { rkcs: 0x80, iMask: 1 });
+
+    // Mutate device state, then restore.
+    sb.iopage._devices["17777400"] = { rkcs: 0, iMask: 0 };
+    await SS.restore(snap);
+    assert.deepStrictEqual(sb.iopage._devices["17777400"], { rkcs: 0x80, iMask: 1 }, "device regs restored");
+    console.log("PASS test 7: restore() applies device registers (L2)");
   }
 
   console.log("\nAll SnapshotStore tests passed.");
