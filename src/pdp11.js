@@ -542,14 +542,32 @@ function setByteNZVC(result, flagV) {
 function trap(vector, errorMask) {
     "use strict";
     let newPC, newPSW, doubleTrap = 0;
+    if (typeof window !== "undefined" && window.__trapTrace) {
+        window.__trapTrace.depth++;
+        if (window.__trapTrace.depth > 8 && window.__trapTrace.depth < 12) {
+            window.__trapTrace.events.push({ n: window.__trapTrace.depth, v: vector, m: errorMask, pc: CPU.registerVal[7], t: Date.now() });
+        }
+    }
     if (CPU.trapPSW > -2) { // console mode doesn't actually do all the regular trap stuff
         if (CPU.trapPSW < 0) {
+            if (typeof window !== "undefined" && window.__trapTrace) window.__trapTrace.depth = 0;
+            CPU.trapDepth = 0; // Fresh trap sequence — reset recursion guard
             CPU.trapMask = 0; // No other traps unless we cause one here
             CPU.trapPSW = readPSW(); // Remember original PSW
         } else {
             if (CPU.mmuMode < 2) { // Kernel (0) or Supervisor (1) — double trap handling
                 vector = 4;
                 doubleTrap = 1;
+            }
+            // Runaway trap-recursion guard: a trap that fires while we are
+            // already trapping (e.g. stack pointer corrupted by garbage code)
+            // re-enters trap() through the failed frame push. Real PDP-11
+            // hardware halts on an unrecoverable double trap instead of
+            // recursing, so do the same here once the nesting gets deep.
+            if ((CPU.trapDepth = (CPU.trapDepth || 0) + 1) > 8) {
+                CPU.trapDepth = 0;
+                CPU.runState = STATE_HALT;
+                return -1;
             }
         }
         //LOG_INSTRUCTION(vector, "-trap-", 0x1ff);
