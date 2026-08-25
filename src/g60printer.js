@@ -1088,6 +1088,21 @@
             return false;
         }
 
+        // Count the printable characters in a restored paper row. The
+        // renderer stores each column in its own span and treats the leading
+        // NBSP placeholder as column 0, so currentCharPos must equal the
+        // number of characters AFTER that spacer (the printable width of the
+        // line). Non-breaking spaces count as printable (they occupy a
+        // column); an empty row restores to position 0.
+        function countRowChars(text) {
+            if (!text) return 0;
+            var n = 0;
+            for (var i = 0; i < text.length; i++) {
+                if (text.charAt(i) !== '\u00A0') n++;
+            }
+            return n;
+        }
+
         function resetPrinter(unloading) {
             var hadContent = hasPrintedContent();
             // Cancel pending character pacing
@@ -1278,6 +1293,69 @@
             var spaces = 8 - (currentCharPos % 8);
             for (var i = 0; i < spaces; i++) {
                 printChar(' ');
+            }
+        };
+
+        // Snapshot the printed paper: every rendered row (text + row class,
+        // so page-break seams survive) plus the form-feed page position and
+        // head position. Used by machine-state persistence (L2/L3). Pure
+        // data — no DOM is touched.
+        this.snapshot = function() {
+            var rows = [];
+            if (printArea) {
+                for (var i = 0; i < printArea.children.length; i++) {
+                    var el = printArea.children[i];
+                    rows.push({
+                        text: el.textContent || '',
+                        cls: el.className || ''
+                    });
+                }
+            }
+            return {
+                rows: rows,
+                pagePos: pagePos,
+                pageHasContent: pageHasContent,
+                headPos: headPos,
+                maxCols: maxCols
+            };
+        };
+
+        // Restore the printed paper from a snapshot: rebuild the DOM rows
+        // (text + row class), restore the form-feed page position, head
+        // position and column width. Queued character output (charBuffer,
+        // textBuffer) is NOT restored — a restored machine resumes with the
+        // paper as it looked at save time, and any in-flight printing simply
+        // never happened (like power loss on real hardware). The next printed
+        // character starts a fresh line below the restored paper.
+        this.restore = function(state) {
+            if (!state) return;
+            resetPrinter(true);
+            if (!printArea) return;
+            if (typeof state.maxCols === 'number' &&
+                PRINT_WIDTHS.indexOf(state.maxCols) !== -1) {
+                maxCols = state.maxCols;
+                applyPaperGeometry();
+            }
+            var rows = Array.isArray(state.rows) ? state.rows : [];
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                var p = document.createElement('p');
+                if (r.cls) p.className = r.cls;
+                var span = document.createElement('span');
+                span.textContent = (r.text && r.text.length > 0) ? r.text : '\u00A0';
+                p.appendChild(span);
+                printArea.appendChild(p);
+            }
+            if (typeof state.pagePos === 'number') pagePos = state.pagePos;
+            if (typeof state.pageHasContent === 'boolean') pageHasContent = state.pageHasContent;
+            if (typeof state.headPos === 'number') {
+                headPos = state.headPos;
+                setHeadPos(headPos, false);
+            }
+            if (paper) {
+                scrollState = Math.max(0, paper.scrollHeight - paper.clientHeight);
+                paper.scrollTop = scrollState;
+                paper.className = 'paperNoScroll';
             }
         };
     };

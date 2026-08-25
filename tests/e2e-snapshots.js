@@ -33,6 +33,18 @@ const URL = "http://localhost:1170/pdp11.html";
     page.on("pageerror", (err) => consoleErrors.push(String(err)));
 
     // --- 1. Open the emulator ---
+    // Enable the LP11 printer in the persisted config BEFORE the page loads:
+    // iopage.js registers the device at load time based on __config.printer.
+    await page.evaluateOnNewDocument(() => {
+      try {
+        var k = "yapdp.config.v1";
+        var cfg = null;
+        try { cfg = JSON.parse(localStorage.getItem(k)); } catch (e) { cfg = null; }
+        if (!cfg || typeof cfg !== "object") cfg = {};
+        cfg.printer = true;
+        localStorage.setItem(k, JSON.stringify(cfg));
+      } catch (e) { /* ignore */ }
+    });
     await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForFunction(
       () => typeof SnapshotStore !== "undefined" && typeof CPU !== "undefined",
@@ -73,6 +85,32 @@ const URL = "http://localhost:1170/pdp11.html";
     });
     console.log("[3] punched tape: H I CR");
 
+    // Print two lines on the LP11 paper, then exercise the operator keys:
+    // PAPER FEED (line feed) advances one line, TOP OF FORM (form feed)
+    // ejects to the next page. The snapshot must carry the printed paper.
+    await page.evaluate(() => {
+      const lp = window.lp11G60Printer;
+      if (lp) {
+        // Line 1: "HELLO LP11" then LF via println()
+        "HELLO LP11".split("").forEach((ch) => lp.printChar(ch));
+        lp.println();
+        // Line 2: "SECOND LINE"
+        "SECOND LINE".split("").forEach((ch) => lp.printChar(ch));
+        lp.println();
+        // Operator keys: PAPER FEED (line feed) then TOP OF FORM (form feed)
+        if (window.lp11PaperFeed) window.lp11PaperFeed();
+        if (window.lp11TopOfForm) window.lp11TopOfForm();
+      }
+    });
+    console.log("[3] LP11 paper: 2 lines + PAPER FEED + TOP OF FORM");
+    // Printing is animated (charBuffer + timers): wait until the mechanism
+    // drains so the snapshot captures the finished paper.
+    await page.waitForFunction(() => {
+      const lp = window.lp11G60Printer;
+      return !lp || typeof lp.isBusy !== "function" || !lp.isBusy();
+    }, { timeout: 15000 });
+    console.log("[3] LP11 idle (paper printed)");
+
     const snapId = await page.evaluate(async () => {
       const snap = await SnapshotStore.save("e2e test");
       return snap.id;
@@ -88,6 +126,7 @@ const URL = "http://localhost:1170/pdp11.html";
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
+      lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
     }));
     console.log(
       `[3] captured: PC=0o${before.pc.toString(8)} SP=0o${before.sp.toString(8)} ` +
@@ -132,6 +171,7 @@ const URL = "http://localhost:1170/pdp11.html";
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
+      lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       tapeRows: (() => {
         const body = document.getElementById("punchtape__body");
         return body ? body.childNodes.length : -1;
@@ -155,6 +195,12 @@ const URL = "http://localhost:1170/pdp11.html";
       ["punchtape bytes", after.punchtape && after.punchtape.buffer.length,
                           before.punchtape && before.punchtape.buffer.length],
       ["tape DOM rows", after.tapeRows, (before.punchtape && before.punchtape.buffer) ? before.punchtape.buffer.length : -1],
+      ["LP11 rows", after.lp11 ? after.lp11.rows.length : -1,
+                    before.lp11 ? before.lp11.rows.length : -1],
+      ["LP11 has text", after.lp11 && after.lp11.rows.some(r => r.text && r.text.indexOf("HELLO") !== -1),
+                        before.lp11 && before.lp11.rows.some(r => r.text && r.text.indexOf("HELLO") !== -1)],
+      ["LP11 pagePos", after.lp11 ? after.lp11.pagePos : -1,
+                       before.lp11 ? before.lp11.pagePos : -1],
     ];
     let ok = true;
     for (const [name, got, want] of checks) {

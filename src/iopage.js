@@ -1868,6 +1868,10 @@ iopage.register(0o17777510, 2, (function() {
         // - Equivalent to power‑on reset
         reset: initLP,
         snapshot: function() {
+            var paper = null;
+            if (lp11Printer && typeof lp11Printer.snapshot === "function") {
+                paper = lp11Printer.snapshot();
+            }
             return {
                 lpcs: lpcs,
                 lpdb: lpdb,
@@ -1875,7 +1879,8 @@ iopage.register(0o17777510, 2, (function() {
                 lp11Buffer: lp11Buffer.slice(),
                 lp11CurrentLine: lp11CurrentLine,
                 lp11Col: lp11Col,
-                lp11Online: lp11Online
+                lp11Online: lp11Online,
+                paper: paper
             };
         },
         restore: function(state) {
@@ -1887,6 +1892,15 @@ iopage.register(0o17777510, 2, (function() {
             if (typeof state.lp11CurrentLine === "string") lp11CurrentLine = state.lp11CurrentLine;
             if (typeof state.lp11Col === "number") lp11Col = state.lp11Col;
             if (typeof state.lp11Online === "boolean") lp11Online = state.lp11Online;
+            // Restore the printed paper (rows, page position, head). The
+            // printer UI is created lazily; ensureUI() is a no-op when the
+            // container or G60Printer is unavailable (e.g. headless tests).
+            if (state.paper) {
+                ensureUI();
+                if (lp11Printer && typeof lp11Printer.restore === "function") {
+                    lp11Printer.restore(state.paper);
+                }
+            }
         }
     };
 })());
