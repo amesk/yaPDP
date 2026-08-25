@@ -42,6 +42,8 @@ const URL = "http://localhost:1170/pdp11.html";
         try { cfg = JSON.parse(localStorage.getItem(k)); } catch (e) { cfg = null; }
         if (!cfg || typeof cfg !== "object") cfg = {};
         cfg.printer = true;
+        cfg.consoleType = "vt52";
+        cfg.userTerminals = 1;
         localStorage.setItem(k, JSON.stringify(cfg));
       } catch (e) { /* ignore */ }
     });
@@ -121,6 +123,20 @@ const URL = "http://localhost:1170/pdp11.html";
     }, { timeout: 5000 });
     console.log("[3] LP11 taken OFF LINE");
 
+    // VT52 console (unit 0): print a couple of lines via the terminal so the
+    // screen buffer (and hardcopy scrollback) carry content. ESC [2J clears,
+    // then two lines with a cursor move in between.
+    await page.evaluate(() => {
+      const term = window.vt52Get ? window.vt52Get(0) : null;
+      if (term) {
+        // Clear screen + home (VT52: ESC H)
+        window.vt52Write(0, "\x1bH");
+        window.vt52Write(0, "VT52 LINE ONE\r\n");
+        window.vt52Write(0, "VT52 LINE TWO");
+      }
+    });
+    console.log("[3] VT52 console: 2 lines written");
+
     const snapId = await page.evaluate(async () => {
       const snap = await SnapshotStore.save("e2e test");
       return snap.id;
@@ -138,6 +154,7 @@ const URL = "http://localhost:1170/pdp11.html";
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
+      vt52: (window.vt52SnapshotAll && window.vt52SnapshotAll()) || null,
     }));
     console.log(
       `[3] captured: PC=0o${before.pc.toString(8)} SP=0o${before.sp.toString(8)} ` +
@@ -184,12 +201,18 @@ const URL = "http://localhost:1170/pdp11.html";
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
+      vt52: (window.vt52SnapshotAll && window.vt52SnapshotAll()) || null,
       tapeRows: (() => {
         const body = document.getElementById("punchtape__body");
         return body ? body.childNodes.length : -1;
       })(),
       pending: (() => { try { return localStorage.getItem("yapdp-pending-snapshot"); } catch (e) { return "n/a"; } })(),
     }));
+
+    // Rebuild terminal text from the sparse screen buffer ({c,a} cells).
+    const vt52ScreenText = (state) => (state.screen || [])
+      .map(row => (row || []).map(cell => String.fromCharCode(cell.c)).join(""))
+      .join("\n");
 
     const checks = [
       ["PC", after.pc, before.pc],
@@ -214,6 +237,12 @@ const URL = "http://localhost:1170/pdp11.html";
       ["LP11 pagePos", after.lp11 ? after.lp11.pagePos : -1,
                        before.lp11 ? before.lp11.pagePos : -1],
       ["LP11 ONLINE led off", after.onlineLedOff, before.onlineLedOff],
+      ["VT52 units", after.vt52 ? after.vt52.length : -1,
+                     before.vt52 ? before.vt52.length : -1],
+      ["VT52 has LINE ONE", (after.vt52 || []).some(e => vt52ScreenText(e.state).indexOf("VT52 LINE ONE") !== -1),
+                            (before.vt52 || []).some(e => vt52ScreenText(e.state).indexOf("VT52 LINE ONE") !== -1)],
+      ["VT52 cursor", after.vt52 && after.vt52[0] ? after.vt52[0].state.cursorCol : -1,
+                      before.vt52 && before.vt52[0] ? before.vt52[0].state.cursorCol : -1],
     ];
     let ok = true;
     for (const [name, got, want] of checks) {

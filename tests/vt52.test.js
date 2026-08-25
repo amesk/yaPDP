@@ -657,6 +657,92 @@ function run() {
             "132-column grid is squeezed even harder, got scaleX " + term.canvas.scaleX);
     }
 
+    // ---- snapshot() / restore() round-trip (L3 persistence) ---------------
+    {
+        const { term, write } = makeTerminal();
+        // Build a screen with two rows, a bold cell and a cursor position,
+        // plus a scroll margin and reverse video — the state a snapshot
+        // must carry and restore exactly.
+        write("AB");
+        term.cursorCol = 1;
+        term.screen[0][0].a = ATTR_BOLD;
+        term.screen.push([{ c: 88, a: ATTR_UNDERSCORE }, { c: 89, a: 0 }]);
+        term.cursorRow = 1;
+        term.cursorCol = 1;
+        term.margin = { top: 1, bottom: 23 };
+        term.reverseVideo = true;
+        term.modes.insert = true;
+        term.modes.ansi = false;
+        term.graphics.sgr = ATTR_BOLD | ATTR_UNDERSCORE;
+        term.graphics.activeSet = 1;
+        term.overHang = 2;
+        term.wrapPending = true;
+        term.savedCursor = { row: 0, col: 5, sgr: ATTR_BOLD };
+
+        const snap = term.snapshot();
+
+        // Mutate everything so restore() has real work to do.
+        term.screen = [[]];
+        term.cursorRow = 0; term.cursorCol = 0;
+        term.margin = { top: 0, bottom: 24 };
+        term.reverseVideo = false;
+        term.modes.insert = false;
+        term.graphics.sgr = 0;
+        term.graphics.activeSet = 0;
+        term.overHang = 0;
+        term.wrapPending = false;
+        term.savedCursor = { row: 0, col: 0, sgr: 0 };
+
+        term.restore(snap);
+
+        assert.strictEqual(term.screen.length, 2, "two rows restored");
+        assert.strictEqual(term.screen[0][0].c, 65, "cell glyph 'A' restored");
+        assert.strictEqual(term.screen[0][0].a, ATTR_BOLD, "bold attribute restored");
+        assert.strictEqual(term.screen[1][0].c, 88, "second row glyph restored");
+        assert.strictEqual(term.screen[1][1].a, 0, "plain attribute restored");
+        assert.strictEqual(term.cursorRow, 1, "cursor row restored");
+        assert.strictEqual(term.cursorCol, 1, "cursor col restored");
+        assert.strictEqual(term.margin.top, 1, "scroll margin top restored");
+        assert.strictEqual(term.margin.bottom, 23, "scroll margin bottom restored");
+        assert.strictEqual(term.reverseVideo, true, "reverse video restored");
+        assert.strictEqual(term.modes.insert, true, "insert mode restored");
+        assert.strictEqual(term.graphics.sgr, ATTR_BOLD | ATTR_UNDERSCORE, "SGR restored");
+        assert.strictEqual(term.graphics.activeSet, 1, "active character set restored");
+        assert.strictEqual(term.overHang, 2, "overhang restored");
+        assert.strictEqual(term.wrapPending, true, "wrap-pending flag restored");
+        assert.strictEqual(term.savedCursor.row, 0, "saved cursor row restored");
+        assert.strictEqual(term.savedCursor.col, 5, "saved cursor col restored");
+        assert.strictEqual(term.savedCursor.sgr, ATTR_BOLD, "saved cursor SGR restored");
+    }
+
+    // ---- vt52SnapshotAll / vt52RestoreAll round-trip (L3 persistence) ----
+    {
+        const sandbox = { console, window: {} };
+        vm.createContext(sandbox);
+        vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+
+        const textArea = { value: "", tabIndex: 0, style: {}, setSelectionRange() {}, addEventListener() {}, focus() {}, scrollTop: 0, scrollHeight: 0 };
+        sandbox.window.vt52Initialize(0, () => {}, textArea, null, {});
+        sandbox.window.vt52Initialize(1, () => {}, textArea, null, {});
+        // Force screen mode so writes land in the screen buffer, then write.
+        sandbox.window.vt52Get(0).modes.screen = true;
+        sandbox.window.vt52Get(1).modes.screen = true;
+        sandbox.window.vt52Write(0, "CONSOLE");
+        sandbox.window.vt52Write(1, "TTY1");
+
+        const all = sandbox.window.vt52SnapshotAll();
+        assert.strictEqual(all.length, 2, "two terminals snapshotted");
+        assert.strictEqual(all[0].unit, 0, "first unit is 0");
+        assert.strictEqual(all[1].unit, 1, "second unit is 1");
+
+        // Wipe unit 1, restore everything.
+        sandbox.window.vt52Get(1).screen = [[]];
+        sandbox.window.vt52Get(1).cursorRow = 0;
+        sandbox.window.vt52RestoreAll(all);
+        const t1 = sandbox.window.vt52Get(1);
+        assert.strictEqual(t1.screen[0][0].c, 84, "unit 1 glyph 'T' restored");
+    }
+
     console.log("vt52.test.js: all overstrike tests passed");
 }
 

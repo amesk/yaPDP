@@ -2340,6 +2340,125 @@
             element.addEventListener("keydown", e => this.handleKey(e));
             element.addEventListener("focus",  () => this.render(false));
         }
+
+        // ---------------------------------------------------------------------------
+        // Machine-state persistence (L3): snapshot() / restore()
+        // ---------------------------------------------------------------------------
+        // Captures everything needed to resume a terminal exactly as it was:
+        // the sparse screen buffer (char + attribute per cell), the hardcopy
+        // textarea scrollback, cursor + saved cursor, DEC modes, character
+        // set selection, SGR attributes, scroll margins, reverse video and
+        // the wrap/overhang flags. The escape-sequence parser is deliberately
+        // NOT captured — a half-received sequence dies with the snapshot, like
+        // a cable being unplugged mid-escape. Pure data, no DOM access.
+        snapshot() {
+            return {
+                screen: this.screen.map(row => row.map(cell => ({ c: cell.c, a: cell.a }))),
+                hardcopy: this.textArea ? this.textArea.value : "",
+                hardcopyScrollTop: this.textArea ? this.textArea.scrollTop : 0,
+                modes: Object.assign({}, this.modes),
+                graphics: {
+                    vt52: this.graphics.vt52,
+                    activeSet: this.graphics.activeSet,
+                    enabled: this.graphics.enabled.slice(),
+                    sgr: this.graphics.sgr
+                },
+                margin: { top: this.margin.top, bottom: this.margin.bottom },
+                cursorRow: this.cursorRow,
+                cursorCol: this.cursorCol,
+                savedCursor: Object.assign({}, this.savedCursor),
+                wrapPending: this.wrapPending,
+                overHang: this.overHang,
+                reverseVideo: this.reverseVideo,
+                rows: this.rows,
+                cols: this.cols
+            };
+        }
+
+        // Rebuild terminal state from a snapshot. The screen buffer and the
+        // hardcopy scrollback are restored verbatim, then the visible surface
+        // (canvas or textarea) is repainted to match, including scroll
+        // position and cursor. The parser is reset (a half-received escape
+        // sequence does not survive). Safe to call on a live terminal.
+        restore(state) {
+            if (!state) return;
+
+            // Screen buffer (sparse): rows of { c, a } cells.
+            if (Array.isArray(state.screen)) {
+                this.screen = state.screen.map(row => (Array.isArray(row)
+                    ? row.map(cell => ({ c: cell.c | 0, a: cell.a | 0 }))
+                    : []));
+            }
+
+            // Hardcopy scrollback + scroll position.
+            if (this.textArea) {
+                if (typeof state.hardcopy === "string") {
+                    this.textArea.value = state.hardcopy;
+                }
+                if (typeof state.hardcopyScrollTop === "number") {
+                    this.textArea.scrollTop = state.hardcopyScrollTop;
+                }
+            }
+
+            // Modes (only known keys — never trust a foreign snapshot).
+            if (state.modes && typeof state.modes === "object") {
+                ["screen", "ansi", "origin", "insert", "wrap",
+                 "appCursor", "cursorVisible", "keypad"].forEach(k => {
+                    if (typeof state.modes[k] === "boolean") {
+                        this.modes[k] = state.modes[k];
+                    }
+                });
+            }
+
+            // Character sets + SGR.
+            if (state.graphics && typeof state.graphics === "object") {
+                if (typeof state.graphics.vt52 === "boolean") this.graphics.vt52 = state.graphics.vt52;
+                if (state.graphics.activeSet === 0 || state.graphics.activeSet === 1) {
+                    this.graphics.activeSet = state.graphics.activeSet;
+                }
+                if (Array.isArray(state.graphics.enabled)) {
+                    this.graphics.enabled = [
+                        !!state.graphics.enabled[0],
+                        !!state.graphics.enabled[1]
+                    ];
+                }
+                if (typeof state.graphics.sgr === "number") this.graphics.sgr = state.graphics.sgr;
+            }
+
+            // Scroll margins (DECSTBM).
+            if (state.margin && typeof state.margin === "object") {
+                if (typeof state.margin.top === "number") this.margin.top = state.margin.top;
+                if (typeof state.margin.bottom === "number") this.margin.bottom = state.margin.bottom;
+            }
+
+            // Cursor + saved cursor.
+            if (typeof state.cursorRow === "number") this.cursorRow = state.cursorRow;
+            if (typeof state.cursorCol === "number") this.cursorCol = state.cursorCol;
+            if (state.savedCursor && typeof state.savedCursor === "object") {
+                if (typeof state.savedCursor.row === "number") this.savedCursor.row = state.savedCursor.row;
+                if (typeof state.savedCursor.col === "number") this.savedCursor.col = state.savedCursor.col;
+                if (typeof state.savedCursor.sgr === "number") this.savedCursor.sgr = state.savedCursor.sgr;
+            }
+
+            if (typeof state.wrapPending === "boolean") this.wrapPending = state.wrapPending;
+            if (typeof state.overHang === "number") this.overHang = state.overHang;
+            if (typeof state.reverseVideo === "boolean") this.reverseVideo = state.reverseVideo;
+            if (typeof state.rows === "number") this.rows = state.rows;
+            if (typeof state.cols === "number") this.cols = state.cols;
+
+            // Repaint the visible surface and reset the parser.
+            this.parser.buffer = [];
+            this.parser.state = 0;
+            if (this.modes.screen && this.allowCanvas && this.screenCanvas) {
+                this.screenCanvas.style.display = "block";
+                if (this.textArea) this.textArea.style.display = "none";
+                this.renderCanvas();
+            } else if (this.textArea) {
+                this.textArea.style.display = "block";
+                if (this.screenCanvas) this.screenCanvas.style.display = "none";
+                this.textArea.scrollTop = this.textArea.scrollHeight;
+            }
+        }
     }
 
     // ============================================================================
@@ -2367,6 +2486,33 @@
         return VT.get(unit);
     }
 
+    // Machine-state persistence (L3): snapshot every live terminal as an
+    // array keyed by unit. Terminals that exist but have no snapshot support
+    // (older code) are skipped. Returns [] when nothing is registered.
+    function vt52SnapshotAll() {
+        const out = [];
+        VT.forEach(function (term, unit) {
+            if (term && typeof term.snapshot === "function") {
+                out.push({ unit: unit, state: term.snapshot() });
+            }
+        });
+        return out;
+    }
+
+    // Restore every terminal captured by vt52SnapshotAll(). Unknown units
+    // (e.g. terminals that no longer exist) are ignored; a missing snapshot
+    // for a live unit leaves that unit untouched.
+    function vt52RestoreAll(snapshots) {
+        if (!Array.isArray(snapshots)) return;
+        snapshots.forEach(function (entry) {
+            if (!entry || typeof entry.unit !== "number") return;
+            const term = VT.get(entry.unit);
+            if (term && typeof term.restore === "function") {
+                term.restore(entry.state);
+            }
+        });
+    }
+
     function vt52Write(unit, data) {
         const term = VT.get(unit);
         if (!term) return;
@@ -2383,4 +2529,6 @@
     window.vt52Initialize = vt52Initialize;
     window.vt52Get        = vt52Get;
     window.vt52Write      = vt52Write;
+    window.vt52SnapshotAll  = vt52SnapshotAll;
+    window.vt52RestoreAll   = vt52RestoreAll;
 })();

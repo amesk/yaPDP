@@ -173,6 +173,11 @@ var SnapshotStore = (() => {
                 typeof window.paperTape.snapshot === "function") {
                 punchtape = window.paperTape.snapshot();
             }
+            var vt52 = null;
+            if (typeof window !== "undefined" && window.vt52SnapshotAll &&
+                typeof window.vt52SnapshotAll === "function") {
+                vt52 = window.vt52SnapshotAll();
+            }
             return {
                 id: "snap-" + Date.now(),
                 name: name || defaultName(),
@@ -185,6 +190,7 @@ var SnapshotStore = (() => {
                 mounted: captureMounted(),
                 devices: devices,
                 punchtape: punchtape,
+                vt52: vt52,
                 cpuBytes: 0,
                 memBytes: mem.data.byteLength || 0
             };
@@ -265,6 +271,13 @@ var SnapshotStore = (() => {
             if (snap.punchtape && typeof window !== "undefined" &&
                 window.paperTape && typeof window.paperTape.restore === "function") {
                 window.paperTape.restore(snap.punchtape.buffer);
+            }
+            // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
+            // cursor, modes. Restored after RAM/devices so a repaint sees
+            // consistent state. No-op when the terminal API is absent.
+            if (snap.vt52 && typeof window !== "undefined" &&
+                window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
+                window.vt52RestoreAll(snap.vt52);
             }
             // Mounted images: DataLoader entries are re-created by
             // dragdrop.init() from the images IDB on startup; nothing to
