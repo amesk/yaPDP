@@ -63,6 +63,16 @@ const URL = "http://localhost:1170/pdp11.html";
     console.log(`[2] machine ran: PC=0o${ranState.pc.toString(8)} runState=${ranState.runState}`);
 
     // --- 3. Save a snapshot ---
+    // Punch a visible paper tape ("HI" + CR) so the snapshot carries tape data.
+    await page.evaluate(() => {
+      if (window.paperTape && window.paperTape.punchChar) {
+        window.paperTape.punchChar(0x48); // H
+        window.paperTape.punchChar(0x49); // I
+        window.paperTape.punchChar(0x0D); // CR
+      }
+    });
+    console.log("[3] punched tape: H I CR");
+
     const snapId = await page.evaluate(async () => {
       const snap = await SnapshotStore.save("e2e test");
       return snap.id;
@@ -77,6 +87,7 @@ const URL = "http://localhost:1170/pdp11.html";
       mem1000: CPU.memory[1000],
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
+      punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
     }));
     console.log(
       `[3] captured: PC=0o${before.pc.toString(8)} SP=0o${before.sp.toString(8)} ` +
@@ -95,7 +106,10 @@ const URL = "http://localhost:1170/pdp11.html";
         "17777560": { rcsr: 0x7777, rbuf: 0, xcsr: 0, xbuf: 0, xdelay: 0, iMask: 0, typeAhead: [], receiverBusy: false, pasteCR: true }
       });
     });
-    console.log("[4] machine state mutated (PC=0x7777, mem 0xDEAD, RK11 CSR=0x9999)");
+    await page.evaluate(() => {
+      if (window.paperTape && window.paperTape.clear) window.paperTape.clear();
+    });
+    console.log("[4] machine state mutated (PC=0x7777, mem 0xDEAD, RK11 CSR=0x9999, tape cleared)");
 
     // --- 5. Load: pending key + reload ---
     await page.evaluate((id) => SnapshotStore.load(id), snapId);
@@ -117,6 +131,11 @@ const URL = "http://localhost:1170/pdp11.html";
       mem1000: CPU.memory[1000],
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
+      punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
+      tapeRows: (() => {
+        const body = document.getElementById("punchtape__body");
+        return body ? body.childNodes.length : -1;
+      })(),
       pending: (() => { try { return localStorage.getItem("yapdp-pending-snapshot"); } catch (e) { return "n/a"; } })(),
     }));
 
@@ -133,6 +152,9 @@ const URL = "http://localhost:1170/pdp11.html";
                      before.devices["17777560"] && before.devices["17777560"].rcsr],
       ["TM11 mts", after.devices["17772520"] && after.devices["17772520"].mts,
                    before.devices["17772520"] && before.devices["17772520"].mts],
+      ["punchtape bytes", after.punchtape && after.punchtape.buffer.length,
+                          before.punchtape && before.punchtape.buffer.length],
+      ["tape DOM rows", after.tapeRows, (before.punchtape && before.punchtape.buffer) ? before.punchtape.buffer.length : -1],
     ];
     let ok = true;
     for (const [name, got, want] of checks) {

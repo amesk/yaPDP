@@ -168,6 +168,11 @@ var SnapshotStore = (() => {
             if (typeof iopage !== "undefined" && typeof iopage.snapshotDevices === "function") {
                 devices = iopage.snapshotDevices();
             }
+            var punchtape = null;
+            if (typeof window !== "undefined" && window.paperTape &&
+                typeof window.paperTape.snapshot === "function") {
+                punchtape = window.paperTape.snapshot();
+            }
             return {
                 id: "snap-" + Date.now(),
                 name: name || defaultName(),
@@ -179,6 +184,7 @@ var SnapshotStore = (() => {
                 memory: mem,
                 mounted: captureMounted(),
                 devices: devices,
+                punchtape: punchtape,
                 cpuBytes: 0,
                 memBytes: mem.data.byteLength || 0
             };
@@ -252,6 +258,13 @@ var SnapshotStore = (() => {
             if (snap.devices && typeof iopage !== "undefined" &&
                 typeof iopage.restoreDevices === "function") {
                 iopage.restoreDevices(snap.devices);
+            }
+            // Visual punched tape (L2) — re-render the hanging ASR tape
+            // from the captured byte array (no-op when the tape UI is
+            // absent, e.g. VT52 console).
+            if (snap.punchtape && typeof window !== "undefined" &&
+                window.paperTape && typeof window.paperTape.restore === "function") {
+                window.paperTape.restore(snap.punchtape.buffer);
             }
             // Mounted images: DataLoader entries are re-created by
             // dragdrop.init() from the images IDB on startup; nothing to

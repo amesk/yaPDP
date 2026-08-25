@@ -136,7 +136,13 @@ function buildSandbox() {
       getElementById: () => null,
       addEventListener: () => {},
     },
-    window: {},
+    window: {
+      paperTape: {
+        _buffer: [0x11, 0x22, 0x33],
+        snapshot() { return { buffer: this._buffer.slice() }; },
+        restore(bytes) { this._buffer = bytes ? bytes.slice() : []; },
+      },
+    },
   };
 }
 
@@ -287,6 +293,21 @@ async function run() {
     await SS.restore(snap);
     assert.deepStrictEqual(sb.iopage._devices["17777400"], { rkcs: 0x80, iMask: 1 }, "device regs restored");
     console.log("PASS test 7: restore() applies device registers (L2)");
+  }
+
+  // ---- Test 8: punched tape captured + restored (L2) ------------------
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    const snap = await SS.save("tape test");
+    assert.deepStrictEqual(snap.punchtape, { buffer: [0x11, 0x22, 0x33] }, "tape captured");
+
+    // Mutate tape, then restore.
+    sb.window.paperTape._buffer = [0xFF];
+    await SS.restore(snap);
+    assert.deepStrictEqual(sb.window.paperTape._buffer, [0x11, 0x22, 0x33], "tape restored");
+    console.log("PASS test 8: punched tape captured + restored (L2)");
   }
 
   console.log("\nAll SnapshotStore tests passed.");

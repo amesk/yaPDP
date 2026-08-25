@@ -171,6 +171,51 @@
     }
 
     /**
+     * snapshot() - Capture the punched tape state (machine-state snapshot,
+     * L2). Returns a plain object with the byte array; the DOM is not
+     * touched. Absent UI (no #punchtape element) yields an empty tape.
+     */
+    function snapshot() {
+        return { buffer: buffer.slice() };
+    }
+
+    /**
+     * restore(bytes) - Re-render the hanging tape from a saved byte array
+     * (machine-state snapshot, L2). Rebuilds the DOM rows and the buffer
+     * without punching through the teletype path (no sound, no interrupts).
+     * Returns the number of rows restored, or 0 if the tape UI is absent.
+     */
+    function restore(bytes) {
+        if (!bytes || !bytes.length) { clear(); return 0; }
+        if (!body) init();
+        if (!body) return 0;
+        body.innerHTML = '';
+        buffer = [];
+        for (var i = 0; i < bytes.length; i++) {
+            buffer.push(bytes[i] & 0x7F);
+            var tracks = encodePunch(bytes[i]);
+            var row = makeSpan('pt-row');
+            row.appendChild(makeSpan('pt-cell'));
+            for (var j = 0; j < 3; j++) {
+                row.appendChild(makeSpan('pt-hole' + (tracks[j] ? ' on' : '')));
+            }
+            row.appendChild(makeSpan('pt-sprocket'));
+            for (var k = 3; k < 8; k++) {
+                row.appendChild(makeSpan('pt-hole' + (tracks[k] ? ' on' : '')));
+            }
+            row.appendChild(makeSpan('pt-cell'));
+            if (body.firstChild) {
+                body.insertBefore(row, body.firstChild);
+            } else {
+                body.appendChild(row);
+            }
+        }
+        updateMaxHeight();
+        keepPunchVisible();
+        return buffer.length;
+    }
+
+    /**
      * undo() - Punch BSP (backspace one tape step): remove the last (oldest)
      * punched byte, then punch RUBOUT (0x7F) over it — all seven tracks are
      * filled with holes, so a computer reader ignores the corrected byte.
@@ -216,6 +261,8 @@
         undo: undo,
         clear: clear,
         save: save,
+        snapshot: snapshot,
+        restore: restore,
         refreshHeight: refreshHeight
     };
 })();
