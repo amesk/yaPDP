@@ -119,7 +119,12 @@ iopage.register(0o17772000, 4, (function () {
             reset,
 
             getDPC: () => DPC,
-            setDPC: value => { DPC = value & 0xffff; },
+            setDPC: value => {
+                DPC = value & 0xffff;
+                if (typeof window !== "undefined" && window.__vt11DpcTrace) {
+                    window.__vt11DpcTrace.push({ t: Date.now(), v: DPC });
+                }
+            },
 
             getDSR: () => DSR,
             setDSR: value => { DSR = value & 0xffff; },
@@ -213,6 +218,31 @@ iopage.register(0o17772000, 4, (function () {
                 if (inst & 0x4) {
                     lineRefresh = inst & 0x4;
                 }
+            },
+
+            // Machine-state persistence (L3): snapshot/restore the register
+            // file. Pure data — no DOM, no timers.
+            snapshot: () => ({
+                DPC, DSR, Xpen, Ypen,
+                stopInterrupt, penInterrupt, lineRefresh,
+                XRegister, YRegister, graphIncrement, iMask
+            }),
+            restore: snap => {
+                if (!snap) return;
+                if (typeof window !== "undefined" && window.__vt11StateRestore) {
+                    window.__vt11StateRestore.push({ t: Date.now(), regs: snap });
+                }
+                if (typeof snap.DPC === "number") DPC = snap.DPC & 0xffff;
+                if (typeof snap.DSR === "number") DSR = snap.DSR & 0xffff;
+                if (typeof snap.Xpen === "number") Xpen = snap.Xpen & 0x3ff;
+                if (typeof snap.Ypen === "number") Ypen = snap.Ypen & 0x3ff;
+                if (typeof snap.stopInterrupt === "number") stopInterrupt = snap.stopInterrupt ? 1 : 0;
+                if (typeof snap.penInterrupt === "number") penInterrupt = snap.penInterrupt ? 1 : 0;
+                if (typeof snap.lineRefresh === "number") lineRefresh = snap.lineRefresh & 4;
+                if (typeof snap.XRegister === "number") XRegister = snap.XRegister & 0x3ff;
+                if (typeof snap.YRegister === "number") YRegister = snap.YRegister & 0x3ff;
+                if (typeof snap.graphIncrement === "number") graphIncrement = snap.graphIncrement & 0x3f;
+                if (typeof snap.iMask === "number") iMask = snap.iMask & 0x3;
             }
         };
     })();
@@ -507,6 +537,33 @@ iopage.register(0o17772000, 4, (function () {
             ctxBG.fillText(String.fromCharCode(code), x, HEIGHT - 1 - y);
         }
 
+        // Machine-state persistence (L3): capture the visible CRT picture.
+        // The VT11 has no primitive list — vectors/text are drawn straight
+        // into the canvas and the background is cleared every frame, so the
+        // only copy of the picture lives in the foreground canvas. Save it
+        // as a PNG data URL (small: mostly-black phosphor screens compress
+        // well). Returns null when the renderer was never initialized.
+        function snapshotImage() {
+            if (!initialized || !canvasFG) return null;
+            try {
+                return canvasFG.toDataURL("image/png");
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Redraw a captured picture onto the foreground canvas. Async (PNG
+        // decode); the picture pops in a frame later, which is fine for a
+        // resumed machine. No-op when the renderer or data is absent.
+        function restoreImage(dataURL) {
+            if (!dataURL || !initialized || !canvasFG) return;
+            var img = new Image();
+            img.onload = function () {
+                if (ctxFG) ctxFG.drawImage(img, 0, 0);
+            };
+            img.src = dataURL;
+        }
+
         return {
             initDOM,
             getCanvasFG,
@@ -517,7 +574,9 @@ iopage.register(0o17772000, 4, (function () {
             applyLineStyle,
             drawVector,
             drawPoint,
-            drawChar
+            drawChar,
+            snapshotImage,
+            restoreImage
         };
     })();
 
@@ -989,6 +1048,9 @@ iopage.register(0o17772000, 4, (function () {
         access: function (physicalAddress, data, byteFlag) {
             "use strict";
 
+            if (typeof window !== "undefined" && window.__vt11Trace) {
+                window.__vt11Trace.push({ t: Date.now(), a: physicalAddress.toString(8), d: data, p: CPU ? CPU.registerVal[7] : -1 });
+            }
             let result;
 
             switch (physicalAddress & 0o6) {
@@ -1061,6 +1123,32 @@ iopage.register(0o17772000, 4, (function () {
 
         reset: function () {
             state.reset();
+        },
+
+        // Machine-state persistence (L3): the register file plus the visible
+        // CRT picture. Registers are restored verbatim so the display
+        // program resumes from the same DPC with the same attributes; the
+        // picture is redrawn async from its PNG capture.
+        snapshot: function () {
+            return {
+                regs: state.snapshot(),
+                image: renderer.snapshotImage()
+            };
+        },
+        restore: function (snap) {
+            if (!snap) return;
+            if (typeof window !== "undefined" && window.__vt11RestoreTrace) {
+                window.__vt11RestoreTrace.push({ t: Date.now(), regs: snap.regs, hasImage: !!snap.image });
+            }
+            state.restore(snap.regs);
+            // The renderer is created lazily on the first DPC write; after a
+            // page reload nothing has written DPC yet, so initialize the DOM
+            // before redrawing the captured picture. Guarded for headless
+            // contexts (no document).
+            if (snap.image && typeof document !== "undefined") {
+                renderer.initDOM();
+                renderer.restoreImage(snap.image);
+            }
         }
     };
 

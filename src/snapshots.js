@@ -209,6 +209,7 @@ var SnapshotStore = (() => {
     // ------------------------------------------------------------------
     function restoreCPU(cpu) {
         Object.keys(cpu || {}).forEach(function (k) {
+            if (k === "runState") return; // applied after restoreMemory (see restore())
             const v = cpu[k];
             if (v && typeof v === "object" && v.t === "u16") {
                 const arr = new Uint16Array(v.d);
@@ -259,10 +260,20 @@ var SnapshotStore = (() => {
         if (!snap) return Promise.resolve(false);
         restoreCPU(snap.cpu);
         return restoreMemory(snap.memory).then(function () {
+            // Resume the CPU only after RAM is back in place: running with
+            // the old memory contents (boot code / garbage) and the restored
+            // PC traps instantly, and a trap inside a trap overflows the
+            // stack. runState was deferred by restoreCPU() for this reason;
+            // the trap() recursion guard makes this safe even if the restored
+            // image is mid-garbage.
+            if (snap.cpu && typeof snap.cpu.runState === "number") {
+                CPU.runState = snap.cpu.runState;
+            }
             // Device registers (L2) — restore after RAM so devices see
             // consistent memory; control blocks re-create lazily on I/O.
             if (snap.devices && typeof iopage !== "undefined" &&
                 typeof iopage.restoreDevices === "function") {
+                if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("restore: calling restoreDevices");
                 iopage.restoreDevices(snap.devices);
             }
             // Visual punched tape (L2) — re-render the hanging ASR tape
@@ -361,6 +372,7 @@ var SnapshotStore = (() => {
         }
 
         return dbGet(pendingId).then(function (snap) {
+            if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("init: got snap " + (snap ? "yes devices=" + (snap.devices ? Object.keys(snap.devices).join(",") : "none") : "NO"));
             if (!snap) return false;
             return restore(snap);
         });

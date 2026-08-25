@@ -184,6 +184,7 @@ var iopage = (function() {
             if (!state) return;
             for (var i = 0; i < deviceSnap.length; i++) {
                 var key = deviceSnap[i].address.toString(8);
+                if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("restoreDevices: " + key + " present=" + Object.prototype.hasOwnProperty.call(state, key));
                 if (Object.prototype.hasOwnProperty.call(state, key)) {
                     deviceSnap[i].restore(state[key]);
                 }
