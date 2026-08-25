@@ -2028,6 +2028,311 @@ var DataLoader = (() => {
 })();
 
 
+// ================================================================
+// DiskStore — persistent write-back cache for disk/tape images
+// ================================================================
+// Persists modified cache blocks to IndexedDB so that guest-OS writes
+// (files created, disks re-partitioned, configs saved) survive a page
+// reload. Only blocks actually written by the guest are stored — the
+// base image is still fetched from the network on every launch and the
+// saved dirty blocks are overlaid on top of it.
+//
+// Design notes:
+// - Device control blocks (rkControlBlock etc.) live inside per-device
+//   IIFEs, so DiskStore keeps its own registry: url -> { controlBlock,
+//   dirty:Set }. diskIO() reports writes via markDirty().
+// - fetchBlock() consults DiskStore BEFORE the network/DataLoader path
+//   so a saved block always wins over the pristine base image.
+// - Every saved block is tagged with IMAGE_VERSION. When the bundled
+//   media images change (new .zst), bump IMAGE_VERSION so stale saved
+//   blocks are ignored instead of being overlaid onto a different disk.
+// - IndexedDB is used only when available (browser, Tauri WebView).
+//   In pure Node test contexts (no indexedDB) DiskStore degrades to a
+//   no-op that keeps state in memory only.
+//
+// Public API:
+//   markDirty(controlBlock, block) — record a written block
+//   flushAll()                     — persist all dirty blocks to IDB
+//   flush(url)                     — persist dirty blocks of one image
+//   getBlock(url, block)           — saved block bytes or undefined
+//   hasDirty(url)                  — true if image has unsaved writes
+//   listDirty()                    — urls with saved/unsaved changes
+//   clear(url)                     — discard saved blocks of one image
+//   clearAll()                     — discard all saved blocks
+//   init()                         — open IDB, load saved-block index
+// ================================================================
+var DiskStore = (() => {
+    "use strict";
+
+    const DB_NAME = "yapdp-diskstore";
+    const DB_STORE = "blocks";
+    // Bump this when bundled media/ images change (new .zst files).
+    const IMAGE_VERSION = "0.1.0";
+
+    let dbPromise = null;
+    let db = null;
+
+    // url -> { controlBlock, dirty:Set(block) } — writes not yet flushed
+    const pending = new Map();
+    // url -> Set(block) — blocks known to be saved in IDB (loaded at init)
+    const savedIndex = new Map();
+
+    let flushTimer = null;
+
+    // --- IndexedDB plumbing (mirrors dragdrop.js) ---
+    function openDB() {
+        if (dbPromise) return dbPromise;
+        if (typeof indexedDB === "undefined") {
+            dbPromise = Promise.resolve(null);
+            return dbPromise;
+        }
+        dbPromise = new Promise((resolve) => {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                if (!req.result.objectStoreNames.contains(DB_STORE)) {
+                    req.result.createObjectStore(DB_STORE);
+                }
+            };
+            req.onsuccess = () => { db = req.result; resolve(db); };
+            req.onerror = () => { db = null; resolve(null); };
+        });
+        return dbPromise;
+    }
+
+    function dbPut(key, value) {
+        return openDB().then((d) => {
+            if (!d) return Promise.resolve();
+            return new Promise((resolve) => {
+                const tx = d.transaction(DB_STORE, "readwrite");
+                tx.objectStore(DB_STORE).put(value, key);
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+            });
+        });
+    }
+
+    function dbGet(key) {
+        return openDB().then((d) => {
+            if (!d) return Promise.resolve(undefined);
+            return new Promise((resolve) => {
+                const tx = d.transaction(DB_STORE, "readonly");
+                const req = tx.objectStore(DB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(undefined);
+            });
+        });
+    }
+
+    function dbDelete(key) {
+        return openDB().then((d) => {
+            if (!d) return Promise.resolve();
+            return new Promise((resolve) => {
+                const tx = d.transaction(DB_STORE, "readwrite");
+                tx.objectStore(DB_STORE).delete(key);
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+            });
+        });
+    }
+
+    function dbGetAllKeys() {
+        return openDB().then((d) => {
+            if (!d) return Promise.resolve([]);
+            return new Promise((resolve) => {
+                const tx = d.transaction(DB_STORE, "readonly");
+                const req = tx.objectStore(DB_STORE).getAllKeys();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => resolve([]);
+            });
+        });
+    }
+
+    // --- Key helpers ---
+    // Each saved block is stored under "url::block"; a per-image record
+    // under "url::meta" carries the image version for staleness checks.
+    function blockKey(url, block) { return url + "::" + block; }
+    function metaKey(url) { return url + "::meta"; }
+
+    // --- Core operations ---
+
+    // Record a written block. Called from diskIO() on every OP_WRITE;
+    // the Set deduplicates so repeated writes to the same block are cheap.
+    function markDirty(controlBlock, block) {
+        const url = controlBlock.url;
+        let entry = pending.get(url);
+        if (!entry) {
+            entry = { controlBlock, dirty: new Set() };
+            pending.set(url, entry);
+        }
+        entry.dirty.add(block);
+        ensureFlushTimer();
+    }
+
+    // Start a lazy periodic flush; also flush on page hide (best-effort).
+    function ensureFlushTimer() {
+        if (flushTimer) return;
+        flushTimer = setInterval(() => { flushAll(); }, 30000);
+        if (typeof window !== "undefined" && window.addEventListener) {
+            window.addEventListener("pagehide", () => { flushAll(); });
+        }
+    }
+
+    // Serialize a cache block (Uint16Array of IO_BLOCKSIZE/2 words) to
+    // the exact byte size of the on-disk block (IO_BLOCKSIZE bytes).
+    function blockToBytes(u16) {
+        const bytes = new Uint8Array(u16.length * 2);
+        for (let i = 0; i < u16.length; i++) {
+            bytes[i * 2] = u16[i] & 0xFF;
+            bytes[i * 2 + 1] = (u16[i] >>> 8) & 0xFF;
+        }
+        return bytes;
+    }
+
+    // Persist all dirty blocks of one image. Resolves true when anything
+    // was written (or the write was at least attempted), false when the
+    // image has no dirty blocks.
+    function flush(url) {
+        const entry = pending.get(url);
+        if (!entry || entry.dirty.size === 0) return Promise.resolve(false);
+        const { controlBlock, dirty } = entry;
+
+        const writes = [];
+        dirty.forEach((block) => {
+            const cacheBlock = controlBlock.cache[block];
+            if (cacheBlock !== undefined) {
+                const payload = {
+                    v: IMAGE_VERSION,
+                    b: blockToBytes(cacheBlock).buffer,
+                    t: Date.now()
+                };
+                writes.push(dbPut(blockKey(url, block), payload));
+                let set = savedIndex.get(url);
+                if (!set) { set = new Set(); savedIndex.set(url, set); }
+                set.add(block);
+            }
+        });
+        dirty.clear();
+
+        writes.push(dbPut(metaKey(url), {
+            v: IMAGE_VERSION,
+            t: Date.now(),
+            blocks: Array.from(savedIndex.get(url) || [])
+        }));
+
+        return Promise.all(writes).then(() => true);
+    }
+
+    // Persist all images with pending writes.
+    function flushAll() {
+        const urls = Array.from(pending.keys());
+        return Promise.all(urls.map(flush)).then(() => {});
+    }
+
+    // Return the saved bytes of a block (Uint8Array) or undefined when
+    // nothing is saved, the image version changed, or IDB is unavailable.
+    function getBlock(url, block) {
+        return dbGet(blockKey(url, block)).then((payload) => {
+            if (!payload || payload.v !== IMAGE_VERSION) return undefined;
+            return new Uint8Array(payload.b);
+        });
+    }
+
+    function hasDirty(url) {
+        const entry = pending.get(url);
+        return !!(entry && entry.dirty.size > 0);
+    }
+
+    // Urls that have saved changes (either pending in memory or in IDB).
+    function listDirty() {
+        const urls = new Set();
+        pending.forEach((entry, url) => {
+            if (entry.dirty.size > 0) urls.add(url);
+        });
+        savedIndex.forEach((set, url) => {
+            if (set.size > 0) urls.add(url);
+        });
+        return Array.from(urls).sort();
+    }
+
+    function dirtyBlockCount(url) {
+        const saved = savedIndex.get(url);
+        return saved ? saved.size : 0;
+    }
+
+    // Discard saved changes for one image (both IDB and in-memory index).
+    function clear(url) {
+        const entry = pending.get(url);
+        if (entry) entry.dirty.clear();
+        savedIndex.delete(url);
+        return openDB().then((d) => {
+            if (!d) return;
+            return dbGetAllKeys().then((keys) => {
+                const tx = d.transaction(DB_STORE, "readwrite");
+                keys.forEach((key) => {
+                    if (key === url || String(key).indexOf(url + "::") === 0) {
+                        tx.objectStore(DB_STORE).delete(key);
+                    }
+                });
+                return new Promise((resolve) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = resolve;
+                });
+            });
+        });
+    }
+
+    function clearAll() {
+        pending.forEach((entry) => entry.dirty.clear());
+        savedIndex.clear();
+        return openDB().then((d) => {
+            if (!d) return;
+            return new Promise((resolve) => {
+                const tx = d.transaction(DB_STORE, "readwrite");
+                tx.objectStore(DB_STORE).clear();
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+            });
+        });
+    }
+
+    // Open IDB and rebuild the in-memory index of saved blocks. Safe to
+    // call repeatedly; resolves when the index is ready.
+    function init() {
+        return openDB().then((d) => {
+            if (!d) return;
+            return dbGetAllKeys().then((keys) => {
+                keys.forEach((key) => {
+                    const sep = key.indexOf("::");
+                    if (sep === -1) return;
+                    const url = key.slice(0, sep);
+                    const rest = key.slice(sep + 2);
+                    if (rest === "meta") return;
+                    const block = parseInt(rest, 10);
+                    if (isNaN(block)) return;
+                    let set = savedIndex.get(url);
+                    if (!set) { set = new Set(); savedIndex.set(url, set); }
+                    set.add(block);
+                });
+            });
+        });
+    }
+
+    return {
+        markDirty,
+        flush,
+        flushAll,
+        getBlock,
+        hasDirty,
+        listDirty,
+        dirtyBlockCount,
+        clear,
+        clearAll,
+        init,
+        IMAGE_VERSION
+    };
+})();
+
+
 // Download support
 let downLoadList = [];
 
@@ -2167,6 +2472,20 @@ function assertCompleteImage(response, buffer, url) {
 // - Fallback requires fzstd decompression library
 // - Adds cache to download list for export after .zst fallback
 async function fetchBlock(controlBlock, block) {
+    // --- Saved write-back blocks take priority ---
+    // Guest writes persisted by DiskStore (IndexedDB) overlay the base
+    // image, so a saved block always wins over the pristine bytes from
+    // DataLoader or the network. Async IDB read; resolves fast when the
+    // block was never written (no saved entry).
+    if (typeof DiskStore !== "undefined" && DiskStore.getBlock) {
+        const saved = await DiskStore.getBlock(controlBlock.url, block);
+        if (saved !== undefined) {
+            createCache(controlBlock.cache, block, saved);
+            downLoadAdd(controlBlock.url, controlBlock.cache);
+            return 200;
+        }
+    }
+
     // --- Local (in-memory) image path ---
     // Images mounted via DataLoader (drag-and-drop import or bundled
     // resources in the desktop build) are served directly from memory,
@@ -2332,6 +2651,12 @@ async function diskIO(controlBlock, operation, position, address, count, options
                     }
                     if (operation === OP_WRITE) {
                         controlBlock.cache[block][offset >>> 1] = data;
+                        // Persist guest writes: record the block for the
+                        // DiskStore write-back cache (saved to IndexedDB on
+                        // the periodic flush / page hide).
+                        if (typeof DiskStore !== "undefined" && DiskStore.markDirty) {
+                            DiskStore.markDirty(controlBlock, block);
+                        }
                     } else if (data !== controlBlock.cache[block][offset >>> 1]) {
                         iopage.scheduleCallback(controlBlock.callback, controlBlock, 3, position, address, count, options);
                         return;

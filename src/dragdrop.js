@@ -164,6 +164,12 @@
                     dbPut(url, buffer);
                 }
                 userImages[url] = true;
+                // A freshly dropped image replaces whatever was on disk:
+                // discard any previously saved write-back blocks so stale
+                // guest writes cannot overlay the new image.
+                if (typeof DiskStore !== "undefined" && DiskStore.clear) {
+                    DiskStore.clear(url);
+                }
                 if (++done === list.length) finish();
             }).catch(function () {
                 if (++done === list.length) finish();
@@ -258,6 +264,41 @@
     }
 
     // ------------------------------------------------------------------
+    // Persistent disk changes UI (write-back cache)
+    // ------------------------------------------------------------------
+    // Populates the "Persistent disk changes" select in the Storage page
+    // with images that have saved (or unsaved) guest writes, and keeps the
+    // block-count label in sync.
+    function refreshPersistList() {
+        var select = document.getElementById("persist-select");
+        if (!select) return;
+        var count = document.getElementById("persist-count");
+        if (typeof DiskStore === "undefined") {
+            select.innerHTML = "";
+            if (count) count.textContent = "";
+            return;
+        }
+        var urls = DiskStore.listDirty();
+        select.innerHTML = "";
+        if (!urls.length) {
+            var emptyOpt = document.createElement("option");
+            emptyOpt.value = "";
+            emptyOpt.textContent = "--no saved changes--";
+            select.appendChild(emptyOpt);
+        } else {
+            urls.forEach(function (url) {
+                var opt = document.createElement("option");
+                opt.value = url;
+                var n = DiskStore.dirtyBlockCount(url);
+                opt.textContent = url + " (" + n + " blocks)";
+                select.appendChild(opt);
+            });
+        }
+        select.disabled = urls.length === 0;
+        if (count) count.textContent = urls.length + " image(s) with changes";
+    }
+
+    // ------------------------------------------------------------------
     // UI wiring
     // ------------------------------------------------------------------
     function init() {
@@ -273,6 +314,35 @@
             });
             refreshMountedList();
         });
+
+        // Load the write-back index of saved disk changes and wire up the
+        // persistence controls in the Storage page.
+        if (typeof DiskStore !== "undefined" && DiskStore.init) {
+            DiskStore.init().then(function () {
+                refreshPersistList();
+            });
+        }
+        var persistReset = document.getElementById("persist-reset");
+        if (persistReset) {
+            persistReset.addEventListener("click", function () {
+                var sel = document.getElementById("persist-select");
+                if (sel && sel.value && typeof DiskStore !== "undefined") {
+                    DiskStore.clear(sel.value).then(function () {
+                        refreshPersistList();
+                    });
+                }
+            });
+        }
+        var persistResetAll = document.getElementById("persist-reset-all");
+        if (persistResetAll) {
+            persistResetAll.addEventListener("click", function () {
+                if (typeof DiskStore !== "undefined" && DiskStore.clearAll) {
+                    DiskStore.clearAll().then(function () {
+                        refreshPersistList();
+                    });
+                }
+            });
+        }
 
         // Clicking the small control-bar zone opens the file picker.
         if (zone) {
