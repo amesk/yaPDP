@@ -1256,6 +1256,23 @@
             <span class="config-hint">Mounted images persist across sessions.</span>
           </div>
         </div>
+
+        <div class="config-field">
+          <span class="config-label">Snapshots</span>
+          <div class="config-control">
+            <select id="snap-select" disabled>
+              <option value="">--no snapshots--</option>
+            </select>
+            &nbsp;
+            <button type="button" id="snap-save">Save</button>
+            <button type="button" id="snap-load" disabled>Load</button>
+            <button type="button" id="snap-rename" disabled>Rename</button>
+            <button type="button" id="snap-delete" disabled>Delete</button>
+            <span id="snap-count" class="snap-count"></span>
+            <span class="config-hint">Snapshots capture the full machine state (CPU registers, RAM, MMU).
+              Load restarts the page and resumes from the saved state; disks keep their saved changes.</span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="page" id="page-instructions">
@@ -1622,6 +1639,7 @@ Hello world
   <script src='src/quickboot.js'></script>
   <script src='src/punchtape.js'></script>
   <script src='src/pdp11-app.js'></script>
+  <script src='src/snapshots.js'></script>
 </body>
 
 </html>
