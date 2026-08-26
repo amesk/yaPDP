@@ -579,9 +579,25 @@ function examineDeposit(data) {
           'panel to <b>POWER</b> (or click the POWER label) to power the machine ' +
           'on, then press <b>Bootstrap now!</b> again — or let the panel do it ' +
           'for you below.</p>' +
+        '<label class="modal-dontask"><input type="checkbox" id="power-off-autoboot"> ' +
+          'Start the default bootstrap automatically when the machine is powered on</label>' +
         '<button type="button" class="modal-close" data-power-off-action="ok">Got it</button>' +
         '<button type="button" class="modal-close" data-power-off-action="power-on-boot">Power on & Bootstrap</button>' +
       '</div>';
+    // The checkbox is a shortcut to the CONFIG|BEHAVIOUR Auto-boot option:
+    // persist it immediately and keep the Config form checkbox in sync so it
+    // never shows a stale value (autoBoot is not part of isDirty(), so the
+    // dirty marker stays untouched either way).
+    var autobootEl = powerOffOverlay.querySelector('#power-off-autoboot');
+    if (autobootEl) {
+      autobootEl.addEventListener('change', function () {
+        if (typeof Config !== 'undefined' && Config.set) {
+          Config.set({ autoBoot: this.checked });
+        }
+        var cfgEl = document.getElementById('config-autoBoot');
+        if (cfgEl) cfgEl.checked = this.checked;
+      });
+    }
     powerOffOverlay.addEventListener('click', function (e) {
       if (e.target === powerOffOverlay) {
         powerOffOverlay.classList.remove('visible');
@@ -605,7 +621,15 @@ function examineDeposit(data) {
   }
 
   function showPowerOffDialog() {
-    ensurePowerOffDialog().classList.add('visible');
+    var el = ensurePowerOffDialog();
+    // Mirror the persisted Auto-boot choice every time the dialog opens, so
+    // the checkbox always reflects the config (it can change on the CONFIG
+    // page or via a snapshot restore while the dialog exists).
+    var autobootEl = el.querySelector('#power-off-autoboot');
+    if (autobootEl && typeof Config !== 'undefined' && Config.get) {
+      autobootEl.checked = !!Config.get().autoBoot;
+    }
+    el.classList.add('visible');
   }
 
   var panelBootBtn = document.getElementById('panel-boot-btn');

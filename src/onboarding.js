@@ -198,9 +198,19 @@ var Onboarding = (function () {
         overlay = document.createElement("div");
         overlay.id = "modal-overlay";
         overlay.className = "modal-overlay";
-        // Delegate clicks: the "Got it" button and a click on the backdrop
-        // both dismiss the overlay.
+        // Delegate clicks: the "Quick boot" button dismisses the hint and
+        // opens the quick-boot wizard; the "Got it" button and a click on the
+        // backdrop both dismiss the overlay.
         overlay.addEventListener("click", function (e) {
+            var quick = e.target.closest &&
+                e.target.closest("[data-onboarding-action='quickboot']");
+            if (quick) {
+                hide(); // marks the hint as seen, exactly like "Got it"
+                if (typeof QuickBoot !== "undefined" && QuickBoot.show) {
+                    QuickBoot.show();
+                }
+                return;
+            }
             if (e.target === overlay ||
                 (e.target.closest && e.target.closest(".modal-close"))) {
                 hide();
@@ -228,9 +238,11 @@ var Onboarding = (function () {
                     'into the <b>Drop zone</b> on the <b>Storage</b> page, or open ' +
                     '<b>Info</b> for the full OS list.</p>' +
                 '<p class="modal-drag">In a hurry? Use the <b>magic wand</b> on ' +
-                    'the <b>Panel</b> page to power up and boot a guest OS automatically — ' +
-                    'the hardware is reconfigured and the login is typed for you.</p>' +
+                    'the <b>Panel</b> page — or press <b>Quick boot</b> below — to ' +
+                    'power up and boot a guest OS automatically: the hardware is ' +
+                    'reconfigured and the login is typed for you.</p>' +
                 '<button type="button" class="modal-close">Got it</button>' +
+                '<button type="button" class="modal-close" data-onboarding-action="quickboot">Quick boot</button>' +
             '</div>'
         );
     }
