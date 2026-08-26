@@ -23,9 +23,11 @@ the project develops. The highlights since alpha2:
 - **Smaller UX wins**: Quick boot button in the welcome dialog, Auto-boot
   shortcut in the power-off dialog, floating REBOOT/STATE buttons on the
   VT52 console page.
-- **Fixes**: `trap()` halts on runaway recursion instead of crashing, and
+- **Fixes**: `trap()` halts on runaway recursion instead of crashing,
   config-changing restores no longer trigger the browser's "Reload site?"
-  prompt.
+  prompt, and the quick boot types `BOOT PR` / `BOOT RK1` in the historical
+  upper case for the upper-case-only DEC guests (the *nix family keeps its
+  lower-case commands).
 - **Docs**: user manual cross-links, cropped CONFIG screenshots, rewritten
   Storage section with per-tab screenshots.
 

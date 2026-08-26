@@ -50,6 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ([`7d85b61`](https://github.com/amesk/yaPDP/commit/7d85b61)).
 - Restoring a snapshot that changes the hardware config no longer triggers
   the browser's "Reload site?" beforeunload prompt ([`6c6d420`](https://github.com/amesk/yaPDP/commit/6c6d420)).
+- Quick boot typed boot commands in lower case for the upper-case-only DEC
+  guests (BASIC-11, ODT-11, ED-11, RT-11, RSTS, XXDP, RSX-11M) — a real
+  ASR-33 teletype cannot produce lower case, and those systems do not
+  understand it. The wizard now types `BOOT PR` / `BOOT RK1` etc.; the
+  case-sensitive *nix guests (Unix V5, BSD 2.9/2.11, ULTRIX-11) keep their
+  lower-case commands ([`1f999ab`](https://github.com/amesk/yaPDP/commit/1f999ab)).
 
 ### Documentation
 
