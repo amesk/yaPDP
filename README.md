@@ -410,7 +410,7 @@ Use the sidebar to switch between:
 - **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
 - **Printer** — the LP11 line printer page, shown only when configured
 - **Display** — the VT11 vector-graphics CRT page, shown only when configured
-- **Storage** — storage media: paper-tape reader, disk/tape image import and mounted images
+- **Storage** — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export)
 - **Config** — configure the emulated peripherals (persisted between sessions)
 - **Info** — detailed instructions, OS reference and the About block
   (version, website, author and license). A "yaPDP vX.Y.Z" marker at the
@@ -453,10 +453,13 @@ feed/tear, VT52 key clicks, the bell and the mechanical click of every
 switch, button and teletype key — like a checkbox; its state is persisted
 with the rest of the configuration.
 
-The **Storage** page manages the storage media: the paper-tape reader file
-selector, the drag & drop disk/tape image drop zone and the
-mounted-images/Unmount list. Images dropped there are mounted into DataLoader
-and persist in IndexedDB across sessions.
+The **Storage** page manages the storage media in two tabs: **Images** (the
+drag & drop disk/tape image drop zone, the mounted-images/Unmount list and
+the disk export) and **Paper Tapes** (the paper-tape reader file selector, a
+small `.ptap` drop zone and the punch-tape export). Images dropped there are
+mounted into DataLoader and persist in IndexedDB across sessions. The drop
+target (including the full-window one) appears only while the Storage page
+is active.
 
 The **REBOOT** button is a round button with a restart icon, pinned to the
 top-left corner of the window just right of the navigation sidebar (mirroring

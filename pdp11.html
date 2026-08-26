@@ -1215,89 +1215,119 @@
         drag & drop, and unmount mounted images.
       </p>
 
-      <div class="config-form">
-        <div class="config-field">
-          <span class="config-label">Paper tape reader file</span>
-          <div class="config-control">
-            <select id="ptr">
-              <option value="">--none--</option>
-              <option value="DEC-11-AJPB-PB">BASIC-11 V007A</option>
-              <option value="DEC-11-O2PA-PB">ODT-11X-V004A</option>
-              <option value="ED-11-V004B-8K">ED-11-V004B</option>
-              <option value="lander">Lunar Lander</option>
-              <option value="bootcode">Bootcode</option>
-            </select>
-            &nbsp;
-            <button type="button" id="ptr-rewind" onclick="ptrRewindTape()"
-              title="Rewind the paper tape to the beginning">Rewind tape</button>
-            <span id="ptr-state" class="tape-state none">No tape</span>
-            <span class="config-hint">Loaded as <code>name.ptap</code> from the media directory. Dropped
-              <code>.ptap</code> files also appear here. Rewind restarts the tape.</span>
+      <div class="config-tabs">
+        <div class="config-tab-bar" role="tablist" aria-label="Storage sections">
+          <button type="button" class="config-tab active" id="storage-tab-images" role="tab" aria-selected="true"
+            aria-controls="storage-panel-images" data-config-tab="images">Images</button>
+          <button type="button" class="config-tab" id="storage-tab-tapes" role="tab" aria-selected="false"
+            aria-controls="storage-panel-tapes" data-config-tab="tapes">Paper Tapes</button>
+        </div>
+
+        <div class="config-tab-panel active" id="storage-panel-images" role="tabpanel"
+          aria-labelledby="storage-tab-images">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">Drop image</span>
+              <div class="config-control">
+                <span class="drop-zone" id="drop-zone" title="Drop a disk/tape image here">
+                  <span class="drop-zone-icon">&#8681;</span>
+                  <span class="drop-zone-text">Drop image</span>
+                  <span class="drop-zone-hint">.dsk .tap .ptap .zst</span>
+                  <input type="file" id="drop-file-input" accept=".dsk,.tap,.ptap,.zst,.dsk.zst,.tap.zst,.ptap.zst" multiple
+                    hidden>
+                </span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Mounted images</span>
+              <div class="config-control">
+                <select id="mounted-select" disabled>
+                  <option value="">--none--</option>
+                </select>
+                &nbsp;
+                <button type="button" id="mounted-remove" disabled>Unmount</button>
+                <span id="mounted-count" class="mounted-count">0 images</span>
+                <span class="config-hint">Mounted images persist across sessions.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Export disk</span>
+              <div class="config-control">
+                <select id="downLoadSelect" disabled>
+                  <option value="">--none--</option>
+                </select>
+                <span class="config-hint">Download a mounted disk image to your machine.</span>
+              </div>
+            </div>
+
+            <div class="config-field">
+              <span class="config-label">Persistent disk changes</span>
+              <div class="config-control">
+                <select id="persist-select" disabled>
+                  <option value="">--no saved changes--</option>
+                </select>
+                &nbsp;
+                <button type="button" id="persist-reset" title="Discard saved write-back blocks for the selected image">Reset image</button>
+                &nbsp;
+                <button type="button" id="persist-reset-all" title="Discard saved write-back blocks for all images">Reset all</button>
+                <span id="persist-count" class="persist-count"></span>
+                <span class="config-hint">Guest-OS writes are saved to browser storage and overlaid on the base
+                  image on the next launch. Reset discards the saved changes, returning the image to its pristine state.</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="config-field">
-          <span class="config-label">Export disk</span>
-          <div class="config-control">
-            <select id="downLoadSelect" disabled>
-              <option value="">--none--</option>
-            </select>
-            <span class="config-hint">Download a mounted disk image to your machine.</span>
-          </div>
-        </div>
+        <div class="config-tab-panel" id="storage-panel-tapes" role="tabpanel"
+          aria-labelledby="storage-tab-tapes">
+          <div class="config-form">
+            <div class="config-field">
+              <span class="config-label">Paper tape reader file</span>
+              <div class="config-control">
+                <select id="ptr">
+                  <option value="">--none--</option>
+                  <option value="DEC-11-AJPB-PB">BASIC-11 V007A</option>
+                  <option value="DEC-11-O2PA-PB">ODT-11X-V004A</option>
+                  <option value="ED-11-V004B-8K">ED-11-V004B</option>
+                  <option value="lander">Lunar Lander</option>
+                  <option value="bootcode">Bootcode</option>
+                </select>
+                &nbsp;
+                <button type="button" id="ptr-rewind" onclick="ptrRewindTape()"
+                  title="Rewind the paper tape to the beginning">Rewind tape</button>
+                <span id="ptr-state" class="tape-state none">No tape</span>
+                <span class="config-hint">Loaded as <code>name.ptap</code> from the media directory. Dropped
+                  <code>.ptap</code> files also appear here. Rewind restarts the tape.</span>
+              </div>
+            </div>
 
-        <div class="config-field">
-          <span class="config-label">Export paper tape</span>
-          <div class="config-control">
-            <button type="button" id="punch-download" onclick="downloadPunchTape()"
-              title="Download the punched paper tape (.ptap)">Download</button>
-            &nbsp;
-            <button type="button" id="punch-clear" onclick="clearPunchTape()"
-              title="Discard the current punch tape buffer">Clear</button>
-            <span id="punch-size" class="punch-size">0 bytes</span>
-            <span class="config-hint">Download the punched paper tape (.ptap) to your machine.</span>
-          </div>
-        </div>
+            <div class="config-field">
+              <span class="config-label">Drop paper tape</span>
+              <div class="config-control">
+                <span class="drop-zone" id="drop-zone-ptap" title="Drop a paper tape (.ptap) here">
+                  <span class="drop-zone-icon">&#8681;</span>
+                  <span class="drop-zone-text">Drop tape</span>
+                  <span class="drop-zone-hint">.ptap .ptap.zst</span>
+                  <input type="file" id="drop-file-input-ptap" accept=".ptap,.ptap.zst" multiple hidden>
+                </span>
+                <span class="config-hint">Dropped tapes are added to the reader file list above.</span>
+              </div>
+            </div>
 
-        <div class="config-field">
-          <span class="config-label">Drop image</span>
-          <div class="config-control">
-            <span class="drop-zone" id="drop-zone" title="Drop a disk/tape image here">
-              <span class="drop-zone-icon">&#8681;</span>
-              <span class="drop-zone-text">Drop image</span>
-              <span class="drop-zone-hint">.dsk .tap .ptap .zst</span>
-              <input type="file" id="drop-file-input" accept=".dsk,.tap,.ptap,.zst,.dsk.zst,.tap.zst,.ptap.zst" multiple
-                hidden>
-            </span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Mounted images</span>
-          <div class="config-control">
-            <select id="mounted-select" disabled>
-              <option value="">--none--</option>
-            </select>
-            &nbsp;
-            <button type="button" id="mounted-remove" disabled>Unmount</button>
-            <span id="mounted-count" class="mounted-count">0 images</span>
-            <span class="config-hint">Mounted images persist across sessions.</span>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <span class="config-label">Persistent disk changes</span>
-          <div class="config-control">
-            <select id="persist-select" disabled>
-              <option value="">--no saved changes--</option>
-            </select>
-            &nbsp;
-            <button type="button" id="persist-reset" title="Discard saved write-back blocks for the selected image">Reset image</button>
-            &nbsp;
-            <button type="button" id="persist-reset-all" title="Discard saved write-back blocks for all images">Reset all</button>
-            <span id="persist-count" class="persist-count"></span>
-            <span class="config-hint">Guest-OS writes are saved to browser storage and overlaid on the base
-              image on the next launch. Reset discards the saved changes, returning the image to its pristine state.</span>
+            <div class="config-field">
+              <span class="config-label">Export paper tape</span>
+              <div class="config-control">
+                <button type="button" id="punch-download" onclick="downloadPunchTape()"
+                  title="Download the punched paper tape (.ptap)">Download</button>
+                &nbsp;
+                <button type="button" id="punch-clear" onclick="clearPunchTape()"
+                  title="Discard the current punch tape buffer">Clear</button>
+                <span id="punch-size" class="punch-size">0 bytes</span>
+                <span class="config-hint">Download the punched paper tape (.ptap) to your machine.</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

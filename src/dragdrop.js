@@ -301,10 +301,70 @@
     // ------------------------------------------------------------------
     // UI wiring
     // ------------------------------------------------------------------
+    // The full-window drop overlay and the window-level drop handling are
+    // scoped to the Storage page: mounting media is a Storage-page action,
+    // so the drop target must not appear (or silently do nothing) while the
+    // user is looking at the Panel or any other page.
+    function storagePageActive() {
+      var page = document.getElementById("page-storage");
+      return !!(page && page.classList.contains("active"));
+    }
+
+    // A dropped file name matches the paper-tape zone (raw or .zst).
+    function isPtap(name) {
+      var n = String(name || "").toLowerCase();
+      return n.endsWith(".ptap") || n.endsWith(".ptap.zst");
+    }
+
+    // Wire one drop-zone element: click opens the file picker, drag events
+    // highlight the zone, drops are processed (optionally filtered by name).
+    function wireZone(zone, input, filter) {
+      if (!zone) return;
+
+      function pick(files) {
+        var list = files ? Array.prototype.slice.call(files) : [];
+        if (filter) list = list.filter(function (f) { return filter(f.name); });
+        processFiles(list);
+      }
+
+      zone.addEventListener("click", function () {
+        if (input) input.click();
+      });
+      if (input) {
+        input.addEventListener("change", function () {
+          pick(input.files);
+          input.value = "";
+        });
+      }
+
+      ["dragenter", "dragover"].forEach(function (evt) {
+        zone.addEventListener(evt, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          zone.classList.add("dragover");
+        });
+      });
+      ["dragleave", "dragend"].forEach(function (evt) {
+        zone.addEventListener(evt, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          zone.classList.remove("dragover");
+        });
+      });
+      zone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        zone.classList.remove("dragover");
+        pick(e.dataTransfer && e.dataTransfer.files);
+      });
+    }
+
     function init() {
         var zone = document.getElementById("drop-zone");
         var overlay = document.getElementById("drop-overlay");
         var input = document.getElementById("drop-file-input");
+        var ptapZone = document.getElementById("drop-zone-ptap");
+        var ptapInput = document.getElementById("drop-file-input-ptap");
 
         // Re-mount images persisted from a previous session.
         dbGetAll().then(function (items) {
@@ -345,17 +405,9 @@
         }
 
         // Clicking the small control-bar zone opens the file picker.
-        if (zone) {
-            zone.addEventListener("click", function () {
-                if (input) input.click();
-            });
-        }
-        if (input) {
-            input.addEventListener("change", function () {
-                processFiles(input.files);
-                input.value = "";
-            });
-        }
+        wireZone(zone, input);
+        // The Paper Tapes tab has its own small zone restricted to .ptap.
+        wireZone(ptapZone, ptapInput, isPtap);
 
         // Unmount control: select an image and press Unmount to remove it
         // from DataLoader (and from IndexedDB so it does not return on reload).
@@ -370,35 +422,13 @@
             });
         }
 
-        // The small control-bar zone stays usable as an in-place target too.
-        if (zone) {
-            ["dragenter", "dragover"].forEach(function (evt) {
-                zone.addEventListener(evt, function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    zone.classList.add("dragover");
-                });
-            });
-            ["dragleave", "dragend"].forEach(function (evt) {
-                zone.addEventListener(evt, function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    zone.classList.remove("dragover");
-                });
-            });
-            zone.addEventListener("drop", function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                zone.classList.remove("dragover");
-                processFiles(e.dataTransfer && e.dataTransfer.files);
-            });
-        }
-
         // ------------------------------------------------------------------
         // Full-window drop overlay.
-        // While a file drag is in progress anywhere over the window, show a
-        // large drop target on top of the whole UI; hide it as soon as the
-        // drag leaves the window or the mouse is released.
+        // While a file drag is in progress anywhere over the Storage page,
+        // show a large drop target on top of the whole UI; hide it as soon as
+        // the drag leaves the window or the mouse is released. On any other
+        // page the drag is left to the browser (the "not allowed" cursor), so
+        // no drop affordance appears where mounting is not the current task.
         // ------------------------------------------------------------------
         var dragDepth = 0;
 
@@ -416,13 +446,13 @@
         }
 
         window.addEventListener("dragenter", function (e) {
-            if (!hasFiles(e)) return;
+            if (!hasFiles(e) || !storagePageActive()) return;
             e.preventDefault();
             dragDepth++;
             showOverlay();
         });
         window.addEventListener("dragover", function (e) {
-            if (!hasFiles(e)) return;
+            if (!hasFiles(e) || !storagePageActive()) return;
             e.preventDefault(); // required to allow the drop
         });
         window.addEventListener("dragleave", function (e) {
@@ -430,9 +460,14 @@
             if (dragDepth === 0) hideOverlay();
         });
         window.addEventListener("drop", function (e) {
+            if (!hasFiles(e)) return;
+            // Never let the browser open the dropped file itself; on pages
+            // other than Storage the drop is simply ignored.
             e.preventDefault();
             hideOverlay();
-            processFiles(e.dataTransfer && e.dataTransfer.files);
+            if (storagePageActive()) {
+                processFiles(e.dataTransfer && e.dataTransfer.files);
+            }
         });
         window.addEventListener("dragend", function (e) {
             e.preventDefault();

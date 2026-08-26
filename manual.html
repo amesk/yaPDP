@@ -535,21 +535,43 @@
 
             <h2 id="storage">Storage (paper tape, disk & tape images)</h2>
 
-            <p>The Storage page manages every kind of storage media:</p>
+            <p>The Storage page manages every kind of storage media. It has two tabs — <b>Images</b> and
+                <b>Paper Tapes</b> — because the two workflows are completely different.</p>
 
-            <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page"></p>
-            <p class="shot-caption">The Storage page: paper-tape reader, drop zone and mounted images.</p>
+            <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab"></p>
+            <p class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and
+                persistent disk changes.</p>
+
+            <p><b>Images tab:</b></p>
 
             <ul>
-                <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11, ODT‑11,
-                    ED‑11, or <a href="#vt11">Lunar Lander</a> from simulated paper tape — then boot with
-                    <code>boot pr</code>.</li>
                 <li><b>Drag & drop drop zone.</b> Drop any disk/tape image here — <code>.dsk</code>,
-                    <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are supported.
-                </li>
+                    <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are
+                    supported. While the Storage page is active you can also drop a file anywhere over the window —
+                    a full-window drop target appears.</li>
                 <li><b>Mounted images / Unmount list.</b> Shows currently mounted images and lets you unmount them.
-                    Mounted images persist in browser storage (IndexedDB) and are re-mounted automatically on the next
-                    launch — changes to disk contents survive across sessions.</li>
+                    Mounted images persist in browser storage (IndexedDB) and are re-mounted automatically on the
+                    next launch — changes to disk contents survive across sessions.</li>
+                <li><b>Export disk.</b> Downloads a mounted disk image to your machine.</li>
+                <li><b>Persistent disk changes.</b> Guest-OS writes are saved to browser storage and overlaid on the
+                    base image on the next launch; reset discards the saved changes, returning the image to its
+                    pristine state.</li>
+            </ul>
+
+            <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab"></p>
+            <p class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code>
+                drop zone and the punch-tape export.</p>
+
+            <p><b>Paper Tapes tab:</b></p>
+
+            <ul>
+                <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11,
+                    ODT‑11, ED‑11, or <a href="#vt11">Lunar Lander</a> from simulated paper tape — then boot with
+                    <code>boot pr</code>. Dropped <code>.ptap</code> files appear here too.</li>
+                <li><b>Drop paper tape.</b> A small drop zone accepting <code>.ptap</code> and
+                    <code>.ptap.zst</code> — dropped tapes are added to the reader file selector.</li>
+                <li><b>Export paper tape.</b> Downloads the punched paper tape (<code>.ptap</code>) from the punch
+                    buffer, or clears the buffer.</li>
             </ul>
 
             <blockquote>
@@ -808,8 +830,8 @@
                 </li>
                 <li><a href="#vt11"><b>Display</b></a> — the VT11 vector-graphics CRT page, shown only when
                     configured.</li>
-                <li><a href="#storage"><b>Storage</b></a> — paper-tape reader, disk/tape image import and mounted
-                    images.</li>
+                <li><a href="#storage"><b>Storage</b></a> — storage media in two tabs: Images (drop zone, mounted
+                    images) and Paper Tapes (reader, punch export).</li>
                 <li><a href="#config"><b>Config</b></a> — configure the emulated peripherals (persisted between
                     sessions).</li>
                 <li><b>Info</b> — detailed instructions, OS reference and the About block (version, website,

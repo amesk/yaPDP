@@ -126,6 +126,14 @@ async function selectConfigTab(page, name) {
     }, name);
 }
 
+// Activate one Storage tab (images | tapes) the same way.
+async function selectStorageTab(page, name) {
+    await page.evaluate((n) => {
+        const btn = document.getElementById("storage-tab-" + n);
+        if (btn && typeof btn.click === "function") btn.click();
+    }, name);
+}
+
 // --- Shot lists -----------------------------------------------------------
 // `wait` is the settle delay (ms) after switching pages / injecting content,
 // letting paced printing and layout animations finish before the capture.
@@ -138,6 +146,8 @@ const SHOTS_TTY = [
     // The VT11 page is captured separately with Lunar Lander running (see
     // captureVt11Lander), so the illustration shows a real landing scene.
     { page: "storage",      file: "storage.png",             wait: 1500 },
+    // The Storage page has two tabs; capture each so the manual can show both.
+    { page: "storage",      file: "storage-tapes.png",       wait: 1500, prep: (p) => selectStorageTab(p, "tapes") },
     // Config page: one screenshot per tab, cropped to the page's own content
     // column (heading, tabs and the Apply bar — no sidebar, no empty
     // backdrop gutters). The Equipment form is the tallest, so the viewport
