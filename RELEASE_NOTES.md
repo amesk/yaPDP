@@ -1,3 +1,36 @@
+## Unreleased — changes since v0.1.0-alpha2
+
+The next release is still in the works; these notes are kept up to date as
+the project develops. The highlights since alpha2:
+
+- **Full machine-state snapshots (L2/L3).** Save/restore now captures the
+  whole machine: CPU, RAM, MMU, mounted images, the registers of all nine
+  I/O-page devices (including the punch buffer), the punched paper tape,
+  the LP11 printed paper and ON LINE state, the VT52 terminals and the VT11
+  vector display with its CRT image. Restoring also re-creates the hardware
+  device set.
+- **Machine-state dialog.** The STATE floating button opens a snapshot
+  manager (save/load/rename/delete) with styled dialogs, replacing the old
+  snapshot section on the Storage page.
+- **Persistent disk write-back cache (DiskStore).** Guest-OS writes survive
+  reloads and are overlaid on the base image, with per-image or full reset.
+- **Linux desktop builds**: new deb and AppImage bundle targets.
+- **Storage page tabs.** Images and Paper Tapes now live in separate tabs;
+  the Paper Tapes tab has its own `.ptap` drop zone, and the full-window
+  drop target appears only on the Storage page.
+- **About block**: version marker in the sidebar and an About section on
+  the Info page.
+- **Smaller UX wins**: Quick boot button in the welcome dialog, Auto-boot
+  shortcut in the power-off dialog, floating REBOOT/STATE buttons on the
+  VT52 console page.
+- **Fixes**: `trap()` halts on runaway recursion instead of crashing, and
+  config-changing restores no longer trigger the browser's "Reload site?"
+  prompt.
+- **Docs**: user manual cross-links, cropped CONFIG screenshots, rewritten
+  Storage section with per-tab screenshots.
+
+---
+
 # yaPDP v0.1.0-alpha2 — Release Notes
 
 - **Release date:** 2026-08-24

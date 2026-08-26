@@ -8,13 +8,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Full machine-state snapshots.** The snapshot feature now captures the
+  whole machine, not just the CPU: RAM, MMU and mounted images ([`d292244`](https://github.com/amesk/yaPDP/commit/d292244)); the registers of all nine I/O-page devices — KW11, DL11×3, LP11, PTR11/PTP11 (including the punch buffer), TM11, RK11, RL11, RP11, UDA50 — through clean `snapshot()`/`restore()` hooks that never read registers with hardware side effects ([`f0b866a`](https://github.com/amesk/yaPDP/commit/f0b866a)); the punched paper tape ([`d06f564`](https://github.com/amesk/yaPDP/commit/d06f564)); the LP11 printed paper ([`27a95a1`](https://github.com/amesk/yaPDP/commit/27a95a1)); the LP11 ON LINE state ([`142b2c9`](https://github.com/amesk/yaPDP/commit/142b2c9)); the VT52 terminals with their screen buffers ([`3940ebb`](https://github.com/amesk/yaPDP/commit/3940ebb)); and the VT11 vector display — registers and the CRT image itself ([`21d420f`](https://github.com/amesk/yaPDP/commit/21d420f)).
+- **Machine-state dialog.** The STATE floating button opens a snapshot
+  manager (save/load/rename/delete) that replaces the old snapshot section
+  on the Storage page ([`0c4289b`](https://github.com/amesk/yaPDP/commit/0c4289b)). Restoring a snapshot also restores the hardware device set, with styled confirm modals ([`24d3772`](https://github.com/amesk/yaPDP/commit/24d3772)) and a styled rename dialog instead of the native `window.prompt` ([`8e42159`](https://github.com/amesk/yaPDP/commit/8e42159)).
+- **Persistent disk write-back cache (DiskStore).** Guest-OS writes are
+  saved to browser storage and overlaid on the base image on the next
+  launch, with per-image or full reset on the Storage page ([`49f379b`](https://github.com/amesk/yaPDP/commit/49f379b)).
+- **Linux desktop builds**: deb and AppImage bundle targets for the Tauri
+  app ([`14c14a7`](https://github.com/amesk/yaPDP/commit/14c14a7)).
+- **About block**: version marker in the navigation sidebar and an About
+  section on the Info page ([`e091062`](https://github.com/amesk/yaPDP/commit/e091062)).
+- **Storage page tabs** (Images / Paper Tapes): the two storage workflows
+  are now separated; the Paper Tapes tab gets its own `.ptap` drop zone,
+  and the full-window drop target appears only while the Storage page is
+  active (previously it showed on every page, where a drop mounted the
+  image with no visible feedback) ([`faae411`](https://github.com/amesk/yaPDP/commit/faae411)).
+- **Quick boot button** in the welcome dialog and an **Auto-boot shortcut**
+  in the power-off dialog ([`d2e8a72`](https://github.com/amesk/yaPDP/commit/d2e8a72)).
+- Floating **REBOOT and STATE buttons on the VT52 console page** too
+  ([`820def1`](https://github.com/amesk/yaPDP/commit/820def1)).
+
 ### Changed
 
 - Repository moved from GitVerse to GitHub — the canonical home is now
   [`github.com/amesk/yaPDP`](https://github.com/amesk/yaPDP). The git remote,
   all landing-page links and the `repository` fields in `package.json` and
   `Cargo.toml` now point at GitHub; every commit/release URL in this changelog
-  has been updated accordingly.
+  has been updated accordingly ([`2e13a61`](https://github.com/amesk/yaPDP/commit/2e13a61)).
+- Snapshot UI hint updated to reflect the full L2/L3 state capture
+  ([`1c3f208`](https://github.com/amesk/yaPDP/commit/1c3f208)).
+
+### Fixed
+
+- `trap()`: runaway trap recursion on a corrupted stack (e.g. from an e2e
+  test mutating PC/SP/RAM while the CPU is running) now halts the machine
+  like real PDP-11 hardware instead of crashing with a `RangeError`
+  ([`7d85b61`](https://github.com/amesk/yaPDP/commit/7d85b61)).
+- Restoring a snapshot that changes the hardware config no longer triggers
+  the browser's "Reload site?" beforeunload prompt ([`6c6d420`](https://github.com/amesk/yaPDP/commit/6c6d420)).
+
+### Documentation
+
+- README and user manual: machine-state section, the STATE button in the
+  floating-controls table, refreshed screenshots ([`9fdd8bf`](https://github.com/amesk/yaPDP/commit/9fdd8bf)).
+- User manual: internal cross-links between sections ([`906c274`](https://github.com/amesk/yaPDP/commit/906c274)).
+- User manual: CONFIG screenshots cropped to the page's content column
+  ([`43c992d`](https://github.com/amesk/yaPDP/commit/43c992d)).
+- User manual and README: Storage section rewritten for the two tabs, with
+  new per-tab screenshots ([`faae411`](https://github.com/amesk/yaPDP/commit/faae411)).
+
+### Chore
+
+- Demo video pipeline: teletype human-input capture, VT52 pacing, MP4
+  montage and YouTube-ready exports ([`18549e7`](https://github.com/amesk/yaPDP/commit/18549e7)).
 
 ## [0.1.0-alpha2] - 2026-08-24
 
