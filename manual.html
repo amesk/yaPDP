@@ -317,8 +317,9 @@
             </p>
 
             <ol>
-                <li>Opens a picker listing every guest operating system (and the paper tapes).</li>
-                <li>Chooses one, switches to the operator console, and reboots the machine.</li>
+                <li>Opens a picker listing every guest operating system (and the <a href="#storage">paper
+                    tapes</a>).</li>
+                <li>Chooses one, switches to the <a href="#console">operator console</a>, and reboots the machine.</li>
                 <li>Types the <code>boot <device></code> command — and the login too, where the credentials are
                     known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login <code>root</code>).</li>
             </ol>
@@ -330,7 +331,8 @@
                 The wizard is prompt-aware: it watches the console output and types the login only when the guest
                 actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
                 prompt reliably. Each guest also declares the machine profile it wants — e.g. RT‑11/RSX/RSTS enable the
-                LP11 line printer, and Unix V5/BSD force a teletype console — so the wizard reconfigures the machine if
+                <a href="#printer">LP11 line printer</a>, and Unix V5/BSD force a teletype console — so the wizard
+                reconfigures the machine if
                 needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and
                 clear screens), and a toast warns
                 <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being
@@ -389,7 +391,8 @@
 
             <p>
                 The dialog also offers a shortcut to the CONFIG <b>Auto-boot</b> option: tick the checkbox to start
-                the default bootstrap automatically on every future power-on, without visiting the Config page. The
+                the default bootstrap automatically on every future power-on, without visiting the <a
+                    href="#config">Config page</a>. The
                 choice persists and stays in sync with the CONFIG page checkbox.
             </p>
 
@@ -399,7 +402,8 @@
 
             <p>
                 The operator console is what the PDP‑11 uses as its <code>TT0:</code> — the machine's own typewriter.
-                Depending on the CONFIG page, it is either a <b>Model 33 ASR teletype</b> or a <b>DECscope VT52</b>.
+                Depending on the <a href="#config">CONFIG page</a>, it is either a <b>Model 33 ASR teletype</b> or a
+                <b>DECscope VT52</b>.
             </p>
 
             <h3>Model 33 ASR teletype</h3>
@@ -431,8 +435,8 @@
                     scrollbar appears and the view follows the freshly printed line.</li>
                 <li><b>ASR reader/punch.</b> Beside the machine sits the ASR tape reader/punch unit. Every byte echoed
                     to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track
-                    8 = parity). As on a real ASR‑33 the punch is <b>OFF by default</b> — enable it from the CONFIG
-                    page or its own control.</li>
+                    8 = parity). As on a real ASR‑33 the punch is <b>OFF by default</b> — enable it from the
+                    <a href="#config">CONFIG page</a> or its own control.</li>
             </ul>
 
             <h3>VT52 as the console</h3>
@@ -452,7 +456,8 @@
             <h2 id="user-terminals">User Terminals (TTY 1 / TTY 2)</h2>
 
             <p>
-                Up to two user <b>VT52</b> terminals (shown only when configured on the CONFIG page) let guest OSes
+                Up to two user <b>VT52</b> terminals (shown only when configured on the <a href="#config">CONFIG
+                    page</a>) let guest OSes
                 that prefer video terminals run side by side. Each is drawn as an authentic slanted DECscope monoblock:
                 an off-white moulded-plastic cabinet with a vent grille, a recessed screen in a deep bezel, and a plain
                 plastic side panel with a raised ridge. Input comes from the physical keyboard, as on the original
@@ -490,8 +495,9 @@
             <p class="shot-caption">The LP11 line printer printing a job listing.</p>
 
             <ul>
-                <li><b>Speed.</b> Like the real LP11, it echoes characters far faster than the Model 33 ASR console
-                    teletype (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300
+                <li><b>Speed.</b> Like the real LP11, it echoes characters far faster than the <a
+                        href="#console">Model 33 ASR console
+                    teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300
                     lines/min.</li>
                 <li><b>DONE handshake.</b> The LP11 honours the historical DONE handshake: writing LPDB clears DONE and
                     re-asserts it as each character is consumed by the mechanism, so a guest print job is throttled at
@@ -516,8 +522,10 @@
 
             <p>
                 An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024×768
-                logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. Lunar Lander uses it —
-                the quick-boot wizard enables the display and switches to the Display page automatically.
+                logical resolution, auto-scaled to fit the window), enabled from the <a href="#config">CONFIG page</a>.
+                Lunar Lander uses it —
+                the <a href="#quick-start">quick-boot wizard</a> enables the display and switches to the Display page
+                automatically.
             </p>
 
             <p><img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display"></p>
@@ -534,7 +542,8 @@
 
             <ul>
                 <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11, ODT‑11,
-                    ED‑11, or Lunar Lander from simulated paper tape — then boot with <code>boot pr</code>.</li>
+                    ED‑11, or <a href="#vt11">Lunar Lander</a> from simulated paper tape — then boot with
+                    <code>boot pr</code>.</li>
                 <li><b>Drag & drop drop zone.</b> Drop any disk/tape image here — <code>.dsk</code>,
                     <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are supported.
                 </li>
@@ -545,7 +554,7 @@
 
             <blockquote>
                 <em>Note:</em> the paper-tape reader is driven by the console bytes — every byte echoed to the console
-                punches a matching row of holes on the ASR paper tape.
+                punches a matching row of holes on the <a href="#console">ASR paper tape</a>.
             </blockquote>
 
             <hr>
@@ -553,7 +562,8 @@
             <h2 id="machine-state">Machine State (STATE button)</h2>
 
             <p>
-                The round <b>STATE</b> button (top-left corner, right of REBOOT) opens the machine-state dialog — a
+                The round <b>STATE</b> button (top-left corner, right of <a href="#controls">REBOOT</a>) opens the
+                machine-state dialog — a
                 full save/restore of the emulated PDP‑11, not just the CPU: registers, memory, every I/O device
                 (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype
                 and LP11, the VT52 screen contents and even the VT11 vector-display picture are all captured. Think of
@@ -594,14 +604,14 @@
                 <div class="config-item-text">
                     <h3>Equipment</h3>
                     <ul>
-                        <li><b>Console terminal</b> — the operator console (tty0): a Model 33 ASR teletype or a
-                            DECscope VT52.</li>
-                        <li><b>User terminals</b> — 0–2 extra VT52 terminals (TTY 1 / TTY 2), each with its own
-                            sidebar page.</li>
-                        <li><b>Line printer (LP11)</b> — install the animated LP11 line printer on its own Printer
-                            page.</li>
+                        <li><b>Console terminal</b> — the <a href="#console">operator console</a> (tty0): a Model 33
+                            ASR teletype or a DECscope VT52.</li>
+                        <li><b>User terminals</b> — 0–2 extra <a href="#user-terminals">VT52 terminals (TTY 1 /
+                            TTY 2)</a>, each with its own sidebar page.</li>
+                        <li><b>Line printer (LP11)</b> — install the animated LP11 line printer on its own
+                            <a href="#printer">Printer page</a>.</li>
                         <li><b>VT11 graphics display</b> — install the DEC VT11 vector-graphics terminal on its own
-                            Display page.</li>
+                            <a href="#vt11">Display page</a>.</li>
                         <li><b>Teletype print width</b> — 72 or 80 columns for the Model 33 ASR console (a teletype is
                             at most an 80-column machine).</li>
                         <li><b>Printer width</b> — 72/80/100/132 columns for the LP11 printer page.</li>
@@ -690,7 +700,7 @@
             <h2 id="guest-oses">Guest Operating Systems</h2>
 
             <p>The emulator ships with ready-to-boot disk and tape images. Just type <code>boot <device></code>
-                at the <code>Boot></code> prompt — or pick one with the magic wand.</p>
+                at the <code>Boot></code> prompt — or pick one with the <a href="#quick-start">magic wand</a>.</p>
 
             <table style="margin-left:0; padding:3px;">
                 <thead>
@@ -789,14 +799,19 @@
             <p>Use the sidebar to switch between:</p>
 
             <ul>
-                <li><b>Panel</b> — the front panel with switches and LEDs.</li>
-                <li><b>Console</b> — the operator console: a Model 33 ASR teletype (or a DECscope VT52, when the
-                    console terminal is a VT52).</li>
-                <li><b>TTY 1 / TTY 2</b> — user VT52 terminals, shown only when configured.</li>
-                <li><b>Printer</b> — the LP11 line printer page, shown only when configured.</li>
-                <li><b>Display</b> — the VT11 vector-graphics CRT page, shown only when configured.</li>
-                <li><b>Storage</b> — paper-tape reader, disk/tape image import and mounted images.</li>
-                <li><b>Config</b> — configure the emulated peripherals (persisted between sessions).</li>
+                <li><a href="#front-panel"><b>Panel</b></a> — the front panel with switches and LEDs.</li>
+                <li><a href="#console"><b>Console</b></a> — the operator console: a Model 33 ASR teletype (or a
+                    DECscope VT52, when the console terminal is a VT52).</li>
+                <li><a href="#user-terminals"><b>TTY 1 / TTY 2</b></a> — user VT52 terminals, shown only when
+                    configured.</li>
+                <li><a href="#printer"><b>Printer</b></a> — the LP11 line printer page, shown only when configured.
+                </li>
+                <li><a href="#vt11"><b>Display</b></a> — the VT11 vector-graphics CRT page, shown only when
+                    configured.</li>
+                <li><a href="#storage"><b>Storage</b></a> — paper-tape reader, disk/tape image import and mounted
+                    images.</li>
+                <li><a href="#config"><b>Config</b></a> — configure the emulated peripherals (persisted between
+                    sessions).</li>
                 <li><b>Info</b> — detailed instructions and OS reference.</li>
             </ul>
 
@@ -819,7 +834,7 @@
                         </td>
                         <td>Top-right corner (every page except Info)</td>
                         <td>Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login.
-                        </td>
+                            See <a href="#quick-start">Quick Start</a>.</td>
                     </tr>
                     <tr>
                         <td class="disk control-cell">
@@ -827,7 +842,8 @@
                             <span class="control-name">REBOOT</span>
                         </td>
                         <td>Top-left corner, just right of the sidebar (Panel, Console and TTY pages)</td>
-                        <td>Round button with a restart icon. Restarts the machine; when Auto-boot is enabled it
+                        <td>Round button with a restart icon. Restarts the machine; when <a href="#config">Auto-boot</a>
+                            is enabled it
                             also boots the built-in default loader. By default a confirmation dialog asks first, with
                             a "Don't show this warning anymore" option.</td>
                     </tr>
@@ -883,8 +899,10 @@
             <p>
                 If a guest OS image cannot be fetched completely — a big BSD image dropped by the hosting server
                 mid-download, or an image that is not bundled in the Minimal desktop build — the emulator doesn't stall
-                silently. A dialog in the same shared modal style as the first-run hint explains that the image is
-                incomplete and offers <b>Open Storage</b>, which jumps straight to the drop zone for a manual
+                silently. A dialog in the same shared modal style as the <a href="#quick-start">first-run hint</a>
+                explains that the image is
+                incomplete and offers <b><a href="#storage">Open Storage</a></b>, which jumps straight to the drop
+                zone for a manual
                 drag & drop of the downloaded file.
             </p>
 
