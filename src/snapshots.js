@@ -367,6 +367,11 @@ var SnapshotStore = (() => {
                 applySnapshotConfig(snap);
             }
             if (typeof location !== "undefined" && location.reload) {
+                // applySnapshotConfig() just rewrote the persisted config
+                // behind the Config form's back, so isConfigDirty() would
+                // make the beforeunload guard ask "Reload site?" — suppress
+                // it exactly like the quick-boot wizard does.
+                if (typeof window !== "undefined") window.__allowConfigReload = true;
                 location.reload();
                 return true;
             }
@@ -429,6 +434,10 @@ var SnapshotStore = (() => {
                 if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("init: config mismatch -> apply + reload");
                 applySnapshotConfig(snap);
                 if (typeof location !== "undefined" && location.reload) {
+                    // Same as in load(): the persisted config changed behind
+                    // the Config form's back — suppress the beforeunload
+                    // "Reload site?" prompt.
+                    if (typeof window !== "undefined") window.__allowConfigReload = true;
                     location.reload();
                     return false;
                 }
