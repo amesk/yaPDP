@@ -53,17 +53,18 @@ function switchPage(page) {
     if (canvas) canvas.focus();
   }
 
-  // The floating REBOOT button is an operator action: show it on the console
-  // teletype, the VT52 terminal (TTY 1) and the front Panel page.
+  // The floating REBOOT button is an operator action: show it on the operator
+  // console (teletype or VT52 console), the VT52 terminal (TTY 1) and the
+  // front Panel page.
   var rebootBtn = document.getElementById('reboot-btn');
   if (rebootBtn) {
-    rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52' || page === 'panel'));
+    rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52-console' || page === 'vt52' || page === 'panel'));
   }
 
   // The floating STATE button (machine-state dialog) mirrors REBOOT.
   var stateBtn = document.getElementById('state-btn');
   if (stateBtn) {
-    stateBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52' || page === 'panel'));
+    stateBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52-console' || page === 'vt52' || page === 'panel'));
   }
 
   // The floating quick-boot (magic wand) button is a global action: show it on
