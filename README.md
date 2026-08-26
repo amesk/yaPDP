@@ -69,6 +69,56 @@ npm run screenshots:os          # all five guest-OS shots
 npm run screenshots:os bsd      # a single shot (file name or device key)
 ```
 
+Short demonstration videos (guest-OS boots, the LP11/printer/paper-tape
+hardware, the VT11 Lunar Lander) are recorded by
+[`tools/record-video.js`](tools/record-video.js) with `puppeteer-stream` — a
+WebRTC tab-capture bridge that records both video and the in-tab audio
+(teletype chatter, LP11 buzz, power-supply hum) into a WebM file. Both the
+screenshot and video generators share [`tools/console-wait.js`](tools/console-wait.js):
+a render hook (fed by the console's `onChar` in `src/pdp11-app.js`) makes them
+wait until the teletype has REALLY printed the output, so captures never cut
+mid-print:
+
+```bash
+npm install                     # installs puppeteer-stream + ffmpeg-static
+npm run record:video            # all guest-OS clips
+npm run record:video rt11       # a single clip (file name or device key)
+npm run record:video -- --headed  # force a visible window (most reliable audio)
+```
+
+Output: `video/<name>.webm` (the `video/` folder is gitignored so generated
+clips never reach the published site).
+
+The per-OS clips are then assembled into a single promotional reel by
+[`tools/assemble-video.js`](tools/assemble-video.js) with the bundled
+`ffmpeg-static`: a canvas-rendered intro card, per-OS title cards (the landing
+page's machine-room photo over a dark DEC card, "70% transparent"), cross-fades
+between every segment, and quiet background music that loops for the whole
+length of the reel (`assets/sounds/Mirror Mind - Bobby Richards.mp3` by default,
+or `--music <file>`).
+
+The intro card is generated frame-by-frame with `node-canvas` by
+[`tools/make-intro.js`](tools/make-intro.js): a bold amber-glowing "YAPDP" over
+the machine-room photo, a green-phosphor line typed out with a blinking cursor,
+CRT scanlines, fade-in / hold / fade-out, and synthesized keypress ticks:
+
+```bash
+npm run video:intro                     # render video/yapdp-intro.webm
+npm run video:demo                      # reel + individual clips, default track
+npm run video:demo -- --music loop.mp3  # or override the music
+```
+
+Output (all YouTube-ready MP4, H.264 + AAC):
+- `video/yaPDP-demo.mp4` — the full promotional reel (1280x800);
+- `video/<name>.mp4` for every guest OS — the `yapdp-intro` card cross-faded
+  into the clip with the same quiet background music, so each operating system
+  can be uploaded to YouTube individually.
+
+Every MP4 (individual clips and the reel alike) ends with a black outro card
+showing the project URL (`https://amesk.github.io/yaPDP/`) with CRT scanlines,
+fading out at the very end. A single clip can be rebuilt alone:
+`node tools/assemble-video.js lander`.
+
 ---
 
 ## Desktop App (Tauri)

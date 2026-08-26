@@ -171,6 +171,15 @@ function initG60Printer() {
       if (window.ttyMode !== 'off' && window.ttyPunchEnabled && window.paperTape) {
         window.paperTape.punchChar(code);
       }
+      // Render hook for the Puppeteer screenshot/video generators: fired
+      // whenever a character is ACTUALLY rendered on the paper. Unlike
+      // window.__consoleOutputHook (fired at generation time, ahead of the
+      // paced render), this lets the harness wait until the teletype has
+      // really printed the byte — so captures never cut mid-print.
+      if (typeof window !== 'undefined' &&
+          typeof window.__consoleRenderHook === 'function') {
+        window.__consoleRenderHook(code);
+      }
     }
   });
   g60Console = createG60Console(g60printer);

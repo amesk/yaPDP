@@ -12,3 +12,6 @@ desktop/
 # ---- Node tooling (npm) ----
 node_modules/
 
+# ---- Generated demo videos (kept out of assets/ so they never reach the site) ----
+video/
+

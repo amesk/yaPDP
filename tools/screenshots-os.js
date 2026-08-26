@@ -36,6 +36,7 @@ const path = require("path");
 const http = require("http");
 const { spawn } = require("child_process");
 const puppeteer = require("puppeteer-core");
+const consoleWait = require("./console-wait");
 
 const ROOT = path.resolve(__dirname, "..");
 const OUT_DIR = path.join(ROOT, "assets", "images", "os");
@@ -221,21 +222,9 @@ async function openPage(browser, shot) {
         await page.evaluate(() => document.fonts.ready);
     } catch (err) { /* fonts API may be missing in headless */ }
 
-    // Wrap the console-output hook (set by quickboot.js at load time). The
-    // original keeps feeding the wizard's own buffer; ours accumulates the
-    // same output for readiness detection. iopage.js calls the hook by its
-    // window name on every console character, so the wrapper takes over.
-    await page.evaluate(() => {
-        window.__osShotOutput = "";
-        const original = window.__consoleOutputHook;
-        window.__consoleOutputHook = function (ch) {
-            if (typeof original === "function") original(ch);
-            window.__osShotOutput += String.fromCharCode(ch & 0x7F);
-            if (window.__osShotOutput.length > 8192) {
-                window.__osShotOutput = window.__osShotOutput.slice(-8192);
-            }
-        };
-    });
+    // Wrap the generation + render hooks (see tools/console-wait.js) so the
+    // capture can wait until the paced paper render has fully printed the boot.
+    await consoleWait.installConsoleHooks(page);
 
     return page;
 }
@@ -337,15 +326,9 @@ async function captureConsoleOS(browser, shot) {
         }
         await launchDevice(page, shot.device);
 
-        if (shot.stable) {
-            // Wait until the teletype has printed the whole boot sequence
-            // (console output stops growing), so the paper shows the full
-            // boot and the final prompt.
-            const ok = await waitStable(page, shot.stable, 60000);
-            if (!ok) {
-                console.error("  WARN: console output never stabilised");
-            }
-        } else if (shot.readyWhen) {
+        if (shot.readyWhen) {
+            // Wait for the OS prompt in the GENERATED output (e.g. "#" after
+            // login, "*O " for BASIC); the render is drained below.
             const ok = await waitFor(
                 () => shot.readyAfter
                     ? outputContainsAfter(page, shot.readyWhen, shot.readyAfter)
@@ -358,18 +341,26 @@ async function captureConsoleOS(browser, shot) {
             await sleep(1500);
         }
 
+        // Drain the paper: wait until every generated character has actually
+        // been rendered at the authentic teletype pace, so the shot shows the
+        // full boot and the final prompt instead of cutting mid-print.
+        const drained = await consoleWait.waitRenderStable(page,
+            shot.stable || 2500, 120000);
+        if (!drained) {
+            console.error("  WARN: console did not finish rendering the boot");
+        }
+
         for (const cmd of shot.extra || []) {
             await typeText(page, cmd);
             await sleep(700);
         }
 
         if (shot.stableAfterExtra) {
-            // Some OSes reply to a prompt with a burst of output before the
-            // final prompt (e.g. XXDP after its date answer). Wait until the
-            // console output stops growing so the shot shows that prompt.
-            const ok = await waitStable(page, shot.stableAfterExtra, 60000);
+            // Wait for the demo-command response to be fully rendered.
+            const ok = await consoleWait.waitRenderStable(page,
+                shot.stableAfterExtra, 120000);
             if (!ok) {
-                console.error("  WARN: console output never stabilised after extra");
+                console.error("  WARN: console did not finish rendering the response");
             }
         }
 
