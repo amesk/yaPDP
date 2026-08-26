@@ -138,12 +138,14 @@ const SHOTS_TTY = [
     // The VT11 page is captured separately with Lunar Lander running (see
     // captureVt11Lander), so the illustration shows a real landing scene.
     { page: "storage",      file: "storage.png",             wait: 1500 },
-    // Config page: one screenshot per tab. Equipment is the tallest form, so
-    // it gets a taller viewport; the other tabs capture at standard height.
-    { page: "config",       file: "config-equipment.png",    wait: 1500, height: 950, prep: (p) => selectConfigTab(p, "equipment") },
-    { page: "config",       file: "config-visual.png",       wait: 1500, prep: (p) => selectConfigTab(p, "visual") },
-    { page: "config",       file: "config-behaviour.png",    wait: 1500, prep: (p) => selectConfigTab(p, "behaviour") },
-    { page: "config",       file: "config-development.png",  wait: 1500, prep: (p) => selectConfigTab(p, "development") },
+    // Config page: one screenshot per tab, cropped to the page's own content
+    // column (heading, tabs and the Apply bar — no sidebar, no empty
+    // backdrop gutters). The Equipment form is the tallest, so the viewport
+    // is raised for every tab and the crop keeps only what is needed.
+    { page: "config",       file: "config-equipment.png",    wait: 1500, height: 950, clip: true, prep: (p) => selectConfigTab(p, "equipment") },
+    { page: "config",       file: "config-visual.png",       wait: 1500, height: 950, clip: true, prep: (p) => selectConfigTab(p, "visual") },
+    { page: "config",       file: "config-behaviour.png",    wait: 1500, height: 950, clip: true, prep: (p) => selectConfigTab(p, "behaviour") },
+    { page: "config",       file: "config-development.png",  wait: 1500, height: 950, clip: true, prep: (p) => selectConfigTab(p, "development") },
     { page: "instructions", file: "info.png",                wait: 1500 }
 ];
 
@@ -263,7 +265,33 @@ async function captureScenario(browser, cfg, shots, label) {
             if (shot.prep) await shot.prep(page);
             await sleep(shot.wait);
             const file = path.join(OUT_DIR, shot.file);
-            await page.screenshot({ path: file, type: "png" });
+            const opts = { path: file, type: "png" };
+            // `clip: true` crops to the page's own content column: from the
+            // first child (the page heading) down to the .config-actions bar,
+            // at the page block's width — the sidebar and the empty backdrop
+            // gutters around the centred column are left out.
+            if (shot.clip) {
+                const clip = await page.evaluate(() => {
+                    const pg = document.getElementById("page-config");
+                    if (!pg) return null;
+                    const pr = pg.getBoundingClientRect();
+                    const first = pg.firstElementChild;
+                    const fr = first ? first.getBoundingClientRect() : pr;
+                    const actions = document.querySelector(".config-actions");
+                    const ar = actions ? actions.getBoundingClientRect() : null;
+                    const top = Math.max(0, Math.round(fr.top));
+                    const bottom = Math.min(window.innerHeight,
+                        Math.round(ar ? ar.bottom : pr.bottom));
+                    return {
+                        x: Math.round(pr.left),
+                        y: top,
+                        width: Math.round(pr.width),
+                        height: Math.max(1, bottom - top)
+                    };
+                });
+                if (clip) opts.clip = clip;
+            }
+            await page.screenshot(opts);
             const kb = Math.round(fs.statSync(file).size / 1024);
             console.log(`  saved ${shot.file} (${kb} kB)`);
         } catch (err) {
