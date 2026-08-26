@@ -162,6 +162,21 @@ var SnapshotStore = (() => {
         return DataLoader.list();
     }
 
+    // Structural config that defines the installed device set. Quick-booting
+    // a different guest OS (quickboot.js) changes these fields, so a snapshot
+    // must record them to bring the right devices back on restore.
+    var STRUCTURAL_CONFIG = ["consoleType", "userTerminals", "printer", "vt11"];
+
+    function captureConfig() {
+        if (typeof Config === "undefined" || typeof Config.get !== "function") return null;
+        var c = Config.get();
+        var out = {};
+        STRUCTURAL_CONFIG.forEach(function (k) {
+            out[k] = c[k];
+        });
+        return out;
+    }
+
     function capture(name) {
         return captureMemory().then(function (mem) {
             var devices = null;
@@ -188,6 +203,7 @@ var SnapshotStore = (() => {
                 cpu: captureCPU(),
                 memory: mem,
                 mounted: captureMounted(),
+                config: captureConfig(),
                 devices: devices,
                 punchtape: punchtape,
                 vt52: vt52,
@@ -343,15 +359,53 @@ var SnapshotStore = (() => {
         } catch (e) {
             return Promise.resolve(false);
         }
-        if (typeof location !== "undefined" && location.reload) {
-            location.reload();
-            return Promise.resolve(true);
+        // If the snapshot needs a different hardware configuration (device
+        // set), apply it NOW so the single reload boots with the right
+        // devices and init() can restore directly.
+        return dbGet(id).then(function (snap) {
+            if (configNeedsReload(snap)) {
+                applySnapshotConfig(snap);
+            }
+            if (typeof location !== "undefined" && location.reload) {
+                location.reload();
+                return true;
+            }
+            return false;
+        });
+    }
+
+    // Does the snapshot's hardware config differ from the current machine's?
+    // If so the device set (console type, LP11, terminals, VT11) is wrong and
+    // the page must reload with the snapshot's config before restoring.
+    function configNeedsReload(snap) {
+        if (!snap || !snap.config || typeof Config === "undefined" ||
+            typeof Config.get !== "function") return false;
+        var cur = Config.get();
+        for (var i = 0; i < STRUCTURAL_CONFIG.length; i++) {
+            var k = STRUCTURAL_CONFIG[i];
+            if (snap.config[k] !== undefined && snap.config[k] !== cur[k]) return true;
         }
-        return Promise.resolve(false);
+        return false;
+    }
+
+    // Apply the snapshot's structural config (device set) to the persisted
+    // config. Only the STRUCTURAL_CONFIG fields are touched — the operator's
+    // sound/behaviour preferences are never overridden by a snapshot.
+    function applySnapshotConfig(snap) {
+        var patch = {};
+        STRUCTURAL_CONFIG.forEach(function (k) {
+            if (snap.config[k] !== undefined) patch[k] = snap.config[k];
+        });
+        if (typeof Config !== "undefined" && typeof Config.set === "function") {
+            Config.set(patch);
+        }
     }
 
     // Pending-snapshot application at startup. Halts the CPU synchronously
-    // (before the 80ms CPU start timer), then restores async.
+    // (before the 80ms CPU start timer), then restores async. If the snapshot
+    // was saved with a different hardware configuration, applies that config
+    // first and reloads once more — the pending key stays set so the next
+    // boot performs the actual restore with the correct device set.
     function init() {
         let pendingId = null;
         try {
@@ -362,9 +416,6 @@ var SnapshotStore = (() => {
         refreshUI();
 
         if (!pendingId) return Promise.resolve(false);
-        try {
-            localStorage.removeItem(PENDING_KEY);
-        } catch (e) { /* ignore */ }
 
         // Stop the machine before it executes anything.
         if (typeof CPU !== "undefined") {
@@ -374,6 +425,17 @@ var SnapshotStore = (() => {
         return dbGet(pendingId).then(function (snap) {
             if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("init: got snap " + (snap ? "yes devices=" + (snap.devices ? Object.keys(snap.devices).join(",") : "none") : "NO"));
             if (!snap) return false;
+            if (configNeedsReload(snap)) {
+                if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("init: config mismatch -> apply + reload");
+                applySnapshotConfig(snap);
+                if (typeof location !== "undefined" && location.reload) {
+                    location.reload();
+                    return false;
+                }
+            }
+            try {
+                localStorage.removeItem(PENDING_KEY);
+            } catch (e) { /* ignore */ }
             return restore(snap);
         });
     }
@@ -423,6 +485,44 @@ var SnapshotStore = (() => {
         return (n / (1024 * 1024)).toFixed(1) + " MB";
     }
 
+    // ---- Styled confirmation modal ----
+    // Reuses the shared modal-overlay style (modal-* classes, css/pdp11.css)
+    // so it matches the reboot confirmation and the config leave dialog
+    // instead of a native window.confirm().
+    var __snapModal = null;
+    var __snapModalOnConfirm = null;
+
+    function showConfirmModal(opts) {
+        if (typeof document === "undefined") return;
+        if (!__snapModal) {
+            __snapModal = document.createElement("div");
+            __snapModal.id = "snap-confirm-overlay";
+            __snapModal.className = "modal-overlay";
+            __snapModal.addEventListener("click", function (e) {
+                var action = e.target.getAttribute && e.target.getAttribute("data-snap-action");
+                if (action === "confirm") {
+                    __snapModal.classList.remove("visible");
+                    var cb = __snapModalOnConfirm;
+                    __snapModalOnConfirm = null;
+                    if (cb) cb();
+                } else if (action === "cancel" || e.target === __snapModal) {
+                    __snapModal.classList.remove("visible");
+                    __snapModalOnConfirm = null;
+                }
+            });
+            document.body.appendChild(__snapModal);
+        }
+        __snapModal.innerHTML =
+            '<div class="modal-box">' +
+                '<span class="modal-title">' + opts.title + '</span>' +
+                '<p class="modal-intro">' + opts.intro + '</p>' +
+                '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
+                '<button type="button" class="modal-close" data-snap-action="confirm">' + opts.confirmLabel + '</button>' +
+            '</div>';
+        __snapModalOnConfirm = opts.onConfirm;
+        __snapModal.classList.add("visible");
+    }
+
     // Wire the Storage-page controls. Called on DOMContentLoaded.
     function wireUI() {
         const saveBtn = document.getElementById("snap-save");
@@ -444,8 +544,14 @@ var SnapshotStore = (() => {
         if (loadBtn) {
             loadBtn.addEventListener("click", function () {
                 if (!select || !select.value) return;
-                if (!window.confirm("Restore this snapshot?\n\nThe current machine state will be lost (disks keep their saved changes).")) return;
-                load(select.value);
+                showConfirmModal({
+                    title: "Restore snapshot?",
+                    intro: "The current machine state will be lost (disks keep their saved changes). " +
+                        "If the snapshot was saved with a different hardware configuration " +
+                        "(console type, printer, terminals, VT11), it is applied automatically.",
+                    confirmLabel: "Restore",
+                    onConfirm: function () { load(select.value); }
+                });
             });
         }
         if (renameBtn) {
@@ -459,8 +565,12 @@ var SnapshotStore = (() => {
         if (deleteBtn) {
             deleteBtn.addEventListener("click", function () {
                 if (!select || !select.value) return;
-                if (!window.confirm("Delete this snapshot?")) return;
-                remove(select.value).then(refreshUI);
+                showConfirmModal({
+                    title: "Delete snapshot?",
+                    intro: "The snapshot will be permanently removed from the store.",
+                    confirmLabel: "Delete",
+                    onConfirm: function () { remove(select.value).then(refreshUI); }
+                });
             });
         }
     }

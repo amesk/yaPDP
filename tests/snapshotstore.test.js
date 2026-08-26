@@ -125,6 +125,11 @@ function buildSandbox() {
       restoreDevices(state) { this._devices = JSON.parse(JSON.stringify(state)); },
     },
     DiskStore: { IMAGE_VERSION: "0.1.0" },
+    Config: {
+      _cfg: { consoleType: "teletype", userTerminals: 0, printer: false, vt11: false },
+      get() { return Object.assign({}, this._cfg); },
+      set(patch) { Object.assign(this._cfg, patch); },
+    },
     localStorage: {
       _m: new Map(),
       getItem(k) { return this._m.has(k) ? this._m.get(k) : null; },
@@ -308,6 +313,115 @@ async function run() {
     await SS.restore(snap);
     assert.deepStrictEqual(sb.window.paperTape._buffer, [0x11, 0x22, 0x33], "tape restored");
     console.log("PASS test 8: punched tape captured + restored (L2)");
+  }
+
+  // ---- Test 9: snapshot captures the structural config (device set) ---
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    sb.Config.set({ consoleType: "vt52", userTerminals: 1, printer: true, vt11: true });
+    const snap = await SS.save("config test");
+    // JSON round-trip: snap.config is created inside the VM realm, so its
+    // prototype differs from a host literal (deepStrictEqual would fail).
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(snap.config)), {
+      consoleType: "vt52", userTerminals: 1, printer: true, vt11: true,
+    }, "structural config captured");
+    console.log("PASS test 9: snapshot captures structural config");
+  }
+
+  // ---- Test 10: load() applies a differing hardware config -----------
+  // Simulates: snapshot saved with a printer/VT52 console, then the user
+  // quick-boots another OS (which changes consoleType/printer). load() must
+  // apply the snapshot's config before the single reload, so the next boot
+  // (init) restores with the correct device set.
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    sb.Config.set({ consoleType: "vt52", userTerminals: 1, printer: true, vt11: true });
+    sb.CPU.registerVal[0] = 0x4242;
+    const snap = await SS.save("hw test");
+
+    // User then quick-boots another OS: hardware config changes.
+    sb.Config.set({ consoleType: "teletype", userTerminals: 0, printer: false, vt11: false });
+    sb.CPU.registerVal[0] = 0;
+
+    let reloads = 0;
+    sb.location.reload = () => { reloads++; };
+
+    await SS.load(snap.id);
+    assert.strictEqual(reloads, 1, "load() reloads once");
+    assert.ok(sb.localStorage.getItem("yapdp-pending-snapshot"), "pending key set for next boot");
+    assert.deepStrictEqual(sb.Config.get(), {
+      consoleType: "vt52", userTerminals: 1, printer: true, vt11: true,
+    }, "snapshot hardware config applied before reload");
+
+    // Next boot: config now matches, init restores directly.
+    const applied = await SS.init();
+    assert.strictEqual(applied, true, "init restores on the next boot");
+    assert.strictEqual(reloads, 1, "no extra reload from init");
+    assert.strictEqual(sb.localStorage.getItem("yapdp-pending-snapshot"), null, "pending cleared");
+    assert.strictEqual(sb.CPU.registerVal[0], 0x4242, "register restored after config applied");
+    console.log("PASS test 10: load() applies differing hardware config before reload");
+  }
+
+  // ---- Test 10b: init() safety net for config mismatch ----------------
+  // If the pending snapshot was queued by something other than load() (or
+  // the config changed between load() and boot), init() itself must apply
+  // the snapshot's config, reload and keep the pending key.
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    sb.Config.set({ consoleType: "vt52", userTerminals: 1, printer: true, vt11: true });
+    sb.CPU.registerVal[0] = 0x5151;
+    const snap = await SS.save("hw test 2");
+
+    // Config changed after the snapshot was queued (e.g. quickboot raced).
+    sb.Config.set({ consoleType: "teletype", userTerminals: 0, printer: false, vt11: false });
+    sb.CPU.registerVal[0] = 0;
+
+    let reloads = 0;
+    sb.location.reload = () => { reloads++; };
+
+    // Queue the pending snapshot directly (bypassing load()).
+    sb.localStorage.setItem("yapdp-pending-snapshot", snap.id);
+    const applied = await SS.init();
+    assert.strictEqual(applied, false, "init defers restore on config mismatch");
+    assert.strictEqual(reloads, 1, "init reloads to apply the device set");
+    assert.ok(sb.localStorage.getItem("yapdp-pending-snapshot"), "pending key kept for second boot");
+    assert.deepStrictEqual(sb.Config.get(), {
+      consoleType: "vt52", userTerminals: 1, printer: true, vt11: true,
+    }, "snapshot hardware config applied by init");
+
+    // Second boot: config matches, restore proceeds.
+    const applied2 = await SS.init();
+    assert.strictEqual(applied2, true, "second boot restores");
+    assert.strictEqual(sb.localStorage.getItem("yapdp-pending-snapshot"), null, "pending cleared");
+    assert.strictEqual(sb.CPU.registerVal[0], 0x5151, "register restored after config applied");
+    console.log("PASS test 10b: init() safety net applies config + keeps pending");
+  }
+
+  // ---- Test 11: old snapshots without config stay backward compatible --
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    sb.Config.set({ consoleType: "vt52", userTerminals: 1, printer: true, vt11: true });
+    sb.CPU.registerVal[0] = 0x5151;
+    const snap = await SS.save("old-style");
+    delete snap.config; // simulate a pre-config snapshot
+
+    sb.CPU.registerVal[0] = 0;
+    let reloads = 0;
+    sb.location.reload = () => { reloads++; };
+
+    const ok = await SS.restore(snap);
+    assert.strictEqual(ok, true, "restore works without config field");
+    assert.strictEqual(reloads, 0, "no reload for snapshots without config");
+    assert.strictEqual(sb.CPU.registerVal[0], 0x5151, "state restored");
+    console.log("PASS test 11: snapshots without config field restore as before");
   }
 
   console.log("\nAll SnapshotStore tests passed.");
