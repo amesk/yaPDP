@@ -282,7 +282,7 @@ var Onboarding = (function () {
             table.slice(0, 2).forEach(function (r) { html += bootListItem(r); });
         } else {
             html += '<li class="modal-boot">Type <code>boot rk0</code> (Unix V5) ' +
-                'or <code>boot rk1</code> (RT-11)</li>';
+                'or <code>BOOT RK1</code> (RT-11)</li>';
         }
         el.innerHTML = html;
     }

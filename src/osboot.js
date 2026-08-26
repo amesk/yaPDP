@@ -54,20 +54,24 @@ var OSBoot = (function () {
         // All four are interactive teletype programs; the tape itself is the
         // program, so the only follow-up is acknowledging the program's own
         // prompt (BASIC-11 prints "*O " after loading and waits for Enter).
-        { device: "basic", label: "BASIC-11 V007A", boot: "boot pr",
+        { device: "basic", label: "BASIC-11 V007A", boot: "BOOT PR",
             paperTape: "DEC-11-AJPB-PB",
             steps: [{ send: "", waitFor: "*O " }], autoLogin: false,
+            upperCase: true,
             hardware: { console: "teletype", printer: null, vt11: false } },
-        { device: "odt11", label: "ODT-11X-V004A", boot: "boot pr",
+        { device: "odt11", label: "ODT-11X-V004A", boot: "BOOT PR",
             paperTape: "DEC-11-O2PA-PB", steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: "teletype", printer: null, vt11: false } },
-        { device: "ed11", label: "ED-11-V004B", boot: "boot pr",
+        { device: "ed11", label: "ED-11-V004B", boot: "BOOT PR",
             paperTape: "ED-11-V004B-8K", steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: "teletype", printer: null, vt11: false } },
         // Lunar Lander draws the lander on the VT11 vector display, so the
         // wizard enables it and switches to the Display page after booting.
-        { device: "lander", label: "Lunar Lander", boot: "boot pr",
+        { device: "lander", label: "Lunar Lander", boot: "BOOT PR",
             paperTape: "lander", page: "vt11", steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: "teletype", printer: null, vt11: true } },
 
         // ---- Disk / tape images ---------------------------------------
@@ -77,30 +81,36 @@ var OSBoot = (function () {
             autoLogin: true,
             hardware: { console: "teletype", printer: null, vt11: false } },
         // RT-11 — teletype console and an LP11 line printer.
-        { device: "rk1", label: "RT-11 v4.0", boot: "boot rk1",
+        { device: "rk1", label: "RT-11 v4.0", boot: "BOOT RK1",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: "teletype", printer: true, vt11: false } },
         // RT-11 variant with a VT52 terminal as the operator console — same
         // rk1.dsk image, different console profile (url/bootDev reuse the
         // underlying device so mounting and the boot command stay correct).
-        { device: "rk1vt52", label: "RT-11 v4.0 (VT52 console)", boot: "boot rk1",
+        { device: "rk1vt52", label: "RT-11 v4.0 (VT52 console)", boot: "BOOT RK1",
             bootDev: "rk1", url: "rk1.dsk", steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: "vt52", printer: true, vt11: false } },
         // RSTS — LP11 line printer; console is the user's choice.
-        { device: "rk2", label: "RSTS V06C-03", boot: "boot rk2",
+        { device: "rk2", label: "RSTS V06C-03", boot: "BOOT RK2",
             steps: [{ send: "11,70" }, { send: "PDP" }], autoLogin: true,
+            upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // XXDP — diagnostics, no special requirements.
-        { device: "rk3", label: "XXDP (diagnostics)", boot: "boot rk3",
+        { device: "rk3", label: "XXDP (diagnostics)", boot: "BOOT RK3",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: null, printer: null, vt11: false } },
         // RT-11 3B Distribution — teletype console and an LP11 line printer.
-        { device: "rk4", label: "RT-11 3B Distribution", boot: "boot rk4",
+        { device: "rk4", label: "RT-11 3B Distribution", boot: "BOOT RK4",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: "teletype", printer: true, vt11: false } },
         // RSTS 4B-17 rollin tape — LP11 printer; restore procedure is manual.
-        { device: "tm0", label: "RSTS 4B-17 (tape)", boot: "boot tm0",
+        { device: "tm0", label: "RSTS 4B-17 (tape)", boot: "BOOT TM0",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // BSD 2.9 — historically a teletype console.
         { device: "rl0", label: "BSD 2.9", boot: "boot rl0",
@@ -108,16 +118,19 @@ var OSBoot = (function () {
                 { send: "root", waitFor: "login:" }], autoLogin: true,
             hardware: { console: "teletype", printer: true, vt11: false } },
         // RSX-11M — LP11 line printer; console is the user's choice.
-        { device: "rl1", label: "RSX-11M v3.2", boot: "boot rl1",
+        { device: "rl1", label: "RSX-11M v3.2", boot: "BOOT RL1",
             steps: [{ send: "1,2" }, { send: "SYSTEM" }], autoLogin: true,
+            upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // RSTS/E v7.0 — LP11 line printer.
-        { device: "rl2", label: "RSTS/E v7.0", boot: "boot rl2",
+        { device: "rl2", label: "RSTS/E v7.0", boot: "BOOT RL2",
             steps: [{ send: "11,70" }, { send: "PDP" }], autoLogin: true,
+            upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // XXDP (extended) — diagnostics, no special requirements.
-        { device: "rl3", label: "XXDP (extended)", boot: "boot rl3",
+        { device: "rl3", label: "XXDP (extended)", boot: "BOOT RL3",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: null, printer: null, vt11: false } },
         // ULTRIX-11 — historically a teletype console.
         { device: "rp0", label: "ULTRIX-11 V3.1", boot: "boot rp0",
@@ -135,16 +148,19 @@ var OSBoot = (function () {
             autoLogin: true,
             hardware: { console: "vt52", printer: true, vt11: false } },
         // RSTS/E v9.6 — LP11 line printer.
-        { device: "rp2", label: "RSTS/E v9.6", boot: "boot rp2",
+        { device: "rp2", label: "RSTS/E v9.6", boot: "BOOT RP2",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // RSX-11M v4.6 — LP11 line printer.
-        { device: "rp3", label: "RSX-11M v4.6", boot: "boot rp3",
+        { device: "rp3", label: "RSX-11M v4.6", boot: "BOOT RP3",
             steps: [{ send: "1,2" }, { send: "SYSTEM" }], autoLogin: true,
+            upperCase: true,
             hardware: { console: "vt52", printer: true, vt11: false } },
         // RSTS/E v10.1 — LP11 line printer.
-        { device: "rp4", label: "RSTS/E v10.1", boot: "boot rp4",
+        { device: "rp4", label: "RSTS/E v10.1", boot: "BOOT RP4",
             steps: [], autoLogin: false,
+            upperCase: true,
             hardware: { console: null, printer: true, vt11: false } }
     ];
 

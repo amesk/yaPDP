@@ -157,7 +157,7 @@ The **Minimal** build bundles:
 | Image | OS | How to Boot |
 |-------|----|-------------|
 | `rk0.dsk` | Unix V5 | `boot rk0` → `unix` → login `root` |
-| `rk1.dsk` | RT‑11 v4.0 | `boot rk1` |
+| `rk1.dsk` | RT‑11 v4.0 | `BOOT RK1` |
 | `bootcode.ptap` | Bootstrap loader | loaded via Paper Tape reader |
 
 The **Full** build additionally bundles all `rk2`–`rk5`, `rl0`–`rl3`, `rp0`–`rp4`, `ra0`–`ra2`,
@@ -231,7 +231,7 @@ button), reloads, and resumes the boot automatically.
 
 Paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander) live in the same picker:
 the wizard selects the tape in the Storage `#ptr` select and boots it via
-`boot pr`. Lunar Lander additionally enables the VT11 vector display and
+`BOOT PR`. Lunar Lander additionally enables the VT11 vector display and
 switches to the **Display** page so the landing module is visible.
 
 Each wizard boot starts "on a fresh page": the teletype and LP11 paper, the
@@ -375,20 +375,20 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 | Disk | Operating System | How to Boot |
 |------|-----------------|-------------|
 | **RK0** | Unix V5 | `boot rk0` → `unix` → login as `root` |
-| **RK1** | RT‑11 v4.0 | `boot rk1` |
-| **RK2** | RSTS V06C‑03 | `boot rk2` — login `11,70` password `PDP` |
-| **RK3** | XXDP (diagnostics) | `boot rk3` |
-| **RK4** | RT‑11 3B Distribution | `boot rk4` |
-| **TM0** | RSTS 4B‑17 (tape) | `boot tm0` — follow ROLLIN restore procedure |
+| **RK1** | RT‑11 v4.0 | `BOOT RK1` |
+| **RK2** | RSTS V06C‑03 | `BOOT RK2` — login `11,70` password `PDP` |
+| **RK3** | XXDP (diagnostics) | `BOOT RK3` |
+| **RK4** | RT‑11 3B Distribution | `BOOT RK4` |
+| **TM0** | RSTS 4B‑17 (tape) | `BOOT TM0` — follow ROLLIN restore procedure |
 | **RL0** | BSD 2.9 | `boot rl0` → `rl(0,0)rlunix` → CTRL/D → login `root` |
-| **RL1** | RSX‑11M v3.2 | `boot rl1` — login `1,2` password `SYSTEM` |
-| **RL2** | RSTS/E v7.0 | `boot rl2` — login `11,70` password `PDP` |
-| **RL3** | XXDP (extended) | `boot rl3` |
+| **RL1** | RSX‑11M v3.2 | `BOOT RL1` — login `1,2` password `SYSTEM` |
+| **RL2** | RSTS/E v7.0 | `BOOT RL2` — login `11,70` password `PDP` |
+| **RL3** | XXDP (extended) | `BOOT RL3` |
 | **RP0** | ULTRIX‑11 V3.1 | `boot rp0` → CTRL/D → login `root` |
 | **RP1** | BSD 2.11 | `boot rp1` — autoboots to multiuser, login `root` |
-| **RP2** | RSTS/E v9.6 | `boot rp2` — answer prompts, login `11,70` |
-| **RP3** | RSX‑11M v4.6 | `boot rp3` — auto-logs `1,2` SYSTEM |
-| **RP4** | RSTS/E v10.1 | `boot rp4` — answer prompts, login `11,70` |
+| **RP2** | RSTS/E v9.6 | `BOOT RP2` — answer prompts, login `11,70` |
+| **RP3** | RSX‑11M v4.6 | `BOOT RP3` — auto-logs `1,2` SYSTEM |
+| **RP4** | RSTS/E v10.1 | `BOOT RP4` — answer prompts, login `11,70` |
 
 > Full boot session logs for every OS can be found in [`docs/ExampleBoots.md`](docs/ExampleBoots.md).
 

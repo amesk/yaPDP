@@ -95,7 +95,7 @@ function run() {
             "RT-11 should enable the LP11 printer");
         const rk1v = OSBoot.scenarioFor("rk1vt52");
         assert.ok(rk1v, "rk1vt52 (VT52 console) scenario should exist");
-        assert.strictEqual(rk1v.boot, "boot rk1", "variant should boot the same rk1 device");
+        assert.strictEqual(rk1v.boot, "BOOT RK1", "variant should boot the same rk1 device (uppercase, RT-11 is upper-case only)");
         assert.strictEqual(rk1v.url, "rk1.dsk", "variant should reuse the rk1.dsk image");
         assert.strictEqual(rk1v.hardware.console, "vt52",
             "RT-11 VT52 variant should use a VT52 console");
@@ -109,8 +109,9 @@ function run() {
         assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.vt11, false,
             "non-Lunar-Lander scenarios should turn the VT11 off");
 
-        // Paper tapes: boot via "boot pr" and select the tape in "#ptr".
-        assert.strictEqual(OSBoot.scenarioFor("basic").boot, "boot pr");
+        // Paper tapes: boot via "BOOT PR" (upper-case only, like the real ASR-33)
+        // and select the tape in "#ptr".
+        assert.strictEqual(OSBoot.scenarioFor("basic").boot, "BOOT PR");
         assert.strictEqual(OSBoot.scenarioFor("basic").paperTape, "DEC-11-AJPB-PB");
         assert.deepStrictEqual(plain(OSBoot.scenarioFor("basic").steps),
             [{ send: "", waitFor: "*O " }],
@@ -142,13 +143,19 @@ function run() {
     {
         OSBoot.BOOT_SCENARIOS.forEach((s) => {
             if (s.paperTape) {
-                // Paper tapes all boot through the "boot pr" loader command.
-                assert.strictEqual(s.boot, "boot pr",
-                    s.device + " paper tape should boot via 'boot pr'");
+                // Paper tapes all boot through the "BOOT PR" loader command.
+                assert.strictEqual(s.boot, "BOOT PR",
+                    s.device + " paper tape should boot via 'BOOT PR'");
             } else {
                 const dev = s.bootDev || s.device;
-                assert.ok(s.boot.startsWith("boot " + dev),
-                    s.device + " boot command should target " + dev);
+                // DEC systems are upper-case-only (like the real ASR-33);
+                // case-sensitive *nix guests (Unix V5, BSD 2.9/2.11,
+                // ULTRIX-11) must keep their lowercase boot command.
+                const want = (s.upperCase ? "BOOT " + dev.toUpperCase()
+                                          : "boot " + dev);
+                assert.strictEqual(s.boot, want,
+                    s.device + " boot command should target " + dev +
+                    (s.upperCase ? " in upper case" : " in lower case"));
                 const media = s.url || OSBoot.urlFor(s.device);
                 assert.ok(/\.(dsk|tap)$/.test(media),
                     media + " should be a media file name");

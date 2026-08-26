@@ -152,9 +152,9 @@ function run() {
             { className: "disk", textContent: "RK2" },
             { className: "system", textContent: "RSTS V06C-03" },
             {
-                textContent: "boot rk2 — login 11,70 password PDP",
+                textContent: "BOOT RK2 — login 11,70 password PDP",
                 querySelectorAll: () => [
-                    { textContent: "boot rk2" },
+                    { textContent: "BOOT RK2" },
                     { textContent: "11,70" },
                     { textContent: "PDP" },
                 ],
@@ -166,7 +166,7 @@ function run() {
         const tape = On.parseBootRow([
             { className: "disk", textContent: "TM0" },
             { className: "system", textContent: "RSTS 4B-17 (tape)" },
-            { textContent: "boot tm0", querySelectorAll: () => [{ textContent: "boot tm0" }] },
+            { textContent: "BOOT TM0", querySelectorAll: () => [{ textContent: "BOOT TM0" }] },
         ]);
         assert.strictEqual(tape.url, "tm0.tap", "tape row should map to .tap url");
         assert.strictEqual(tape.next, "", "no follow-up code -> empty next");
