@@ -287,6 +287,7 @@
                 <li><a href="#printer">The LP11 Line Printer (Printer page)</a></li>
                 <li><a href="#vt11">The VT11 Vector Display (Display page)</a></li>
                 <li><a href="#storage">Storage (paper tape, disk & tape images)</a></li>
+                <li><a href="#machine-state">Machine State (STATE button)</a></li>
                 <li><a href="#config">Configuration (Config page)</a></li>
                 <li><a href="#guest-oses">Guest Operating Systems</a></li>
                 <li><a href="#controls">Buttons, Shortcuts & Indicators</a></li>
@@ -300,7 +301,9 @@
 
             <p>
                 On your very first launch the emulator greets you with a short onboarding hint that explains what to do
-                right away — which page to open, the mounted guest OSes and their boot commands:
+                right away — which page to open, the mounted guest OSes and their boot commands. A <b>Quick boot</b>
+                button next to <b>Got it</b> opens the wizard directly, so a first-time user can see a guest OS running
+                in one click:
             </p>
 
             <p><img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="First-run onboarding hint"></p>
@@ -383,6 +386,12 @@
             <p><img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! power-off guard">
             </p>
             <p class="shot-caption">Bootstrap now! requires the machine to be powered on first.</p>
+
+            <p>
+                The dialog also offers a shortcut to the CONFIG <b>Auto-boot</b> option: tick the checkbox to start
+                the default bootstrap automatically on every future power-on, without visiting the Config page. The
+                choice persists and stays in sync with the CONFIG page checkbox.
+            </p>
 
             <hr>
 
@@ -538,6 +547,37 @@
                 <em>Note:</em> the paper-tape reader is driven by the console bytes — every byte echoed to the console
                 punches a matching row of holes on the ASR paper tape.
             </blockquote>
+
+            <hr>
+
+            <h2 id="machine-state">Machine State (STATE button)</h2>
+
+            <p>
+                The round <b>STATE</b> button (top-left corner, right of REBOOT) opens the machine-state dialog — a
+                full save/restore of the emulated PDP‑11, not just the CPU: registers, memory, every I/O device
+                (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype
+                and LP11, the VT52 screen contents and even the VT11 vector-display picture are all captured. Think of
+                it as a save file of the whole machine.
+            </p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog"></p>
+            <p class="shot-caption">The machine-state dialog with one freshly saved state.</p>
+
+            <ul>
+                <li><b>Save state</b> — captures the machine exactly as it is right now under an auto-generated name
+                    (date and time). The hardware configuration is part of the state: restoring it re-applies the
+                    console type, user terminals, printer and VT11 display, restarting the machine to match.</li>
+                <li><b>Load</b> — restores the selected state and restarts the machine; a confirmation asks first.
+                    States saved by older versions of the emulator keep working.</li>
+                <li><b>Rename / Delete</b> — organise the list or remove states; the counter next to the list shows
+                    how many states you have.</li>
+            </ul>
+
+            <p>
+                The STATE button mirrors REBOOT and is available on the <b>Panel</b>, <b>Console</b> (teletype or
+                VT52) and <b>TTY</b> pages. States are stored in the browser's IndexedDB and survive reloads and
+                sessions.
+            </p>
 
             <hr>
 
@@ -786,10 +826,19 @@
                             <img class="control-btn" src="assets/images/manual/btn-reboot.png" alt="REBOOT button">
                             <span class="control-name">REBOOT</span>
                         </td>
-                        <td>Top-left corner, just right of the sidebar</td>
+                        <td>Top-left corner, just right of the sidebar (Panel, Console and TTY pages)</td>
                         <td>Round button with a restart icon. Restarts the machine; when Auto-boot is enabled it
                             also boots the built-in default loader. By default a confirmation dialog asks first, with
                             a "Don't show this warning anymore" option.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk control-cell">
+                            <img class="control-btn" src="assets/images/manual/btn-state.png" alt="STATE button">
+                            <span class="control-name">STATE</span>
+                        </td>
+                        <td>Top-left corner, right of REBOOT (Panel, Console and TTY pages)</td>
+                        <td>Machine-state dialog — saves and restores the whole emulated machine (CPU, memory,
+                            devices, paper, terminal screens). See <a href="#machine-state">Machine State</a>.</td>
                     </tr>
                     <tr>
                         <td class="disk control-cell">

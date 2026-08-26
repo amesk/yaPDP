@@ -207,7 +207,9 @@ not shipped and points to the Drop zone.
 ### Quick boot (magic wand)
 
 A magic-wand button in the top-right corner of the window (visible on every
-page except the **Info** page) opens a picker for every guest OS. Choosing one
+page except the **Info** page) opens a picker for every guest OS. The
+first-run welcome dialog also has a **Quick boot** button that opens the same
+picker directly. Choosing one
 switches to the operator console,
 reboots the machine and types `boot <dev>` — and where the credentials are
 known, the login too (e.g. Unix V5: `boot rk0` → `unix` → `root`). The boot
@@ -462,6 +464,18 @@ built-in default loader. By default a confirmation dialog asks first, with a
 "Don't show this warning
 anymore" option. The warning can be restored at any time from the Config
 page's **Behaviour** tab.
+
+Next to REBOOT sits the round **STATE** button — the machine-state dialog. It
+saves and restores the whole emulated PDP-11, not just the CPU: registers,
+memory, every I/O device (console, terminals, printer, disks, tape and the
+paper-tape reader/punch), the paper in the teletype and LP11, the VT52 screen
+contents and the VT11 vector picture. **Save state** captures the machine as
+it is now under an auto-generated name; **Load** restores a state (re-applying
+its hardware configuration and restarting the machine, with a confirmation
+first), and **Rename / Delete** organise the list. States live in the
+browser's IndexedDB, survive reloads and sessions, and states saved by older
+emulator versions keep working. Both buttons appear on the Panel, Console
+(teletype or VT52) and TTY pages.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer

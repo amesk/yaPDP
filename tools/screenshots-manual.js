@@ -156,6 +156,7 @@ const SHOTS_VT52 = [
 const BUTTON_SHOTS = [
     { id: "#quick-boot-btn", file: "btn-magicwand.png" },
     { id: "#reboot-btn",     file: "btn-reboot.png" },
+    { id: "#state-btn",      file: "btn-state.png" },
     { id: "#mute-btn",       file: "btn-mute.png" },
     { id: "#fullscreen-btn", file: "btn-fullscreen.png" }
 ];
@@ -209,12 +210,16 @@ function findBrowserExecutable() {
 
 async function launchBrowser() {
     const executablePath = findBrowserExecutable();
+    // Sandboxed CI/container environments (no unprivileged user namespaces)
+    // need --no-sandbox; opt in via PUPPETEER_NO_SANDBOX=1 so desktop runs
+    // keep the default sandbox.
+    const args = process.env.PUPPETEER_NO_SANDBOX ? ["--no-sandbox"] : [];
     if (executablePath) {
-        return puppeteer.launch({ executablePath, headless: true });
+        return puppeteer.launch({ executablePath, headless: true, args });
     }
     for (const channel of ["msedge", "chrome"]) {
         try {
-            return await puppeteer.launch({ channel, headless: true });
+            return await puppeteer.launch({ channel, headless: true, args });
         } catch (err) { /* try the next channel */ }
     }
     throw new Error(
@@ -440,6 +445,21 @@ async function captureDialogs(browser, wants) {
         });
         await snap(page, "dialog-reboot.png", 600);
     }
+
+    // 8. Machine-state dialog (STATE button) with one freshly saved state.
+    if (wants("dialog-state")) {
+        const page = await open(CFG_TTY);
+        await page.evaluate(() => {
+            const btn = document.getElementById("state-btn");
+            if (btn) btn.click();
+        });
+        await sleep(400);
+        await page.evaluate(() => {
+            const save = document.getElementById("snap-save");
+            if (save) save.click();
+        });
+        await snap(page, "dialog-state.png", 900);
+    }
 }
 
 // Capture the VT11 Display page with Lunar Lander running. The quick-boot
@@ -523,7 +543,8 @@ async function captureVt11Lander(browser) {
         // Lander capture does not force the whole manual batch.
         const selector = (process.argv[2] || "").toLowerCase().replace(/\.png$/, "");
         function wants(name) {
-            return !selector || name.toLowerCase() === selector;
+            return !selector ||
+                name.toLowerCase().replace(/\.png$/, "") === selector;
         }
 
         fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -544,7 +565,7 @@ async function captureVt11Lander(browser) {
         if (wants("dialog-onboarding") || wants("dialog-quickboot") ||
             wants("dialog-autoload") || wants("dialog-imgerror") ||
             wants("dialog-poweroff") || wants("dialog-config-leave") ||
-            wants("dialog-reboot")) {
+            wants("dialog-reboot") || wants("dialog-state")) {
             await captureDialogs(browser, wants);
         }
         if (wants("vt11")) {
