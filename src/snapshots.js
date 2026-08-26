@@ -494,6 +494,21 @@ var SnapshotStore = (() => {
     // instead of a native window.confirm().
     var __snapModal = null;
     var __snapModalOnConfirm = null;
+    var __snapPrevFocus = null;
+
+    // Hide the confirm/prompt overlay and return focus to the element that
+    // opened it (e.g. the manager-modal Rename button), so keyboard input
+    // keeps flowing inside the right dialog.
+    function snapCloseModal() {
+        if (!__snapModal) return;
+        __snapModal.classList.remove("visible");
+        __snapModalOnConfirm = null;
+        var el = __snapPrevFocus;
+        __snapPrevFocus = null;
+        if (el && el.focus && el.isConnected && !el.disabled) {
+            try { el.focus(); } catch (e) { /* ignore */ }
+        }
+    }
 
     function showConfirmModal(opts) {
         if (typeof document === "undefined") return;
@@ -504,17 +519,16 @@ var SnapshotStore = (() => {
             __snapModal.addEventListener("click", function (e) {
                 var action = e.target.getAttribute && e.target.getAttribute("data-snap-action");
                 if (action === "confirm") {
-                    __snapModal.classList.remove("visible");
                     var cb = __snapModalOnConfirm;
-                    __snapModalOnConfirm = null;
+                    snapCloseModal();
                     if (cb) cb();
                 } else if (action === "cancel" || e.target === __snapModal) {
-                    __snapModal.classList.remove("visible");
-                    __snapModalOnConfirm = null;
+                    snapCloseModal();
                 }
             });
             document.body.appendChild(__snapModal);
         }
+        __snapPrevFocus = document.activeElement;
         __snapModal.innerHTML =
             '<div class="modal-box">' +
                 '<span class="modal-title">' + opts.title + '</span>' +
@@ -534,6 +548,7 @@ var SnapshotStore = (() => {
             showConfirmModal({});
             __snapModalOnConfirm = null;
         }
+        __snapPrevFocus = document.activeElement;
         var safeValue = String(opts.value == null ? "" : opts.value)
             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -558,9 +573,15 @@ var SnapshotStore = (() => {
             input.select();
             input.addEventListener("keydown", function (e) {
                 if (e.key === "Enter") {
+                    // preventDefault: without it, Chrome runs the keydown's
+                    // default action against whichever element gains focus
+                    // during the handler (the renamed snapshot's button),
+                    // synthesising a second click that reopens this dialog.
+                    e.preventDefault();
                     var btn = __snapModal.querySelector('[data-snap-action="confirm"]');
                     if (btn) btn.click();
                 } else if (e.key === "Escape") {
+                    e.preventDefault();
                     var cancelBtn = __snapModal.querySelector('[data-snap-action="cancel"]');
                     if (cancelBtn) cancelBtn.click();
                 }
@@ -568,8 +589,78 @@ var SnapshotStore = (() => {
         }
     }
 
-    // Wire the Storage-page controls. Called on DOMContentLoaded.
+    // ---- Machine-state manager modal ----
+    // The STATE floating button opens a dialog with Save + the snapshot list
+    // (Load / Rename / Delete). Uses the shared modal-overlay style. The
+    // element ids match the old Storage-page section, so refreshUI() works
+    // unchanged against the controls inside this modal.
+    var __snapManager = null;
+
+    function ensureManagerModal() {
+        if (__snapManager) return __snapManager;
+        __snapManager = document.createElement("div");
+        __snapManager.id = "snap-manager-overlay";
+        __snapManager.className = "modal-overlay";
+        // Focusable so the overlay itself can take focus (Escape handling)
+        // when the select list is empty.
+        __snapManager.tabIndex = -1;
+        __snapManager.innerHTML =
+            '<div class="modal-box">' +
+                '<span class="modal-title">Machine state</span>' +
+                '<p class="modal-intro">Save a snapshot of the full machine state, or restore a saved one. ' +
+                    'Loading restarts the machine (disks keep their saved changes).</p>' +
+                '<button type="button" class="modal-close modal-primary" id="snap-save">Save state</button>' +
+                '<select id="snap-select" class="modal-select" disabled>' +
+                    '<option value="">--no snapshots--</option>' +
+                '</select>' +
+                '<div class="modal-actions">' +
+                    '<button type="button" id="snap-load" class="modal-close" disabled>Load</button>' +
+                    '<button type="button" id="snap-rename" class="modal-close" disabled>Rename</button>' +
+                    '<button type="button" id="snap-delete" class="modal-close" disabled>Delete</button>' +
+                    '<span id="snap-count" class="snap-count"></span>' +
+                '</div>' +
+                '<button type="button" class="modal-close" data-state-action="close">Close</button>' +
+            '</div>';
+        __snapManager.addEventListener("click", function (e) {
+            var action = e.target.getAttribute && e.target.getAttribute("data-state-action");
+            if (action === "close" || e.target === __snapManager) {
+                __snapManager.classList.remove("visible");
+            }
+        });
+        // Escape closes the manager (only fires while focus is inside this
+        // modal — the rename input lives in a separate overlay).
+        __snapManager.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") __snapManager.classList.remove("visible");
+        });
+        document.body.appendChild(__snapManager);
+        return __snapManager;
+    }
+
+    function openManager() {
+        ensureManagerModal();
+        __snapManager.classList.add("visible");
+        refreshUI();
+        var select = document.getElementById("snap-select");
+        // Focus the select when it has real options (it is enabled then);
+        // otherwise focus the overlay itself so Escape still closes the
+        // dialog. Both targets live inside the overlay, so the keydown
+        // listener always fires.
+        if (select && !select.disabled) select.focus();
+        else __snapManager.focus();
+    }
+
+    // Wire the STATE floating button and the manager-modal controls.
+    // Called on DOMContentLoaded.
     function wireUI() {
+        const stateBtn = document.getElementById("state-btn");
+        if (stateBtn) {
+            stateBtn.addEventListener("click", openManager);
+        }
+
+        // The controls live inside the lazily-created manager modal; build it
+        // first so the lookups below find the buttons to wire.
+        ensureManagerModal();
+
         const saveBtn = document.getElementById("snap-save");
         const loadBtn = document.getElementById("snap-load");
         const renameBtn = document.getElementById("snap-rename");

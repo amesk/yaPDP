@@ -60,6 +60,12 @@ function switchPage(page) {
     rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52' || page === 'panel'));
   }
 
+  // The floating STATE button (machine-state dialog) mirrors REBOOT.
+  var stateBtn = document.getElementById('state-btn');
+  if (stateBtn) {
+    stateBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52' || page === 'panel'));
+  }
+
   // The floating quick-boot (magic wand) button is a global action: show it on
   // every page except the INFO page (instructions), whose long-form help text
   // already explains the wizard.

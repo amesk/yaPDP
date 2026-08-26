@@ -485,6 +485,54 @@
     outline-offset: 1px;
 }
 
+/* Machine-state dialog: the primary Save action is amber-filled, the select
+   list matches the dark input theme, and the action row spaces the buttons. */
+.modal-primary {
+    background: #c8a860;
+    color: #1c1814;
+}
+
+.modal-primary:hover {
+    background: #d8b870;
+}
+
+.modal-select {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 14px 0 10px;
+    padding: 8px 10px;
+    border: 1px solid #c8a860;
+    border-radius: 5px;
+    background: #1c1814;
+    color: #ffd27f;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.modal-select:focus {
+    outline: 2px solid #c8a860;
+    outline-offset: 1px;
+}
+
+.modal-select:disabled {
+    color: #8a8478;
+    border-color: #4a4438;
+}
+
+.modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+}
+
+.modal-actions .snap-count {
+    margin-left: auto;
+    font-size: 13px;
+    color: #9a9488;
+}
+
 /* Front-panel page stays a positioning context for its inner layers (the
    .frame tree provides the actual relative containing blocks). */
 #page-panel {
@@ -1628,6 +1676,12 @@ body {
    switchPage() toggles this class. */
 .console-reboot.hidden {
     display: none !important;
+}
+
+/* The STATE button (machine-state dialog) mirrors REBOOT: same round shape,
+   sitting just to its right. */
+.console-state {
+    left: 140px;
 }
 
 /* Real-printer actions (Print / Save .txt) below the machine */
