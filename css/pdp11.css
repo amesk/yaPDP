@@ -447,6 +447,27 @@
     cursor: pointer;
 }
 
+/* Text-input field inside modal dialogs (snapshot rename): dark theme
+   matching the modal buttons, amber border + focus ring. */
+.modal-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 16px;
+    padding: 8px 10px;
+    border: 1px solid #c8a860;
+    border-radius: 5px;
+    background: #1c1814;
+    color: #ffd27f;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.modal-input:focus {
+    outline: 2px solid #c8a860;
+    outline-offset: 1px;
+}
+
 /* Modal dialogs: even side-by-side spacing between action buttons. */
 .modal-box .modal-close+.modal-close {
     margin-left: 10px;

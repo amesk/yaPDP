@@ -461,6 +461,9 @@ var SnapshotStore = (() => {
                 items.forEach(function (it) {
                     const opt = document.createElement("option");
                     opt.value = it.id;
+                    // Keep the bare name for the rename dialog prefill —
+                    // the visible label also carries the capture size.
+                    opt.dataset.name = it.name;
                     const d = new Date(it.createdAt);
                     opt.textContent = it.name + "  (" + fmtSize(it.memBytes) + ")";
                     select.appendChild(opt);
@@ -523,6 +526,48 @@ var SnapshotStore = (() => {
         __snapModal.classList.add("visible");
     }
 
+    // ---- Styled text-input modal (replaces native window.prompt) ----
+    function showPromptModal(opts) {
+        if (typeof document === "undefined") return;
+        if (!__snapModal) {
+            // Reuse the same overlay machinery as showConfirmModal.
+            showConfirmModal({});
+            __snapModalOnConfirm = null;
+        }
+        var safeValue = String(opts.value == null ? "" : opts.value)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        __snapModal.innerHTML =
+            '<div class="modal-box">' +
+                '<span class="modal-title">' + opts.title + '</span>' +
+                '<p class="modal-intro">' + opts.intro + '</p>' +
+                '<input type="text" class="modal-input" id="snap-prompt-input" ' +
+                    'value="' + safeValue + '" maxlength="64" autocomplete="off" spellcheck="false">' +
+                '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
+                '<button type="button" class="modal-close" data-snap-action="confirm">' + opts.confirmLabel + '</button>' +
+            '</div>';
+        __snapModalOnConfirm = function () {
+            var input = document.getElementById("snap-prompt-input");
+            var value = input ? input.value : "";
+            if (opts.onConfirm) opts.onConfirm(value);
+        };
+        __snapModal.classList.add("visible");
+        var input = document.getElementById("snap-prompt-input");
+        if (input) {
+            input.focus();
+            input.select();
+            input.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    var btn = __snapModal.querySelector('[data-snap-action="confirm"]');
+                    if (btn) btn.click();
+                } else if (e.key === "Escape") {
+                    var cancelBtn = __snapModal.querySelector('[data-snap-action="cancel"]');
+                    if (cancelBtn) cancelBtn.click();
+                }
+            });
+        }
+    }
+
     // Wire the Storage-page controls. Called on DOMContentLoaded.
     function wireUI() {
         const saveBtn = document.getElementById("snap-save");
@@ -557,9 +602,19 @@ var SnapshotStore = (() => {
         if (renameBtn) {
             renameBtn.addEventListener("click", function () {
                 if (!select || !select.value) return;
-                const name = window.prompt("Snapshot name:", "");
-                if (!name) return;
-                rename(select.value, name).then(refreshUI);
+                var opt = select.options[select.selectedIndex];
+                var currentName = opt ? (opt.dataset.name || opt.text) : "";
+                showPromptModal({
+                    title: "Rename snapshot",
+                    intro: "Enter a new name for the snapshot.",
+                    value: currentName,
+                    confirmLabel: "Rename",
+                    onConfirm: function (name) {
+                        name = (name || "").trim();
+                        if (!name || name === currentName) return;
+                        rename(select.value, name).then(refreshUI);
+                    }
+                });
             });
         }
         if (deleteBtn) {
