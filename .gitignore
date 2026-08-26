@@ -15,3 +15,8 @@ node_modules/
 # ---- Generated demo videos (kept out of assets/ so they never reach the site) ----
 video/
 
+# ---- Local dev server log ----
+serve.log
+
+# ---- Linux build artifacts (deb/rpm/AppImage) ----
+dist-linux/

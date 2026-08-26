@@ -139,6 +139,17 @@ download and a fully-offline bundle with every disk/tape image:
 | `yaPDP-Minimal_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP-Minimal.exe` | ~3.2 MB / ~4.3 MB / ~6.2 MB |
 | `yaPDP-Full_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP-Full.exe` | ~84 MB / ~85 MB / ~6.2 MB |
 
+### Artifacts (Linux x64)
+
+Built on Linux (no cross-compilation — see below). `.deb` for Debian/Ubuntu
+family, `.rpm` for Fedora/RHEL/openSUSE, `.AppImage` is the portable
+download-and-run format (the analogue of the Windows portable `.exe`):
+
+| Artifact | Size |
+|----------|------|
+| `yaPDP-Minimal_0.1.0_amd64.deb` / `.rpm` / `.AppImage` | ~13.5 MB / ~13.5 MB / ~88 MB |
+| `yaPDP-Full_0.1.0_amd64.deb` / `.rpm` / `.AppImage` | ~97.5 MB / ~97.5 MB / ~172 MB |
+
 ### Bundled images
 
 The **Minimal** build bundles:
@@ -266,6 +277,44 @@ npm run desktop:minimal   # yaPDP-Minimal: rk0/rk1/bootcode
 npm run desktop:full      # yaPDP-Full: every disk/tape image
 ```
 
+### Installing the toolchain (Linux)
+
+Building on Linux follows the same recipe, with one important difference:
+**there is no cross-compilation** — the Tauri bundler packages the app for the
+platform it runs on, so `.deb`/`.rpm`/`.AppImage` artifacts must be built on a
+Linux machine (building a Windows installer from Linux is not supported).
+
+1. **Node.js ≥ 18** — `sudo apt install nodejs npm`, or the LTS from
+   <https://nodejs.org>.
+2. **Rust** — install via <https://rustup.rs>:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+3. **Tauri system dependencies** (Debian/Ubuntu; other distros — see the
+   [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)):
+   ```bash
+   sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
+     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+   ```
+4. **Tauri CLI v2** — `cargo install tauri-cli --version "^2"`.
+
+Verify every component is on the `PATH`, then stage and build either variant:
+
+```bash
+node --version            # >= 18
+cargo --version
+cargo tauri --version
+
+npm run desktop:minimal   # yaPDP-Minimal: deb + AppImage
+npm run desktop:full      # yaPDP-Full: deb + AppImage
+```
+
+The first build downloads the AppImage tooling (linuxdeploy) automatically.
+The `.deb` installs system-wide via `apt`/`dpkg` (Debian/Ubuntu family); the
+`.AppImage` is the Linux analogue of the portable `.exe` — download, `chmod +x`,
+run, no installation required. Runtime dependencies of the `.deb` (WebKitGTK,
+GTK3, …) are pulled in automatically by the package manager.
+
 ### Building the desktop app
 
 Once the [toolchain above](#installing-the-toolchain-windows) is installed, the
@@ -276,7 +325,7 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | Script | Action |
 |--------|--------|
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
-| `npm run desktop` / `desktop:minimal` | Stage + build installers (MSI + NSIS + portable exe), `minimal` variant (rk0/rk1/bootcode) |
+| `npm run desktop` / `desktop:minimal` | Stage + build installers for the current platform (Windows: MSI + NSIS + portable exe; Linux: deb + AppImage), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
 | `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + front-panel scaling + teletype scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps + sidebar nav tooltips + PanelLed panel status) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |

@@ -11,7 +11,7 @@
         "windows": [
             {
                 "label": "main",
-                "title": "yaPDP — PDP-11/70 Emulator",
+                "title": "yaPDP \u2014 PDP-11/70 Emulator",
                 "url": "pdp11.html",
                 "width": 1280,
                 "height": 920,
@@ -50,6 +50,12 @@
             "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
             "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
             "../media/bootcode.ptap": "media/bootcode.ptap"
+        },
+        "publisher": "Alexei Eskenazi",
+        "copyright": "\u00a9 2026 Alexei Eskenazi",
+        "linux": {
+            "deb": {},
+            "appimage": {}
         }
     }
 }

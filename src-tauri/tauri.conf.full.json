@@ -11,7 +11,7 @@
         "windows": [
             {
                 "label": "main",
-                "title": "yaPDP — PDP-11/70 Emulator",
+                "title": "yaPDP \u2014 PDP-11/70 Emulator",
                 "url": "pdp11.html",
                 "width": 1280,
                 "height": 920,
@@ -73,6 +73,12 @@
             "../media/DEC-11-O2PA-PB.ptap.zst": "media/DEC-11-O2PA-PB.ptap.zst",
             "../media/ED-11-V004B-8K.ptap.zst": "media/ED-11-V004B-8K.ptap.zst",
             "../media/lander.ptap": "media/lander.ptap"
+        },
+        "publisher": "Alexei Eskenazi",
+        "copyright": "\u00a9 2026 Alexei Eskenazi",
+        "linux": {
+            "deb": {},
+            "appimage": {}
         }
     }
 }
