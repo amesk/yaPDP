@@ -231,6 +231,14 @@
           </svg></span>
         Info
       </div>
+      <!-- Version marker: pinned to the bottom of the sidebar, clickable —
+           jumps to the Info page ("About" block). The text is filled from
+           src/version.js by src/pdp11-panel.js (initPanelUI). -->
+      <div class="sidebar-version" id="sidebar-version" data-page="instructions"
+        title="yaPDP — Yet Another PDP‑11/70 Emulator. Click for version, author, website and license information.">
+        <span class="sidebar-version-name">yaPDP</span>
+        <span class="sidebar-version-text"></span>
+      </div>
     </div>
     <!-- Global sound mute: round magic-wand-style button fixed to the
          bottom-left corner just right of the navigation sidebar. Toggles the
@@ -1311,6 +1319,27 @@
         standing in front of a DEC minicomputer.
       </p>
 
+      <table style="margin-left:25px; padding:3px;">
+        <tbody>
+          <tr>
+            <td class="disk"><b>Version</b></td>
+            <td><span id="about-version"></span></td>
+          </tr>
+          <tr>
+            <td class="disk"><b>Website</b></td>
+            <td><a href="https://github.com/amesk/yaPDP">https://github.com/amesk/yaPDP</a></td>
+          </tr>
+          <tr>
+            <td class="disk"><b>Author</b></td>
+            <td>Alexei Eskenazi &lt;<a href="mailto:alexei.eskenazi@gmail.com">alexei.eskenazi@gmail.com</a>&gt;</td>
+          </tr>
+          <tr>
+            <td class="disk"><b>License</b></td>
+            <td>MIT — see <a href="https://github.com/amesk/yaPDP/blob/master/LICENSE">LICENSE</a></td>
+          </tr>
+        </tbody>
+      </table>
+
       <h4>What makes it special</h4>
 
       <table style="margin-left:25px; padding:3px;">
@@ -1634,6 +1663,7 @@ Hello world
     </svg>
   </button>
 
+  <script src='src/version.js'></script>
   <script src='src/pdp11-panel.js'></script>
   <script src='src/g60printer.js'></script>
   <script src='src/config.js'></script>

@@ -1436,6 +1436,35 @@ body {
     opacity: 1;
 }
 
+/* Version marker pinned to the bottom of the sidebar (yaPDP + vX.Y.Z).
+   Clickable — navigates to the Info page like the nav buttons. The text is
+   filled from src/version.js (window.YAPDP_VERSION) by initPanelUI. */
+.app-sidebar .sidebar-version {
+    margin-top: auto;
+    margin-bottom: 10px;
+    width: 68px;
+    padding: 6px 4px;
+    text-align: center;
+    color: #6a655a;
+    font-size: 9px;
+    line-height: 1.4;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+}
+
+.app-sidebar .sidebar-version .sidebar-version-name {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.app-sidebar .sidebar-version:hover {
+    color: #b8b0a0;
+    background: rgba(255, 255, 255, 0.05);
+}
+
 /* Activity lamp: a tiny green LED in the top-right corner of a sidebar
    button. Hidden while the device is idle; NavActivity.pulse() adds the
    .on class when the PDP-11 writes output, and the CSS animation blinks

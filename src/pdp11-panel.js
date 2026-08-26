@@ -182,28 +182,49 @@ function examineDeposit(data) {
   // --- Sidebar navigation (data-page) ---
   // Leaving the CONFIG page with uncommitted changes asks for confirmation via
   // the shared modal overlay (window.configConfirmLeave) so the user does
-  // not silently lose pending structural edits.
+  // not silently lose pending structural edits. The sidebar version marker
+  // reuses the same navigation path (it carries data-page="instructions").
+  function navigateTo(target) {
+    if (target !== 'config' &&
+        typeof window.isConfigDirty === 'function' &&
+        window.isConfigDirty()) {
+      var cfgPage = document.getElementById('page-config');
+      var onConfig = cfgPage && cfgPage.classList.contains('active');
+      if (onConfig) {
+        if (typeof window.configConfirmLeave === 'function') {
+          // The overlay's "Leave" button performs the switch asynchronously.
+          window.configConfirmLeave(function () { switchPage(target); });
+        } else if (window.confirm('You have uncommitted configuration changes. Leave without applying?')) {
+          switchPage(target);
+        }
+        return;
+      }
+    }
+    switchPage(target);
+  }
+
   document.querySelectorAll('.nav-btn[data-page]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var target = this.dataset.page;
-      if (target !== 'config' &&
-          typeof window.isConfigDirty === 'function' &&
-          window.isConfigDirty()) {
-        var cfgPage = document.getElementById('page-config');
-        var onConfig = cfgPage && cfgPage.classList.contains('active');
-        if (onConfig) {
-          if (typeof window.configConfirmLeave === 'function') {
-            // The overlay's "Leave" button performs the switch asynchronously.
-            window.configConfirmLeave(function () { switchPage(target); });
-          } else if (window.confirm('You have uncommitted configuration changes. Leave without applying?')) {
-            switchPage(target);
-          }
-          return;
-        }
-      }
-      switchPage(target);
+      navigateTo(this.dataset.page);
     });
   });
+
+  // --- Version marker (sidebar bottom) ---
+  // The "yaPDP" name is static; the "vX.Y.Z" line and the Info page "About"
+  // table version cell come from src/version.js (window.YAPDP_VERSION), which
+  // is generated from package.json by tools/sync-version.js.
+  var versionMarker = document.getElementById('sidebar-version');
+  var versionText = versionMarker &&
+    versionMarker.querySelector('.sidebar-version-text');
+  var aboutVersion = document.getElementById('about-version');
+  var appVersion = window.YAPDP_VERSION || '';
+  if (versionText && appVersion) versionText.textContent = 'v' + appVersion;
+  if (aboutVersion && appVersion) aboutVersion.textContent = appVersion;
+  if (versionMarker) {
+    versionMarker.addEventListener('click', function () {
+      navigateTo(this.dataset.page);
+    });
+  }
 
   // --- Power lock (OFF / POWER / LOCK) ---
   // The position labels are the hit targets: clicking a label selects that

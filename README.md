@@ -412,7 +412,9 @@ Use the sidebar to switch between:
 - **Display** — the VT11 vector-graphics CRT page, shown only when configured
 - **Storage** — storage media: paper-tape reader, disk/tape image import and mounted images
 - **Config** — configure the emulated peripherals (persisted between sessions)
-- **Info** — detailed instructions and OS reference
+- **Info** — detailed instructions, OS reference and the About block
+  (version, website, author and license). A "yaPDP vX.Y.Z" marker at the
+  bottom of the sidebar opens this page
 
 A floating **fullscreen** button (bottom-right of the window) hides the browser/
 system chrome — the address bar in the browser, the OS window frame and the

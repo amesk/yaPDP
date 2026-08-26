@@ -1,40 +1,41 @@
 {
-    "name": "yapdp",
-    "version": "0.1.0",
-    "private": true,
-    "type": "commonjs",
-    "description": "yaPDP - Yet Another PDP-11/70 web emulator - development & build scripts",
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/amesk/yaPDP.git"
-    },
-    "author": {
-        "name": "Alexei Eskenazi",
-        "email": "alexei.eskenazi@gmail.com"
-    },
-    "engines": {
-        "node": ">=18"
-    },
-    "scripts": {
-        "test": "node tests/config.test.js && node tests/snapshotstore.test.js && node tests/punchtape.test.js && node tests/pasteutil.test.js && node tests/paper-geometry.test.js && node tests/lp11-text.test.js && node tests/lp11-scaling.test.js && node tests/panel-scaling.test.js && node tests/teletype-scaling.test.js && node tests/lp11-cabinet-css.test.js && node tests/lp11-online.test.js && node tests/teletype-paper-css.test.js && node tests/teletype-paper-growth.test.js && node tests/teletype-brandplate-css.test.js && node tests/teletype-cabinet-css.test.js && node tests/vt52-cabinet-css.test.js && node tests/dataloader.test.js && node tests/diskstore.test.js && node tests/onboarding.test.js && node tests/imgerror.test.js && node tests/osboot.test.js && node tests/vt52.test.js && node tests/g60printer-flush.test.js && node tests/dl11-recv.test.js && node tests/vt11.test.js && node tests/contextmenu.test.js && node tests/fullscreen.test.js && node tests/hum.test.js && node tests/model33-keyboard.test.js && node tests/navactivity.test.js && node tests/nav-led-css.test.js && node tests/nav-tooltip.test.js && node tests/panel-led.test.js",
-        "rebuild-boot": "node tools/rebuild-bootcode.js",
-        "stage": "node tools/build-desktop.js",
-        "desktop": "node tools/build-desktop.js && node tools/tauri-build.js",
-        "desktop:minimal": "node tools/build-desktop.js --variant minimal && node tools/tauri-build.js",
-        "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
-        "serve": "node tools/serve.js",
-        "screenshots:manual": "node tools/screenshots-manual.js",
-        "screenshots:os": "node tools/screenshots-os.js",
-        "record:video": "node tools/record-video.js",
-        "video:intro": "node tools/make-intro.js",
-        "video:demo": "node tools/assemble-video.js",
-        "clean": "node tools/build-desktop.js --clean"
-    },
-    "devDependencies": {
-        "canvas": "^3.2.3",
-        "ffmpeg-static": "^5.3.0",
-        "puppeteer-core": "^25.8.0",
-        "puppeteer-stream": "^3.0.23"
-    }
+  "name": "yapdp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "yaPDP - Yet Another PDP-11/70 web emulator - development & build scripts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amesk/yaPDP.git"
+  },
+  "author": {
+    "name": "Alexei Eskenazi",
+    "email": "alexei.eskenazi@gmail.com"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node tests/config.test.js && node tests/snapshotstore.test.js && node tests/punchtape.test.js && node tests/pasteutil.test.js && node tests/paper-geometry.test.js && node tests/lp11-text.test.js && node tests/lp11-scaling.test.js && node tests/panel-scaling.test.js && node tests/teletype-scaling.test.js && node tests/lp11-cabinet-css.test.js && node tests/lp11-online.test.js && node tests/teletype-paper-css.test.js && node tests/teletype-paper-growth.test.js && node tests/teletype-brandplate-css.test.js && node tests/teletype-cabinet-css.test.js && node tests/vt52-cabinet-css.test.js && node tests/dataloader.test.js && node tests/diskstore.test.js && node tests/onboarding.test.js && node tests/imgerror.test.js && node tests/osboot.test.js && node tests/vt52.test.js && node tests/g60printer-flush.test.js && node tests/dl11-recv.test.js && node tests/vt11.test.js && node tests/contextmenu.test.js && node tests/fullscreen.test.js && node tests/hum.test.js && node tests/model33-keyboard.test.js && node tests/navactivity.test.js && node tests/nav-led-css.test.js && node tests/nav-tooltip.test.js && node tests/panel-led.test.js",
+    "rebuild-boot": "node tools/rebuild-bootcode.js",
+    "stage": "node tools/build-desktop.js",
+    "desktop": "node tools/build-desktop.js && node tools/tauri-build.js",
+    "desktop:minimal": "node tools/build-desktop.js --variant minimal && node tools/tauri-build.js",
+    "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
+    "serve": "node tools/serve.js",
+    "screenshots:manual": "node tools/screenshots-manual.js",
+    "screenshots:os": "node tools/screenshots-os.js",
+    "record:video": "node tools/record-video.js",
+    "video:intro": "node tools/make-intro.js",
+    "video:demo": "node tools/assemble-video.js",
+    "clean": "node tools/build-desktop.js --clean",
+    "version:sync": "node tools/sync-version.js"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.3",
+    "ffmpeg-static": "^5.3.0",
+    "puppeteer-core": "^25.8.0",
+    "puppeteer-stream": "^3.0.23"
+  }
 }
