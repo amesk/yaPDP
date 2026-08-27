@@ -155,16 +155,27 @@
         if (!body) init();
         if (!body) return;
 
-        // Overpunch after BSP: the punch head is positioned armedDepth-1
-        // rows back from the newest (DOM children are newest-first).
-        if (armedDepth > 0 && body.children.length > 0) {
-            var idx = buffer.length - armedDepth; // buffer index of the armed row
-            var row = body.children[armedDepth - 1];
+        // Overpunch after BSP: the tape is pulled back, so the row under the
+        // punch head (buffer[length - armedDepth]) is NOT part of the visible
+        // tape — it sits inside the punch unit. Any punch overpunches that
+        // row: the holes OR together, exactly like a real overpunch (RUB OUT
+        // turns the row into DEL, all tracks punched; any other byte corrupts
+        // it the same way real hardware would). The punch cycle advances the
+        // tape one step, so the overpunched row reappears at the top of the
+        // hanging tape and the next pulled-back row (if any) moves under the
+        // head.
+        if (armedDepth > 0) {
+            var idx = buffer.length - armedDepth; // buffer index of the row under the head
             var merged = (buffer[idx] | (code & 0x7F)) & 0x7F;
             buffer[idx] = merged;
+            var row = makeSpan('pt-row');
             renderRow(row, merged);
-            row.classList.remove('pt-row-armed');
-            armedDepth = 0;
+            if (body.firstChild) {
+                body.insertBefore(row, body.firstChild);
+            } else {
+                body.appendChild(row);
+            }
+            armedDepth--;
             updateMaxHeight();
             keepPunchVisible();
             return;
@@ -243,25 +254,25 @@
     }
 
     /**
-     * backspace() - Punch-unit BSP: move the tape back one step so the punch
+     * backspace() - Punch-unit BSP: pull the tape back one step so the punch
      * head returns to the last-punched row. Punches nothing itself — the
-     * next byte overpunches that row in place (the classic ASR-33 correction:
-     * BSP to position, then RUB OUT / DELETE to erase the byte into DEL).
-     * Each further BSP moves the head one row further back, up to the oldest
-     * punched row.
+     * newest row disappears into the punch unit (the hanging tail visibly
+     * shortens) and the row one further back moves under the punch head.
+     * The next punch (e.g. DELETE / RUB OUT) overpunches that row in place,
+     * holes OR-ing together like a real overpunch. Each further BSP pulls
+     * the tape one step further back, up to the oldest punched row.
      */
     function backspace() {
         if (!body) init();
         if (!body || !body.firstChild) return;
         if (armedDepth >= buffer.length) return; // already at the oldest row
         armedDepth++;
-        // Only the row under the punch head carries the marker — a further
-        // BSP moves it one row further back.
-        var marked = body.querySelectorAll('.pt-row-armed');
-        for (var i = 0; i < marked.length; i++) {
-            marked[i].classList.remove('pt-row-armed');
-        }
-        body.children[armedDepth - 1].classList.add('pt-row-armed');
+        // The top DOM row is the newest punch: it goes back into the punch
+        // unit and out of sight. The row data stays in the buffer — the
+        // punch cycle that overpunches it will bring it back to the top of
+        // the hanging tape.
+        body.removeChild(body.firstChild);
+        updateMaxHeight();
     }
 
     /**

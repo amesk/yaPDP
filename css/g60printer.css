@@ -1584,15 +1584,6 @@
     background: #f6f1e5;
 }
 
-/* The row under the punch head after the punch-unit BSP (backspace): the
-   tape has been moved back one step, so the next punch overpunches this
-   row in place (RUB OUT / DELETE turns it into DEL). A short ink stripe on
-   the left edge marks the position, like the punch mechanism sitting over
-   the row. */
-.pt-row-armed {
-    box-shadow: inset 3px 0 0 rgba(28, 23, 18, 0.55);
-}
-
 /* Narrow blank margins on both sides of the tape (real tape has small
    unpunched edges, not wide fields) */
 .pt-cell {

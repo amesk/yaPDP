@@ -75,11 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- ASR punch **BSP** no longer erases the last byte by itself — it only moves
-  the tape back one step (the next punch overpunches that row in place, with
-  the row under the punch head marked by an ink stripe). The erasure is the
-  **DELETE / RUB OUT** key's job: it punches all holes over the byte, turning
-  it into DEL — the authentic two-step ASR-33 correction ([`b63ba1b`](https://github.com/amesk/yaPDP/commit/b63ba1b)).
+- ASR punch **BSP** no longer erases the last byte by itself — it pulls the
+  tape back one step, so the hanging tail visibly shortens as the row
+  disappears into the punch unit, and the next punch overpunches the row now
+  under the punch head, holes OR-ing together like a real overpunch. The
+  erasure is the **DELETE / RUB OUT** key's job: it punches all holes over
+  the byte, turning it into DEL — the authentic two-step ASR-33 correction
+  ([`db4612e`](https://github.com/amesk/yaPDP/commit/db4612e)).
 - CONFIG|Equipment: teletype-only parameters and the LP11 printer width are
   now **disabled and dimmed** (opacity .45) instead of hidden when they do
   not apply to the current selection — the form reads as a stable list where
