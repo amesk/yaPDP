@@ -88,6 +88,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all-holes RUB OUT row, exactly like a real ASR-33 receive punch. The LOCAL
   echo no longer punches a second row for bytes the keyboard punch already
   recorded ([`1671979`](https://github.com/amesk/yaPDP/commit/1671979)).
+- The CCU knob (LINE/OFF/LOCAL) and the TAPE READER switch (START/STOP/FREE/AUTO)
+  now turn by clicking the switch itself, not only the position labels: the
+  knob/disc cycles one detent clockwise (LINE → OFF → LOCAL → LINE, START →
+  STOP → FREE → AUTO → START) like rotating the real control; labels still
+  jump straight to a position.
 - The Model 33 keyboard is bit-paired: SHIFT flips bit 4 of the base code,
   CTRL flips bit 6. Held together on a key that carries both legends
   (P @ DLE, K [ VT, N ^ SO, M ] CR) both code bars engage, so

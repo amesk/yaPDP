@@ -2293,6 +2293,15 @@ function initTtyControls() {
       });
     })(ccuPos[ci]);
   }
+  // Clicking the KNOB itself (not a label) turns it to the next detent,
+  // like rotating the real knob clockwise: LINE -> OFF -> LOCAL -> LINE.
+  var ccuKnob = document.getElementById('ccu-switch-disc');
+  if (ccuKnob) {
+    ccuKnob.addEventListener('click', function () {
+      playSwitchClick();
+      setTtyMode(ttyModes[(ttyModes.indexOf(window.ttyMode) + 1) % ttyModes.length]);
+    });
+  }
 
   var tearTapeBtn = document.getElementById('tty-tear-tape');
   if (tearTapeBtn) {
@@ -2419,6 +2428,15 @@ function initTtyControls() {
         setReaderMode(btn.getAttribute('data-reader-mode'));
       });
     })(switchPos[si]);
+  }
+  // Clicking the switch DISC itself (not a label) turns it to the next
+  // detent clockwise: START -> STOP -> FREE -> AUTO -> START.
+  var readerDisc = document.querySelector('.asr-switch-disc');
+  if (readerDisc) {
+    readerDisc.addEventListener('click', function () {
+      playSwitchClick();
+      setReaderMode(readerModes[(readerModes.indexOf(window.ttyReaderMode) + 1) % readerModes.length]);
+    });
   }
 
   // LINE is the default mode; the punch is OFF; the reader switch starts in

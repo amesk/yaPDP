@@ -1412,6 +1412,7 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
+    cursor: pointer;
     /* Light centre inside a thick dark ring, matching the CCU knob. */
     background: radial-gradient(circle at 50% 50%,
             #f6f6f6 0%,
@@ -1770,6 +1771,7 @@
     height: 34px;
     margin-left: -17px;
     border-radius: 50%;
+    cursor: pointer;
     /* Light centre (the molded indicator) inside a thick DARK ring, drawn
        as one radial gradient (no border, so the beak's bottom:100% lands
        exactly on the knob's outer edge). Darker ring = closer to the real
