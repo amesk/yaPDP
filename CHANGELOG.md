@@ -123,6 +123,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **LP11 and VT52 machine chrome also back to VT323** (badge, keys,
   bezel lettering, status): same narrow-advance logic as the teletype —
   machines speak the pixel font, the rest of the UI speaks Courier Prime.
+- **Front-panel machine chrome back to VT323 too**: Courier Prime's wider
+  and taller glyphs overflowed the keycaps (ENABLE/HALT, S INST/S BUS,
+  START) and the status label strips (PAR/ADRS ERR/RUN/...). The panel —
+  like the teletype, LP11 and VT52 — keeps the narrow pixel VT323.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

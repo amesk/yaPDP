@@ -2925,3 +2925,16 @@ body.no-photo-bg #page-instructions.active {
 .lp11-dec-letter {
     font-family: 'VT323', arial, helvetica, sans-serif;
 }
+
+/* The PDP-11/70 front panel is a machine too: keys, status labels and the
+   engraved wordmark keep the narrow pixel VT323 (Courier Prime's taller,
+   wider glyphs overflow the keycaps and label strips). */
+#page-panel .frame .switchPad,
+#page-panel .frame .switchPadHalf,
+#page-panel .frame .multiText,
+#page-panel .frame .statusLabel1,
+#page-panel .frame .statusLabel2,
+#page-panel .frame .decLetter,
+#page-panel .frame .decName {
+    font-family: 'VT323', arial, helvetica, sans-serif;
+}
