@@ -216,6 +216,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.printer-actions` row is now lifted above the shadow
   (`position: relative; z-index: 1`), so the buttons read as bright as
   the PANEL / CONSOLE ones while the cabinet keeps its floating look.
+- **Manual screenshots regenerated**: all 27 images under
+  `assets/images/manual/` were re-captured so they show the current
+  look — the shared action-button recipe (small uppercase buttons on
+  PANEL / CONSOLE / CONFIG / STORAGE), the brighter printer buttons and
+  the current fonts.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
