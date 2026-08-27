@@ -495,7 +495,7 @@
     line-height: 1;
     color: #d8dbe0;
     pointer-events: none;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     letter-spacing: 0.5px;
 }
 
@@ -518,7 +518,7 @@
     line-height: 1;
     color: #d8dbe0;
     pointer-events: none;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
 }
 
 #punchkeyboard .m33-key.dual .m33-top {
@@ -543,7 +543,7 @@
     pointer-events: none;
     /* Authentic ASR33 keycaps: the base glyph uses a bold sans-serif grotesk
        (not the monospace Courier), matching the other legends on the caps. */
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
 }
 
 /* Dark modifier keys carry longer multi-word labels (LINE/FEED, RE-/TURN,
@@ -552,7 +552,7 @@
    (they have no small top legend, so nothing sits above to offset). */
 #punchkeyboard .m33-key.mod .m33-center {
     color: #e8e4da;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 12px;
     line-height: 1.15;
     top: 0;
@@ -1250,7 +1250,7 @@
     left: 0;
     right: 0;
     text-align: center;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 15px;
     font-weight: bold;
     letter-spacing: 2px;
@@ -1368,7 +1368,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 13px;
     font-weight: bold;
     cursor: pointer;
@@ -1450,7 +1450,7 @@
     border: 0;
     padding: 0;
     color: #5c5442;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 13px;
     font-weight: bold;
     letter-spacing: 1px;
@@ -1815,7 +1815,7 @@
     border: 0;
     padding: 0;
     color: #5c5442;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 13px;
     font-weight: bold;
     letter-spacing: 1px;

@@ -17,21 +17,23 @@
     font-display: swap;
 }
 
-/* ===== Era-appropriate UI chrome font (VT323, OFL) =====
+/* ===== Era-appropriate UI chrome font (Share Tech Mono, OFL) =====
    The console output keeps its authentic bitmap VT52 glyphs; the UI chrome
    (buttons, dialogs, sidebar, badges, labels, machine lettering) uses the
-   VT320-style VT323 so the whole interface reads like a 1970s DEC terminal.
-   Arial/Helvetica remain the fallback until the webfont loads. */
+   tech-mono Share Tech Mono — a crisper sibling of the pixel VT323, much
+   more legible at UI sizes. Arial/Helvetica remain the fallback until the
+   webfont loads. */
 @font-face {
-    font-family: 'VT323';
-    src: url('../assets/fonts/vt323/VT323-Regular.woff2') format('woff2');
+    font-family: 'Share Tech Mono';
+    src: url('../assets/fonts/sharetechmono/ShareTechMono-Regular.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
 
 /* Kalam (OFL): handwritten note face for the operator's sticky note. The
-   listing on the note stays monospaced (VT323) so the address columns line
+   listing on the note stays monospaced (Share Tech Mono) so the address
+   columns line
    up; only the words are handwritten. */
 @font-face {
     font-family: 'Kalam';
@@ -124,7 +126,7 @@ button, select, input, textarea {
     border: 1px solid #736c62;
     border-radius: calc(var(--unitWidth) * 2);
     color: #736c62;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
 }
 
 .smallSpace {
@@ -209,7 +211,7 @@ button, select, input, textarea {
     background: #181818;
     border-radius: calc(var(--unitWidth) * 4);
     color: white;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: calc(var(--unitHeight) * 2.2);
     text-align: center;
 }
@@ -387,7 +389,7 @@ button, select, input, textarea {
     border: 1px solid #4a4438;
     border-radius: 3px;
     padding: 1px 6px;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
 }
 
 .modal-title {
@@ -434,7 +436,7 @@ button, select, input, textarea {
     border: 1px solid #4a4438;
     border-radius: 3px;
     padding: 1px 6px;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
 }
 
 .modal-boot.modal-more {
@@ -636,7 +638,7 @@ button, select, input, textarea {
     padding: 4px 8px;
     background: rgba(20, 18, 14, 0.85);
     color: #ffe9a8;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 14px;
     line-height: 1.35;
     text-align: center;
@@ -887,7 +889,7 @@ button, select, input, textarea {
 
 .quickboot-cmd {
     color: #9a9488;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 16px;
     white-space: nowrap;
 }
@@ -1374,7 +1376,7 @@ thead {
 }
 
 pre {
-    font-family: 'VT323', "Courier New", Courier, monospace;
+    font-family: 'Share Tech Mono', "Courier New", Courier, monospace;
     font-size: 16px;
 }
 
@@ -1396,7 +1398,7 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
 }
 
 .app-layout {
@@ -1860,7 +1862,7 @@ body {
 /* DEC badge on terminal bezel */
 .vt52-badge {
     text-align: center;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 15px;
     letter-spacing: 2px;
     color: #8a8274;
@@ -1996,7 +1998,7 @@ body {
     border-bottom-color: #b6ae9c;
     border-radius: 2px;
     color: #d0c9b6;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-weight: 100;
     font-size: 15px;
     line-height: 1;
@@ -2253,7 +2255,7 @@ body.crt-effects .vt52-crt::after {
 /* Status label below screen */
 .vt52-status {
     margin-top: 10px;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 17px;
     color: #6a655a;
     text-align: center;
@@ -2388,7 +2390,7 @@ body.crt-effects .vt52-crt::after {
 /* DEC badge on the top cover */
 .lp11-badge {
     text-align: center;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 15px;
     letter-spacing: 2px;
     color: #7c7059;
@@ -2415,7 +2417,7 @@ body.crt-effects .vt52-crt::after {
 }
 
 .lp11-label {
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 15px;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -2467,7 +2469,7 @@ body.crt-effects .vt52-crt::after {
     border: 1px solid #4a4436;
     border-radius: 3px;
     padding: 3px 10px;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 14px;
     font-weight: bold;
     letter-spacing: 0.5px;
@@ -2547,7 +2549,7 @@ body.crt-effects .vt52-crt::after {
     border: 1px solid #6b6350;
     background: transparent;
     color: #4a4436;
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Share Tech Mono', arial, helvetica, sans-serif;
     font-size: 11px;
     font-weight: bold;
     line-height: 1;
