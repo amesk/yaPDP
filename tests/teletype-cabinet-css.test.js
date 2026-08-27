@@ -8,9 +8,10 @@
  *      keyboard deck, the printer face and the ASR tape unit share ONE
  *      plastic — the sand gradient (#d6bd99→#bfa67e / #e3cdaa→#c6a87e)
  *      with the same subtle grain and inner top shadow. The ASR unit has
- *      no contrasting frame (border: none) and its punch/reader areas are
- *      transparent — the unit is cast from the same body, not a sand
- *      substrate holding cream inserts.
+ *      no contrasting frame (border: none). The punch/reader contours are
+ *      raised plastic PLATES — a lighter sand tone than the body, same
+ *      grain, top highlight + drop shadow (relief plastic), equal width
+ *      (144px), with the TAPE PUNCH / TAPE READER labels centred on them.
  *   2. The flat-top cylindrical keycaps: a radial highlight over a solid
  *      dark side wall (box-shadow: 0 4px 0 #241f1a) that collapses when the
  *      key is pressed (translateY(4px) on the .down state).
@@ -116,18 +117,27 @@ function run() {
       "the ASR unit must carry the deck's inner top shadow:\n" + rule);
   }
 
-  // --- Punch / reader are transparent: part of the cast body -----------------
+  // --- Punch / reader are raised relief-plastic plates -----------------------
   {
     const punch = extractRule(css, "#asr-punch {");
-    assert.ok(/background\s*:\s*transparent\s*;/.test(punch),
-      "the punch area must be transparent (the unit's plastic shows through):\n" + punch);
-    assert.ok(/border\s*:\s*0\s*;/.test(punch),
-      "the punch area must not draw its own border:\n" + punch);
+    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#e0c9a4\s*0%,\s*#d0b58b\s*100%\)\s*;/.test(punch),
+      "the punch plate must carry the grain over the lighter sand gradient #e0c9a4→#d0b58b:\n" + punch);
+    assert.ok(/0\s+2px\s+4px\s+rgba\(0,\s*0,\s*0,\s*0\.3\)/.test(punch),
+      "the punch plate must have a drop shadow lifting it off the body:\n" + punch);
     const reader = extractRule(css, "#asr-reader {");
-    assert.ok(/background\s*:\s*transparent\s*;/.test(reader),
-      "the reader area must be transparent (the unit's plastic shows through):\n" + reader);
-    assert.ok(/border\s*:\s*0\s*;/.test(reader),
-      "the reader area must not draw its own border:\n" + reader);
+    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#e0c9a4\s*0%,\s*#d0b58b\s*100%\)\s*;/.test(reader),
+      "the reader plate must carry the grain over the same lighter sand gradient:\n" + reader);
+    assert.ok(/0\s+2px\s+4px\s+rgba\(0,\s*0,\s*0,\s*0\.3\)/.test(reader),
+      "the reader plate must have the same drop shadow:\n" + reader);
+  }
+
+  // --- The plates are the SAME width (labels centre on them) ------------------
+  {
+    const punch = extractRule(css, "#asr-punch {");
+    const reader = extractRule(css, "#asr-reader {");
+    const w = (r) => /width\s*:\s*(\d+)px\s*;/.exec(r) && /width\s*:\s*(\d+)px\s*;/.exec(r)[1];
+    assert.ok(w(punch) === w(reader),
+      "the punch and reader plates must be the same width:\n" + w(punch) + " vs " + w(reader));
   }
 
   // --- Sand top cover dome (two rounded corners) ---------------------------

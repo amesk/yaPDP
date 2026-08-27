@@ -24,7 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   top shadow, no contrasting frame (the punch/reader areas are transparent
   parts of the one body). The grain texture is shared with the printer
   face, the deck and the ASR unit, so the whole console reads as one
-  moulded cabinet.
+  moulded cabinet. The punch and reader contours are raised plastic
+  plates (relief): a lighter sand tone than the body with the same grain,
+  a top highlight and a drop shadow; both plates are the same width
+  (144px) and the TAPE PUNCH / TAPE READER labels centre on them. The
+  decorative corner screws were removed.
   The CCU routes every read byte
   exactly like the keyboard: **LOCAL** prints the tape on paper only
   (tape-to-paper copy), **LINE** sends it to the machine and the guest's
