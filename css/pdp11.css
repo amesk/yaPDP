@@ -154,7 +154,7 @@ button, select, input, textarea {
 
 .decBase {
     width: calc(var(--unitWidth) * 106);
-    height: calc(var(--unitHeight) * 8);
+    height: calc(var(--unitHeight) * 10);
     position: absolute;
     top: calc(var(--unitHeight) * 1);
     left: calc(var(--unitWidth) * 3);
@@ -180,25 +180,25 @@ button, select, input, textarea {
     line-height: calc(var(--unitHeight) * 5);
     text-align: center;
     position: relative;
-    top: 50%;
-    transform: translateY(-50%);
+    top: calc(var(--unitHeight) * 1.2);
     float: left;
 }
 
 .decName {
     position: absolute;
-    top: 0;
-    height: 100%;
-    font-size: calc(var(--unitHeight) * 2.8);
-    line-height: calc(var(--unitHeight) * 8);
-    float: left;
+    top: calc(var(--unitHeight) * 6.8);
+    left: calc(var(--unitWidth) * 2.66);
+    right: 0;
+    font-size: calc(var(--unitHeight) * 2.2);
+    line-height: calc(var(--unitHeight) * 2.6);
+    white-space: nowrap;
 }
 
 .topEdge {
     width: calc(var(--unitWidth) * 256);
     height: 0;
     position: absolute;
-    top: calc(var(--unitHeight) * 10);
+    top: calc(var(--unitHeight) * 12);
     left: 0;
     right: 0;
     margin: auto;
@@ -236,7 +236,7 @@ button, select, input, textarea {
 
 .switchPanel {
     position: relative;
-    top: calc(var(--unitHeight) * 12);
+    top: calc(var(--unitHeight) * 14);
     left: calc(var(--unitWidth) * 8);
 }
 
