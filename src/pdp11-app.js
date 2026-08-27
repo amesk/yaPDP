@@ -275,8 +275,9 @@ function model33StickyMods(mods, def) {
 // Does the console print path punch this byte on the ASR tape by itself?
 // Printable ASCII (32..126) goes through printChar -> onChar; BS/TAB/LF/FF/CR
 // are punched by their dedicated render handlers (TAB as the equivalent
-// spaces). The keyboard transmit punch only needs to cover the remaining
-// control codes (NUL..BEL, VT, SO..US, DEL) that the print path drops.
+// spaces); NUL and DEL are punched by the receive path too (blank row / RUB
+// OUT row). The keyboard transmit punch only needs to cover the remaining
+// control codes that the print path drops (BEL, VT, SO..US).
 function m33EchoPunches(code) {
   if (code >= 32 && code < 127) return true;
   return code === 8 || code === 9 || code === 10 || code === 12 || code === 13;
@@ -650,13 +651,15 @@ var g60Keyboard = (function () {
   // punch is engaged — in LOCAL and LINE alike. Bytes the console print path
   // already punches (printable + BS/TAB/LF/FF/CR) are left to that path to
   // avoid a double row; only the dropped control codes (NUL..BEL, VT, SO..US,
-  // DEL) are punched here so they are not lost.
+  // DEL) are punched here so they are not lost. Returns true when the byte
+  // was recorded on the tape by this call.
   function punchKeyboard(code) {
-    if (window.ttyMode === 'off') return;
-    if (!window.ttyPunchEnabled) return;
-    if (!window.paperTape) return;
-    if (m33EchoPunches(code)) return;
+    if (window.ttyMode === 'off') return false;
+    if (!window.ttyPunchEnabled) return false;
+    if (!window.paperTape) return false;
+    if (m33EchoPunches(code)) return false;
     window.paperTape.punchChar(code);
+    return true;
   }
   // Model 33 keyboard bell: typing BEL (CTRL+G, 0x07) rings the teletype
   // gong mechanically on the keyboard — in LOCAL and LINE alike, and
@@ -668,13 +671,15 @@ var g60Keyboard = (function () {
   }
   function sendChar(code) {
     bellKeyboard(code);
-    punchKeyboard(code);
+    var punched = punchKeyboard(code);
     // OFF: the unit is powered down — the key does nothing. LOCAL mode: the
     // keyboard is not connected to the machine — the typed character is
-    // printed locally (paper + tape) instead of being sent.
+    // printed locally (paper + tape) instead of being sent. Bytes the
+    // keyboard punch already recorded (NUL..BEL, VT, SO..US, DEL) are NOT
+    // echoed through the print path: echoing would punch a second row.
     if (window.ttyMode === 'off') return;
     if (window.ttyMode === 'local') {
-      if (g60Console) g60Console.writeChar(code);
+      if (!punched && g60Console) g60Console.writeChar(code);
       return;
     }
     if (typeof window.dlReceiveQueue === 'function') {
@@ -682,13 +687,19 @@ var g60Keyboard = (function () {
     }
   }
   function sendDL(bytes) {
-    for (var i = 0; i < bytes.length; i++) { bellKeyboard(bytes[i]); punchKeyboard(bytes[i]); }
+    var punched = [];
+    for (var i = 0; i < bytes.length; i++) {
+      bellKeyboard(bytes[i]);
+      punched.push(punchKeyboard(bytes[i]));
+    }
     // OFF: powered down — nothing typed is echoed or transmitted.
     if (window.ttyMode === 'off') return;
     if (window.ttyMode === 'local') {
       if (g60Console) {
         for (i = 0; i < bytes.length; i++) {
-          g60Console.writeChar(bytes[i]);
+          // Skip bytes the keyboard punch already recorded (NUL..BEL, VT,
+          // SO..US, DEL) — echoing them would punch a second row.
+          if (!punched[i]) g60Console.writeChar(bytes[i]);
         }
       }
       return;

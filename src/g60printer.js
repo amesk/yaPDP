@@ -1241,6 +1241,15 @@
             }
         };
 
+        // Punch-only byte: record a byte on the ASR tape without printing
+        // anything. Used by the receive path for NUL (a blank leader row
+        // with only the feed hole) and DEL (an all-holes RUB OUT row). The
+        // console teletype's onChar does the actual punch; the LP11 (no
+        // punch) omits onChar, so this is a no-op there.
+        this.punchByte = function(code) {
+            if (onChar) onChar(code);
+        };
+
         this.reset = function() { resetPrinter(); };
         this.stop = function() { stopPrinter(); };
         this.destroy = function() { destroyPrinter(); };
@@ -1403,7 +1412,15 @@
                 // (e.g. "N\bN" prints as "N" instead of "NN").
                 printer.backspace();
             } else if (code === 0x7F) {
-                // DEL (rubout) - ignored
+                // DEL (rubout): prints nothing, but the receive punch records
+                // it — all seven data tracks punched (a RUB OUT row).
+                printer.punchByte(0x7F);
+            } else if (code === 0) {
+                // NUL: prints nothing, but the receive punch records it — a
+                // blank row with only the feed hole. This is how a real ASR-33
+                // punches the classic tape leader/trailer: the machine sends
+                // a run of NULs and the punch cycles with no pin firing.
+                printer.punchByte(0);
             } else if (code >= 32 && code < 127) {
                 // Printable ASCII: display immediately
                 printer.printChar(String.fromCharCode(code));
