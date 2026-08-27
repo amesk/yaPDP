@@ -1578,18 +1578,19 @@
    to the bottom of the window, mirroring #punchtape. The reader block
    starts at 10 (mech inset) + 164 (punch block) + 12 (gap) = 186px within
    the cabinet and its slot sits at top 106px within the block, so the slot
-   centre lands at 186 + 106 + 6 = 298px. Horizontally it is centred like
-   the punch tape: the 170px block sits in the 186px cabinet with an 8px
-   margin, so tape left = 46px. The loaded tape is a full strip; as it is
-   read the top rows are removed and the rest moves up through the slot. */
+   centre lands at 186 + 106 + 6 = 298px. Horizontally it keeps its ORIGINAL
+   left offset (31px) even though the reader plate is now centred — so the
+   punched tape (which hangs on the slot axis) does not cover it completely.
+   The loaded tape is a full strip; as it is read the top rows are removed
+   and the rest moves up through the slot. */
 #readertape {
     position: absolute;
-    /* Hangs from the reader slot: the reader plate aligns with the punch,
-       so the slot centre sits at 94px — the same axis as the punched tape —
-       and tape left = 94 - 48.5 ≈ 46px. The punched tape draws in front of
-       it (z-index 11 > 10), as on the real machine. */
+    /* Hangs from the reader slot but keeps the original left:31px offset:
+       the punched tape hangs on the aligned slot axis (46px) and draws in
+       front of it (z-index 11 > 10), so a 15px strip of the reader tape
+       stays visible to the left. */
     top: 298px;
-    left: 46px;
+    left: 31px;
     z-index: 10;
     width: 107px;
     max-width: 100%;
