@@ -509,13 +509,29 @@ function examineDeposit(data) {
     rebootConfirmOverlay.innerHTML =
       '<div class="modal-box">' +
         '<span class="modal-title">Reboot the machine?</span>' +
-        '<p class="modal-intro">This restarts the emulated PDP-11. When Auto-boot is ' +
-        'enabled, it also boots the built-in default loader.</p>' +
+        '<p class="modal-intro">This restarts the emulated PDP-11. Tick the option ' +
+        'below to also run the built-in default loader after the reboot.</p>' +
+        '<label class="modal-dontask"><input type="checkbox" id="reboot-autoboot"> ' +
+        'Start the default bootstrap automatically after reboot</label>' +
         '<label class="modal-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
         'Don\'t show this warning anymore</label>' +
         '<button type="button" class="modal-close" data-reboot-action="cancel">Cancel</button>' +
         '<button type="button" class="modal-close" data-reboot-action="reboot">Reboot</button>' +
       '</div>';
+    // The new checkbox is a shortcut to the CONFIG|BEHAVIOUR Auto-boot option:
+    // persist it immediately and keep the Config form checkbox in sync so it
+    // never shows a stale value (autoBoot is not part of isDirty(), so the
+    // dirty marker stays untouched either way).
+    var rebootAutobootEl = rebootConfirmOverlay.querySelector('#reboot-autoboot');
+    if (rebootAutobootEl) {
+      rebootAutobootEl.addEventListener('change', function () {
+        if (typeof Config !== 'undefined' && Config.set) {
+          Config.set({ autoBoot: this.checked });
+        }
+        var cfgEl = document.getElementById('config-autoBoot');
+        if (cfgEl) cfgEl.checked = this.checked;
+      });
+    }
     rebootConfirmOverlay.addEventListener('click', function (e) {
       var action = e.target.getAttribute && e.target.getAttribute('data-reboot-action');
       if (action === 'cancel' || e.target === rebootConfirmOverlay) {
@@ -532,8 +548,12 @@ function examineDeposit(data) {
           var confirmRebootEl = document.getElementById('config-confirmReboot');
           if (confirmRebootEl) confirmRebootEl.checked = false;
         }
+        // This reboot follows the dialog's Auto-boot checkbox (a live mirror
+        // of the CONFIG|BEHAVIOUR option, persisted on change above).
+        var rebootAutoboot = document.getElementById('reboot-autoboot');
+        var autoboot = rebootAutoboot ? rebootAutoboot.checked : false;
         rebootConfirmOverlay.classList.remove('visible');
-        doReboot();
+        doReboot(autoboot);
       }
     });
     document.body.appendChild(rebootConfirmOverlay);
@@ -544,6 +564,13 @@ function examineDeposit(data) {
     var overlay = ensureRebootConfirm();
     var dontAsk = document.getElementById('reboot-dont-ask');
     if (dontAsk) dontAsk.checked = false; // never carry a stale "don't ask" tick
+    // Mirror the persisted Auto-boot choice every time the dialog opens, so
+    // the checkbox always reflects the config (it can change on the CONFIG
+    // page or via a snapshot restore while the dialog exists).
+    var autobootEl = document.getElementById('reboot-autoboot');
+    if (autobootEl && typeof Config !== 'undefined' && Config.get) {
+      autobootEl.checked = !!Config.get().autoBoot;
+    }
     overlay.classList.add('visible');
   }
 

@@ -697,7 +697,8 @@
                         <li><b>Machine power</b> — the machine is powered on; switching it off powers down the PDP-11
                             (POWER LOCK in the off position).</li>
                         <li><b>Auto-boot</b> — start the default bootstrap automatically when the machine is powered
-                            on.</li>
+                            on or rebooted. The reboot confirmation dialog offers a shortcut to this option (its
+                            "Start the default bootstrap automatically after reboot" checkbox).</li>
                         <li><b>First-run hint</b> — replay the first-run welcome overlay with quick-start boot
                             suggestions on the next launch.</li>
                     </ul>
@@ -889,7 +890,10 @@
                         <td>Round button with a restart icon. Restarts the machine; when <a href="#config">Auto-boot</a>
                             is enabled it
                             also boots the built-in default loader. By default a confirmation dialog asks first, with
-                            a "Don't show this warning anymore" option.</td>
+                            a "Don't show this warning anymore" option. The dialog also carries an Auto-boot shortcut:
+                            tick <b>Start the default bootstrap automatically after reboot</b> to run the default
+                            loader after this reboot — it is the CONFIG <b>Auto-boot</b> option itself, persists, and
+                            stays in sync with the CONFIG page checkbox.</td>
                     </tr>
                     <tr>
                         <td class="disk control-cell">
