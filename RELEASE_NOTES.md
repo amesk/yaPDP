@@ -28,10 +28,9 @@ the project develops. The highlights since alpha2:
   prompt, and the quick boot types `BOOT PR` / `BOOT RK1` in the historical
   upper case for the upper-case-only DEC guests (the *nix family keeps its
   lower-case commands).
-- **Branding**: `yaPDP` is spelled correctly in the app UI and the code —
-  the sidebar version marker no longer uppercases the name via CSS, and the
-  browser version constant is `window.yaPDP_VERSION`. (The promo-video intro
-  title card keeps its stylised all-caps `YAPDP` by design.)
+- **Branding**: the sidebar version marker reads `yaPDP v0.1.0` — it no
+  longer uppercases the name via CSS. (The stylised all-caps `YAPDP` on the
+  promo-video intro title card is intentional and unchanged.)
 - **Docs**: user manual cross-links, cropped CONFIG screenshots, rewritten
   Storage section with per-tab screenshots.
 
