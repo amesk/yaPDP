@@ -134,13 +134,31 @@ function run() {
             "carriage window must be wider and slightly lower than the slot (left/right:40px, bottom:52px):\n" + frBlock);
     }
 
-    // --- The mechanics bay must be beige (DEC palette), not a dark bay --------
+    // --- The mechanics bay must be sand (DEC palette), not a dark bay --------
     {
         const bayIdx = g60Css.lastIndexOf("#lp11_printer {");
         assert.ok(bayIdx !== -1, "no #lp11_printer rule in g60printer.css");
         const bayBlock = g60Css.slice(bayIdx, bayIdx + 300);
-        assert.ok(/background\s*:\s*#d6cfbd\s*;/.test(bayBlock),
-            "mechanics bay must be beige (DEC palette):\n" + bayBlock);
+        assert.ok(/background\s*:\s*#c9ae84\s*;/.test(bayBlock),
+            "mechanics bay must be sand (DEC palette):\n" + bayBlock);
+    }
+
+    // --- Cabinet + hood in the sand cast-plastic family (like the teletype) --
+    // The cabinet and the top hood share the sand gradient with the same grain,
+    // so the LP11 matches the rest of the DEC equipment. The hood is slightly
+    // lighter at the top (the lit lid); both use the sand border #a68c66.
+    {
+        const cab = extractRule(pdp11Css, ".lp11-cabinet");
+        assert.ok(/background\s*:\s*(?:radial-gradient\([^;]*?\),\s*)?url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#d6bd99\s*0%,\s*#c9ae84\s*22%,\s*#bfa67e\s*100%\)\s*;/.test(cab),
+            "the LP11 cabinet must carry the grain over the sand gradient #d6bd99→#c9ae84→#bfa67e:\n" + cab);
+        assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(cab),
+            "the LP11 cabinet border must use #a68c66:\n" + cab);
+
+        const hood = extractRule(pdp11Css, ".lp11-hood");
+        assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#dcc9a5\s*0%,\s*#cdb287\s*70%,\s*#bfa67e\s*100%\)\s*;/.test(hood),
+            "the LP11 hood must carry the grain over the sand gradient #dcc9a5→#cdb287→#bfa67e:\n" + hood);
+        assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(hood),
+            "the LP11 hood border must use #a68c66:\n" + hood);
     }
 
     // --- Mechanics bay itself must not clip the paper (overflow: visible) ---
