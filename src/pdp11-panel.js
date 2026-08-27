@@ -495,6 +495,11 @@ function examineDeposit(data) {
     if (forceBoot ||
         (typeof Config !== 'undefined' && Config.get().autoBoot)) {
       boot();
+    } else if (typeof CPU !== 'undefined') {
+      // No bootstrap: halt the CPU so the machine really rests. Without this,
+      // a bootstrap already loaded in RAM (e.g. from an earlier boot) would
+      // keep running and print its prompt again.
+      CPU.runState = STATE_HALT;
     }
   }
 

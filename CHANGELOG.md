@@ -92,8 +92,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Auto-boot shortcut: **Start the default bootstrap automatically after
   reboot** — a live mirror of the CONFIG|BEHAVIOUR **Auto-boot** option. The
   tick persists to the config, stays in sync with the CONFIG page checkbox
-  and decides whether this reboot runs the built-in default loader or lands
-  in a halted state.
+  and decides whether this reboot runs the built-in default loader or halts
+  the machine (the CPU now really stops; a bootstrap already in RAM no
+  longer keeps running after a boot-less reboot).
 - The CCU knob (LINE/OFF/LOCAL) and the TAPE READER switch (START/STOP/FREE/AUTO)
   now turn by clicking the switch itself, not only the position labels: the
   knob/disc cycles one detent clockwise (LINE → OFF → LOCAL → LINE, START →
