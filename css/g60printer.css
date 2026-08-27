@@ -1187,16 +1187,16 @@
    sides. A concave strip fills each empty zone and mirrors the dark slot
    on the opposite edge — each plate then carries two dark vertical
    accents at its edges. The strip spans the mechanism zone vertically
-   (38px = buttons/switch top .. 118px = slot bottom) and is centred in
-   the empty zone: punch left 17px (absolute 202px = centre 208), reader
-   left 142px (absolute 327px = centre 333). */
+   (38px = buttons/switch top .. 121px = the slot's bottom edge) and is
+   centred in the empty zone: punch left 17px (absolute 202px = centre
+   208), reader left 142px (absolute 327px = centre 333). */
 #asr-punch::before,
 #asr-reader::after {
     content: "";
     position: absolute;
     top: 38px;
     width: 12px;
-    height: 80px;
+    height: 83px;
     border-radius: 3px;
     /* A routed channel: clearly darker than the plate, dark at the top
        edge (shadow inside), lighter floor in the middle, hairline light
