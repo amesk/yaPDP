@@ -20,6 +20,11 @@ the project develops. The highlights since alpha2:
   drop target appears only on the Storage page.
 - **About block**: version marker in the sidebar and an About section on
   the Info page.
+- **Working ASR paper-tape reader**: load a `.ptap` / `.ptap.zst` / `.txt`
+  tape into the teletype's TAPE READER and read it into the machine — START
+  feeds at console speed, AUTO feeds one byte per DL11 "input drained"
+  signal (X-ON/X-OFF pauses and resumes), FREE reveals the Remove tape from
+  reader button, and the tape moves up and shortens as it is read.
 - **Smaller UX wins**: Quick boot button in the welcome dialog, Auto-boot
   shortcut in the power-off dialog, floating REBOOT/STATE buttons on the
   VT52 console page.

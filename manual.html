@@ -437,6 +437,18 @@
                     to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track
                     8 = parity). As on a real ASR‑33 the punch is <b>OFF by default</b> — enable it from the
                     <a href="#config">CONFIG page</a> or its own control.</li>
+                <li><b>Paper-tape reader.</b> The <b>Load tape</b> button below the machine opens a file dialog and
+                    inserts a paper tape into the reader — a raw <code>.ptap</code> (as saved by the punch or the
+                    Storage page), a compressed <code>.ptap.zst</code>, or a plain <code>.txt</code> whose characters
+                    become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window,
+                    its ragged free end torn like the punched tape's. The four-position switch on the TAPE READER
+                    cabinet governs reading: <b>START</b> runs the reader continuously, sending the tape to the machine
+                    at the console speed (authentic ~10 chars/sec or the fast CONFIG pace); <b>AUTO</b> sends one byte
+                    and then feeds the next only when the machine's DL11 has accepted the previous one (paused by
+                    <code>DC3 / X-OFF</code>, resumed by <code>DC1 / X-ON</code>); <b>STOP</b> pauses; <b>FREE</b>
+                    releases the tape and shows the <b>Remove tape from reader</b> button (hidden in every other mode)
+                    to pull it out. As the tape is read it visibly moves up through the slot and shortens; when the
+                    last byte is read the tape has gone into the machine and a new one can be loaded.</li>
             </ul>
 
             <h3>VT52 as the console</h3>

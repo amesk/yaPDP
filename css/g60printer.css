@@ -1441,9 +1441,15 @@
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-gutter: stable;
+    /* The container's transparent frame must not swallow clicks meant for
+       the TAPE READER switch below it (the punched tape hangs past the
+       reader cabinet). Only the visible tape body stays interactive (wheel
+       scrolling still works over it). */
+    pointer-events: none;
 }
 
 .punchtape__body {
+    pointer-events: auto;
     display: flex;
     flex-direction: column;
     /* Left-aligned: the tape hugs the punch slot, and the reserved scrollbar
@@ -1527,12 +1533,66 @@
     background-position: 50% 50%;
 }
 
+/* The READER tape hangs from the TAPE READER slot (below the punch) down
+   to the bottom of the window, mirroring #punchtape. The reader block
+   starts at 10 (mech inset) + 164 (punch block) + 12 (gap) = 186px within
+   the cabinet and its slot sits at top 106px within the block, so the slot
+   centre lands at 186 + 106 + 6 = 298px. Horizontally it is centred like
+   the punch tape: the 144px block sits in the 170px cabinet, so tape left
+   = 36px. The loaded tape is a full strip; as it is read the top rows are
+   removed and the rest moves up through the slot. */
+#readertape {
+    position: absolute;
+    top: 298px;
+    left: 36px;
+    z-index: 10;
+    width: 107px;
+    max-width: 100%;
+    height: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    /* Same click-through as #punchtape: the transparent frame must not
+       block the reader switch or the slots behind it. */
+    pointer-events: none;
+}
+
+#readertape__body {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0;
+    background: #f6f1e5;
+}
+
+/* Ragged free end of the loaded tape, same treatment as the punched tape:
+   the tape's trailing end is torn, not cut. */
+#readertape__body::after {
+    content: "";
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 5px;
+    background-image: url('../assets/images/paper-edge.png');
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    transform: scaleY(-1);
+}
+
 /* ==================================================================
    Model 33 ASR operator controls (Tear tape, Tear paper, Save tape).
    A single row of push-buttons under the machine, styled to match the
    real-printer action buttons (see .printer-actions button in
    css/pdp11.css) so the teletype and LP11 pages look alike.
    ================================================================== */
+/* The FREE-only "Remove tape from reader" button: hidden in every reader
+   mode except FREE (toggled by setReaderMode() in pdp11-app.js). */
+#teletype-controls .tty-btn.hidden {
+    display: none;
+}
+
 #teletype-controls {
     /* Pin the operator buttons to the bottom of the screen, centred on the
        page rather than under the teletype — same treatment as the front-panel

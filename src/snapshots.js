@@ -188,6 +188,11 @@ var SnapshotStore = (() => {
                 typeof window.paperTape.snapshot === "function") {
                 punchtape = window.paperTape.snapshot();
             }
+            var readertape = null;
+            if (typeof window !== "undefined" && window.tapeReader &&
+                typeof window.tapeReader.snapshot === "function") {
+                readertape = window.tapeReader.snapshot();
+            }
             var vt52 = null;
             if (typeof window !== "undefined" && window.vt52SnapshotAll &&
                 typeof window.vt52SnapshotAll === "function") {
@@ -206,6 +211,7 @@ var SnapshotStore = (() => {
                 config: captureConfig(),
                 devices: devices,
                 punchtape: punchtape,
+                readertape: readertape,
                 vt52: vt52,
                 cpuBytes: 0,
                 memBytes: mem.data.byteLength || 0
@@ -298,6 +304,13 @@ var SnapshotStore = (() => {
             if (snap.punchtape && typeof window !== "undefined" &&
                 window.paperTape && typeof window.paperTape.restore === "function") {
                 window.paperTape.restore(snap.punchtape.buffer);
+            }
+            // ASR reader tape (L2) — re-render the loaded tape and its read
+            // position (no-op when the tape UI is absent or no tape was
+            // loaded at capture time).
+            if (snap.readertape && typeof window !== "undefined" &&
+                window.tapeReader && typeof window.tapeReader.restore === "function") {
+                window.tapeReader.restore(snap.readertape);
             }
             // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
             // cursor, modes. Restored after RAM/devices so a repaint sees

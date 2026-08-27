@@ -52,20 +52,22 @@ function setTtyPunch(on) {
 
 // Tape reader switch state. On a real Model 33 ASR the reader has a
 // four-position switch: START (continuous reading), STOP (pause), FREE
-// (tape released for manual pull) and AUTO (remote control: reading runs
-// only while DC1/X-ON has been received, stopping on DC3/X-OFF).
+// (tape released for manual pull) and AUTO (remote control: reading starts
+// when the mode is engaged — one byte goes out, then each next byte follows
+// the DL11 "input drained" signal — and can be paused by DC3/X-OFF and
+// resumed by DC1/X-ON received over the line).
 var readerModes = ['start', 'stop', 'free', 'auto'];
-var readerAutoFeed = false; // DC1/DC3 latch, only used in AUTO
+var readerXoffPaused = false; // DC3/X-OFF pause latch, only used in AUTO
 
 // Recompute whether the ASR reader may feed bytes, honouring the CCU power
-// state. START always feeds; STOP/FREE never; AUTO follows the DC1 (X-ON) /
-// DC3 (X-OFF) latch received over the line. In CCU OFF the unit is powered
-// down, so the reader never feeds.
+// state. START always feeds; STOP/FREE never; AUTO feeds unless a DC3
+// (X-OFF) pause is latched. In CCU OFF the unit is powered down, so the
+// reader never feeds.
 function updateReaderCanFeed() {
   if (window.ttyMode === 'off') { window.ttyReaderCanFeed = false; return; }
   if (window.ttyReaderMode === 'start') window.ttyReaderCanFeed = true;
   else if (window.ttyReaderMode === 'stop' || window.ttyReaderMode === 'free') window.ttyReaderCanFeed = false;
-  else window.ttyReaderCanFeed = readerAutoFeed; // AUTO
+  else window.ttyReaderCanFeed = !readerXoffPaused; // AUTO
 }
 
 function setReaderMode(mode) {
@@ -79,6 +81,13 @@ function setReaderMode(mode) {
   // Rotate the POWER/LOCK-style handle: START 0°, STOP 90°, FREE 180°, AUTO 270°.
   var lever = document.getElementById('reader-switch-lever');
   if (lever) lever.style.transform = 'rotate(' + (readerModes.indexOf(mode) * 90) + 'deg)';
+  // Drive the reader mechanism (src/reader.js) and show the FREE-only
+  // "Remove tape from reader" operator button.
+  if (window.tapeReader && typeof window.tapeReader.setMode === 'function') {
+    window.tapeReader.setMode(mode);
+  }
+  var removeBtn = document.getElementById('tty-remove-tape');
+  if (removeBtn) removeBtn.classList.toggle('hidden', mode !== 'free');
 }
 
 // ---- CCU (Call Control Unit) line switch: LINE / OFF / LOCAL -----------
@@ -132,8 +141,25 @@ function g60ConsoleWrite(code) {
   if (code === 0x14) { setRelHeld(false); setTtyPunch(false); return; }
   // Remote reader control in AUTO: DC1 / X-ON (0x11) starts reading,
   // DC3 / X-OFF (0x13) stops it.
-  if (code === 0x11) { readerAutoFeed = true; if (window.ttyReaderMode === 'auto') window.ttyReaderCanFeed = true; return; }
-  if (code === 0x13) { readerAutoFeed = false; if (window.ttyReaderMode === 'auto') window.ttyReaderCanFeed = false; return; }
+  if (code === 0x11) {
+    // X-ON resumes the AUTO reader after an X-OFF pause: clear the pause
+    // latch and send one byte right away (the next bytes follow each
+    // "input drained" signal from the DL11 console).
+    readerXoffPaused = false;
+    if (window.ttyReaderMode === 'auto') {
+      window.ttyReaderCanFeed = true;
+      if (window.tapeReader && typeof window.tapeReader.kick === 'function') {
+        window.tapeReader.kick();
+      }
+    }
+    return;
+  }
+  if (code === 0x13) {
+    // X-OFF pauses the AUTO reader until the next X-ON.
+    readerXoffPaused = true;
+    if (window.ttyReaderMode === 'auto') window.ttyReaderCanFeed = false;
+    return;
+  }
   if (g60Console) g60Console.writeChar(code);
 }
 
@@ -2248,6 +2274,46 @@ function initTtyControls() {
     saveTapeBtn.addEventListener('click', function () {
       if (window.paperTape && typeof window.paperTape.save === 'function') {
         window.paperTape.save();
+      }
+    });
+  }
+
+  // Load tape: opens a file dialog (.ptap / .ptap.zst / .txt) and inserts
+  // the tape into the reader (src/reader.js). Loading replaces any tape
+  // already in the reader.
+  var loadTapeBtn = document.getElementById('tty-load-tape');
+  var tapeFileInput = document.getElementById('tty-tape-file');
+  if (loadTapeBtn && tapeFileInput) {
+    loadTapeBtn.addEventListener('click', function () {
+      tapeFileInput.click();
+    });
+    tapeFileInput.addEventListener('change', function () {
+      var file = tapeFileInput.files && tapeFileInput.files[0];
+      if (!file) return;
+      var fr = new FileReader();
+      fr.onload = function () {
+        if (window.tapeReader && typeof window.tapeReader.bytesFromFile === 'function') {
+          var bytes = window.tapeReader.bytesFromFile(fr.result, file.name);
+          if (bytes) {
+            window.tapeReader.loadBytes(bytes);
+            playSwitchClick();
+          }
+        }
+      };
+      fr.readAsArrayBuffer(file);
+      // Allow re-selecting the same file after a failed or repeated load.
+      tapeFileInput.value = '';
+    });
+  }
+
+  // Remove tape from reader: the FREE-mode operator action — pull the tape
+  // out of the reader by hand.
+  var removeTapeBtn = document.getElementById('tty-remove-tape');
+  if (removeTapeBtn) {
+    removeTapeBtn.addEventListener('click', function () {
+      // Play the rip sound only if there was actually a tape to pull out.
+      if (window.tapeReader && typeof window.tapeReader.removeTape === 'function') {
+        if (window.tapeReader.removeTape()) playTearSound();
       }
     });
   }

@@ -1012,6 +1012,13 @@ function dl11(vt52Unit, deviceVector) {
         // Try to deliver the next byte
         if (dlReceiveChar(unit, typeAhead[0])) {
             typeAhead.shift();
+            // The ASR tape reader (src/reader.js) listens for this in AUTO
+            // mode: the console receiver accepted the previous byte, so the
+            // machine is ready for the next tape byte.
+            if (unit === 0 && typeAhead.length === 0 &&
+                typeof window.onConsoleInputDrained === 'function') {
+                window.onConsoleInputDrained();
+            }
         }
 
         // DL11 receiver busy timing

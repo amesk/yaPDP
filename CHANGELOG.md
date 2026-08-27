@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Working ASR paper-tape reader.** The TAPE READER on the Model 33 ASR
+  console now actually reads: **Load tape** opens a file dialog for a
+  `.ptap`, `.ptap.zst` or `.txt` tape, which hangs from the reader slot down
+  to the window edge (same 8-track rows and ragged free end as the punched
+  tape). **START** feeds the tape at the console speed; **AUTO** sends one
+  byte and then one per DL11 "input drained" signal (paused by DC3/X-OFF,
+  resumed by DC1/X-ON); **FREE** reveals the **Remove tape from reader**
+  button (hidden in every other mode). The tape visibly moves up and
+  shortens as it is read, and the reader tape joins the machine-state
+  snapshots (L2) alongside the punched tape.
+
 - **Full machine-state snapshots.** The snapshot feature now captures the
   whole machine, not just the CPU: RAM, MMU and mounted images ([`d292244`](https://github.com/amesk/yaPDP/commit/d292244)); the registers of all nine I/O-page devices — KW11, DL11×3, LP11, PTR11/PTP11 (including the punch buffer), TM11, RK11, RL11, RP11, UDA50 — through clean `snapshot()`/`restore()` hooks that never read registers with hardware side effects ([`f0b866a`](https://github.com/amesk/yaPDP/commit/f0b866a)); the punched paper tape ([`d06f564`](https://github.com/amesk/yaPDP/commit/d06f564)); the LP11 printed paper ([`27a95a1`](https://github.com/amesk/yaPDP/commit/27a95a1)); the LP11 ON LINE state ([`142b2c9`](https://github.com/amesk/yaPDP/commit/142b2c9)); the VT52 terminals with their screen buffers ([`3940ebb`](https://github.com/amesk/yaPDP/commit/3940ebb)); and the VT11 vector display — registers and the CRT image itself ([`21d420f`](https://github.com/amesk/yaPDP/commit/21d420f)).
 - **Machine-state dialog.** The STATE floating button opens a snapshot

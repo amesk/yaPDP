@@ -800,6 +800,12 @@
                the tape reaches the bottom of the window. Rows are injected by
                punchtape.js into #punchtape__body. -->
           <div id="punchtape"></div>
+          <!-- The READER tape hangs from the TAPE READER slot (below the
+               punch), again down to the window edge. A loaded tape is a full
+               strip rendered by reader.js into #readertape__body; as bytes
+               are read the top rows vanish and the tape moves up through the
+               slot, shortening once less than a windowful remains. -->
+          <div id="readertape"></div>
         </div>
         <div id="teletype-main">
           <div id="g60printer"></div>
@@ -833,7 +839,12 @@
           title="Tear the printed paper off (clear the paper)">Tear paper</button>
         <button type="button" class="tty-btn" id="tty-save-tape" title="Download the punched tape as a .ptap file">Save
           tape</button>
+        <button type="button" class="tty-btn" id="tty-load-tape"
+          title="Load a paper tape into the reader (.ptap, .ptap.zst or .txt)">Load tape</button>
+        <button type="button" class="tty-btn hidden" id="tty-remove-tape"
+          title="FREE — pull the tape out of the reader">Remove tape from reader</button>
       </div>
+      <input type="file" id="tty-tape-file" accept=".ptap,.ptap.zst,.txt" style="display:none">
       <div style="display:none" id="tty1_div"></div> <!-- TTY1 (hidden, use printer) -->
       <div style="display:none" id="tty2_div"></div> <!-- TTY2 (hidden, use printer) -->
       <!-- Add more if needed -->
@@ -1724,6 +1735,7 @@ Hello world
   <script src='src/osboot.js'></script>
   <script src='src/quickboot.js'></script>
   <script src='src/punchtape.js'></script>
+  <script src='src/reader.js'></script>
   <script src='src/pdp11-app.js'></script>
   <script src='src/snapshots.js'></script>
 </body>
