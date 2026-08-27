@@ -1157,12 +1157,16 @@
 
 /* Reader: at the bottom — same size as the punch, keeping the original
    narrow width. Same cream surface as the punch above it and as the
-   LINE/OFF/LOCAL block (#ccu-apron). */
+   LINE/OFF/LOCAL block (#ccu-apron). The panel sits flush against the
+   cabinet's LEFT edge (not centred like the punch): on the real ASR-33 the
+   reader mechanism is offset to the left of the punch, and the offset
+   separates the two hanging tapes (~26px, see #readertape), so the punched
+   tape no longer covers the reader tape completely. */
 #asr-reader {
     position: relative;
     flex: 1 1 0;
     width: 144px;
-    align-self: center;
+    align-self: flex-start;
     background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
     border-radius: 0 0 8px 8px;
     /* Same drop + inner-top highlight as the LINE/OFF/LOCAL block (#ccu-apron). */
@@ -1185,6 +1189,13 @@
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+/* The TAPE READER label follows the offset mechanism: centred on the slot
+   (panel centre 72px minus the 13px offset) instead of on the panel. */
+#asr-reader .asr-label {
+    left: -13px;
+    right: 13px;
+}
+
 .asr-slot {
     position: absolute;
     left: 50%;
@@ -1201,6 +1212,15 @@
     border: 1px solid #555;
     border-radius: 2px;
     box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* The READER slot sits 13px LEFT of the panel centre (the reader mechanism
+   is offset from the punch on the real ASR-33). Together with the panel
+   being flush against the cabinet's left edge, the reader tape hangs
+   ~26px left of the punched tape, so the two tapes are visibly separated
+   instead of covering each other completely. */
+#asr-reader .asr-slot {
+    left: calc(50% - 13px);
 }
 
 /* Triangular tongue sitting ON TOP of the punch tape-out slot, forming one
@@ -1306,14 +1326,14 @@
    orbits the disc centre and lands on START/STOP/FREE/AUTO. */
 .asr-reader-switch {
     position: absolute;
-    /* Centre the switch in the TAPE READER cabinet: the reader keeps its
-       original 144px width, so its switch centre sits at 75px; with a 92px
-       switch that means left = 75 - 46 = 29px. top:42px keeps the switch's
-       distance to the block BOTTOM (40px) the same as before the cabinet
-       was made taller. The hanging punch tape draws ABOVE it (see
-       #punchtape z-index), as a punched tape always passes in front of the
-       reader mechanism. */
-    left: 29px;
+    /* The switch follows the reader slot 13px LEFT of the panel centre:
+       with a 92px switch the centre sits at 16 + 46 = 62px (the slot's
+       59px, 3px apart as before). top:42px keeps the switch's distance to
+       the block BOTTOM (40px) the same as before the cabinet was made
+       taller. The hanging punch tape draws ABOVE it (see #punchtape
+       z-index), as a punched tape always passes in front of the reader
+       mechanism. */
+    left: 16px;
     top: 42px;
     width: 92px;
     height: 62px;
@@ -1545,8 +1565,11 @@
    removed and the rest moves up through the slot. */
 #readertape {
     position: absolute;
+    /* Hangs from the shifted reader slot: the slot centre sits at 59px
+       (72 - 13), so tape left = 59 - 48.5 ≈ 10px — ~26px left of the
+       punched tape (36px), keeping the two tapes visibly separate. */
     top: 298px;
-    left: 36px;
+    left: 10px;
     z-index: 10;
     width: 107px;
     max-width: 100%;
