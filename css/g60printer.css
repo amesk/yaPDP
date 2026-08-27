@@ -885,10 +885,11 @@
    pdp11.css, so the same-specificity rules win the cascade.
    ================================================================== */
 #lp11_printer {
-    /* Beige mechanics bay in the DEC palette (like the cabinet body), with the
-       fanfold rising out of a dark slot at the top (see #lp11_printer::before). */
-    background: #d6cfbd;
-    border: 1px solid #a89f88;
+    /* Sand mechanics bay (same cast-plastic family as the LP11 cabinet and
+       the teletype rig), with the fanfold rising out of a dark slot at the
+       top (see #lp11_printer::before). */
+    background: #c9ae84;
+    border: 1px solid #a68c66;
     border-radius: 6px;
     /* visible (not hidden): the rising fanfold paper must be allowed to leave
        the bay through the top slot and climb above the cabinet. */
