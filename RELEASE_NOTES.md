@@ -24,7 +24,10 @@ the project develops. The highlights since alpha2:
   tape into the teletype's TAPE READER and read it into the machine — START
   feeds at console speed, AUTO feeds one byte per DL11 "input drained"
   signal (X-ON/X-OFF pauses and resumes), FREE reveals the Remove tape from
-  reader button, and the tape moves up and shortens as it is read.
+  reader button, and the tape moves up and shortens as it is read. The CCU
+  routes every byte like the keyboard: LOCAL prints the tape on paper
+  (tape-to-paper copy), LINE prints and sends; with the punch ON the read
+  bytes are punched onto the output tape — tape-to-tape duplication.
 - **Smaller UX wins**: Quick boot button in the welcome dialog, Auto-boot
   shortcut in the power-off dialog, floating REBOOT/STATE buttons on the
   VT52 console page.
