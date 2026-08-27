@@ -120,6 +120,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   were too wide in Courier Prime and shifted the machine layout, so they
   keep the narrow VT323 their geometry was tuned for. Courier Prime
   remains everywhere else (panel, dialogs, sidebar, CONFIG, LP11 badges).
+- **LP11 and VT52 machine chrome also back to VT323** (badge, keys,
+  bezel lettering, status): same narrow-advance logic as the teletype —
+  machines speak the pixel font, the rest of the UI speaks Courier Prime.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

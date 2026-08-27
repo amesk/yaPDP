@@ -38,10 +38,13 @@
     font-display: swap;
 }
 
-/* ===== Teletype machine chrome font (VT323, OFL) =====
-   The ASR-33's own chrome (keycaps, switch labels, operator buttons) keeps
-   the pixel VT323: its narrow advance is what the keycap/switch geometry
-   was tuned for, so the labels stay put and the layout doesn't shift. */
+/* ===== Machine chrome font (VT323, OFL) =====
+   The machines' own chrome — ASR-33 teletype (keycaps, switch labels,
+   operator buttons), LP11 line printer (badge, keys, bezel lettering) and
+   the VT52 console (badge, status) — keeps the pixel VT323: its narrow
+   advance is what the bezel/keycap/switch geometry was tuned for, so the
+   labels stay put and the layout doesn't shift. Courier Prime covers the
+   rest of the UI chrome. */
 @font-face {
     font-family: 'VT323';
     src: url('../assets/fonts/vt323/VT323-Regular.ttf') format('truetype');
@@ -2909,4 +2912,16 @@ body.no-photo-bg #page-instructions.active {
        it from the window background (there is no photo to sit a translucent
        slab on, so a translucent one would only blend into the backdrop). */
     background: #1c1915;
+}
+
+/* LP11 and VT52 machine chrome keeps the pixel VT323 (same narrow-advance
+   logic as the teletype); Courier Prime stays for the rest of the UI. */
+.vt52-badge,
+.vt52-dec-letter,
+.vt52-status,
+.lp11-badge,
+.lp11-label,
+.lp11-key,
+.lp11-dec-letter {
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
