@@ -1181,6 +1181,40 @@
         0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Decorative recessed groove for visual balance: the punch mechanism
+   (slot + buttons) sits RIGHT of the plate centre, the reader mechanism
+   (switch + slot) sits LEFT of it, so the empty zones are on opposite
+   sides. A concave strip fills each empty zone and mirrors the dark slot
+   on the opposite edge — each plate then carries two dark vertical
+   accents at its edges. The strip spans the mechanism zone vertically
+   (38px = buttons/switch top .. 118px = slot bottom) and is centred in
+   the empty zone: punch left 17px (absolute 202px = centre 208), reader
+   left 142px (absolute 327px = centre 333). */
+#asr-punch::before,
+#asr-reader::after {
+    content: "";
+    position: absolute;
+    top: 38px;
+    width: 12px;
+    height: 80px;
+    border-radius: 3px;
+    /* A routed channel: clearly darker than the plate, dark at the top
+       edge (shadow inside), lighter floor in the middle, hairline light
+       at the bottom rim — plus soft shading on both side walls. */
+    background: linear-gradient(180deg, #b09264 0%, #c8ae86 55%, #ab8d5f 100%);
+    box-shadow:
+        inset 0 3px 5px rgba(0, 0, 0, 0.45),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.4),
+        inset 2px 0 3px rgba(0, 0, 0, 0.2),
+        inset -2px 0 3px rgba(0, 0, 0, 0.2);
+}
+#asr-punch::before {
+    left: 17px;
+}
+#asr-reader::after {
+    left: 142px;
+}
+
 /* Reader: at the bottom — same size as the punch (170px), same cream
    surface, aligned with it: both plates span the same horizontal range
    (8px margin from the cabinet's left wall), so the pair is centred in
