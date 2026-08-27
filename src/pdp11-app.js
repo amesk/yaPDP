@@ -2362,8 +2362,11 @@ function initTtyControls() {
   if (punchBspBtn) {
     punchBspBtn.addEventListener('click', function () {
       playButtonPress();
-      if (window.paperTape && typeof window.paperTape.undo === 'function') {
-        window.paperTape.undo();
+      // BSP moves the tape back one step only — it punches nothing. The
+      // next byte (e.g. the DELETE / RUB OUT key) overpunches the row the
+      // punch head now sits over, exactly like a real ASR-33.
+      if (window.paperTape && typeof window.paperTape.backspace === 'function') {
+        window.paperTape.backspace();
       }
     });
   }

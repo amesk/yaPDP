@@ -75,6 +75,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- ASR punch **BSP** no longer erases the last byte by itself — it only moves
+  the tape back one step (the next punch overpunches that row in place, with
+  the row under the punch head marked by an ink stripe). The erasure is the
+  **DELETE / RUB OUT** key's job: it punches all holes over the byte, turning
+  it into DEL — the authentic two-step ASR-33 correction ([`b63ba1b`](https://github.com/amesk/yaPDP/commit/b63ba1b)).
+- CONFIG|Equipment: teletype-only parameters and the LP11 printer width are
+  now **disabled and dimmed** (opacity .45) instead of hidden when they do
+  not apply to the current selection — the form reads as a stable list where
+  greyed-out options explain their dependency, and their values survive the
+  switch back ([`ea570ba`](https://github.com/amesk/yaPDP/commit/ea570ba)).
 - `trap()`: runaway trap recursion on a corrupted stack (e.g. from an e2e
   test mutating PC/SP/RAM while the CPU is running) now halts the machine
   like real PDP-11 hardware instead of crashing with a `RangeError`

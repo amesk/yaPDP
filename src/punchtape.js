@@ -49,6 +49,10 @@
     var body = null;      // #punchtape__body — the tape content
     var cachedTop = -1;   // cached tape top offset for updateMaxHeight()
     var buffer = [];      // punched bytes on the current tape (for Save tape)
+    // armedDepth = how many steps the punch head has been backed up by BSP
+    // (0 = at the end, punching fresh rows). After BSP the next byte
+    // overpunches the row that many rows back instead of adding a new row.
+    var armedDepth = 0;
 
     /**
      * init() - Locate the #punchtape element, create the tape body and size
@@ -118,17 +122,13 @@
     }
 
     /**
-     * punchChar(code) - Punch one byte: append a tape row with the correct
-     * combination of holes and scroll the tape down.
-     * @param {number} code - byte value
+     * renderRow(row, code) - Render one tape row (edge, tracks Д1..Д8 with
+     * the feed holes) into an existing row element. Used for fresh rows and
+     * for in-place overpunch re-rendering after BSP.
      */
-    function punchChar(code) {
-        if (!body) init();
-        if (!body) return;
-
-        buffer.push(code & 0x7F);
+    function renderRow(row, code) {
+        row.innerHTML = '';
         var tracks = encodePunch(code);
-        var row = makeSpan('pt-row');
         // Edge + tracks Д1..Д3 + feed holes + tracks Д4..Д8 + edge.
         row.appendChild(makeSpan('pt-cell'));
         for (var i = 0; i < 3; i++) {
@@ -139,6 +139,40 @@
             row.appendChild(makeSpan('pt-hole' + (tracks[j] ? ' on' : '')));
         }
         row.appendChild(makeSpan('pt-cell'));
+    }
+
+    /**
+     * punchChar(code) - Punch one byte: append a tape row with the correct
+     * combination of holes and scroll the tape down. After BSP (backspace)
+     * the punch head sits over an already-punched row, so the byte is
+     * punched INTO that row in place instead — the holes OR together,
+     * exactly like a real overpunch: RUB OUT (0x7F) turns the row into DEL
+     * (all tracks punched), any other byte corrupts it the same way it
+     * would on real hardware.
+     * @param {number} code - byte value
+     */
+    function punchChar(code) {
+        if (!body) init();
+        if (!body) return;
+
+        // Overpunch after BSP: the punch head is positioned armedDepth-1
+        // rows back from the newest (DOM children are newest-first).
+        if (armedDepth > 0 && body.children.length > 0) {
+            var idx = buffer.length - armedDepth; // buffer index of the armed row
+            var row = body.children[armedDepth - 1];
+            var merged = (buffer[idx] | (code & 0x7F)) & 0x7F;
+            buffer[idx] = merged;
+            renderRow(row, merged);
+            row.classList.remove('pt-row-armed');
+            armedDepth = 0;
+            updateMaxHeight();
+            keepPunchVisible();
+            return;
+        }
+
+        buffer.push(code & 0x7F);
+        var row = makeSpan('pt-row');
+        renderRow(row, code);
         // Prepend: the fresh row appears right under the punch head, pushing
         // the already-punched tape downwards (the tape "grows" from the top).
         if (body.firstChild) {
@@ -167,6 +201,7 @@
         }
         torn = torn || buffer.length > 0;
         buffer = [];
+        armedDepth = 0;
         return torn;
     }
 
@@ -191,19 +226,11 @@
         if (!body) return 0;
         body.innerHTML = '';
         buffer = [];
+        armedDepth = 0;
         for (var i = 0; i < bytes.length; i++) {
             buffer.push(bytes[i] & 0x7F);
-            var tracks = encodePunch(bytes[i]);
             var row = makeSpan('pt-row');
-            row.appendChild(makeSpan('pt-cell'));
-            for (var j = 0; j < 3; j++) {
-                row.appendChild(makeSpan('pt-hole' + (tracks[j] ? ' on' : '')));
-            }
-            row.appendChild(makeSpan('pt-sprocket'));
-            for (var k = 3; k < 8; k++) {
-                row.appendChild(makeSpan('pt-hole' + (tracks[k] ? ' on' : '')));
-            }
-            row.appendChild(makeSpan('pt-cell'));
+            renderRow(row, bytes[i]);
             if (body.firstChild) {
                 body.insertBefore(row, body.firstChild);
             } else {
@@ -216,16 +243,25 @@
     }
 
     /**
-     * undo() - Punch BSP (backspace one tape step): remove the last (oldest)
-     * punched byte, then punch RUBOUT (0x7F) over it — all seven tracks are
-     * filled with holes, so a computer reader ignores the corrected byte.
+     * backspace() - Punch-unit BSP: move the tape back one step so the punch
+     * head returns to the last-punched row. Punches nothing itself — the
+     * next byte overpunches that row in place (the classic ASR-33 correction:
+     * BSP to position, then RUB OUT / DELETE to erase the byte into DEL).
+     * Each further BSP moves the head one row further back, up to the oldest
+     * punched row.
      */
-    function undo() {
+    function backspace() {
         if (!body) init();
-        if (!body || !body.lastChild) return;
-        body.removeChild(body.lastChild);
-        if (buffer.length > 0) buffer.pop();
-        punchChar(0x7F);
+        if (!body || !body.firstChild) return;
+        if (armedDepth >= buffer.length) return; // already at the oldest row
+        armedDepth++;
+        // Only the row under the punch head carries the marker — a further
+        // BSP moves it one row further back.
+        var marked = body.querySelectorAll('.pt-row-armed');
+        for (var i = 0; i < marked.length; i++) {
+            marked[i].classList.remove('pt-row-armed');
+        }
+        body.children[armedDepth - 1].classList.add('pt-row-armed');
     }
 
     /**
@@ -258,7 +294,7 @@
         encodePunch: encodePunch,
         init: init,
         punchChar: punchChar,
-        undo: undo,
+        backspace: backspace,
         clear: clear,
         save: save,
         snapshot: snapshot,
