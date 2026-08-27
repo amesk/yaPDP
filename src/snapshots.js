@@ -311,6 +311,12 @@ var SnapshotStore = (() => {
             if (snap.readertape && typeof window !== "undefined" &&
                 window.tapeReader && typeof window.tapeReader.restore === "function") {
                 window.tapeReader.restore(snap.readertape);
+                // A restored tape is paused like a freshly loaded one: the
+                // reader switch goes to STOP so the UI never shows a
+                // running reader with a stopped motor.
+                if (typeof window.setReaderMode === "function") {
+                    window.setReaderMode("stop");
+                }
             }
             // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
             // cursor, modes. Restored after RAM/devices so a repaint sees

@@ -149,7 +149,7 @@ function loadReaderModule() {
   assert.ok(css.includes("#readertape"), "css styles #readertape");
   assert.ok(css.includes("top: 298px"), "reader tape hangs from the reader slot");
   assert.ok(css.includes("#readertape__body::after"), "reader tape has the ragged end");
-  assert.ok(css.includes(".tty-btn.hidden"), "css hides the FREE-only button");
+  assert.ok(css.includes(".tty-btn.hidden"), "css hides the Remove tape button");
 
   // iopage.js: the DL11 console input signals "drained" for the AUTO reader.
   assert.ok(iopage.includes("window.onConsoleInputDrained"),
@@ -159,14 +159,15 @@ function loadReaderModule() {
   // button; X-ON kicks the AUTO reader.
   assert.ok(app.includes("window.tapeReader.setMode"),
     "pdp11-app.js drives the reader on mode change");
-  assert.ok(app.includes("tty-remove-tape") && app.includes("mode !== 'free'"),
-    "pdp11-app.js shows Remove tape only in FREE");
+  assert.ok(app.includes("tty-remove-tape") &&
+    app.includes("mode === 'start' || mode === 'auto'"),
+    "pdp11-app.js shows Remove tape only in STOP/FREE");
   assert.ok(app.includes("window.tapeReader.kick"),
     "pdp11-app.js kicks the AUTO reader on X-ON");
   assert.ok(app.includes("tty-load-tape") && app.includes("tty-tape-file"),
     "pdp11-app.js wires the Load tape button + file input");
   assert.ok(app.includes("window.tapeReader.removeTape"),
-    "pdp11-app.js wires Remove tape from reader");
+    "pdp11-app.js wires Remove tape");
 
   // snapshots.js: the reader tape joins the machine-state capture/restore.
   assert.ok(snaps.includes("readertape: readertape"),
@@ -212,19 +213,37 @@ async function browserProbe() {
       return { rows, btnHidden };
     });
     assert.strictEqual(loaded.rows, 36, "loaded tape renders 36 rows");
-    assert.strictEqual(loaded.btnHidden, true, "Remove tape hidden in STOP");
+    assert.strictEqual(loaded.btnHidden, false,
+      "loading forces STOP, so Remove tape is visible right away");
     console.log("OK  browser: tape loaded, 36 rows hang from the reader");
 
-    // FREE shows the Remove button, STOP hides it.
+    // Remove tape shows in STOP and FREE (reader paused), hides in START
+    // and AUTO (reader running).
+    const btnHidden = () => page.evaluate(() =>
+      document.getElementById("tty-remove-tape").classList.contains("hidden"));
+    assert.strictEqual(await btnHidden(), false, "Remove tape visible in STOP");
     await page.click('[data-reader-mode="free"]');
-    let vis = await page.evaluate(() =>
-      document.getElementById("tty-remove-tape").classList.contains("hidden"));
-    assert.strictEqual(vis, false, "Remove tape visible in FREE");
+    assert.strictEqual(await btnHidden(), false, "Remove tape visible in FREE");
+    await page.click('[data-reader-mode="start"]');
+    assert.strictEqual(await btnHidden(), true, "Remove tape hidden in START");
+    await page.click('[data-reader-mode="auto"]');
+    assert.strictEqual(await btnHidden(), true, "Remove tape hidden in AUTO");
     await page.click('[data-reader-mode="stop"]');
-    vis = await page.evaluate(() =>
-      document.getElementById("tty-remove-tape").classList.contains("hidden"));
-    assert.strictEqual(vis, true, "Remove tape hidden again in STOP");
-    console.log("OK  browser: Remove tape button FREE-only");
+    assert.strictEqual(await btnHidden(), false, "Remove tape visible again in STOP");
+    console.log("OK  browser: Remove tape button STOP/FREE-only");
+
+    // Loading a tape while the reader is running forces STOP.
+    await page.click('[data-reader-mode="start"]');
+    const reloadInput = await page.$("#tty-tape-file");
+    await reloadInput.uploadFile(tmp);
+    await new Promise((r) => setTimeout(r, 300));
+    const afterReload = await page.evaluate(() => ({
+      mode: window.ttyReaderMode,
+      rows: document.querySelectorAll("#readertape__body .pt-row").length,
+    }));
+    assert.strictEqual(afterReload.mode, "stop", "Load tape forces STOP");
+    assert.strictEqual(afterReload.rows, 36, "reloaded tape renders 36 rows");
+    console.log("OK  browser: Load tape forces STOP");
 
     const countRows = () => page.evaluate(() =>
       document.querySelectorAll("#readertape__body .pt-row").length);
@@ -267,20 +286,27 @@ async function browserProbe() {
     const localBefore = await countRows();
     await page.click('[data-reader-mode="start"]');
     await new Promise((r) => setTimeout(r, 1500));
+    // Stop the reader FIRST, then measure: the row count is only stable
+    // once the reader is stopped (a byte can slip in between a measurement
+    // and the stop click). Then wait for the paper printer's paced queue to
+    // drain (__rendered stabilises) before comparing rendered vs consumed.
+    await page.click('[data-reader-mode="stop"]');
+    let localRendered = -1, prevRendered = -2;
+    const drainStart = Date.now();
+    while (Date.now() - drainStart < 5000) {
+      localRendered = await page.evaluate(() => window.__rendered);
+      if (localRendered === prevRendered) break;
+      prevRendered = localRendered;
+      await new Promise((r) => setTimeout(r, 200));
+    }
     const local = await page.evaluate(() => ({
       rows: document.querySelectorAll("#readertape__body .pt-row").length,
       dlCalls: window.__dlCalls,
-      rendered: window.__rendered,
     }));
     const localConsumed = localBefore - local.rows;
     assert.ok(localConsumed > 5, "LOCAL consumed rows (" + localConsumed + ")");
     assert.strictEqual(local.dlCalls, 0,
       "LOCAL sends nothing to the machine (dlReceiveQueue calls: " + local.dlCalls + ")");
-    // Stop the reader, then let the paper printer's paced queue drain
-    // before comparing rendered vs consumed.
-    await page.click('[data-reader-mode="stop"]');
-    await new Promise((r) => setTimeout(r, 600));
-    const localRendered = await page.evaluate(() => window.__rendered);
     const dbg = await page.evaluate(() =>
       window.__dbg.map((c) => String.fromCharCode(c)).join(""));
     assert.strictEqual(localRendered, localConsumed,

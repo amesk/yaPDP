@@ -16,8 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the window edge (same 8-track rows and ragged free end as the punched
   tape). **START** feeds the tape at the console speed; **AUTO** sends one
   byte and then one per DL11 "input drained" signal (paused by DC3/X-OFF,
-  resumed by DC1/X-ON); **FREE** reveals the **Remove tape from reader**
-  button (hidden in every other mode). The CCU routes every read byte
+  resumed by DC1/X-ON); **STOP** and **FREE** show the **Remove tape**
+  button (hidden while START or AUTO is running); loading a tape forces
+  the reader to **STOP** so a fresh tape never starts feeding on its own.
+  The CCU routes every read byte
   exactly like the keyboard: **LOCAL** prints the tape on paper only
   (tape-to-paper copy), **LINE** sends it to the machine and the guest's
   echo prints it (a local print would double every character on echoing

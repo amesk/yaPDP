@@ -21,9 +21,9 @@
  *     is sent only after the DL11 receiver has accepted the previous one
  *     ("input drained"), paced no faster than the reader motor. DC3 / X-OFF
  *     (0x13) pauses the reader until the next X-ON.
- *   - STOP / FREE: the reader is paused. In FREE the operator can pull the
- *     tape out with the "Remove tape from reader" button (visible only in
- *     FREE).
+ *   - STOP / FREE: the reader is paused. In STOP and FREE the operator can
+ *     pull the tape out with the "Remove tape" button (shown only while
+ *     the reader is paused).
  *   - The CCU routes every read byte exactly like the keyboard: in LOCAL
  *     the byte only prints on the teletype paper (a tape-to-paper copy,
  *     nothing reaches the machine); in LINE it is sent to the machine and
@@ -378,7 +378,7 @@
     }
 
     /**
-     * removeTape() - FREE-mode operator action: pull the tape out of the
+     * removeTape() - STOP/FREE operator action: pull the tape out of the
      * reader. Returns true if a tape was actually loaded.
      */
     function removeTape() {

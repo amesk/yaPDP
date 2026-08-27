@@ -23,8 +23,9 @@ the project develops. The highlights since alpha2:
 - **Working ASR paper-tape reader**: load a `.ptap` / `.ptap.zst` / `.txt`
   tape into the teletype's TAPE READER and read it into the machine — START
   feeds at console speed, AUTO feeds one byte per DL11 "input drained"
-  signal (X-ON/X-OFF pauses and resumes), FREE reveals the Remove tape from
-  reader button, and the tape moves up and shortens as it is read. The CCU
+  signal (X-ON/X-OFF pauses and resumes), STOP and FREE show the Remove
+  tape button (loading a tape forces STOP), and the tape moves up and
+  shortens as it is read. The CCU
   routes every byte like the keyboard: LOCAL prints the tape on paper
   (tape-to-paper copy), LINE sends to the machine and the echo prints;
   with the punch ON the read bytes are punched onto the output tape —

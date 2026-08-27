@@ -1642,8 +1642,9 @@
    real-printer action buttons (see .printer-actions button in
    css/pdp11.css) so the teletype and LP11 pages look alike.
    ================================================================== */
-/* The FREE-only "Remove tape from reader" button: hidden in every reader
-   mode except FREE (toggled by setReaderMode() in pdp11-app.js). */
+/* The STOP/FREE "Remove tape" button: shown while the reader is paused
+   (STOP or FREE), hidden while START/AUTO is running (toggled by
+   setReaderMode() in pdp11-app.js). */
 #teletype-controls .tty-btn.hidden {
     display: none;
 }

@@ -81,13 +81,15 @@ function setReaderMode(mode) {
   // Rotate the POWER/LOCK-style handle: START 0°, STOP 90°, FREE 180°, AUTO 270°.
   var lever = document.getElementById('reader-switch-lever');
   if (lever) lever.style.transform = 'rotate(' + (readerModes.indexOf(mode) * 90) + 'deg)';
-  // Drive the reader mechanism (src/reader.js) and show the FREE-only
-  // "Remove tape from reader" operator button.
+  // Drive the reader mechanism (src/reader.js) and show the "Remove tape"
+  // operator button: it appears while the reader is paused (STOP or FREE)
+  // and hides while START or AUTO is running — pulling the tape out mid-run
+  // would be surprising. FREE is now a purely decorative switch position.
   if (window.tapeReader && typeof window.tapeReader.setMode === 'function') {
     window.tapeReader.setMode(mode);
   }
   var removeBtn = document.getElementById('tty-remove-tape');
-  if (removeBtn) removeBtn.classList.toggle('hidden', mode !== 'free');
+  if (removeBtn) removeBtn.classList.toggle('hidden', mode === 'start' || mode === 'auto');
 }
 
 // ---- CCU (Call Control Unit) line switch: LINE / OFF / LOCAL -----------
@@ -2301,6 +2303,11 @@ function initTtyControls() {
           var bytes = window.tapeReader.bytesFromFile(fr.result, file.name);
           if (bytes) {
             window.tapeReader.loadBytes(bytes);
+            // Loading is a deliberate pause: force the reader to STOP so
+            // the switch position, the motor state and the Remove button
+            // all agree — leaving the switch on START/AUTO with a stopped
+            // motor would be a mental mismatch.
+            setReaderMode('stop');
             playSwitchClick();
           }
         }
