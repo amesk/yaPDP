@@ -993,8 +993,9 @@
               </div>
             </div>
 
-            <!-- The teletype-only fields are hidden by initConfigForm when the
-                 console terminal is a VT52 (see .config-field.config-hidden). -->
+            <!-- The teletype-only fields are disabled and dimmed by
+                 updateEquipmentVisibility when the console terminal is a VT52
+                 (see .config-field.config-disabled). -->
             <div class="config-field" id="config-field-printWidth">
               <span class="config-label">Teletype print width</span>
               <div class="config-control">
@@ -1018,8 +1019,8 @@
               </div>
             </div>
 
-            <!-- Teletype-only field: hidden when the console terminal is a
-                 VT52 (see .config-field.config-hidden). -->
+            <!-- Teletype-only field: disabled and dimmed when the console
+                 terminal is a VT52 (see .config-field.config-disabled). -->
             <div class="config-field" id="config-field-upperCaseOnly">
               <span class="config-label">Upper Case Only</span>
               <div class="config-control">
@@ -1049,8 +1050,8 @@
               </div>
             </div>
 
-            <!-- Printer width is hidden by initConfigForm when no LP11 is
-                 installed (see .config-field.config-hidden). -->
+            <!-- Printer width is disabled and dimmed when no LP11 is installed
+                 (see .config-field.config-disabled). -->
             <div class="config-field" id="config-field-printerWidth">
               <span class="config-label">Printer width</span>
               <div class="config-control">

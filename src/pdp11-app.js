@@ -1588,11 +1588,21 @@ function initConfigForm() {
     updateDirtyUI();
   }
 
-  // Conditional visibility on the Equipment tab: teletype-only parameters are
-  // shown only when the console terminal is a teletype, and the printer width
-  // only when an LP11 is installed. Hidden fields keep their layout box
-  // (visibility:hidden — see .config-field.config-hidden in css/pdp11.css), so
-  // the panel row — and the Defaults/Apply bar below it — never jumps.
+  // Conditional state on the Equipment tab: teletype-only parameters are
+  // active only when the console terminal is a teletype, and the printer
+  // width only when an LP11 is installed. Inapplicable fields are dimmed and
+  // their controls disabled (see .config-field.config-disabled in
+  // css/pdp11.css) instead of being hidden — the form reads as a stable list
+  // where greyed-out options explain their dependency, and the Defaults/Apply
+  // bar below it never jumps.
+  function setFieldDisabled(field, disabled) {
+    field.classList.toggle('config-disabled', disabled);
+    var controls = field.querySelectorAll('input, select, button');
+    for (var i = 0; i < controls.length; i++) {
+      controls[i].disabled = disabled;
+    }
+  }
+
   function updateEquipmentVisibility() {
     var teletype = false;
     for (var i = 0; i < radios.length; i++) {
@@ -1604,10 +1614,10 @@ function initConfigForm() {
       document.getElementById('config-field-upperCaseOnly')
     ];
     for (var k = 0; k < ttyFields.length; k++) {
-      if (ttyFields[k]) ttyFields[k].classList.toggle('config-hidden', !teletype);
+      if (ttyFields[k]) setFieldDisabled(ttyFields[k], !teletype);
     }
     var pwField = document.getElementById('config-field-printerWidth');
-    if (pwField) pwField.classList.toggle('config-hidden', !(printerEl && printerEl.checked));
+    if (pwField) setFieldDisabled(pwField, !(printerEl && printerEl.checked));
   }
 
   // Apply: persist the whole form in one Config.set() call, then reload only

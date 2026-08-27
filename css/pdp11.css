@@ -2813,13 +2813,16 @@ body.crt-effects .vt52-crt::after {
     border-bottom: none;
 }
 
-/* Conditionally hidden CONFIG fields (Equipment tab: teletype-only parameters,
-   LP11 printer width) keep their layout box via visibility instead of
-   display:none — mirroring how inactive tab panels hide. This keeps the panel
-   row as tall as the tallest panel, so the Defaults/Apply action bar below it
-   never jumps vertically when the console/printer choice changes. */
-.config-field.config-hidden {
-    visibility: hidden;
+/* Conditionally disabled CONFIG fields (Equipment tab: teletype-only
+   parameters, LP11 printer width) stay visible but dimmed and inert when
+   they don't apply to the current selection — the panel reads as a stable
+   form where inapplicable options are greyed out instead of vanishing
+   (mirroring how printer dialogs disable unavailable options). The layout
+   box is naturally kept (opacity does not affect layout), so the
+   Defaults/Apply action bar below the panel never jumps when the
+   console/printer choice changes. */
+.config-field.config-disabled {
+    opacity: 0.45;
 }
 
 /* ===== Photo backdrop toggle (CONFIG) ===== */
