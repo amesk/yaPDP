@@ -82,6 +82,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   erasure is the **DELETE / RUB OUT** key's job: it punches all holes over
   the byte, turning it into DEL — the authentic two-step ASR-33 correction
   ([`92e10c5`](https://github.com/amesk/yaPDP/commit/92e10c5)).
+- ASR receive punch now records machine output too: a **NUL** from the
+  machine punches a blank row with only the feed hole — the classic tape
+  leader/trailer that threads the reader — and a received **DEL** punches an
+  all-holes RUB OUT row, exactly like a real ASR-33 receive punch. The LOCAL
+  echo no longer punches a second row for bytes the keyboard punch already
+  recorded ([`1671979`](https://github.com/amesk/yaPDP/commit/1671979)).
 - CONFIG|Equipment: teletype-only parameters and the LP11 printer width are
   now **disabled and dimmed** (opacity .45) instead of hidden when they do
   not apply to the current selection — the form reads as a stable list where
