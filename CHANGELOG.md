@@ -183,6 +183,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the button. Hints that directly follow an action button now get an 8px
   gap (the "Apply" field benefits too); hints after selects/radios keep
   the tighter 4px spacing.
+- **Operator buttons restyled to the manual's "Launch the Emulator"
+  recipe**: the PANEL (Help Me! / Bootstrap now!), CONSOLE (Tear tape /
+  Tear paper / Save tape / Load tape / Remove tape) and PRINTER (Print /
+  Save .txt / Tear paper) buttons looked flat and muddy at VT323 14px with
+  faux bold. They now follow the manual page's call-to-action exactly:
+  Courier Prime 11px uppercase with 0.5px letter-spacing, the engraved
+  inset amber top highlight and a soft drop shadow (same dark-amber
+  gradient and border as before).
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
