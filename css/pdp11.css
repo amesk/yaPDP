@@ -17,6 +17,19 @@
     font-display: swap;
 }
 
+/* ===== Era-appropriate UI chrome font (VT323, OFL) =====
+   The console output keeps its authentic bitmap VT52 glyphs; the UI chrome
+   (buttons, dialogs, sidebar, badges, labels, machine lettering) uses the
+   VT320-style VT323 so the whole interface reads like a 1970s DEC terminal.
+   Arial/Helvetica remain the fallback until the webfont loads. */
+@font-face {
+    font-family: 'VT323';
+    src: url('../assets/fonts/vt323/VT323-Regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ===== Global scrollbar theming (DEC 1960s palette) =====
    Every scrolling container in the app (quick-boot OS list, Info / Config /
    Storage pages, teletype & LP11 paper) gets the same look, so no native
@@ -84,7 +97,7 @@
     border: 1px solid #736c62;
     border-radius: calc(var(--unitWidth) * 2);
     color: #736c62;
-    font-family: arial, helvetica, sans-serif;
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
 
 .smallSpace {
@@ -112,7 +125,7 @@
     position: absolute;
     top: 0;
     height: 100%;
-    font-size: calc(var(--unitHeight) * 2);
+    font-size: calc(var(--unitHeight) * 2.4);
     line-height: calc(var(--unitHeight) * 8);
     float: left;
 }
@@ -169,8 +182,8 @@
     background: #181818;
     border-radius: calc(var(--unitWidth) * 4);
     color: white;
-    font-family: arial, helvetica, sans-serif;
-    font-size: calc(var(--unitHeight) * 1.4);
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: calc(var(--unitHeight) * 2.2);
     text-align: center;
 }
 
@@ -347,7 +360,7 @@
     border: 1px solid #4a4438;
     border-radius: 3px;
     padding: 1px 6px;
-    font-family: "Courier New", Courier, monospace;
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
 
 .modal-title {
@@ -394,7 +407,7 @@
     border: 1px solid #4a4438;
     border-radius: 3px;
     padding: 1px 6px;
-    font-family: "Courier New", Courier, monospace;
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
 
 .modal-boot.modal-more {
@@ -596,8 +609,8 @@
     padding: 4px 8px;
     background: rgba(20, 18, 14, 0.85);
     color: #ffe9a8;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 9px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 13px;
     line-height: 1.35;
     text-align: center;
     border-radius: 3px;
@@ -847,8 +860,8 @@
 
 .quickboot-cmd {
     color: #9a9488;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 12px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 15px;
     white-space: nowrap;
 }
 
@@ -1334,8 +1347,8 @@ thead {
 }
 
 pre {
-    font-family: "Courier New", Courier, "Lucida Console", Monaco, monospace;
-    font-size: 14px;
+    font-family: 'VT323', "Courier New", Courier, monospace;
+    font-size: 15px;
 }
 
 b {
@@ -1356,7 +1369,7 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    font-family: arial, helvetica, sans-serif;
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
 
 .app-layout {
@@ -1820,8 +1833,8 @@ body {
 /* DEC badge on terminal bezel */
 .vt52-badge {
     text-align: center;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 9px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 13px;
     letter-spacing: 2px;
     color: #8a8274;
     text-transform: uppercase;
@@ -1956,9 +1969,9 @@ body {
     border-bottom-color: #b6ae9c;
     border-radius: 2px;
     color: #d0c9b6;
-    font-family: arial, helvetica, sans-serif;
+    font-family: 'VT323', arial, helvetica, sans-serif;
     font-weight: 100;
-    font-size: 11px;
+    font-size: 15px;
     line-height: 1;
     text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
 }
@@ -2213,8 +2226,8 @@ body.crt-effects .vt52-crt::after {
 /* Status label below screen */
 .vt52-status {
     margin-top: 10px;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 11px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 15px;
     color: #6a655a;
     text-align: center;
     user-select: none;
@@ -2348,8 +2361,8 @@ body.crt-effects .vt52-crt::after {
 /* DEC badge on the top cover */
 .lp11-badge {
     text-align: center;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 9px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 13px;
     letter-spacing: 2px;
     color: #7c7059;
     text-transform: uppercase;
@@ -2375,8 +2388,8 @@ body.crt-effects .vt52-crt::after {
 }
 
 .lp11-label {
-    font-family: arial, helvetica, sans-serif;
-    font-size: 10px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 13px;
     letter-spacing: 1px;
     text-transform: uppercase;
     color: #d8cfba;
@@ -2427,8 +2440,8 @@ body.crt-effects .vt52-crt::after {
     border: 1px solid #4a4436;
     border-radius: 3px;
     padding: 3px 10px;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 9px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 13px;
     font-weight: bold;
     letter-spacing: 0.5px;
     cursor: pointer;
@@ -2507,8 +2520,8 @@ body.crt-effects .vt52-crt::after {
     border: 1px solid #6b6350;
     background: transparent;
     color: #4a4436;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 8px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 11px;
     font-weight: bold;
     line-height: 1;
     text-transform: uppercase;

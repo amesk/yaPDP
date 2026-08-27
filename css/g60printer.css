@@ -490,12 +490,12 @@
     left: 0;
     width: 36px;
     text-align: center;
-    font-size: 6px;
+    font-size: 10px;
     font-weight: bold;
     line-height: 1;
     color: #d8dbe0;
     pointer-events: none;
-    font-family: arial, helvetica, sans-serif;
+    font-family: 'VT323', arial, helvetica, sans-serif;
     letter-spacing: 0.5px;
 }
 
@@ -513,12 +513,12 @@
     left: 2px;
     width: 12px;
     text-align: right;
-    font-size: 5px;
+    font-size: 9px;
     font-weight: bold;
     line-height: 1;
     color: #d8dbe0;
     pointer-events: none;
-    font-family: arial, helvetica, sans-serif;
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
 
 #punchkeyboard .m33-key.dual .m33-top {
@@ -526,7 +526,7 @@
     left: 14px;
     width: 16px;
     text-align: left;
-    font-size: 5px;
+    font-size: 9px;
 }
 
 #punchkeyboard .m33-key .m33-center {
@@ -543,7 +543,7 @@
     pointer-events: none;
     /* Authentic ASR33 keycaps: the base glyph uses a bold sans-serif grotesk
        (not the monospace Courier), matching the other legends on the caps. */
-    font-family: arial, helvetica, sans-serif;
+    font-family: 'VT323', arial, helvetica, sans-serif;
 }
 
 /* Dark modifier keys carry longer multi-word labels (LINE/FEED, RE-/TURN,
@@ -552,8 +552,8 @@
    (they have no small top legend, so nothing sits above to offset). */
 #punchkeyboard .m33-key.mod .m33-center {
     color: #e8e4da;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 7px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 11px;
     line-height: 1.15;
     top: 0;
     bottom: auto;
@@ -1250,8 +1250,8 @@
     left: 0;
     right: 0;
     text-align: center;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 10px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 14px;
     font-weight: bold;
     letter-spacing: 2px;
     color: #5c5442;
@@ -1368,8 +1368,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 8px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 12px;
     font-weight: bold;
     cursor: pointer;
 }
@@ -1450,8 +1450,8 @@
     border: 0;
     padding: 0;
     color: #5c5442;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 7px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 11px;
     font-weight: bold;
     letter-spacing: 1px;
     cursor: pointer;
@@ -1815,8 +1815,8 @@
     border: 0;
     padding: 0;
     color: #5c5442;
-    font-family: arial, helvetica, sans-serif;
-    font-size: 7px;
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 11px;
     font-weight: bold;
     letter-spacing: 1px;
     cursor: pointer;

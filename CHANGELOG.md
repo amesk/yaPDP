@@ -88,6 +88,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all-holes RUB OUT row, exactly like a real ASR-33 receive punch. The LOCAL
   echo no longer punches a second row for bytes the keyboard punch already
   recorded ([`1671979`](https://github.com/amesk/yaPDP/commit/1671979)).
+- **UI chrome re-fonted to VT323** (OFL, bundled woff2): buttons, dialogs,
+  sidebar, badges, labels, the CONFIG page, the machine lettering (DEC
+  wordmark, bezel letters) and the ASR/LP11 key legends now render in the
+  VT320-style terminal face instead of Arial/Helvetica, so the whole
+  interface reads like a 1970s DEC terminal. The console output keeps its
+  authentic bitmap VT52 glyphs and the LP11 paper keeps lp1_regular; the
+  handwritten Help Me! sticker is untouched. Font sizes were re-tuned per
+  element (VT323 is a pixel face, illegible below ~11 px).
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
