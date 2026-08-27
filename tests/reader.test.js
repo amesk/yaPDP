@@ -226,6 +226,9 @@ async function browserProbe() {
     assert.strictEqual(vis, true, "Remove tape hidden again in STOP");
     console.log("OK  browser: Remove tape button FREE-only");
 
+    const countRows = () => page.evaluate(() =>
+      document.querySelectorAll("#readertape__body .pt-row").length);
+
     // START feeds: rows disappear over time and bytes reach the DL11.
     await page.click('[data-reader-mode="start"]');
     await new Promise((r) => setTimeout(r, 1500));
@@ -237,13 +240,61 @@ async function browserProbe() {
     assert.ok(fed.rows < 36, "START consumed rows (" + fed.rows + " left)");
     console.log("OK  browser: START feeds, tape moves up (" + fed.rows + " rows left)");
 
+    // LOCAL: the tape becomes paper text only — nothing reaches the DL11.
+    // Spy on dlReceiveQueue and count characters actually rendered on paper
+    // via the render hook (the machine is halted, so only the reader prints).
+    await page.click('[data-reader-mode="stop"]');
+    await page.click('[data-tty-mode="local"]');
+    await new Promise((r) => setTimeout(r, 200));
+    await page.evaluate(() => {
+      window.__dlCalls = 0;
+      window.__rendered = 0;
+      window.__dbg = [];
+      const original = window.dlReceiveQueue;
+      window.dlReceiveQueue = function () {
+        window.__dlCalls++;
+        return original.apply(null, arguments);
+      };
+      window.__consoleRenderHook = function (code) {
+        window.__rendered++;
+        window.__dbg.push(code);
+      };
+    });
+    // Let the printer's queue drain from the earlier LINE test, then reset
+    // the render counter so it counts only the LOCAL read.
+    await new Promise((r) => setTimeout(r, 1000));
+    await page.evaluate(() => { window.__rendered = 0; });
+    const localBefore = await countRows();
+    await page.click('[data-reader-mode="start"]');
+    await new Promise((r) => setTimeout(r, 1500));
+    const local = await page.evaluate(() => ({
+      rows: document.querySelectorAll("#readertape__body .pt-row").length,
+      dlCalls: window.__dlCalls,
+      rendered: window.__rendered,
+    }));
+    const localConsumed = localBefore - local.rows;
+    assert.ok(localConsumed > 5, "LOCAL consumed rows (" + localConsumed + ")");
+    assert.strictEqual(local.dlCalls, 0,
+      "LOCAL sends nothing to the machine (dlReceiveQueue calls: " + local.dlCalls + ")");
+    // Stop the reader, then let the paper printer's paced queue drain
+    // before comparing rendered vs consumed.
+    await page.click('[data-reader-mode="stop"]');
+    await new Promise((r) => setTimeout(r, 600));
+    const localRendered = await page.evaluate(() => window.__rendered);
+    const dbg = await page.evaluate(() =>
+      window.__dbg.map((c) => String.fromCharCode(c)).join(""));
+    assert.strictEqual(localRendered, localConsumed,
+      "LOCAL printed every read byte on paper (" + localRendered + " of " + localConsumed + ", dbg: " + dbg + ")");
+    await page.click('[data-reader-mode="stop"]');
+    await page.click('[data-tty-mode="line"]');
+    await new Promise((r) => setTimeout(r, 200));
+    console.log("OK  browser: LOCAL tape-to-paper copy, no DL11 traffic");
+
     // AUTO: one byte goes out immediately on engagement; the next byte
     // follows the DL11 "input drained" signal. The machine here is halted,
     // so the receiver never frees on its own — drive the signal directly to
     // verify the handshake chain deterministically.
     await page.click('[data-reader-mode="stop"]');
-    const countRows = () => page.evaluate(() =>
-      document.querySelectorAll("#readertape__body .pt-row").length);
     const beforeAuto = await countRows();
     await page.click('[data-reader-mode="auto"]');
     await new Promise((r) => setTimeout(r, 150));
@@ -273,6 +324,40 @@ async function browserProbe() {
     assert.strictEqual(afterXon, afterXoff - 1,
       "DC1/X-ON resumes the AUTO reader");
     console.log("OK  browser: AUTO per-byte handshake + X-ON/X-OFF");
+
+    // Tape-to-tape duplication: punch ON + reader START punches every
+    // read byte onto the output tape (the classic ASR copy trick).
+    // Load a fresh tape first (the AUTO tests nearly consumed the old one).
+    await page.click('[data-reader-mode="stop"]');
+    await page.click('[data-tty-mode="line"]');
+    await new Promise((r) => setTimeout(r, 200));
+    const input2 = await page.$("#tty-tape-file");
+    await input2.uploadFile(tmp);
+    await new Promise((r) => setTimeout(r, 400));
+    await page.evaluate(() => {
+      if (window.paperTape && typeof window.paperTape.clear === "function") {
+        window.paperTape.clear();
+      }
+      window.__rendered = 0;
+    });
+    await page.click("#punch-on");
+    await new Promise((r) => setTimeout(r, 200));
+    const dupBefore = await countRows();
+    await page.click('[data-reader-mode="start"]');
+    await new Promise((r) => setTimeout(r, 1200));
+    await page.click('[data-reader-mode="stop"]');
+    await new Promise((r) => setTimeout(r, 700));
+    const dup = await page.evaluate(() => ({
+      readerRows: document.querySelectorAll("#readertape__body .pt-row").length,
+      punchRows: document.querySelectorAll("#punchtape__body .pt-row").length,
+      rendered: window.__rendered,
+    }));
+    const dupConsumed = dupBefore - dup.readerRows;
+    assert.ok(dupConsumed > 3, "duplication consumed rows (" + dupConsumed + ")");
+    assert.strictEqual(dup.punchRows, dupConsumed,
+      "punch duplicated every read byte (" + dup.punchRows + " rows for " + dupConsumed + " bytes)");
+    await page.click("#punch-off");
+    console.log("OK  browser: punch duplicates the read tape (tape-to-tape)");
 
     // Remove tape in FREE clears the reader.
     await page.click('[data-reader-mode="free"]');

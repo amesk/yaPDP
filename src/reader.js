@@ -24,6 +24,11 @@
  *   - STOP / FREE: the reader is paused. In FREE the operator can pull the
  *     tape out with the "Remove tape from reader" button (visible only in
  *     FREE).
+ *   - The CCU routes every read byte like the keyboard: in LOCAL the byte
+ *     only prints on the teletype paper (a tape-to-paper copy); in LINE it
+ *     prints AND is sent to the machine. When the punch is engaged (ON or
+ *     DC2) the byte is punched onto the output tape in both modes, so the
+ *     reader doubles as a tape-to-tape duplicator — the classic ASR trick.
  *   - CCU OFF powers the whole unit down: the reader never feeds.
  *
  * As bytes are read the tape visibly moves up through the reader slot; once
@@ -219,7 +224,16 @@
         var b = tapeBytes[pos] & 0x7F;
         pos++;
         lastFeed = Date.now();
-        if (typeof window.dlReceiveQueue === 'function') {
+        // CCU routing, like the keyboard: LOCAL prints the tape on paper
+        // only (tape -> paper copy); LINE prints it AND sends the byte to
+        // the machine. The punch (when engaged) duplicates the byte onto
+        // the output tape in both modes via the console print path — the
+        // tape-to-tape copy programmers used to duplicate tapes. OFF never
+        // reaches here: the CCU powers the reader down (canFeedNow).
+        if (window.g60Console && typeof window.g60Console.writeChar === 'function') {
+            window.g60Console.writeChar(b);
+        }
+        if (window.ttyMode === 'line' && typeof window.dlReceiveQueue === 'function') {
             window.dlReceiveQueue(0, [b]);
         }
         if (body && body.firstChild) {
@@ -245,7 +259,9 @@
         stopTimer();
         if (!hasTape()) return;
         timer = setInterval(function () {
-            if (window.ttyReaderMode === 'start' && canFeedNow()) {
+            var mode = window.ttyReaderMode;
+            var autoLocal = (mode === 'auto' && window.ttyMode === 'local');
+            if ((mode === 'start' || autoLocal) && canFeedNow()) {
                 feedByte();
             } else if (!hasTape()) {
                 stopTimer();
@@ -285,6 +301,7 @@
      */
     function onDrained() {
         if (window.ttyReaderMode !== 'auto') return;
+        if (window.ttyMode === 'local') return; // LOCAL: timer-paced (no DL11)
         if (pendingAuto) return; // a paced feed is already scheduled
         autoFeed();
     }
@@ -300,10 +317,32 @@
             startTimer();
         } else if (mode === 'auto') {
             stopTimer();
-            autoFeed(); // one byte now, then one per drained signal
+            if (window.ttyMode === 'local') {
+                startTimer(); // LOCAL: no DL11 handshake — printer-paced
+            } else {
+                autoFeed(); // one byte now, then one per drained signal
+            }
         } else {
             stopTimer();
             pendingAuto = false;
+        }
+    }
+
+    /**
+     * onTtyMode() - The operator flipped the CCU (LINE/OFF/LOCAL) while a
+     * tape was loaded. AUTO re-paces itself: in LOCAL it runs on the motor
+     * timer (the printer is the "consumer"), in LINE it waits for the DL11
+     * drained signal again. START/STOP/FREE need no change — feedByte()
+     * routes every byte by the live CCU state.
+     */
+    function onTtyMode() {
+        if (window.ttyReaderMode !== 'auto') return;
+        stopTimer();
+        pendingAuto = false;
+        if (window.ttyMode === 'local') {
+            startTimer();
+        } else {
+            autoFeed();
         }
     }
 
@@ -383,6 +422,7 @@
         init: init,
         loadBytes: loadBytes,
         setMode: setMode,
+        onTtyMode: onTtyMode,
         kick: autoFeed,
         removeTape: removeTape,
         hasTape: hasTape,

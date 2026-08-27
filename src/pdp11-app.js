@@ -128,6 +128,11 @@ function setTtyMode(mode) {
   } else {
     updateReaderCanFeed();
   }
+  // AUTO re-paces itself when the CCU changes the byte route (LOCAL prints
+  // only, LINE prints and sends) — see tapeReader.onTtyMode().
+  if (window.tapeReader && typeof window.tapeReader.onTtyMode === 'function') {
+    window.tapeReader.onTtyMode();
+  }
 }
 
 function g60ConsoleWrite(code) {
