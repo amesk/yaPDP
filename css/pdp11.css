@@ -1457,7 +1457,6 @@ body {
 .app-sidebar .sidebar-version .sidebar-version-name {
     font-weight: bold;
     letter-spacing: 0.5px;
-    text-transform: uppercase;
 }
 
 .app-sidebar .sidebar-version:hover {
