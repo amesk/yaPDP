@@ -53,6 +53,19 @@
     font-display: swap;
 }
 
+/* ===== Engraved wordmark font (Michroma, OFL) =====
+   The DEC "digital" wordmark letters and the cabinet caption are engraved
+   lettering in the spirit of Microgramma/Eurostile; Michroma is the
+   closest free analogue. The rest of the machine chrome stays pixel
+   VT323. */
+@font-face {
+    font-family: 'Michroma';
+    src: url('../assets/fonts/michroma/Michroma-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Kalam (OFL): handwritten note face for the operator's sticky note. The
    listing on the note stays monospaced (Courier Prime) so the address
    columns line
@@ -2917,24 +2930,30 @@ body.no-photo-bg #page-instructions.active {
 /* LP11 and VT52 machine chrome keeps the pixel VT323 (same narrow-advance
    logic as the teletype); Courier Prime stays for the rest of the UI. */
 .vt52-badge,
-.vt52-dec-letter,
 .vt52-status,
 .lp11-badge,
 .lp11-label,
-.lp11-key,
-.lp11-dec-letter {
+.lp11-key {
     font-family: 'VT323', arial, helvetica, sans-serif;
 }
+.vt52-dec-letter,
+.lp11-dec-letter {
+    font-family: 'Michroma', arial, helvetica, sans-serif;
+}
 
-/* The PDP-11/70 front panel is a machine too: keys, status labels and the
-   engraved wordmark keep the narrow pixel VT323 (Courier Prime's taller,
-   wider glyphs overflow the keycaps and label strips). */
+/* The PDP-11/70 front panel is a machine too: keys and status labels keep
+   the narrow pixel VT323 (Courier Prime's taller, wider glyphs overflowed
+   the keycaps and label strips); the engraved "digital" wordmark and the
+   cabinet caption are engraved lettering in the Microgramma/Eurostile
+   spirit, rendered with Michroma. */
 #page-panel .frame .switchPad,
 #page-panel .frame .switchPadHalf,
 #page-panel .frame .multiText,
 #page-panel .frame .statusLabel1,
-#page-panel .frame .statusLabel2,
+#page-panel .frame .statusLabel2 {
+    font-family: 'VT323', arial, helvetica, sans-serif;
+}
 #page-panel .frame .decLetter,
 #page-panel .frame .decName {
-    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-family: 'Michroma', arial, helvetica, sans-serif;
 }

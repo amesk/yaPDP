@@ -127,6 +127,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and taller glyphs overflowed the keycaps (ENABLE/HALT, S INST/S BUS,
   START) and the status label strips (PAR/ADRS ERR/RUN/...). The panel —
   like the teletype, LP11 and VT52 — keeps the narrow pixel VT323.
+- **Engraved "digital" wordmark and cabinet caption set in Michroma**
+  (OFL, bundled): the real DEC lettering was in the spirit of
+  Microgramma/Eurostile, and Michroma is the closest free analogue — the
+  wordmark letters on the front panel, the VT52 bezel and the LP11 cover,
+  plus the "digital equipment corporation • maynard, massachusetts"
+  caption, now use it. Keycaps and status strips keep pixel VT323.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
