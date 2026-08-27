@@ -38,6 +38,18 @@
     font-display: swap;
 }
 
+/* ===== Teletype machine chrome font (VT323, OFL) =====
+   The ASR-33's own chrome (keycaps, switch labels, operator buttons) keeps
+   the pixel VT323: its narrow advance is what the keycap/switch geometry
+   was tuned for, so the labels stay put and the layout doesn't shift. */
+@font-face {
+    font-family: 'VT323';
+    src: url('../assets/fonts/vt323/VT323-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Kalam (OFL): handwritten note face for the operator's sticky note. The
    listing on the note stays monospaced (Courier Prime) so the address
    columns line

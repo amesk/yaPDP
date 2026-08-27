@@ -115,6 +115,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Share Tech Mono experiment was dropped for lacking that character. The
   console output keeps its bitmap VT52 glyphs, the LP11 paper keeps
   lp1_regular, the sticker keeps Kalam.
+- **Teletype machine chrome stays pixel VT323**: the ASR-33's own labels
+  (keycaps, punch/reader switch positions, CCU knob, operator buttons)
+  were too wide in Courier Prime and shifted the machine layout, so they
+  keep the narrow VT323 their geometry was tuned for. Courier Prime
+  remains everywhere else (panel, dialogs, sidebar, CONFIG, LP11 badges).
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

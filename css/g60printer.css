@@ -1845,3 +1845,17 @@
     color: #7a5a20;
     text-shadow: 0 0 4px rgba(122, 90, 32, 0.5);
 }
+
+/* Teletype machine chrome keeps the pixel VT323 (narrow advance, tuned
+   keycap/switch geometry); Courier Prime stays for the rest of the UI. */
+#asr-tape-unit .asr-label,
+#asr-tape-unit .asr-btn,
+#asr-tape-unit .asr-switch-pos,
+#ccu-apron .ccu-switch-pos,
+#punchkeyboard .m33-key .m33-top,
+#punchkeyboard .m33-key.dual .m33-shift,
+#punchkeyboard .m33-key .m33-center,
+#punchkeyboard .m33-key.mod .m33-center,
+#teletype-controls .tty-btn {
+    font-family: 'VT323', arial, helvetica, sans-serif;
+}
