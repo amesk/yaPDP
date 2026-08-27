@@ -2759,6 +2759,32 @@ body.crt-effects .vt52-crt::after {
     cursor: pointer;
 }
 
+/* Storage "Persistent disk changes": select + action buttons form one flex
+   row with a real gap; if the row is too narrow the buttons wrap onto the
+   next line with the same clean spacing instead of sitting flush under the
+   combobox (which made "Reset all" look merged with it). */
+.persist-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Keep the select + both buttons on one line (the control column is 436px
+   wide; the widest option, "--no saved changes--", still fits at 190px). */
+.persist-control select {
+    max-width: 190px;
+}
+
+.persist-control button {
+    padding: 6px 12px;
+}
+
+.persist-control .config-hint {
+    flex-basis: 100%;
+    margin-top: 0;
+}
+
 .config-control button:hover {
     background: linear-gradient(180deg, #6a5a38, #4a3a2c);
 }

@@ -172,6 +172,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   defaults, Apply, Unmount, Reset image, Reset all, Rewind tape, Download,
   Clear) were already uniform (Courier Prime 14px bold) and stay as their
   own set.
+- **Storage "Persistent disk changes" row no longer merges**: "Reset all"
+  used to wrap onto the line below the combobox and sat flush against it,
+  looking like part of the select. The field is now a flex row (gap 8px);
+  the select is capped at 190px and the buttons at 12px padding so all
+  three controls fit on one line — and if the window is ever too narrow,
+  the wrap keeps the same clean gap instead of touching the select.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

@@ -1277,13 +1277,11 @@
 
             <div class="config-field">
               <span class="config-label">Persistent disk changes</span>
-              <div class="config-control">
+              <div class="config-control persist-control">
                 <select id="persist-select" disabled>
                   <option value="">--no saved changes--</option>
                 </select>
-                &nbsp;
                 <button type="button" id="persist-reset" title="Discard saved write-back blocks for the selected image">Reset image</button>
-                &nbsp;
                 <button type="button" id="persist-reset-all" title="Discard saved write-back blocks for all images">Reset all</button>
                 <span id="persist-count" class="persist-count"></span>
                 <span class="config-hint">Guest-OS writes are saved to browser storage and overlaid on the base
