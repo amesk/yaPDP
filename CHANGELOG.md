@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the keyboard: **LOCAL** prints the tape on paper only (tape-to-paper
   copy), **LINE** prints it and sends it to the machine; with the punch
   engaged every read byte is also punched onto the output tape — the
-  classic ASR tape-to-tape duplication trick. The tape visibly moves up
+  classic ASR tape-to-tape duplication trick. The punched tape hangs one
+  step above the reader tape (z-index), so it always passes in front of
+  the reader mechanism — as on the real ASR-33. The tape visibly moves up
   and shortens as it is read, and the reader tape joins the machine-state
   snapshots (L2) alongside the punched tape.
 

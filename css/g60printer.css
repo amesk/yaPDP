@@ -1425,10 +1425,12 @@
        170px cabinet, so its centre sits at 85px; tape left = 85 - 48.5 ≈
        36px. Draws ABOVE every other element of the ASR unit (the reader
        switch, the slots), so the punched tape always passes in front of the
-       mechanism. */
+       mechanism — including in front of the READER tape (#readertape, same
+       z-index but later in the DOM): with equal z-index the later sibling
+       would win, so the punch tape sits one step higher. */
     top: 122px;
     left: 36px;
-    z-index: 10;
+    z-index: 11;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
        transparent background: scrollbar-gutter: stable reserves the gutter
        up front in EVERY browser, so the scrollbar never resizes the tape or
