@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   under the punch head, holes OR-ing together like a real overpunch. The
   erasure is the **DELETE / RUB OUT** key's job: it punches all holes over
   the byte, turning it into DEL — the authentic two-step ASR-33 correction
-  ([`db4612e`](https://github.com/amesk/yaPDP/commit/db4612e)).
+  ([`92e10c5`](https://github.com/amesk/yaPDP/commit/92e10c5)).
 - CONFIG|Equipment: teletype-only parameters and the LP11 printer width are
   now **disabled and dimmed** (opacity .45) instead of hidden when they do
   not apply to the current selection — the form reads as a stable list where
