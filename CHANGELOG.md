@@ -96,6 +96,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authentic bitmap VT52 glyphs and the LP11 paper keeps lp1_regular; the
   handwritten Help Me! sticker is untouched. Font sizes were re-tuned per
   element (VT323 is a pixel face, illegible below ~11 px).
+- **Help Me! sticker re-fonted to Kalam** (OFL, bundled): the operator's
+  handwritten note now uses a real handwriting face (Kalam) instead of the
+  system cursive stack (Segoe Script/Comic Sans), with sizes bumped for
+  legibility; the boot-command listing on the note stays monospaced (VT323)
+  so the address columns line up.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
