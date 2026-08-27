@@ -1438,7 +1438,7 @@ body {
 
 /* Version marker pinned to the bottom of the sidebar (yaPDP + vX.Y.Z).
    Clickable — navigates to the Info page like the nav buttons. The text is
-   filled from src/version.js (window.YAPDP_VERSION) by initPanelUI. */
+   filled from src/version.js (window.yaPDP_VERSION) by initPanelUI. */
 .app-sidebar .sidebar-version {
     margin-top: auto;
     margin-bottom: 10px;

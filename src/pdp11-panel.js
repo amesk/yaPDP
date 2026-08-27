@@ -211,13 +211,13 @@ function examineDeposit(data) {
 
   // --- Version marker (sidebar bottom) ---
   // The "yaPDP" name is static; the "vX.Y.Z" line and the Info page "About"
-  // table version cell come from src/version.js (window.YAPDP_VERSION), which
+  // table version cell come from src/version.js (window.yaPDP_VERSION), which
   // is generated from package.json by tools/sync-version.js.
   var versionMarker = document.getElementById('sidebar-version');
   var versionText = versionMarker &&
     versionMarker.querySelector('.sidebar-version-text');
   var aboutVersion = document.getElementById('about-version');
-  var appVersion = window.YAPDP_VERSION || '';
+  var appVersion = window.yaPDP_VERSION || '';
   if (versionText && appVersion) versionText.textContent = 'v' + appVersion;
   if (aboutVersion && appVersion) aboutVersion.textContent = appVersion;
   if (versionMarker) {
