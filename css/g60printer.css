@@ -40,7 +40,9 @@
     left: 0;
     width: 808px;
     height: 374px;
-    background: linear-gradient(180deg, #e3cdaa 0%, #d8bd98 45%, #c6a87e 100%);
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #e3cdaa 0%, #d8bd98 45%, #c6a87e 100%);
     /* Round the top corners to match the #g60printer body radius. */
     border-radius: 12px 12px 0 0;
 }
@@ -424,7 +426,9 @@
     height: 240px;
     /* Sand ASR33 deck (no dark keyboardbg.jpg texture). The deck sits
        directly under the (now lowered) printer body — no gap between them. */
-    background: linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
     margin: 0;
     padding: 0;
     border: 1px solid #a68c66;
@@ -1107,11 +1111,18 @@
     width: 186px;
     height: 360px;
     margin-top: 276px;
-    /* Sand ASR33 body, matching the printer + keyboard deck. */
-    background-color: #d1b48c;
-    border: 1px solid #a68c66;
+    /* Cast from the SAME plastic as the teletype cover: the sand gradient
+       of the keyboard deck with the same subtle grain and deep top inner
+       shadow — no contrasting frame, so the unit reads as one body with
+       the console, separated only by the drop shadow. */
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
+    border: none;
     border-radius: 8px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    box-shadow:
+        inset 0 10px 16px rgba(0, 0, 0, 0.16),
+        0 4px 10px rgba(0, 0, 0, 0.25);
     overflow: visible;
     /* let the punched tape spill past the cabinet */
     align-self: flex-start;
@@ -1178,17 +1189,11 @@
        cabinet's right wall, with the reader 26px left of it. */
     align-self: flex-start;
     margin-left: 34px;
-    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
-    border-bottom: 1px solid #b3ab94;
-    /* All four corners rounded: the panels are visibly offset from each
-       other now, so the formerly-sharp inner corners (punch bottom) are
-       rounded like the outer ones — two independent rounded units instead
-       of one block with a seam. */
+    /* No surface of its own: the unit's cast plastic shows through, so the
+       whole ASR unit is one body (as on the real ASR-33). */
+    background: transparent;
+    border: 0;
     border-radius: 8px;
-    /* Same drop + inner-top highlight as the LINE/OFF/LOCAL block (#ccu-apron). */
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.6),
-        0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* Reader: at the bottom — same size as the punch (144px), same cream
@@ -1204,14 +1209,10 @@
     width: 144px;
     align-self: flex-start;
     margin-left: 8px;
-    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
-    /* All four corners rounded (see #asr-punch): the reader's top corners
-       were sharp when the panels were aligned — now they are rounded. */
+    /* Transparent like the punch: part of the same cast body. */
+    background: transparent;
+    border: 0;
     border-radius: 8px;
-    /* Same drop + inner-top highlight as the LINE/OFF/LOCAL block (#ccu-apron). */
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.6),
-        0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .asr-label {
@@ -1269,7 +1270,7 @@
     transform: translateX(-50%);
     width: 104px;
     height: 13px;
-    background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
+    background: linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
     clip-path: polygon(0 0, 100% 0, 50% 100%);
     z-index: 20;
 }

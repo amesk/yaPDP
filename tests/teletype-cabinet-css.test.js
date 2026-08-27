@@ -2,10 +2,15 @@
 /**
  * Model 33 ASR cabinet + keycaps — CSS contract tests.
  *
- * Guards css/g60printer.css so the console teletype keeps the two visual
- * improvements adopted from the competing `try.html` mockup:
- *   1. The sand-beige cabinet tone (#d1b48c) applied to the printer body,
- *      the keyboard deck and the ASR tape unit.
+ * Guards css/g60printer.css so the console teletype keeps the visual
+ * contract:
+ *   1. The sand-beige cabinet tone (#d1b48c) on the printer body; the
+ *      keyboard deck, the printer face and the ASR tape unit share ONE
+ *      plastic — the sand gradient (#d6bd99→#bfa67e / #e3cdaa→#c6a87e)
+ *      with the same subtle grain and inner top shadow. The ASR unit has
+ *      no contrasting frame (border: none) and its punch/reader areas are
+ *      transparent — the unit is cast from the same body, not a sand
+ *      substrate holding cream inserts.
  *   2. The flat-top cylindrical keycaps: a radial highlight over a solid
  *      dark side wall (box-shadow: 0 4px 0 #241f1a) that collapses when the
  *      key is pressed (translateY(4px) on the .down state).
@@ -94,33 +99,35 @@ function run() {
   // --- Sand keyboard deck --------------------------------------------------
   {
     const rule = extractRule(css, "#punchkeypane {");
-    assert.ok(/background\s*:\s*linear-gradient\(180deg,\s*#d6bd99\s*0%,\s*#bfa67e\s*100%\)\s*;/.test(rule),
-      "the keyboard deck must use the sand gradient #d6bd99→#bfa67e:\n" + rule);
+    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#d6bd99\s*0%,\s*#bfa67e\s*100%\)\s*;/.test(rule),
+      "the keyboard deck must carry the grain over the sand gradient #d6bd99→#bfa67e:\n" + rule);
     assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(rule),
       "the keyboard deck border must use #a68c66:\n" + rule);
   }
 
-  // --- Sand ASR tape-unit cabinet ------------------------------------------
+  // --- ASR tape unit: cast from the same plastic as the cover ---------------
   {
     const rule = extractRule(css, "#asr-tape-unit {");
-    assert.ok(/background-color\s*:\s*#d1b48c\s*;/.test(rule),
-      "the ASR cabinet must use the sand-beige #d1b48c:\n" + rule);
-    assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(rule),
-      "the ASR cabinet border must use #a68c66:\n" + rule);
+    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#d6bd99\s*0%,\s*#bfa67e\s*100%\)\s*;/.test(rule),
+      "the ASR unit must carry the grain over the same sand gradient as the deck:\n" + rule);
+    assert.ok(/border\s*:\s*none\s*;/.test(rule),
+      "the ASR unit must have no contrasting frame (border: none):\n" + rule);
+    assert.ok(/inset\s+0\s+10px\s+16px\s+rgba\(0,\s*0,\s*0,\s*0\.16\)/.test(rule),
+      "the ASR unit must carry the deck's inner top shadow:\n" + rule);
   }
 
-  // --- Punch / reader use the same cream surface + shadow as LINE/OFF/LOCAL --
+  // --- Punch / reader are transparent: part of the cast body -----------------
   {
     const punch = extractRule(css, "#asr-punch {");
-    assert.ok(/#ddd6c4/.test(punch) && /#ccc5b0/.test(punch),
-      "the punch block must use the cream gradient (#ddd6c4→#ccc5b0) like #ccu-apron:\n" + punch);
-    assert.ok(/box-shadow\s*:[\s\S]*0\s+1px\s+3px\s+rgba\(0,\s*0,\s*0,\s*0\.35\)\s*;/.test(punch),
-      "the punch block must carry the same drop shadow as #ccu-apron:\n" + punch);
+    assert.ok(/background\s*:\s*transparent\s*;/.test(punch),
+      "the punch area must be transparent (the unit's plastic shows through):\n" + punch);
+    assert.ok(/border\s*:\s*0\s*;/.test(punch),
+      "the punch area must not draw its own border:\n" + punch);
     const reader = extractRule(css, "#asr-reader {");
-    assert.ok(/#ddd6c4/.test(reader) && /#ccc5b0/.test(reader),
-      "the reader block must use the cream gradient (#ddd6c4→#ccc5b0) like #ccu-apron:\n" + reader);
-    assert.ok(/box-shadow\s*:[\s\S]*0\s+1px\s+3px\s+rgba\(0,\s*0,\s*0,\s*0\.35\)\s*;/.test(reader),
-      "the reader block must carry the same drop shadow as #ccu-apron:\n" + reader);
+    assert.ok(/background\s*:\s*transparent\s*;/.test(reader),
+      "the reader area must be transparent (the unit's plastic shows through):\n" + reader);
+    assert.ok(/border\s*:\s*0\s*;/.test(reader),
+      "the reader area must not draw its own border:\n" + reader);
   }
 
   // --- Sand top cover dome (two rounded corners) ---------------------------
