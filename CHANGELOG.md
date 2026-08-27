@@ -69,6 +69,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
+- **Promo-video intro title card** now reads `yaPDP` (the project name)
+  instead of `YAPDP` — the amber title card in `tools/make-intro.js` and the
+  README description were fixed, and the intro video was regenerated.
+### Chore
+
 - Demo video pipeline: teletype human-input capture, VT52 pacing, MP4
   montage and YouTube-ready exports ([`18549e7`](https://github.com/amesk/yaPDP/commit/18549e7)).
 

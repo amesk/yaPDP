@@ -77,11 +77,11 @@ function run(args) {
 
         ctx.textAlign = "center";
 
-        // --- Title: "YAPDP" with amber phosphor bloom ------------------------
+        // --- Title: "yaPDP" with amber phosphor bloom -----------------------
         // Bold by construction: faux-bold (draw each pass with small offsets)
         // thickens the retro LP1 glyphs, a thick dark contour adds a crisp
         // outline, then the amber fill is layered on top.
-        const titleText = "YAPDP";
+        const titleText = "yaPDP";
         const ty = HEIGHT / 2 - 60;
         ctx.font = "bold 210px \"RetroLP\", monospace";
         ctx.textAlign = "center";

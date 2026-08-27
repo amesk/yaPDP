@@ -28,6 +28,8 @@ the project develops. The highlights since alpha2:
   prompt, and the quick boot types `BOOT PR` / `BOOT RK1` in the historical
   upper case for the upper-case-only DEC guests (the *nix family keeps its
   lower-case commands).
+- **Branding**: the promo-video intro card now shows `yaPDP` — the project
+  name — instead of `YAPDP`.
 - **Docs**: user manual cross-links, cropped CONFIG screenshots, rewritten
   Storage section with per-tab screenshots.
 
