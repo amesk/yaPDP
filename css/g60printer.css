@@ -490,7 +490,7 @@
     left: 0;
     width: 36px;
     text-align: center;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: bold;
     line-height: 1;
     color: #d8dbe0;
@@ -513,7 +513,7 @@
     left: 2px;
     width: 12px;
     text-align: right;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: bold;
     line-height: 1;
     color: #d8dbe0;
@@ -526,7 +526,7 @@
     left: 14px;
     width: 16px;
     text-align: left;
-    font-size: 9px;
+    font-size: 11px;
 }
 
 #punchkeyboard .m33-key .m33-center {
@@ -536,7 +536,7 @@
     width: 36px;
     height: 16px;
     text-align: center;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: bold;
     line-height: 16px;
     color: #e8e4da;
@@ -553,7 +553,7 @@
 #punchkeyboard .m33-key.mod .m33-center {
     color: #e8e4da;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.15;
     top: 0;
     bottom: auto;
@@ -1251,7 +1251,7 @@
     right: 0;
     text-align: center;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: bold;
     letter-spacing: 2px;
     color: #5c5442;
@@ -1369,7 +1369,7 @@
     align-items: center;
     justify-content: center;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: bold;
     cursor: pointer;
 }
@@ -1451,7 +1451,7 @@
     padding: 0;
     color: #5c5442;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: bold;
     letter-spacing: 1px;
     cursor: pointer;
@@ -1710,7 +1710,7 @@
     border: 1px solid #c8a860;
     border-radius: 4px;
     padding: 6px 16px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     margin: 0 6px;
@@ -1816,7 +1816,7 @@
     padding: 0;
     color: #5c5442;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: bold;
     letter-spacing: 1px;
     cursor: pointer;

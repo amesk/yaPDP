@@ -101,6 +101,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   system cursive stack (Segoe Script/Comic Sans), with sizes bumped for
   legibility; the boot-command listing on the note stays monospaced (VT323)
   so the address columns line up.
+- **Chrome font sizes re-tuned for readability**: after the VT323 retrofit
+  every label was re-checked on the real screen; sizes were raised across
+  the board (sidebar 9→12 px, keycap legends 9–10→11–12 px, switch
+  positions 11→13 px, badges/labels 13→15 px, CONFIG labels 12→14 px,
+  modal titles 22→24 px, and more). Form controls (buttons, selects,
+  inputs) now inherit the chrome font too — the UA stylesheet was silently
+  rendering them in Arial.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

@@ -49,6 +49,14 @@
     font-display: swap;
 }
 
+/* Form controls (buttons, selects, inputs) do NOT inherit the page font by
+   default — the UA stylesheet gives them Arial. Make them follow the chrome
+   font; elements with an explicit family (the console textarea's VT52, the
+   LP11 paper) keep theirs. */
+button, select, input, textarea {
+    font-family: inherit;
+}
+
 /* ===== Global scrollbar theming (DEC 1960s palette) =====
    Every scrolling container in the app (quick-boot OS list, Info / Config /
    Storage pages, teletype & LP11 paper) gets the same look, so no native
@@ -144,7 +152,7 @@
     position: absolute;
     top: 0;
     height: 100%;
-    font-size: calc(var(--unitHeight) * 2.4);
+    font-size: calc(var(--unitHeight) * 2.8);
     line-height: calc(var(--unitHeight) * 8);
     float: left;
 }
@@ -384,7 +392,7 @@
 
 .modal-title {
     display: block;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: bold;
     letter-spacing: 1px;
     color: #c8a860;
@@ -393,7 +401,7 @@
 
 .modal-intro {
     margin: 0 0 10px;
-    font-size: 14px;
+    font-size: 15px;
     color: #cfc7b8;
 }
 
@@ -629,7 +637,7 @@
     background: rgba(20, 18, 14, 0.85);
     color: #ffe9a8;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.35;
     text-align: center;
     border-radius: 3px;
@@ -880,7 +888,7 @@
 .quickboot-cmd {
     color: #9a9488;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 15px;
+    font-size: 16px;
     white-space: nowrap;
 }
 
@@ -1367,7 +1375,7 @@ thead {
 
 pre {
     font-family: 'VT323', "Courier New", Courier, monospace;
-    font-size: 15px;
+    font-size: 16px;
 }
 
 b {
@@ -1421,7 +1429,7 @@ body {
     border: 1px solid #5a554a;
     border-radius: 4px;
     color: #b8b0a0;
-    font-size: 9px;
+    font-size: 12px;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1757,7 +1765,7 @@ body {
     border: 1px solid #c8a860;
     border-radius: 4px;
     padding: 6px 16px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     margin: 0 6px;
@@ -1853,7 +1861,7 @@ body {
 .vt52-badge {
     text-align: center;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 2px;
     color: #8a8274;
     text-transform: uppercase;
@@ -2246,7 +2254,7 @@ body.crt-effects .vt52-crt::after {
 .vt52-status {
     margin-top: 10px;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 15px;
+    font-size: 17px;
     color: #6a655a;
     text-align: center;
     user-select: none;
@@ -2381,7 +2389,7 @@ body.crt-effects .vt52-crt::after {
 .lp11-badge {
     text-align: center;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 2px;
     color: #7c7059;
     text-transform: uppercase;
@@ -2408,7 +2416,7 @@ body.crt-effects .vt52-crt::after {
 
 .lp11-label {
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 15px;
     letter-spacing: 1px;
     text-transform: uppercase;
     color: #d8cfba;
@@ -2460,7 +2468,7 @@ body.crt-effects .vt52-crt::after {
     border-radius: 3px;
     padding: 3px 10px;
     font-family: 'VT323', arial, helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: bold;
     letter-spacing: 0.5px;
     cursor: pointer;
@@ -2659,7 +2667,7 @@ body.crt-effects .vt52-crt::after {
 
 .config-label {
     flex: 0 0 220px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -2668,7 +2676,7 @@ body.crt-effects .vt52-crt::after {
 
 .config-control {
     flex: 1;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .config-control label {
@@ -2696,7 +2704,7 @@ body.crt-effects .vt52-crt::after {
     border: 1px solid #5a554a;
     border-radius: 4px;
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .config-control button {
@@ -2705,7 +2713,7 @@ body.crt-effects .vt52-crt::after {
     border: 1px solid #c8a860;
     border-radius: 4px;
     padding: 6px 14px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
 }
@@ -2724,7 +2732,7 @@ body.crt-effects .vt52-crt::after {
 .config-hint {
     display: block;
     margin-top: 4px;
-    font-size: 11px;
+    font-size: 12px;
     color: #8a857a;
 }
 
@@ -2733,7 +2741,7 @@ body.crt-effects .vt52-crt::after {
     display: inline-block;
     margin-left: 8px;
     padding: 1px 8px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     border-radius: 3px;
     border: 1px solid transparent;
@@ -2767,7 +2775,7 @@ body.crt-effects .vt52-crt::after {
 .mounted-count {
     display: inline-block;
     margin-left: 8px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     color: #7fb8d8;
     vertical-align: middle;
@@ -2800,7 +2808,7 @@ body.crt-effects .vt52-crt::after {
     border-bottom: none;
     border-radius: 4px 4px 0 0;
     padding: 8px 16px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
