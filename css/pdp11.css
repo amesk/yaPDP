@@ -30,6 +30,25 @@
     font-display: swap;
 }
 
+/* Kalam (OFL): handwritten note face for the operator's sticky note. The
+   listing on the note stays monospaced (VT323) so the address columns line
+   up; only the words are handwritten. */
+@font-face {
+    font-family: 'Kalam';
+    src: url('../assets/fonts/kalam/Kalam-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Kalam';
+    src: url('../assets/fonts/kalam/Kalam-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ===== Global scrollbar theming (DEC 1960s palette) =====
    Every scrolling container in the app (quick-boot OS list, Info / Config /
    Storage pages, teletype & LP11 paper) gets the same look, so no native
@@ -571,8 +590,8 @@
         0 10px 20px rgba(0, 0, 0, 0.2),
         inset 0 -20px 40px rgba(0, 0, 0, 0.05);
     transform: rotate(-3deg);
-    font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive;
-    font-size: 11px;
+    font-family: 'Kalam', 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive;
+    font-size: 13px;
     line-height: 1.4;
     color: #1a1a1a;
     /* auto: the note sits to the LEFT of the panel (right:100%), so letting
@@ -648,13 +667,13 @@
     font-weight: bold;
     text-align: center;
     margin-bottom: 10px;
-    font-size: 14px;
+    font-size: 16px;
     text-decoration: underline;
     color: #111;
 }
 
 .panel-sticker-step {
-    font-size: 11px;
+    font-size: 12px;
     color: #111;
     margin: 6px 0;
 }
@@ -663,7 +682,7 @@
    hand-written cheat sheet, so every line (words and boot commands) is in
    the same black ink. */
 .panel-sticker-code {
-    font-size: 11px;
+    font-size: 12px;
     white-space: pre;
     margin: 6px 0;
     color: #111;
