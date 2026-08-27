@@ -1835,7 +1835,27 @@ function initConfigForm() {
       if (panelStickerEl) panelStickerEl.checked = d.panelSticker;
       if (powerOnEl) powerOnEl.checked = d.powerOn;
       if (autoBootEl) autoBootEl.checked = d.autoBoot;
-      // The form now shows factory values; nothing is persisted until Apply.
+      // The four BEHAVIOUR settings above are live options: they persist the
+      // moment their checkboxes change and can be toggled outside this form
+      // (the reboot dialog, the Help Me! button, the front-panel POWER LOCK),
+      // so readForm() never reads them from the checkboxes. Restore defaults
+      // therefore resets them for real, exactly as if each checkbox had been
+      // toggled to the factory value: confirmReboot and autoBoot are
+      // persisted, the sticker is re-applied, and the machine powers down to
+      // the factory "off" state.
+      if (confirmRebootEl && typeof Config !== 'undefined') {
+        Config.set({ confirmReboot: d.confirmReboot });
+      }
+      if (panelStickerEl) {
+        if (typeof Config !== 'undefined') Config.set({ panelSticker: d.panelSticker });
+        applyPanelSticker(d.panelSticker);
+      }
+      if (powerOnEl) applyMachinePower(d.powerOn, false);
+      if (autoBootEl && typeof Config !== 'undefined') {
+        Config.set({ autoBoot: d.autoBoot });
+      }
+      // The rest of the form now shows factory values; nothing is persisted
+      // until Apply.
       updateEquipmentVisibility();
       updateDirtyUI();
     });

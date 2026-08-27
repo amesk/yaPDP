@@ -88,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all-holes RUB OUT row, exactly like a real ASR-33 receive punch. The LOCAL
   echo no longer punches a second row for bytes the keyboard punch already
   recorded ([`1671979`](https://github.com/amesk/yaPDP/commit/1671979)).
+- **Restore defaults** on the CONFIG page now really resets the four live
+  BEHAVIOUR options — **Reboot confirmation**, **Help Me! sticker**,
+  **Machine power** and **Auto-boot** — immediately (they persist the moment
+  they change and are read from the config, not the form, so a form-only
+  reset never reached them). The machine powers down to the factory "off"
+  state; the remaining fields still wait for **Apply**.
 - The reboot confirmation dialog ("Reboot the machine?") now carries an
   Auto-boot shortcut: **Start the default bootstrap automatically after
   reboot** — a live mirror of the CONFIG|BEHAVIOUR **Auto-boot** option. The
