@@ -59,6 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
+- **Info page**: the "What makes it special" table gains an **Authentic LP11
+  Line Printer** row (faithful DEC line printer — cabinet, fanfold paper,
+  ON LINE / TOP OF FORM / PAPER FEED — printing at ~300 lines/min, with the
+  finished job exportable to a real printer via the system dialog or as a
+  `.txt`); table headers on the Info page are now left-aligned. The README
+  "What makes it special" table mirrors the new row, and the landing page
+  (index.html) mentions the printout export.
+
 - README and user manual: machine-state section, the STATE button in the
   floating-controls table, refreshed screenshots ([`9fdd8bf`](https://github.com/amesk/yaPDP/commit/9fdd8bf)).
 - User manual: internal cross-links between sections ([`906c274`](https://github.com/amesk/yaPDP/commit/906c274)).

@@ -1622,6 +1622,7 @@ body {
 
 #page-instructions.active table thead {
     color: #f0e6c8;
+    text-align: left;
 }
 
 #page-instructions b,
