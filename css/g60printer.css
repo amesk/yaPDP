@@ -1099,11 +1099,11 @@
     position: relative;
     /* Cabinet: the punch sits ABOVE the reader in one vertical stack (as on
        the historical machine), and the punched tape hangs below the punch.
-       The cabinet is WIDER than the punch/reader blocks (which keep their
-       original 144px width): the reader block sits 26px left of the punch
-       (as on the real ASR-33), and the cabinet is centred on the PAIR, so
-       the gap from the reader to the left wall equals the gap from the
-       punch to the right wall (8px each). The BOTTOM is aligned with the
+       The cabinet is WIDER than the punch/reader plates (170px each): both
+       plates span the same horizontal range — from the reader's original
+       left edge to the punch's original right edge — so they align
+       perfectly, and the cabinet is centred on them, leaving an 8px margin
+       on each side. The BOTTOM is aligned with the
        bottom of the keyboard deck (#punchkeypane: 396px top + 240px height
        = 636px); the taller 360px cabinet grows UPWARD (top at 276px) and,
        together with the 10px top/bottom insets on #asr-mech, leaves clear
@@ -1137,9 +1137,10 @@
     right: 0;
     bottom: 0;
     display: flex;
-    /* Punch above reader, matching the historical layout. The blocks keep
-       their original narrow width and are centred in the narrow cabinet.
-       10px vertical padding insets BOTH metal panels from the cabinet's top
+    /* Punch above reader, matching the historical layout. Both plates are
+       the same width (170px) and sit at the same horizontal position in
+       the cabinet. 10px vertical padding insets BOTH metal panels from the
+       cabinet's top
        and bottom edges, so neither the punch nor the reader touches the
        sand cabinet frame. */
     flex-direction: column;
@@ -1152,23 +1153,22 @@
     gap: 12px;
 }
 
-/* Punch: on top — same size as the reader, keeping the original narrow
-   width (144px, one half of the former 300px row cabinet). The punch and
+/* Punch: on top — the same size as the reader (170px). The punch and
    reader surfaces use the SAME cream as the LINE/OFF/LOCAL block
    (#ccu-apron), so the whole ASR unit reads as one plastic body. */
 #asr-punch {
     position: relative;
     flex: 1 1 0;
-    width: 144px;
-    /* The reader+punch PAIR is centred in the cabinet (8px margins on both
-       sides): the punch sits at 34px so its right edge lands 8px from the
-       cabinet's right wall, with the reader 26px left of it. */
+    width: 170px;
+    /* Both plates span the same range (8px margin): from the reader's
+       original left edge to the punch's original right edge, so the two
+       plates align perfectly in the cabinet. */
     align-self: flex-start;
-    margin-left: 34px;
+    margin-left: 8px;
     /* Raised plastic plate defining the punch contour: a lighter sand
        tone than the cast body, with the same grain — a top highlight
        and a drop shadow lift it off the body (relief plastic). Same
-       width as the reader plate (144px); the TAPE PUNCH label centres
+       width as the reader plate (170px); the TAPE PUNCH label centres
        on it. */
     background:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
@@ -1181,20 +1181,17 @@
         0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Reader: at the bottom — same size as the punch (144px), same cream
-   surface. The whole block sits 26px LEFT of the punch (on the real ASR-33
-   the reader is offset from the punch); its 8px margin from the cabinet's
-   left wall mirrors the punch's 8px margin from the right wall, so the
-   reader+punch pair is centred in the cabinet. The 26px offset separates
-   the two hanging tapes (see #readertape), so the punched tape no longer
-   covers the reader tape completely. */
+/* Reader: at the bottom — same size as the punch (170px), same cream
+   surface, aligned with it: both plates span the same horizontal range
+   (8px margin from the cabinet's left wall), so the pair is centred in
+   the cabinet and the two hanging tapes share one axis (see #readertape). */
 #asr-reader {
     position: relative;
     flex: 1 1 0;
-    width: 144px;
+    width: 170px;
     align-self: flex-start;
     margin-left: 8px;
-    /* Same raised plastic plate as the punch: same width (144px), same
+    /* Same raised plastic plate as the punch: same width (170px), same
        relief treatment; the TAPE READER label centres on it. */
     background:
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
@@ -1348,13 +1345,13 @@
    orbits the disc centre and lands on START/STOP/FREE/AUTO. */
 .asr-reader-switch {
     position: absolute;
-    /* The switch is centred in the reader panel like the punch's: its
-       centre sits at 75px, with a 92px switch that means left = 75 - 46 =
-       29px (the slot's 72px — the historical 3px apart). top:42px keeps
-       the switch's distance to the block BOTTOM (40px) the same as before
-       the cabinet was made taller. The hanging punch tape draws ABOVE it
-       (see #punchtape z-index), as a punched tape always passes in front
-       of the reader mechanism. */
+    /* Kept at its original position (left:29px) even though the reader
+       plate is now wider — per Alexei's request the switch does not
+       re-centre on the plate. top:42px keeps the switch's distance to
+       the block BOTTOM (40px) the same as before the cabinet was made
+       taller. The hanging punch tape draws ABOVE it (see #punchtape
+       z-index), as a punched tape always passes in front of the reader
+       mechanism. */
     left: 29px;
     top: 42px;
     width: 92px;
@@ -1463,15 +1460,15 @@
     /* Emerge from the MIDDLE of the TAPE PUNCH slot: the punch block starts
        at the 10px #asr-mech top inset and the slot sits at top 106px within
        it, so the slot centre lands at 10 + 106 + 6 = 122px. Horizontally
-       centred on the punch: the punch block is 144px wide centred in the
-       212px cabinet, so its centre sits at 106px; tape left = 106 - 48.5 ≈
-       58px. Draws ABOVE every other element of the ASR unit (the reader
+       centred on the punch: the punch block is 170px wide with an 8px
+       cabinet margin, so its centre sits at 94px; tape left = 94 - 48.5 ≈
+       46px. Draws ABOVE every other element of the ASR unit (the reader
        switch, the slots), so the punched tape always passes in front of the
        mechanism — including in front of the READER tape (#readertape, same
        z-index but later in the DOM): with equal z-index the later sibling
        would win, so the punch tape sits one step higher. */
     top: 122px;
-    left: 58px;
+    left: 46px;
     z-index: 11;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
        transparent background: scrollbar-gutter: stable reserves the gutter
@@ -1582,17 +1579,17 @@
    starts at 10 (mech inset) + 164 (punch block) + 12 (gap) = 186px within
    the cabinet and its slot sits at top 106px within the block, so the slot
    centre lands at 186 + 106 + 6 = 298px. Horizontally it is centred like
-   the punch tape: the 144px block sits in the 170px cabinet, so tape left
-   = 36px. The loaded tape is a full strip; as it is read the top rows are
-   removed and the rest moves up through the slot. */
+   the punch tape: the 170px block sits in the 186px cabinet with an 8px
+   margin, so tape left = 46px. The loaded tape is a full strip; as it is
+   read the top rows are removed and the rest moves up through the slot. */
 #readertape {
     position: absolute;
-    /* Hangs from the reader slot: the reader block is offset 26px left of
-       the punch, so the slot centre sits at 106 - 26 = 80px and tape left
-       = 80 - 48.5 ≈ 31px — 27px left of the punched tape (58px), keeping
-       the two tapes visibly separate. */
+    /* Hangs from the reader slot: the reader plate aligns with the punch,
+       so the slot centre sits at 94px — the same axis as the punched tape —
+       and tape left = 94 - 48.5 ≈ 46px. The punched tape draws in front of
+       it (z-index 11 > 10), as on the real machine. */
     top: 298px;
-    left: 31px;
+    left: 46px;
     z-index: 10;
     width: 107px;
     max-width: 100%;

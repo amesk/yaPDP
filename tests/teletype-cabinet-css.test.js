@@ -11,7 +11,7 @@
  *      no contrasting frame (border: none). The punch/reader contours are
  *      raised plastic PLATES — a lighter sand tone than the body, same
  *      grain, top highlight + drop shadow (relief plastic), equal width
- *      (144px), with the TAPE PUNCH / TAPE READER labels centred on them.
+ *      (170px), with the TAPE PUNCH / TAPE READER labels centred on them.
  *   2. The flat-top cylindrical keycaps: a radial highlight over a solid
  *      dark side wall (box-shadow: 0 4px 0 #241f1a) that collapses when the
  *      key is pressed (translateY(4px) on the .down state).
