@@ -143,6 +143,16 @@ function run() {
             "mechanics bay must be sand (DEC palette):\n" + bayBlock);
     }
 
+    // --- The G60 machine body inside the bay must be sand, not light beige --
+    // (lastIndexOf picks the LP11 override, not the base Google60 rule)
+    {
+        const idx = g60Css.lastIndexOf("#lp11_printer div#lp11g60printer {");
+        assert.ok(idx !== -1, "no #lp11_printer div#lp11g60printer override in g60printer.css");
+        const block = g60Css.slice(idx, idx + 400);
+        assert.ok(/background\s*:\s*linear-gradient\(180deg,\s*#c9ae84\s*0%,\s*#bda27a\s*100%\)\s*;/.test(block),
+            "the G60 machine body must be sand (#c9ae84→#bda27a), not light beige:\n" + block);
+    }
+
     // --- Cabinet + hood in the sand cast-plastic family (like the teletype) --
     // The cabinet and the top hood share the sand gradient with the same grain,
     // so the LP11 matches the rest of the DEC equipment. The hood is slightly

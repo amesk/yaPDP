@@ -900,7 +900,11 @@
 }
 
 #lp11_printer div#lp11g60printer {
-    background: linear-gradient(180deg, #e0dac9 0%, #cfc7b2 100%);
+    /* The Google60 machine body fills the bay: same sand cast-plastic as the
+       bay itself (a touch darker at the bottom for depth), so the area around
+       the rising fanfold reads as one sand mechanics bay instead of the old
+       light beige. */
+    background: linear-gradient(180deg, #c9ae84 0%, #bda27a 100%);
 }
 
 /* Dark paper opening: a recessed slot right at the carriage, out of which the
