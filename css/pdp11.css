@@ -1816,6 +1816,14 @@ body {
 .printer-actions {
     margin-top: 8px;
     text-align: center;
+    /* The LP11 cabinet's drop shadow (0 26px 44px rgba(0,0,0,0.5)) lands
+       exactly on this row (cabinet bottom ~899px, buttons at ~907px) and
+       the cabinet paints after this inline content, so without this the
+       buttons rendered ~30% darker than every other action button. Lifting
+       the row above the shadow keeps the machine's floating look while the
+       buttons read as bright as the rest. */
+    position: relative;
+    z-index: 1;
 }
 
 .printer-actions button {

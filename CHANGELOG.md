@@ -208,6 +208,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   switch (START / AUTO / STOP / FREE as a nested list), the CCU knob
   (LINE / OFF / LOCAL) and tape duplication — so each topic can be
   scanned on its own.
+- **Printer buttons are no longer dimmed by the machine's shadow**: the
+  LP11 cabinet's drop shadow (`0 26px 44px rgba(0,0,0,0.5)`) landed
+  exactly on the Print / Save .txt / Tear paper row, and because the
+  cabinet is `position: relative` it painted over the inline buttons —
+  they rendered ~30% darker than every other action button. The
+  `.printer-actions` row is now lifted above the shadow
+  (`position: relative; z-index: 1`), so the buttons read as bright as
+  the PANEL / CONSOLE ones while the cabinet keeps its floating look.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
