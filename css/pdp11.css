@@ -2589,7 +2589,6 @@ body.crt-effects .vt52-crt::after {
     font-size: 11px;
     font-weight: bold;
     line-height: 1;
-    text-transform: uppercase;
     user-select: none;
 }
 

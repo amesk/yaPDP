@@ -156,6 +156,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   labels, LED base plates) exactly like the deployed build; only the
   engraved Michroma masthead stays. All labels fit their keycaps and
   strips again.
+- **LP11 "digital" wordmark lowercase again**: the stamped wordmark on the
+  LP11 cover was forced to uppercase by a stray `text-transform: uppercase`
+  in `.lp11-dec-letter` — the real DEC wordmark is lowercase, like the
+  front-panel masthead. Removed the transform; the seven letters now read
+  "digital" (Michroma, engraved look).
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
