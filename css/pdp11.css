@@ -2803,6 +2803,12 @@ body.crt-effects .vt52-crt::after {
     color: #8a857a;
 }
 
+/* A hint that directly follows an action button needs a real gap — 4px made
+   "Restore defaults" look glued to its "Fills the form with…" hint. */
+.config-control button + .config-hint {
+    margin-top: 8px;
+}
+
 /* Paper tape reader state indicator (Storage page). */
 .tape-state {
     display: inline-block;

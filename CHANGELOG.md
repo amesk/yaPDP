@@ -178,6 +178,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the select is capped at 190px and the buttons at 12px padding so all
   three controls fit on one line — and if the window is ever too narrow,
   the wrap keeps the same clean gap instead of touching the select.
+- **CONFIG hint spacing after action buttons**: the "Fills the form with
+  factory values…" hint sat 4px under "Restore defaults", looking glued to
+  the button. Hints that directly follow an action button now get an 8px
+  gap (the "Apply" field benefits too); hints after selects/radios keep
+  the tighter 4px spacing.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
