@@ -24,11 +24,14 @@
  *   - STOP / FREE: the reader is paused. In FREE the operator can pull the
  *     tape out with the "Remove tape from reader" button (visible only in
  *     FREE).
- *   - The CCU routes every read byte like the keyboard: in LOCAL the byte
- *     only prints on the teletype paper (a tape-to-paper copy); in LINE it
- *     prints AND is sent to the machine. When the punch is engaged (ON or
- *     DC2) the byte is punched onto the output tape in both modes, so the
- *     reader doubles as a tape-to-tape duplicator — the classic ASR trick.
+ *   - The CCU routes every read byte exactly like the keyboard: in LOCAL
+ *     the byte only prints on the teletype paper (a tape-to-paper copy,
+ *     nothing reaches the machine); in LINE it is sent to the machine and
+ *     printed by the machine's echo — printing it locally as well would
+ *     double every character on echoing guests. When the punch is engaged
+ *     (ON or DC2) the byte is punched onto the output tape in both modes —
+ *     in LOCAL via the print path, in LINE via the echo — so the reader
+ *     doubles as a tape-to-tape duplicator, the classic ASR trick.
  *   - CCU OFF powers the whole unit down: the reader never feeds.
  *
  * As bytes are read the tape visibly moves up through the reader slot; once
@@ -224,16 +227,20 @@
         var b = tapeBytes[pos] & 0x7F;
         pos++;
         lastFeed = Date.now();
-        // CCU routing, like the keyboard: LOCAL prints the tape on paper
-        // only (tape -> paper copy); LINE prints it AND sends the byte to
-        // the machine. The punch (when engaged) duplicates the byte onto
-        // the output tape in both modes via the console print path — the
-        // tape-to-tape copy programmers used to duplicate tapes. OFF never
-        // reaches here: the CCU powers the reader down (canFeedNow).
-        if (window.g60Console && typeof window.g60Console.writeChar === 'function') {
-            window.g60Console.writeChar(b);
-        }
-        if (window.ttyMode === 'line' && typeof window.dlReceiveQueue === 'function') {
+        // CCU routing, exactly like the keyboard: LOCAL prints the tape on
+        // paper only (tape -> paper copy, nothing reaches the machine);
+        // LINE sends the byte to the machine, where the guest's echo prints
+        // it — a local print here too would double every character on an
+        // echoing guest (e.g. BASIC). The punch (when engaged) duplicates
+        // the byte onto the output tape via the console print path in both
+        // modes — the tape-to-tape copy programmers used to duplicate
+        // tapes. OFF never reaches here: the CCU powers the reader down
+        // (canFeedNow).
+        if (window.ttyMode === 'local') {
+            if (window.g60Console && typeof window.g60Console.writeChar === 'function') {
+                window.g60Console.writeChar(b);
+            }
+        } else if (window.ttyMode === 'line' && typeof window.dlReceiveQueue === 'function') {
             window.dlReceiveQueue(0, [b]);
         }
         if (body && body.firstChild) {

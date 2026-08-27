@@ -2316,9 +2316,10 @@ function initTtyControls() {
   var removeTapeBtn = document.getElementById('tty-remove-tape');
   if (removeTapeBtn) {
     removeTapeBtn.addEventListener('click', function () {
-      // Play the rip sound only if there was actually a tape to pull out.
+      // Pulling the tape out of the READER is a quiet action — no rip
+      // sound (unlike tearing the punched tape).
       if (window.tapeReader && typeof window.tapeReader.removeTape === 'function') {
-        if (window.tapeReader.removeTape()) playTearSound();
+        window.tapeReader.removeTape();
       }
     });
   }

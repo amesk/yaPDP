@@ -26,8 +26,9 @@ the project develops. The highlights since alpha2:
   signal (X-ON/X-OFF pauses and resumes), FREE reveals the Remove tape from
   reader button, and the tape moves up and shortens as it is read. The CCU
   routes every byte like the keyboard: LOCAL prints the tape on paper
-  (tape-to-paper copy), LINE prints and sends; with the punch ON the read
-  bytes are punched onto the output tape — tape-to-tape duplication.
+  (tape-to-paper copy), LINE sends to the machine and the echo prints;
+  with the punch ON the read bytes are punched onto the output tape —
+  tape-to-tape duplication.
 - **Smaller UX wins**: Quick boot button in the welcome dialog, Auto-boot
   shortcut in the power-off dialog, floating REBOOT/STATE buttons on the
   VT52 console page.

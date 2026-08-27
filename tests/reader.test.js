@@ -328,8 +328,11 @@ async function browserProbe() {
     // Tape-to-tape duplication: punch ON + reader START punches every
     // read byte onto the output tape (the classic ASR copy trick).
     // Load a fresh tape first (the AUTO tests nearly consumed the old one).
+    // Duplication runs in LOCAL: the reader drives the printer, and the
+    // punch (on the same local loop) duplicates every byte onto the output
+    // tape — the classic ASR copy, no computer involved.
     await page.click('[data-reader-mode="stop"]');
-    await page.click('[data-tty-mode="line"]');
+    await page.click('[data-tty-mode="local"]');
     await new Promise((r) => setTimeout(r, 200));
     const input2 = await page.$("#tty-tape-file");
     await input2.uploadFile(tmp);
@@ -358,6 +361,46 @@ async function browserProbe() {
       "punch duplicated every read byte (" + dup.punchRows + " rows for " + dupConsumed + " bytes)");
     await page.click("#punch-off");
     console.log("OK  browser: punch duplicates the read tape (tape-to-tape)");
+
+    // LINE with a halted machine: the reader sends bytes to the DL11 but
+    // prints nothing locally — the guest's echo is the only print (BASIC
+    // would otherwise double every entered character). The halted machine
+    // echoes nothing, so rendered must stay 0.
+    await page.click('[data-reader-mode="stop"]');
+    // Tear off the punched tape first: a hanging punched tape passes in
+    // front of the reader switch (authentic), so the switch is only
+    // reachable once the tape is off.
+    await page.evaluate(() => {
+      if (window.paperTape && typeof window.paperTape.clear === "function") {
+        window.paperTape.clear();
+      }
+    });
+    await page.click('[data-tty-mode="line"]');
+    await new Promise((r) => setTimeout(r, 200));
+    const input3 = await page.$("#tty-tape-file");
+    await input3.uploadFile(tmp);
+    await new Promise((r) => setTimeout(r, 400));
+    await page.evaluate(() => {
+      window.__dlCalls = 0;
+      window.__rendered = 0;
+    });
+    const lineBefore = await countRows();
+    await page.click('[data-reader-mode="start"]');
+    await new Promise((r) => setTimeout(r, 1200));
+    await page.click('[data-reader-mode="stop"]');
+    await new Promise((r) => setTimeout(r, 700));
+    const line = await page.evaluate(() => ({
+      rows: document.querySelectorAll("#readertape__body .pt-row").length,
+      dlCalls: window.__dlCalls,
+      rendered: window.__rendered,
+    }));
+    const lineConsumed = lineBefore - line.rows;
+    assert.ok(lineConsumed > 3, "LINE consumed rows (" + lineConsumed + ")");
+    assert.strictEqual(line.dlCalls, lineConsumed,
+      "LINE sent every byte to the machine (" + line.dlCalls + " of " + lineConsumed + ")");
+    assert.strictEqual(line.rendered, 0,
+      "LINE prints nothing locally (echo prints; rendered: " + line.rendered + ")");
+    console.log("OK  browser: LINE sends to the machine, no local print");
 
     // Remove tape in FREE clears the reader.
     await page.click('[data-reader-mode="free"]');
