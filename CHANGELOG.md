@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Build manifest (`media/manifest.json`) + availability-aware quick-boot
+  picker.** A deployment now declares which guest images it ships: the
+  manifest is generated from `media/` by `node tools/gen-media-manifest.js`
+  (deterministic, committed, drift-guarded by `tests/media-manifest.test.js`).
+  The magic-wand picker lists only guest OSes whose image is in the manifest
+  and/or mounted in DataLoader (desktop bundle, drag & drop imports) — so the
+  **Minimal** desktop build no longer advertises OSes it cannot boot; paper
+  tapes always stay (tiny, keep the demo bootable). Deployments without a
+  manifest (ad-hoc hosts, `file://`) keep the previous show-everything
+  behaviour. The Info page's guest-OS table is annotated the same way: rows
+  whose image is not shipped are dimmed with an *image not in this build*
+  note. Desktop: `tauri-bundled.js` re-renders the picker once the bundle
+  finishes mounting. New e2e coverage: `tests/e2e-quickboot-manifest.js`
+  (reduced manifest, absent manifest, drag-drop union, Info annotation,
+  full-repo manifest).
+
+
 - **Working ASR paper-tape reader.** The TAPE READER on the Model 33 ASR
   console now actually reads: **Load tape** opens a file dialog for a
   `.ptap`, `.ptap.zst` or `.txt` tape, which hangs from the reader slot down

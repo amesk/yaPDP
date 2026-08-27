@@ -105,6 +105,13 @@
             if (ok > 0) {
                 console.info("yaPDP desktop: mounted " + ok + " bundled image(s)");
             }
+            // The quick-boot wizard filters its list by what is mounted; if
+            // the dialog is already open (opened during the mount window)
+            // re-render it so it settles on the bundled set.
+            if (typeof QuickBoot !== "undefined" &&
+                typeof QuickBoot.refresh === "function") {
+                QuickBoot.refresh();
+            }
         });
     }
 

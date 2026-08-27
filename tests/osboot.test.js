@@ -139,6 +139,45 @@ function run() {
             "RT-11 teletype and VT52 variants should share rk1.dsk");
     }
 
+    // ---- filterAvailable (build manifest + mounted, union) -----------
+    // The wizard shows a scenario when its image is in the build manifest
+    // (browser deployments) OR mounted in DataLoader (desktop bundle,
+    // drag-and-drop imports). Union semantics: either source suffices.
+    {
+        // Manifest only: rk0 (Unix V5) and rp1 (BSD 2.11) shipped, others not.
+        const manifestOnly = OSBoot.filterAvailable(["rk0.dsk", "rp1.dsk"], []);
+        assert.deepStrictEqual(plain(manifestOnly.map((s) => s.device).sort()),
+            ["basic", "ed11", "lander", "odt11", "rk0", "rp1"],
+            "manifest images + all paper tapes should survive the filter");
+
+        // Union: manifest ships rk0, a drag-and-drop import mounts rp1 —
+        // both stay; an image in neither (rk2) is dropped.
+        const union = OSBoot.filterAvailable(["rk0.dsk"], ["rp1.dsk"]);
+        assert.deepStrictEqual(plain(union.map((s) => s.device).sort()),
+            ["basic", "ed11", "lander", "odt11", "rk0", "rp1"],
+            "manifest and mounted lists should union (either source suffices)");
+
+        // Both lists empty: only paper tapes remain — the pure function's
+        // contract; the "show everything when availability is unknown"
+        // fallback lives in quickboot.js (currentScenarios), not here.
+        const none = OSBoot.filterAvailable([], []);
+        assert.deepStrictEqual(plain(none.map((s) => s.device).sort()),
+            ["basic", "ed11", "lander", "odt11"],
+            "empty manifest + empty mounted should keep only paper tapes");
+
+        // A manifest with the shared rk1.dsk keeps both RT-11 variants.
+        const shared = OSBoot.filterAvailable(["rk1.dsk"], []);
+        assert.deepStrictEqual(plain(shared.map((s) => s.device).sort()),
+            ["basic", "ed11", "lander", "odt11", "rk1", "rk1vt52"],
+            "manifest should keep both RT-11 variants for the shared rk1.dsk");
+
+        // filterMounted stays a special case of filterAvailable.
+        assert.deepStrictEqual(
+            plain(OSBoot.filterMounted(["rk0.dsk"]).map((s) => s.device)),
+            plain(OSBoot.filterAvailable(null, ["rk0.dsk"]).map((s) => s.device)),
+            "filterMounted should behave exactly like filterAvailable(null, images)");
+    }
+
     // ---- scenario integrity ------------------------------------------
     {
         OSBoot.BOOT_SCENARIOS.forEach((s) => {
