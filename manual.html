@@ -441,23 +441,30 @@
                     inserts a paper tape into the reader — a raw <code>.ptap</code> (as saved by the punch or the
                     Storage page), a compressed <code>.ptap.zst</code>, or a plain <code>.txt</code> whose characters
                     become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window,
-                    its ragged free end torn like the punched tape's. The four-position switch on the TAPE READER
-                    cabinet governs reading: <b>START</b> runs the reader continuously, sending the tape to the machine
-                    at the console speed (authentic ~10 chars/sec or the fast CONFIG pace); <b>AUTO</b> sends one byte
-                    and then feeds the next only when the machine's DL11 has accepted the previous one (paused by
-                    <code>DC3 / X-OFF</code>, resumed by <code>DC1 / X-ON</code>); <b>STOP</b> pauses; <b>FREE</b>
-                    releases the tape and shows the <b>Remove tape from reader</b> button (hidden in every other mode)
-                    to pull it out. Clicking a position label jumps straight to it; clicking the round switch disc
-                    itself turns it one detent clockwise (<b>START → STOP → FREE → AUTO</b>), like rotating the real
-                    switch. The CCU knob on the apron (<b>LINE / OFF / LOCAL</b>) works the same way: click a label
-                    to jump, or click the knob itself to turn it one detent clockwise (<b>LINE → OFF → LOCAL</b>).
-                    The CCU routes every read byte exactly like the keyboard: in <b>LOCAL</b>
-                    the tape prints on the paper only (a tape-to-paper copy, nothing reaches the machine); in
-                    <b>LINE</b> it is sent to the machine and printed by the machine's echo — printing locally too
-                    would double every character on echoing guests. With the punch engaged (<b>ON</b>), every read
-                    byte is also punched onto the output tape — the classic ASR trick for duplicating tapes (reader
-                    in, fresh tape out). As the tape is read it visibly moves up through the slot and shortens; when
-                    the last byte is read the tape has gone into the machine and a new one can be loaded.</li>
+                    its ragged free end torn like the punched tape's. As the tape is read it visibly moves up through
+                    the slot and shortens; when the last byte is read the tape has gone into the machine and a new one
+                    can be loaded.</li>
+                <li><b>Reader switch.</b> The four-position switch on the TAPE READER cabinet governs reading:
+                    <ul>
+                        <li><b>START</b> — runs the reader continuously, sending the tape to the machine at the
+                            console speed (authentic ~10 chars/sec or the fast CONFIG pace);</li>
+                        <li><b>AUTO</b> — sends one byte and then feeds the next only when the machine's DL11 has
+                            accepted the previous one (paused by <code>DC3 / X-OFF</code>, resumed by
+                            <code>DC1 / X-ON</code>);</li>
+                        <li><b>STOP</b> — pauses;</li>
+                        <li><b>FREE</b> — releases the tape and shows the <b>Remove tape from reader</b> button
+                            (hidden in every other mode) to pull it out.</li>
+                    </ul>
+                    Clicking a position label jumps straight to it; clicking the round switch disc itself turns it
+                    one detent clockwise (<b>START → STOP → FREE → AUTO</b>), like rotating the real switch.</li>
+                <li><b>CCU knob.</b> The LINE / OFF / LOCAL knob on the apron works the same way: click a label to
+                    jump, or click the knob itself to turn it one detent clockwise (<b>LINE → OFF → LOCAL</b>). The
+                    CCU routes every read byte exactly like the keyboard: in <b>LOCAL</b> the tape prints on the
+                    paper only (a tape-to-paper copy, nothing reaches the machine); in <b>LINE</b> it is sent to the
+                    machine and printed by the machine's echo — printing locally too would double every character on
+                    echoing guests.</li>
+                <li><b>Duplicating tapes.</b> With the punch engaged (<b>ON</b>), every read byte is also punched
+                    onto the output tape — the classic ASR trick for copying tapes (reader in, fresh tape out).</li>
             </ul>
 
             <h3>VT52 as the console</h3>

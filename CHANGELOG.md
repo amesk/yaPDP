@@ -202,6 +202,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the operator buttons, so one edit tunes every action button at once.
   (The round punch-key caps keep their VT323 labels; the Apply "dirty"
   highlight and the persist-row sizing overrides still apply.)
+- **Manual: the console section is readable again**: the "Paper-tape
+  reader" bullet had grown into a 200-word wall covering five topics. It
+  is now four separate bullets — reader/load, the four-position reader
+  switch (START / AUTO / STOP / FREE as a nested list), the CCU knob
+  (LINE / OFF / LOCAL) and tape duplication — so each topic can be
+  scanned on its own.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
