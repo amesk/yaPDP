@@ -1007,14 +1007,14 @@ button, select, input, textarea {
 .statusBlock {
     width: calc(var(--unitWidth) * 8);
     background-color: black;
-    font-size: calc(var(--unitHeight) * 1.4);
+    font-size: calc(var(--unitHeight) * 1.8);
     float: left;
 }
 
 .statusLabel1 {
     width: 100%;
     height: calc(var(--unitHeight) * 2);
-    line-height: calc(var(--unitHeight) * 3);
+    line-height: calc(var(--unitHeight) * 2);
 }
 
 .statusLabel2 {
@@ -1034,7 +1034,7 @@ button, select, input, textarea {
     width: calc(100% - 1px);
     height: calc(var(--unitHeight) * 2);
     line-height: calc(var(--unitHeight) * 2);
-    font-size: calc(var(--unitHeight) * 1.45);
+    font-size: calc(var(--unitHeight) * 1.8);
     position: relative;
     float: left;
 }

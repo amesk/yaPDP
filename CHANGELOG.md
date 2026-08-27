@@ -141,6 +141,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   engraved-small (Michroma at 8px, ~1/3 of the letter height, like the
   original) so the full "digital equipment corporation • maynard,
   massachusetts" fits on one line in the space next to the wordmark.
+- **Status LED labels readable again**: the labels next to the LEDs (PAR,
+  ADRS ERR, RUN, ..., ADDRESSING 16/18/22, PARITY HIGH/LOW, ADDRESS) were
+  set at 7px — fine for Arial, but VT323's thin pixel strokes became
+  nearly invisible at that size. Bumped the status blocks and LED base
+  plates to 9px (~0.7 of the LED height, matching the real panel) and
+  fixed the label strip's line-height so the text sits inside its strip
+  instead of bleeding into the LED area.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
