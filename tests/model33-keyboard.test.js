@@ -149,13 +149,16 @@ function run() {
     assert.strictEqual(keyCode(def, ctrl), ctrlMap[ch], "CTRL+" + ch);
     assert.strictEqual(keyCode(def, none), ch.charCodeAt(0), "plain " + ch);
   });
-  // CTRL takes precedence over SHIFT when both are held.
+  // CTRL takes precedence over SHIFT when both are held on a key that has
+  // only a CTRL legend (plain letters: SHIFT has no separate symbol there).
   assert.strictEqual(keyCode(letter("Q", "DC1", 0x11),
     { shifted: true, ctrl: true }), 0x11);
 
   // --- Triple-named keys (shift symbol + CTRL code on the same cap) ----
   // P @ DLE, K [ VT, N ^ SO, M ] CR: base stays plain, SHIFT gives the
-  // symbol, CTRL gives the control code; CTRL wins when both are held.
+  // symbol, CTRL gives the control code. Held together, the bit-paired
+  // code bars XOR BOTH modifier bits into the base — CTRL+SHIFT+P is the
+  // keyboard's only way to generate NUL (0x00).
   assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10), none), 0x50);
   assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10), shft), 0x40);
   assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10), ctrl), 0x10);
@@ -165,8 +168,15 @@ function run() {
   assert.strictEqual(keyCode(both("N", "^", 0x5E, "SO", 0x0E), ctrl), 0x0E);
   assert.strictEqual(keyCode(both("M", "]", 0x5D, "CR", 0x0D), shft), 0x5D);
   assert.strictEqual(keyCode(both("M", "]", 0x5D, "CR", 0x0D), ctrl), 0x0D);
+  // Combined CTRL+SHIFT: both code bars toggle — base ^ 0x10 ^ 0x40.
+  assert.strictEqual(keyCode(both("P", "@", 0x40, "DLE", 0x10),
+    { shifted: true, ctrl: true }), 0x00, "CTRL+SHIFT+P = NUL");
   assert.strictEqual(keyCode(both("K", "[", 0x5B, "VT", 0x0B),
-    { shifted: true, ctrl: true }), 0x0B, "CTRL beats SHIFT on K");
+    { shifted: true, ctrl: true }), 0x1B, "CTRL+SHIFT+K = ESC");
+  assert.strictEqual(keyCode(both("N", "^", 0x5E, "SO", 0x0E),
+    { shifted: true, ctrl: true }), 0x1E, "CTRL+SHIFT+N = RS");
+  assert.strictEqual(keyCode(both("M", "]", 0x5D, "CR", 0x0D),
+    { shifted: true, ctrl: true }), 0x1D, "CTRL+SHIFT+M = GS");
 
   // --- Special keys return their token ---------------------------------
   assert.strictEqual(keyCode(special("ESC", "esc", 0x1B), none), "esc");

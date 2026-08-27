@@ -254,6 +254,14 @@ function model33KeyCode(def, state) {
   if (def.special) return def.special;
   var shifted = state && state.shifted;
   var ctrl = state && state.ctrl;
+  if (ctrl && shifted && def.ctrlCode != null && def.shiftCode != null) {
+    // Both code bars engaged: the bit-paired keyboard XORs one bit per
+    // modifier — SHIFT toggles bit 4, CTRL toggles bit 6. On a key with
+    // both legends (P @ DLE, K [ VT, N ^ SO, M ] CR) the combination is
+    // the base with BOTH bits flipped: CTRL+SHIFT+P = 0x50^0x10^0x40 =
+    // 0x00 = NUL — the one way the keyboard can produce a NULL.
+    return def.ctrlCode ^ (def.code ^ def.shiftCode);
+  }
   if (ctrl && def.ctrlCode != null) return def.ctrlCode;
   if (shifted && def.shiftCode != null) return def.shiftCode;
   return def.code;
@@ -298,8 +306,9 @@ function m33Shifted(label, shiftLabel, shiftCode) {
     shiftCode: shiftCode, cls: 'alpha' };
 }
 // both: key carrying BOTH a shift symbol and a CTRL-code name on the cap
-// (P @ DLE, K [ VT, N ^ SO, M ] CR). The mapper honours CTRL first, then
-// SHIFT, exactly like the real Model 33 keyboard.
+// (P @ DLE, K [ VT, N ^ SO, M ] CR). Alone, each modifier gives its own
+// legend; held together the code bars XOR both bits — CTRL+SHIFT+P is the
+// bit-paired NUL (0x00), the keyboard's only way to make a NULL.
 function m33Both(label, shiftLabel, shiftCode, ctrlLabel, ctrlCode) {
   return { label: label, code: label.charCodeAt(0), shiftLabel: shiftLabel,
     shiftCode: shiftCode, ctrlLabel: ctrlLabel, ctrlCode: ctrlCode, cls: 'alpha',
@@ -625,6 +634,14 @@ var g60Keyboard = (function () {
         if (code >= 65 && code <= 90) {
           ch = code + 32;  // lowercase letter (a-z)
         }
+      }
+
+      // The Model 33's @ key is SHIFT+P, and CTRL+@ is the bit-paired
+      // NUL (0x00): pressing whatever PC combination yields @ while holding
+      // Ctrl transmits a NULL — the keyboard's only way to punch the blank
+      // leader row on the tape.
+      if (e.ctrlKey && ch === 0x40) {
+        sendDL([0]); e.preventDefault(); return;
       }
 
       if (ch >= 32 && ch < 127) {
