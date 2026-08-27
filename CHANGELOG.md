@@ -108,12 +108,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   modal titles 22→24 px, and more). Form controls (buttons, selects,
   inputs) now inherit the chrome font too — the UA stylesheet was silently
   rendering them in Arial.
-- **Chrome font switched VT323 → Share Tech Mono** (OFL, bundled): the
+- **Chrome font switched VT323 → Courier Prime** (OFL, bundled): the
   pixel VT323 was still hard to read at UI sizes (small x-height, thin
-  strokes); Share Tech Mono keeps the tech-mono character but is far more
-  legible. The console output keeps its bitmap VT52 glyphs, the LP11 paper
-  keeps lp1_regular, the sticker keeps Kalam; the VT323 webfont was
-  removed.
+  strokes). Courier Prime (typewriter face, real Bold included) keeps the
+  rough, hand-made feel of the original while staying legible; a brief
+  Share Tech Mono experiment was dropped for lacking that character. The
+  console output keeps its bitmap VT52 glyphs, the LP11 paper keeps
+  lp1_regular, the sticker keeps Kalam.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
