@@ -161,6 +161,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in `.lp11-dec-letter` — the real DEC wordmark is lowercase, like the
   front-panel masthead. Removed the transform; the seven letters now read
   "digital" (Michroma, engraved look).
+- **One face for all operator buttons**: Help Me! / Bootstrap now! (panel
+  actions), the teletype controls (Tear tape / Tear paper / Save tape /
+  Load tape / Remove tape) and the printer actions (Print / Save .txt /
+  Tear paper) now share a single typeface — VT323 14px bold — and the same
+  dark-amber gradient, exactly like the already-unified teletype controls.
+  Previously the panel actions were Courier Prime 12px and the printer
+  actions Courier Prime 14px, so identical-looking buttons rendered in
+  three different faces. The CONFIG/STORAGE action buttons (Restore
+  defaults, Apply, Unmount, Reset image, Reset all, Rewind tape, Download,
+  Clear) were already uniform (Courier Prime 14px bold) and stay as their
+  own set.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

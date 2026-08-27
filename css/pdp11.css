@@ -772,7 +772,9 @@ button, select, input, textarea {
     border-radius: 4px;
     background: linear-gradient(180deg, #5a4a30, #3a3528);
     color: #f0e6c8;
-    font-size: 12px;
+    /* One face for all operator buttons: VT323, like the teletype controls. */
+    font-family: 'VT323', arial, helvetica, sans-serif;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
     user-select: none;
@@ -1803,6 +1805,8 @@ body {
     border: 1px solid #c8a860;
     border-radius: 4px;
     padding: 6px 16px;
+    /* One face for all operator buttons: VT323, like the teletype controls. */
+    font-family: 'VT323', arial, helvetica, sans-serif;
     font-size: 14px;
     font-weight: bold;
     cursor: pointer;
