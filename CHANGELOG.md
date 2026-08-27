@@ -148,6 +148,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   plates to 9px (~0.7 of the LED height, matching the real panel) and
   fixed the label strip's line-height so the text sits inside its strip
   instead of bleeding into the LED area.
+- **Front-panel lettering back to its original arial** (deployed version
+  as the reference): Alexei compared the panel against the live GitHub
+  Pages build and the arial lettering there was far more readable than
+  VT323's thin pixel strokes at the small sizes the keycaps and status
+  strips need. The panel base returns to arial 7px (switch labels, status
+  labels, LED base plates) exactly like the deployed build; only the
+  engraved Michroma masthead stays. All labels fit their keycaps and
+  strips again.
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed

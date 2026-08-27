@@ -247,8 +247,8 @@ button, select, input, textarea {
     background: #181818;
     border-radius: calc(var(--unitWidth) * 4);
     color: white;
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: calc(var(--unitHeight) * 2.2);
+    font-family: arial, helvetica, sans-serif;
+    font-size: calc(var(--unitHeight) * 1.4);
     text-align: center;
 }
 
@@ -1007,14 +1007,14 @@ button, select, input, textarea {
 .statusBlock {
     width: calc(var(--unitWidth) * 8);
     background-color: black;
-    font-size: calc(var(--unitHeight) * 1.8);
+    font-size: calc(var(--unitHeight) * 1.4);
     float: left;
 }
 
 .statusLabel1 {
     width: 100%;
     height: calc(var(--unitHeight) * 2);
-    line-height: calc(var(--unitHeight) * 2);
+    line-height: calc(var(--unitHeight) * 3);
 }
 
 .statusLabel2 {
@@ -1034,7 +1034,7 @@ button, select, input, textarea {
     width: calc(100% - 1px);
     height: calc(var(--unitHeight) * 2);
     line-height: calc(var(--unitHeight) * 2);
-    font-size: calc(var(--unitHeight) * 1.8);
+    font-size: calc(var(--unitHeight) * 1.45);
     position: relative;
     float: left;
 }
@@ -2942,18 +2942,11 @@ body.no-photo-bg #page-instructions.active {
     font-family: 'Michroma', arial, helvetica, sans-serif;
 }
 
-/* The PDP-11/70 front panel is a machine too: keys and status labels keep
-   the narrow pixel VT323 (Courier Prime's taller, wider glyphs overflowed
-   the keycaps and label strips); the engraved "digital" wordmark and the
-   cabinet caption are engraved lettering in the Microgramma/Eurostile
-   spirit, rendered with Michroma. */
-#page-panel .frame .switchPad,
-#page-panel .frame .switchPadHalf,
-#page-panel .frame .multiText,
-#page-panel .frame .statusLabel1,
-#page-panel .frame .statusLabel2 {
-    font-family: 'VT323', arial, helvetica, sans-serif;
-}
+/* The front panel keeps its original arial lettering for the keycaps and
+   status strips — at these small sizes VT323's thin pixel strokes were far
+   less readable than the solid arial glyphs (the deployed version was the
+   reference). Only the engraved "digital" wordmark and the cabinet caption
+   use Michroma (Microgramma/Eurostile spirit). */
 #page-panel .frame .decLetter,
 #page-panel .frame .decName {
     font-family: 'Michroma', arial, helvetica, sans-serif;
