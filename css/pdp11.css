@@ -766,14 +766,22 @@ button, select, input, textarea {
     padding: 0;
 }
 
-.panel-action-btn {
-    padding: 6px 16px;
-    border: 1px solid #c8a860;
-    border-radius: 4px;
+/* ================================================================
+   Shared action-button recipe — the manual page's "Launch the
+   Emulator" call-to-action: small uppercase Courier Prime, engraved
+   top bevel, soft drop shadow. One edit here tunes every operator
+   button (PANEL / CONSOLE / PRINTER) and every form button
+   (CONFIG / STORAGE) at once.
+   ================================================================ */
+.panel-action-btn,
+.tty-btn,
+.printer-actions button,
+.config-control button {
     background: linear-gradient(180deg, #5a4a30, #3a3528);
     color: #f0e6c8;
-    /* Same recipe as the manual's "Launch the Emulator" call-to-action:
-       small uppercase Courier Prime, engraved top bevel, soft drop shadow. */
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    padding: 6px 16px;
     font-family: 'Courier Prime', arial, helvetica, sans-serif;
     font-size: 11px;
     font-weight: bold;
@@ -781,14 +789,20 @@ button, select, input, textarea {
     letter-spacing: 0.5px;
     box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
     cursor: pointer;
-    user-select: none;
     transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
-.panel-action-btn:hover {
+.panel-action-btn:hover,
+.tty-btn:hover,
+.printer-actions button:hover,
+.config-control button:hover {
     background: linear-gradient(180deg, #6a5838, #4a4030);
     border-color: #e0c880;
     color: #fff6e0;
+}
+
+.panel-action-btn {
+    user-select: none;
 }
 
 /* Help Me! works like a checkbox: the lit state (sticker visible) glows a
@@ -1805,27 +1819,7 @@ body {
 }
 
 .printer-actions button {
-    background: linear-gradient(180deg, #5a4a30, #3a3528);
-    color: #f0e6c8;
-    border: 1px solid #c8a860;
-    border-radius: 4px;
-    padding: 6px 16px;
-    /* Same recipe as the manual's "Launch the Emulator" call-to-action. */
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: 11px;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
-    cursor: pointer;
     margin: 0 6px;
-    transition: background 0.2s, border-color 0.2s, color 0.2s;
-}
-
-.printer-actions button:hover {
-    background: linear-gradient(180deg, #6a5838, #4a4030);
-    border-color: #e0c880;
-    color: #fff6e0;
 }
 
 /* ===== VT52 Page — CRT terminal styling ===== */
@@ -2760,14 +2754,9 @@ body.crt-effects .vt52-crt::after {
 }
 
 .config-control button {
-    background: linear-gradient(180deg, #5a4a30, #3a3528);
-    color: #f0e6c8;
-    border: 1px solid #c8a860;
-    border-radius: 4px;
+    /* Base look comes from the shared action-button recipe above;
+       this rule only carries the form-specific sizing. */
     padding: 6px 14px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
 }
 
 /* Storage "Persistent disk changes": select + action buttons form one flex
@@ -2794,10 +2783,6 @@ body.crt-effects .vt52-crt::after {
 .persist-control .config-hint {
     flex-basis: 100%;
     margin-top: 0;
-}
-
-.config-control button:hover {
-    background: linear-gradient(180deg, #6a5a38, #4a3a2c);
 }
 
 /* Apply button highlight while the CONFIG form has uncommitted changes. */

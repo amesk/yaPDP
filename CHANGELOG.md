@@ -191,6 +191,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Courier Prime 11px uppercase with 0.5px letter-spacing, the engraved
   inset amber top highlight and a soft drop shadow (same dark-amber
   gradient and border as before).
+- **One shared action-button recipe for the whole app**: the operator
+  buttons (PANEL / CONSOLE / PRINTER) and the form buttons (CONFIG /
+  STORAGE: Restore defaults, Apply, Unmount, Reset image, Reset all,
+  Rewind tape, Download, Clear) now all read from a single grouped rule —
+  `.panel-action-btn, .tty-btn, .printer-actions button, .config-control
+  button` — instead of three duplicated copies in two files. The
+  CONFIG/STORAGE buttons were still Courier Prime 14px sentence case and
+  flat; they now use the same small uppercase + engraved bevel recipe as
+  the operator buttons, so one edit tunes every action button at once.
+  (The round punch-key caps keep their VT323 labels; the Apply "dirty"
+  highlight and the persist-row sizing overrides still apply.)
 - **Mute during continuous LP11 printing** now silences the line-printer
   whirr immediately (and it resumes on unmute). Previously the whirr's stop
   was debounced by 150 ms and re-armed on every print tick, so a mute pressed
