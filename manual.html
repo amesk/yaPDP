@@ -318,7 +318,9 @@
 
             <ol>
                 <li>Opens a picker listing every guest operating system (and the <a href="#storage">paper
-                    tapes</a>).</li>
+                    tapes</a>) whose image this build ships — the picker is filtered by the build manifest
+                    (<code>media/manifest.json</code>), plus any images you have imported by
+                    <a href="#storage">drag &amp; drop</a>. Paper tapes always stay listed.</li>
                 <li>Chooses one, switches to the <a href="#console">operator console</a>, and reboots the machine.</li>
                 <li>Types the <code>boot <device></code> command — and the login too, where the credentials are
                     known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login <code>root</code>).</li>
@@ -754,7 +756,10 @@
             <h2 id="guest-oses">Guest Operating Systems</h2>
 
             <p>The emulator ships with ready-to-boot disk and tape images. Just type <code>boot <device></code>
-                at the <code>Boot></code> prompt — or pick one with the <a href="#quick-start">magic wand</a>.</p>
+                at the <code>Boot></code> prompt — or pick one with the <a href="#quick-start">magic wand</a>.
+                In a build with a reduced image set (e.g. the <b>Minimal</b> desktop variant), rows whose
+                image is not shipped are dimmed and marked <i>image not in this build</i> — the table shows
+                exactly what can boot here.</p>
 
             <table style="margin-left:0; padding:3px;">
                 <thead>

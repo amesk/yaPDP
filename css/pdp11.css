@@ -1719,6 +1719,17 @@ body {
     color: #e0d8c8;
 }
 
+/* Info page: guest OS whose disk image is not shipped in this deployment
+   (media/manifest.json, see tools/gen-media-manifest.js) — dimmed so the
+   table matches what can actually boot. */
+#page-instructions.active table tr.guest-os-missing td {
+    opacity: 0.45;
+}
+
+#page-instructions.active table .guest-os-note {
+    font-style: italic;
+}
+
 #page-instructions.active table thead {
     color: #f0e6c8;
     text-align: left;
