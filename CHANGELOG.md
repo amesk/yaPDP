@@ -88,6 +88,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all-holes RUB OUT row, exactly like a real ASR-33 receive punch. The LOCAL
   echo no longer punches a second row for bytes the keyboard punch already
   recorded ([`1671979`](https://github.com/amesk/yaPDP/commit/1671979)).
+- The Model 33 keyboard is bit-paired: SHIFT flips bit 4 of the base code,
+  CTRL flips bit 6. Held together on a key that carries both legends
+  (P @ DLE, K [ VT, N ^ SO, M ] CR) both code bars engage, so
+  **CTRL+SHIFT+P** = 0x50^0x10^0x40 = **0x00 = NUL** — the keyboard's only
+  way to generate a NULL. With the punch engaged it punches a blank row
+  with just the feed hole: the tape leader, punched by hand exactly as
+  operators did on the iron. On a PC keyboard **Ctrl+@** does the same
+  ([`8a91c2e`](https://github.com/amesk/yaPDP/commit/8a91c2e)).
 - CONFIG|Equipment: teletype-only parameters and the LP11 printer width are
   now **disabled and dimmed** (opacity .45) instead of hidden when they do
   not apply to the current selection — the form reads as a stable list where
