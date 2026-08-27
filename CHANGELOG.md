@@ -88,6 +88,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all-holes RUB OUT row, exactly like a real ASR-33 receive punch. The LOCAL
   echo no longer punches a second row for bytes the keyboard punch already
   recorded ([`1671979`](https://github.com/amesk/yaPDP/commit/1671979)).
+- **Mute during continuous LP11 printing** now silences the line-printer
+  whirr immediately (and it resumes on unmute). Previously the whirr's stop
+  was debounced by 150 ms and re-armed on every print tick, so a mute pressed
+  while output kept flowing never took effect — the sound played until the
+  print job ended.
 - **Restore defaults** on the CONFIG page now really resets the four live
   BEHAVIOUR options — **Reboot confirmation**, **Help Me! sticker**,
   **Machine power** and **Auto-boot** — immediately (they persist the moment

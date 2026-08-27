@@ -79,8 +79,11 @@
         startWhirr: function() {
             // Global mute: silence a running whirr right away and never
             // (re)start it. Called on every print tick, so a whirr that was
-            // already playing stops within one tick of muting.
-            if (audioMuted()) { this.stopWhirr(); return; }
+            // already playing stops within one tick of muting. The stop must
+            // be immediate (stopWhirrNow), not the debounced stopWhirr():
+            // while output keeps flowing, the next tick's startWhirr() would
+            // re-arm the 150 ms debounce and the pause would never fire.
+            if (audioMuted()) { this.stopWhirrNow(); return; }
             try {
                 var s = this._sounds['whirr'];
                 if (s && s.paused) { s.loop = true; s.currentTime = 0; s.play().catch(function() {}); }
@@ -91,6 +94,22 @@
                     clearTimeout(this._whirrStopTimer);
                     this._whirrStopTimer = null;
                 }
+            } catch(e) {}
+        },
+
+        // Pause the line-printer whirr immediately, cancelling any pending
+        // debounced stop. Used when the global mute kicks in while output is
+        // still flowing: the debounced stopWhirr() would be re-armed by every
+        // subsequent print tick (startWhirr runs each tick and defers the stop
+        // again), so a mute during continuous printing would never silence it.
+        stopWhirrNow: function() {
+            if (this._whirrStopTimer) {
+                clearTimeout(this._whirrStopTimer);
+                this._whirrStopTimer = null;
+            }
+            try {
+                var s = this._sounds['whirr'];
+                if (s && !s.paused) { s.pause(); s.currentTime = 0; s.loop = false; }
             } catch(e) {}
         },
 
@@ -107,10 +126,7 @@
             if (self._whirrStopTimer) clearTimeout(self._whirrStopTimer);
             self._whirrStopTimer = setTimeout(function () {
                 self._whirrStopTimer = null;
-                try {
-                    var s = self._sounds['whirr'];
-                    if (s && !s.paused) { s.pause(); s.currentTime = 0; s.loop = false; }
-                } catch(e) {}
+                self.stopWhirrNow();
             }, WHIRR_STOP_MS);
         },
 
