@@ -1096,15 +1096,15 @@
     /* Cabinet: the punch sits ABOVE the reader in one vertical stack (as on
        the historical machine), and the punched tape hangs below the punch.
        The cabinet is WIDER than the punch/reader blocks (which keep their
-       original 144px width): it extends ~42px to the LEFT, so the reader
-       block — which sits offset to the left of the punch, as on the real
-       ASR-33 — is mounted with breathing room instead of flush against the
-       cabinet wall. The BOTTOM is aligned with the bottom of the keyboard
-       deck (#punchkeypane: 396px top + 240px height = 636px); the taller
-       360px cabinet grows UPWARD (top at 276px) and, together with the 10px
-       top/bottom insets on #asr-mech, leaves clear breathing room above
-       the punch and below the reader. */
-    width: 212px;
+       original 144px width): the reader block sits 26px left of the punch
+       (as on the real ASR-33), and the cabinet is centred on the PAIR, so
+       the gap from the reader to the left wall equals the gap from the
+       punch to the right wall (8px each). The BOTTOM is aligned with the
+       bottom of the keyboard deck (#punchkeypane: 396px top + 240px height
+       = 636px); the taller 360px cabinet grows UPWARD (top at 276px) and,
+       together with the 10px top/bottom insets on #asr-mech, leaves clear
+       breathing room above the punch and below the reader. */
+    width: 186px;
     height: 360px;
     margin-top: 276px;
     /* Sand ASR33 body, matching the printer + keyboard deck. */
@@ -1147,7 +1147,11 @@
     position: relative;
     flex: 1 1 0;
     width: 144px;
-    align-self: center;
+    /* The reader+punch PAIR is centred in the cabinet (8px margins on both
+       sides): the punch sits at 34px so its right edge lands 8px from the
+       cabinet's right wall, with the reader 26px left of it. */
+    align-self: flex-start;
+    margin-left: 34px;
     background: linear-gradient(180deg, #ddd6c4 0%, #ccc5b0 100%);
     border-bottom: 1px solid #b3ab94;
     border-radius: 8px 8px 0 0;
@@ -1159,10 +1163,11 @@
 
 /* Reader: at the bottom — same size as the punch (144px), same cream
    surface. The whole block sits 26px LEFT of the punch (on the real ASR-33
-   the reader is offset from the punch): aligned to the cabinet's left edge
-   with an 8px margin, so the two hanging tapes are separated by ~26px (see
-   #readertape) and the punched tape no longer covers the reader tape
-   completely. */
+   the reader is offset from the punch); its 8px margin from the cabinet's
+   left wall mirrors the punch's 8px margin from the right wall, so the
+   reader+punch pair is centred in the cabinet. The 26px offset separates
+   the two hanging tapes (see #readertape), so the punched tape no longer
+   covers the reader tape completely. */
 #asr-reader {
     position: relative;
     flex: 1 1 0;

@@ -293,34 +293,42 @@ async function browserProbe() {
     // AUTO: one byte goes out immediately on engagement; the next byte
     // follows the DL11 "input drained" signal. The machine here is halted,
     // so the receiver never frees on its own — drive the signal directly to
-    // verify the handshake chain deterministically.
+    // verify the handshake chain deterministically. The paced feed runs on
+    // the reader-motor timer (~100ms), so wait for the row count to move
+    // instead of a fixed sleep (a fixed sleep flakes under load).
+    const waitForRows = async (target, timeoutMs) => {
+      const start = Date.now();
+      while (Date.now() - start < timeoutMs) {
+        const rows = await countRows();
+        if (rows <= target) return rows;
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      return countRows();
+    };
     await page.click('[data-reader-mode="stop"]');
     const beforeAuto = await countRows();
     await page.click('[data-reader-mode="auto"]');
-    await new Promise((r) => setTimeout(r, 150));
-    const afterKick = await countRows();
+    const afterKick = await waitForRows(beforeAuto - 1, 2000);
     assert.strictEqual(afterKick, beforeAuto - 1,
       "AUTO sends one byte on engagement");
 
     // Drained signal -> the next byte goes out.
     await page.evaluate(() => window.onConsoleInputDrained());
-    await new Promise((r) => setTimeout(r, 150));
-    const afterDrained = await countRows();
+    const afterDrained = await waitForRows(afterKick - 1, 2000);
     assert.strictEqual(afterDrained, afterKick - 1,
       "AUTO feeds one byte per drained signal");
 
     // DC3 (X-OFF) pauses the AUTO reader; drained signals feed nothing.
     await page.evaluate(() => window.g60ConsoleWrite(0x13));
     await page.evaluate(() => window.onConsoleInputDrained());
-    await new Promise((r) => setTimeout(r, 150));
+    await new Promise((r) => setTimeout(r, 250));
     const afterXoff = await countRows();
     assert.strictEqual(afterXoff, afterDrained,
       "DC3/X-OFF pauses the AUTO reader");
 
     // DC1 (X-ON) resumes: one byte goes out again.
     await page.evaluate(() => window.g60ConsoleWrite(0x11));
-    await new Promise((r) => setTimeout(r, 150));
-    const afterXon = await countRows();
+    const afterXon = await waitForRows(afterXoff - 1, 2000);
     assert.strictEqual(afterXon, afterXoff - 1,
       "DC1/X-ON resumes the AUTO reader");
     console.log("OK  browser: AUTO per-byte handshake + X-ON/X-OFF");
