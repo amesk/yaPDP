@@ -77,9 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rendering as `YAPDP` because `.sidebar-version-name` had
   `text-transform: uppercase` in the CSS. The name is displayed as written
   now.
-- **Promo-video intro title card** reads `yaPDP` (the project name) instead
-  of `YAPDP` — the amber title card in `tools/make-intro.js` and the README
-  description were fixed, and the intro video was regenerated.
+- **Promo-video intro title card** deliberately keeps the all-caps `YAPDP`
+  title (retro-style title card, matching the `YET ANOTHER PDP-11 EMULATOR`
+  subtitle). An earlier attempt to switch it to `yaPDP` was reverted at the
+  author's request — the `yaPDP` spelling applies to the app UI and the
+  codebase, not to the stylised video title.
 ### Chore
 
 - Demo video pipeline: teletype human-input capture, VT52 pacing, MP4

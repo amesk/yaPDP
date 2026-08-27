@@ -98,7 +98,7 @@ length of the reel (`assets/sounds/Mirror Mind - Bobby Richards.mp3` by default,
 or `--music <file>`).
 
 The intro card is generated frame-by-frame with `node-canvas` by
-[`tools/make-intro.js`](tools/make-intro.js): a bold amber-glowing "yaPDP" over
+[`tools/make-intro.js`](tools/make-intro.js): a bold amber-glowing "YAPDP" over
 the machine-room photo, a green-phosphor line typed out with a blinking cursor,
 CRT scanlines, fade-in / hold / fade-out, and synthesized keypress ticks:
 
