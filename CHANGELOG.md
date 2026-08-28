@@ -326,6 +326,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
+- **`npm run version:sync` now covers every version location.** It used
+  to regenerate only `src/version.js`; the installer versions in
+  `src-tauri/tauri.conf.minimal.json` / `tauri.conf.full.json` and the
+  `Cargo.toml` crate version had to be bumped by hand and were easy to
+  forget. One `package.json` edit + `npm run version:sync` now syncs all
+  four (idempotent).
 - **Test runner**: `npm test` now delegates to
   [`tools/run-tests.js`](tools/run-tests.js) instead of a 35-entry `&&`
   chain — same canonical order, but the run continues past failures and

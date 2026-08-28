@@ -347,6 +347,8 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see [User manual](#user-manual) below) |
 | `npm run screenshots:os` | Boot each guest OS through the quick-boot wizard and capture a screenshot into `assets/images/os/` for the landing-page carousel (Unix V5, 2.11 BSD, RT-11 on teletype & VT52, DEC BASIC, Lunar Lander, XXDP+) |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
+| `npm run manifest` | Regenerate `media/manifest.json` from `media/` (run after adding/removing images; the committed manifest feeds the quick-boot picker and the drift test) |
+| `npm run version:sync` | Push the `package.json` version into `src/version.js` (UI marker), both `src-tauri/tauri.conf.*.json` (installer version) and `src-tauri/Cargo.toml` — the single step after bumping the version |
 
 ```bash
 # Build the full desktop app (stage + installers) in one step
