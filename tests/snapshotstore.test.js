@@ -115,6 +115,7 @@ function buildSandbox() {
     Response,
     TextEncoder, TextDecoder,
     STATE_HALT: 3,
+    STATE_RUN: 0,
     CPU: cpu,
     DataLoader: {
       list: () => ["rk0.dsk", "rk1.dsk"],
