@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Guest-OS boot e2e test (`tests/e2e-osboot.js`, `npm run e2e:os`).** Boots
+  four real guest operating systems through the quick-boot wizard in Chromium
+  — exactly the user path (magic-wand picker -> scenario click) — and asserts
+  each reaches its ready state: Unix V5 and BSD 2.11 to the shell prompt
+  (auto-login typed by the wizard's prompt-aware logic), RT-11 to its "."
+  monitor prompt once the boot output settles, and DEC BASIC-11 to its "*O "
+  prompt. Covers the emulator core, the boot sequences and the wizard's
+  login-typing end to end; failures save an artifact screenshot and the
+  console tail to `tests/artifacts/`. The suite starts its own dev server if
+  :1170 is not serving.
+
+
 - **Build manifest (`media/manifest.json`) + availability-aware quick-boot
   picker.** A deployment now declares which guest images it ships: the
   manifest is generated from `media/` by `node tools/gen-media-manifest.js`

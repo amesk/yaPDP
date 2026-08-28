@@ -31,7 +31,8 @@
     "video:demo": "node tools/assemble-video.js",
     "clean": "node tools/build-desktop.js --clean",
     "version:sync": "node tools/sync-version.js",
-    "manifest": "node tools/gen-media-manifest.js"
+    "manifest": "node tools/gen-media-manifest.js",
+    "e2e:os": "node tests/e2e-osboot.js"
   },
   "devDependencies": {
     "canvas": "^3.2.3",
