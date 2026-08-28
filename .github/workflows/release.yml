@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------------
+# Release automation — DISABLED (kept as a ready-to-use template).
+# ---------------------------------------------------------------------------
+# Releases are currently cut manually (web UI), so this workflow is commented
+# out. Uncomment to auto-create a GitHub Release whenever a tag like v1.2.3
+# is pushed: full CI first, then a release whose body is assembled from
+# RELEASE_NOTES.md + CHANGELOG.md, with the web build attached as a zip.
+#
+# To enable:
+#   1. Uncomment everything below.
+#   2. Make sure tags are pushed with `git push --tags` (or `--follow-tags`).
+# ---------------------------------------------------------------------------
+
+# name: Release
+#
+# on:
+#   push:
+#     tags: ["v*"]
+#
+# permissions:
+#   contents: write
+#
+# jobs:
+#   check:
+#     uses: ./.github/workflows/ci.yml
+#
+#   release:
+#     needs: check
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - name: Assemble release notes
+#         run: |
+#           {
+#             echo "## What's new"
+#             sed -n '/^## /,$p' CHANGELOG.md | head -60
+#             echo
+#             echo "---"
+#             echo "Full changelog: https://github.com/amesk/yaPDP/blob/master/CHANGELOG.md"
+#           } > release-notes.md
+#
+#       - name: Create GitHub Release
+#         uses: softprops/action-gh-release@v2
+#         with:
+#           body_path: release-notes.md
+#           draft: true

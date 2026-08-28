@@ -1,0 +1,20 @@
+# Dependabot — weekly npm dependency updates.
+# Public repo: free. Each update arrives as a PR, CI (ci.yml) runs on it,
+# master stays protected until the PR is reviewed and merged.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Europe/Moscow"
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

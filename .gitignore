@@ -20,3 +20,6 @@ serve.log
 
 # ---- Linux build artifacts (deb/rpm/AppImage) ----
 dist-linux/
+
+# ---- E2E failure artifacts (screenshots + console tails) ----
+tests/artifacts/

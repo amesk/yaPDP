@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Nightly screenshot drift check — DISABLED (kept as a ready-to-use template).
+# ---------------------------------------------------------------------------
+# Regenerates the manual's screenshots (tools/screenshots-manual.js, ~4 min)
+# and, if the CSS/layout changed the pixels, opens a PR with the new images.
+# This catches regressions like "style tweaked, screenshots not regenerated"
+# (e.g. the LP11 button-shadow fix) without anyone noticing.
+#
+# Why disabled: it pushes commits from CI, which needs the workflow
+# permission "contents: write" and a moment of trust in auto-generated PRs.
+# Enable when comfortable:
+#   1. Uncomment everything below.
+#   2. Repo Settings -> Actions -> General -> Workflow permissions ->
+#      "Read and write permissions".
+# ---------------------------------------------------------------------------
+
+# name: Nightly screenshots
+#
+# on:
+#   schedule:
+#     - cron: "17 3 * * *"   # 06:17 MSK
+#   workflow_dispatch:
+#
+# permissions:
+#   contents: write
+#   pull-requests: write
+#
+# jobs:
+#   screenshots:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - uses: actions/setup-node@v4
+#         with:
+#           node-version: 22
+#           cache: npm
+#
+#       - run: npm ci
+#
+#       - name: Cache puppeteer Chromium
+#         uses: actions/cache@v4
+#         with:
+#           path: ~/.cache/puppeteer
+#           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+#
+#       - name: Regenerate manual screenshots
+#         run: node tools/screenshots-manual.js
+#
+#       - name: Open PR if anything changed
+#         if: github.event_name != 'workflow_dispatch'
+#         uses: peter-evans/create-pull-request@v6
+#         with:
+#           commit-message: "chore: regenerate manual screenshots"
+#           branch: bot/screenshots
+#           title: "chore: regenerate manual screenshots"
+#           body: "Automated regeneration of assets/images/manual/ after nightly run."
+#           delete-branch: true
