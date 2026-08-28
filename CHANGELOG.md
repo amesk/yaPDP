@@ -104,6 +104,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **LP11 printer buttons render at full brightness again.** The cabinet's
+  drop shadow (`0 26px 44px`) was painting over the button row below it (the
+  cabinet is a positioned element, so it draws after the inline content),
+  making the buttons ~30% darker than every other operator button. The
+  printer action row now sits above the shadow (`.printer-actions` gets
+  `position: relative; z-index: 1`).
+
 - ASR punch **BSP** no longer erases the last byte by itself — it pulls the
   tape back one step, so the hanging tail visibly shortens as the row
   disappears into the punch unit, and the next punch overpunches the row now
@@ -319,6 +326,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Chore
 
+- **Test runner**: `npm test` now delegates to
+  [`tools/run-tests.js`](tools/run-tests.js) instead of a 35-entry `&&`
+  chain — same canonical order, but the run continues past failures and
+  reports every broken file, `npm test -- <substr>` filters by file name and
+  `--list` prints the order.
 - **Sidebar version marker** now reads `yaPDP v0.1.0`: the marker was
   rendering as `YAPDP` because `.sidebar-version-name` had
   `text-transform: uppercase` in the CSS. The name is displayed as written

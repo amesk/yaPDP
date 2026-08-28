@@ -30,6 +30,20 @@ the project develops. The highlights since alpha2:
   (tape-to-paper copy), LINE sends to the machine and the echo prints;
   with the punch ON the read bytes are punched onto the output tape —
   tape-to-tape duplication.
+- **Availability-aware quick boot.** A build manifest
+  (`media/manifest.json`, generated from `media/` at build time) now tells
+  the magic-wand picker which guest OS images this deployment actually
+  ships — the picker lists only those OSes (plus anything you have imported
+  by drag & drop), and the Info page's guest-OS table dims rows whose image
+  is not in the build. Deployments without a manifest keep the previous
+  show-everything behaviour. The **Minimal** desktop build therefore
+  advertises exactly what it can boot: the paper tapes, Unix V5 and RT-11.
+- **Guest-OS boot tests (`npm run e2e:os`).** Real operating systems —
+  Unix V5, RT-11, BSD 2.11 and DEC BASIC-11 — are now booted by an automated
+  test through the quick-boot wizard in Chromium, each verified to reach its
+  ready state (shell prompt / monitor prompt), so a regression in the
+  emulator core or a boot sequence fails CI-style instead of being noticed
+  by eye.
 - **Smaller UX wins**: Quick boot button in the welcome dialog, Auto-boot
   shortcut in the power-off dialog, floating REBOOT/STATE buttons on the
   VT52 console page.
