@@ -162,6 +162,21 @@ var SnapshotStore = (() => {
         return DataLoader.list();
     }
 
+    // Which page the operator was viewing at capture time (panel, teletype,
+    // vt52-console, storage, printer, ...). Restore returns the operator to
+    // that same page after the reload instead of the default PANEL.
+    function capturePage() {
+        if (typeof document === "undefined" ||
+            typeof document.querySelector !== "function") return null;
+        try {
+            var active = document.querySelector(".page.active");
+            if (!active || !active.id || active.id.indexOf("page-") !== 0) return null;
+            return active.id.slice(5);
+        } catch (e) {
+            return null;
+        }
+    }
+
     // Structural config that defines the installed device set. Quick-booting
     // a different guest OS (quickboot.js) changes these fields, so a snapshot
     // must record them to bring the right devices back on restore.
@@ -230,6 +245,7 @@ var SnapshotStore = (() => {
                     memory: mem,
                     mounted: captureMounted(),
                     config: captureConfig(),
+                    page: capturePage(),
                     devices: devices,
                     punchtape: punchtape,
                     readertape: readertape,
@@ -376,6 +392,18 @@ var SnapshotStore = (() => {
                 // do here (URLs are recorded in the snapshot for the UI).
                 if (typeof window !== "undefined" && window.__snapshotRestored) {
                     window.__snapshotRestored(snap);
+                }
+                // Return the operator to the page they were viewing at capture
+                // time (console, printer, storage, ...) instead of the default
+                // PANEL that the reload would otherwise show. No-op for
+                // snapshots taken before this field existed, when switchPage is
+                // unavailable, or when the page is missing from this document
+                // (device set no longer includes it).
+                if (snap.page && typeof switchPage === "function" &&
+                    typeof document !== "undefined" &&
+                    typeof document.getElementById === "function" &&
+                    document.getElementById("page-" + snap.page)) {
+                    switchPage(snap.page);
                 }
                 return true;
             });
