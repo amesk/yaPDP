@@ -2180,7 +2180,21 @@ var DiskStore = (() => {
         if (flushTimer) return;
         flushTimer = setInterval(() => { flushAll(); }, 30000);
         if (typeof window !== "undefined" && window.addEventListener) {
-            window.addEventListener("pagehide", () => { flushAll(); });
+            window.addEventListener("pagehide", () => {
+                // A snapshot restore reloads the page to roll RAM AND the
+                // disk overlay back to the snapshot's generation. Flushing
+                // here would race the restore: the old page's IDB writes
+                // (newer generation) can land AFTER restoreOverlay() in the
+                // new page and re-corrupt the disk. Skip the flush while a
+                // restore is pending — the writes made after the snapshot
+                // are meant to be discarded anyway.
+                if (typeof sessionStorage !== "undefined") {
+                    try {
+                        if (sessionStorage.getItem("yapdp.restore-pending")) return;
+                    } catch (e) { /* ignore */ }
+                }
+                flushAll();
+            });
         }
     }
 
@@ -2324,11 +2338,103 @@ var DiskStore = (() => {
         });
     }
 
+    // --- Snapshot support: disk overlay capture/rollback ---
+    // A machine snapshot freezes CPU+RAM at time T; for the restored guest
+    // to see a CONSISTENT filesystem, the disk overlay must also go back to
+    // T. Otherwise the kernel's in-RAM superblock (T) gets written over
+    // newer disk data (T+delta) -> "bad free count" / "file system full".
+    // captureOverlay() records every block that differs from the pristine
+    // base image (latest bytes from the device cache, falling back to the
+    // saved IDB copy); restoreOverlay() replaces the live overlay with a
+    // captured one, discarding writes made after the snapshot.
+
+    // Capture the full write-back overlay of every image with changes.
+    async function captureOverlay() {
+        const urls = new Set();
+        pending.forEach((entry, url) => { if (entry.dirty.size > 0) urls.add(url); });
+        savedIndex.forEach((set, url) => { if (set.size > 0) urls.add(url); });
+        const out = {};
+        for (const url of urls) {
+            const entry = pending.get(url);
+            const cb = entry ? entry.controlBlock : null;
+            const wanted = new Set(savedIndex.get(url) || []);
+            if (entry) entry.dirty.forEach((b) => wanted.add(b));
+            const blocks = {};
+            for (const b of wanted) {
+                let bytes = null;
+                if (cb && cb.cache && cb.cache[b] !== undefined) {
+                    bytes = blockToBytes(cb.cache[b]);
+                } else {
+                    bytes = await getBlock(url, b); // undefined when stale
+                }
+                if (bytes !== undefined && bytes !== null) {
+                    blocks[b] = bytes;
+                }
+            }
+            if (Object.keys(blocks).length > 0) {
+                out[url] = { v: IMAGE_VERSION, blocks };
+            }
+        }
+        if (typeof window !== "undefined" && window.__snapFlow) {
+            window.__snapFlow.push("captureOverlay: urls=" + Object.keys(out).join(",") +
+                " blocks=" + Object.keys(out).map((u) => u + ":" + Object.keys(out[u].blocks).length).join(","));
+        }
+        return out;
+    }
+
+    // Roll the disk overlay back to a captured snapshot's generation:
+    // discard every block saved since the snapshot and write the snapshot's
+    // own blocks instead. Live device caches are invalidated so the next
+    // read re-fetches the restored bytes. Never rejects — a failing overlay
+    // restore must not leave the machine half-restored.
+    async function restoreOverlay(overlay) {
+        if (!overlay || typeof overlay !== "object") return;
+        for (const url of Object.keys(overlay)) {
+            try {
+                const rec = overlay[url];
+                if (!rec || typeof rec.blocks !== "object") continue;
+                // The bundled media images changed since the snapshot: its
+                // blocks belong to a different disk. Ignore the overlay.
+                if (rec.v !== IMAGE_VERSION) continue;
+                const entry = pending.get(url);
+                const cb = entry ? entry.controlBlock : null;
+                await clear(url);
+                if (cb && cb.cache) cb.cache.length = 0;
+                const writes = [];
+                const set = new Set();
+                for (const b of Object.keys(rec.blocks)) {
+                    const block = parseInt(b, 10);
+                    if (!isFinite(block)) continue;
+                    const bytes = new Uint8Array(rec.blocks[b]); // copy
+                    writes.push(dbPut(blockKey(url, block), {
+                        v: IMAGE_VERSION, b: bytes.buffer, t: Date.now()
+                    }));
+                    set.add(block);
+                }
+                writes.push(dbPut(metaKey(url), {
+                    v: IMAGE_VERSION, t: Date.now(), blocks: Array.from(set)
+                }));
+                await Promise.all(writes);
+                savedIndex.set(url, set);
+                if (typeof window !== "undefined" && window.__snapFlow) {
+                    window.__snapFlow.push("restoreOverlay: " + url + " blocks=" + set.size);
+                }
+            } catch (err) {
+                console.warn("DiskStore.restoreOverlay: failed for " + url, err);
+                if (typeof window !== "undefined" && window.__snapFlow) {
+                    window.__snapFlow.push("restoreOverlay: FAILED " + url + " " + String(err));
+                }
+            }
+        }
+    }
+
     return {
         markDirty,
         flush,
         flushAll,
         getBlock,
+        captureOverlay,
+        restoreOverlay,
         hasDirty,
         listDirty,
         dirtyBlockCount,
@@ -2546,7 +2652,14 @@ async function fetchBlock(controlBlock, block) {
                     throw imageError("decompress",
                         `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
                 }
-                createCache(controlBlock.cache, block, decompressed);
+                // Slice from the requested block to the END of the image:
+                // createCache() fills cache[block], cache[block+1], ... from
+                // the stream, so every subsequent block gets its correct
+                // bytes and one decompression populates the whole cache.
+                // (Slicing to a single block would be correct but would
+                // re-decompress the whole image on every cache miss.)
+                const start = block * IO_BLOCKSIZE;
+                createCache(controlBlock.cache, block, decompressed.subarray(start));
                 downLoadAdd(controlBlock.url, controlBlock.cache);
                 return zstResponse.status;
             }
@@ -2603,7 +2716,8 @@ async function fetchBlock(controlBlock, block) {
         throw imageError("decompress",
             `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
     }
-    createCache(controlBlock.cache, block, decompressed);
+    const start = block * IO_BLOCKSIZE;
+    createCache(controlBlock.cache, block, decompressed.subarray(start));
 
     // Register cache for download/export
     downLoadAdd(controlBlock.url, controlBlock.cache);
