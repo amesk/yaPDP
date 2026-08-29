@@ -276,8 +276,7 @@
          REBOOT: Panel, teletype and VT52 (TTY 1) pages. Wired by
          src/snapshots.js (wireUI) and src/pdp11-panel.js (switchPage). -->
     <button type="button" id="state-btn" class="console-reboot console-state" data-action="state"
-      title="Machine state — save a snapshot or restore a saved one."
-      aria-label="Save or load machine state">
+      title="Machine state — save a snapshot or restore a saved one." aria-label="Save or load machine state">
       <svg class="console-reboot-icon" aria-hidden="true" focusable="false">
         <use href="#icon-state" />
       </svg>
@@ -310,14 +309,12 @@
           <div class="panel-sticker-title">PDP-11/70 BOOTSTRAP</div>
           <div class="panel-sticker-step">Deposit words @ 001000 — LOAD ADDR, then DEP each (addr auto-increments):
           </div>
-          <pre class="panel-sticker-code">012700  173000  010040
-012710  177560  105710
-100376  112001  000005
-000000</pre>
-          <div class="panel-sticker-step">Run — switches = 001000, LOAD ADDR, START.</div>
-          <div class="panel-sticker-note">Console:
-            BOOT RK1 — RT-11 v4.0
-            boot rp1 — BSD 2.11</div>
+          <pre class="panel-sticker-code">012700  177412  012710
+020000  005040  012740
+177400  012740  000005
+105710  100376  005007</pre>
+          <div class="panel-sticker-step">Run — switches = 001000, LOAD ADDR, ENABLE, START.</div>
+          <div class="panel-sticker-note">Loads RT-11 v4.0 from rk1</div>
           <span class="panel-sticker-hint">Press "Help Me!" button below to hide the sticker</span>
         </div>
         <div class=decBase>
@@ -1246,8 +1243,8 @@
                   <span class="drop-zone-icon">&#8681;</span>
                   <span class="drop-zone-text">Drop image</span>
                   <span class="drop-zone-hint">.dsk .tap .ptap .zst</span>
-                  <input type="file" id="drop-file-input" accept=".dsk,.tap,.ptap,.zst,.dsk.zst,.tap.zst,.ptap.zst" multiple
-                    hidden>
+                  <input type="file" id="drop-file-input" accept=".dsk,.tap,.ptap,.zst,.dsk.zst,.tap.zst,.ptap.zst"
+                    multiple hidden>
                 </span>
               </div>
             </div>
@@ -1281,18 +1278,20 @@
                 <select id="persist-select" disabled>
                   <option value="">--no saved changes--</option>
                 </select>
-                <button type="button" id="persist-reset" title="Discard saved write-back blocks for the selected image">Reset image</button>
-                <button type="button" id="persist-reset-all" title="Discard saved write-back blocks for all images">Reset all</button>
+                <button type="button" id="persist-reset"
+                  title="Discard saved write-back blocks for the selected image">Reset image</button>
+                <button type="button" id="persist-reset-all"
+                  title="Discard saved write-back blocks for all images">Reset all</button>
                 <span id="persist-count" class="persist-count"></span>
                 <span class="config-hint">Guest-OS writes are saved to browser storage and overlaid on the base
-                  image on the next launch. Reset discards the saved changes, returning the image to its pristine state.</span>
+                  image on the next launch. Reset discards the saved changes, returning the image to its pristine
+                  state.</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="config-tab-panel" id="storage-panel-tapes" role="tabpanel"
-          aria-labelledby="storage-tab-tapes">
+        <div class="config-tab-panel" id="storage-panel-tapes" role="tabpanel" aria-labelledby="storage-tab-tapes">
           <div class="config-form">
             <div class="config-field">
               <span class="config-label">Paper tape reader file</span>
