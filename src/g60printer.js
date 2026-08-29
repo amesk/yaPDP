@@ -758,8 +758,12 @@
                 }
             }
 
-            // Move print head to idle position
-            setHeadPos(headIdlePos, false);
+            // Return the carriage to column 0 of the NEW line. A real Model 33
+            // ASR line feed only advances the paper — the carriage never moves
+            // horizontally — but in this DOM line model the new line starts at
+            // the left margin, so the carriage sits at the first column, NOT
+            // parked left of it (headIdlePos would push it off the paper edge).
+            setHeadPos(0, false);
         }
 
         /**
