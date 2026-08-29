@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# yaPDP CI — unit tests + end-to-end guest-OS checks on every push/PR.
+#
+# Two jobs:
+#   unit  — the full npm test suite (34+ files) on Node 20 and 22.
+#   e2e   — puppeteer + real Chromium against the dev server on :1170:
+#             * e2e-quickboot-manifest  (quick-boot wizard + media manifest)
+#             * e2e-snapshots           (front-panel/teletype screenshot set)
+#             * e2e-osboot              (real guest OS boots: Unix V5, RT-11,
+#                                        BSD 2.11, BASIC-11)
+#
+# E2E failure artifacts (screenshots + console tails) are uploaded so a red
+# run can be diagnosed without re-running locally.
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: [master, 'jarvis/**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+  e2e:
+    name: E2E (quickboot / snapshots / osboot)
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache puppeteer Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Start dev server on :1170
+        run: |
+          node tools/serve.js > serve-ci.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf -o /dev/null http://localhost:1170/pdp11.html && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:1170/pdp11.html \
+            || { echo "dev server did not come up"; cat serve-ci.log; exit 1; }
+
+      - name: e2e — quick-boot wizard + manifest
+        run: node tests/e2e-quickboot-manifest.js
+
+      - name: e2e — front-panel screenshots
+        run: node tests/e2e-snapshots.js
+
+      - name: e2e — guest OS boots (Unix V5, RT-11, BSD 2.11, BASIC-11)
+        run: node tests/e2e-osboot.js
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: tests/artifacts/
+          retention-days: 7

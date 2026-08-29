@@ -14,7 +14,6 @@
 ;	<address>;<count>A	Ascii string print/change
 
 ;Conditionals are:
-test=1		;Define when testing the code under RT-11
 eis=1		;Use the EIS instructions (Only uses SOB)
 ;lsi=1		;Use MTPS/MFPS, not bus addr 177776 for the status register.
 
@@ -1076,3 +1075,4 @@ csr1:	.blkb	1	;Save cell - r c/sr
 csr2:	.blkb	1	;Save cell - t c/sr
 
 	.end	; odt
+

@@ -1,5 +1,7 @@
 # yaPDP — Yet Another PDP‑11/70 Web Emulator, with Authentic Front Panel & Model 33 ASR Teletype
 
+![CI](https://github.com/amesk/yaPDP/actions/workflows/ci.yml/badge.svg)
+
 ![PDP‑11/70 Front Panel](assets/pdp1170-large.png)
 
 ---

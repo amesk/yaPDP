@@ -7,15 +7,13 @@
  *   - pclink11.exe : PDP-11 linker (PCLINK11)
  *
  * boot.mac assembles byte-for-byte identical to the shipped bootcode.js
- * (verified), so the boot half of the image is rebuilt authentically. ODT11 is
- * NOT rebuilt: its .OBJ from macro11.exe differs from the original DEC MACRO
- * output (conditional .if df,test handling), and pclink11 even segfaults on
- * the no-test variant. Therefore the original ODT11 words (which live after
- * the boot module in bootcode.js) are preserved verbatim.
+ * (verified), so the boot half of the image is rebuilt authentically. Since
+ * the 2026-08-29 cleanup (variant A: ODT, lights, chaser and the MMU demo
+ * removed) the image contains the boot module only.
  *
  * The boot module's banner string was replaced with `.blkb 52` (52 octal =
- * 42 bytes) so the module keeps its exact original size and ODT11 stays at the
- * same address - only the author credit banner is dropped.
+ * 42 bytes) so the module keeps its exact original size - only the author
+ * credit banner is dropped.
  *
  * Usage:  node tools/rebuild-bootcode.js
  *         npm run rebuild-boot
@@ -35,7 +33,6 @@ const BOOTCODE_SRC = path.join(ROOT, "src", "bootcode.js");
 const BOOTCODE_DESKTOP = path.join(ROOT, "desktop", "src", "bootcode.js");
 
 const BOOT_BASE = 0o120000; // link base address (words stored from here)
-const BOOT_WORDS = 979;     // boot.mac module length (must stay fixed)
 
 function tmp(name) {
   return path.join(os.tmpdir(), "yapdp-" + name);
@@ -59,7 +56,7 @@ function assemble(srcBase, objBase, extraOpts = []) {
   return obj;
 }
 
-// Link boot.obj + odt11.obj with base 120000 -> boot.sav. pclink11 parses its
+// Link boot.obj with base 120000 -> boot.sav. pclink11 parses its
 // arguments as RT-11 "dev:file" specs, so absolute Windows paths ("E:\...")
 // break it - pass relative names and run with cwd = macro-asm/.
 function link() {
@@ -67,7 +64,7 @@ function link() {
   try { fs.unlinkSync(sav); } catch (e) { /* ignore */ }
   execFileSync(PCLINK11,
     ["-B:" + BOOT_BASE.toString(8), "-T:" + BOOT_BASE.toString(8),
-     "-EXECUTE:boot.sav", "boot.obj", "odt11.obj"],
+     "-EXECUTE:boot.sav", "boot.obj"],
     { cwd: ASM_DIR, stdio: "inherit" });
   if (!fs.existsSync(sav)) {
     throw new Error("link did not produce boot.sav");
@@ -118,9 +115,6 @@ function writeBootcode(file, header, words) {
 function main() {
   console.log("== host assembly ==");
   const bootObj = assemble("boot.mac", "boot.obj");
-  // odt11 is only linked so the external ODT symbol resolves; its words are
-  // discarded in favour of the original ODT11 from the shipped image.
-  const odtObj = assemble("odt11.mac", "odt11.obj", ["-e", "AMA"]);
 
   console.log("== link ==");
   const sav = link();
@@ -131,9 +125,16 @@ function main() {
   if (base < 0) {
     throw new Error("boot module start (word 000005) not found in boot.sav");
   }
-  const newBoot = savWords.slice(base, base + BOOT_WORDS);
-  if (newBoot.length !== BOOT_WORDS) {
-    throw new Error("boot module is " + newBoot.length + " words, expected " + BOOT_WORDS);
+  // boot.sav contains the boot module only (odt11 is no longer linked), so
+  // everything from the first boot instruction to the end of the image is the
+  // module. The last data word is 0 (the UDA50 table terminator), so only
+  // trim *extra* trailing zeros the linker may have padded past it.
+  let newBoot = savWords.slice(base);
+  let trail = 0;
+  for (let i = newBoot.length - 1; i >= 0 && newBoot[i] === 0; i--) trail++;
+  if (trail > 1) newBoot = newBoot.slice(0, newBoot.length - (trail - 1));
+  if (newBoot.length === 0) {
+    throw new Error("boot module is empty");
   }
   console.log("  boot module: " + newBoot.length + " words (addr " +
     (base * 2).toString(8) + ")");
@@ -141,18 +142,18 @@ function main() {
   console.log("== rebuild src/bootcode.js ==");
   const srcText = fs.readFileSync(BOOTCODE_SRC, "utf8");
   const cur = readBootcodeWords(BOOTCODE_SRC);
-  const originalOdt = cur.slice(BOOT_WORDS); // keep original ODT11 verbatim
-  const words = newBoot.concat(originalOdt);
+  const words = newBoot;
   const header = srcText.slice(0, srcText.indexOf("var bootcode="));
 
-  // Sanity: only the banner words (29..49) may differ from the previous image.
+  // Report how the new image differs from the previous one (informational).
   const diffs = [];
-  for (let i = 0; i < Math.min(BOOT_WORDS, cur.length); i++) {
-    if (newBoot[i] !== cur[i]) diffs.push(i);
+  for (let i = 0; i < Math.min(words.length, cur.length); i++) {
+    if (words[i] !== cur[i]) diffs.push(i);
   }
-  const bannerOnly = diffs.every((d) => d >= 29 && d <= 49) && diffs.length <= 21;
   console.log("  boot diffs vs previous image: " + diffs.length +
-    " word(s) at [" + diffs.join(",") + "] (banner only: " + bannerOnly + ")");
+    " word(s) at [" + diffs.slice(0, 20).join(",") +
+    (diffs.length > 20 ? ",..." : "") + "]");
+  console.log("  size change: " + cur.length + " -> " + words.length + " words");
 
   writeBootcode(BOOTCODE_SRC, header, words);
   console.log("  wrote src/bootcode.js (" + words.length + " words)");

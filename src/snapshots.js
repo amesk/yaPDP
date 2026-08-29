@@ -178,6 +178,18 @@ var SnapshotStore = (() => {
     }
 
     function capture(name) {
+        // Stop-the-world: freeze the CPU for the duration of the capture so
+        // RAM, device registers and the disk overlay all come from the same
+        // instant. Without this the asynchronous gzip compression lets the
+        // guest keep running between the RAM capture (T0) and the device/
+        // overlay capture (T1); a snapshot whose RAM predates its disk makes
+        // the restored guest overwrite newer disk blocks with older metadata
+        // (mixed generations) — observed as "bad free count" / "file system
+        // full" corruption in 2.11 BSD after save+restore. The captured
+        // runState is overridden to RUN so the restored machine continues.
+        var prevRunState = CPU.runState;
+        var wasRunning = prevRunState === STATE_RUN;
+        if (wasRunning) CPU.runState = STATE_HALT;
         return captureMemory().then(function (mem) {
             var devices = null;
             if (typeof iopage !== "undefined" && typeof iopage.snapshotDevices === "function") {
@@ -198,24 +210,47 @@ var SnapshotStore = (() => {
                 typeof window.vt52SnapshotAll === "function") {
                 vt52 = window.vt52SnapshotAll();
             }
-            return {
-                id: "snap-" + Date.now(),
-                name: name || defaultName(),
-                createdAt: Date.now(),
-                schemaVersion: SCHEMA_VERSION,
-                imageVersion: (typeof DiskStore !== "undefined" && DiskStore.IMAGE_VERSION)
-                    ? DiskStore.IMAGE_VERSION : "unknown",
-                cpu: captureCPU(),
-                memory: mem,
-                mounted: captureMounted(),
-                config: captureConfig(),
-                devices: devices,
-                punchtape: punchtape,
-                readertape: readertape,
-                vt52: vt52,
-                cpuBytes: 0,
-                memBytes: mem.data.byteLength || 0
-            };
+            // Disk write-back overlay: the blocks that differ from the
+            // pristine base image at capture time. Restoring them rolls the
+            // disks back to the same generation as the captured RAM, so the
+            // restored guest's filesystem metadata stays consistent with the
+            // disk contents.
+            var overlayPromise = (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.captureOverlay === "function")
+                ? DiskStore.captureOverlay() : Promise.resolve({});
+            return overlayPromise.then(function (overlay) {
+                var snap = {
+                    id: "snap-" + Date.now(),
+                    name: name || defaultName(),
+                    createdAt: Date.now(),
+                    schemaVersion: SCHEMA_VERSION,
+                    imageVersion: (typeof DiskStore !== "undefined" && DiskStore.IMAGE_VERSION)
+                        ? DiskStore.IMAGE_VERSION : "unknown",
+                    cpu: captureCPU(),
+                    memory: mem,
+                    mounted: captureMounted(),
+                    config: captureConfig(),
+                    devices: devices,
+                    punchtape: punchtape,
+                    readertape: readertape,
+                    vt52: vt52,
+                    overlay: overlay,
+                    cpuBytes: 0,
+                    memBytes: mem.data.byteLength || 0
+                };
+                // The CPU was frozen for the capture, so the recorded
+                // runState is HALT; the restored machine must RUN on.
+                if (wasRunning) snap.cpu.runState = STATE_RUN;
+                return snap;
+            });
+        }).then(function (snap) {
+            // Resume the live machine (the CPU loop re-schedules itself, so
+            // flipping runState back is enough).
+            if (wasRunning) CPU.runState = prevRunState;
+            return snap;
+        }, function (err) {
+            if (wasRunning) CPU.runState = prevRunState;
+            throw err;
         });
     }
 
@@ -280,17 +315,11 @@ var SnapshotStore = (() => {
     // CPU first (or the CPU start timer must not have fired yet).
     function restore(snap) {
         if (!snap) return Promise.resolve(false);
+        if (typeof window !== "undefined" && window.__snapFlow) {
+            window.__snapFlow.push("restore: start overlay=" + (!!(snap.overlay && Object.keys(snap.overlay).length)));
+        }
         restoreCPU(snap.cpu);
         return restoreMemory(snap.memory).then(function () {
-            // Resume the CPU only after RAM is back in place: running with
-            // the old memory contents (boot code / garbage) and the restored
-            // PC traps instantly, and a trap inside a trap overflows the
-            // stack. runState was deferred by restoreCPU() for this reason;
-            // the trap() recursion guard makes this safe even if the restored
-            // image is mid-garbage.
-            if (snap.cpu && typeof snap.cpu.runState === "number") {
-                CPU.runState = snap.cpu.runState;
-            }
             // Device registers (L2) — restore after RAM so devices see
             // consistent memory; control blocks re-create lazily on I/O.
             if (snap.devices && typeof iopage !== "undefined" &&
@@ -298,40 +327,62 @@ var SnapshotStore = (() => {
                 if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("restore: calling restoreDevices");
                 iopage.restoreDevices(snap.devices);
             }
-            // Visual punched tape (L2) — re-render the hanging ASR tape
-            // from the captured byte array (no-op when the tape UI is
-            // absent, e.g. VT52 console).
-            if (snap.punchtape && typeof window !== "undefined" &&
-                window.paperTape && typeof window.paperTape.restore === "function") {
-                window.paperTape.restore(snap.punchtape.buffer);
+            // Disk write-back overlay: roll the disks back to the snapshot's
+            // generation BEFORE the CPU resumes, so the restored guest's
+            // filesystem metadata (captured in RAM) and the disk contents
+            // agree. The CPU is still halted here — runState is applied only
+            // after the overlay is in place, so no instruction can run
+            // against a mixed-generation disk.
+            var overlayPromise = Promise.resolve();
+            if (snap.overlay && typeof DiskStore !== "undefined" &&
+                typeof DiskStore.restoreOverlay === "function") {
+                overlayPromise = DiskStore.restoreOverlay(snap.overlay);
             }
-            // ASR reader tape (L2) — re-render the loaded tape and its read
-            // position (no-op when the tape UI is absent or no tape was
-            // loaded at capture time).
-            if (snap.readertape && typeof window !== "undefined" &&
-                window.tapeReader && typeof window.tapeReader.restore === "function") {
-                window.tapeReader.restore(snap.readertape);
-                // A restored tape is paused like a freshly loaded one: the
-                // reader switch goes to STOP so the UI never shows a
-                // running reader with a stopped motor.
-                if (typeof window.setReaderMode === "function") {
-                    window.setReaderMode("stop");
+            return overlayPromise.then(function () {
+                // Resume the CPU only after RAM is back in place: running with
+                // the old memory contents (boot code / garbage) and the restored
+                // PC traps instantly, and a trap inside a trap overflows the
+                // stack. runState was deferred by restoreCPU() for this reason;
+                // the trap() recursion guard makes this safe even if the restored
+                // image is mid-garbage.
+                if (snap.cpu && typeof snap.cpu.runState === "number") {
+                    CPU.runState = snap.cpu.runState;
                 }
-            }
-            // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
-            // cursor, modes. Restored after RAM/devices so a repaint sees
-            // consistent state. No-op when the terminal API is absent.
-            if (snap.vt52 && typeof window !== "undefined" &&
-                window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
-                window.vt52RestoreAll(snap.vt52);
-            }
-            // Mounted images: DataLoader entries are re-created by
-            // dragdrop.init() from the images IDB on startup; nothing to
-            // do here (URLs are recorded in the snapshot for the UI).
-            if (typeof window !== "undefined" && window.__snapshotRestored) {
-                window.__snapshotRestored(snap);
-            }
-            return true;
+                // Visual punched tape (L2) — re-render the hanging ASR tape
+                // from the captured byte array (no-op when the tape UI is
+                // absent, e.g. VT52 console).
+                if (snap.punchtape && typeof window !== "undefined" &&
+                    window.paperTape && typeof window.paperTape.restore === "function") {
+                    window.paperTape.restore(snap.punchtape.buffer);
+                }
+                // ASR reader tape (L2) — re-render the loaded tape and its read
+                // position (no-op when the tape UI is absent or no tape was
+                // loaded at capture time).
+                if (snap.readertape && typeof window !== "undefined" &&
+                    window.tapeReader && typeof window.tapeReader.restore === "function") {
+                    window.tapeReader.restore(snap.readertape);
+                    // A restored tape is paused like a freshly loaded one: the
+                    // reader switch goes to STOP so the UI never shows a
+                    // running reader with a stopped motor.
+                    if (typeof window.setReaderMode === "function") {
+                        window.setReaderMode("stop");
+                    }
+                }
+                // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
+                // cursor, modes. Restored after RAM/devices so a repaint sees
+                // consistent state. No-op when the terminal API is absent.
+                if (snap.vt52 && typeof window !== "undefined" &&
+                    window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
+                    window.vt52RestoreAll(snap.vt52);
+                }
+                // Mounted images: DataLoader entries are re-created by
+                // dragdrop.init() from the images IDB on startup; nothing to
+                // do here (URLs are recorded in the snapshot for the UI).
+                if (typeof window !== "undefined" && window.__snapshotRestored) {
+                    window.__snapshotRestored(snap);
+                }
+                return true;
+            });
         });
     }
 
@@ -375,6 +426,15 @@ var SnapshotStore = (() => {
     function load(id) {
         try {
             localStorage.setItem(PENDING_KEY, id);
+            // A restore reload must NOT flush the write-back overlay on the
+            // way out (see DiskStore's pagehide handler): the disk rolls
+            // back to the snapshot's generation, and a late flush from the
+            // old page would re-corrupt it. sessionStorage survives the
+            // reload (and the config-mismatch second reload) and is cleared
+            // once the restore completes in init().
+            if (typeof sessionStorage !== "undefined") {
+                sessionStorage.setItem("yapdp.restore-pending", "1");
+            }
         } catch (e) {
             return Promise.resolve(false);
         }
@@ -439,7 +499,14 @@ var SnapshotStore = (() => {
         // Even without a pending snapshot, populate the UI list.
         refreshUI();
 
-        if (!pendingId) return Promise.resolve(false);
+        if (!pendingId) {
+            // No restore pending: drop any stale restore flag so the
+            // write-back flush works normally on future reloads.
+            if (typeof sessionStorage !== "undefined") {
+                try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
+            }
+            return Promise.resolve(false);
+        }
 
         // Stop the machine before it executes anything.
         if (typeof CPU !== "undefined") {
@@ -464,7 +531,14 @@ var SnapshotStore = (() => {
             try {
                 localStorage.removeItem(PENDING_KEY);
             } catch (e) { /* ignore */ }
-            return restore(snap);
+            return restore(snap).then(function (ok) {
+                // Restore done (machine resumes with the rolled-back disk);
+                // re-enable the write-back flush for future reloads.
+                if (typeof sessionStorage !== "undefined") {
+                    try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
+                }
+                return ok;
+            });
         });
     }
 
@@ -636,7 +710,7 @@ var SnapshotStore = (() => {
             '<div class="modal-box">' +
                 '<span class="modal-title">Machine state</span>' +
                 '<p class="modal-intro">Save a snapshot of the full machine state, or restore a saved one. ' +
-                    'Loading restarts the machine (disks keep their saved changes).</p>' +
+                    'Loading restarts the machine; restoring rolls the disks back to the saved state too.</p>' +
                 '<button type="button" class="modal-close modal-primary" id="snap-save">Save state</button>' +
                 '<select id="snap-select" class="modal-select" disabled>' +
                     '<option value="">--no snapshots--</option>' +
@@ -710,7 +784,8 @@ var SnapshotStore = (() => {
                 if (!select || !select.value) return;
                 showConfirmModal({
                     title: "Restore snapshot?",
-                    intro: "The current machine state will be lost (disks keep their saved changes). " +
+                    intro: "The current machine state will be lost. The machine — including " +
+                        "disk writes made after the snapshot — rolls back to the saved state. " +
                         "If the snapshot was saved with a different hardware configuration " +
                         "(console type, printer, terminals, VT11), it is applied automatically.",
                     confirmLabel: "Restore",
