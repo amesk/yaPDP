@@ -61,7 +61,7 @@ jobs:
         run: npm ci
 
       - name: Cache puppeteer Chromium
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
