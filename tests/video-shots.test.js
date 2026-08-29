@@ -184,6 +184,10 @@ assert.ok(recordSrc.includes('data-action="enableHalt"'),
   "the capture must press ENABLE/HALT on the panel");
 assert.ok(recordSrc.includes('consoleType"][value="vt52"'),
   "the capture must select the VT52 console on the CONFIG page");
+assert.ok(recordSrc.includes('#panel-sticker-btn'),
+  "the capture must press the Help Me! button to show the bootstrap sticker");
+assert.ok(recordSrc.lastIndexOf('#panel-sticker-btn') < recordSrc.lastIndexOf('toggleInPanelBootstrap('),
+  "the Help Me! sticker must be shown before the bootstrap is toggled in");
 
 // --- 4. Structural: the reel registers the clip ---------------------------
 

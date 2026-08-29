@@ -972,6 +972,15 @@ async function capturePanelBoot(browser, shot) {
         await clickPanelControl(page, '.lockPanelPos[data-power-state="run"]');
         await sleep(800);
 
+        // 2b. Help Me! — let the powered-on panel settle for a moment, then
+        // press the Help Me! button so the operator's hand-written bootstrap
+        // sticky note is on camera before the loader is toggled in. The note
+        // is pointer-events:none (css/pdp11.css), so it never swallows the
+        // switch clicks that follow.
+        await sleep(2000);
+        await clickPanelControl(page, '#panel-sticker-btn');
+        await sleep(1500);
+
         // 3. Toggle in the bootstrap loader and START it.
         await toggleInPanelBootstrap(page);
         await sleep(500);
