@@ -1,0 +1,1196 @@
+ODT11S	MACRO V04.00   00:00:06
+TABLE OF CONTENTS
+
+    1-   3	Initialisation & command processors.
+    1- 278	Command decoder.
+    1- 334	Command processors.
+    1- 617	Breakpoint trap handler & I/O routines.
+    1- 833	Cassette load & dump routines.
+    1- 971	Tables.
+    1-1024	Workspace.
+ODT11S	MACRO V04.00   00:00:06 PAGE 1
+
+
+      1						.TITLE	ODT11S
+      2						.ENABL	LC, AMA
+      3						.sbttl	Initialisation & command processors.
+      4
+      5					;Borrowed from: http://dph.fluff.org/pdp11/odts.mac
+      6
+      7					;Version of ODT to be blown into a 2716 PROM for use as console ODT on a T-11
+      8					;system. This code started life as the DECUS offering ODT11X. It now has many
+      9					;more features resembling those of RT-11's ODT.
+     10
+     11					;Possible additions:
+     12					;	XON - XOFF recognition
+     13					;	Aborting printout after ;W & ;E
+     14					;	<address>;<count>A	Ascii string print/change
+     15
+     16					;Conditionals are:
+     17		000001 			eis=1		;Use the EIS instructions (Only uses SOB)
+     18					;lsi=1		;Use MTPS/MFPS, not bus addr 177776 for the status register.
+     19
+     20					.if ndf,eis
+     21						.macro	sob	r,b	;No EIS instructions - macro to allow SOB
+     22							dec	r
+     23							bne	b
+     24						.endm
+     25					.endc
+     26					.if ndf,lsi
+     27		177776 				st=177776		;Not LSI - address of status register
+     28						.macro	mtps	status	;Not LSI - macro to allow MTPS
+     29							movb	status,@#st
+     30						.endm
+     31					.endc
+     32
+     33					.if df,test
+     34					o.break	=	3	;BREAK instruction - 3 for normal PDP-11s
+     35						.csect	odt11s
+     36					.iff
+     37		000000 			o.break	=	0	;BREAK instruction - is 0 for T-11
+     38	000000					.asect
+     39		170000 				.=170000
+     40					.endc
+     41
+     42		000016 			bkp	=	16	;Number of breakpoints-1 mult. by 2
+     43		000014 			tvec	=	14	;BREAK vector location
+     44		000340 			stm	=	340	;Priority mask - status register
+     45		000020 			tbt	=	20	;T-bit mask - status register
+     46
+     47		177560 			rcsr	=	177560	;r c/sr		Console input port addresses
+     48		177562 			rdb	=	177562	;r data buffer
+     49		177564 			tcsr	=	177564	;t c/sr		Console output port addresses
+     50		177566 			tdb	=	177566	;t data buffer
+     51
+     52		000015 			cr	=	15	;Carrage return
+     53		000012 			lf	=	12	;Line feed
+     54
+     55					; Initialise ODT
+     56
+     57	170000				odt::
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-1
+INITIALISATION & COMMAND PROCESSORS.
+
+     58					.if df,test
+     59						jsr	r5,svttyp	;Keep RT-11 terminal status, say hello
+     60						.asciz	'ODT11'
+     61						mov	#break,@#tvec	;PC to break vector
+     62						mov	#stm,@#tvec+2	;Status word to break vector+2
+     63					.iff
+     64	170000	005037 	174374 			clr	csr1		;Clear 'saved' terminal status regs.
+     65					.endc
+     66	170004	012706 	174250 			mov	#reloc,sp	;Set up stack pointers to init. tables
+     67	170010	010600 				mov	sp,r0
+     68	170012	005001 				clr	r1		;& setup some other vectors
+     69	170014	005046 			1$:	clr	-(sp)		;Clear out registers
+     70	170016	012720 	177777 			mov	#-1,(r0)+	;Remove relocation constants
+     71					.if ndf,test
+     72	170022	012721 	172310 			mov	#break,(r1)+	;Set up a load of vectors as BPT's
+     73	170026	012721 	000340 			mov	#stm,(r1)+
+     74					.endc
+     75	170032	020627 	174210 			cmp	sp,#ur0		;All registers set up yet ?
+     76	170036	101366 				bhi	1$		;Loop if not
+     77	170040	012737 	001000 	174224 		mov	#1000,usp	;Give the user a possible stack
+     78	170046	114037 	174372 			movb	-(r0),p		;Disallow proceed
+     79	170052	005037 	174370 			clr	s.t		;Disable single instruction & T flags
+     80	170056	012737 	000007 	174232 		mov	#7,pri		;Set default ODT priority
+     81	170064	000137 	171456 			jmp	rall		;Clear breakpoint tables
+     82
+     83					; Output the top RAD50 char from r4. The RAD50 character set used is:
+     84					;	" ABCDEFGHIJKLMNOPQRSTUVWXYZ$./0123456789"
+     85					;Note that in this encoding, '$' is 33, the ASCII code for escape.
+     86					;There's probably a nice trick in there somewhere, if I could see it :-)
+     87
+     88	170070	005000 			chr50o:	clr	r0		;Extract a RAD50 char from r4
+     89	170072	005200 			1$:	inc	r0		;r0 := r4/1600.   r4 := r4%1600.
+     90	170074	162704 	003100 			sub	#1600.,r4	; By repeated subtraction
+     91	170100	103374 				bhis	1$
+     92	170102	062704 	003100 			add	#1600.,r4	;Correct for the extra subtract
+     93	170106	012746 	055440 			mov	#" [,-(sp)	;Convert single RAD50 char to ASCII
+     94	170112	005300 				dec	r0		;RAD50 0 is space, is on the stack
+     95	170114	001410 				beq	3$
+     96	170116	000316 			2$:	swab	(sp)		;Not space, add '@' to convert letters
+     97	170120	162700 	000033 			sub	#27.,r0		;Is it really a letter ?
+     98	170124	103404 				blo	3$
+     99	170126	012716 	044044 			mov	#"$H,(sp)	;No, must be $./ or digit
+    100	170132	005700 				tst	r0		;Is it $ ?
+    101	170134	001370 				bne	2$		;No, add '-'+27='H' for ./01234567
+    102	170136	062600 			3$:	add	(sp)+,r0	;Convert the character
+    103	170140	004537 	173014 			jsr	r5,ftyp		;Print it out
+    104	170144	005000 				clr	r0		;Multiply r4 by octal 50 to do the next char.
+    105
+    106					;Routine used by RAD50 conversions, and octal numeric input.
+    107					;After calling MUL50:	r4 := r4 * 50 + r0,  r0 := r4 * 8 + r0,  r2 := r2 + 1
+    108					;After calling MULIN:	r4 := r4 * 4 + r0,   r2 := r2 + 1
+    109
+    110	170146	006304 			mul50:	asl	r4
+    111	170150	006304 				asl	r4
+    112	170152	006304 				asl	r4
+    113	170154	060400 				add	r4,r0
+    114	170156	006304 			mulin:	asl	r4
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-2
+INITIALISATION & COMMAND PROCESSORS.
+
+    115	170160	006304 				asl	r4
+    116	170162	060004 				add	r0,r4
+    117	170164	005202 				inc	r2		;Count this char
+    118	170166	000207 				rts	pc
+    119
+    120					;Accept a RAD50 char & pack into r4
+    121
+    122	170170	004537 	173072 		chr50i:	jsr	r5,get		;Get a char
+    123	170174	012701 	000040 			mov	#40,r1		;Put constant 40 in R1
+    124	170200	020001 				cmp	r0,r1		;Is char a space ?
+    125	170202	001423 				beq	3$		;Branch if space
+    126	170204	103514 				blo	clgl1		;Lower than space - exit
+    127	170206	020027 	000101 			cmp	r0,#'A		;Possible letter ?
+    128	170212	103013 				bhis	1$
+    129	170214	012701 	000011 			mov	#11,r1		;Not letter, change constant
+    130	170220	020027 	000044 			cmp	r0,#'$		;$=44
+    131	170224	001412 				beq	3$		;Is '$' - return 44-11=33
+    132	170226	020027 	000056 			cmp	r0,#'.		;Not '$', range .-9 ? (.=56)
+    133	170232	103501 				blo	clgl1		;No - exit
+    134	170234	020027 	000071 			cmp	r0,#'9		;Is it ?
+    135	170240	000402 				br	2$
+    136
+    137	170242				1$: ;	BIC	R1,R0		;Fold lower case to upper
+    138	170242	020027 	000132 			cmp	r0,#'Z		;Alphabetic ?
+    139	170246	101073 			2$:	bhi	clgl1		;Not RAD50 char - exit
+    140	170250	160100 				sub	r1,r0
+    141	170252	160100 			3$:	sub	r1,r0
+    142	170254	000734 				br	mul50		;Add new char to word in R4
+    143
+    144
+    145					;Search for the char in R0 in the list at R1. If not there, see if octal digit
+    146					;Returns carry=0 -> not digit, char at -1(r1)
+    147					;	 carry=1 -> digit, value in r0
+    148					;No return if not found & not digit
+    149
+    150	170256	120021 			chklst:	cmpb	r0,(r1)+	;This character ?
+    151	170260	001407 				beq	1$		;Yes, return
+    152	170262	105711 				tstb	(r1)		;No, more to check ?
+    153	170264	001374 				bne	chklst		;Loop if so
+    154	170266	162700 	000070 			sub	#'8,r0		;Char not in table. Octal digit ?
+    155	170272	062700 	000010 			add	#8.,r0
+    156	170276	103146 				bcc	err0		;Not digit, give error message
+    157	170300	000207 			1$:	rts	pc
+    158
+    159
+    160					; Process R and ! - relocation commands
+    161
+    162	170302	013700 	174362 		rel:	mov	cad,r0		;'R' command - possible data to relocate
+    163	170306	105737 	174366 			tstb	semic		;Are we setting or relocating ?
+    164	170312	001424 				beq	rel1		;Branch if relocating
+    165	170314	012700 	174250 			mov	#reloc,r0	;Get a pointer to the relocation regs
+    166	170320	005303 				dec	r3		;Setting or removing ?
+    167	170322	100003 				bpl	1$		;Branch if setting
+    168	170324	010305 				mov	r3,r5		;Removing - force value of -1
+    169	170326	005702 				tst	r2		;Reg number given ?
+    170	170330	001406 				beq	2$		;No - remove all
+    171	170332	005302 			1$:	dec	r2		;Legal relocation reg ?
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-3
+INITIALISATION & COMMAND PROCESSORS.
+
+    172	170334	003157 				bgt	err		;No - multi digit number !
+    173	170336	006304 				asl	r4		;Ok - make word offset
+    174	170340	010564 	174250 			mov	r5,reloc(r4)	;Set value in table
+    175	170344	000556 				br	dcd
+    176
+    177	170346	010520 			2$:	mov	r5,(r0)+	;Remove all relocation constants
+    178	170350	020027 	174270 			cmp	r0,#reloc+16.
+    179	170354	103774 				blo	2$
+    180	170356	000551 				br	dcd
+    181
+    182	170360	012700 	174362 		reladr:	mov	#cad,r0		;'!' command - get address to relocate
+    183	170364	023727 	174360 	000002 	rel1:	cmp	bw,#2		;Ensure a word is open
+    184	170372	001110 				bne	err0
+    185	170374	010546 				mov	r5,-(sp)	;Fake return address part of a JSR R5,
+    186	170376	012705 	170714 			mov	#dcd2,r5	; which will return to DCD2
+    187	170402	006304 				asl	r4		;Make address of wanted relocation
+    188	170404	062704 	174250 			add	#reloc,r4
+    189	170410	011046 				mov	(r0),-(sp)	;Yes - fake first part of CADA
+    190	170412	004537 	173050 			jsr	r5,eqtype	;Type an '='
+    191	170416	005302 				dec	r2		;Was specific register requested ?
+    192	170420	100002 				bpl	2$
+    193	170422	000137 	172614 			jmp	cada1		;No - let CADA choose one, returns to dcd2
+    194
+    195	170426	001072 			2$:	bne	err0		;Yes - check only 1 digit
+    196	170430	010400 				mov	r4,r0
+    197	170432	000137 	172646 			jmp	cadain		;Output relocated address, return to dcd2
+    198
+    199
+    200	170436	005726 			clgl1:	tst	(sp)+
+    201	170440	000543 				br	clgl
+    202
+    203
+    204					; Process X - RAD50
+    205
+    206	170442	004537 	170576 		rad50:	jsr	r5,tstwrd	;Check word mode, put address in r2
+    207	170446	004537 	173050 			jsr	r5,eqtype	;Is word mode. Type the '='
+    208	170452	011204 				mov	(r2),r4		;Get the contents of that location
+    209	170454	012703 	000004 			mov	#4,r3		;Set up the character counter
+    210	170460	004737 	170070 		1$:	jsr	pc,chr50o	;Print a RAD50 character
+    211	170464	077303 				sob	r3,1$		;4 of 'em. The 4th will be a space
+    212	170466	005002 				clr	r2		;Reset r2 to count input characters
+    213	170470	004737 	170170 		2$:	jsr	pc,chr50i	;Get a char, & convert to RAD50
+    214	170474	020227 	000003 			cmp	r2,#3		;Loop 'till 3 characters packed
+    215	170500	103773 				blo	2$		;Leave r2 with number exists indicator
+    216	170502	004537 	173230 			jsr	r5,type		;Got all 3, delimit with a space
+    217	170506	   040 	   000 			.asciz	' '
+    218	170510	000513 				br	scan
+    219
+    220					; Special name handler
+    221					;  Depends upon the explicit order of the two tables TL and UR0
+    222
+    223	170512	004537 	173072 		regt:	jsr	r5,get		;Special name, get one more character
+    224	170516	012701 	173740 			mov	#tl,r1		;Table start address
+    225	170522	004737 	170256 			jsr	pc,chklst	;See if it's a known character
+    226	170526	010004 				mov	r0,r4		;Move digit value (if there)
+    227	170530	103403 				bcs	1$		;Branch if octal digit
+    228	170532	162701 	173731 			sub	#tl-7,r1	;Letter - make small integer
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-4
+INITIALISATION & COMMAND PROCESSORS.
+
+    229	170536	010104 				mov	r1,r4		;In R4
+    230	170540	005202 			1$:	inc	r2		;Indicate char found
+    231	170542	006304 				asl	r4		;Make into word offset
+    232	170544	062704 	174210 			add	#ur0,r4		;Form address of wanted item
+    233	170550	020427 	174250 			cmp	r4,#reloc	;Is it a breakpoint reg ?
+    234	170554	101402 				blos	2$
+    235	170556	012704 	174270 			mov	#adr1,r4	;Yes - correct address
+    236	170562	004537 	173230 		2$:	jsr	r5,type		;Give 'open' character
+    237	170566	   057 	   000 			.asciz	'/'
+    238	170570	000562 				br	wrd		;Then go & open it
+    239
+    240
+    241	170572	004737 	173316 		tcls:	jsr	pc,clse		;Close current cell
+    242	170576	022737 	000002 	174360 	tstwrd:	cmp	#2,bw		;Only word mode allowed
+    243	170604	001003 				bne	err0		;Branch if error
+    244	170606	013702 	174362 			mov	cad,r2		;Current address in R2
+    245	170612	000205 				rts	r5
+    246
+    247	170614	000427 			err0:	br	err		;Show the error
+    248
+    249
+    250					; Process S - single instruction mode
+    251
+    252	170616	110237 	174370 		sngl:	movb	r2,s		;Set the flag as requested
+    253	170622	000427 				br	dcd
+    254
+    255
+    256					; @ Handler - open absolute location
+    257
+    258	170624	004537 	170572 		orab:	jsr	r5,tcls		;Test word mode and close
+    259	170630	011202 				mov	(r2),r2		;Get absolute address
+    260	170632	000412 				br	pcs
+    261
+    262					; > Handler - follow relative branch (NOT SOB !)
+    263
+    264	170634	004537 	170572 		orrb:	jsr	r5,tcls		;Test and close
+    265	170640	111201 				movb	(r2),r1		;Compute new address
+    266	170642	005201 				inc	r1
+    267	170644	006301 				asl	r1		;R2=2(@R2+1)
+    268	170646	060102 				add	r1,r2		;   +PC
+    269	170650	000403 				br	pcs
+    270
+    271					; _ Handler - open indexed on the PC
+    272
+    273	170652	004537 	170572 		orpc:	jsr	r5,tcls		;Test word mode and close
+    274	170656	062202 				add	(r2)+,r2	;Compute
+    275	170660	013737 	174362 	174364 	pcs:	mov	cad,dot		;Save current position
+    276	170666	010237 	174362 			mov	r2,cad		;Update CAD
+    277	170672	000576 				br	op2		;Go finish up
+    278						.sbttl	Command decoder.
+    279					;  All registers may be used (R0-R5),
+    280
+    281	170674	004537 	173230 		err:	jsr	r5,type		; ? to be typed
+    282	170700	   077 	   000 			.asciz	'?'
+    283	170702	005037 	174360 		dcd:	clr	bw		;Close all
+    284	170706	004537 	173224 			jsr	r5,crtype	;Type  <CR><LF>*
+    285	170712	   052 	   000 			.asciz	'*'
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-5
+COMMAND DECODER.
+
+    286	170714	005037 	174366 		dcd2:	clr	semic		;Clear semi-colon flag & SEQ
+    287	170720	005003 				clr	r3		;R3 is a save register for R2
+    288	170722	005005 				clr	r5		;R5 is a save register for R4
+    289	170724	005037 	174356 		dcd1:	clr	offset		;Clear out relocation offset
+    290	170730	105037 	174373 		dcdr:	clrb	negate		;No '-' sign received yet
+    291	170734	005004 				clr	r4		; R4 contains the converted octal
+    292	170736	005002 				clr	r2		; R2 is the digit count/number found flag
+    293	170740	012706 	174210 		scan:	mov	#ur0,sp		;Reset stack to be safe
+    294	170744	004537 	173072 			jsr	r5,get		;Get a char, return in R0
+    295	170750	120027 	000055 		clgl:	cmpb	r0,#'-		;Check for negative number
+    296	170754	001005 				bne	1$		;Not - check normal things
+    297	170756	005702 				tst	r2		;'-' must preceed all digits
+    298	170760	001345 				bne	err		;It doesn't... so complain
+    299	170762	105237 	174373 			incb	negate		;Negative - flag it
+    300	170766	000764 				br	scan		;Then get the next char
+    301	170770	012701 	173753 		1$:	mov	#lgch,r1	;Point at command char table
+    302	170774	004737 	170256 			jsr	pc,chklst	;Lookup char in list
+    303	171000	103004 				bcc	2$		;Letter or octal digit ?
+    304	171002	006304 				asl	r4		;Digit - build number
+    305	171004	004737 	170156 			jsr	pc,mulin
+    306	171010	000753 				br	scan		;Loop for next char
+    307
+    308	171012	106237 	174373 		2$:	asrb	negate		;Letter. Was there a '-' sign ?
+    309	171016	103001 				bcc	3$		;Skip this if not
+    310	171020	005404 				neg	r4		;'-' - negate value
+    311	171022	063704 	174356 		3$:	add	offset,r4	;Add in relocation offset
+    312	171026	006301 				asl	r1		;Multiply by two
+    313	171030	000171 	003722 			jmp	@lgdr-2-<2*lgch>(r1) ;Go to proper routine
+    314					; Registers on dispatch:
+    315					;  R0 - Character code of command	R3 - Digits in arg before ';'
+    316					;  R1 - Offset into dispatch table	R4 - Value of arg after ';'
+    317					;  R2 - Digits in arg after ';'		R5 - Value of arg before ';'
+    318
+    319					; Comma processor
+    320	171034	077261 			comma:	sob	r2,err		;Error if not single digit relocation reg
+    321	171036	163704 	174356 			sub	offset,r4	;In case twit relocated it
+    322	171042	006304 				asl	r4		;Make into word offset
+    323	171044	016402 	174250 			mov	reloc(r4),r2	;Extract relocation constant
+    324	171050	010237 	174356 			mov	r2,offset	;Store it
+    325	171054	005202 				inc	r2		;Was it legal ?
+    326	171056	001722 				beq	dcd1		;No - zap it
+    327	171060	000723 				br	dcdr		;Yes - keep it
+    328
+    329					; Semi-colon processor
+    330	171062	010203 			semi:	mov	r2,r3		;A semi-colon has been received
+    331	171064	010405 				mov	r4,r5		;Numeric flag to R3, contents to R5
+    332	171066	105237 	174366 			incb	semic		;Set semi-colon flag
+    333	171072	000714 				br	dcd1		;Go back for more
+    334						.sbttl	Command processors.
+    335					; Process C - constant reg.
+    336
+    337	171074	005703 			const:	tst	r3		;Setting or using ?
+    338	171076	001413 				beq	1$
+    339	171100	010537 	174242 			mov	r5,creg		;Setting
+    340	171104	004537 	173050 			jsr	r5,eqtype	;Say "=nnnnnn" to show the value
+    341	171110	012737 	000002 	174360 		mov	#2,bw		;Say this is word mode
+    342	171116	010500 				mov	r5,r0		;Get the word to print
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-6
+COMMAND PROCESSORS.
+
+    343	171120	004537 	172672 			jsr	r5,cadv		;Print the word in r0
+    344	171124	000666 				br	dcd
+    345
+    346	171126	013704 	174242 		1$:	mov	creg,r4		;Using - get value
+    347	171132	151702 				bisb	(pc),r2		;Say more than 1 digit there
+    348	171134	000701 				br	scan
+    349
+    350					; Process / and \ - open word or byte
+    351
+    352	171136	012737 	000002 	174360 	wrd:	mov	#2,bw		;Open word
+    353	171144	000404 				br	wb1
+    354	171146	006104 			byt1:	rol	r4		;Get the address back
+    355	171150	012737 	000001 	174360 	byt:	mov	#1,bw		;Open byte
+    356	171156	005702 			wb1:	tst	r2		;Get value if R2 is non-zero
+    357	171160	001402 				beq	wrd1		;Skip otherwise
+    358	171162	010437 	174362 			mov	r4,cad		;Put value in CAD
+    359	171166	013704 	174362 		wrd1:	mov	cad,r4		;Get current address
+    360	171172	022737 	000001 	174360 		cmp	#1,bw		;Check byte mode
+    361	171200	001405 				beq	2$		;Jump if byte
+    362	171202	006204 				asr	r4		;Move one bit to carry
+    363	171204	103760 				bcs	byt1		;Jump if odd address
+    364	171206	017700 	003150 			mov	@cad,r0		;Get contents of word
+    365	171212	000401 				br	3$
+    366	171214	111400 			2$:	movb	(r4),r0		;Get contents of byte
+    367	171216	004537 	172672 		3$:	jsr	r5,cadv		;Go get and type out @CAD
+    368	171222	000634 				br	dcd2		;Go back to decoder
+    369
+    370					; Process carriage return
+    371
+    372	171224	004737 	173316 		cret:	jsr	pc,clse		;Close location
+    373	171230	000624 			dcda:	br	dcd		;Return to decoder
+    374
+    375					; Process <LF>, open next word
+    376
+    377	171232	105237 	174367 		old:	incb	seq		;Set need DOT to CAD move
+    378	171236	013700 	174360 		op1:	mov	bw,r0		;<LF> received
+    379	171242	001614 			err2:	beq	err		;Error if nothing is open
+    380	171244	004737 	173316 			jsr	pc,clse		;Close present cell
+    381	171250	105737 	174367 			tstb	seq		;See if < command
+    382	171254	001403 				beq	1$		;Branch if not
+    383	171256	013737 	174364 	174362 		mov	dot,cad		;Go to the former stream
+    384	171264	060037 	174362 		1$:	add	r0,cad		;Generate new address
+    385	171270	004537 	173030 		op2:	jsr	r5,crlf		;<CR><LF>
+    386	171274	013746 	174360 			mov	bw,-(sp)	;Save bw
+    387	171300	012737 	000002 	174360 		mov	#2,bw		;Set to type full word address
+    388	171306	013700 	174362 			mov	cad,r0		;Number to type
+    389	171312	004537 	172604 			jsr	r5,cada		;Type out address
+    390	171316	011637 	174360 			mov	(sp),bw		;Restore bw
+    391	171322	012700 	027534 			mov	#"\/,r0		;Things to type
+    392	171326	005326 				dec	(sp)+		;Is it byte mode?
+    393	171330	001401 				beq	1$		;Jump if yes
+    394	171332	000300 				swab	r0		;Type a /
+    395	171334	004537 	173014 		1$:	jsr	r5,ftyp		;Or a \
+    396	171340	000712 				br	wrd1		;Go process it
+    397
+    398					; Process ^, open previous word
+    399
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-7
+COMMAND PROCESSORS.
+
+    400	171342	013700 	174360 		back:	mov	bw,r0		; ^ received
+    401	171346	001735 				beq	err2		;Error if nothing open
+    402	171350	004737 	173316 			jsr	pc,clse
+    403	171354	160037 	174362 			sub	r0,cad		;Generate new address
+    404	171360	000743 				br	op2		;Go do the rest
+    405
+    406					; B Handler - set and remove breakpoints
+    407
+    408	171362	012700 	174006 		bkpt:	mov	#breakc,r0
+    409	171366	006304 				asl	r4		;Multiply number by two
+    410	171370	005703 				tst	r3
+    411	171372	001421 				beq	remb		;If R3 is zero go remove breakpoint
+    412	171374	006205 				asr	r5		;Get one bit to carry
+    413	171376	103572 				bcs	err1		;Badness if odd address
+    414	171400	006305 				asl	r5		;Restore one bit
+    415	171402	062704 	174270 			add	#adr1,r4
+    416	171406	005302 				dec	r2
+    417	171410	001410 				beq	set1		;Jump if specific cell
+    418	171412	100164 				bpl	err1		;Too many digits
+    419	171414	020014 			set:	cmp	r0,(r4)		;Is this cell free?
+    420	171416	001405 				beq	set1		;Jump if yes
+    421	171420	020427 	174306 			cmp	r4,#bkp+adr1	;Are we at the end of our rope
+    422	171424	103157 				bhis	err1		;Yes, there is nothing free
+    423	171426	005724 				tst	(r4)+		;Increment by two
+    424	171430	000771 				br	set
+    425	171432	010514 			set1:	mov	r5,(r4)		;Set breakpoint
+    426	171434	000675 				br	dcda		;Return
+    427	171436	005302 			remb:	dec	r2		;How many reg # digits ?
+    428	171440	100406 				bmi	rall		;None - remove all
+    429	171442	001150 				bne	err1		;More than 1 - error
+    430	171444	010064 	174270 			mov	r0,adr1(r4)	;Clear breakpoint
+    431	171450	005064 	174312 			clr	ct(r4)		;Clear count also
+    432	171454	000665 				br	dcda
+    433	171456	005004 			rall:	clr	r4
+    434	171460	012764 	174006 	174270 	1$:	mov	#breakc,adr1(r4) ;Reset bkpt
+    435	171466	012764 	172310 	174334 		mov	#break,uin(r4)	;Reset contents of table
+    436	171474	005064 	174312 			clr	ct(r4)		;Clear count
+    437	171500	005724 				tst	(r4)+		;Increment by two
+    438	171502	020427 	000020 			cmp	r4,#bkp+2	;All done?
+    439	171506	101764 				blos	1$		;Loop if not
+    440	171510	000647 			dcdb:	br	dcda
+    441
+    442					; Process O, compute offset
+    443
+    444	171512	022737 	000002 	174360 	ofst:	cmp	#2,bw		;Check word mode
+    445	171520	001121 				bne	err1		;Error if not correct mode
+    446	171522	004537 	173230 			jsr	r5,type		;Type one blank as a separator
+    447	171526	   040 	   000 			.asciz	' '
+    448	171530	005703 				tst	r3		;Was semi-colon typed?
+    449	171532	001514 				beq	err1		;No, call it an error
+    450	171534	163705 	174362 			sub	cad,r5		;Compute
+    451	171540	005305 				dec	r5
+    452	171542	005305 				dec	r5		; 16 bit offset
+    453	171544	010500 				mov	r5,r0
+    454	171546	004537 	172672 			jsr	r5,cadv		;Number in R0 - word mode
+    455	171552	010500 				mov	r5,r0
+    456	171554	006200 				asr	r0		;Divide by two
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-8
+COMMAND PROCESSORS.
+
+    457	171556	103414 				bcs	1$		;Error if odd
+    458	171560	022700 	177600 			cmp	#-200,r0	;Compare with -200
+    459	171564	003011 				bgt	1$		;Do not type if out of range
+    460	171566	022700 	000177 			cmp	#177,r0		;Compare with +177
+    461	171572	002406 				blt	1$		;Do not type if out of range
+    462	171574	005337 	174360 			dec	bw		;Set temporary byte mode
+    463	171600	004537 	172672 			jsr	r5,cadv		;Number in R0 - byte mode
+    464	171604	005237 	174360 			inc	bw		;Restore word mode
+    465	171610	000137 	170714 		1$:	jmp	dcd2		;All done
+    466
+    467					; Common routine for ;F and ;I, word and byte area fill
+    468
+    469	171614	012700 	174236 		fill:	mov	#msk+2,r0	;Address of parameters
+    470	171620	012001 				mov	(r0)+,r1	;Start of block to fill
+    471	171622	012002 				mov	(r0)+,r2	;End address
+    472	171624	011000 				mov	(r0),r0		;Value to fill with
+    473	171626	020102 			fillit:	cmp	r1,r2		;Any more to fill ?
+    474	171630	101327 				bhi	dcdb		;No, all done
+    475	171632	000115 				jmp	(r5)		;Yes, move the correct data size
+    476
+    477					; Searches - 	$MSK   has the mask
+    478					;		$MSK+2 has the FWA
+    479					;		$MSK+4 has the LWA
+    480					;Registers:
+    481					; R0 -	Contents of location	R3 - Effective address referenced
+    482					; R1 -	Word/addr mode flag	R4 - Search mask
+    483					; R2 -	Address of location	R5 - Object to search for
+    484
+    485	171634	005201 			eff:	inc	r1		;Set effective search
+    486	171636	000401 				br	wds
+    487
+    488	171640	005001 			wsch:	clr	r1		;Set word search
+    489	171642	005703 			wds:	tst	r3		;Check for object found
+    490	171644	001447 				beq	err1		;Error if no object
+    491	171646	012737 	000002 	174360 		mov	#2,bw		;Set word mode
+    492	171654	013702 	174236 			mov	msk+2,r2	;Set origin
+    493	171660	013704 	174234 			mov	msk,r4		;Set mask
+    494	171664	005104 				com	r4
+    495	171666	020237 	174240 		wds2:	cmp	r2,msk+4	;Is the search all done?
+    496	171672	101306 				bhi	dcdb		; yes
+    497	171674	105737 	177560 			tstb	@#rcsr		;User hitting the keyboard ?
+    498	171700	100703 				bmi	dcdb		;Yes, stop search
+    499	171702	012746 	040057 			mov	#"/@,-(sp)	;Possible address/contents seperators
+    500	171706	011200 				mov	(r2),r0		;Get object
+    501	171710	005701 				tst	r1		;Which search mode ?
+    502	171712	001041 				bne	eff1		;Branch if effective search
+    503	171714	040400 				bic	r4,r0		;Apply mask to data
+    504	171716	040405 				bic	r4,r5		; and test word
+    505	171720	020005 				cmp	r0,r5		;Now compare the two
+    506	171722	001016 			wds3:	bne	wds4		;Re-loop if no match
+    507	171724	010446 				mov	r4,-(sp)	;Registers R2,R4, and R5 are safe
+    508	171726	004537 	173030 			jsr	r5,crlf
+    509	171732	010200 				mov	r2,r0		;Get ready to type
+    510	171734	004537 	172604 			jsr	r5,cada		;  type address
+    511	171740	016600 	000002 			mov	2(sp),r0	;Get seperator
+    512	171744	004537 	173014 			jsr	r5,ftyp		; type it
+    513	171750	011200 				mov	(r2),r0		;Get contents
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-9
+COMMAND PROCESSORS.
+
+    514	171752	004537 	172672 			jsr	r5,cadv		;Type contents
+    515	171756	012604 				mov	(sp)+,r4	; restore R4
+    516	171760	022226 			wds4:	cmp	(r2)+,(sp)+	;Increment to next cell, drop seperator
+    517	171762	000741 				br	wds2		;  and return
+    518
+    519	171764	000137 	170674 		err1:	jmp	err		;Intermediate help
+    520
+    521					; Process ;I, byte area fill
+    522
+    523	171770	004537 	171614 		bfill:	jsr	r5,fill		;Do all the common stuff
+    524	171774	110021 				movb	r0,(r1)+	;Fill in another byte
+    525	171776	000713 				br	fillit		;The rest is common too
+    526
+    527					.if ndf,test
+    528					.iif gt,.-172000 .error	.-172000 Restart vectors overwritten
+    529		172000 				. = 172000
+    530	172000	000137 	170000 		power:	jmp	odt
+    531	172004	000541 			reset:	br	break
+    532					.endc
+    533
+    534					; Process ;F, word area fill
+    535
+    536	172006	004537 	171614 		wfill:	jsr	r5,fill		;Do all the common stuff
+    537	172012	010021 				mov	r0,(r1)+	;Fill in another word
+    538	172014	000704 				br	fillit		;The rest is common too
+    539
+    540					; More of the search commands... effective address search part
+    541
+    542	172016	000316 			eff1:	swab	(sp)		;Set '@' as seperator
+    543	172020	020005 				cmp	r0,r5		; Is (X)=K?
+    544	172022	001737 				beq	wds3		;Type if equal
+    545	172024	012716 	037137 			mov	#"_>,(sp)	;Change seperators
+    546	172030	010003 				mov	r0,r3		;(X) to R3
+    547	172032	005203 				inc	r3
+    548	172034	005203 				inc	r3		;(X)+2
+    549	172036	060203 				add	r2,r3		;(X)+X+2
+    550	172040	020305 				cmp	r3,r5		;Is (X)+X+2=K?
+    551	172042	001727 				beq	wds3		;Branch if equal
+    552	172044	000316 				swab	(sp)		;Make '>' seperator
+    553	172046	110000 				movb	r0,r0		;Sign extend the offset
+    554	172050	005200 				inc	r0
+    555	172052	006300 				asl	r0		;Multiply by two
+    556	172054	060200 				add	r2,r0		;Add PC
+    557	172056	020005 				cmp	r0,r5		;Is the result a proper rel. branch?
+    558	172060	000720 				br	wds3
+    559
+    560					; Process G - go
+    561
+    562	172062	005703 			go:	tst	r3		;Was K; typed?
+    563	172064	001737 				beq	err1		;Type ?<CR,LF> if not
+    564	172066	112737 	000021 	174372 		movb	#bkp+3,p	;Clear proceed
+    565	172074	006205 				asr	r5		;Check low order bit
+    566	172076	103732 				bcs	err1		;Error if odd number
+    567	172100	006305 				asl	r5		;Restore word
+    568	172102	010537 	174226 			mov	r5,upc		;Set up new PC
+    569	172106	004537 	173242 			jsr	r5,rstt		;Set high priority & restore teletype
+    570	172112	105037 	174371 		tbit:	clrb	t		;Clear T-flag
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-10
+COMMAND PROCESSORS.
+
+    571	172116	105737 	174370 			tstb	s		;See if we need a T bit
+    572	172122	001012 				bne	go2		;If so go now
+    573	172124	012704 	000016 			mov	#bkp,r4		;Restore all breakpoints (0-7)
+    574	172130	017464 	174270 	174334 	1$:	mov	@adr1(r4),uin(r4) ;Save contents
+    575					.iif ne,o.break	  mov	#o.break,@adr1(r4)	;Replace with 'BPT' trap
+    576	172136	005074 	174270 		.iif eq,o.break	  clr	@adr1(r4)		;Replace with 'HALT' trap
+    577	172142	005304 				dec	r4
+    578	172144	005304 				dec	r4
+    579	172146	002370 				bge	1$		;Loop until done
+    580	172150	012600 			go2:	mov	(sp)+,r0	;Restore registers R0-R6
+    581	172152	012601 				mov	(sp)+,r1
+    582	172154	012602 				mov	(sp)+,r2
+    583	172156	012603 				mov	(sp)+,r3
+    584	172160	012604 				mov	(sp)+,r4
+    585	172162	012605 				mov	(sp)+,r5
+    586	172164	011606 				mov	(sp),sp		;Restore user stack
+    587	172166	013746 	174230 			mov	ust,-(sp)	; and status
+    588
+    589	172172	042716 	000020 			bic	#tbt,(sp)	;Clear the T bit
+    590	172176					mtps	(sp)		;Enable user priority interrupts
+    591	172202	005737 	174370 			tst	s.t		;Either S or T flags set ?
+    592	172206	001410 				beq	1$		;No, carry on
+    593	172210	052716 	000020 			bis	#tbt,(sp)	;Yes, set the T bit
+    594					;Even on a T-11 we must grab the BPT trap vector when the T bit is set
+    595	172214	012737 	172310 	000014 		mov	#break,@#tvec	;Force correct break vector PC
+    596	172222	012737 	000340 	000016 		mov	#stm,@#tvec+2	;Status word to break vector+2
+    597
+    598	172230	013746 	174226 		1$:	mov	upc,-(sp)	;Restore users PC
+    599	172234	000006 				rtt			;Then do some of the users prog.
+    600
+    601					; Process P - proceed;  Only allowed after a breakpoint
+    602
+    603	172236	113700 	174372 		proc:	movb	p,r0		;Check legality of proceed
+    604	172242	002650 				blt	err1		;Not legal
+    605	172244	005702 				tst	r2		;Check for illegal count
+    606	172246	001246 				bne	err1		;Jump if illegal
+    607	172250	005703 				tst	r3		;Was count specified?
+    608	172252	001402 				beq	pr1		;No
+    609	172254	010560 	174312 			mov	r5,ct(r0)	;Yes, put away count
+    610	172260	004537 	173242 		pr1:	jsr	r5,rstt		;Force high priority & restore tty
+    611	172264	123727 	174372 	000016 	c1:	cmpb	p,#bkp		;See if a real breakpoint or a fake
+    612	172272	101307 				bhi	tbit		;Branch if fake
+    613	172274	105737 	174370 			tstb	s		;See if single instruction mode
+    614	172300	001304 				bne	tbit		;If so exit now
+    615	172302	105237 	174371 			incb	t		;Set T-bit flag
+    616	172306	000720 				br	go2
+    617						.sbttl	Breakpoint trap handler & I/O routines.
+    618
+    619					; Breakpoint handler
+    620
+    621	172310	012637 	174226 		break:	mov	(sp)+,upc	;Priority is 7 upon entry
+    622	172314	012637 	174230 			mov	(sp)+,ust	;Save status and PC
+    623	172320	112737 	000021 	174372 		movb	#bkp+3,p	;Tell ;P that we can continue
+    624
+    625					; Save registers R0-R6;  internal stack
+    626
+    627	172326	010637 	174224 			mov	sp,usp		;Save user stack address
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-11
+BREAKPOINT TRAP HANDLER & I/O ROUTINES.
+
+    628	172332	012706 	174224 			mov	#usp,sp		;Set to internal stack
+    629	172336	010546 				mov	r5,-(sp)	;Save registers
+    630	172340	010446 				mov	r4,-(sp)	;0
+    631	172342	010346 				mov	r3,-(sp)	;
+    632	172344	010246 				mov	r2,-(sp)	; thru
+    633	172346	010146 				mov	r1,-(sp)	;
+    634	172350	010046 				mov	r0,-(sp)	;	5
+    635
+    636	172352	113704 	174371 			movb	t,r4		;Check for T-bit set
+    637	172356	001405 				beq	1$		;Jump if not set
+    638	172360	105304 				decb	r4		;Check prog. didn't mangle it
+    639	172362	001653 				beq	tbit		;OK - good T bit trap
+    640	172364	004537 	173224 			jsr	r5,crtype	;Tell user all is corrupt
+    641	172370	   043 	   000 			.asciz	'#'
+    642
+    643					; Remove breakpoints 0-7,  in the opposite order of setting
+    644
+    645	172372	105737 	174370 		1$:	tstb	s		;See if single instruction is going
+    646	172376	001010 				bne	3$		;Skip if so
+    647	172400	005004 				clr	r4		;Remove all breakpoints
+    648	172402	016474 	174334 	174270 	2$:	mov	uin(r4),@adr1(r4)	;Clear breakpoint
+    649	172410	005724 				tst	(r4)+
+    650	172412	020427 	000016 			cmp	r4,#bkp
+    651	172416	101771 				blos	2$		;Re-loop until done
+    652	172420	013705 	174226 		3$:	mov	upc,r5		;Get PC, it points to the BREAK
+    653	172424	105737 	174370 			tstb	s		;See if it was single instruction fun
+    654	172430	001024 				bne	5$		;If so handle there
+    655	172432	005745 				tst	-(r5)
+    656	172434	010537 	174226 			mov	r5,upc
+    657	172440	012704 	000016 			mov	#bkp,r4		;Get a counter
+    658	172444	020564 	174270 		4$:	cmp	r5,adr1(r4)	;Compare with list
+    659	172450	001420 				beq	6$		;Jump if found
+    660	172452	005304 				dec	r4
+    661	172454	005304 				dec	r4
+    662	172456	002372 				bge	4$		;Re-loop until found
+    663	172460	004537 	173144 			jsr	r5,svttyp	;Lower priority & save teletype status
+    664	172464	   102 	   105 	   040 		.asciz	'BE '		;Output "BE " for bad entry
+	172467	   000
+    665	172470	010500 				mov	r5,r0
+    666	172472	062737 	000002 	174226 		add	#2,upc		;Pop over the adjustment above
+    667	172500	000432 				br	7$		; or continue
+    668	172502	112704 	000020 		5$:	movb	#bkp+2,r4	;Set break point high + 1
+    669	172506	010564 	174270 			mov	r5,adr1(r4)	;Store next PC value for type out
+    670	172512	110437 	174372 		6$:	movb	r4,p		;Allow proceed
+    671	172516	005364 	174312 			dec	ct(r4)
+    672	172522	003260 				bgt	c1		;Jump if repeat
+    673	172524	012764 	000001 	174312 		mov	#1,ct(r4)	;Reset count to 1
+    674	172532	004537 	173144 			jsr	r5,svttyp	;Lower priority & save tty status; R4 is safe
+    675	172536	   102 	   000 			.asciz	'B'		;Type "B"
+    676	172540	113700 	174372 			movb	p,r0		;Convert breakpoint number to ascii
+    677	172544	006200 				asr	r0
+    678	172546	062700 	035460 			add	#"0;,R0		;Type number;
+    679	172552	004537 	173042 			jsr	r5,typ2
+    680	172556	113704 	174372 			movb	p,r4
+    681	172562	016400 	174270 			mov	adr1(r4),r0	;Get address of break
+    682	172566	012737 	000002 	174360 	7$:	mov	#2,bw		;Set word mode
+    683	172574	004537 	172604 			jsr	r5,cada		;Type address
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-12
+BREAKPOINT TRAP HANDLER & I/O ROUTINES.
+
+    684	172600	000137 	170702 			jmp	dcd		;Go to decoder
+    685
+    686					; Type out address in r0, relocating as required.
+    687
+    688	172604	005737 	174246 		cada:	tst	format		;Is relocation allowed ?
+    689	172610	001030 				bne	cadv		;Skip this if not
+    690	172612	010046 				mov	r0,-(sp)	;Save address to be output
+    691	172614	012704 	174250 		cada1:	mov	#reloc,r4	;Point at relocation regs
+    692	172620	012700 	174006 			mov	#zero,r0	;Start assuming no relocation
+    693	172624	021614 			1$:	cmp	(sp),(r4)	;This relocation possible ?
+    694	172626	103403 				blo	2$		;Skip if too big
+    695	172630	021410 				cmp	(r4),(r0)	;Possible - better than current ?
+    696	172632	101401 				blos	2$		;Skip if not
+    697	172634	010400 				mov	r4,r0		;Better - save it
+    698	172636	005724 			2$:	tst	(r4)+		;Advance to next value
+    699	172640	020427 	174270 			cmp	r4,#reloc+16.	;If there is one
+    700	172644	103767 				blo	1$		;Loop 'till all values tried
+    701	172646	161016 			cadain:	sub	(r0),(sp)	;Now relocate address
+    702	172650	162700 	174250 			sub	#reloc,r0	;Which relocation reg ?
+    703	172654	103405 				blo	1$		;None - don't print one
+    704	172656	006200 				asr	r0		;Convert it to digit
+    705	172660	062700 	026060 			add	#"0,,r0
+    706	172664	004537 	173042 			jsr	r5,typ2		;Type it & a comma
+    707	172670	012600 			1$:	mov	(sp)+,r0	;Get offset, fall through & type
+    708
+    709					; Type out contents of word or byte with one trailing space. Word is in R0
+    710
+    711	172672	012703 	000006 		cadv:	mov	#6,r3		;# of digits
+    712	172676	012704 	177776 			mov	#-2,r4		;# of bits first-3
+    713	172702	022737 	000001 	174360 		cmp	#1,bw		;See if word mode
+    714	172710	001023 				bne	spc		;Branch if so
+    715	172712	110046 				movb	r0,-(sp)	;Save byte for character output
+    716	172714	006203 				asr	r3		;Only do 3 digits
+    717	172716	005204 				inc	r4		;Do 2 bits first
+    718	172720	000300 				swab	r0		;And turn R0 around
+    719	172722	004537 	172760 			jsr	r5,spc		;Output in octal
+    720	172726	004537 	173050 			jsr	r5,eqtype	;Then as =<char code>
+    721	172732	042716 	177600 			bic	#177600,(sp)	;Strip parity bit
+    722	172736	121627 	000040 			cmpb	(sp),#40	;Control char ?
+    723	172742	103002 				bhis	1$		;Branch if not
+    724	172744	012716 	000077 			mov	#'?,(sp)	;Yes - unprintable
+    725	172750	012700 	020000 		1$:	mov	#20000,r0	;Get a trailing space
+    726	172754	052600 				bis	(sp)+,r0	;And char
+    727	172756	000431 				br	typ2		;Type it & return
+    728
+    729	172760	010046 			spc:	mov	r0,-(sp)	;Save R0
+    730	172762	062704 	000003 		1$:	add	#3,r4		;Compute the number of bits to do
+    731	172766	005000 				clr	r0
+    732	172770	006116 			2$:	rol	(sp)		;Get a bit
+    733	172772	006100 				rol	r0		;Store it away
+    734	172774	077403 				sob	r4,2$		;Loop once for each bit
+    735	172776	062700 	020060 			add	#"0 ,r0		;Convert to ascii, put space in high byte
+    736	173002	004537 	173014 			jsr	r5,ftyp		;Type digit
+    737	173006	077313 				sob	r3,1$		;Loop if more digits
+    738	173010	005726 				tst	(sp)+		;Get rid of junk
+    739	173012	000300 			styp:	swab	r0		;Setup trailing space & fall thru FTYP
+    740
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-13
+BREAKPOINT TRAP HANDLER & I/O ROUTINES.
+
+    741					; Type only one character (contained in R0)
+    742
+    743	173014	105737 	177564 		ftyp:	tstb	@#tcsr
+    744	173020	100375 				bpl	.-4
+    745	173022	110037 	177566 			movb	r0,@#tdb
+    746	173026	000205 			typ1:	rts	r5
+    747
+    748	173030	012700 	005015 		crlf:	mov	#5015,r0	;<CR,LF>
+    749	173034	004537 	173042 			jsr	r5,typ2
+    750	173040	005000 				clr	r0		;Fill with 2 nulls
+    751
+    752	173042	004537 	173014 		typ2:	jsr	r5,ftyp
+    753	173046	000761 				br	styp
+    754
+    755	173050	012700 	000075 		eqtype:	mov	#'=,r0		;Type an '=' sign
+    756	173054	000757 				br	ftyp
+    757
+    758					; General character input routine -- ODT11S
+    759					; Character input goes to R0
+    760
+    761	173056	105737 	177560 		ttget:	tstb	@#rcsr
+    762	173062	100375 				bpl	ttget
+    763	173064	113700 	177562 			movb	@#rdb,r0
+    764	173070	000207 				rts	pc
+    765
+    766	173072	004737 	173056 		get:	jsr	pc,ttget	;Get character
+    767	173076	005200 				inc	r0		;Make <rubout> give an illegal code
+    768	173100	042700 	177600 			bic	#177600,r0	;Strip off parity from character
+    769	173104	005300 				dec	r0		;Restore all chars except <rubout>
+    770	173106	001771 				beq	get		;Ignore nulls
+    771	173110	120027 	000012 			cmpb	r0,#lf		;See if a <LF>
+    772	173114	001412 				beq	3$		;If so save the paper
+    773	173116	120027 	000140 			cmpb	r0,#140		;See if upper case
+    774	173122	101402 				blos	2$		;OK if so
+    775	173124	162700 	000040 			sub	#40,r0		;Fold lower case to upper
+    776	173130	004537 	173014 		2$:	jsr	r5,ftyp		;Echo character
+    777	173134	122700 	000040 			cmpb	#40,r0		;Check for spaces
+    778	173140	001754 				beq	get		;Ignore spaces
+    779	173142	000205 			3$:	rts	r5
+    780
+    781					; Lower priority, save teletype status & print a message
+    782
+    783	173144	113700 	174232 		svttyp:	movb	pri,r0		;Check if priority
+    784	173150	100003 				bpl	1$		; is as same as user pgm
+    785	173152	113700 	174230 			movb	ust,r0		;Pick up user ust if so
+    786	173156	000404 				br	2$
+    787	173160	106200 			1$:	asrb	r0		;Shift low order bits of actual priority
+    788	173162	106000 				rorb	r0		;  into
+    789	173164	106000 				rorb	r0		;    high order
+    790	173166	106000 				rorb	r0		;      position
+    791	173170	042700 	000020 		2$:	bic	#tbt,r0		;Clear "T" bit
+    792	173174					mtps	r0		;Put the status away where it belongs
+    793					;
+    794	173200	113737 	177560 	174374 		movb	@#rcsr,csr1	;Save r c/sr
+    795	173206	113737 	177564 	174375 		movb	@#tcsr,csr2	;Save t c/sr
+    796	173214	105037 	177560 			clrb	@#rcsr		;Clear enable and maintenance
+    797	173220	105037 	177564 			clrb	@#tcsr		;  bits in both c/sr
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-14
+BREAKPOINT TRAP HANDLER & I/O ROUTINES.
+
+    798
+    799					; General string/character output routine
+    800
+    801	173224	004537 	173030 		crtype:	jsr	r5,crlf		;Preceed with <CR><LF>
+    802	173230	112500 			type:	movb	(r5)+,r0	;Get a char
+    803	173232	001675 				beq	typ1		;Exit when done
+    804	173234	004537 	173014 			jsr	r5,ftyp		;Type one character
+    805	173240	000773 				br	type		;Loop until done
+    806
+    807					; Set high priority & restore teletype status
+    808
+    809	173242				rstt:	mtps	#stm		;Set high priority
+    810	173250	004537 	173030 			jsr	r5,crlf		;Take a new line
+    811	173254	105737 	177564 			tstb	@#tcsr		;Wait ready
+    812	173260	100375 				bpl	.-4		;  on printer
+    813	173262	032737 	004000 	177560 		bit	#4000,@#rcsr	;Check busy flag
+    814	173270	001403 				beq	1$		;Skip ready loop if not busy
+    815	173272	105737 	177560 			tstb	@#rcsr		;Wait ready
+    816	173276	100375 				bpl	.-4		;  on reader
+    817	173300	113737 	174374 	177560 	1$:	movb	csr1,@#rcsr	;Restore
+    818	173306	113737 	174375 	177564 		movb	csr2,@#tcsr	;  the status registers
+    819	173314	000205 				rts	r5
+    820
+    821					; Close word or byte and exit,
+    822					; Upon entering, R2 has numeric flag, R4 has contents
+    823
+    824	173316	005702 			clse:	tst	r2		;If no number was typed there is
+    825	173320	001412 				beq	2$		;No change to the open cell
+    826	173322	022737 	000001 	174360 		cmp	#1,bw
+    827	173330	001404 				beq	1$		;Jump if byte mode
+    828	173332	101005 				bhi	2$		;Jump if already closed
+    829	173334	010477 	001022 			mov	r4,@cad		;Store word
+    830	173340	000402 				br	2$
+    831	173342	110477 	001014 		1$:	movb	r4,@cad		;Store byte
+    832	173346	000207 			2$:	rts	pc
+    833						.sbttl	Cassette load & dump routines.
+    834
+    835					;Process L - load a program from tape
+    836
+    837					;Input format:
+    838
+    839					;Frame
+    840					;  1	001
+    841					;  2	000
+    842					;  3	Low order byte count	(Includes all except checksum,
+    843					;  4	High order byte count		even the 001 000.)
+    844					;  5	Low order load address
+    845					;  6	High order load address
+    846					;  7..	Data bytes
+    847					;  XXX	Checksum	(Includes all the block - even the 001)
+    848					;
+    849					;The checksum is calculated such that when all the bytes have
+    850					;been added up, the low byte of the sum will be zero.
+    851					;
+    852					;If the byte count is 6, the load address specified will be
+    853					;taken to be the start address of the program. If the address
+    854					;is even the program will be started, otherwise ODT will be
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-15
+CASSETTE LOAD & DUMP ROUTINES.
+
+    855					;re-entered.  If (count > 6), the data block will be loaded.
+    856					;
+    857					;This is the format used by DEC for paper tapes, and can be
+    858					;produced using the RT-11 LINK/LDA command.
+    859
+    860					;Register use:
+    861					; R0 - contents of byte		R3 - checksum
+    862					; R1 - load address		R4 - Word from L.GWRD; start address
+    863					; R2 - byte count		R5 - read subr pointer
+    864
+    865	173350	004737 	173056 		load:	jsr	pc,ttget	;Wait for dummy char before starting
+    866	173354	010346 				mov	r3,-(sp)	;See if any relocation wanted
+    867	173356	001404 				beq	1$		;Branch if not
+    868	173360	010516 				mov	r5,(sp)		;Wanted - get relocation address
+    869	173362	001002 				bne	1$		;If given
+    870	173364	013716 	174244 			mov	l.addr,(sp)	;None given - place after last tape
+    871	173370	012705 	173454 		1$:	mov	#l.read,r5	;Setup read routine address
+    872	173374	005001 				clr	r1		;Clear out load address
+    873
+    874					;Look for a block start
+    875
+    876	173376	005003 			l.ld2:	clr	r3		;Initialise ckecksum
+    877	173400	004715 				jsr	pc,(r5)		;Read a frame
+    878	173402	077003 				sob	r0,l.ld2	;Loop 'till byte=1 (block start)
+    879	173404	004715 				jsr	pc,(r5)		;Found '1' - skip next byte
+    880
+    881					;Get byte count & address, relocate address, if end goto L.JMP
+    882
+    883	173406	004737 	173500 			jsr	pc,l.gwrd	;Get byte count word
+    884	173412	010402 				mov	r4,r2		;Save it
+    885	173414	162702 	000004 			sub	#4,r2		;Correct it after reading 001,000,count
+    886	173420	004737 	173500 			jsr	pc,l.gwrd	;Get load address
+    887	173424	061604 				add	(sp),r4		;Plus relocation factor
+    888	173426	005702 				tst	r2		;Is it an end block ?
+    889	173430	001431 				beq	l.jmp		;Branch if so
+    890	173432	010401 				mov	r4,r1		;Keep as load address
+    891
+    892					;Read in the remainder of the data block
+    893
+    894	173434	004715 			l.ld3:	jsr	pc,(r5)		;Read a frame
+    895	173436	002004 				bge	l.ld4		;Branch if more data there
+    896	173440	105703 				tstb	r3		;Look at checksum
+    897	173442	001755 				beq	l.ld2		;Good sum - find next block
+    898	173444	000000 			l.bad:	o.break			;Checksum error
+    899	173446	000753 				br	l.ld2
+    900
+    901	173450	110021 			l.ld4:	movb	r0,(r1)+	;Put byte in memory
+    902	173452	000770 				br	l.ld3
+    903
+    904					;Input a frame, decrement byte count, accumulate checksum
+    905
+    906	173454	052737 	000001 	177560 	l.read:	bis	#1,@#rcsr	;Set cassette & reader run
+    907	173462	004737 	173056 			jsr	pc,ttget	;Then wait for char
+    908	173466	042700 	177400 			bic	#177400,r0	;Strip off silly bits
+    909	173472	060003 				add	r0,r3		;Accumulate checksum
+    910	173474	005302 				dec	r2		;Update byte count
+    911	173476	000207 				rts	pc
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-16
+CASSETTE LOAD & DUMP ROUTINES.
+
+    912
+    913					;Assemble a full word of data
+    914
+    915	173500	004715 			l.gwrd:	jsr	pc,(r5)		;Get low byte
+    916	173502	010004 				mov	r0,r4		;Save it
+    917	173504	004715 				jsr	pc,(r5)		;Then high byte
+    918	173506	000300 				swab	r0		; in high bits
+    919	173510	050004 				bis	r0,r4		;Assemble full word
+    920	173512	000207 				rts	pc
+    921
+    922	173514	005202 			l.jmp:	inc	r2		;;Get the constant 1
+    923	173516	005201 				inc	r1		;;Round up load address
+    924					;;	cmpb	(r1)+,(r2)+	;r2=1, increment r1
+    925	173520	040201 				bic	r2,r1
+    926	173522	010137 	174244 			mov	r1,l.addr	;Save next free memory address
+    927	173526	004715 				jsr	pc,(r5)		;Read the checksum
+    928	173530	105703 				tstb	r3		;Good checksum ?
+    929	173532	001344 				bne	l.bad		;Branch if error
+    930	173534	040204 				bic	r2,r4		;Round down to word boundry
+    931	173536	010437 	174226 			mov	r4,upc		;Save start as users PC
+    932	173542	112737 	000021 	174372 		movb	#bkp+3,p	;Allow proceed from here
+    933
+    934	173550	000137 	170702 		dcdc:	jmp	dcd
+    935
+    936					; Process D - dump memory out to tape in a format compatible with
+    937					; the L command above.
+    938
+    939					;Register use:
+    940					;R0 - Word / byte to punch	R3 - Address of D.PW routine
+    941					;R1 - Checksum			R4 - 1st address beyond block to punch
+    942					;R2 - Spare			R5 - Address of data to punch
+    943
+    944	173554	004737 	173056 		dump:	jsr	pc,ttget	;Wait for dummy char
+    945	173560	012703 	173636 			mov	#d.pw,r3	;Load address of word read routine
+    946	173564	005001 				clr	r1		;Clear out checksum word
+    947	173566	005000 				clr	r0		;Form header word of '1'
+    948	173570	005200 				inc	r0
+    949	173572	004513 				jsr	r5,(r3)		;Then punch it
+    950	173574	010400 				mov	r4,r0		;Move to o/p reg
+    951	173576	062700 	000006 			add	#6,r0		;Account for header words
+    952	173602	160500 				sub	r5,r0		;Make # bytes to punch
+    953	173604	004513 				jsr	r5,(r3)		;Output block size
+    954	173606	010500 				mov	r5,r0		;Then block address
+    955	173610	004513 				jsr	r5,(r3)
+    956	173612	020504 			2$:	cmp	r5,r4		;Any bytes to o/p ?
+    957	173614	103004 				bhis	3$		;Go for checksum if not
+    958	173616	112500 				movb	(r5)+,r0	;Yes - get byte
+    959	173620	004537 	173644 			jsr	r5,d.pb		;And punch it
+    960	173624	000772 				br	2$
+    961	173626	110100 			3$:	movb	r1,r0		;Get checksum
+    962	173630	004513 				jsr	r5,(r3)		;Punch it, 3 bytes of rubbish & return
+    963	173632	004513 				jsr	r5,(r3)
+    964	173634	000745 				br	dcdc
+    965
+    966	173636	004537 	173644 		d.pw:	jsr	r5,d.pb		;Punch low byte
+    967	173642	000300 				swab	r0		;Get high one, fall thru & punch
+    968
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-17
+CASSETTE LOAD & DUMP ROUTINES.
+
+    969	173644	160001 			d.pb:	sub	r0,r1		;Accumulate checksum
+    970	173646	000137 	173014 			jmp	ftyp		;Output byte & return
+    971						.sbttl	Tables.
+    972
+    973	173652	171236 			lgdr:	op1	; <LF>	modify, close, open next
+    974	173654	171224 				cret	; <CR>	close
+    975	173656	170360 				reladr	; !  relocate address
+    976	173660	170512 				regt	; $  register ops
+    977	173662	171034 				comma	; ,  relocate data
+    978	173664	171136 				wrd	; /  open word
+    979	173666	171062 				semi	; ;  introduce second argument
+    980	173670	171232 				old	; <  return to old sequence and open
+    981	173672	170634 				orrb	; >  open related, rel. branch
+    982	173674	170624 				orab	; @  open related, absolute
+    983	173676	171362 				bkpt	; B  breakpoints
+    984	173700	171074 				const	; C  constant reg access
+    985	173702	173554 				dump	; D  dump to tape
+    986	173704	171634 				eff	; E  search effective address
+    987	173706	172006 				wfill	; F  fill a block of words
+    988	173710	172062 				go	; G  go to address k
+    989	173712	171770 				bfill	; I  fill a block of bytes
+    990	173714	173350 				load	; L  load tape
+    991	173716	171512 				ofst	; O  offset
+    992	173720	172236 				proc	; P  proceed
+    993	173722	170302 				rel	; R  set relocation constant
+    994	173724	170616 				sngl	; S  single instruction mode
+    995	173726	171640 				wsch	; W  search word
+    996	173730	170442 				rad50	; X  radix 50
+    997	173732	171150 				byt	; \  open byte
+    998	173734	171342 				back	; ^  open previous
+    999	173736	170652 				orpc	; _  open related, index - PC
+   1000
+   1001	173740	   123 			tl:	.byte	'S	;Do	1	; User status reg.
+   1002	173741	   120 				.byte	'P	;not	2	; Priority for ODT
+   1003	173742	   115 				.byte	'M	;	3	; Search mask
+   1004	173743	   114 				.byte	'L	;change	4	; Lower limit
+   1005	173744	   125 				.byte	'U	;	5	; Upper limit
+   1006	173745	   103 				.byte	'C	;the	6	; Constant reg.
+   1007	173746	   101 				.byte	'A	;	7	; Load address
+   1008	173747	   106 				.byte	'F	;order	8	; Format reg.
+   1009	173750	   122 				.byte	'R	;	9	; Relocation regs.
+   1010	173751	   102 				.byte	'B	;here	10	; Breakpoints
+   1011	173752	   000 				.byte	0	;List terminator
+   1012
+   1013	173753	   012 	   015 	   041 	lgch:	.byte	lf, cr, '!, '$, ',, '/, ';, '<, '>
+	173756	   044 	   054 	   057
+	173761	   073 	   074 	   076
+   1014	173764	   100 	   102 	   103 		.byte	'@, 'B, 'C, 'D, 'E, 'F, 'G, 'I, 'L
+	173767	   104 	   105 	   106
+	173772	   107 	   111 	   114
+   1015	173775	   117 	   120 	   122 		.byte	'O, 'P, 'R, 'S, 'W, 'X, '\, '^, '_
+	174000	   123 	   127 	   130
+	174003	   134 	   136 	   137
+   1016					.iif ne, <.-tl&1> .byte	0	;List terminator. Use ZERO below if poss.
+   1017	174006				zero:
+   1018					.iif ne,o.break	.word 0		;If HALT (=0) trap in use, use it as the zero.
+   1019	174006	000000 			breakc:	o.break			;Trace trap prototype. HALTs get used as ZERO
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-18
+TABLES.
+
+   1020					;
+   1021					.if ndf,test
+   1022					;.iif gt,.-174000 .error .-174000 ODT too big to fit in ROM
+   1023					.endc
+   1024						.sbttl	Workspace.
+   1025
+   1026					.if df,test
+   1027						.even
+   1028						.blkb	120	;ODT's stack immediately follows ODT
+   1029					.iff
+   1030		174210 				.=174000+210
+   1031					.endc
+   1032
+   1033					;The order of the following entries is critical
+   1034
+   1035
+   1036	174210				ur0:	.blkw	6	;User R0-R5
+   1037	174224				usp:	.blkw	1	;User SP
+   1038	174226				upc:	.blkw	1	;User PC
+   1039	174230				ust:	.blkw	1	;User ST
+   1040	174232				pri:	.blkw	1	;ODT priority (7)
+   1041	174234				msk:	.blkw	1	;Mask
+   1042	174236					.blkw	1	;Low limit
+   1043	174240					.blkw	1	;High limit
+   1044	174242				creg:	.blkw	1	;Constant reg
+   1045	174244				l.addr:	.blkw	1	;Next free load address
+   1046	174246				format:	.blkw	1	;Format reg
+   1047	174250				reloc:	.blkw	8.	;Relocation regs
+   1048
+   1049					; Break point lists, adr1 = address of breakpoint, ct = count,
+   1050					;   uin = contents
+   1051
+   1052	174270				adr1:	.blkb	bkp+4
+   1053	174312				ct:	.blkb	bkp+4
+   1054	174334				uin:	.blkb	bkp+4
+   1055
+   1056
+   1057	174356				offset:	.blkw	1	;Relocation offset
+   1058	174360				bw:	.blkw	1	; =0 - all closed,
+   1059								; =1 - byte open,
+   1060								; =2 - word open
+   1061	174362				cad:	.blkw	1	; Current address
+   1062	174364				dot:	.blkw	1	; Origin address
+   1063	174366				semic:	.blkb	1	;Semi-colon flag
+   1064	174367				seq:	.blkb	1	;Flag for < command
+   1065	174370				s.t:	.blkw	1	;s & t together as a single 16 bit word
+   1066		174370 				s = s.t		;Single instruction flag, non 0 if active, 0 if not.
+   1067								;No breakpoints may be set in single instruction mode.
+   1068		174371 				t = s.t + 1	;T-bit flag, doing the instruction under a breakpoint
+   1069	174372				p:	.blkb	1	;Proceed flag = -2 if manual entry
+   1070								;		-1 if no proceed allowed
+   1071								;		0-7 if proceed allowed
+   1072	174373				negate:	.blkb	1	;Negate pending flag for numeric input
+   1073					;NB. csr1 and csr2 get cleared together by a word clear - do not split.
+   1074	174374				csr1:	.blkb	1	;Save cell - r c/sr
+   1075	174375				csr2:	.blkb	1	;Save cell - t c/sr
+   1076
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-19
+WORKSPACE.
+
+   1077		000001 				.end	; odt
+ODT11S	MACRO V04.00   00:00:06 PAGE 1-20
+SYMBOL TABLE
+
+ADR1    174270   	CSR2    174375   	LF    = 000012   	PRI     174232   	T     = 174371
+BACK    171342   	CT      174312   	LGCH    173753   	PROC    172236   	TBIT    172112
+BFILL   171770   	C1      172264   	LGDR    173652   	PR1     172260   	TBT   = 000020
+BKP   = 000016   	DCD     170702   	LOAD    173350   	RAD50   170442   	TCLS    170572
+BKPT    171362   	DCDA    171230   	L.ADDR  174244   	RALL    171456   	TCSR  = 177564
+BREAK   172310   	DCDB    171510   	L.BAD   173444   	RCSR  = 177560   	TDB   = 177566
+BREAKC  174006   	DCDC    173550   	L.GWRD  173500   	RDB   = 177562   	TL      173740
+BW      174360   	DCDR    170730   	L.JMP   173514   	REGT    170512   	TSTWRD  170576
+BYT     171150   	DCD1    170724   	L.LD2   173376   	REL     170302   	TTGET   173056
+BYT1    171146   	DCD2    170714   	L.LD3   173434   	RELADR  170360   	TVEC  = 000014
+CAD     174362   	DOT     174364   	L.LD4   173450   	RELOC   174250   	TYPE    173230
+CADA    172604   	DUMP    173554   	L.READ  173454   	REL1    170364   	TYP1    173026
+CADAIN  172646   	D.PB    173644   	MSK     174234   	REMB    171436   	TYP2    173042
+CADA1   172614   	D.PW    173636   	MULIN   170156   	RESET   172004   	UIN     174334
+CADV    172672   	EFF     171634   	MUL50   170146   	RSTT    173242   	UPC     174226
+CHKLST  170256   	EFF1    172016   	NEGATE  174373   	S     = 174370   	UR0     174210
+CHR50I  170170   	EIS   = 000001   	ODT     170000 G 	SCAN    170740   	USP     174224
+CHR50O  170070   	EQTYPE  173050   	OFFSET  174356   	SEMI    171062   	UST     174230
+CLGL    170750   	ERR     170674   	OFST    171512   	SEMIC   174366   	WB1     171156
+CLGL1   170436   	ERR0    170614   	OLD     171232   	SEQ     174367   	WDS     171642
+CLSE    173316   	ERR1    171764   	OP1     171236   	SET     171414   	WDS2    171666
+COMMA   171034   	ERR2    171242   	OP2     171270   	SET1    171432   	WDS3    171722
+CONST   171074   	FILL    171614   	ORAB    170624   	SNGL    170616   	WDS4    171760
+CR    = 000015   	FILLIT  171626   	ORPC    170652   	SPC     172760   	WFILL   172006
+CREG    174242   	FORMAT  174246   	ORRB    170634   	ST    = 177776   	WRD     171136
+CRET    171224   	FTYP    173014   	O.BREA= 000000   	STM   = 000340   	WRD1    171166
+CRLF    173030   	GET     173072   	P       174372   	STYP    173012   	WSCH    171640
+CRTYPE  173224   	GO      172062   	PCS     170660   	SVTTYP  173144   	ZERO    174006
+CSR1    174374   	GO2     172150   	POWER   172000   	S.T     174370
+
+. ABS.	174376	   000
+      	000000	   001
+ERRORS DETECTED:  0
+
+VIRTUAL MEMORY USED:  8192 WORDS  ( 32 PAGES)
+DYNAMIC MEMORY AVAILABLE FOR  67 PAGES
+DK1:ODT11P.OBJ,DK1:ODT11P.LST=DK1:ODT11P.MAC
+
+                                                                                                                                                                                                                    

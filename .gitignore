@@ -23,3 +23,6 @@ dist-linux/
 
 # ---- E2E failure artifacts (screenshots + console tails) ----
 tests/artifacts/
+
+# ---- Scratch probe scripts (never commit) ----
+*.tmp.js
