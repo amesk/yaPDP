@@ -227,6 +227,13 @@
         var b = tapeBytes[pos] & 0x7F;
         pos++;
         lastFeed = Date.now();
+        // Audible tape-advance ratchet ("стрёкот"): every byte read from the
+        // tape steps the reader's ratchet wheel one position. Synthesized in
+        // pdp11-app.js (installTtyMechanicalSounds); absent in Node tests.
+        if (typeof window !== 'undefined' &&
+            typeof window.playReaderRatchet === 'function') {
+            window.playReaderRatchet();
+        }
         // CCU routing, exactly like the keyboard: LOCAL prints the tape on
         // paper only (tape -> paper copy, nothing reaches the machine);
         // LINE sends the byte to the machine, where the guest's echo prints

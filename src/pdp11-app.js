@@ -1170,6 +1170,109 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
 })();
 
 // ==================================================================
+// Audible Model 33 ASR tape-unit sounds: the reader's tape-advance
+// ratchet ("стрёкот") and the punch's solenoid clicks. Synthesized with
+// Web Audio on a dedicated context so they never clash with the switch
+// click, the teletype/printer, the VT52 key click or the bell. Always
+// on — the ratchet and the punch clicks are authentic ASR-33 mechanics —
+// but the global "mute" flag silences them like every other sound source.
+//
+// The reader "стрёкот" models the spring-loaded ratchet wheel driving
+// the tape forward: each byte read advances the sprocket holes past the
+// read head, so the sound is a short cascade of crisp micro-ticks at a
+// slightly descending pitch (the mechanical step of the indexer).
+// The punch solenoid click is a single, louder, sharper burst — the
+// punch pins striking the paper. Punching an empty byte (NUL, only the
+// feed hole) fires no pins, so it is the same ratchet but quiet and
+// soft — just the tape indexing with no solenoid strike.
+// ==================================================================
+(function installTtyMechanicalSounds() {
+  var audioCtx = null;
+  var noiseBuf = null; // shared short noise burst (lazy, per context)
+
+  // One metallic tick: band-passed noise with a fast decay.
+  function playTick(ctx, t, gain, center, q, dur) {
+    var src = ctx.createBufferSource();
+    src.buffer = ensureNoise(ctx);
+    var bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = center;
+    bp.Q.value = q;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(ctx.destination);
+    src.start(t);
+    src.stop(t + dur);
+  }
+
+  function ensureNoise(ctx) {
+    if (noiseBuf) return noiseBuf;
+    var len = Math.max(1, Math.floor(ctx.sampleRate * 0.02));
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var data = noiseBuf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return noiseBuf;
+  }
+
+  // Shared lazy context so the reader and the punch never spawn their own.
+  function ensureCtx() {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audioCtx = audioCtx || new Ctx();
+    // The very first byte may arrive outside a user gesture (e.g. the boot
+    // reader in AUTO), so resuming here keeps that first click audible.
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  // Reader ratchet: three quick ticks, pitch falling as the ratchet
+  // indexes the sprocket holes past the read head.
+  window.playReaderRatchet = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var ctx = ensureCtx();
+      if (!ctx) return;
+      var t0 = ctx.currentTime;
+      playTick(ctx, t0,         0.12, 3400, 2.6, 0.009);
+      playTick(ctx, t0 + 0.016, 0.10, 2900, 2.4, 0.010);
+      playTick(ctx, t0 + 0.032, 0.07, 2400, 2.2, 0.011);
+    } catch (err) { /* ignore audio errors */ }
+  };
+
+  // Punch solenoid: a single crisp, louder burst — the pins striking the
+  // paper. A slightly lower, thockier centre gives it the "solenoid clack".
+  window.playPunchClick = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var ctx = ensureCtx();
+      if (!ctx) return;
+      var t0 = ctx.currentTime;
+      playTick(ctx, t0,         0.30, 1900, 2.2, 0.014);
+      playTick(ctx, t0 + 0.010, 0.22, 3100, 2.8, 0.010);
+    } catch (err) { /* ignore audio errors */ }
+  };
+
+  // Empty byte (NUL — only the feed hole): no solenoid fires, so just a
+  // soft, quiet ratchet of the tape indexing one step.
+  window.playPunchQuiet = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var ctx = ensureCtx();
+      if (!ctx) return;
+      var t0 = ctx.currentTime;
+      playTick(ctx, t0,         0.05, 3000, 2.4, 0.009);
+      playTick(ctx, t0 + 0.018, 0.04, 2600, 2.2, 0.010);
+    } catch (err) { /* ignore audio errors */ }
+  };
+})();
+
+// ==================================================================
 // Audible VT52 bell (BEL, 0x07). Synthesized with Web Audio on a
 // dedicated context so it never clashes with the key-click sound. The
 // "ding" is modelled as a mechanical bell: a bright fundamental plus

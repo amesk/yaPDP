@@ -476,6 +476,11 @@ navigation sidebar) toggles *all* sounds at once — hum, teletype/LP11, paper
 feed/tear, VT52 key clicks, the bell and the mechanical click of every
 switch, button and teletype key — like a checkbox; its state is persisted
 with the rest of the configuration.
+The Model 33 ASR tape unit is audible too, synthesized with Web Audio like the
+switch clicks: the reader rattles (a ratchet "стрёкот") for every byte it
+reads off the tape, the punch clicks crisply when its solenoids fire a data
+byte, and punching an empty byte (NUL — only the feed hole) gives the same
+quiet ratchet with no solenoid strike.
 
 The **Storage** page manages the storage media in two tabs: **Images** (the
 drag & drop disk/tape image drop zone, the mounted-images/Unmount list and
