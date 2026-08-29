@@ -155,6 +155,18 @@
         if (!body) init();
         if (!body) return;
 
+        // Audible punch: a clear solenoid click when data pins fire, a quiet
+        // ratchet when the byte is empty (NUL — only the feed hole, no pin
+        // strikes the paper). Synthesized in pdp11-app.js
+        // (installTtyMechanicalSounds); absent in Node tests.
+        if (typeof window !== 'undefined') {
+            if ((code & 0x7F) === 0) {
+                if (typeof window.playPunchQuiet === 'function') window.playPunchQuiet();
+            } else if (typeof window.playPunchClick === 'function') {
+                window.playPunchClick();
+            }
+        }
+
         // Overpunch after BSP: the tape is pulled back, so the row under the
         // punch head (buffer[length - armedDepth]) is NOT part of the visible
         // tape — it sits inside the punch unit. Any punch overpunches that

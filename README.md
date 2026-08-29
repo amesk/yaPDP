@@ -73,11 +73,12 @@ npm run screenshots:os bsd      # a single shot (file name or device key)
 ```
 
 Short demonstration videos (guest-OS boots, the LP11/printer/paper-tape
-hardware, the VT11 Lunar Lander) are recorded by
-[`tools/record-video.js`](tools/record-video.js) with `puppeteer-stream` — a
-WebRTC tab-capture bridge that records both video and the in-tab audio
-(teletype chatter, LP11 buzz, power-supply hum) into a WebM file. Both the
-screenshot and video generators share [`tools/console-wait.js`](tools/console-wait.js):
+hardware, the VT11 Lunar Lander, and a front-panel bootstrap of RT-11) are
+recorded by [`tools/record-video.js`](tools/record-video.js) with
+`puppeteer-stream` — a WebRTC tab-capture bridge that records both video and
+the in-tab audio (teletype chatter, LP11 buzz, power-supply hum) into a WebM
+file. Both the screenshot and video generators share
+[`tools/console-wait.js`](tools/console-wait.js):
 a render hook (fed by the console's `onChar` in `src/pdp11-app.js`) makes them
 wait until the teletype has REALLY printed the output, so captures never cut
 mid-print:
@@ -88,6 +89,12 @@ npm run record:video            # all guest-OS clips
 npm run record:video rt11       # a single clip (file name or device key)
 npm run record:video -- --headed  # force a visible window (most reliable audio)
 ```
+
+The RT-11 front-panel clip (`rt11-panel-boot.webm`) is the "classic way": the
+machine starts powered off, the operator switches to the CONFIG page and picks
+a VT52 operator console, then toggles in a hand-entered RK05 primary bootstrap
+on the front panel (LOAD ADRS / DEP / ENABLE / START) and boots RT-11 from rk1
+to its "." prompt before running DUNGEON.
 
 Output: `video/<name>.webm` (the `video/` folder is gitignored so generated
 clips never reach the published site).
@@ -114,8 +121,10 @@ npm run video:demo -- --music loop.mp3  # or override the music
 Output (all YouTube-ready MP4, H.264 + AAC):
 - `video/yaPDP-demo.mp4` — the full promotional reel (1280x800);
 - `video/<name>.mp4` for every guest OS — the `yapdp-intro` card cross-faded
-  into the clip with the same quiet background music, so each operating system
-  can be uploaded to YouTube individually.
+  into a labelled title card (what the demo shows, e.g. "DEC BASIC-11", with
+  the same CRT scanlines as the intro), then the clip, with the same quiet
+  background music, so each operating system can be uploaded to YouTube
+  individually.
 
 Every MP4 (individual clips and the reel alike) ends with a black outro card
 showing the project URL (`https://amesk.github.io/yaPDP/`) with CRT scanlines,
@@ -469,6 +478,11 @@ navigation sidebar) toggles *all* sounds at once — hum, teletype/LP11, paper
 feed/tear, VT52 key clicks, the bell and the mechanical click of every
 switch, button and teletype key — like a checkbox; its state is persisted
 with the rest of the configuration.
+The Model 33 ASR tape unit is audible too, synthesized with Web Audio like the
+switch clicks: the reader rattles (a ratchet "стрёкот") for every byte it
+reads off the tape, the punch clicks crisply when its solenoids fire a data
+byte, and punching an empty byte (NUL — only the feed hole) gives the same
+quiet ratchet with no solenoid strike.
 
 The **Storage** page manages the storage media in two tabs: **Images** (the
 drag & drop disk/tape image drop zone, the mounted-images/Unmount list and

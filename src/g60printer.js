@@ -174,6 +174,16 @@
      *                            characters are being rendered and stop when the
      *                            buffer drains (default false). Used by the fast
      *                            LP11 line printer instead of per-character clicks.
+     *   options.carriageReturnMs - ms for a full-width carriage return glide
+     *                            (default 0 = instant). The Model 33 ASR console
+     *                            teletype passes ~100 for the authentic physical
+     *                            return; the fast LP11 keeps 0 so a CR never
+     *                            throttles its ~300 LPM throughput.
+     *   options.lfKeepsColumn   - line-feed behaviour (default false): when
+     *                            true an LF only advances the paper and the
+     *                            carriage keeps its column (Model 33 ASR); when
+     *                            false LF snaps the head back to column 0 (LP11
+     *                            line printer, no travelling carriage).
      */
     window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
@@ -192,6 +202,7 @@
             headDir, curLine, headUp, callback, keepLocked,
             delayFeed, feedDy, topSpacerVisible, lastTime,
             lastLineFeed, afId1, afId2, afId3,
+            carriageReturnTimer,
             spacerCurrentHeight;
 
         // Character pacing state. The per-character delay is configurable so a
@@ -256,6 +267,21 @@
         var delayChar = 12;
         var delayCharUp = 6;
         var delayEmptyLine = 50;
+        // Duration of a full-width carriage return on the Model 33 ASR: the
+        // print head physically travels back to the left margin over ~100 ms,
+        // not a teleport. Configurable per printer — the fast LP11 line
+        // printer (300 LPM) keeps 0 (instant) so a CR never throttles it,
+        // while the console teletype passes ~100 for the authentic glide.
+        // The animation maps the current column onto this window, so a
+        // mid-line CR returns as fast as a full-width one.
+        var carriageReturnMs = (typeof opts.carriageReturnMs === 'number' && opts.carriageReturnMs > 0)
+            ? opts.carriageReturnMs : 0;
+        // Line feed behaviour: on the Model 33 ASR console (true) an LF ONLY
+        // advances the paper — the carriage keeps its column and the next
+        // glyph prints under it on the fresh line. A fast line printer (LP11,
+        // default false) has no travelling carriage: LF starts a new line at
+        // the left margin, so the head jumps back to column 0.
+        var lfKeepsColumn = (opts.lfKeepsColumn === true);
         var headIdlePos = -3;
         var headOffset = 30;
         var lineHeight = 16;
@@ -606,12 +632,43 @@
          * terminal. overHang is set so the next characters replace the
          * existing glyphs instead of appending at the end of the line.
          */
+        /**
+         * animateCarriageReturn() - Internal: the physical carriage-return
+         * motion. A real Model 33 ASR takes ~100 ms to return the print head
+         * to the left margin — it does not teleport. The head glides back
+         * over CR_RETURN_MS on a dedicated timer so it never collides with
+         * the line-based head motion; any other repositioning of the head
+         * (movePrintHeadQuick / movePrintHead) cancels it first.
+         */
+        function animateCarriageReturn() {
+            if (carriageReturnTimer) { clearTimeout(carriageReturnTimer); carriageReturnTimer = null; }
+            var fromPos = headPos;
+            if (fromPos <= 0) return;
+            // Fast printers (LP11, carriageReturnMs 0) keep the instant return:
+            // a real line printer has no travelling carriage to watch.
+            if (carriageReturnMs <= 0) { movePrintHeadQuick(0); return; }
+            var t0 = performanceNow ? performance.now() : new Date().getTime();
+            function step() {
+                carriageReturnTimer = null;
+                var t = performanceNow ? performance.now() : new Date().getTime();
+                var k = Math.min(1, (t - t0) / carriageReturnMs);
+                var p = Math.max(0, Math.round(fromPos * (1 - k)));
+                setHeadPos(p, false);
+                if (p > 0) {
+                    carriageReturnTimer = setTimeout(step, 12);
+                }
+            }
+            carriageReturnTimer = setTimeout(step, 0);
+        }
+
         function doCarriageReturn() {
             if (onChar) onChar(13);
             if (currentCharPos > 0) {
                 overHang += currentCharPos;
                 currentCharPos = 0;
-                movePrintHeadQuick(0);
+                // Physical return: the head travels back to the left margin
+                // over ~100 ms instead of teleporting (authentic ASR-33).
+                animateCarriageReturn();
             }
         }
 
@@ -707,13 +764,24 @@
          */
         function doPrintln() {
             if (onChar) onChar(10);
-            // Start a new paragraph (line)
+            // A real Model 33 ASR line feed ONLY advances the paper — the
+            // carriage keeps its column, so the next character prints under
+            // the same column on the next line. Reproduce that column on the
+            // fresh line with leading NBSP cells (the leading spacer counts
+            // as column 0, so col+1 cells put the next glyph at column col).
+            // A line printer (LP11, lfKeepsColumn false) has no travelling
+            // carriage: LF starts the new line at the left margin (one NBSP
+            // cell, column 0) and the head snaps back to column 0.
+            var col = currentCharPos;
+            var cells = lfKeepsColumn ? (col + 1) : 1;
             currentLineEl = document.createElement('p');
             printArea.appendChild(currentLineEl);
-            var spaceEl = document.createElement('span');
-            spaceEl.textContent = '\u00A0';
-            currentLineEl.appendChild(spaceEl);
-            currentCharPos = 0;
+            for (var i = 0; i < cells; i++) {
+                var spaceEl = document.createElement('span');
+                spaceEl.textContent = '\u00A0';
+                currentLineEl.appendChild(spaceEl);
+            }
+            currentCharPos = lfKeepsColumn ? col : 0;
             overHang = 0;
 
             // Track lines printed on the current fanfold sheet (wraps at
@@ -758,8 +826,14 @@
                 }
             }
 
-            // Move print head to idle position
-            setHeadPos(headIdlePos, false);
+            // The carriage is NOT moved by a teletype line feed: it stays on
+            // the same column, exactly where the leading NBSP cells above put
+            // the next glyph. headPos already reflects that column
+            // (doPrintChar left it there), so there is nothing to reposition —
+            // and certainly not to park left of the first column like
+            // headIdlePos would. A line printer (LP11) instead snaps the head
+            // back to column 0 for its fresh line.
+            if (!lfKeepsColumn) setHeadPos(0, false);
         }
 
         /**
@@ -842,6 +916,10 @@
          * Quick print head movement for character echo
          */
         function movePrintHeadQuick(pos) {
+            // A new character / backspace / page switch supersedes any in-flight
+            // animated carriage return: cancel its timer so the glide cannot
+            // keep driving the head after the next print action has placed it.
+            if (carriageReturnTimer) { clearTimeout(carriageReturnTimer); carriageReturnTimer = null; }
             // Keep the logical carriage position in sync: the character-echo
             // path (doPrintChar/doBackspace/doCarriageReturn) drives the head
             // visually, and applyPaperGeometry() repositions it from headPos
@@ -1037,6 +1115,8 @@
         }
 
         function movePrintHead(p, delay, up, moveCallback, iterated) {
+            // Line-based print motion supersedes an in-flight animated CR.
+            if (carriageReturnTimer) { clearTimeout(carriageReturnTimer); carriageReturnTimer = null; }
             if (headPos !== p) {
                 var dx = (p - headPos > 0) ? 1 : -1;
                 if (iterated) {
@@ -1139,10 +1219,11 @@
             if (printArea) printArea.innerHTML = '';
             if (timer) clearTimeout(timer);
             if (timer2) clearTimeout(timer2);
+            if (carriageReturnTimer) clearTimeout(carriageReturnTimer);
             if (afId1 && cancelReqAnimFrame) cancelReqAnimFrame(afId1);
             if (afId2 && cancelReqAnimFrame) cancelReqAnimFrame(afId2);
             if (afId3 && cancelReqAnimFrame) cancelReqAnimFrame(afId3);
-            timer = timer2 = afId1 = afId2 = afId3 = null;
+            timer = timer2 = carriageReturnTimer = afId1 = afId2 = afId3 = null;
             lines = []; initialTop = textPos = headPos = 0;
             textBuffer = ''; callback = curLine = null;
             idle = scrollLock = topSpacerVisible = true;
@@ -1185,10 +1266,11 @@
 
             if (timer) clearTimeout(timer);
             if (timer2) clearTimeout(timer2);
+            if (carriageReturnTimer) clearTimeout(carriageReturnTimer);
             if (afId1 && cancelReqAnimFrame) cancelReqAnimFrame(afId1);
             if (afId2 && cancelReqAnimFrame) cancelReqAnimFrame(afId2);
             if (afId3 && cancelReqAnimFrame) cancelReqAnimFrame(afId3);
-            timer = timer2 = afId1 = afId2 = afId3 = null;
+            timer = timer2 = carriageReturnTimer = afId1 = afId2 = afId3 = null;
             callback = null; setHeadUp(false);
         }
 

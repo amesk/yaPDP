@@ -227,6 +227,13 @@
         var b = tapeBytes[pos] & 0x7F;
         pos++;
         lastFeed = Date.now();
+        // Audible tape-advance ratchet ("стрёкот"): every byte read from the
+        // tape steps the reader's ratchet wheel one position. Synthesized in
+        // pdp11-app.js (installTtyMechanicalSounds); absent in Node tests.
+        if (typeof window !== 'undefined' &&
+            typeof window.playReaderRatchet === 'function') {
+            window.playReaderRatchet();
+        }
         // CCU routing, exactly like the keyboard: LOCAL prints the tape on
         // paper only (tape -> paper copy, nothing reaches the machine);
         // LINE sends the byte to the machine, where the guest's echo prints
@@ -265,19 +272,28 @@
     function startTimer() {
         stopTimer();
         if (!hasTape()) return;
-        timer = setInterval(function () {
-            var mode = window.ttyReaderMode;
-            var autoLocal = (mode === 'auto' && window.ttyMode === 'local');
-            if ((mode === 'start' || autoLocal) && canFeedNow()) {
-                feedByte();
-            } else if (!hasTape()) {
-                stopTimer();
-            }
-        }, currentDelay());
+        // A self-re-scheduling timer so currentDelay() is re-read on every tick:
+        // switching the CONFIG teletype speed to 'fast' mid-run (the reader is
+        // already feeding) must take effect immediately, not only on the next
+        // START. setInterval captured the delay once at launch and ignored the
+        // live speed change.
+        (function tick() {
+            timer = setTimeout(function () {
+                var mode = window.ttyReaderMode;
+                var autoLocal = (mode === 'auto' && window.ttyMode === 'local');
+                if ((mode === 'start' || autoLocal) && canFeedNow()) {
+                    feedByte();
+                } else if (!hasTape()) {
+                    stopTimer();
+                    return;
+                }
+                tick();
+            }, currentDelay());
+        })();
     }
 
     function stopTimer() {
-        if (timer) { clearInterval(timer); timer = null; }
+        if (timer) { clearTimeout(timer); timer = null; }
     }
 
     /**
