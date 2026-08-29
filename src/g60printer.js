@@ -707,13 +707,20 @@
          */
         function doPrintln() {
             if (onChar) onChar(10);
-            // Start a new paragraph (line)
+            // A real Model 33 ASR line feed ONLY advances the paper — the
+            // carriage keeps its column, so the next character prints under
+            // the same column on the next line. Reproduce that column on the
+            // fresh line with leading NBSP cells (the leading spacer counts
+            // as column 0, so col+1 cells put the next glyph at column col).
+            var col = currentCharPos;
             currentLineEl = document.createElement('p');
             printArea.appendChild(currentLineEl);
-            var spaceEl = document.createElement('span');
-            spaceEl.textContent = '\u00A0';
-            currentLineEl.appendChild(spaceEl);
-            currentCharPos = 0;
+            for (var i = 0; i <= col; i++) {
+                var spaceEl = document.createElement('span');
+                spaceEl.textContent = '\u00A0';
+                currentLineEl.appendChild(spaceEl);
+            }
+            currentCharPos = col;
             overHang = 0;
 
             // Track lines printed on the current fanfold sheet (wraps at
@@ -758,12 +765,11 @@
                 }
             }
 
-            // Return the carriage to column 0 of the NEW line. A real Model 33
-            // ASR line feed only advances the paper — the carriage never moves
-            // horizontally — but in this DOM line model the new line starts at
-            // the left margin, so the carriage sits at the first column, NOT
-            // parked left of it (headIdlePos would push it off the paper edge).
-            setHeadPos(0, false);
+            // The carriage is NOT moved by a line feed: it stays on the same
+            // column, exactly where the leading NBSP cells above put the next
+            // glyph. headPos already reflects that column (doPrintChar left it
+            // there), so there is nothing to reposition — and certainly not to
+            // park left of the first column like headIdlePos would.
         }
 
         /**
