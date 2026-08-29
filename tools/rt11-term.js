@@ -245,7 +245,11 @@ async function installHooks() {
             window.__rt11termPunch = true;
             const orig = window.punchTapeAppend;
             window.punchTapeAppend = function (buf, byte) {
-                if (window.__rt11termBus) window.__rt11termBus.punch.push(byte & 0x7f);
+                // Keep full 8-bit bytes: the emulator's punch buffer (and the
+                // .ptap export) stores bytes as written by the device driver.
+                // The on-screen Model 33 tape renders 7 bits only, but that is
+                // a visualisation, not the data.
+                if (window.__rt11termBus) window.__rt11termBus.punch.push(byte & 0xff);
                 return orig(buf, byte);
             };
         }
