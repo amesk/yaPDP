@@ -1119,6 +1119,54 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
       playTick(audioCtx, t0 + 0.052, 0.10, 4300, 2.6, 0.009);
     } catch (err) { /* ignore audio errors */ }
   };
+
+  // Front-panel latching toggle switch (data/address rocker, ENABLE/HALT,
+  // LAMP TEST, S INST/S BUS): a single press+release pair played together,
+  // matching a bat-handle toggle that snaps to its new position.
+  window.playPanelToggle = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = audioCtx || new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      playTick(audioCtx, t0,         0.11, 2600, 2.0, 0.009);
+      playTick(audioCtx, t0 + 0.055, 0.07, 2100, 1.8, 0.008);
+    } catch (err) { /* ignore audio errors */ }
+  };
+
+  // The press half of a momentary (self-returning) switch, e.g. LOAD ADRS,
+  // EXAM, DEP, CONT, START: a single click on the way down. The matching
+  // release click (playPanelRelease) fires when the switch springs back.
+  window.playPanelPress = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = audioCtx || new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      playTick(audioCtx, t0, 0.11, 2600, 2.0, 0.009);
+    } catch (err) { /* ignore audio errors */ }
+  };
+
+  // The release half of a momentary switch: a slightly softer, lower click
+  // as the switch springs back to centre after its ~350 ms throw.
+  window.playPanelRelease = function () {
+    var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+    if (cfg && cfg.mute) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = audioCtx || new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      playTick(audioCtx, t0, 0.07, 2100, 1.8, 0.008);
+    } catch (err) { /* ignore audio errors */ }
+  };
 })();
 
 // ==================================================================

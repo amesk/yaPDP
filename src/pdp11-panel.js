@@ -90,12 +90,19 @@ function setSwitch(id, weight) {
   var mask = 1 << weight;
   CPU.switchRegister ^= mask;
   moveSwitch(id, (CPU.switchRegister & mask) ? -1 : 0);
+  // Mechanical toggle snick (press + release) so flipping a data/address
+  // switch is audible, not just a visual rocker move.
+  if (typeof window.playPanelToggle === 'function') window.playPanelToggle();
 }
 
 function toggleSwitch(id) {
   moveSwitch(id, 1);
+  // Momentary (self-returning) switch: one click on the press, a second,
+  // softer click when it springs back after ~350 ms.
+  if (typeof window.playPanelPress === 'function') window.playPanelPress();
   setTimeout(function () {
     moveSwitch(id, 0);
+    if (typeof window.playPanelRelease === 'function') window.playPanelRelease();
   }, 350);
 }
 
@@ -342,6 +349,7 @@ function examineDeposit(data) {
   if (lampTest) {
     lampTest.addEventListener('click', function () {
       moveSwitch(this, panel.lampTest = 1 - panel.lampTest);
+      if (typeof window.playPanelToggle === 'function') window.playPanelToggle();
       if (!panel.powerSwitch) {
         if (panel.lamp) panel.lamp = 1;
       }
@@ -400,6 +408,7 @@ function examineDeposit(data) {
   if (enableHalt) {
     enableHalt.addEventListener('click', function () {
       moveSwitch(this, panel.halt = 1 - panel.halt);
+      if (typeof window.playPanelToggle === 'function') window.playPanelToggle();
       if (!panel.powerSwitch) {
         if (panel.halt) {
           CPU.runState = STATE_HALT;
@@ -417,6 +426,7 @@ function examineDeposit(data) {
   if (step) {
     step.addEventListener('click', function () {
       moveSwitch(this, panel.step = 1 - panel.step);
+      if (typeof window.playPanelToggle === 'function') window.playPanelToggle();
     });
   }
 
