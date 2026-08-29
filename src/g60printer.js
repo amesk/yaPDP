@@ -179,6 +179,11 @@
      *                            teletype passes ~100 for the authentic physical
      *                            return; the fast LP11 keeps 0 so a CR never
      *                            throttles its ~300 LPM throughput.
+     *   options.lfKeepsColumn   - line-feed behaviour (default false): when
+     *                            true an LF only advances the paper and the
+     *                            carriage keeps its column (Model 33 ASR); when
+     *                            false LF snaps the head back to column 0 (LP11
+     *                            line printer, no travelling carriage).
      */
     window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
@@ -271,6 +276,12 @@
         // mid-line CR returns as fast as a full-width one.
         var carriageReturnMs = (typeof opts.carriageReturnMs === 'number' && opts.carriageReturnMs > 0)
             ? opts.carriageReturnMs : 0;
+        // Line feed behaviour: on the Model 33 ASR console (true) an LF ONLY
+        // advances the paper — the carriage keeps its column and the next
+        // glyph prints under it on the fresh line. A fast line printer (LP11,
+        // default false) has no travelling carriage: LF starts a new line at
+        // the left margin, so the head jumps back to column 0.
+        var lfKeepsColumn = (opts.lfKeepsColumn === true);
         var headIdlePos = -3;
         var headOffset = 30;
         var lineHeight = 16;
@@ -758,15 +769,19 @@
             // the same column on the next line. Reproduce that column on the
             // fresh line with leading NBSP cells (the leading spacer counts
             // as column 0, so col+1 cells put the next glyph at column col).
+            // A line printer (LP11, lfKeepsColumn false) has no travelling
+            // carriage: LF starts the new line at the left margin (one NBSP
+            // cell, column 0) and the head snaps back to column 0.
             var col = currentCharPos;
+            var cells = lfKeepsColumn ? (col + 1) : 1;
             currentLineEl = document.createElement('p');
             printArea.appendChild(currentLineEl);
-            for (var i = 0; i <= col; i++) {
+            for (var i = 0; i < cells; i++) {
                 var spaceEl = document.createElement('span');
                 spaceEl.textContent = '\u00A0';
                 currentLineEl.appendChild(spaceEl);
             }
-            currentCharPos = col;
+            currentCharPos = lfKeepsColumn ? col : 0;
             overHang = 0;
 
             // Track lines printed on the current fanfold sheet (wraps at
@@ -811,11 +826,14 @@
                 }
             }
 
-            // The carriage is NOT moved by a line feed: it stays on the same
-            // column, exactly where the leading NBSP cells above put the next
-            // glyph. headPos already reflects that column (doPrintChar left it
-            // there), so there is nothing to reposition — and certainly not to
-            // park left of the first column like headIdlePos would.
+            // The carriage is NOT moved by a teletype line feed: it stays on
+            // the same column, exactly where the leading NBSP cells above put
+            // the next glyph. headPos already reflects that column
+            // (doPrintChar left it there), so there is nothing to reposition —
+            // and certainly not to park left of the first column like
+            // headIdlePos would. A line printer (LP11) instead snaps the head
+            // back to column 0 for its fresh line.
+            if (!lfKeepsColumn) setHeadPos(0, false);
         }
 
         /**

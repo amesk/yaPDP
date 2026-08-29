@@ -204,6 +204,10 @@ function initG60Printer() {
     // margin over ~100 ms instead of teleporting (the fast LP11 keeps the
     // instant return — see carriageReturnMs in g60printer.js).
     carriageReturnMs: 100,
+    // Authentic Model 33 ASR line feed: LF only advances the paper, the
+    // carriage keeps its column (the LP11 line printer keeps the default
+    // false — its LF snaps the head back to the left margin).
+    lfKeepsColumn: true,
     onChar: function (code) {
       if (window.ttyMode !== 'off' && window.ttyPunchEnabled && window.paperTape) {
         window.paperTape.punchChar(code);
