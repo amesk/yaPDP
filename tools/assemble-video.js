@@ -45,7 +45,10 @@ const WIDTH = 1280;
 const HEIGHT = 800;
 const FPS = 30;
 const FADE = 0.8; // cross-fade seconds
-const SLIDE_MS = 3000; // title card duration
+const SLIDE_MS = 3000; // title card duration (reel)
+// The standalone clips hold their "what this demo shows" title card about 3x
+// longer than the reel's quick cards, so the description is readable.
+const CLIP_SLIDE_MS = SLIDE_MS * 3;
 
 // DEC-style palette (matches the landing page).
 const BG = "0x181511";
@@ -61,10 +64,12 @@ const BACKDROP = path.join(ROOT, "assets", "images", "pdp11-machine-room.jpg");
 // --- The clips, in reel order ---------------------------------------------
 const CLIPS = [
     { file: "basic.webm",        title: "DEC BASIC-11" },
+    { file: "basic-tape.webm",   title: "DEC BASIC-11 (ASR TAPE)" },
     { file: "unix_v5.webm",      title: "BOOTING UNIX V5" },
     { file: "bsd.webm",          title: "2.11 BSD" },
     { file: "rt11.webm",         title: "RT-11 v4.0" },
-    { file: "rt11-vt52.webm",    title: "RT-11  ·  VT52 CONSOLE" },
+    { file: "rt11-vt52.webm",    title: "RT-11 v4.0 (VT52)" },
+    { file: "rt11-panel-boot.webm", title: "MANUAL BOOTSTRAP" },
     { file: "xxdp.webm",         title: "XXDP DIAGNOSTICS" },
     { file: "lunar-lander.webm", title: "LUNAR LANDER  ·  VT11" }
 ];
@@ -94,13 +99,19 @@ function escFilter(s) {
 // Render a title card (video + silent stereo audio) as a short WebM clip: a
 // dark DEC-colored card with the landing-page machine-room photo overlaid at
 // 30% opacity ("70% transparent"), text on top, faded in/out. `opts` may carry
-// { size, font, footer } for a larger/bolder title and a bottom line.
+// { size, font, footer } for a larger/bolder title and a bottom line; `sans`
+// renders the main text in the intro's subtitle style — a bold sans-serif
+// (Arial) in light with a dark outline — which reads much better than the
+// monospace DEC look for a "what this demo shows" line; `scanlines` overlays
+// the same CRT scanlines the intro card uses.
 function genSlide(file, text, subtitle, duration, opts) {
     opts = opts || {};
     const font = opts.font || FONT;
-    const size = opts.size || 72;
+    const size = opts.size || 64;
+    const textFont = opts.sans ? FONT_BOLD : font;
+    const textColor = (opts.sans ? "0xeaeaea" : FG) + "@0.85";
     const draw = [
-        `drawtext=fontfile=${font}:text='${escFilter(text)}':fontsize=${size}:fontcolor=${FG}:` +
+        `drawtext=fontfile=${textFont}:text='${escFilter(text)}':fontsize=${size}:fontcolor=${textColor}:` +
             `borderw=3:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2-50`,
         `drawtext=fontfile=${font}:text='${escFilter(subtitle || "")}':fontsize=30:fontcolor=${DIM}:` +
             `x=(w-text_w)/2:y=(h)/2+40`
@@ -114,6 +125,7 @@ function genSlide(file, text, subtitle, duration, opts) {
             `crop=${WIDTH}:${HEIGHT},format=rgba,colorchannelmixer=aa=0.3[ph];` +
         `[0:v][ph]overlay=0:0,` +
         draw.join(",") + `,` +
+        (opts.scanlines ? scanlineVf() + `,` : "") +
         `fade=t=in:st=0:d=0.6,` +
         `fade=t=out:st=${(duration - 0.6).toFixed(2)}:d=0.6[vout]`;
     run([
@@ -181,7 +193,7 @@ function normalise(input, out) {
         "-af",
         `aresample=44100:async=1:first_pts=0,` +
             `aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS`,
-        "-c:v", "libvpx", "-b:v", "8M", "-c:a", "libopus",
+        "-c:v", "libvpx", "-b:v", "12M", "-c:a", "libopus",
         "-r", String(FPS), "-video_track_timescale", "30000",
         out
     ]);
@@ -224,9 +236,10 @@ function alignStreams(input, out) {
 }
 
 // Export one guest-OS clip as a standalone YouTube-ready MP4: the yapdp-intro
-// title card first (cross-faded in), then the raw clip, then the quiet
-// background music mixed under the clip audio. The WebM raw captures are never
-// published — every uploadable file is an MP4.
+// title card first (cross-faded in), then a labelled title card describing
+// what the demo shows (the same slide the reel uses), then the raw clip, then
+// the quiet background music mixed under the clip audio. The WebM raw captures
+// are never published — every uploadable file is an MP4.
 function exportIndividual(clip, music, tmp, srcPath) {
     const introPath = path.join(VIDEOS, "yapdp-intro.webm");
     const clipPath = srcPath || path.join(VIDEOS, clip.file);
@@ -234,15 +247,28 @@ function exportIndividual(clip, music, tmp, srcPath) {
     const base = path.basename(clip.file, ".webm");
 
     const nIntro = path.join(tmp, "ind_" + base + "_intro.webm");
+    const nSlide = path.join(tmp, "ind_" + base + "_slide.webm");
     const nClip = path.join(tmp, "ind_" + base + "_clip.webm");
     const aIntro = path.join(tmp, "ind_" + base + "_intro_a.webm");
+    const aSlide = path.join(tmp, "ind_" + base + "_slide_a.webm");
     const aClip = path.join(tmp, "ind_" + base + "_clip_a.webm");
     const nOutro = path.join(tmp, "ind_" + base + "_outro.webm");
     const aOutro = path.join(tmp, "ind_" + base + "_outro_a.webm");
     const outroRaw = path.join(tmp, "ind_" + base + "_outro_raw.webm");
+    // A labelled title card (the same slide the reel uses) telling the viewer
+    // what this demo shows, right after the product intro card. The text uses
+    // the intro's subtitle style (bold sans-serif, light with an outline) and
+    // is sized up so it reads clearly; it is held ~3x longer than the reel's
+    // quick title cards so the description is readable.
+    genSlide(nSlide, clip.title, "", CLIP_SLIDE_MS / 1000, {
+        sans: true,
+        size: 68,
+        scanlines: true
+    });
     normalise(introPath, nIntro);
     normalise(clipPath, nClip);
     alignStreams(nIntro, aIntro);
+    alignStreams(nSlide, aSlide);
     alignStreams(nClip, aClip);
     // Final URL card (black + project URL) fades in after the clip, so the
     // clip fades out and every upload ends on the project URL.
@@ -250,25 +276,29 @@ function exportIndividual(clip, music, tmp, srcPath) {
     normalise(outroRaw, nOutro);
     alignStreams(nOutro, aOutro);
 
-    // Cross-fade intro -> clip -> outro (video xfade + audio acrossfade).
+    // Cross-fade intro -> slide -> clip -> outro (video xfade + acrossfade).
     const dIntro = probeDuration(aIntro);
+    const dSlide = probeDuration(aSlide);
     const dClip = probeDuration(aClip);
     const fade = 0.6;
     const concatOut = path.join(tmp, "ind_" + base + "_plain.mp4");
     run([
         "-y",
         "-i", aIntro,
+        "-i", aSlide,
         "-i", aClip,
         "-i", aOutro,
         "-filter_complex",
-        `[0:v]settb=AVTB[v0];[1:v]settb=AVTB[v1];[2:v]settb=AVTB[v2];` +
+        `[0:v]settb=AVTB[v0];[1:v]settb=AVTB[v1];[2:v]settb=AVTB[v2];[3:v]settb=AVTB[v3];` +
             `[v0][v1]xfade=transition=fade:duration=${fade}:offset=${(dIntro - fade).toFixed(3)}[x1];` +
-            `[x1][v2]xfade=transition=fade:duration=${fade}:offset=${(dIntro + dClip - fade * 2).toFixed(3)}[vout];` +
-            `[0:a]anull[a0];[1:a]anull[a1];[2:a]anull[a2];` +
+            `[x1][v2]xfade=transition=fade:duration=${fade}:offset=${(dIntro + dSlide - fade * 2).toFixed(3)}[x2];` +
+            `[x2][v3]xfade=transition=fade:duration=${fade}:offset=${(dIntro + dSlide + dClip - fade * 3).toFixed(3)}[vout];` +
+            `[0:a]anull[a0];[1:a]anull[a1];[2:a]anull[a2];[3:a]anull[a3];` +
             `[a0][a1]acrossfade=d=${fade}[x1a];` +
-            `[x1a][a2]acrossfade=d=${fade}[aout]`,
+            `[x1a][a2]acrossfade=d=${fade}[x2a];` +
+            `[x2a][a3]acrossfade=d=${fade}[aout]`,
         "-map", "[vout]", "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
@@ -462,7 +492,7 @@ function prepareSource(clip, tmp) {
         args.push(
             "-filter_complex", filterComplex,
             "-map", "[vout]", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+            "-c:v", "libx264", "-preset", "medium", "-crf", "18",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart",

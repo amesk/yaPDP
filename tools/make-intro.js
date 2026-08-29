@@ -31,11 +31,13 @@ const WIDTH = 1280;
 const HEIGHT = 800;
 const FPS = 30;
 const GREEN_TEXT = "-- created with love for the DEC era";
-// Timeline: 1 s fade-in, typing starts at 2 s, 5 s hold on the final frame,
-// 1 s fade-out.
+// Timeline: 1 s fade-in, typing starts at 2 s, 4 s hold on the final frame,
+// 1 s fade-out. That leaves 5 s after typing ends before the fade-out starts —
+// long enough to read the green "DEC era" line, short enough to keep the
+// intro snappy now that the clip is no longer trimmed by its audio length.
 const TEXT_START_FRAME = FPS * 2;
 const TYPE_FRAMES = GREEN_TEXT.length * 3;
-const HOLD_FRAMES = FPS * 5;
+const HOLD_FRAMES = FPS * 4;
 const FADE_FRAMES = FPS;
 const TOTAL_FRAMES = FADE_FRAMES + TEXT_START_FRAME + TYPE_FRAMES + HOLD_FRAMES + FADE_FRAMES;
 const DURATION_SEC = TOTAL_FRAMES / FPS;
@@ -194,8 +196,13 @@ function run(args) {
             `adelay=${Math.round(t * 1000)}|${Math.round(t * 1000)}[clk${c}];`;
         amix.push(`[clk${c}]`);
     }
+    // Pad the tick track with silence to the full clip duration. Without this
+    // the audio stream ends after the last keypress tick (~5.5 s), and the reel
+    // assembler (assemble-video.js alignStreams) would trim the intro to that
+    // shorter length — cross-fading into the next card right as "DEC era"
+    // finishes typing.
     fc += `${amix.join("")}amix=inputs=${amix.length},` +
-        `volume=1.6[aout]`;
+        `volume=1.6,apad=whole_dur=${DURATION_SEC.toFixed(3)}[aout]`;
 
     run([
         "-y",
