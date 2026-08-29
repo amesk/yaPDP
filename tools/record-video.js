@@ -49,9 +49,12 @@ const OUT_DIR = path.join(ROOT, "video");
 const PORT = 11790;
 const BASE = `http://127.0.0.1:${PORT}`;
 
-// Default capture resolution.
+// Default capture resolution. chrome.tabCapture caps at 800x600 unless an
+// explicit videoConstraints requests more — without it the raw WebM would be
+// upscaled to 1280x800 in the export step and look blurry.
 const WIDTH = 1280;
 const HEIGHT = 800;
+const FPS = 30;
 
 // --- Guest OS boot / demo scenarios --------------------------------------
 // `device`     — quick-boot scenario key (see src/osboot.js BOOT_SCENARIOS)
@@ -71,6 +74,8 @@ const HEIGHT = 800;
 // `leadMs`     — pause (ms) after recording starts before the first click, so
 //                the viewer sees the initial state first (human pacing).
 // `punch`      — engage the paper-tape punch before booting (BASIC-11).
+// `tape`       — BASIC program lines fed from the ASR paper-tape reader (AUTO)
+//                instead of typed; the last line should be RUN.
 
 // BASIC-11 demo program: a tiny banner loop, then RUN so the video shows real
 // BASIC output, not just the "*O " prompt.
@@ -83,7 +88,82 @@ const BASIC_PROGRAM = [
     "RUN"
 ];
 
+// BASIC-11 demo fed from the ASR paper-tape reader: a compact program that
+// prints a filled heart on the teletype paper using integer-valued math only.
+// This BASIC-11 V007A build has NO integer variables (I% is an illegal name,
+// "ERROR 1") and TAB() fails ("ERROR 123" — see tools/_debug-basic-tape.js),
+// so the program uses real variables holding exact small integers, leading-
+// space loops for positioning, and no FPP built-ins (SIN/COS/SQR/...) and no
+// fractional STEP — nothing that could hit an FPP rounding path. The last
+// line RUN makes BASIC execute the program as soon as the tape has been read.
+const BASIC_TAPE_LINES = [
+    "10 REM BASIC-11 TAPE DEMO: HEART (INTEGER ONLY)",
+    "20 FOR I=1 TO 2",
+    '30 PRINT " ";',
+    "40 NEXT I",
+    '50 PRINT "***";',
+    "60 FOR I=1 TO 5",
+    '70 PRINT " ";',
+    "80 NEXT I",
+    '90 PRINT "***"',
+    "100 DATA 2,13,2,13,3,11,4,9,5,7,6,5,7,3,8,1",
+    "110 FOR I=1 TO 8",
+    "120 READ S,W",
+    "130 FOR X=1 TO S-1",
+    '140 PRINT " ";',
+    "150 NEXT X",
+    "160 FOR X=1 TO W",
+    '170 PRINT "*";',
+    "180 NEXT X",
+    "190 PRINT",
+    "200 NEXT I",
+    "210 END",
+    "RUN"
+];
+
+// Build the raw bytes of the ASR tape from program lines: every line is
+// terminated by CR (0x0D) — exactly the terminator DEC BASIC-11's line editor
+// expects (the wizard's Enter is CR too). A plain LF file would not terminate
+// a line. Pure and DOM-free.
+function linesToTapeBytes(lines) {
+    const text = lines.join("\r") + "\r";
+    const bytes = [];
+    for (let i = 0; i < text.length; i++) {
+        bytes.push(text.charCodeAt(i) & 0x7F);
+    }
+    return bytes;
+}
+
+// RK05 primary bootstrap for unit 1 (rk1), hand-entered on the front panel at
+// address 001000. Mirrors bootrk in macro-asm/boot.mac but hardcodes unit 1
+// (RKDA = 1<<13) instead of taking the unit from R3, so it can be toggled in
+// cold. Reads ONE block (256 words = 512 bytes) into memory 0 — the RT-11
+// secondary loader — then jumps to it; reading only 512 bytes keeps the
+// hand-entered loader itself (at 001000) from being clobbered by the transfer.
+const PANEL_BOOT_WORDS = [
+    0o012700, 0o177412,   // MOV #177412,R0   ; R0 -> RKDA
+    0o012710, 0o020000,   // MOV #020000,(R0) ; RKDA = unit 1, track 0, sector 0
+    0o005040,             // CLR -(R0)        ; R0=177410, RKBA=0
+    0o012740, 0o177400,   // MOV #-256,-(R0)  ; R0=177406, RKWK=-256 (256 words)
+    0o012740, 0o000005,   // MOV #5,-(R0)     ; R0=177404, RKCS=5 (read + go)
+    0o105710, 0o100376,   // TSTB (R0) / BPL .-2
+    0o005007              // CLR PC           ; jump to memory 0
+];
+const PANEL_BOOT_ADDR = 0o001000;
+
 const VIDEO_SHOTS = [
+    // Front-panel "classic way": start cold (power off), switch to CONFIG and
+    // pick the VT52 operator console, then toggle in the RK05 primary
+    // bootstrap on the Panel, power on, START, and wait for RT-11's "." prompt
+    // before running DUNGEON. Handled by capturePanelBoot().
+    { device: "rk1panel", file: "rt11-panel-boot.webm", readyWhen: null,
+        extra: [
+            { send: "R DUNGEON", waitFor: ">" },
+            { send: "OPEN MAILBOX", waitFor: ">" },
+            { send: "LOOK", waitFor: ">" },
+            { send: "TAKE LEAFLET", waitFor: ">" },
+            { ctrlC: true }
+        ], settle: 3000, tail: 2000, vt52: true },
     // Unix V5: the shell prompt "#" can also appear inside kernel boot text,
     // so it is only accepted after "login:" (auto-login has completed).
     { device: "rk0",    file: "unix_v5.webm",      readyWhen: "#", readyAfter: "login:",
@@ -122,6 +202,11 @@ const VIDEO_SHOTS = [
     // output are duplicated onto the paper tape (visible in the clip).
     { device: "basic",  file: "basic.webm",        readyWhen: "*O",
         extra: BASIC_PROGRAM, settle: 5000, tail: 3000, punch: true },
+    // BASIC-11 from the ASR tape: boot BASIC, then load the program tape into
+    // the Model 33 reader (AUTO) so the heart program + RUN are fed from the
+    // tape instead of being typed — and the drawing prints on the paper.
+    { device: "basic",  file: "basic-tape.webm",   readyWhen: "*O",
+        tape: BASIC_TAPE_LINES, settle: 5000, tail: 3000 },
     // Lunar Lander draws on the VT11 vector display, not the console — handled
     // by captureLander() (recording starts once the Display page is active).
     { device: "lander", file: "lunar-lander.webm", readyWhen: null, extra: [], settle: 0 }
@@ -137,7 +222,11 @@ const OS_CFG = {
     rk1vt52: { consoleType: "vt52",    printer: true,  vt11: false },
     rk3:    { consoleType: "teletype", printer: false, vt11: false },
     basic:  { consoleType: "teletype", printer: false, vt11: false },
-    lander: { consoleType: "teletype", printer: false, vt11: true }
+    lander: { consoleType: "teletype", printer: false, vt11: true },
+    // Front-panel demo: starts COLD (power off) with a teletype console, then
+    // the capture switches to VT52 on the CONFIG page before toggling the
+    // loader. Seeded powerOn=false so the viewer sees the machine off first.
+    rk1panel: { consoleType: "teletype", printer: true, vt11: false, powerOn: false }
 };
 
 // --- Utilities ------------------------------------------------------------
@@ -243,7 +332,15 @@ async function openPage(browser, shot) {
 
     await page.evaluateOnNewDocument((seed) => {
         try {
-            localStorage.setItem("yapdp.config.v1", JSON.stringify(seed.cfg));
+            // Seed the config only on the FIRST document of the tab. A
+            // CONFIG/wizard-driven reload persists its own choice via
+            // Config.set(); re-seeding on reload would overwrite it — e.g. the
+            // front-panel demo switches consoleType to vt52 and the reload
+            // must keep it (otherwise the OS prints to the hidden teletype).
+            if (!sessionStorage.getItem("yapdp.seeded.v1")) {
+                sessionStorage.setItem("yapdp.seeded.v1", "1");
+                localStorage.setItem("yapdp.config.v1", JSON.stringify(seed.cfg));
+            }
             localStorage.setItem("yapdp.onboarding.v1", "done");
         } catch (err) { /* ignore storage errors */ }
     }, { cfg });
@@ -294,6 +391,9 @@ async function launchDevice(page, device) {
     // The wizard list is long (16 guest OSes) and the option may sit below the
     // fold — scroll the list down in small human-like steps until the option
     // is fully inside the visible area, so the viewer SEES which OS we pick.
+    // The list opens at the top, so the scroll is DOWN-ONLY: an item already
+    // visible (e.g. BASIC, the first paper tape) is never touched — otherwise
+    // the list would jerk up and down on camera.
     await page.evaluate(async (sel) => {
         const list = document.querySelector(".quickboot-list");
         const item = document.querySelector(sel);
@@ -302,8 +402,9 @@ async function launchDevice(page, device) {
         for (let guard = 0; guard < 40; guard++) {
             const lr = list.getBoundingClientRect();
             const or = item.getBoundingClientRect();
-            if (or.top >= lr.top + 6 && or.bottom <= lr.bottom - 6) break;
-            list.scrollTop += (or.top < lr.top ? -1 : 1) * step;
+            if (or.top >= lr.top && or.bottom <= lr.bottom) break; // visible
+            if (or.top < lr.top) break; // scrolled past it — stop, never go up
+            list.scrollTop += step;
             await new Promise((r) => setTimeout(r, 160));
         }
     }, optSel);
@@ -333,6 +434,78 @@ async function elementCenter(page, selector) {
     }, selector);
 }
 
+// Random, human-like pause: a base delay plus uniform jitter, so the operator
+// does not toggle switches with metronome regularity.
+function humanPause(base, jitter) {
+    return sleep(base + Math.random() * jitter);
+}
+
+// Click a panel control (switch or action pad) by its selector, at a human
+// pace so the recording shows the switch throw. Used by the front-panel
+// bootstrap capture (capturePanelBoot). The jittered tail pause keeps the
+// rhythm uneven, like a real operator working the console.
+async function clickPanelControl(page, selector) {
+    const c = await elementCenter(page, selector);
+    if (!c) throw new Error("panel control not found: " + selector);
+    await page.mouse.click(c.x, c.y);
+    await humanPause(220, 240);
+}
+
+// Click a data/address switch with a given bit weight. The click toggles the
+// corresponding bit of CPU.switchRegister (setSwitch in src/pdp11-panel.js)
+// and moves the rocker, exactly as a real operator would. A small pre-click
+// pause reads as the operator finding and reaching for the next switch.
+async function clickDataSwitch(page, weight) {
+    await humanPause(90, 180);
+    await clickPanelControl(page, `.switch[data-weight="${weight}"]`);
+}
+
+// Set the panel switch register to `value` by flipping only the bits that
+// differ from the current state (keeps the rocker movements minimal).
+async function setPanelSwitches(page, value) {
+    const current = await page.evaluate(() => CPU.switchRegister & 0xFFFF);
+    const diff = (current ^ value) & 0xFFFF;
+    for (let i = 0; i < 16; i++) {
+        if (diff & (1 << i)) await clickDataSwitch(page, i);
+    }
+}
+
+// Toggle in the RK05 primary bootstrap on the front panel: HALT, LOAD ADRS
+// with 001000, DEP each word (address auto-increments), then LOAD ADRS 001000
+// again, ENABLE and START. Uneven pauses between actions keep the whole
+// sequence feeling hand-operated rather than scripted.
+async function toggleInPanelBootstrap(page) {
+    await clickPanelControl(page, '[data-action="enableHalt"]'); // HALT
+    await humanPause(250, 300);
+    await setPanelSwitches(page, PANEL_BOOT_ADDR);
+    await clickPanelControl(page, '[data-action="loadAdrs"]');
+    await humanPause(200, 300);
+    for (const word of PANEL_BOOT_WORDS) {
+        await setPanelSwitches(page, word);
+        await clickPanelControl(page, '[data-action="deposit"]');
+        await humanPause(120, 320);
+    }
+    await setPanelSwitches(page, PANEL_BOOT_ADDR);
+    await clickPanelControl(page, '[data-action="loadAdrs"]');
+    await humanPause(200, 300);
+    await clickPanelControl(page, '[data-action="enableHalt"]'); // ENABLE
+    await humanPause(200, 300);
+    await clickPanelControl(page, '[data-action="start"]');
+}
+
+// After switching to a VT52 page that was hidden while the guest printed
+// (e.g. the front-panel demo: RT-11 boots while the Panel page is active), the
+// canvas was sized/repainted off-screen. Force a re-size + full repaint so the
+// already-generated screen buffer becomes visible on camera.
+async function redrawVt52(page, unit) {
+    await page.evaluate((u) => {
+        const term = window.vt52Get && window.vt52Get(u);
+        if (!term) return;
+        if (typeof term.resizeCanvas === "function") term.resizeCanvas();
+        if (typeof term.render === "function") term.render(true);
+    }, unit || 0);
+}
+
 // Replace window.dlReceiveQueue on a TELEtype page so every byte fed into the
 // console — the wizard's boot command and auto-login AND our demo commands —
 // becomes a real key press on the Model 33 keyboard (visible .down + key sound).
@@ -352,6 +525,10 @@ async function installTeletypeKeyFeeder(page) {
         window.__m33FeederInstalled = true;
 
         const orig = window.dlReceiveQueue;
+        // Keep the raw queue reachable so the capture can temporarily restore
+        // it while the ASR tape reader feeds a program — the reader's bytes
+        // must NOT animate the keys (a real ASR-33 feeds the machine directly).
+        window.__dlReceiveQueueRaw = orig;
         let tail = Promise.resolve();
 
         // Same upper-case-only rule as the physical keyboard (pdp11-app.js).
@@ -401,9 +578,26 @@ async function installTeletypeKeyFeeder(page) {
                     const el = findKeyEl(code);
                     if (el) await pressEl(el);
                     if (typeof orig === "function") orig(0, [upperOnly(code)]);
+                    // Uneven human rhythm between keystrokes (instead of a
+                    // metronomic cadence) so typing reads as a person, not a
+                    // script. The ~90 ms key hold above plus this gap stays in
+                    // the believable 3-6 chars/sec range.
+                    await new Promise((r) => setTimeout(r, 90 + Math.random() * 160));
                 }
             }).catch(() => { /* keep the queue alive */ });
         };
+    });
+}
+
+// Temporarily restore the RAW console input queue so the ASR tape reader's
+// bytes reach the machine without the visible Model 33 key presses (the key
+// feeder animates typed commands, but reading a tape must not press keys —
+// on a real ASR-33 the reader feeds the machine directly).
+async function disableTeletypeKeyVisuals(page) {
+    await page.evaluate(() => {
+        if (window.__dlReceiveQueueRaw) {
+            window.dlReceiveQueue = window.__dlReceiveQueueRaw;
+        }
     });
 }
 
@@ -421,7 +615,10 @@ async function installVt52PacedFeeder(page) {
             tail = tail.then(async () => {
                 for (let i = 0; i < bytes.length; i++) {
                     if (typeof orig === "function") orig(0, [bytes[i] & 0x7F]);
-                    await new Promise((r) => setTimeout(r, 130));
+                    // Uneven typing cadence: each character lands after a
+                    // slightly different pause, so the command reads as typed
+                    // by a person rather than replayed at a fixed tempo.
+                    await new Promise((r) => setTimeout(r, 90 + Math.random() * 160));
                 }
             }).catch(() => { /* keep the queue alive */ });
         };
@@ -429,17 +626,17 @@ async function installVt52PacedFeeder(page) {
 }
 
 // Human-paced typing on the Model 33 ASR teletype: each character is fed into
-// the console one at a time (window.dlReceiveQueue, which installTeletypeKeyFeeder
-// turns into a visible key press). The pace matches the authentic ~110 baud.
+// the console one at a time. The actual inter-key cadence is produced by the
+// key feeder (installTeletypeKeyFeeder), whose serial queue adds a jittered
+// pause after every keystroke — so the visible key presses and their rhythm
+// stay in one place and never double up with an extra sleep here.
 async function typeTextHuman(page, text, perCharMs) {
-    const pace = perCharMs || 130;
     for (const ch of text) {
         await page.evaluate((c) => {
             if (typeof window.dlReceiveQueue === "function") {
                 window.dlReceiveQueue(0, [c.charCodeAt(0) & 0x7F]);
             }
         }, ch);
-        await sleep(pace);
     }
     await page.evaluate(() => {
         if (typeof window.dlReceiveQueue === "function") {
@@ -450,18 +647,15 @@ async function typeTextHuman(page, text, perCharMs) {
 }
 
 // Character-by-character input for a VT52 console (no teletype keys on screen):
-// each byte is sent with the same per-character delay as the teletype, so the
-// operator "types" at the same human pace instead of the whole line appearing
-// instantly.
+// bytes are queued one at a time and the VT52 paced feeder adds an uneven,
+// human cadence between them, instead of the whole line appearing instantly.
 async function typeTextPaced(page, text, perCharMs) {
-    const pace = perCharMs || 130;
     for (const ch of text) {
         await page.evaluate((c) => {
             if (typeof window.dlReceiveQueue === "function") {
                 window.dlReceiveQueue(0, [c.charCodeAt(0) & 0x7F]);
             }
         }, ch);
-        await sleep(pace);
     }
     await page.evaluate(() => {
         if (typeof window.dlReceiveQueue === "function") {
@@ -522,9 +716,18 @@ async function startRecording(page, shot) {
         audio: true,
         video: true,
         mimeType: "video/webm",
-        videoBitsPerSecond: 8_000_000,
-        audioBitsPerSecond: 128_000,
-        frameSize: 40
+        videoBitsPerSecond: 16_000_000,
+        audioBitsPerSecond: 192_000,
+        frameSize: 40,
+        // Request the full native tab resolution (chrome.tabCapture would cap
+        // at 800x600 by default); without this the export upscales and blurs.
+        videoConstraints: {
+            mandatory: {
+                maxWidth: WIDTH,
+                maxHeight: HEIGHT,
+                maxFrameRate: FPS
+            }
+        }
     });
     stream.pipe(file);
     return { file, stream };
@@ -623,6 +826,37 @@ async function captureConsoleOS(browser, shot) {
         // from here.
         readyAt = Date.now();
 
+        // ASR-tape input: load the BASIC program into the Model 33 reader and
+        // read it in AUTO mode (one byte per DL11 drained signal). The tape's
+        // last line is RUN, so the program executes as soon as the tape ends.
+        if (shot.tape && Array.isArray(shot.tape)) {
+            // The reader feeds through window.dlReceiveQueue — restore the raw
+            // queue first so the tape bytes do not animate the keys.
+            await disableTeletypeKeyVisuals(page);
+            await page.evaluate((bytes) => {
+                if (window.tapeReader && typeof window.tapeReader.loadBytes === "function") {
+                    window.tapeReader.loadBytes(new Uint8Array(bytes));
+                }
+            }, linesToTapeBytes(shot.tape));
+            // Let the viewer take in the loaded tape before the reader starts.
+            await sleep(2500);
+            await page.evaluate(() => {
+                if (typeof window.setReaderMode === "function") {
+                    window.setReaderMode("auto");
+                }
+            });
+            // Wait for the whole tape to be read into the machine.
+            const consumed = await waitFor(async () => {
+                return page.evaluate(() => {
+                    const tr = window.tapeReader;
+                    return tr ? !tr.hasTape() : true;
+                });
+            }, 180000);
+            if (!consumed) {
+                console.error("  WARN: ASR tape was not fully read");
+            }
+        }
+
         // On a teletype console the keys are typed one at a time at the human
         // ~110 baud pace (a VT52 accepts the whole line instantly).
         const humanTyping = !isVt52;
@@ -687,6 +921,121 @@ async function captureConsoleOS(browser, shot) {
         rec = null;
         const kb = Math.round(fs.statSync(path.join(OUT_DIR, shot.file)).size / 1024);
         console.log(`  saved ${shot.file} (${kb} kB)`);
+    } finally {
+        if (rec) { try { await stopRecording(rec); } catch (err) { /* best effort */ } }
+        await page.close();
+    }
+}
+
+// The front-panel "classic way": start with the machine POWERED OFF, switch
+// to CONFIG and pick the VT52 operator console, then go to the Panel, power
+// the machine on, toggle in the RK05 primary bootstrap by hand, START it, and
+// wait for RT-11's "." prompt before running DUNGEON. The whole sequence is
+// recorded so the viewer sees the operator work the switches.
+async function capturePanelBoot(browser, shot) {
+    const page = await openPage(browser, shot);
+    let rec = null;
+    // Timestamp of the "." readiness prompt — the recording must linger at
+    // least 5 s after it so the viewer can read the final RT-11 prompt.
+    let readyAt = Date.now();
+    try {
+        rec = await startRecording(page, shot);
+
+        // Human pacing: let the viewer see the cold, powered-off machine.
+        await sleep(shot.leadMs || 3000);
+
+        // 1. CONFIG: select the VT52 operator console and Apply (reloads).
+        await page.evaluate(() => window.switchPage('config'));
+        await sleep(1200);
+        await page.evaluate(() => {
+            const r = document.querySelector('input[name="consoleType"][value="vt52"]');
+            if (r) r.click();
+        });
+        await sleep(600);
+        await Promise.all([
+            page.waitForNavigation({ waitUntil: "load", timeout: 30000 }).catch(() => {}),
+            page.evaluate(() => {
+                const b = document.getElementById('config-apply');
+                if (b) b.click();
+            })
+        ]);
+        await page.waitForFunction(() => typeof window.switchPage === "function",
+            { timeout: 30000 });
+        // Reload discarded our hooks/feeders — reinstall for the VT52 console.
+        await consoleWait.installConsoleHooks(page);
+        await installVt52PacedFeeder(page);
+        await sleep(800);
+
+        // 2. Panel: power the machine on (POWER LOCK -> POWER).
+        await page.evaluate(() => window.switchPage('panel'));
+        await sleep(800);
+        await clickPanelControl(page, '.lockPanelPos[data-power-state="run"]');
+        await sleep(800);
+
+        // 3. Toggle in the bootstrap loader and START it.
+        await toggleInPanelBootstrap(page);
+        await sleep(500);
+
+        // 4. Switch to the VT52 console and wait for RT-11 to finish booting.
+        await page.evaluate(() => window.switchPage('vt52-console'));
+        // The RT-11 boot printed while the Panel page was active, so the hidden
+        // VT52 canvas was not repainted — force a re-size + full repaint now
+        // that the page is visible, so the boot text shows on camera.
+        await sleep(600);
+        await redrawVt52(page, 0);
+        const drained = await waitStable(page, 2500, 120000);
+        if (!drained) {
+            console.error("  WARN: console did not finish rendering the RT-11 boot");
+        }
+        readyAt = Date.now();
+
+        // 5. Demo commands on the VT52 console.
+        for (const cmd of shot.extra || []) {
+            if (cmd && cmd.ctrlC) {
+                await page.evaluate(() => {
+                    if (typeof window.dlReceiveQueue === "function") {
+                        window.dlReceiveQueue(0, [3]);
+                    }
+                });
+                await sleep(1500);
+            } else if (cmd && typeof cmd === "object") {
+                await typeTextPaced(page, cmd.send);
+                const ok = await waitFor(() => outputContains(page, cmd.waitFor), 60000);
+                if (!ok) {
+                    console.error(`  WARN: prompt '${cmd.waitFor}' not seen`);
+                }
+                await sleep(1200);
+            }
+        }
+
+        const drainedExtra = await waitStable(page, 2500, 120000);
+        if (!drainedExtra) {
+            console.error("  WARN: console did not finish rendering the response");
+        }
+
+        await sleep(shot.settle || 2000);
+        const sinceReady = Date.now() - readyAt;
+        await sleep(Math.max(5000 - sinceReady, shot.tail || 0, 0));
+
+        await stopRecording(rec);
+        rec = null;
+        const kb = Math.round(fs.statSync(path.join(OUT_DIR, shot.file)).size / 1024);
+        console.log(`  saved ${shot.file} (${kb} kB)`);
+
+        // A hand-toggled RK05 bootstrap is read-only by definition, but this
+        // RT-11 image writes its directory/home area during a cold panel boot
+        // (RT-11 monitor, not the loader — the loader only reads block 0).
+        // Discard those writes from the DiskStore write-back cache before the
+        // page closes (pagehide flushes), so the shared browser profile's rk1
+        // image stays pristine for the rk1 / rk1vt52 clips recorded later in
+        // the same run.
+        try {
+            await page.evaluate(() => {
+                if (typeof DiskStore !== "undefined" && DiskStore.clear) {
+                    return DiskStore.clear("rk1.dsk");
+                }
+            });
+        } catch (err) { /* best effort */ }
     } finally {
         if (rec) { try { await stopRecording(rec); } catch (err) { /* best effort */ } }
         await page.close();
@@ -767,6 +1116,8 @@ async function captureLander(browser, shot) {
             try {
                 if (shot.device === "lander") {
                     await captureLander(browser, shot);
+                } else if (shot.device === "rk1panel") {
+                    await capturePanelBoot(browser, shot);
                 } else {
                     await captureConsoleOS(browser, shot);
                 }
