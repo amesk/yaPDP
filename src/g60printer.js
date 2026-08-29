@@ -174,6 +174,11 @@
      *                            characters are being rendered and stop when the
      *                            buffer drains (default false). Used by the fast
      *                            LP11 line printer instead of per-character clicks.
+     *   options.carriageReturnMs - ms for a full-width carriage return glide
+     *                            (default 0 = instant). The Model 33 ASR console
+     *                            teletype passes ~100 for the authentic physical
+     *                            return; the fast LP11 keeps 0 so a CR never
+     *                            throttles its ~300 LPM throughput.
      */
     window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
@@ -192,6 +197,7 @@
             headDir, curLine, headUp, callback, keepLocked,
             delayFeed, feedDy, topSpacerVisible, lastTime,
             lastLineFeed, afId1, afId2, afId3,
+            carriageReturnTimer,
             spacerCurrentHeight;
 
         // Character pacing state. The per-character delay is configurable so a
@@ -256,6 +262,15 @@
         var delayChar = 12;
         var delayCharUp = 6;
         var delayEmptyLine = 50;
+        // Duration of a full-width carriage return on the Model 33 ASR: the
+        // print head physically travels back to the left margin over ~100 ms,
+        // not a teleport. Configurable per printer — the fast LP11 line
+        // printer (300 LPM) keeps 0 (instant) so a CR never throttles it,
+        // while the console teletype passes ~100 for the authentic glide.
+        // The animation maps the current column onto this window, so a
+        // mid-line CR returns as fast as a full-width one.
+        var carriageReturnMs = (typeof opts.carriageReturnMs === 'number' && opts.carriageReturnMs > 0)
+            ? opts.carriageReturnMs : 0;
         var headIdlePos = -3;
         var headOffset = 30;
         var lineHeight = 16;
@@ -606,12 +621,43 @@
          * terminal. overHang is set so the next characters replace the
          * existing glyphs instead of appending at the end of the line.
          */
+        /**
+         * animateCarriageReturn() - Internal: the physical carriage-return
+         * motion. A real Model 33 ASR takes ~100 ms to return the print head
+         * to the left margin — it does not teleport. The head glides back
+         * over CR_RETURN_MS on a dedicated timer so it never collides with
+         * the line-based head motion; any other repositioning of the head
+         * (movePrintHeadQuick / movePrintHead) cancels it first.
+         */
+        function animateCarriageReturn() {
+            if (carriageReturnTimer) { clearTimeout(carriageReturnTimer); carriageReturnTimer = null; }
+            var fromPos = headPos;
+            if (fromPos <= 0) return;
+            // Fast printers (LP11, carriageReturnMs 0) keep the instant return:
+            // a real line printer has no travelling carriage to watch.
+            if (carriageReturnMs <= 0) { movePrintHeadQuick(0); return; }
+            var t0 = performanceNow ? performance.now() : new Date().getTime();
+            function step() {
+                carriageReturnTimer = null;
+                var t = performanceNow ? performance.now() : new Date().getTime();
+                var k = Math.min(1, (t - t0) / carriageReturnMs);
+                var p = Math.max(0, Math.round(fromPos * (1 - k)));
+                setHeadPos(p, false);
+                if (p > 0) {
+                    carriageReturnTimer = setTimeout(step, 12);
+                }
+            }
+            carriageReturnTimer = setTimeout(step, 0);
+        }
+
         function doCarriageReturn() {
             if (onChar) onChar(13);
             if (currentCharPos > 0) {
                 overHang += currentCharPos;
                 currentCharPos = 0;
-                movePrintHeadQuick(0);
+                // Physical return: the head travels back to the left margin
+                // over ~100 ms instead of teleporting (authentic ASR-33).
+                animateCarriageReturn();
             }
         }
 
@@ -852,6 +898,10 @@
          * Quick print head movement for character echo
          */
         function movePrintHeadQuick(pos) {
+            // A new character / backspace / page switch supersedes any in-flight
+            // animated carriage return: cancel its timer so the glide cannot
+            // keep driving the head after the next print action has placed it.
+            if (carriageReturnTimer) { clearTimeout(carriageReturnTimer); carriageReturnTimer = null; }
             // Keep the logical carriage position in sync: the character-echo
             // path (doPrintChar/doBackspace/doCarriageReturn) drives the head
             // visually, and applyPaperGeometry() repositions it from headPos
@@ -1047,6 +1097,8 @@
         }
 
         function movePrintHead(p, delay, up, moveCallback, iterated) {
+            // Line-based print motion supersedes an in-flight animated CR.
+            if (carriageReturnTimer) { clearTimeout(carriageReturnTimer); carriageReturnTimer = null; }
             if (headPos !== p) {
                 var dx = (p - headPos > 0) ? 1 : -1;
                 if (iterated) {
@@ -1149,10 +1201,11 @@
             if (printArea) printArea.innerHTML = '';
             if (timer) clearTimeout(timer);
             if (timer2) clearTimeout(timer2);
+            if (carriageReturnTimer) clearTimeout(carriageReturnTimer);
             if (afId1 && cancelReqAnimFrame) cancelReqAnimFrame(afId1);
             if (afId2 && cancelReqAnimFrame) cancelReqAnimFrame(afId2);
             if (afId3 && cancelReqAnimFrame) cancelReqAnimFrame(afId3);
-            timer = timer2 = afId1 = afId2 = afId3 = null;
+            timer = timer2 = carriageReturnTimer = afId1 = afId2 = afId3 = null;
             lines = []; initialTop = textPos = headPos = 0;
             textBuffer = ''; callback = curLine = null;
             idle = scrollLock = topSpacerVisible = true;
@@ -1195,10 +1248,11 @@
 
             if (timer) clearTimeout(timer);
             if (timer2) clearTimeout(timer2);
+            if (carriageReturnTimer) clearTimeout(carriageReturnTimer);
             if (afId1 && cancelReqAnimFrame) cancelReqAnimFrame(afId1);
             if (afId2 && cancelReqAnimFrame) cancelReqAnimFrame(afId2);
             if (afId3 && cancelReqAnimFrame) cancelReqAnimFrame(afId3);
-            timer = timer2 = afId1 = afId2 = afId3 = null;
+            timer = timer2 = carriageReturnTimer = afId1 = afId2 = afId3 = null;
             callback = null; setHeadUp(false);
         }
 

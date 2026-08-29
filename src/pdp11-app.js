@@ -200,6 +200,10 @@ function initG60Printer() {
     maxCols: maxCols,
     pageBreakMarker: false,
     charPrintDelay: teletypeDelay((cfg) ? cfg.teletypeSpeed : null),
+    // Authentic physical carriage return: the head glides back to the left
+    // margin over ~100 ms instead of teleporting (the fast LP11 keeps the
+    // instant return — see carriageReturnMs in g60printer.js).
+    carriageReturnMs: 100,
     onChar: function (code) {
       if (window.ttyMode !== 'off' && window.ttyPunchEnabled && window.paperTape) {
         window.paperTape.punchChar(code);
