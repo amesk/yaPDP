@@ -203,7 +203,7 @@ assert.ok(assembleSrc.includes('"_slide.webm"'),
   "the individual-export pipeline must include the title slide");
 assert.ok(assembleSrc.includes("sans: true"),
   "the individual clip card must use the intro's sans-serif subtitle style");
-assert.ok(assembleSrc.includes("size: 76"),
+assert.ok(assembleSrc.includes("size: 68"),
   "the individual clip card description must be sized up");
 assert.ok(assembleSrc.includes("const CLIP_SLIDE_MS = SLIDE_MS * 3;"),
   "the individual clip description must be held ~3x longer than the reel cards");
