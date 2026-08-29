@@ -22,6 +22,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   :1170 is not serving.
 
 
+- **BASIC-11 from the ASR paper-tape reader (promo clip `basic-tape`).**
+  The demo-reel generator now has a second BASIC-11 clip: it boots BASIC-11
+  on the Model 33 ASR teletype, then feeds an integer-valued "heart" program
+  from the ASR tape reader in AUTO mode (one byte per DL11 drained signal)
+  instead of typing it, so the whole program + RUN come off the tape. The
+  drawing is pure integer math — this BASIC-11 V007A build has no integer
+  variables and TAB() errors, so the program uses real variables holding exact
+  small integers, leading-space loops and no FPP built-ins / fractional STEP
+  (verified by `tools/_debug-basic-tape.js`; the FPP suspicion from the sine
+  demo turned out to be a TAB() error, not FPP). The clip is registered in the
+  reel CLIPS (`tools/assemble-video.js`); the capture feeds the reader with the
+  raw console queue so the tape never animates the keys, and the quick-boot
+  list scroll is now DOWN-only so the first item (BASIC) is not scrolled on
+  camera. Structural coverage: `tests/video-shots.test.js`.
+
+- **Labelled title cards in the standalone demo MP4s.** Every exported
+  `<name>.mp4` now shows a title card (the same slide the reel uses, e.g.
+  "DEC BASIC-11 · ASR TAPE") right after the product intro, so the viewer
+  knows what the demo demonstrates before the clip starts — matching the
+  reel's per-clip title cards. The card text uses the intro's subtitle style
+  (bold sans-serif, light with a dark outline) and is sized up to read
+  clearly as the clip's description, and the card is overlaid with the same
+  CRT scanlines as the intro. The card is held ~3x longer than the reel's
+  quick title cards (9 s), and the intro card's final-frame hold was raised
+  to 8 s so the green "DEC era" line stays readable before the fade-out /
+  cross-fade.
+
+- **Crisper promo videos (native capture resolution).** The tab capture was
+  silently capped at 800×600 by `chrome.tabCapture`'s default and then
+  upscaled to the 1280×800 export — hence blurry, smeared clips. The recorder
+  now passes explicit `videoConstraints` (1280×800@30) so the raw WebM is
+  captured at the full native resolution, the intermediate VP8 bitrate is
+  raised (12 Mbps) and the final H.264 export uses CRF 18 instead of 20.
+  Re-record with `npm run record:video` to pick up the sharper capture.
+
+
 - **Build manifest (`media/manifest.json`) + availability-aware quick-boot
   picker.** A deployment now declares which guest images it ships: the
   manifest is generated from `media/` by `node tools/gen-media-manifest.js`
