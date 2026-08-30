@@ -138,6 +138,7 @@ async function bootRT11(opts = {}) {
   load(sb, "src/bootcode.js");
   load(sb, "src/pdp11.js");
   load(sb, "src/fpp.js");
+  load(sb, "src/dataloader.js"); // DataLoader moved out of iopage.js (refactor)
   load(sb, "src/iopage.js");
 
   // Mount the image straight from the file system — no fetch, no UI.

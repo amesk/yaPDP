@@ -2019,50 +2019,11 @@ const OP_BYTE  = 5;
 //   list()              — urls of all mounted images
 //   sourceOf(url)       — source hint for UI ("dragdrop" | "bundled")
 // ================================================================
-var DataLoader = (() => {
-    "use strict";
+// DataLoader moved to src/dataloader.js (refactor): the "get the bytes"
+// layer of the storage split is not a device — it is the UI/environment
+// side. Loaded as its own script in pdp11.html (both ?core=1 and the
+// iopage mode); dragdrop.js / tauri-bundled.js / quickboot fill it.
 
-    // Logical url (e.g. "rk0.dsk") → full decompressed image bytes
-    const mounted = new Map();
-    // Logical url → source hint for UI (dragdrop / bundled)
-    const sources = new Map();
-
-    return {
-        mount(url, bytes) {
-            mounted.set(url, bytes);
-            sources.set(url, "local");
-        },
-        mountZst(url, zstBytes) {
-            if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
-                return -1;
-            }
-            try {
-                const decompressed = fzstd.decompress(new Uint8Array(zstBytes));
-                mounted.set(url, decompressed);
-                sources.set(url, "local");
-                return decompressed.length;
-            } catch (err) {
-                return -1;
-            }
-        },
-        get(url) {
-            return mounted.get(url);
-        },
-        has(url) {
-            return mounted.has(url);
-        },
-        unmount(url) {
-            mounted.delete(url);
-            sources.delete(url);
-        },
-        list() {
-            return Array.from(mounted.keys());
-        },
-        sourceOf(url) {
-            return sources.get(url);
-        }
-    };
-})();
 
 
 // ================================================================
