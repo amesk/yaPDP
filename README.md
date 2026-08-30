@@ -59,7 +59,8 @@ running fully offline. Two installer variants are published: **Minimal** (~3 MB,
 `rk0`/`rk1`/`bootcode` bundled, everything else drag & dropped at runtime) and
 **Full** (every disk/tape image, all 16 guest OSes boot offline). Installers for
 Windows x64 (MSI/NSIS/portable) and Linux x64 (deb/rpm/AppImage). Toolchain
-installation and build commands: [`docs/BUILDING.md`](docs/BUILDING.md).
+installation and build commands: [`docs/BUILDING.md`](docs/BUILDING.md). The
+step-by-step release procedure: [`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Guest Operating Systems
 
