@@ -129,19 +129,23 @@
                 return;
             }
 
-            // Map access handlers into 8-byte slots
+            // Map access handlers into 8-byte slots. Handlers are bound to
+            // the device so class-based devices (methods using `this`) work
+            // identically to the closure-style devices of iopage.js (for
+            // which bind() is a harmless no-op).
             for (let index = (address & 0o17777) >>> 3; count > 0; count -= 4, index++) {
                 if (this.deviceAccess[index] !== undefined) {
                     console.log("bus.register overlap at " + address.toString(8));
                 }
-                this.deviceAccess[index] = device.access;
+                this.deviceAccess[index] = device.access.bind(device);
             }
 
             // Optional interrupt poll handler
             if (typeof device.poll === "function") {
                 const mask = this.host.priorityMask !== undefined
                     ? this.host.priorityMask : 0o340;
-                const pri = device.poll(0) & mask;
+                const poll = device.poll.bind(device);
+                const pri = poll(0) & mask;
                 if (!pri) {
                     console.log("bus.register device with no priority at " + address.toString(8));
                     return;
@@ -153,12 +157,12 @@
                        (this.devicePoll[insert](0) & mask) > pri) {
                     insert--;
                 }
-                this.devicePoll.splice(insert + 1, 0, device.poll);
+                this.devicePoll.splice(insert + 1, 0, poll);
             }
 
             // Optional reset handler
             if (typeof device.reset === "function") {
-                this.deviceReset.push(device.reset);
+                this.deviceReset.push(device.reset.bind(device));
             }
 
             // Optional snapshot/restore handlers (machine-state persistence, L2)
@@ -166,8 +170,8 @@
                 typeof device.restore === "function") {
                 this.deviceSnap.push({
                     address: address,
-                    snapshot: device.snapshot,
-                    restore: device.restore
+                    snapshot: device.snapshot.bind(device),
+                    restore: device.restore.bind(device)
                 });
             }
         }
