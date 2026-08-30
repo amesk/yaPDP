@@ -16,7 +16,9 @@
 
 const puppeteer = require("puppeteer");
 
-const URL = "http://localhost:1170/pdp11.html";
+// E2E_CORE=1 exercises the refactored machine layer (?core=1).
+const URL = "http://localhost:1170/pdp11.html"
+    + (process.env.E2E_CORE ? "?core=1" : "");
 
 (async () => {
   const browser = await puppeteer.launch({
