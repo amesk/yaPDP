@@ -160,6 +160,18 @@
         }
 
         /**
+         * tapeLength(url) — total byte length of a mounted provider, or
+         * undefined when the provider does not declare one (used by the
+         * paper-tape reader for the end-of-tape condition).
+         */
+        tapeLength(url) {
+            const drive = this.drives[url];
+            if (!drive || !drive.provider) return undefined;
+            const len = drive.provider.length;
+            return typeof len === "number" ? len : undefined;
+        }
+
+        /**
          * io(controlBlock, operation, position, address, count, options) —
          * the diskIO() transfer loop, 1:1 from iopage.js. Transfers words
          * between the cache and the guest memory; on a cache miss it loads

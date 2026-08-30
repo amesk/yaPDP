@@ -38,6 +38,7 @@ const { NodeIO } = require("../src/core/io.js");
 const { ConsoleDL11 } = require("../src/devices/dl11.js");
 const { Rk11 } = require("../src/devices/rk11.js");
 const { CpuRegs } = require("../src/devices/cpu-regs.js");
+const { PtrPtp } = require("../src/devices/ptr11.js");
 const { Kw11 } = require("../src/devices/kw11.js");
 const { IO_BLOCKSIZE } = require("../src/devices/disk-service.js");
 
@@ -246,6 +247,13 @@ async function bootHeadless(opts = {}) {
   });
   machine.addDevice(kw);
   kw.install();
+
+  // --- PTR11/PTP11 paper tape (reader vector 070, punch 074) ---
+  const ptr = new PtrPtp(machine, "ptr", {
+    regions: [{ address: 0o17777550, count: 4 }],
+  });
+  machine.addDevice(ptr);
+  ptr.install();
 
   const zst = fs.readFileSync(path.join(REPO, image));
   const raw = sb.fzstd.decompress(new Uint8Array(zst));
