@@ -54,6 +54,16 @@
     // overpunches the row that many rows back instead of adding a new row.
     var armedDepth = 0;
 
+    // Automatic lead-in / trailer length. On a real Model 33 ASR the leader
+    // (and the trailer punched before cutting the tape off) is a run of NUL
+    // rows: the punch feeds the tape while no data pins fire, so the tape
+    // gets a blank, mechanically-sound stretch (a RUB OUT leader would be
+    // all holes — brittle, tears when loaded into the reader). A fresh tape
+    // automatically starts with TAPE_LEADER blank NUL rows; disengaging the
+    // punch (DC4 or the OFF button) punches the same trailer before the
+    // tape stops.
+    var TAPE_LEADER = 6;
+
     /**
      * init() - Locate the #punchtape element, create the tape body and size
      * the tape window to hang from the punch down to the window edge. Safe to
@@ -211,9 +221,32 @@
     }
 
     /**
+     * punchQuiet(code) - Punch one row without the audible punch sounds
+     * (used for the automatic NUL leader/trailer: the feed ratchet clicks
+     * are part of the operator's manual punching, a machine-generated
+     * leader is silent). Shared DOM/append logic with punchChar().
+     */
+    function punchQuiet(code) {
+        buffer.push(code & 0x7F);
+        var row = makeSpan('pt-row');
+        renderRow(row, code);
+        // Prepend: the fresh row appears right under the punch head, pushing
+        // the already-punched tape downwards (the tape "grows" from the top).
+        if (body.firstChild) {
+            body.insertBefore(row, body.firstChild);
+        } else {
+            body.appendChild(row);
+        }
+        updateMaxHeight();
+        keepPunchVisible();
+    }
+
+    /**
      * clear() - Tear the tape off / rewind: drop all punched rows and bytes.
      * Returns true if there was actually something to tear off (punched rows on
      * the tape or bytes in the buffer), false if the tape was already empty.
+     * A fresh tape automatically starts with TAPE_LEADER blank NUL rows (the
+     * lead-in), exactly like a freshly loaded real tape under a running punch.
      */
     function clear() {
         if (!body) init();
@@ -225,7 +258,21 @@
         torn = torn || buffer.length > 0;
         buffer = [];
         armedDepth = 0;
+        // Automatic NUL lead-in on the fresh tape (silent, feed holes only).
+        for (var i = 0; i < TAPE_LEADER; i++) punchQuiet(0);
         return torn;
+    }
+
+    /**
+     * punchTrailer() - Punch the automatic NUL trailer (TAPE_LEADER blank
+     * rows) when the punch is disengaged (DC4 or the OFF button): the tape
+     * gets a blank mechanical tail before it stops, like a real operator
+     * finishing a tape. No-op when the tape UI is absent.
+     */
+    function punchTrailer() {
+        if (!body) init();
+        if (!body) return;
+        for (var i = 0; i < TAPE_LEADER; i++) punchQuiet(0);
     }
 
     /**
@@ -319,6 +366,7 @@
         punchChar: punchChar,
         backspace: backspace,
         clear: clear,
+        punchTrailer: punchTrailer,
         save: save,
         snapshot: snapshot,
         restore: restore,

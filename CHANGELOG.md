@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Automatic NUL lead-in / trailer on the ASR paper tape.** A fresh tape
+  (tear-off) now starts with 6 blank NUL rows — the historic lead-in: the
+  punch feeds the tape while no data pins fire, so the tape gets a
+  mechanically-sound blank stretch (a RUB OUT leader would be all holes and
+  tear on loading). Disengaging the punch (machine DC4 or the OFF button)
+  punches the matching 6-row NUL trailer before the tape stops. The saved
+  `.ptap` includes the leader, byte-exact. (`src/punchtape.js`,
+  `src/pdp11-app.js`; e2e updated in `tests/e2e-teletype-tape.js`,
+  `tests/reader.test.js`.)
+
 - **Guest-OS boot e2e test (`tests/e2e-osboot.js`, `npm run e2e:os`).** Boots
   four real guest operating systems through the quick-boot wizard in Chromium
   — exactly the user path (magic-wand picker -> scenario click) — and asserts
