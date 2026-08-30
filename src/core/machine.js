@@ -25,6 +25,9 @@
     const { Bus } = (typeof module !== "undefined" && module.exports)
         ? require("./bus.js")
         : (global.yapdpCore || {});
+    const { DiskService } = (typeof module !== "undefined" && module.exports)
+        ? require("../devices/disk-service.js")
+        : (global.yapdpCore || {});
 
     class Machine {
         /**
@@ -42,6 +45,14 @@
             this.bus = new Bus(host);
             this.devices = {};
             this.powered = false;
+            // Block I/O service (disk controllers + paper-tape reader).
+            this.disk = new DiskService(host);
+        }
+
+        /** mountDrive(url, provider) — attach a block provider (readBlock/
+         *  writeBlock) to the disk service, e.g. a file provider in Node. */
+        mountDrive(url, provider) {
+            this.disk.mountDrive(url, provider);
         }
 
         /** printf(format, ...args) — route through the I/O adapter. */

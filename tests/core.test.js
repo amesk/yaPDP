@@ -24,6 +24,8 @@ const { Device } = require(path.join(__dirname, "..", "src", "core", "device.js"
 const { Machine } = require(path.join(__dirname, "..", "src", "core", "machine.js"));
 const { IO, NodeIO, BrowserIO } = require(path.join(__dirname, "..", "src", "core", "io.js"));
 const { ConsoleDL11 } = require(path.join(__dirname, "..", "src", "devices", "dl11.js"));
+const { Rk11 } = require(path.join(__dirname, "..", "src", "devices", "rk11.js"));
+const { DiskService, IO_BLOCKSIZE } = require(path.join(__dirname, "..", "src", "devices", "disk-service.js"));
 
 // ----------------------------------------------------------------------
 // Test helpers for devices
@@ -379,7 +381,148 @@ const p8 = (async () => {
     ok("dl11: install() registers the console region on the bus");
 })();
 
-Promise.all([p6, p7, p8]).then(() => {
+// ----------------------------------------------------------------------
+// 9. DiskService (refactor stage 3)
+// ----------------------------------------------------------------------
+const p9 = (async () => {
+    // Fake guest memory + synchronous callback scheduling.
+    const mem = new Uint16Array(4096);
+    const completed = [];
+    const host = {
+        busReadWord: (a) => (a >>> 1 < mem.length ? mem[a >>> 1] : -1),
+        busWriteWord: (a, d) => { mem[a >>> 1] = d; return d; },
+        writeByteByPhysical: (a, d) => { mem[a >>> 1] = d; return d; },
+        mapUnibus: (a) => a,
+        scheduleCallback: (fn, ...args) => { fn(...args); }, // CPU-context stub
+    };
+    const disk = new DiskService(host);
+    const cb = { url: "rk0.dsk", callback: (c, code) => completed.push(code) };
+
+    // Provider: one 128KB block with two known words at the start.
+    const image = new Uint8Array(IO_BLOCKSIZE);
+    image[0] = 0x34; image[1] = 0x12; // word 0x1234
+    image[2] = 0x78; image[3] = 0x56; // word 0x5678
+    const writes = [];
+    disk.mountDrive("rk0.dsk", {
+        readBlock: async (n) => (n === 0 ? image : new Uint8Array(0)),
+        writeBlock: async (n, bytes) => writes.push({ n, bytes: Array.from(bytes.slice(0, 8)) }),
+    });
+
+    // OP_READ: cache → memory, completion code 0.
+    await disk.io(cb, 2, 0, 0, 4, null);
+    assert.strictEqual(mem[0], 0x1234);
+    assert.strictEqual(mem[1], 0x5678);
+    assert.deepStrictEqual(completed, [0]);
+    ok("disk: OP_READ transfers cache words into guest memory");
+
+    // OP_WRITE: memory → cache, marks dirty, flush pushes bytes to provider.
+    mem[0] = 0xABCD;
+    await disk.io(cb, 1, 0, 0, 4, null);
+    assert.strictEqual(disk.dirtyBlockCount("rk0.dsk"), 1);
+    await disk.flushDrive("rk0.dsk");
+    assert.strictEqual(writes.length, 1);
+    assert.strictEqual(writes[0].n, 0);
+    assert.strictEqual(writes[0].bytes[0], 0xCD); // little-endian
+    assert.strictEqual(writes[0].bytes[1], 0xAB);
+    assert.strictEqual(disk.dirtyBlockCount("rk0.dsk"), 0);
+    ok("disk: OP_WRITE marks dirty and flushDrive writes back little-endian");
+
+    // OP_READ spanning a cache-block boundary continues across blocks.
+    mem.fill(0);
+    completed.length = 0;
+    const image2 = new Uint8Array(IO_BLOCKSIZE);
+    image2[0] = 0x11; image2[1] = 0x22;
+    disk.mountDrive("rk1.dsk", {
+        readBlock: async (n) => (n === 0 ? image2 : new Uint8Array(0)),
+        writeBlock: async () => {},
+    });
+    const cb1 = { url: "rk1.dsk", callback: (c, code) => completed.push(code) };
+    await disk.io(cb1, 2, 0, 0, 2, null);
+    assert.strictEqual(mem[0], 0x2211);
+    assert.deepStrictEqual(completed, [0]);
+    ok("disk: a fresh drive url resolves to its own provider");
+})();
+
+// ----------------------------------------------------------------------
+// 10. Rk11 controller (refactor stage 3)
+// ----------------------------------------------------------------------
+const p10 = (async () => {
+    const mem = new Uint16Array(4096);
+    const host = {
+        cpu: { interruptRequested: 0, runState: 0 },
+        trap: (v, e) => { host.lastTrap = [v, e]; return -1; },
+        busReadWord: (a) => (a >>> 1 < mem.length ? mem[a >>> 1] : -1),
+        busWriteWord: (a, d) => { mem[a >>> 1] = d; return d; },
+        writeByteByPhysical: (a, d) => { mem[a >>> 1] = d; return d; },
+        mapUnibus: (a) => a,
+        scheduleCallback: (fn, ...args) => { fn(...args); },
+    };
+    const m = new Machine({}, host);
+    const rk = new Rk11(m, "rk0", {
+        regions: [{ address: 0o17777400, count: 8 }],
+    });
+    m.addDevice(rk);
+    rk.install();
+
+    // reset state
+    assert.strictEqual(rk.access(0o17777404, -1, 0) & 0x80, 0x80); // RKCS RDY
+    assert.strictEqual(rk.access(0o17777400, -1, 0) & 0x0800, 0x0800); // RK05 present
+    ok("rk11: reset leaves controller ready with RK05 present");
+
+    // Read command: sector 0 → memory, completion + interrupt.
+    const image = new Uint8Array(IO_BLOCKSIZE);
+    image[0] = 0x34; image[1] = 0x12;
+    m.mountDrive("rk0.dsk", {
+        readBlock: async (n) => (n === 0 ? image : new Uint8Array(0)),
+        writeBlock: async () => {},
+    });
+    rk.access(0o17777410, 0, 0);   // RKBA = 0
+    rk.access(0o17777406, 0xFFFC, 0); // RKWC = -4 words? (0x10000-4)
+    rk.access(0o17777412, 0, 0);   // RKDA = drive 0, cyl 0, sect 0
+    rk.access(0o17777404, 0x80 | 0x40 | 4 | 1, 0); // RDY|IE|FUN=read|GO
+    await sleep(20); // disk.io completes on a microtask (async provider)
+    assert.strictEqual(mem[0], 0x1234);
+    assert.strictEqual(rk.access(0o17777404, -1, 0) & 0x80, 0x80); // RDY again
+    assert.strictEqual(rk.poll(1), 0o220); // command-complete vector
+    ok("rk11: read command transfers a sector into memory and interrupts");
+
+    // Write command: memory → provider via flush.
+    mem[0] = 0xBEEF;
+    const writes = [];
+    m.mountDrive("rk1.dsk", {
+        readBlock: async () => new Uint8Array(0),
+        writeBlock: async (n, bytes) => writes.push({ n, b: bytes[0] }),
+    });
+    const rk1 = new Rk11(m, "rk1", { regions: [{ address: 0o17777500, count: 8 }] });
+    m.addDevice(rk1);
+    rk1.install();
+    rk1.access(0o17777510, 0, 0);       // RKBA
+    rk1.access(0o17777506, 0xFFFC, 0);  // RKWC
+    rk1.access(0o17777512, 1 << 13, 0); // RKDA drive 1 (url rk1.dsk)
+    rk1.access(0o17777504, 0x80 | 2 | 1, 0); // RDY|FUN=write(2)|GO (no IE)
+    await sleep(20); // let the async write land in the cache
+    await m.disk.flushDrive("rk1.dsk");
+    assert.strictEqual(writes.length, 1);
+    assert.strictEqual(writes[0].b, 0xEF);
+    ok("rk11: write command lands in the provider via write-back flush");
+
+    // Error paths: nonexistent drive/cylinder/sector.
+    rk.access(0o17777412, 7 << 13, 0); // drive 7 (idle)
+    rk.access(0o17777404, 0x80 | 4 | 1, 0);
+    assert.ok(rk.access(0o17777402, -1, 0) & 0x80); // RKER NXD
+    rk.access(0o17777412, 0 | (999 << 4), 0); // cylinder 999
+    rk.access(0o17777404, 0x80 | 4 | 1, 0);
+    assert.ok(rk.access(0o17777402, -1, 0) & 0x40); // RKER NXC
+    ok("rk11: nonexistent drive/cylinder set the error register");
+
+    // snapshot/restore
+    const snap = rk.snapshot();
+    rk.restore({ ...snap, rkba: 0x1234 });
+    assert.strictEqual(rk.rkba, 0x1234);
+    ok("rk11: snapshot/restore round-trips controller state");
+})();
+
+Promise.all([p6, p7, p8, p9, p10]).then(() => {
     console.log(passed + " core test(s) passed");
     process.exit(passed >= 11 ? 0 : 1);
 }).catch((e) => {
