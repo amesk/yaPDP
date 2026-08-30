@@ -993,9 +993,34 @@ function dl11(vt52Unit, deviceVector) {
         setTimeout(() => { rcsr &= ~DL_RCSR_BREAK; }, 150);
     }
 
-    // Expose globally for the visual punch-keyboard (and inline handlers)
-    // Unit 0 → global dlReceiveQueue (console)
-    // Unit N → global dlReceiveQueueN (VT52 user terminals)
+    // ==================================================================
+    // Machine bridge API — the public contract between the emulator core
+    // and the world outside the DL11 closure (UI, wizards, tools).
+    //
+    // These globals are NOT debug leftovers and NOT optional: they are
+    // load-bearing for in-page features AND for external tooling, so they
+    // are always exposed (no ?bridge=1 gating):
+    //
+    //   window.dlReceiveQueue(unit, bytes)  — inject console input.
+    //       Consumers: quickboot.js (autoload wizard), pasteutil.js,
+    //       pdp11-app.js (virtual keyboard, hotkeys), reader.js (ASR
+    //       tape in line mode), tools/rt11-term.js, tools/headless-boot.js.
+    //   window["dlReceiveQueue" + unit]     — same for VT52 user terminals.
+    //   window.dlConsoleBreak()             — operator BREAK (console only).
+    //       Consumers: pdp11-app.js (BREAK button), external tools.
+    //   window.__consoleOutputHook(ch)      — called for every console
+    //       character (unit 0, 0x07..0x7E), 7-bit. May be installed by
+    //       exactly one consumer at a time; a consumer replacing a hook
+    //       installed by another consumer must chain to the previous one.
+    //       Consumers: quickboot.js (prompt waiting), tools/rt11-term.js,
+    //       tools/headless-boot.js.
+    //   window.onConsoleInputDrained()      — called when the console
+    //       typeahead queue has fully drained (every queued byte accepted
+    //       by the DL11 receiver). Consumers: reader.js (AUTO tape mode).
+    //
+    // The hook calls are fire-and-forget: a throwing hook must never break
+    // the console I/O path (see the try/catch at the call sites).
+    // ==================================================================
     if (unit === 0) {
         window.dlReceiveQueue = dlReceiveQueue;
         window.dlConsoleBreak = dlConsoleBreak;
@@ -1016,7 +1041,9 @@ function dl11(vt52Unit, deviceVector) {
             // machine is ready for the next tape byte.
             if (unit === 0 && typeAhead.length === 0 &&
                 typeof window.onConsoleInputDrained === 'function') {
-                window.onConsoleInputDrained();
+                try {
+                    window.onConsoleInputDrained();
+                } catch (e) { /* ignore hook errors */ }
             }
         }
 
@@ -1259,11 +1286,15 @@ function dl11(vt52Unit, deviceVector) {
                                 } else if (typeof g60ConsoleWrite !== 'undefined') {
                                     g60ConsoleWrite(xbuf);
                                 }
-                                // Console output hook (quick-boot wizard):
-                                // feeds every console character to prompt-waiting
-                                // logic, which types login when it sees "login:".
+                                // Console output hook (quick-boot wizard,
+                                // rt11-term, headless tools): feed every
+                                // console character to prompt-waiting logic.
+                                // Fire-and-forget per the bridge contract —
+                                // a throwing hook must not break console I/O.
                                 if (typeof window !== 'undefined' && window.__consoleOutputHook) {
-                                    window.__consoleOutputHook(xbuf);
+                                    try {
+                                        window.__consoleOutputHook(xbuf);
+                                    } catch (e) { /* ignore hook errors */ }
                                 }
                             } else {
                                 vt52Write(unit, xbuf);
