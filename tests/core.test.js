@@ -26,6 +26,7 @@ const { IO, NodeIO, BrowserIO } = require(path.join(__dirname, "..", "src", "cor
 const { ConsoleDL11 } = require(path.join(__dirname, "..", "src", "devices", "dl11.js"));
 const { Rk11 } = require(path.join(__dirname, "..", "src", "devices", "rk11.js"));
 const { PtrPtp } = require(path.join(__dirname, "..", "src", "devices", "ptr11.js"));
+const { Lp11 } = require(path.join(__dirname, "..", "src", "devices", "lp11.js"));
 const { DiskService, IO_BLOCKSIZE } = require(path.join(__dirname, "..", "src", "devices", "disk-service.js"));
 
 // ----------------------------------------------------------------------
@@ -596,7 +597,53 @@ const p11 = (async () => {
     ok("ptr: reset clears reader, snapshot/restore round-trips state");
 })();
 
-Promise.all([p6, p7, p8, p9, p10, p11]).then(() => {
+// ----------------------------------------------------------------------
+// 12. LP11 line printer (refactor stage 3e)
+// ----------------------------------------------------------------------
+const p12 = (async () => {
+    const host = {
+        cpu: { interruptRequested: 0, runState: 0 },
+        trap: () => -1,
+    };
+    const m = new Machine({}, host);
+    const lp = new Lp11(m, "lp11", { regions: [{ address: 0o17777510, count: 2 }] });
+    m.addDevice(lp);
+    lp.install();
+
+    // reset: DONE set, no error
+    assert.strictEqual(lp.access(0o17777514, -1, 0) & 0x80, 0x80);
+    assert.strictEqual(lp.access(0o17777514, -1, 0) & 0x20, 0);
+    ok("lp11: reset leaves DONE set and no error");
+
+    // LPDB write accumulates the plain-text job copy.
+    "HELLO\n".split("").forEach((ch) => lp.access(0o17777516, ch.charCodeAt(0), 0));
+    assert.ok(lp.getText().indexOf("HELLO") !== -1);
+    lp.access(0o17777516, 0x0C, 0); // FF → page marker
+    assert.ok(lp.getText().indexOf("\\f") !== -1);
+    ok("lp11: LPDB writes accumulate the text job (LF/FF handled)");
+
+    // OFF LINE: bytes consumed with sticky ERROR, no job text.
+    lp.onLine();
+    assert.strictEqual(lp.lp11Online, false);
+    const before = lp.getText();
+    lp.access(0o17777516, 0x58, 0); // 'X' while offline
+    assert.ok(lp.access(0o17777514, -1, 0) & 0x20); // ERROR latched
+    assert.strictEqual(lp.getText(), before); // not added to the job
+    lp.onLine();
+    assert.ok(!(lp.access(0o17777514, -1, 0) & 0x20)); // error cleared on read
+    ok("lp11: OFF LINE consumes bytes with sticky ERROR, no job text");
+
+    // vector + snapshot
+    lp.access(0o17777514, 0x40, 0); // IE
+    lp.access(0o17777516, 0x59, 0);
+    assert.strictEqual(lp.poll(1), 0o200);
+    const snap = lp.snapshot();
+    lp.restore({ ...snap, lpdb: 0x41 });
+    assert.strictEqual(lp.lpdb, 0x41);
+    ok("lp11: interrupt at vector 0200, snapshot/restore round-trips");
+})();
+
+Promise.all([p6, p7, p8, p9, p10, p11, p12]).then(() => {
     console.log(passed + " core test(s) passed");
     process.exit(passed >= 11 ? 0 : 1);
 }).catch((e) => {
