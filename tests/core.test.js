@@ -25,6 +25,7 @@ const { Machine } = require(path.join(__dirname, "..", "src", "core", "machine.j
 const { IO, NodeIO, BrowserIO } = require(path.join(__dirname, "..", "src", "core", "io.js"));
 const { ConsoleDL11 } = require(path.join(__dirname, "..", "src", "devices", "dl11.js"));
 const { Rk11 } = require(path.join(__dirname, "..", "src", "devices", "rk11.js"));
+const { PtrPtp } = require(path.join(__dirname, "..", "src", "devices", "ptr11.js"));
 const { DiskService, IO_BLOCKSIZE } = require(path.join(__dirname, "..", "src", "devices", "disk-service.js"));
 
 // ----------------------------------------------------------------------
@@ -522,7 +523,80 @@ const p10 = (async () => {
     ok("rk11: snapshot/restore round-trips controller state");
 })();
 
-Promise.all([p6, p7, p8, p9, p10]).then(() => {
+// ----------------------------------------------------------------------
+// 11. PTR11/PTP11 paper tape (refactor stage 3d)
+// ----------------------------------------------------------------------
+const p11 = (async () => {
+    const mem = new Uint16Array(512);
+    const host = {
+        cpu: { interruptRequested: 0, runState: 0 },
+        trap: (v, e) => { host.lastTrap = [v, e]; return -1; },
+        busReadWord: (a) => (a >>> 1 < mem.length ? mem[a >>> 1] : -1),
+        busWriteWord: (a, d) => { mem[a >>> 1] = d; return d; },
+        writeByteByPhysical: (a, d) => { mem[a >>> 1] = d; return d; },
+        mapUnibus: (a) => a,
+        scheduleCallback: (fn, ...args) => { fn(...args); },
+    };
+    const states = [];
+    const sizes = [];
+    const m = new Machine({}, host);
+    const ptr = new PtrPtp(m, "ptr", {
+        regions: [{ address: 0o17777550, count: 4 }],
+        onTapeState: (s) => states.push(s),
+        onPunchSize: (n) => sizes.push(n),
+    });
+    m.addDevice(ptr);
+    ptr.install();
+
+    // Tape bytes "AB" (0o101, 0o102), end-of-tape after.
+    const tape = new Uint8Array([0x41, 0x42]);
+    m.mountDrive("boot.ptap", {
+        readBlock: async (n) => (n === 0 ? tape : new Uint8Array(0)),
+        writeBlock: async () => {},
+        length: tape.length,
+    });
+
+    // Mount tape, GO → first byte lands in PTRDB.
+    ptr.loadTape("boot.ptap");
+    ptr.access(0o17777550, 0x41, 0); // IE|GO
+    await sleep(20); // OP_BYTE completes on a microtask
+    assert.strictEqual(ptr.access(0o17777552, -1, 0), 0x41); // PTRDB = 'A'
+    assert.ok(states.includes("ready"));
+    ok("ptr: GO reads the first tape byte into PTRDB");
+
+    // Next GO → second byte; then end-of-tape → ERR|DONE, consumed.
+    ptr.access(0o17777550, 0x41, 0);
+    await sleep(20);
+    assert.strictEqual(ptr.access(0o17777552, -1, 0), 0x42);
+    ptr.access(0o17777550, 0x41, 0);
+    const csr = ptr.access(0o17777550, -1, 0);
+    assert.ok(csr & 0x8000, "end-of-tape sets PTR_ERR (csr=" + csr.toString(8) + ")");
+    assert.ok(states.includes("consumed"));
+    ok("ptr: end-of-tape raises ERR/DONE and reports consumed");
+
+    // Punch: PTPDB write punches, buffer accumulates; vector 074.
+    ptr.access(0o17777556, 0x58, 0); // 'X' → PTPDB
+    assert.strictEqual(ptr.punchBytes().length, 1);
+    assert.strictEqual(ptr.punchBytes()[0], 0x58);
+    ptr.access(0o17777554, 0x40, 0); // PTPCS IE
+    ptr.access(0o17777556, 0x59, 0); // 'Y'
+    assert.deepStrictEqual(ptr.punchBytes(), [0x58, 0x59]);
+    assert.strictEqual(ptr.poll(1), 0o70); // pending PTR interrupt first
+    assert.strictEqual(ptr.poll(1), 0o74); // punch vector
+    assert.ok(sizes.length >= 1);
+    ok("ptr: PTPDB writes punch bytes and interrupt at vector 074");
+
+    // reset + snapshot/restore
+    ptr.reset();
+    assert.strictEqual(ptr.ptrcs, 0);
+    assert.strictEqual(ptr.ptpcs, 0x80); // punch DONE
+    const snap = ptr.snapshot();
+    ptr.restore({ ...snap, ptrdb: 0x41 });
+    assert.strictEqual(ptr.ptrdb, 0x41);
+    ok("ptr: reset clears reader, snapshot/restore round-trips state");
+})();
+
+Promise.all([p6, p7, p8, p9, p10, p11]).then(() => {
     console.log(passed + " core test(s) passed");
     process.exit(passed >= 11 ? 0 : 1);
 }).catch((e) => {
