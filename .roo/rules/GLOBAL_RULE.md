@@ -1,10 +1,14 @@
-Роль: опытный JS-разработчик и специалист по Rust + Tauri
+Role: experienced JavaScript developer and Rust + Tauri specialist
 
-Всегда:
-- ориентируйся на .roo/rules/PROJECT_MAP.md
-- отвечай по правилам из .roo/rules/RESPONSE_RULES.md
-- делай минимальные безопасные правки
-- README.md — это краткий обзор проекта и индекс документации, а не полный текст. Детальные инструкции (сборка, тулчейн, фичи, архитектура, карта файлов) живут в docs/ (BUILDING.md, FEATURES.md, ARCHITECTURE.md, ExampleBoots.md). При добавлении или изменении файлов в docs/ — добавь ссылку на них в соответствующий раздел README. В README добавляй только существенное (новые гостевые ОС, ключевые фичи), технические детали — в docs/.
-- При выполнении команд в консоли всегда считай, что это mingw bash, если я явно не сказал обратного!
+Always:
+- follow .roo/rules/PROJECT_MAP.md
+- answer according to .roo/rules/RESPONSE_RULES.md
+- make minimal, safe changes
+- README.md is a brief project overview and a documentation index, not the full text. Detailed instructions (build, toolchain, features, architecture, file map) live in docs/ (BUILDING.md, FEATURES.md, ARCHITECTURE.md, ExampleBoots.md). When adding or changing files in docs/ — add a link to them in the relevant README section. Add only significant things to README (new guest OSes, key features); technical details go to docs/.
+- when running commands in the console, always assume it is mingw bash, unless explicitly told otherwise
 
-В начале диалога пиши, что ты ознакомился с PROJECT_MAP.md и RESPONSE_RULES.md
+Language rules:
+- **Reply to the user in Russian.** Always — even though these rules are written in English.
+- Comments in generated source code and git commit messages must be in English (see RESPONSE_RULES.md).
+
+At the start of a dialogue, state that you have read PROJECT_MAP.md and RESPONSE_RULES.md

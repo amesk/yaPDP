@@ -1,10 +1,10 @@
-# О чём этот проект
+# What this project is about
 
-Цель - Разработка работающего web-эмулятора PDP-11/70 c аутентичной панелью управления, подключённым к консоли оператора телетайпом Model 33 ASR, парочкой терминалов VT52 и АЦПУ.
+Goal: build a working web emulator of the PDP-11/70 with an authentic control panel, a Model 33 ASR teletype connected as the operator console, a couple of VT52 terminals and an LP11 line printer.
 
-# Компиляция проекта
+# Building the project
 
-Помни, что основной способ собрать/проверить проект - запустить npm-скрипты из корня репозитория
-(`npm test`, `npm run stage`, `npm run desktop:full`, `npm run serve` и т.д., см. package.json).
-Стайдинг фронтенда и запуск `cargo tauri build` выполняются Node-скриптами
-tools/build-desktop.js и tools/tauri-build.js.
+Remember: the main way to build/verify the project is to run npm scripts from the repository root
+(`npm test`, `npm run stage`, `npm run desktop:full`, `npm run serve`, etc., see package.json).
+Frontend staging and running `cargo tauri build` are performed by the Node scripts
+tools/build-desktop.js and tools/tauri-build.js.
