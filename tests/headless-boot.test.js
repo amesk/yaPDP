@@ -75,6 +75,48 @@ async function run() {
   assert.ok(/Files,/.test(reply), "DIR reports file count");
   console.log("PASS test 4: interactive 'DIR' round-trip through dlReceiveQueue");
 
+  // ---- Test 5: bridge API contract ----------------------------------
+  // The machine bridge globals must be present and behave per contract:
+  // dlReceiveQueue/dlConsoleBreak callable, onConsoleInputDrained fires
+  // when the typeahead drains, __consoleOutputHook receives characters —
+  // and a throwing hook must not break the console I/O path.
+  assert.strictEqual(typeof sb2.window.dlReceiveQueue, "function",
+    "window.dlReceiveQueue is exposed");
+  assert.strictEqual(typeof sb2.window.dlConsoleBreak, "function",
+    "window.dlConsoleBreak is exposed");
+
+  // onConsoleInputDrained is installed by reader.js (not iopage.js) —
+  // iopage.js must CALL it when the typeahead drains. Install our own and
+  // verify the signal fires.
+
+  let drained = 0;
+  sb2.window.onConsoleInputDrained = () => { drained++; };
+  sb2.window.dlReceiveQueue(0, Array.from("DIR\r").map((c) => c.charCodeAt(0)));
+  const t2 = Date.now();
+  while (drained === 0) {
+    if (Date.now() - t2 > 15000) throw new Error("onConsoleInputDrained never fired");
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  assert.ok(drained >= 1, "onConsoleInputDrained fired after queue drained");
+
+  // A throwing output hook must be swallowed, not break console output.
+  // Per the bridge contract a replacement chains to the previous hook —
+  // exactly what rt11-term.js does — so the machine's own output capture
+  // (installed by bootRT11) keeps working underneath.
+  const outBefore = getOut().length;
+  const prevHook = sb2.window.__consoleOutputHook;
+  sb2.window.__consoleOutputHook = (ch) => {
+    if (typeof prevHook === "function") prevHook(ch);
+    throw new Error("hook boom");
+  };
+  sb2.window.dlReceiveQueue(0, Array.from("DIR\r").map((c) => c.charCodeAt(0)));
+  const t3 = Date.now();
+  while (getOut().length === outBefore) {
+    if (Date.now() - t3 > 15000) throw new Error("console output stopped after throwing hook");
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  console.log("PASS test 5: bridge API contract — globals, drain signal, throwing hook tolerated");
+
   console.log("\nAll headless-boot tests passed.");
   process.exit(0); // the sandbox keeps interval timers alive — exit explicitly
 }
