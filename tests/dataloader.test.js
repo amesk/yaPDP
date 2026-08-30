@@ -18,7 +18,8 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
-const SOURCE_PATH = path.join(__dirname, "..", "src", "iopage.js");
+const DATALOADER_PATH = path.join(__dirname, "..", "src", "dataloader.js");
+const IOPAGE_PATH = path.join(__dirname, "..", "src", "iopage.js");
 
 // ------------------------------------------------------------------
 // Minimal brace-balancing extractor for a single top-level declaration
@@ -72,10 +73,13 @@ function buildSandbox() {
 }
 
 function loadSections() {
-  const src = fs.readFileSync(SOURCE_PATH, "utf8");
+  // DataLoader moved to its own file (refactor); the fetch/cache helpers
+  // still live in iopage.js.
+  const dl = fs.readFileSync(DATALOADER_PATH, "utf8");
+  const src = fs.readFileSync(IOPAGE_PATH, "utf8");
 
   const ioBlockSize = "const IO_BLOCKSIZE = 131072;";
-  const dataLoader = extractBlock(src, "var DataLoader = (() => {", ")();");
+  const dataLoader = extractBlock(dl, "var DataLoader = (() => {", ")();");
   const createCache = extractBlock(src, "function createCache(cache, block, dataView)");
   const fetchBlock = extractBlock(src, "async function fetchBlock(controlBlock, block)");
   const imageError = extractBlock(src, "function imageError(reason, message)");
@@ -243,7 +247,7 @@ async function run() {
 
   // ---- Test 7: ptrUrlFor resolves paper-tape select values ---------
   {
-    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    const src = fs.readFileSync(IOPAGE_PATH, "utf8");
     const fn = extractBlock(src, "function ptrUrlFor(name)");
     const sb = buildSandbox();
     vm.createContext(sb);
@@ -277,7 +281,7 @@ async function run() {
 
   // ---- Test 9: punchTapeAppend accumulates raw punch bytes --------
   {
-    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    const src = fs.readFileSync(IOPAGE_PATH, "utf8");
     const fn = extractBlock(src, "function punchTapeAppend(buffer, byte)");
     const sb = buildSandbox();
     vm.createContext(sb);

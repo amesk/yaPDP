@@ -102,7 +102,10 @@ async function openPage(browser) {
         } catch (err) { /* ignore storage errors */ }
     }, CFG);
 
-    await page.goto(`${BASE}/pdp11.html`, { waitUntil: "load", timeout: 90000 });
+    // E2E_CORE=1 exercises the refactored machine layer (?core=1) instead
+    // of the monolithic iopage.js — the same UI expectations must hold.
+    const coreParam = process.env.E2E_CORE ? "core=1&" : "";
+    await page.goto(`${BASE}/pdp11.html?${coreParam}cfg=teletype`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 
@@ -305,6 +308,15 @@ async function main() {
                 return txt.indexOf("\n.") !== -1 || txt.trimEnd().endsWith(".");
             }, 30000),
             "paper tail: " + JSON.stringify((await paperText(page)).slice(-60)));
+        // The "." prompt appears on the paper ahead of the paced render;
+        // let the render queue drain before counting (renders are paced at
+        // ~30ms/char, so this also covers slower machines).
+        await waitFor(async () => {
+            const a = await page.evaluate(() => window.__osRenderCount);
+            await sleep(400);
+            const b = await page.evaluate(() => window.__osRenderCount);
+            return b === a;
+        }, 15000);
         const renderCount = await page.evaluate(() => window.__osRenderCount);
         check("hundreds of characters actually rendered (render hook)",
             renderCount > 100, "renderCount=" + renderCount);

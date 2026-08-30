@@ -1721,7 +1721,28 @@ Hello world
   <script src='src/fpp.js'></script>
   <script src='src/pasteutil.js'></script>
   <script src='src/navactivity.js'></script>
-  <script src='src/iopage.js'></script>
+  <script src='src/dataloader.js'></script>
+  <script>
+    // ?core=1 loads the refactored machine layer (core classes + devices)
+    // instead of the monolithic iopage.js. Both modes expose the same
+    // global `iopage` contract, so the rest of the UI is unchanged.
+    window.__coreMode = /[?&]core=1/.test(location.search);
+    if (window.__coreMode) {
+      document.write("<script src='src/core/bus.js'><\/script>");
+      document.write("<script src='src/core/device.js'><\/script>");
+      document.write("<script src='src/core/io.js'><\/script>");
+      document.write("<script src='src/devices/disk-service.js'><\/script>");
+      document.write("<script src='src/core/machine.js'><\/script>");
+      document.write("<script src='src/devices/dl11.js'><\/script>");
+      document.write("<script src='src/devices/kw11.js'><\/script>");
+      document.write("<script src='src/devices/cpu-regs.js'><\/script>");
+      document.write("<script src='src/devices/rk11.js'><\/script>");
+      document.write("<script src='src/devices/ptr11.js'><\/script>");
+      document.write("<script src='src/browser-machine.js'><\/script>");
+    } else {
+      document.write("<script src='src/iopage.js'><\/script>");
+    }
+  </script>
   <script src='src/hum.js'></script>
   <script src='src/panel-led.js'></script>
   <script src='src/vt11.js'></script>

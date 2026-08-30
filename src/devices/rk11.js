@@ -143,7 +143,7 @@
         // rkCallback — completion callback for disk I/O operations.
         // ------------------------------------------------------------------
         rkCallback(controlBlock, code, position, address, count, options) {
-            if (process.env.DEBUG_DISK) console.log("RK.callback code=" + code + " pos=" + position + " addr=" + address + " count=" + count);
+            if (typeof process !== "undefined" && process.env && process.env.DEBUG_DISK) console.log("RK.callback code=" + code + " pos=" + position + " addr=" + address + " count=" + count);
             this.rkba = address & 0xFFFF;
             this.rkcs = (this.rkcs & ~RKCS_MEX) | ((address >>> 12) & RKCS_MEX);
             this.rkwc = (0x10000 - (count >>> 1)) & 0xFFFF;
