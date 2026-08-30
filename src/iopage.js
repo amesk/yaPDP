@@ -184,7 +184,6 @@ var iopage = (function() {
             if (!state) return;
             for (var i = 0; i < deviceSnap.length; i++) {
                 var key = deviceSnap[i].address.toString(8);
-                if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("restoreDevices: " + key + " present=" + Object.prototype.hasOwnProperty.call(state, key));
                 if (Object.prototype.hasOwnProperty.call(state, key)) {
                     deviceSnap[i].restore(state[key]);
                 }
@@ -2375,10 +2374,6 @@ var DiskStore = (() => {
                 out[url] = { v: IMAGE_VERSION, blocks };
             }
         }
-        if (typeof window !== "undefined" && window.__snapFlow) {
-            window.__snapFlow.push("captureOverlay: urls=" + Object.keys(out).join(",") +
-                " blocks=" + Object.keys(out).map((u) => u + ":" + Object.keys(out[u].blocks).length).join(","));
-        }
         return out;
     }
 
@@ -2416,14 +2411,8 @@ var DiskStore = (() => {
                 }));
                 await Promise.all(writes);
                 savedIndex.set(url, set);
-                if (typeof window !== "undefined" && window.__snapFlow) {
-                    window.__snapFlow.push("restoreOverlay: " + url + " blocks=" + set.size);
-                }
             } catch (err) {
                 console.warn("DiskStore.restoreOverlay: failed for " + url, err);
-                if (typeof window !== "undefined" && window.__snapFlow) {
-                    window.__snapFlow.push("restoreOverlay: FAILED " + url + " " + String(err));
-                }
             }
         }
     }
