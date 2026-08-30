@@ -135,7 +135,7 @@
                 ? this.machine.host.cpu : null;
             if (cpu) {
                 cpu.interruptRequested = 1;
-                if (cpu.runState === 1) cpu.runState = 0; // STATE_WAIT → STATE_RUN
+                if (cpu.runState === 2) cpu.runState = 0; // STATE_WAIT(2) → STATE_RUN
             }
         }
 
@@ -143,6 +143,7 @@
         // rkCallback — completion callback for disk I/O operations.
         // ------------------------------------------------------------------
         rkCallback(controlBlock, code, position, address, count, options) {
+            if (process.env.DEBUG_DISK) console.log("RK.callback code=" + code + " pos=" + position + " addr=" + address + " count=" + count);
             this.rkba = address & 0xFFFF;
             this.rkcs = (this.rkcs & ~RKCS_MEX) | ((address >>> 12) & RKCS_MEX);
             this.rkwc = (0x10000 - (count >>> 1)) & 0xFFFF;
@@ -209,7 +210,8 @@
                         this.rkCallback(cb, 9, sector * RK_SECTOR_SIZE, address, count, null);
                         return;
                     }
-                    disk.io(cb, (this.rkcs >>> 1) & 7, sector * RK_SECTOR_SIZE, address, count, null);
+                    // count is in WORDS; disk.io transfers BYTES.
+                    disk.io(cb, (this.rkcs >>> 1) & 7, sector * RK_SECTOR_SIZE, address, count << 1, null);
                     return;
 
                 case 4: // Seek

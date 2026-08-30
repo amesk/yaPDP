@@ -31,6 +31,7 @@ const TESTS = path.join(ROOT, "tests");
 // run order never changes underneath the suite.
 const ORDER = [
     "core.test.js",
+    "headless-machine.test.js",
     "config.test.js",
     "snapshotstore.test.js",
     "punchtape.test.js",
