@@ -30,6 +30,20 @@
 
     if (!window.__coreMode) return; // only in ?core=1 mode
 
+    // Global helper iopage.js used to provide; external device modules
+    // (vt11.js) call it from their access handlers.
+    function insertData(currentWord, physicalAddress, data, byteFlag) {
+        if (data < 0) return currentWord; // read
+        if (byteFlag) {
+            if (physicalAddress & 1) {
+                return (currentWord & 0xFF) | ((data & 0xFF) << 8);
+            }
+            return (currentWord & 0xFF00) | (data & 0xFF);
+        }
+        return data & 0xFFFF;
+    }
+    window.insertData = insertData;
+
     // ------------------------------------------------------------------
     // Host glue (CPU side) — mirrors tools/headless-machine.js
     // ------------------------------------------------------------------
@@ -284,13 +298,37 @@
     }
 
     // ------------------------------------------------------------------
+    // LP11 line printer (only when the CONFIG enables it)
+    // ------------------------------------------------------------------
+    var lp11 = null;
+    if (cfg && cfg.printer) {
+        lp11 = new core.Lp11(machine, "lp11", {
+            regions: [{ address: 0o17777510, count: 2 }],
+            printerWidth: (typeof Config !== 'undefined') ? Config.get().printerWidth : 132,
+        });
+        machine.addDevice(lp11);
+        lp11.install();
+        window.lp11Print = function () { lp11.print(); };
+        window.lp11Save = function () { lp11.save(); };
+        window.lp11GetText = function () { return lp11.getText(); };
+        window.lp11PaperFeed = function () { lp11.paperFeed(); };
+        window.lp11TopOfForm = function () { lp11.topOfForm(); };
+        window.lp11TearPaper = function () { lp11.tearPaper(); };
+        window.lp11OnLine = function () { lp11.onLine(); };
+    }
+
+    // ------------------------------------------------------------------
     // The global iopage adapter — the CPU's only view of the I/O page
     // ------------------------------------------------------------------
     window.iopage = {
         access: function (pa, d, b) { return machine.bus.access(pa, d, b); },
         poll: function () { return machine.bus.poll(); },
         reset: function () { return machine.bus.reset(); },
-        register: function () {}, // devices register via their classes
+        register: function (address, count, device) {
+            // External modules (vt11.js) register their devices through the
+            // same iopage.register contract — delegate to the bus.
+            return machine.bus.register(address, count, device);
+        },
         scheduleCallback: function (fn) {
             pendingCallbacks.push({ fn: fn, args: Array.prototype.slice.call(arguments, 1) });
         },
