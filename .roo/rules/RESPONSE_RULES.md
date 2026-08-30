@@ -7,7 +7,7 @@
 - Do not paraphrase the user's task
 - **Reply to the user in Russian** — the user speaks Russian even though these rules are written in English
 - All comments in generated source code must be in English
-- All git commit messages must be in English and start with the item number in the "#ID. XXXXXX" format. If the item number is unknown — ask a direct question. The item number can often be extracted from the branch name.
+- All git commit messages must be in English and follow the format "#ID. <type>: description" — e.g. "#12. feat: add quick-boot wizard". Types: feat, fix, docs, refactor, test, chore. If the item number is unknown — ask a direct question. The item number can often be extracted from the branch name.
 - If a module or integration test can be written for the implemented function — mention it, even if you are not writing that test right now
 
 ## Response format (mandatory)
