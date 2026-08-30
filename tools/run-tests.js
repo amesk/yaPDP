@@ -30,6 +30,7 @@ const TESTS = path.join(ROOT, "tests");
 // Canonical order — the historical package.json && chain, kept as-is so the
 // run order never changes underneath the suite.
 const ORDER = [
+    "core.test.js",
     "config.test.js",
     "snapshotstore.test.js",
     "punchtape.test.js",
