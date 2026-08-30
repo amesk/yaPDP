@@ -1,26 +1,27 @@
-## Обязательные правила
+## Mandatory rules
 
-- Всегда опирайся на PROJECT_MAP.md
-- Соблюдай выявленные архитектурные паттерны
-- Перед кодом думай о точке расширения и минимальном diff
-- Объясняй ПОЧЕМУ выбран подход, а не только ЧТО сделано
-- Не пересказывай задание пользователя
-- Все комментарии в генерируемых исходных кодах должны быть на английском языке
-- Все комментарии к коммитам git должны быть на английском языке и начинаться с номера пункта в формате "#ID. XXXXXX". Если номер пункта неизвестен - задай прямой вопрос. Часто номер пункта можно вытащить из имени ветки.
-- Если на реализованную функцию можно сделать модульный тест или интеграционный тест - упомяни об этом, даже если не пишешь этот тест прямо сейчас
-  
-## Формат ответа (обязателен)
-Каждый ответ должен иметь структуру:
+- Always rely on PROJECT_MAP.md
+- Follow the established architectural patterns
+- Before writing code, think about the extension point and the minimal diff
+- Explain WHY the approach was chosen, not just WHAT was done
+- Do not paraphrase the user's task
+- **Reply to the user in Russian** — the user speaks Russian even though these rules are written in English
+- All comments in generated source code must be in English
+- All git commit messages must be in English and start with the item number in the "#ID. XXXXXX" format. If the item number is unknown — ask a direct question. The item number can often be extracted from the branch name.
+- If a module or integration test can be written for the implemented function — mention it, even if you are not writing that test right now
 
-1. Понимание задачи
-2. Архитектурное решение
-3. План
-4. Изменения
-5. Как проверить
-6. Риски (если есть)
-7. Возможность написать модульные или интеграционные тесты
+## Response format (mandatory)
+Every answer must follow this structure:
 
-## Если не хватает информации
+1. Understanding of the task
+2. Architectural decision
+3. Plan
+4. Changes
+5. How to verify
+6. Risks (if any)
+7. Possibility of writing module or integration tests
 
-- Задай 1–2-3 точечных вопроса
-- Не начинай писать код вслепую
+## When information is missing
+
+- Ask 1-2-3 targeted questions
+- Do not start writing code blindly
