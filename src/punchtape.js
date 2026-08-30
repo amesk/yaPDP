@@ -370,6 +370,9 @@
         save: save,
         snapshot: snapshot,
         restore: restore,
-        refreshHeight: refreshHeight
+        refreshHeight: refreshHeight,
+        // Named constant: the automatic NUL lead-in/trailer length. Exported
+        // so tests (and callers) reference it instead of a magic number.
+        TAPE_LEADER: TAPE_LEADER
     };
 })();
