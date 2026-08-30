@@ -355,7 +355,7 @@
                 ? this.machine.host.cpu : null;
             if (cpu) {
                 cpu.interruptRequested = 1;
-                if (cpu.runState === 1) cpu.runState = 0; // STATE_WAIT → STATE_RUN
+                if (cpu.runState === 2) cpu.runState = 0; // STATE_WAIT(2) → STATE_RUN
             }
         }
     }

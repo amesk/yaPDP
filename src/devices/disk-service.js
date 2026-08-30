@@ -166,6 +166,7 @@
          * the block and resumes via host.scheduleCallback (CPU context).
          */
         async io(controlBlock, operation, position, address, count, options) {
+            if (process.env.DEBUG_DISK) console.log("DISK.io op=" + operation + " pos=" + position + " addr=" + address + " count=" + count + " url=" + controlBlock.url);
             const drive = this._driveFor(controlBlock);
             const cache = drive.cache;
             const host = this.host;

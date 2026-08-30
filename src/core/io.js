@@ -44,6 +44,12 @@
         /** clearTimer(handle) — cancel a scheduled timer. */
         clearTimer(handle) { clearTimeout(handle); }
 
+        /** setInterval(fn, ms) — periodic timer; returns a handle. */
+        setInterval(fn, ms) { return setInterval(fn, ms); }
+
+        /** clearInterval(handle) — cancel a periodic timer. */
+        clearInterval(handle) { clearInterval(handle); }
+
         /**
          * readFile(path) — read a file/URL as bytes.
          * @returns {Promise<Uint8Array>}
