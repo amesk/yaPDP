@@ -23,6 +23,17 @@ const { Bus } = require(path.join(__dirname, "..", "src", "core", "bus.js"));
 const { Device } = require(path.join(__dirname, "..", "src", "core", "device.js"));
 const { Machine } = require(path.join(__dirname, "..", "src", "core", "machine.js"));
 const { IO, NodeIO, BrowserIO } = require(path.join(__dirname, "..", "src", "core", "io.js"));
+const { ConsoleDL11 } = require(path.join(__dirname, "..", "src", "devices", "dl11.js"));
+
+// ----------------------------------------------------------------------
+// Test helpers for devices
+// ----------------------------------------------------------------------
+function makeMachine(io) {
+    const cpu = { interruptRequested: 0, runState: 0 };
+    const host = { cpu, trap: () => -1, psw: 0, pir: 0, priorityMask: 0o340 };
+    return new Machine({}, host, io || { setTimer: setTimeout, clearTimer: clearTimeout });
+}
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 // ----------------------------------------------------------------------
 // Test helpers
@@ -287,7 +298,88 @@ const p7 = (async () => {
     ok("io: BrowserIO input/readFile via window.prompt/fetch");
 })();
 
-Promise.all([p6, p7]).then(() => {
+// ----------------------------------------------------------------------
+// 8. ConsoleDL11 device (refactor stage 2)
+// ----------------------------------------------------------------------
+const p8 = (async () => {
+    const out = [];
+    const drained = [];
+    let flushed = 0;
+    const m = makeMachine();
+    const dev = new ConsoleDL11(m, "console", {
+        unit: 0,
+        vector: 0o60,
+        regions: [{ address: 0o17775600, count: 4 }],
+        onOutput: (ch) => out.push(ch),
+        onDrained: () => drained.push(1),
+        onFlush: () => flushed++,
+    });
+    m.addDevice(dev);
+    dev.install();
+    m.powerOn();
+
+    // reset state: transmitter ready, receiver idle
+    assert.strictEqual(dev.xcsr, 0x80); // XCSR DONE
+    assert.strictEqual(dev.access(0o17775600, -1, 0), 0); // RCSR
+    ok("dl11: reset leaves transmitter ready, receiver idle");
+
+    // receive: byte → RCSR DONE + RBUF, no interrupt without IE
+    dev.receive([0x41]); // 'A'
+    await sleep(20); // let the pump deliver
+    assert.strictEqual(dev.access(0o17775600, -1, 0) & 0x80, 0x80); // DONE
+    assert.strictEqual(dev.access(0o17775602, -1, 0), 0x41); // RBUF (clears DONE)
+    assert.strictEqual(dev.poll(0) & 1, 0); // no interrupt pending
+    ok("dl11: received byte lands in RBUF with DONE, no IE → no interrupt");
+
+    // enable receive interrupts; next byte requests one; poll takes vector
+    dev.access(0o17775600, 0x40, 0); // RCSR IE
+    dev.receive([0x42]);
+    await sleep(20);
+    assert.strictEqual(dev.poll(0) & 1, 1); // interrupt pending
+    assert.strictEqual(dev.poll(1), 0o60); // console vector
+    assert.strictEqual(m.host.cpu.interruptRequested, 1);
+    assert.strictEqual(dev.access(0o17775602, -1, 0), 0x42); // RBUF (clears DONE)
+    ok("dl11: receive interrupt requested and taken at the console vector");
+
+    // output: XBUF write emits through the output channel
+    dev.access(0x17775606, 0x48, 0); // 'H' → XBUF
+    dev.access(0x17775606, 0x49, 0); // 'I'
+    assert.deepStrictEqual(out, [0x48, 0x49]);
+    assert.strictEqual(dev.xcsr & 0x80, 0); // DONE cleared, xdelay set
+    ok("dl11: XBUF writes emit through the output channel");
+
+    // output hook: chains, fire-and-forget on throw
+    const hooked = [];
+    dev.installOutputHook((ch) => hooked.push(ch));
+    const throwing = dev.installOutputHook(() => { throw new Error("hook"); });
+    dev.access(0x17775606, 0x58, 0); // 'X'
+    assert.deepStrictEqual(hooked, [0x58]);
+    dev.clearOutputHook();
+    ok("dl11: output hook chains and a throwing hook is swallowed");
+
+    // ^C flush + drained signal (drained fired once at 0x42, again here)
+    dev.receive([3]);
+    await sleep(20);
+    assert.strictEqual(flushed, 1);
+    assert.strictEqual(dev.access(0o17775602, -1, 0), 3); // ^C in RBUF
+    dev.receive([0x43]); // 'C'
+    await sleep(20);
+    assert.strictEqual(dev.access(0o17775602, -1, 0), 0x43);
+    assert.strictEqual(drained.length, 4); // once per emptied typeahead
+    ok("dl11: ^C flushes output, drained signal fires when typeahead empties");
+
+    // L2 snapshot/restore round-trip
+    const snap = dev.snapshot();
+    dev.restore({ ...snap, rbuf: 0x5A });
+    assert.strictEqual(dev.rbuf, 0x5A);
+    ok("dl11: snapshot/restore round-trips register state");
+
+    // install() from config regions puts it on the bus
+    assert.strictEqual(m.bus.access(0o17775600, -1, 0), dev.rcsr);
+    ok("dl11: install() registers the console region on the bus");
+})();
+
+Promise.all([p6, p7, p8]).then(() => {
     console.log(passed + " core test(s) passed");
     process.exit(passed >= 11 ? 0 : 1);
 }).catch((e) => {
