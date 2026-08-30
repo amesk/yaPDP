@@ -22,6 +22,7 @@ const path = require("path");
 const { Bus } = require(path.join(__dirname, "..", "src", "core", "bus.js"));
 const { Device } = require(path.join(__dirname, "..", "src", "core", "device.js"));
 const { Machine } = require(path.join(__dirname, "..", "src", "core", "machine.js"));
+const { IO, NodeIO, BrowserIO } = require(path.join(__dirname, "..", "src", "core", "io.js"));
 
 // ----------------------------------------------------------------------
 // Test helpers
@@ -223,5 +224,73 @@ function ok(name) { passed++; console.log("PASS: " + name); }
     ok("machine: unknown device type is skipped without throwing");
 }
 
-console.log(passed + " core test(s) passed");
-process.exit(passed >= 11 ? 0 : 1);
+// ----------------------------------------------------------------------
+// 6. IO adapters (stage 1)
+// ----------------------------------------------------------------------
+const p6 = (async () => {
+    // NodeIO: print/error to injected streams, readFile via fs, timers.
+    const out = [];
+    const err = [];
+    const io = new NodeIO({
+        stdout: { write: (s) => out.push(s) },
+        stderr: { write: (s) => err.push(s) },
+        stdin: null, // no interactive input in tests
+    });
+    io.print("hello");
+    io.error("oops");
+    assert.deepStrictEqual(out, ["hello\n"]);
+    assert.deepStrictEqual(err, ["oops\n"]);
+    ok("io: NodeIO print/error route to stdout/stderr");
+
+    const buf = await io.readFile(path.join(__dirname, "..", "package.json"));
+    assert.ok(buf instanceof Uint8Array && buf.length > 100);
+    ok("io: NodeIO readFile returns file bytes");
+
+    // Machine wired to a NodeIO adapter.
+    const lines = [];
+    const m = new Machine({}, {}, new NodeIO({
+        stdout: { write: (s) => lines.push(s) },
+        stderr: { write: () => {} },
+        stdin: null,
+    }));
+    m.printf("machine says %s", "hi");
+    assert.ok(lines.join("").includes("machine says hi"));
+    ok("io: Machine.printf routes through the NodeIO adapter");
+})();
+
+// ----------------------------------------------------------------------
+// 7. BrowserIO (injected window/console)
+// ----------------------------------------------------------------------
+const p7 = (async () => {
+    const logs = [];
+    let prompted = null;
+    const io = new BrowserIO({
+        win: {
+            prompt: (p) => { prompted = p; return "typed"; },
+            fetch: async () => ({
+                ok: true,
+                arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+            }),
+        },
+        console: { log: (s) => logs.push(s), error: (s) => logs.push("E:" + s) },
+    });
+    io.print("boot");
+    io.error("nxm");
+    assert.deepStrictEqual(logs, ["boot", "E:nxm"]);
+    ok("io: BrowserIO print/error route to console");
+
+    const line = await io.input("login:");
+    assert.strictEqual(line, "typed");
+    assert.strictEqual(prompted, "login:");
+    const bytes = await io.readFile("/media/rk1.dsk");
+    assert.deepStrictEqual(Array.from(bytes), [1, 2, 3]);
+    ok("io: BrowserIO input/readFile via window.prompt/fetch");
+})();
+
+Promise.all([p6, p7]).then(() => {
+    console.log(passed + " core test(s) passed");
+    process.exit(passed >= 11 ? 0 : 1);
+}).catch((e) => {
+    console.error("core test error:", e);
+    process.exit(1);
+});
