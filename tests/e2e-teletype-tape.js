@@ -254,8 +254,15 @@ async function typeOnKeyboard(page, text) {
 // --- tape-specific helpers --------------------------------------------------
 
 // Punched rows currently on the output tape (#punchtape__body).
-function tapeRows(page) {
-    return page.evaluate(() => {
+// Automatic NUL lead-in/trailer length, read from the live page (the
+// punchtape.js TAPE_LEADER constant) — tests never hard-code it, so the
+// value can change without breaking the suite.
+async function tapeLeader(page) {
+    return page.evaluate(() =>
+        (window.paperTape && window.paperTape.TAPE_LEADER) || 6);
+}
+
+function tapeRows(page) {    return page.evaluate(() => {
         const el = document.getElementById("punchtape__body");
         return el ? el.childElementCount : 0;
     });
@@ -452,28 +459,29 @@ async function main() {
         // ---- 4. BSP + DELETE: overpunch and RUB OUT ----------------------
         // Printing is paced (~30ms/char): the punch follows the RENDER, so
         // every step waits for the tape rows to settle before the next one.
-        // A fresh tape starts with TAPE_LEADER=6 automatic NUL rows, so all
-        // row counts below are offset by 6 (data rows sit on top of the
+        // A fresh tape starts with the automatic NUL rows (TAPE_LEADER), so
+        // all row counts below are offset by it (data rows sit on top of the
         // leader; tapeRowTracks indexes from the BOTTOM of the tape).
+        const leader = await tapeLeader(page);
         await setTtyMode(page, "local"); // keep the garbage off the line
         await punchOn(page);
         await tapeClear(page);
         await pressKey(page, { code: "A".charCodeAt(0) });
-        await waitFor(async () => (await tapeRows(page)) === 7, 10000);
+        await waitFor(async () => (await tapeRows(page)) === leader + 1, 10000);
         await pressKey(page, { code: "B".charCodeAt(0) });
-        await waitFor(async () => (await tapeRows(page)) === 8, 10000);
+        await waitFor(async () => (await tapeRows(page)) === leader + 2, 10000);
         await page.evaluate(() => {
             const btn = document.getElementById("punch-bsp");
             if (btn) btn.click();
         });
         await sleep(100); // BSP is instant; C below goes through the print queue
         await pressKey(page, { code: "C".charCodeAt(0) }); // overpunches B
-        await waitFor(async () => (await tapeRows(page)) === 8, 10000);
+        await waitFor(async () => (await tapeRows(page)) === leader + 2, 10000);
         await pressSpecial(page, "del");                  // RUB OUT -> new DEL row
-        await waitFor(async () => (await tapeRows(page)) === 9, 10000);
-        const rowA = await tapeRowTracks(page, 6);
-        const rowBC = await tapeRowTracks(page, 7);
-        const rowDel = await tapeRowTracks(page, 8);
+        await waitFor(async () => (await tapeRows(page)) === leader + 3, 10000);
+        const rowA = await tapeRowTracks(page, leader);
+        const rowBC = await tapeRowTracks(page, leader + 1);
+        const rowDel = await tapeRowTracks(page, leader + 2);
         const A = 0x41, BC = 0x41 | 0x43, DEL = 0x7F;
         check("BSP row exists after A, B, BSP, C, RUBOUT (3 data rows + leader)",
             rowA && rowBC && rowDel, "rows=" + (await tapeRows(page)));
@@ -494,18 +502,18 @@ async function main() {
         // the feed holes. RUB OUT leaders were avoided: the dense hole
         // pattern made the tape mechanically weak and it tore on loading.
         // A fresh tape (tear-off / clear) automatically starts with
-        // TAPE_LEADER=6 blank NUL rows, punched silently by the machine.
+        // TAPE_LEADER blank NUL rows, punched silently by the machine.
         await tapeClear(page);
         const autoRows = await tapeRows(page);
-        let leadInOk = autoRows === 6;
-        for (let i = 0; i < 6; i++) {
+        let leadInOk = autoRows === leader;
+        for (let i = 0; i < leader; i++) {
             const r = await tapeRowTracks(page, i);
             if (!r || r.holes !== 0) { leadInOk = false; break; }
         }
         await pressKey(page, { code: "X".charCodeAt(0) });
-        await waitFor(async () => (await tapeRows(page)) === 7, 10000);
-        const rowX = await tapeRowTracks(page, 6);
-        check("automatic lead-in: 6 NUL rows are blank (feed holes only)",
+        await waitFor(async () => (await tapeRows(page)) === leader + 1, 10000);
+        const rowX = await tapeRowTracks(page, leader);
+        check("automatic lead-in: " + leader + " NUL rows are blank (feed holes only)",
             leadInOk, "rows=" + autoRows);
         check("lead-in followed by the data row X (0x58)",
             rowX && rowX.tracks.join("") === (await page.evaluate((c) =>
@@ -516,7 +524,7 @@ async function main() {
         // ---- 6. Computer-driven punch: DC2 engages, DC4 disengages ------
         await setTtyMode(page, "line");
         await tapeClear(page);
-        const rowsBefore6 = await tapeRows(page); // 6 (auto lead-in)
+        const rowsBefore6 = await tapeRows(page); // leader (auto lead-in)
         await page.evaluate(() => window.g60ConsoleWrite(0x12)); // DC2
         await page.evaluate(() => {
             window.g60ConsoleWrite(0x48); // 'H'
@@ -531,11 +539,11 @@ async function main() {
             "rows: " + rowsBefore6 + " -> " + (await tapeRows(page)));
         const paperBefore6 = (await paperText(page)).length;
         await page.evaluate(() => window.g60ConsoleWrite(0x14)); // DC4
-        // DC4 punches the automatic NUL trailer (TAPE_LEADER=6) before the
+        // DC4 punches the automatic NUL trailer (TAPE_LEADER) before the
         // punch stops: the tape gets its blank mechanical tail.
         const rowsAfterDc4 = await tapeRows(page);
         check("DC4 punches the automatic NUL trailer",
-            rowsAfterDc4 === rowsBefore6 + 2 + 6,
+            rowsAfterDc4 === rowsBefore6 + 2 + leader,
             "rows: " + rowsBefore6 + " +2 -> DC4 -> " + rowsAfterDc4);
         await page.evaluate(() => window.g60ConsoleWrite(0x58)); // 'X'
         await sleep(600); // let X render (it must NOT punch)
@@ -698,8 +706,9 @@ async function main() {
             await pressKey(page, { code: ch.charCodeAt(0) });
             await sleep(40);
         }
-        // The tape is 6 NUL leader rows + the 4 data rows.
-        await waitFor(async () => (await tapeRows(page)) === 10, 10000);
+        // The tape is the NUL leader rows + the 4 data rows.
+        await waitFor(async () =>
+            (await tapeRows(page)) === leader + 4, 10000);
         // The puppeteer 'download' event does not fire in this headless
         // Chrome; Page.setDownloadBehavior intercepts the file instead.
         const dlDir = fs.mkdtempSync(path.join(os.tmpdir(), "ttytape-dl-"));
@@ -716,15 +725,16 @@ async function main() {
         const saved = await waitFor(() => fs.existsSync(dlFile), 15000);
         if (!saved) throw new Error("save-tape download file never appeared");
         const bytes = fs.readFileSync(dlFile);
-        // Byte-exact: 6 x NUL lead-in + "SAVE".
-        const leaderOk = bytes.length === 10 &&
-            bytes[0] === 0x00 && bytes[1] === 0x00 &&
-            bytes[2] === 0x00 && bytes[3] === 0x00 &&
-            bytes[4] === 0x00 && bytes[5] === 0x00 &&
-            bytes[6] === 0x53 && bytes[7] === 0x41 &&
-            bytes[8] === 0x56 && bytes[9] === 0x45;
+        // Byte-exact: leader x NUL + "SAVE".
+        let leaderOk = bytes.length === leader + 4;
+        for (let i = 0; i < leader; i++) {
+            if (bytes[i] !== 0x00) { leaderOk = false; break; }
+        }
+        const dataOk = leaderOk &&
+            bytes[leader] === 0x53 && bytes[leader + 1] === 0x41 &&
+            bytes[leader + 2] === 0x56 && bytes[leader + 3] === 0x45;
         check("Save tape downloads a byte-exact .ptap (NUL leader + data)",
-            leaderOk,
+            dataOk,
             "file=teletype-tape.ptap bytes=" +
                 Array.from(bytes).map((b) => b.toString(16)).join(","));
     } finally {
