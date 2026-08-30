@@ -315,16 +315,12 @@ var SnapshotStore = (() => {
     // CPU first (or the CPU start timer must not have fired yet).
     function restore(snap) {
         if (!snap) return Promise.resolve(false);
-        if (typeof window !== "undefined" && window.__snapFlow) {
-            window.__snapFlow.push("restore: start overlay=" + (!!(snap.overlay && Object.keys(snap.overlay).length)));
-        }
         restoreCPU(snap.cpu);
         return restoreMemory(snap.memory).then(function () {
             // Device registers (L2) — restore after RAM so devices see
             // consistent memory; control blocks re-create lazily on I/O.
             if (snap.devices && typeof iopage !== "undefined" &&
                 typeof iopage.restoreDevices === "function") {
-                if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("restore: calling restoreDevices");
                 iopage.restoreDevices(snap.devices);
             }
             // Disk write-back overlay: roll the disks back to the snapshot's
@@ -514,10 +510,8 @@ var SnapshotStore = (() => {
         }
 
         return dbGet(pendingId).then(function (snap) {
-            if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("init: got snap " + (snap ? "yes devices=" + (snap.devices ? Object.keys(snap.devices).join(",") : "none") : "NO"));
             if (!snap) return false;
             if (configNeedsReload(snap)) {
-                if (typeof window !== "undefined" && window.__snapFlow) window.__snapFlow.push("init: config mismatch -> apply + reload");
                 applySnapshotConfig(snap);
                 if (typeof location !== "undefined" && location.reload) {
                     // Same as in load(): the persisted config changed behind
