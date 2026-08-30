@@ -391,8 +391,12 @@ async function browserProbe() {
     }));
     const dupConsumed = dupBefore - dup.readerRows;
     assert.ok(dupConsumed > 3, "duplication consumed rows (" + dupConsumed + ")");
-    assert.strictEqual(dup.punchRows, dupConsumed,
-      "punch duplicated every read byte (" + dup.punchRows + " rows for " + dupConsumed + " bytes)");
+    // The fresh tape automatically starts with the 6-row NUL lead-in
+    // (punchtape.js TAPE_LEADER), so the punch shows leader + one row per
+    // duplicated byte.
+    assert.strictEqual(dup.punchRows, dupConsumed + 6,
+      "punch duplicated every read byte (" + dup.punchRows + " rows for " +
+      dupConsumed + " bytes + 6 NUL leader)");
     await page.click("#punch-off");
     console.log("OK  browser: punch duplicates the read tape (tape-to-tape)");
 
