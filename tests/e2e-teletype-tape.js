@@ -118,7 +118,9 @@ async function openPage(browser) {
         } catch (err) { /* ignore storage errors */ }
     }, CFG);
 
-    await page.goto(`${BASE}/pdp11.html`, { waitUntil: "load", timeout: 90000 });
+    // E2E_CORE=1 exercises the refactored machine layer (?core=1).
+    const coreParam = process.env.E2E_CORE ? "core=1&" : "";
+    await page.goto(`${BASE}/pdp11.html?${coreParam}cfg=teletype`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 
@@ -617,6 +619,7 @@ async function main() {
             "output tail: " + JSON.stringify(await page.evaluate(() =>
                 (window.__osShotOutput || "").slice(-80))));
         await setTtyMode(page, "local");
+        await waitStable(page, 1000, 5000); // let the LINE echo tail settle
         const outBefore8 = await outputLength(page);
         const paperBefore8 = (await paperText(page)).length;
         await pressSpecial(page, "hereis");
