@@ -119,7 +119,10 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
  *   bootCmd   command typed at the bootloader prompt, default "BOOT RK1\r"
  *   waitFor   prompt marker regexp (string) to wait for, default "."
  *   timeoutMs overall budget, default 90000
- * @returns {Promise<{out: string, sandbox: object, stats: {bootPromptMs: number, readyMs: number}}>}
+ *   indexedDB fake IndexedDB implementation (e.g. an in-memory stub) —
+ *             enables the DiskStore write-back path; without it DiskStore
+ *             degrades to memory-only, as in production Node contexts
+ * @returns {Promise<{out: string, sandbox: object, stats: {bootPromptMs: number, readyMs: number}, getOut: () => string, evalIn: (code: string) => any}>}
  */
 async function bootRT11(opts = {}) {
   const image = opts.image || "media/rk1.dsk.zst";
@@ -129,6 +132,7 @@ async function bootRT11(opts = {}) {
   const timeoutMs = opts.timeoutMs || 90000;
 
   const sb = buildSandbox();
+  if (opts.indexedDB) sb.indexedDB = opts.indexedDB;
   load(sb, "assets/vendor/fzstd.js");
   load(sb, "src/pdp11-panel.js");
   load(sb, "src/bootcode.js");
@@ -175,6 +179,10 @@ async function bootRT11(opts = {}) {
   return {
     out, sandbox: sb, stats: { bootPromptMs, readyMs }, getOut: () => out,
     evalIn: (code) => vm.runInContext(code, sb),
+    // Stop the CPU loop (runState = HALT). The pdp11Processor timer keeps
+    // firing but stops executing instructions — call this when done with a
+    // machine so several emulators don't compete for CPU in one process.
+    halt: () => vm.runInContext("CPU.runState = CPU.STATE_HALT", sb),
   };
 }
 
