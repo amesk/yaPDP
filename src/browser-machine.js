@@ -185,6 +185,13 @@
     machine.addDevice(rk);
     rk.install();
 
+    // --- RP11 (RP04/RP06) — BSD 2.11, RSTS/E, RSX-11M on rp0-rp4 ---
+    var rp = new core.Rp11(machine, "rp1", {
+        regions: [{ address: 0o17776700, count: 20 }],
+    });
+    machine.addDevice(rp);
+    rp.install();
+
     function dataLoaderProvider(url) {
         // LAZY provider: DataLoader is filled by dragdrop.js / quickboot
         // / tauri-bundled.js at various times, so every readBlock re-reads
@@ -235,6 +242,9 @@
     function mountDrives() {
         for (var d = 0; d < 8; d++) {
             machine.mountDrive("rk" + d + ".dsk", dataLoaderProvider("rk" + d + ".dsk"));
+        }
+        for (var p = 0; p < 5; p++) {
+            machine.mountDrive("rp" + p + ".dsk", dataLoaderProvider("rp" + p + ".dsk"));
         }
     }
     mountDrives();

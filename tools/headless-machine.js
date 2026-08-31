@@ -37,6 +37,7 @@ const { Machine } = require("../src/core/machine.js");
 const { NodeIO } = require("../src/core/io.js");
 const { ConsoleDL11 } = require("../src/devices/dl11.js");
 const { Rk11 } = require("../src/devices/rk11.js");
+const { Rp11 } = require("../src/devices/rp11.js");
 const { CpuRegs } = require("../src/devices/cpu-regs.js");
 const { MmuRegs } = require("../src/devices/mmu-regs.js");
 const { PtrPtp } = require("../src/devices/ptr11.js");
@@ -180,6 +181,11 @@ async function bootHeadless(opts = {}) {
     sb.window.__tracePC = opts.tracePC;
   }
 
+  // Optional CPU trap trace (debug aid; see pdp11.js __trapTrace).
+  if (opts.trapTrace) {
+    sb.window.__trapTrace = opts.trapTrace;
+  }
+
   // --- Host glue: CPU-side services for Bus / devices / DiskService ---
   const host = {
     cpu: CPU,
@@ -241,6 +247,13 @@ async function bootHeadless(opts = {}) {
   });
   machine.addDevice(rk);
   rk.install();
+
+  // --- RP11 (RP04/RP06) — BSD 2.11, RSTS/E, RSX-11M on rp0-rp4 ---
+  const rp = new Rp11(machine, "rp1", {
+    regions: [{ address: 0o17776700, count: 20 }],
+  });
+  machine.addDevice(rp);
+  rp.install();
 
   // --- Core CPU registers (PIR/PSW/stack limit, 11/70 size regs) ---
   const cpuRegs = new CpuRegs(machine, "cpu-regs", {

@@ -63,6 +63,12 @@ const DEVICE_PROFILES = {
     rk1:     { image: "media/rk1.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
     rk1vt52: { image: "media/rk1.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
     rk4:     { image: "media/rk4.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
+    // BSD 2.11 (RP06 on drive 1). The loader asks for a CR before the
+    // kernel starts; pass --step "|login:" --step "root|#" to get a shell.
+    rp1:     { image: "media/rp1.dsk.zst", urlName: "rp1.dsk", bootCmd: "boot rp1\r" },
+    // RSTS/E 9.6 and RSX-11M 4.6 (RP04 on drives 2/3).
+    rp2:     { image: "media/rp2.dsk.zst", urlName: "rp2.dsk", bootCmd: "BOOT RP2\r" },
+    rp3:     { image: "media/rp3.dsk.zst", urlName: "rp3.dsk", bootCmd: "BOOT RP3\r" },
 };
 
 // ----------------------------------------------------------------------
