@@ -14,7 +14,8 @@
 // Console input bridge — route bytes to a DL11 unit's receive queue.
 // In-page features MUST go through the internal bridge (__yapdpBridge);
 // the legacy window.dlReceiveQueue surface is gated behind ?bridge=1
-// and exists only for external tooling (rt11-term, tests). The fallback
+// and exists only for external tooling (rt11-term legacy, tests). The
+// fallback
 // keeps older callers/tests working when no bridge is installed.
 // ------------------------------------------------------------------
 function bridgeSendToUnit(unit, bytes) {

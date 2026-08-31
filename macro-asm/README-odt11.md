@@ -83,7 +83,8 @@ commented out in the original.
 
 1. Punch the source to paper tape (raw bytes, no header):
    `cp odt11.mac odt11.ptap`
-2. In the emulator (`tools/rt11-term.js` batch mode):
+2. In the emulator (`tools/headless-term.js` batch mode — headless, no browser;
+   the older puppeteer-based `tools/rt11-term.js` is kept as legacy):
    ```
    :mount odt11.ptap
    COPY PC: ODT11.MAC

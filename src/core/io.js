@@ -6,8 +6,8 @@
  * to an IO adapter. Two implementations ship with the core:
  *
  *   NodeIO     — stdout/stderr + readline stdin + fs.promises + timers.
- *                Used by headless tools (rt11-term in a later stage) and
- *                by Node tests.
+ *                Used by headless tools (headless-term) and by Node
+ *                tests.
  *   BrowserIO  — console + window.prompt (fallback) + fetch + timers.
  *                The browser build will grow DOM bindings (teletype
  *                paper, LP11 fanfold) as devices move over; until then

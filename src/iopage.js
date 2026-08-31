@@ -1017,9 +1017,11 @@ function dl11(vt52Unit, deviceVector) {
     //   window.dlReceiveQueue / dlReceiveQueueN /
     //   window.dlConsoleBreak / window.__consoleOutputHook — the LEGACY
     //   external-tooling surface, exposed ONLY with ?bridge=1 in the URL.
-    //   Consumers: tools/rt11-term.js, tools/console-wait.js,
+    //   Consumers: tools/rt11-term.js (legacy), tools/console-wait.js,
     //   tools/record-video.js, tests. In-page features must NOT use these
-    //   (they are what __yapdpBridge is for).
+    //   (they are what __yapdpBridge is for). The headless CLI
+    //   (tools/headless-term.js) talks to the machine directly and does
+    //   not need this surface.
     //
     //   window.onConsoleInputDrained() — always exposed: called when the
     //   console typeahead queue has fully drained. Consumer: reader.js

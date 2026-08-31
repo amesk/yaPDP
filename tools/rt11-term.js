@@ -2,6 +2,13 @@
 /**
  * rt11-term.js — RT-11 operator console bridge for the yaPDP emulator.
  *
+ * ⚠️ DEPRECATED — use tools/headless-term.js instead. This tool boots
+ * the guest in headless Chrome (puppeteer + dev server); headless-term
+ * runs the same feature set (interactive/batch console, :mount/:rewind/
+ * :export/:wait/:raw/:status, paper tape, prompt sync) directly on the
+ * headless machine with no browser. Kept only for legacy/browser-based
+ * workflows.
+ *
  * Boots RT-11 (default: v4.0 on rk1, teletype console) in headless Chrome,
  * then bridges the guest console to the terminal:
  *
