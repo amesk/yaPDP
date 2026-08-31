@@ -26,6 +26,11 @@
  *   --prompt-timeout <s>  max wait for a prompt (default 15)
  *   --quiet               batch: do not echo sent lines (guest echo only)
  *   --tape <file>         mount a paper tape (.ptap/.zst) after boot
+ *   --step "send|waitFor" multi-step boot (repeatable): send <send>, wait
+ *                         for <waitFor> in the output produced after the
+ *                         send. E.g. Unix V5:
+ *                         --step "boot rk0|@" --step "unix|login:"
+ *                         --step "root|#" --prompt "#"
  *
  * Interactive commands (lines starting with ":"):
  *   :mount <file>   load a paper tape into the reader (.ptap or .zst)
@@ -64,6 +69,13 @@ const DEVICE_PROFILES = {
 // CLI arguments
 // ----------------------------------------------------------------------
 
+/** parseStep — "--step send|waitFor" (or just send). */
+function parseStep(s) {
+    const i = s.indexOf("|");
+    if (i < 0) return { send: s, waitFor: "" };
+    return { send: s.slice(0, i), waitFor: s.slice(i + 1) };
+}
+
 const opts = {
     device: null,
     prompt: ".",
@@ -74,6 +86,7 @@ const opts = {
     image: null,
     urlName: null,
     bootCmd: null,
+    steps: [],
 };
 
 const args = process.argv.slice(2);
@@ -92,6 +105,8 @@ for (let i = 0; i < args.length; i++) {
     else if (a === "--quiet") opts.quiet = true;
     else if (a === "--tape") opts.tapeFile = next();
     else if (a.startsWith("--tape=")) opts.tapeFile = a.slice(7);
+    else if (a === "--step") opts.steps.push(parseStep(next()));
+    else if (a.startsWith("--step=")) opts.steps.push(parseStep(a.slice(7)));
     else if (a === "--help" || a === "-h") {
         console.log(fs.readFileSync(__filename, "utf8").split("\n").slice(0, 45).join("\n"));
         process.exit(0);
@@ -522,7 +537,8 @@ async function shutdown(code) {
     boot = await bootHeadless({
         image: image,
         urlName: urlName,
-        bootCmd: bootCmd,
+        bootCmd: opts.steps.length ? undefined : bootCmd,
+        steps: opts.steps.length ? opts.steps : undefined,
         waitFor: opts.prompt,
         timeoutMs: 90000,
     });
