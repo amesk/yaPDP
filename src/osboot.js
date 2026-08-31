@@ -115,9 +115,11 @@ var OSBoot = (function () {
         // BSD 2.9 — historically a teletype console. The kernel boots into
         // single-user ("#" prompt) before init; Ctrl-D must be sent AFTER
         // the "#" appears, otherwise it is lost in the bootloader/kernel.
+        // getty flushes console input received before it finished opening
+        // the console, so "root" waits 3s after "login:" appears.
         { device: "rl0", label: "BSD 2.9", boot: "boot rl0",
             steps: [{ send: "rl(0,0)rlunix" }, { send: "", waitFor: "#" },
-                { ctrlD: true }, { send: "root", waitFor: "login:" }],
+                { ctrlD: true }, { send: "root", waitFor: "login:", wait: 3000 }],
             autoLogin: true,
             hardware: { console: "teletype", printer: true, vt11: false } },
         // RSX-11M — LP11 line printer; console is the user's choice.

@@ -321,7 +321,15 @@ var QuickBoot = (function () {
             return;
         }
         var step = steps[index];
-        if (step.waitFor) {
+        if (step.wait) {
+            // Pure delay step (no input): e.g. let a guest settle before
+            // the next prompt (BSD 2.9's getty flushes input received
+            // before it finished opening the console).
+            setTimeout(function () {
+                if (token !== autoloadToken) return; // aborted or superseded
+                runSteps(steps, index + 1, base, token);
+            }, step.wait);
+        } else if (step.waitFor) {
             waitForPrompt(steps, index, base, step.waitFor, Date.now(), token);
         } else {
             setTimeout(function () {
@@ -335,11 +343,16 @@ var QuickBoot = (function () {
     function waitForPrompt(steps, index, base, needle, startedAt, token) {
         if (token !== autoloadToken) return; // aborted or superseded
         if (outputContains(needle) || Date.now() - startedAt > WAIT_TIMEOUT_MS) {
-            // Prompt seen (or timed out): send the input and move on.
-            sendBytes(stepBytes(steps[index]));
+            // Prompt seen (or timed out): optionally settle, then send the
+            // input and move on.
+            var settle = steps[index].wait || 0;
             setTimeout(function () {
-                runSteps(steps, index + 1, base, token);
-            }, base);
+                if (token !== autoloadToken) return; // aborted or superseded
+                sendBytes(stepBytes(steps[index]));
+                setTimeout(function () {
+                    runSteps(steps, index + 1, base, token);
+                }, base);
+            }, settle);
             return;
         }
         setTimeout(function () {
