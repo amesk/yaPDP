@@ -371,14 +371,22 @@
         access(pa, data, byteFlag) {
             let result;
             if (typeof process !== "undefined" && process.env && process.env.DEBUG_RP) {
+                const pc = this.machine && this.machine.host && this.machine.host.cpu &&
+                    this.machine.host.cpu.registerVal
+                    ? this.machine.host.cpu.registerVal[7].toString(8) : "?";
                 process.stderr.write("RP " + (data >= 0 ? "wr " : "rd ") +
                     (pa & 0o177777).toString(8) +
-                    (data >= 0 ? "=" + data.toString(8) : "") + "\n");
+                    (data >= 0 ? "=" + data.toString(8) : "") +
+                    " @" + pc + "\n");
             }
 
             switch (pa & 0o76) {
                 case 0o00: // RPCS1 – Control/Status 1
                     result = insertData(this.rpcs1, pa, data, byteFlag);
+                    if (data < 0 && typeof process !== "undefined" && process.env && process.env.DEBUG_RP) {
+                        process.stderr.write("RP rd cs1=" + result.toString(8) +
+                            " rdy=" + ((result & 0x80) ? 1 : 0) + "\n");
+                    }
                     if (result >= 0 && data >= 0) {
                         // Preserve SC, TRE, DVA, RDY; update rest
                         this.rpcs1 = (this.rpcs1 & CS1_KEEP) | (result & CS1_UPDATE);
