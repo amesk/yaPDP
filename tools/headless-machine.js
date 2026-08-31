@@ -175,6 +175,11 @@ async function bootHeadless(opts = {}) {
   const CPU = vm.runInContext("CPU", sb);
   const pendingCallbacks = [];
 
+  // Optional instruction trace windows (debug aid; see pdp11.js __tracePC).
+  if (opts.tracePC) {
+    sb.window.__tracePC = opts.tracePC;
+  }
+
   // --- Host glue: CPU-side services for Bus / devices / DiskService ---
   const host = {
     cpu: CPU,

@@ -1388,6 +1388,20 @@ function pdp11Processor() {
                     //if (CPU.registerVal[7] == 0o30214) { // DDEEBBUUGG
                     //  console.log("@" + CPU.registerVal[7].toString(8) + ": " + instruction.toString(8) + " r0: " + CPU.registerVal[0].toString(8) + " r4: " + CPU.registerVal[4].toString(8) + " psw: " + readPSW().toString(8));
                     //}
+                    if (typeof window !== "undefined" && window.__tracePC) {
+                        const tpc = window.__tracePC;
+                        const tpcPc = CPU.registerVal[7];
+                        for (let ti = 0; ti < tpc.length; ti++) {
+                            if (tpcPc >= tpc[ti][0] && tpcPc <= tpc[ti][1]) {
+                                console.log("TRACE " + tpcPc.toString(8) + ": " + instruction.toString(8) +
+                                    " r0=" + CPU.registerVal[0].toString(8) + " r1=" + CPU.registerVal[1].toString(8) +
+                                    " r2=" + CPU.registerVal[2].toString(8) + " r3=" + CPU.registerVal[3].toString(8) +
+                                    " r4=" + CPU.registerVal[4].toString(8) + " r5=" + CPU.registerVal[5].toString(8) +
+                                    " sp=" + CPU.registerVal[6].toString(8) + " psw=" + readPSW().toString(8));
+                                break;
+                            }
+                        }
+                    }
                     CPU.registerVal[7] = (CPU.registerVal[7] + 2) & 0xffff;
                     switch (instruction >>> 12) { // xxSSDD Mostly double operand instructions
                         case 0: // 00xxxx mixed group
