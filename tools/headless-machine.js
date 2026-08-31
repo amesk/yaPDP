@@ -38,6 +38,7 @@ const { NodeIO } = require("../src/core/io.js");
 const { ConsoleDL11 } = require("../src/devices/dl11.js");
 const { Rk11 } = require("../src/devices/rk11.js");
 const { Rp11 } = require("../src/devices/rp11.js");
+const { Uda50 } = require("../src/devices/uda50.js");
 const { CpuRegs } = require("../src/devices/cpu-regs.js");
 const { MmuRegs } = require("../src/devices/mmu-regs.js");
 const { PtrPtp } = require("../src/devices/ptr11.js");
@@ -255,6 +256,13 @@ async function bootHeadless(opts = {}) {
   machine.addDevice(rp);
   rp.install();
 
+  // --- UDA50 (MSCP, RA81) — BSD 2.11/RSTS "ra" drives on ra0-ra2 ---
+  const uda = new Uda50(machine, "ra0", {
+    regions: [{ address: 0o17772150, count: 2 }],
+  });
+  machine.addDevice(uda);
+  uda.install();
+
   // --- Core CPU registers (PIR/PSW/stack limit, 11/70 size regs) ---
   const cpuRegs = new CpuRegs(machine, "cpu-regs", {
     cpuType: 70,
@@ -300,6 +308,26 @@ async function bootHeadless(opts = {}) {
     },
     writeBlock: async () => { /* headless: writes are discarded (read-only boot) */ },
   });
+
+  // --- UDA50 RA drives (ra0-ra2): LAZY decompress on first read, so
+  // non-RA boots (RT-11, V5, BSD-from-rp) never pay for the ~170MB of
+  // RA images. Matches iopage.js fetch-on-demand behaviour. ---
+  for (const ra of [0, 1, 2]) {
+    const raUrl = `ra${ra}.dsk`;
+    let raRaw = null;
+    machine.mountDrive(raUrl, {
+      readBlock: async (n) => {
+        if (!raRaw) {
+          const z = fs.readFileSync(path.join(REPO, `media/${raUrl}.zst`));
+          raRaw = sb.fzstd.decompress(new Uint8Array(z));
+        }
+        const start = n * IO_BLOCKSIZE;
+        if (start >= raRaw.length) return new Uint8Array(0);
+        return raRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, raRaw.length));
+      },
+      writeBlock: async () => { /* headless: writes are discarded */ },
+    });
+  }
 
   // --- sandbox iopage adapter: the CPU's only view of the I/O page ---
   sb.iopage = {

@@ -192,6 +192,13 @@
     machine.addDevice(rp);
     rp.install();
 
+    // --- UDA50 (MSCP, RA81) — BSD 2.11/RSTS "ra" drives on ra0-ra2 ---
+    var uda = new core.Uda50(machine, "ra0", {
+        regions: [{ address: 0o17772150, count: 2 }],
+    });
+    machine.addDevice(uda);
+    uda.install();
+
     function dataLoaderProvider(url) {
         // LAZY provider: DataLoader is filled by dragdrop.js / quickboot
         // / tauri-bundled.js at various times, so every readBlock re-reads
@@ -245,6 +252,9 @@
         }
         for (var p = 0; p < 5; p++) {
             machine.mountDrive("rp" + p + ".dsk", dataLoaderProvider("rp" + p + ".dsk"));
+        }
+        for (var a = 0; a < 4; a++) {
+            machine.mountDrive("ra" + a + ".dsk", dataLoaderProvider("ra" + a + ".dsk"));
         }
     }
     mountDrives();
