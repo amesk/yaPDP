@@ -61,9 +61,12 @@
                 result = (physicalAddress & 1) ? (result >>> 8) : (result & 0xFF);
             }
 
-            // Log NXM except for PSW
+            // Log NXM except for PSW (opt-in: guest OSes scan the bus on
+            // boot, which would spam the console; the browser iopage.js
+            // stays silent, so headless does too unless DEBUG_BUS=1).
             if (result < 0 && this.host.pswAddress &&
-                physicalAddress !== this.host.pswAddress) {
+                physicalAddress !== this.host.pswAddress &&
+                typeof process !== "undefined" && process.env.DEBUG_BUS) {
                 const pc = this.host.pc !== undefined ? this.host.pc : "?";
                 console.log(
                     "bus nxm " + physicalAddress.toString(8) + " " +
