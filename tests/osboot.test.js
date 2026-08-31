@@ -69,8 +69,8 @@ function run() {
         const rl0 = OSBoot.scenarioFor("rl0");
         assert.deepStrictEqual(plain(rl0.steps),
             [{ send: "rl(0,0)rlunix" }, { send: "", waitFor: "#" },
-                { ctrlD: true }, { send: "root", waitFor: "login:" }],
-            "BSD 2.9: Ctrl-D must wait for the single-user '#' prompt first");
+                { ctrlD: true }, { send: "root", waitFor: "login:", wait: 3000 }],
+            "BSD 2.9: Ctrl-D waits for single-user '#'; root waits past getty's input flush");
 
         const rp1 = OSBoot.scenarioFor("rp1");
         assert.deepStrictEqual(plain(rp1.steps),
