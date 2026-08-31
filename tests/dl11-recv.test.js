@@ -104,7 +104,7 @@ async function run() {
   const s1 = loadConsole();
   const dev = s1.dev;
   s1.CPU.interruptRequested = 0;
-  s1.window.dlReceiveQueue(0, [3]);
+  s1.window.__yapdpBridge.dlReceiveQueue(0, [3]);
   await delay(20);
 
   let rcsr = dev.access(RCSR, -1, false);
@@ -126,7 +126,7 @@ async function run() {
   const dev2 = s2.dev;
   dev2.access(RCSR, DL_RCSR_IE, false); // enable receive interrupts
   s2.CPU.interruptRequested = 0;
-  s2.window.dlReceiveQueue(0, [3]);
+  s2.window.__yapdpBridge.dlReceiveQueue(0, [3]);
   await delay(20);
 
   assert.strictEqual(s2.CPU.interruptRequested, 1, "requestInterrupt must be raised");
@@ -147,7 +147,7 @@ async function run() {
   // ------------------------------------------------------------------
   const s3 = loadConsole();
   const dev3 = s3.dev;
-  s3.window.dlReceiveQueue(0, [3, 4]); // ^C then ^D
+  s3.window.__yapdpBridge.dlReceiveQueue(0, [3, 4]); // ^C then ^D
   await delay(20);
   assert.strictEqual(dev3.access(RBUF, -1, false), 3, "first byte is ^C");
   await delay(20);
