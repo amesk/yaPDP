@@ -38,6 +38,7 @@ const { NodeIO } = require("../src/core/io.js");
 const { ConsoleDL11 } = require("../src/devices/dl11.js");
 const { Rk11 } = require("../src/devices/rk11.js");
 const { CpuRegs } = require("../src/devices/cpu-regs.js");
+const { MmuRegs } = require("../src/devices/mmu-regs.js");
 const { PtrPtp } = require("../src/devices/ptr11.js");
 const { Kw11 } = require("../src/devices/kw11.js");
 const { IO_BLOCKSIZE } = require("../src/devices/disk-service.js");
@@ -187,10 +188,13 @@ async function bootHeadless(opts = {}) {
     trap: (v, e) => {
       if (process.env.DEBUG_TRAP) {
         console.log("TRAP vector=" + v.toString(8) + " code=" + e.toString(8) +
-          " pc=" + (typeof CPU !== "undefined" && CPU.registerVal ? CPU.registerVal[7].toString(8) : "?"));
+          " pc=" + (typeof CPU !== "undefined" && CPU.registerVal ? CPU.registerVal[7].toString(8) : "?") +
+          " depth=" + (CPU.trapDepth || 0));
       }
       return (typeof sb.trap === "function" ? sb.trap(v, e) : -1);
     },
+    // MMR3 writes re-apply the MMU mode through the CPU's own setMMUmode.
+    setMMUmode: (m) => vm.runInContext("setMMUmode(" + m + ")", sb),
     // Memory access for disk DMA (mapUnibus + physical access; I/O
     // addresses route through iopage.access → our bus adapter).
     busReadWord: (ba) => sb.readWordByPhysical(mapUnibus(CPU, ba)),
@@ -243,6 +247,16 @@ async function bootHeadless(opts = {}) {
   });
   machine.addDevice(cpuRegs);
   cpuRegs.install();
+
+  // --- MMU registers (PDR/PAR kernel/super/user + 11/70 Unibus map) ---
+  // Required by MMU-using guests (Unix V5, BSD); without them the I/O
+  // page answers NXM to MMU setup and the guest traps on its first PAR
+  // write (stalled at PC=400 with PSW=0340 — trap 4).
+  const mmuRegs = new MmuRegs(machine, "mmu-regs", {
+    cpuType: 70,
+  });
+  machine.addDevice(mmuRegs);
+  mmuRegs.install();
 
   // --- KW11-P line clock (50 Hz) — the boot ROM WAITs on its tickle ---
   const kw = new Kw11(machine, "kw11", {

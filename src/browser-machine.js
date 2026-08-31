@@ -75,6 +75,8 @@
         readPSW: function () { return readPSW(); },
         writePSW: function (v) { writePSW(v); },
         trap: function (v, e) { return trap(v, e); },
+        // MMR3 writes re-apply the MMU mode through the CPU's own setMMUmode.
+        setMMUmode: function (m) { setMMUmode(m); },
         busReadWord: function (ba) { return readWordByPhysical(mapUnibus(ba)); },
         busWriteWord: function (ba, data) { return writeWordByPhysical(mapUnibus(ba), data & 0xFFFF); },
         writeByteByPhysical: function (a, d) { return writeByteByPhysical(a, d); },
@@ -167,6 +169,12 @@
     });
     machine.addDevice(cpuRegs);
     cpuRegs.install();
+
+    // MMU registers (PDR/PAR kernel/super/user + 11/70 Unibus map) — the
+    // iopage.js MMU register file; required by MMU-using guests (V5/BSD).
+    var mmuRegs = new core.MmuRegs(machine, "mmu-regs", { cpuType: 70 });
+    machine.addDevice(mmuRegs);
+    mmuRegs.install();
 
     // ------------------------------------------------------------------
     // RK11 disks — bytes from DataLoader (in-memory images)
