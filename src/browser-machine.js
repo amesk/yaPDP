@@ -231,6 +231,13 @@
     machine.addDevice(rl);
     rl.install();
 
+    // --- TM11 (TU10) — RSTS/E rollin tapes on tm0-tm2 ---
+    var tm = new core.Tm11(machine, "tm0", {
+        regions: [{ address: 0o17772520, count: 6 }],
+    });
+    machine.addDevice(tm);
+    tm.install();
+
     // --- UDA50 (MSCP, RA81) — BSD 2.11/RSTS "ra" drives on ra0-ra2 ---
     var uda = new core.Uda50(machine, "ra0", {
         regions: [{ address: 0o17772150, count: 2 }],
@@ -297,6 +304,9 @@
         }
         for (var a = 0; a < 4; a++) {
             machine.mountDrive("ra" + a + ".dsk", dataLoaderProvider("ra" + a + ".dsk"));
+        }
+        for (var t = 0; t < 3; t++) {
+            machine.mountDrive("tm" + t + ".tap", dataLoaderProvider("tm" + t + ".tap"));
         }
     }
     mountDrives();
