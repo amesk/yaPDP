@@ -44,6 +44,19 @@ const GUESTS = [
     { device: "rk1",   name: "RT-11",
         cfg: { consoleType: "teletype", printer: true, vt11: false },
         stable: 2500, prompt: ".", timeout: 120000 },
+    { device: "rl0",   name: "BSD 2.9",
+        // Known emulator bug: console input stops working once the kernel
+        // switches to multi-user (getty prints "login:" but typed bytes are
+        // never delivered/echoed — the wizard's "root" step goes nowhere).
+        // Coverage target: kernel boot to the login prompt.
+        cfg: { consoleType: "teletype", printer: true, vt11: false },
+        readyWhen: "login:", timeout: 120000 },
+    { device: "rp0",   name: "ULTRIX-11 V3.1",
+        // Known emulator bug: Ctrl-D from single-user panics the kernel
+        // ('panic: trap' during multi-user init). Coverage target here is
+        // the kernel booting to the single-user "#" prompt; no login: check.
+        cfg: { consoleType: "teletype", printer: false, vt11: false },
+        readyWhen: "#", timeout: 120000 },
     { device: "rp1",   name: "BSD 2.11",
         cfg: { consoleType: "vt52", printer: true, vt11: false },
         readyWhen: "#", readyAfter: "login:", timeout: 180000 },
