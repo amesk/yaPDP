@@ -84,7 +84,7 @@ function makeFakeIndexedDB(seed) {
 // Send a line to the guest console and wait for a fresh "." prompt.
 async function sendLine(sandbox, getOut, line, timeoutMs = 20000) {
   const before = getOut().length;
-  sandbox.window.dlReceiveQueue(0, Array.from(line + "\r").map((c) => c.charCodeAt(0)));
+  sandbox.window.__yapdpBridge.dlReceiveQueue(0, Array.from(line + "\r").map((c) => c.charCodeAt(0)));
   const t0 = Date.now();
   let tail = "";
   do {
@@ -101,7 +101,7 @@ async function sendLine(sandbox, getOut, line, timeoutMs = 20000) {
 // for commands whose output ends before the prompt, e.g. DIR's footer).
 async function sendAndWait(sandbox, getOut, line, marker, timeoutMs = 20000) {
   const before = getOut().length;
-  sandbox.window.dlReceiveQueue(0, Array.from(line + "\r").map((c) => c.charCodeAt(0)));
+  sandbox.window.__yapdpBridge.dlReceiveQueue(0, Array.from(line + "\r").map((c) => c.charCodeAt(0)));
   const t0 = Date.now();
   let tail = "";
   do {

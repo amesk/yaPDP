@@ -105,7 +105,7 @@ async function openPage(browser) {
     // E2E_CORE=1 exercises the refactored machine layer (?core=1) instead
     // of the monolithic iopage.js — the same UI expectations must hold.
     const coreParam = process.env.E2E_CORE ? "core=1&" : "";
-    await page.goto(`${BASE}/pdp11.html?${coreParam}cfg=teletype`, { waitUntil: "load", timeout: 90000 });
+    await page.goto(`${BASE}/pdp11.html?${coreParam}bridge=1&cfg=teletype`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 

@@ -34,10 +34,15 @@ var PasteUtil = (function () {
     // Route bytes to a DL11 unit's receive queue (unit 0 -> dlReceiveQueue,
     // unit N -> dlReceiveQueueN). `win` is injectable for tests; the browser
     // global is used by default. A missing queue is a silent no-op.
+    // In-page consumers use the internal bridge (__yapdpBridge) when present,
+    // falling back to the legacy window surface for tests/older callers.
     function sendToUnit(unit, bytes, win) {
         win = win || (typeof window !== "undefined" ? window : null);
         if (!win || !bytes || !bytes.length) return;
-        var q = (unit === 0) ? win.dlReceiveQueue : win["dlReceiveQueue" + unit];
+        var bridge = win.__yapdpBridge;
+        var q = bridge
+            ? bridge.dlReceiveQueue
+            : (unit === 0 ? win.dlReceiveQueue : win["dlReceiveQueue" + unit]);
         if (typeof q === "function") q(unit, bytes);
     }
 

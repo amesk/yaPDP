@@ -927,6 +927,11 @@ function dl11(vt52Unit, deviceVector) {
     let typeAhead = [];
     let receiverBusy = false;
     let pasteCR = true;
+    // Internal console-output hook slot. Fed by the bridge (__yapdpBridge)
+    // or by the legacy window.__consoleOutputHook shim (?bridge=1 mode).
+    // Kept inside the closure so the emulator core never depends on a
+    // window global for its own I/O path.
+    let outputHook = null;
     const unit = vt52Unit;
     const vector = deviceVector;
 
@@ -994,37 +999,61 @@ function dl11(vt52Unit, deviceVector) {
     }
 
     // ==================================================================
-    // Machine bridge API — the public contract between the emulator core
-    // and the world outside the DL11 closure (UI, wizards, tools).
+    // Machine bridge API — the contract between the emulator core and the
+    // world outside the DL11 closure (UI, wizards, tools).
     //
-    // These globals are NOT debug leftovers and NOT optional: they are
-    // load-bearing for in-page features AND for external tooling, so they
-    // are always exposed (no ?bridge=1 gating):
+    // TWO surfaces, deliberately split:
     //
-    //   window.dlReceiveQueue(unit, bytes)  — inject console input.
-    //       Consumers: quickboot.js (autoload wizard), pasteutil.js,
-    //       pdp11-app.js (virtual keyboard, hotkeys), reader.js (ASR
-    //       tape in line mode), tools/rt11-term.js, tools/headless-boot.js.
-    //   window["dlReceiveQueue" + unit]     — same for VT52 user terminals.
-    //   window.dlConsoleBreak()             — operator BREAK (console only).
-    //       Consumers: pdp11-app.js (BREAK button), external tools.
-    //   window.__consoleOutputHook(ch)      — called for every console
-    //       character (unit 0, 0x07..0x7E), 7-bit. May be installed by
-    //       exactly one consumer at a time; a consumer replacing a hook
-    //       installed by another consumer must chain to the previous one.
-    //       Consumers: quickboot.js (prompt waiting), tools/rt11-term.js,
-    //       tools/headless-boot.js.
-    //   window.onConsoleInputDrained()      — called when the console
-    //       typeahead queue has fully drained (every queued byte accepted
-    //       by the DL11 receiver). Consumers: reader.js (AUTO tape mode).
+    //   window.__yapdpBridge (ALWAYS exposed, unit 0 closure only) — the
+    //   internal API used by in-page features (virtual keyboard, paste,
+    //   quick-boot wizard, ASR tape) and by the ?core=1 machine layer:
+    //       __yapdpBridge.dlReceiveQueue(unit, bytes)  — inject input.
+    //       __yapdpBridge.dlConsoleBreak()             — operator BREAK.
+    //       __yapdpBridge.setOutputHook(fn)            — console output
+    //           feed (unit 0, 0x07..0x7E), fire-and-forget; replacing a
+    //           hook must chain to the previous one. Also feeds the
+    //           legacy window.__consoleOutputHook shim when ?bridge=1.
+    //
+    //   window.dlReceiveQueue / dlReceiveQueueN /
+    //   window.dlConsoleBreak / window.__consoleOutputHook — the LEGACY
+    //   external-tooling surface, exposed ONLY with ?bridge=1 in the URL.
+    //   Consumers: tools/rt11-term.js, tools/console-wait.js,
+    //   tools/record-video.js, tests. In-page features must NOT use these
+    //   (they are what __yapdpBridge is for).
+    //
+    //   window.onConsoleInputDrained() — always exposed: called when the
+    //   console typeahead queue has fully drained. Consumer: reader.js
+    //   (AUTO tape mode) — a load-bearing in-page feature, not tooling.
     //
     // The hook calls are fire-and-forget: a throwing hook must never break
     // the console I/O path (see the try/catch at the call sites).
     // ==================================================================
+    const bridgeEnabled = (typeof location !== "undefined" && location.search &&
+        /[?&]bridge=1/.test(location.search)) || false;
+
     if (unit === 0) {
-        window.dlReceiveQueue = dlReceiveQueue;
-        window.dlConsoleBreak = dlConsoleBreak;
-    } else {
+        // Internal API — always present, this is what the page itself uses.
+        window.__yapdpBridge = {
+            dlReceiveQueue: dlReceiveQueue,
+            dlConsoleBreak: dlConsoleBreak,
+            setOutputHook: function (fn) {
+                const prev = outputHook;
+                outputHook = fn;
+                return prev; // chain: caller can re-install the old hook
+            },
+        };
+        if (bridgeEnabled) {
+            // Legacy external-tooling surface (?bridge=1 only).
+            window.dlReceiveQueue = dlReceiveQueue;
+            window.dlConsoleBreak = dlConsoleBreak;
+            // Shim: assignments from legacy tools land in the closure slot.
+            Object.defineProperty(window, "__consoleOutputHook", {
+                get: function () { return outputHook; },
+                set: function (fn) { outputHook = fn; },
+                configurable: true,
+            });
+        }
+    } else if (bridgeEnabled) {
         window["dlReceiveQueue" + unit] = dlReceiveQueue;
     }
 
@@ -1291,9 +1320,12 @@ function dl11(vt52Unit, deviceVector) {
                                 // console character to prompt-waiting logic.
                                 // Fire-and-forget per the bridge contract —
                                 // a throwing hook must not break console I/O.
-                                if (typeof window !== 'undefined' && window.__consoleOutputHook) {
+                                // Routed through the closure slot (outputHook),
+                                // set via __yapdpBridge.setOutputHook or the
+                                // legacy window.__consoleOutputHook shim.
+                                if (outputHook) {
                                     try {
-                                        window.__consoleOutputHook(xbuf);
+                                        outputHook(xbuf);
                                     } catch (e) { /* ignore hook errors */ }
                                 }
                             } else {

@@ -11,6 +11,21 @@
 'use strict';
 
 // ------------------------------------------------------------------
+// Console input bridge — route bytes to a DL11 unit's receive queue.
+// In-page features MUST go through the internal bridge (__yapdpBridge);
+// the legacy window.dlReceiveQueue surface is gated behind ?bridge=1
+// and exists only for external tooling (rt11-term, tests). The fallback
+// keeps older callers/tests working when no bridge is installed.
+// ------------------------------------------------------------------
+function bridgeSendToUnit(unit, bytes) {
+  var bridge = window.__yapdpBridge;
+  var q = bridge
+    ? bridge.dlReceiveQueue
+    : (unit === 0 ? window.dlReceiveQueue : window['dlReceiveQueue' + unit]);
+  if (typeof q === 'function') q(unit, bytes);
+}
+
+// ------------------------------------------------------------------
 // Google60 Printer — console output (teletype paper / line printer)
 // ------------------------------------------------------------------
 
@@ -599,9 +614,7 @@ var g60Keyboard = (function () {
       }
       return;
     }
-    if (typeof window.dlReceiveQueue === 'function') {
-      window.dlReceiveQueue(0, bytes);
-    }
+    bridgeSendToUnit(0, bytes);
   }
 
   function updateMods() {
@@ -724,9 +737,7 @@ var g60Keyboard = (function () {
       if (!punched && g60Console) g60Console.writeChar(code);
       return;
     }
-    if (typeof window.dlReceiveQueue === 'function') {
-      window.dlReceiveQueue(0, [code]);
-    }
+    bridgeSendToUnit(0, [code]);
   }
   function sendDL(bytes) {
     var punched = [];
@@ -746,9 +757,7 @@ var g60Keyboard = (function () {
       }
       return;
     }
-    if (typeof window.dlReceiveQueue === 'function') {
-      window.dlReceiveQueue(0, bytes);
-    }
+    bridgeSendToUnit(0, bytes);
   }
 
   return { init: function () { buildKeyboard(); installPhysicalKeyboard(); } };
@@ -777,13 +786,13 @@ function installVT52Keyboard(unit, pageId) {
     // Prevent Tab switching away from the emulator
     if (e.key === 'Tab') { e.preventDefault(); return; }
 
-    // Route to the given unit via the globally exposed receive queue.
-    // Unit 0 → dlReceiveQueue, unit N → dlReceiveQueueN.
+    // Route to the given unit via the internal bridge (__yapdpBridge).
+    // Unit 0 → dlReceiveQueue, unit N → dlReceiveQueueN (bridge is
+    // unit-aware; the legacy window surface is ?bridge=1-gated).
     function sendToUnit(bytes) {
       // Optional audible key click (VT100-style feedback)
       if (typeof window.playKeyClick === 'function') window.playKeyClick();
-      var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
-      if (typeof q === 'function') q(unit, bytes);
+      bridgeSendToUnit(unit, bytes);
     }
 
     // Special keys: Enter, Backspace
@@ -960,8 +969,7 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   // Initialize the VT52 terminal. In text mode the screen buffer is rendered
   // through the visible textarea; in canvas mode through the CRT canvas.
   window.vt52Initialize(unit, function (unit, bytes) {
-    var q = (unit === 0) ? window.dlReceiveQueue : window['dlReceiveQueue' + unit];
-    if (typeof q === 'function') q(unit, bytes);
+    bridgeSendToUnit(unit, bytes);
   }, textarea, canvas, {
     allowCanvas: !textMode,
     noHardcopyFallback: true,

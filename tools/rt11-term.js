@@ -133,7 +133,7 @@ const MAX_TAIL = 65536;
 
 async function serverUp(port) {
     try {
-        const res = await fetch("http://localhost:" + port + "/pdp11.html");
+        const res = await fetch("http://localhost:" + port + "/pdp11.html?bridge=1");
         return res.ok;
     } catch (e) {
         return false;
@@ -745,7 +745,7 @@ function sleep(ms) {
     await ensureServer();
     await launchBrowser();
     await seedConfig(opts.device);
-    await page.goto("http://localhost:" + serverPort + "/pdp11.html", {
+    await page.goto("http://localhost:" + serverPort + "/pdp11.html?bridge=1", {
         waitUntil: "load",
     });
     await waitForApp(30000);
