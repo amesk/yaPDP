@@ -1,150 +1,553 @@
 #!/usr/bin/env node
 /**
- * headless-term.js — interactive RT-11 terminal on the NEW headless stack
- * (no browser, no puppeteer, no iopage.js).
+ * headless-term.js — RT-11 operator console bridge on the NEW headless
+ * stack (no browser, no puppeteer, no iopage.js). Successor of the old
+ * tools/rt11-term.js with full feature parity:
  *
- * The rt11-term functionality, rebuilt on the refactored machine layer:
- * boots a guest OS via bootHeadless(), then gives an operator console —
- * stdin lines go to the guest through the ConsoleDL11 device, guest
- * output streams to stdout, and ":commands" drive the paper tape
- * (:mount/:export/:status) and the session (:quit).
+ *   - boots a guest OS via bootHeadless() (default RT-11 v4.0 on rk1)
+ *   - interactive mode (TTY stdin): lines go to the guest console,
+ *     guest output streams to stdout, ":commands" drive the utility
+ *   - batch mode (piped stdin): every line is fed to the guest (or
+ *     handled as a command) with prompt synchronization — the utility
+ *     waits for the RT-11 monitor prompt ("." at line start + a quiet
+ *     period) before sending the next line, so a script cannot outrun
+ *     the guest
+ *   - guest console input through the ConsoleDL11 device, paper tape
+ *     through the PtrPtp device + the shared DiskService (file provider)
  *
  * Usage:
  *   node tools/headless-term.js [image.zst] [url-name] [boot-cmd]
+ *   node tools/headless-term.js [options] [tape-file]
  *
- * Example:
- *   node tools/headless-term.js                    # rk1.dsk, BOOT RK0
- *   node tools/headless-term.js media/rk0.dsk.zst rk0.dsk "BOOT RK0"
+ * Options:
+ *   --device <rk1|rk4>    boot profile (default rk1)
+ *   --prompt <marker>     prompt marker (default ".")
+ *   --prompt-delay <ms>   silence window confirming a prompt (default 300)
+ *   --prompt-timeout <s>  max wait for a prompt (default 15)
+ *   --quiet               batch: do not echo sent lines (guest echo only)
+ *   --tape <file>         mount a paper tape (.ptap/.zst) after boot
+ *
+ * Interactive commands (lines starting with ":"):
+ *   :mount <file>   load a paper tape into the reader (.ptap or .zst)
+ *   :rewind         rewind the reader tape
+ *   :export <file>  save the punch output since the last export
+ *   :wait <marker>  wait until the guest output contains <marker>
+ *   :raw <hex>      send raw bytes to the guest console (e.g. :raw 03)
+ *   :status         show reader tape / punch bytes / prompt marker
+ *   :quit | :exit   shut down and exit
+ *   :help           this list
  */
 "use strict";
+
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
+const vm = require("vm");
 
 const { bootHeadless } = require("./headless-machine.js");
 const { IO_BLOCKSIZE } = require("../src/devices/disk-service.js");
 
 const REPO = path.resolve(__dirname, "..");
+const PREFIX = ":";
+const MAX_TAIL = 65536;
 
-function bytes(s) { return Array.from(s).map((c) => c.charCodeAt(0)); }
+// Boot profiles (mirror the OSBoot scenarios of the old rt11-term.js).
+// On the headless stack the guest image is mounted as RK drive 0, so the
+// boot command is BOOT RK0 regardless of which distribution image is used.
+const DEVICE_PROFILES = {
+    rk1:     { image: "media/rk1.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
+    rk1vt52: { image: "media/rk1.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
+    rk4:     { image: "media/rk4.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
+};
 
-async function main() {
-  const [image, urlName, bootCmd] = process.argv.slice(2);
-  const opts = {
-    image: image || "media/rk1.dsk.zst",
-    urlName: urlName || "rk0.dsk",
-    bootCmd: bootCmd ? bootCmd + "\r" : "BOOT RK0\r",
-    timeoutMs: 60000,
-  };
+// ----------------------------------------------------------------------
+// CLI arguments
+// ----------------------------------------------------------------------
 
-  // Mount the punch/export target: the machine's disk service is shared,
-  // so the paper-tape reader can also read local .ptap files via the same
-  // file provider (length = tape size for end-of-tape).
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: process.stdin.isTTY,
-  });
+const opts = {
+    device: null,
+    prompt: ".",
+    promptDelay: 300,
+    promptTimeout: 15,
+    quiet: false,
+    tapeFile: null,
+    image: null,
+    urlName: null,
+    bootCmd: null,
+};
 
-  // Boot with a streaming output hook: instead of buffering until the
-  // prompt, print everything as it arrives.
-  let booted = false;
-  const boot = await (async () => {
-    // bootHeadless buffers `out`; for a live terminal we wrap the console
-    // onOutput. Simplest: run bootHeadless as-is (fast boot, ~1.5s), then
-    // start the interactive loop; subsequent guest output is captured by
-    // wrapping the hook AFTER boot via the returned machine.
-    const r = await bootHeadless(opts);
-    booted = true;
-    process.stdout.write(r.out.replace(/@/, "RT-11 ready.\n@"));
-    return r;
-  })();
-
-  // Wire live output: install a chained hook on the console device so
-  // every character the guest prints after boot streams to stdout.
-  const consoleDev = boot.machine.findDevice("console");
-  consoleDev.installOutputHook((ch) => {
-    process.stdout.write(String.fromCharCode(ch & 0x7f));
-  });
-
-  // Rewind / mount helpers.
-  const ptr = boot.machine.findDevice("ptr");
-  const disk = boot.machine.disk;
-
-  function mountTape(file) {
-    const p = path.resolve(REPO, file);
-    if (!fs.existsSync(p)) {
-      console.error("headless-term: no such tape: " + file);
-      return;
-    }
-    const buf = fs.readFileSync(p);
-    disk.mountDrive(path.basename(file), {
-      readBlock: async (n) => {
-        const start = n * IO_BLOCKSIZE;
-        if (start >= buf.length) return new Uint8Array(0);
-        return buf.subarray(start, Math.min(start + IO_BLOCKSIZE, buf.length));
-      },
-      writeBlock: async () => {},
-      length: buf.length,
-    });
-    if (ptr) ptr.loadTape(path.basename(file));
-    console.log("headless-term: mounted " + path.basename(file) +
-      " (" + buf.length + " bytes)");
-  }
-
-  console.log("RT-11 terminal on the headless stack. :help for commands.");
-
-  const prompt = () => { if (rl.terminal) rl.setPrompt(""); rl.prompt(); };
-
-  rl.on("line", (line) => {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith(":")) {
-      boot.machine.findDevice("console").receive(bytes(line + "\r"));
-      return;
-    }
-    const [cmd, arg] = [trimmed.slice(1).split(/\s+/)[0], trimmed.slice(1).split(/\s+/).slice(1).join(" ")];
-    switch (cmd) {
-      case "mount":
-        if (!arg) { console.error("usage: :mount <file.ptap>"); break; }
-        mountTape(arg);
-        break;
-      case "export": {
-        if (!ptr) { console.error("no paper-tape device"); break; }
-        const out = ptr.punchBytes();
-        if (!arg) { console.error("usage: :export <file.ptap>"); break; }
-        fs.writeFileSync(path.resolve(REPO, arg), Buffer.from(out));
-        console.log("headless-term: exported " + out.length + " bytes -> " + arg);
-        ptr.clearPunch();
-        break;
-      }
-      case "status":
-        console.log("tape: " + (ptr && ptr.ptControlblock ? ptr.ptControlblock.url : "none") +
-          " | punch buffer: " + (ptr ? ptr.punchBytes().length : 0) + " bytes");
-        break;
-      case "quit":
-      case "exit":
-        rl.close();
-        boot.halt();
+const args = process.argv.slice(2);
+const positional = [];
+for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    const next = () => args[++i];
+    if (a === "--device") opts.device = next();
+    else if (a.startsWith("--device=")) opts.device = a.slice(9);
+    else if (a === "--prompt") opts.prompt = next();
+    else if (a.startsWith("--prompt=")) opts.prompt = a.slice(9);
+    else if (a === "--prompt-delay") opts.promptDelay = parseInt(next(), 10);
+    else if (a.startsWith("--prompt-delay=")) opts.promptDelay = parseInt(a.slice(15), 10);
+    else if (a === "--prompt-timeout") opts.promptTimeout = parseInt(next(), 10);
+    else if (a.startsWith("--prompt-timeout=")) opts.promptTimeout = parseInt(a.slice(17), 10);
+    else if (a === "--quiet") opts.quiet = true;
+    else if (a === "--tape") opts.tapeFile = next();
+    else if (a.startsWith("--tape=")) opts.tapeFile = a.slice(7);
+    else if (a === "--help" || a === "-h") {
+        console.log(fs.readFileSync(__filename, "utf8").split("\n").slice(0, 45).join("\n"));
         process.exit(0);
-        break;
-      case "help":
-        console.log("  lines         -> guest console");
-        console.log("  :mount <file>  load a paper tape into the reader");
-        console.log("  :export <file> save the punched output and clear it");
-        console.log("  :status        show tape + punch state");
-        console.log("  :quit          shut down");
-        break;
-      default:
-        console.error("unknown command: :" + cmd + " (:help)");
     }
-    prompt();
-  });
-
-  rl.on("close", () => { boot.halt(); process.exit(0); });
-  prompt();
+    else if (a.startsWith("-")) {
+        console.error("headless-term: unknown option " + a);
+        process.exit(2);
+    }
+    else positional.push(a);
 }
 
-main().catch((e) => {
-  console.error("headless-term error:", e.message);
-  process.exit(1);
+// Resolve the boot configuration: explicit profile > positional args
+// (image, url-name, boot-cmd) > defaults. The old rt11-term convention
+// `node tools/rt11-term.js <tape-file>` is honoured: a first positional
+// argument that names an existing non-disk file is treated as a tape.
+let image = opts.image;
+let urlName = opts.urlName;
+let bootCmd = opts.bootCmd;
+const prof = (opts.device && DEVICE_PROFILES[opts.device]) || null;
+if (prof) {
+    if (!image) image = prof.image;
+    if (!urlName) urlName = prof.urlName;
+    if (!bootCmd) bootCmd = prof.bootCmd;
+}
+if (positional.length) {
+    const p0 = path.resolve(REPO, positional[0]);
+    if (fs.existsSync(p0) && !/\.dsk(\.zst)?$/i.test(positional[0])) {
+        if (!opts.tapeFile) opts.tapeFile = positional[0];
+    } else {
+        if (!image && positional[0]) image = positional[0];
+        if (!urlName && positional[1]) urlName = positional[1];
+        if (!bootCmd && positional[2]) bootCmd = positional[2].endsWith("\r") ? positional[2] : positional[2] + "\r";
+    }
+}
+if (!image) image = "media/rk1.dsk.zst";
+if (!urlName) urlName = "rk0.dsk";
+if (!bootCmd) bootCmd = "BOOT RK0\r";
+
+const interactive = process.stdin.isTTY;
+
+// ----------------------------------------------------------------------
+// State
+// ----------------------------------------------------------------------
+
+let boot = null;
+let consoleDev = null;
+let ptr = null;
+let disk = null;
+let shuttingDown = false;
+let rlRef = null;            // interactive readline (for prompt redraw)
+
+// Prompt engine state (identical contract to rt11-term.js).
+let outTail = "";            // recent console output (for :wait matching)
+let lineStart = true;        // next char starts a fresh line
+let curLine = "";            // chars of the current line
+let silenceTimer = null;     // armed when a candidate prompt line is seen
+let promptWaiters = [];      // resolve() callbacks waiting for the prompt
+let markerWaiters = [];      // { marker, resolve, timer }
+let echoPending = null;      // line we sent, awaiting guest echo (batch)
+let echoIdx = 0;
+let echoFailed = false;
+
+// Lazy fzstd (assets/vendor/fzstd.js) in its own VM context for .zst tapes.
+let _fzstd = null;
+function fzstd() {
+    if (_fzstd) return _fzstd;
+    const sb = vm.createContext({});
+    vm.runInContext(
+        fs.readFileSync(path.join(REPO, "assets/vendor/fzstd.js"), "utf8"),
+        sb, { filename: "assets/vendor/fzstd.js" });
+    _fzstd = sb.fzstd;
+    return _fzstd;
+}
+
+function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+}
+
+// ----------------------------------------------------------------------
+// Prompt / marker engine
+// ----------------------------------------------------------------------
+
+function onConsoleChar(c) {
+    // Feed the :wait tail (raw, including the char).
+    outTail += String.fromCharCode(c);
+    if (outTail.length > MAX_TAIL) outTail = outTail.slice(-MAX_TAIL);
+    checkMarkerWaiters();
+
+    // Echo tracking (batch mode): the guest's hardcopy echo of a sent line
+    // arrives as output; match it so we do not double-print the line.
+    if (echoPending !== null) {
+        if (c === echoPending.charCodeAt(echoIdx)) {
+            echoIdx++;
+            if (echoIdx >= echoPending.length) {
+                echoPending = null; // guest echoed the whole line
+                echoIdx = 0;
+            }
+        } else {
+            echoPending = null;
+            echoIdx = 0;
+            echoFailed = true;
+        }
+    }
+
+    // Line tracking. curLine accumulates from the last newline.
+    if (lineStart) curLine = "";
+    curLine += String.fromCharCode(c);
+    if (c === 10 || c === 13) {
+        lineStart = true;
+        curLine = "";
+    } else {
+        lineStart = false;
+    }
+
+    // A line that is EXACTLY the prompt marker is a CANDIDATE: confirm it
+    // only after `promptDelay` ms of silence (the real monitor prompt waits
+    // for input; a dot inside program output keeps producing chars, which
+    // disarms the timer).
+    if (curLine === opts.prompt && opts.prompt !== "") {
+        armSilenceTimer();
+    } else {
+        disarmSilenceTimer();
+    }
+
+    // Guest output to stdout.
+    process.stdout.write(String.fromCharCode(c));
+    // Interactive: redraw the readline input line after each output line so
+    // the operator's half-typed line stays visible.
+    if (rlRef && c === 10) {
+        try { rlRef.prompt(true); } catch (e) { /* ignore */ }
+    }
+}
+
+function armSilenceTimer() {
+    if (silenceTimer) return;
+    silenceTimer = setTimeout(() => {
+        silenceTimer = null;
+        const waiters = promptWaiters;
+        promptWaiters = [];
+        waiters.forEach((w) => w());
+    }, opts.promptDelay);
+}
+
+function disarmSilenceTimer() {
+    if (silenceTimer) {
+        clearTimeout(silenceTimer);
+        silenceTimer = null;
+    }
+}
+
+function waitForPrompt(timeoutMs) {
+    return new Promise((resolve) => {
+        const t = setTimeout(() => {
+            const i = promptWaiters.indexOf(resolve);
+            if (i >= 0) promptWaiters.splice(i, 1);
+            resolve(false);
+        }, timeoutMs);
+        promptWaiters.push(() => {
+            clearTimeout(t);
+            resolve(true);
+        });
+    });
+}
+
+// :wait <marker> — substring match anywhere in the output tail.
+function waitForMarker(marker, timeoutMs) {
+    return new Promise((resolve) => {
+        if (outTail.includes(marker)) {
+            resolve(true);
+            return;
+        }
+        const t = setTimeout(() => {
+            const i = markerWaiters.indexOf(entry);
+            if (i >= 0) markerWaiters.splice(i, 1);
+            resolve(false);
+        }, timeoutMs);
+        const entry = {
+            marker,
+            resolve: () => {
+                clearTimeout(t);
+                const i = markerWaiters.indexOf(entry);
+                if (i >= 0) markerWaiters.splice(i, 1);
+                resolve(true);
+            },
+        };
+        markerWaiters.push(entry);
+    });
+}
+
+function checkMarkerWaiters() {
+    for (let i = markerWaiters.length - 1; i >= 0; i--) {
+        if (outTail.includes(markerWaiters[i].marker)) {
+            const w = markerWaiters[i];
+            markerWaiters.splice(i, 1);
+            w.resolve();
+        }
+    }
+}
+
+// ----------------------------------------------------------------------
+// Guest I/O
+// ----------------------------------------------------------------------
+
+function sendLine(line) {
+    const bytes = [];
+    for (let i = 0; i < line.length; i++) bytes.push(line.charCodeAt(i) & 0x7f);
+    bytes.push(13); // CR — the teletype's Enter
+    sendBytes(bytes);
+}
+
+function sendBytes(bytes) {
+    if (consoleDev) consoleDev.receive(bytes);
+}
+
+// ----------------------------------------------------------------------
+// Tape mount / rewind / punch export
+// ----------------------------------------------------------------------
+
+function resolveTapeFile(hostFile) {
+    const candidates = [
+        path.resolve(hostFile),
+        path.resolve(REPO, hostFile),
+        path.resolve(REPO, "media", hostFile),
+    ];
+    for (const c of candidates) if (fs.existsSync(c)) return c;
+    return candidates[0];
+}
+
+function mountTape(hostFile) {
+    const resolved = resolveTapeFile(hostFile);
+    if (!fs.existsSync(resolved)) {
+        console.error("headless-term: no such file: " + hostFile);
+        return false;
+    }
+    let raw;
+    if (/\.zst$/i.test(resolved)) {
+        console.error("headless-term: decompressing " + path.basename(resolved) + " ...");
+        raw = Buffer.from(fzstd().decompress(new Uint8Array(fs.readFileSync(resolved))));
+    } else {
+        raw = fs.readFileSync(resolved);
+    }
+    // Mount into the shared DiskService so PTR11 sees the tape: the
+    // end-of-tape condition (provider.length) lets the guest driver finish
+    // the transfer instead of reading past the end forever.
+    const name = path.basename(hostFile).replace(/\.zst$/i, "").replace(/\.ptap$/i, "") + ".ptap";
+    disk.mountDrive(name, {
+        readBlock: async (n) => {
+            const start = n * IO_BLOCKSIZE;
+            if (start >= raw.length) return new Uint8Array(0);
+            return raw.subarray(start, Math.min(start + IO_BLOCKSIZE, raw.length));
+        },
+        writeBlock: async () => { /* tapes are read-only */ },
+        length: raw.length,
+    });
+    ptr.loadTape(name);
+    console.error("headless-term: mounted " + path.basename(hostFile) + " (" + raw.length + " bytes)");
+    return true;
+}
+
+function rewindTape() {
+    ptr.rewind();
+    console.error("headless-term: reader tape rewound");
+}
+
+function exportPunch(hostFile) {
+    const out = ptr.punchBytes();
+    if (!out.length) {
+        console.error("headless-term: punch buffer is empty — nothing to export");
+        return false;
+    }
+    fs.writeFileSync(path.resolve(REPO, hostFile), Buffer.from(out));
+    console.error("headless-term: exported " + out.length + " bytes to " + hostFile);
+    ptr.clearPunch();
+    return true;
+}
+
+// ----------------------------------------------------------------------
+// Commands
+// ----------------------------------------------------------------------
+
+async function handleCommand(line) {
+    const rest = line.slice(PREFIX.length).trim();
+    const [cmd, ...argParts] = rest.split(/\s+/);
+    const arg = argParts.join(" ");
+    switch (cmd) {
+        case "mount":
+            if (!arg) { console.error("headless-term: usage: :mount <file>"); break; }
+            mountTape(arg);
+            break;
+        case "rewind":
+            rewindTape();
+            break;
+        case "export":
+            if (!arg) { console.error("headless-term: usage: :export <file>"); break; }
+            exportPunch(arg);
+            break;
+        case "wait": {
+            if (!arg) { console.error("headless-term: usage: :wait <marker>"); break; }
+            console.error("headless-term: waiting for " + JSON.stringify(arg) + " ...");
+            const ok = await waitForMarker(arg, opts.promptTimeout * 1000);
+            console.error(ok ? "headless-term: marker seen" : "headless-term: TIMEOUT waiting for marker");
+            break;
+        }
+        case "raw": {
+            const hex = arg.replace(/[^0-9a-fA-F]/g, "");
+            if (!hex || hex.length % 2) {
+                console.error("headless-term: usage: :raw <hex bytes, e.g. 0304>");
+                break;
+            }
+            const bytes = [];
+            for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16));
+            sendBytes(bytes);
+            break;
+        }
+        case "status":
+            console.error("headless-term: device=" + (opts.device || "custom") +
+                " | reader tape=" + (ptr.ptControlblock ? ptr.ptControlblock.url : "(none)") +
+                " | punch=" + ptr.punchBytes().length + " bytes" +
+                " | prompt=" + JSON.stringify(opts.prompt));
+            break;
+        case "help":
+            console.error(
+                "headless-term commands:\n" +
+                "  :mount <file>   load paper tape (.ptap/.zst) into the reader\n" +
+                "  :rewind         rewind the reader tape\n" +
+                "  :export <file>  save punch output since last export, clear buffer\n" +
+                "  :wait <marker>  wait for <marker> in guest output\n" +
+                "  :raw <hex>      send raw bytes (e.g. :raw 03 = ^C)\n" +
+                "  :status         show reader tape / punch bytes / mode\n" +
+                "  :quit | :exit   exit\n" +
+                "  :help           this help");
+            break;
+        case "quit":
+        case "exit":
+            await shutdown(0);
+            break;
+        default:
+            console.error("headless-term: unknown command :" + cmd + " (try :help)");
+    }
+}
+
+// ----------------------------------------------------------------------
+// Batch mode
+// ----------------------------------------------------------------------
+
+async function runBatch() {
+    const rl = readline.createInterface({ input: process.stdin, terminal: false });
+    for await (const line of rl) {
+        if (shuttingDown) break;
+        const trimmed = line.replace(/\r$/, "");
+        if (trimmed.startsWith(PREFIX)) {
+            await handleCommand(trimmed);
+            continue;
+        }
+        // Echo the line ourselves only if the guest does not (hardcopy
+        // echo). Set up the matcher, send, then wait for the prompt.
+        echoPending = trimmed;
+        echoIdx = 0;
+        echoFailed = false;
+        sendLine(trimmed);
+        const ok = await waitForPrompt(opts.promptTimeout * 1000);
+        if (!ok) {
+            console.error("headless-term: TIMEOUT waiting for prompt after: " + trimmed);
+        }
+        if (echoFailed && !opts.quiet) {
+            process.stdout.write(trimmed + "\r\n");
+        }
+    }
+    console.error("headless-term: end of input");
+    await shutdown(0);
+}
+
+// ----------------------------------------------------------------------
+// Interactive mode
+// ----------------------------------------------------------------------
+
+function runInteractive() {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: true,
+        prompt: "",
+    });
+    rlRef = rl;
+    // Ctrl+C sends the operator's ^C to the guest instead of killing the
+    // utility; Ctrl+D on an empty line exits.
+    rl.on("SIGINT", () => {
+        sendBytes([3]); // ETX
+    });
+    rl.on("close", () => {
+        shutdown(0);
+    });
+    rl.prompt();
+    rl.on("line", async (line) => {
+        if (shuttingDown) return;
+        if (line.startsWith(PREFIX)) {
+            await handleCommand(line);
+        } else {
+            sendLine(line);
+        }
+        rl.prompt();
+    });
+    console.error("headless-term: RT-11 console online. Lines go to the guest; " +
+        PREFIX + "prefix = utility commands (:help). Ctrl+C -> ^C to guest, Ctrl+D exits.");
+}
+
+// ----------------------------------------------------------------------
+// Shutdown
+// ----------------------------------------------------------------------
+
+async function shutdown(code) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    if (boot && typeof boot.halt === "function") {
+        try { boot.halt(); } catch (e) { /* ignore */ }
+    }
+    process.exit(code);
+}
+
+// ----------------------------------------------------------------------
+// Main
+// ----------------------------------------------------------------------
+
+(async () => {
+    process.on("SIGINT", () => { shutdown(0); });
+    process.on("SIGTERM", () => { shutdown(0); });
+
+    boot = await bootHeadless({
+        image: image,
+        urlName: urlName,
+        bootCmd: bootCmd,
+        waitFor: opts.prompt,
+        timeoutMs: 90000,
+    });
+    consoleDev = boot.machine.findDevice("console");
+    ptr = boot.machine.findDevice("ptr");
+    disk = boot.machine.disk;
+
+    // Wire live output: every character the guest prints after boot
+    // streams through the prompt/marker engine to stdout. The tail starts
+    // from the boot output so :wait can match markers already printed.
+    consoleDev.installOutputHook((ch) => { onConsoleChar(ch & 0x7f); });
+    outTail = boot.out.slice(-MAX_TAIL);
+    process.stdout.write(boot.out);
+    console.error("headless-term: RT-11 is up (prompt " + JSON.stringify(opts.prompt) + ").");
+
+    if (opts.tapeFile) {
+        mountTape(opts.tapeFile);
+    }
+
+    if (interactive) {
+        runInteractive();
+    } else {
+        await runBatch();
+    }
+})().catch((e) => {
+    console.error("headless-term: fatal: " + (e && e.stack || e));
+    shutdown(2);
 });
