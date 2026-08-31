@@ -79,10 +79,9 @@
             this.bus.register(0o17777640, 16, this); // User PAR
             if (this.cpuType === 70) {
                 // 32 double words = 128 bytes (0o17770200–0o17770377).
-                // iopage.js registers only 64 bytes here — the second half
-                // (map regs 16–31) answers NXM, which breaks guests whose
-                // DMA buffers live above 0x20000 (BSD 2.11 re-reads its
-                // disklabel through map[26]).
+                // bus.register(addr, 64) installs 16 8-byte slots = 128 bytes,
+                // covering the whole map (same registration as iopage.js).
+                // The access() range check must span the same 128 bytes.
                 this.bus.register(0o17770200, 64, this); // Unibus Map
             }
         }
@@ -97,9 +96,15 @@
             let result;
 
             // ------------------------------------------------------------
-            // 17770200–17770277 — Unibus map (11/70 only): 32 double words
+            // 17770200–17770377 — Unibus map (11/70 only): 32 double words
+            // (128 bytes). Note: the range check must cover the FULL map —
+            // iopage.js has no range check here at all, so map regs 16–31
+            // (17770300–17770377) accept writes there; BSD 2.11 writes its
+            // DMA-buffer identity mapping (e.g. map[26]) through those
+            // addresses, and a too-narrow check silently NXMs the write,
+            // leaving unibusMap[i]=0 → DMA lands at 0+offset.
             // ------------------------------------------------------------
-            if (a >= 0o17770200 && a < 0o17770300) {
+            if (a >= 0o17770200 && a < 0o17770400) {
                 if (this.cpuType !== 70) return -1;
                 if (data >= 0 && typeof process !== "undefined" && process.env && process.env.DEBUG_MMU) {
                     const pc = this.machine && this.machine.host && this.machine.host.cpu &&
