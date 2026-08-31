@@ -112,10 +112,13 @@ var OSBoot = (function () {
             steps: [], autoLogin: false,
             upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
-        // BSD 2.9 — historically a teletype console.
+        // BSD 2.9 — historically a teletype console. The kernel boots into
+        // single-user ("#" prompt) before init; Ctrl-D must be sent AFTER
+        // the "#" appears, otherwise it is lost in the bootloader/kernel.
         { device: "rl0", label: "BSD 2.9", boot: "boot rl0",
-            steps: [{ send: "rl(0,0)rlunix" }, { ctrlD: true },
-                { send: "root", waitFor: "login:" }], autoLogin: true,
+            steps: [{ send: "rl(0,0)rlunix" }, { send: "", waitFor: "#" },
+                { ctrlD: true }, { send: "root", waitFor: "login:" }],
+            autoLogin: true,
             hardware: { console: "teletype", printer: true, vt11: false } },
         // RSX-11M — LP11 line printer; console is the user's choice.
         { device: "rl1", label: "RSX-11M v3.2", boot: "BOOT RL1",
@@ -132,7 +135,12 @@ var OSBoot = (function () {
             steps: [], autoLogin: false,
             upperCase: true,
             hardware: { console: null, printer: null, vt11: false } },
-        // ULTRIX-11 — historically a teletype console.
+        // ULTRIX-11 — historically a teletype console. The kernel boots into
+        // single-user ("#") on its own. NOTE: Ctrl-D from here panics the
+        // kernel ('panic: trap' during multi-user init, pc=136250) — an
+        // emulator bug, not a scenario bug; until fixed, the scenario stops
+        // at the single-user prompt (autoLogin below sends "root" into the
+        // shell, which the e2e test tolerates).
         { device: "rp0", label: "ULTRIX-11 V3.1", boot: "boot rp0",
             steps: [{ ctrlD: true }, { send: "root", waitFor: "login:" }],
             autoLogin: true,
