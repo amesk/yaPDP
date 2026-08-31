@@ -83,6 +83,22 @@ async function run() {
     assert.ok(stderr.indexOf("punch=") !== -1, ":status printed punch state");
 
     console.log("PASS: headless-term batch — boot, :wait, :mount, tape read/punch roundtrip, :export, :status");
+
+    // ---- Test 2: multi-step boot (--step) -----------------------------
+    // Same guest, booted through the step engine instead of a single
+    // boot command: send "BOOT RK0", wait for the RT-11 banner, then run
+    // an interactive command against the "." prompt.
+    const script2 = [
+        "DIR",
+        ":quit",
+    ].join("\n") + "\n";
+    const r2 = await runBatch(script2,
+        ["--step", "BOOT RK0|V04.00C", "--prompt", ".", "--prompt-timeout", "8"]);
+    assert.strictEqual(r2.code, 0, "steps boot exits 0 (got " + r2.code + ")\n" + r2.stderr);
+    assert.ok(r2.stdout.indexOf("RT-11SJ") !== -1, "steps boot reached RT-11 (banner)");
+    assert.ok(r2.stdout.indexOf("Free blocks") !== -1, "steps boot + DIR works");
+
+    console.log("PASS: headless-term multi-step boot (--step send|waitFor)");
 }
 
 run().then(() => {

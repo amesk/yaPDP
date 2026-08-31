@@ -147,6 +147,9 @@ function mapUnibus(CPU, ba) {
  *   urlName   logical disk url, default rk0.dsk (RK11 drive 0)
  *   bootCmd   command typed at the bootloader prompt, default "BOOT RK0\r"
  *   waitFor   prompt marker regexp, default "."
+ *   steps     [{send, waitFor}] multi-step boot: send each line after the
+ *             bootloader prompt and wait for its marker in the output
+ *             produced after the send (Unix V5, RSTS, ...)
  *   timeoutMs overall budget, default 90000
  * @returns {Promise<{out, stats, halt, evalIn}>}
  */
@@ -301,19 +304,51 @@ async function bootHeadless(opts = {}) {
     await sleep(50);
   }
   bootPromptMs = Date.now() - t0;
-  sb.window.dlReceiveQueue(0, bytes(bootCmd));
 
-  const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");
-  while (!re.test(out)) {
-    if (Date.now() - t0 > timeoutMs) throw new Error("timeout waiting for prompt '" + waitFor + "'\n" + out);
-    const tickInterval = opts.debugTickInterval || 500;
-    if (typeof opts.debugTick === "function" && Date.now() - lastTick > tickInterval) {
-      lastTick = Date.now();
-      const pc = vm.runInContext("CPU.registerVal[7].toString(8)", sb);
-      const rs = vm.runInContext("CPU.runState", sb);
-      opts.debugTick({ out, pc, runState: rs, evalIn: (c) => vm.runInContext(c, sb) });
+  if (opts.steps && opts.steps.length) {
+    // Multi-step boot (Unix V5, RSTS, ...): send each line and wait for its
+    // marker to appear in the output produced AFTER the send — so a marker
+    // already present in the boot output (e.g. the bootloader's "@") does
+    // not match instantly.
+    for (const step of opts.steps) {
+      const fromLen = out.length;
+      sb.window.dlReceiveQueue(0, bytes(step.send + "\r"));
+      let seen = false;
+      while (Date.now() - t0 < timeoutMs) {
+        const tail = out.slice(fromLen);
+        if (step.waitFor && tail.includes(step.waitFor)) {
+          seen = true;
+          break;
+        }
+        const tickInterval = opts.debugTickInterval || 500;
+        if (typeof opts.debugTick === "function" && Date.now() - lastTick > tickInterval) {
+          lastTick = Date.now();
+          const pc = vm.runInContext("CPU.registerVal[7].toString(8)", sb);
+          const rs = vm.runInContext("CPU.runState", sb);
+          opts.debugTick({ out, pc, runState: rs, evalIn: (c) => vm.runInContext(c, sb) });
+        }
+        await sleep(100);
+      }
+      if (!seen) {
+        throw new Error("timeout waiting for '" + step.waitFor +
+          "' after '" + step.send + "'\n" + out.slice(fromLen));
+      }
     }
-    await sleep(100);
+  } else {
+    sb.window.dlReceiveQueue(0, bytes(bootCmd));
+
+    const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");
+    while (!re.test(out)) {
+      if (Date.now() - t0 > timeoutMs) throw new Error("timeout waiting for prompt '" + waitFor + "'\n" + out);
+      const tickInterval = opts.debugTickInterval || 500;
+      if (typeof opts.debugTick === "function" && Date.now() - lastTick > tickInterval) {
+        lastTick = Date.now();
+        const pc = vm.runInContext("CPU.registerVal[7].toString(8)", sb);
+        const rs = vm.runInContext("CPU.runState", sb);
+        opts.debugTick({ out, pc, runState: rs, evalIn: (c) => vm.runInContext(c, sb) });
+      }
+      await sleep(100);
+    }
   }
   readyMs = Date.now() - t0;
 
