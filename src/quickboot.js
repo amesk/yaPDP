@@ -291,7 +291,12 @@ var QuickBoot = (function () {
     // --- Typing / orchestration -----------------------------------------
 
     function sendBytes(bytes) {
-        if (typeof window.dlReceiveQueue === "function") {
+        // In-page feature: use the internal bridge; the legacy window
+        // surface is ?bridge=1-gated for external tooling.
+        var bridge = window.__yapdpBridge;
+        if (bridge && bridge.dlReceiveQueue) {
+            bridge.dlReceiveQueue(0, bytes);
+        } else if (typeof window.dlReceiveQueue === "function") {
             window.dlReceiveQueue(0, bytes);
         }
     }
@@ -465,7 +470,14 @@ var QuickBoot = (function () {
     }
 
     // Capture console output for prompt-waiting steps (called by iopage.js).
-    window.__consoleOutputHook = pushOutput;
+    // In-page feature: install through the internal bridge; falls back to
+    // the legacy window.__consoleOutputHook surface when no bridge exists.
+    var bridge = window.__yapdpBridge;
+    if (bridge && bridge.setOutputHook) {
+        bridge.setOutputHook(pushOutput);
+    } else {
+        window.__consoleOutputHook = pushOutput;
+    }
 
     // Publish the autoload abort hook. imgerror.js is loaded BEFORE this module
     // (see pdp11.html) and calls it at runtime when an image fetch fails, so no

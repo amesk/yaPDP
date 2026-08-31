@@ -21,7 +21,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function ensureServer() {
     return new Promise((res) => {
-        const req = http.get(`${BASE}/pdp11.html?core=1`, (r) => { r.resume(); res(null); });
+        const req = http.get(`${BASE}/pdp11.html?core=1&bridge=1`, (r) => { r.resume(); res(null); });
         req.on("error", () => {
             const srv = require("child_process").spawn(
                 "node", ["tools/serve.js", "--port", String(PORT)],
@@ -55,7 +55,7 @@ async function run() {
             } catch (e) {}
         }, cfg);
 
-        await page.goto(`${BASE}/pdp11.html?core=1`, { waitUntil: "load", timeout: 90000 });
+        await page.goto(`${BASE}/pdp11.html?core=1&bridge=1`, { waitUntil: "load", timeout: 90000 });
         await page.waitForFunction(() => typeof window.switchPage === "function", { timeout: 30000 });
 
         // Capture console output through the bridge hook.

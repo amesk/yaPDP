@@ -71,7 +71,7 @@ async function waitFor(fn, timeout) {
 
 function serverAlive() {
     return new Promise((resolve) => {
-        const req = http.get(`${BASE}/pdp11.html`, (res) => {
+        const req = http.get(`${BASE}/pdp11.html?bridge=1`, (res) => {
             res.resume();
             resolve(res.statusCode === 200);
         });
@@ -118,7 +118,7 @@ async function openPage(browser, guest) {
         } catch (err) { /* ignore storage errors */ }
     }, cfg);
 
-    await page.goto(`${BASE}/pdp11.html`, { waitUntil: "load", timeout: 90000 });
+    await page.goto(`${BASE}/pdp11.html?bridge=1`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 

@@ -99,8 +99,8 @@
             } else if (typeof g60ConsoleWrite !== 'undefined') {
                 g60ConsoleWrite(ch);
             }
-            if (window.__consoleOutputHook) {
-                try { window.__consoleOutputHook(ch); } catch (e) { /* fire-and-forget */ }
+            if (outputHook) {
+                try { outputHook(ch); } catch (e) { /* fire-and-forget */ }
             }
             if (typeof NavActivity !== 'undefined') {
                 NavActivity.pulseConsole(cfg && cfg.consoleType);
@@ -115,6 +115,11 @@
 
     var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
     var userTerminals = cfg && cfg.userTerminals ? cfg.userTerminals : 0;
+
+    // Internal console-output hook slot — same contract as iopage.js:
+    // set through __yapdpBridge.setOutputHook (in-page features) or the
+    // legacy window.__consoleOutputHook shim (?bridge=1 mode).
+    var outputHook = null;
 
     function makeConsole(unit, vector, address) {
         var dev = new core.ConsoleDL11(machine, unit === 0 ? "console" : "tty" + unit, {
@@ -137,18 +142,45 @@
     }
 
     var consoleDev = makeConsole(0, 0o60, 0o17777560);
-    window.dlReceiveQueue = function (unit, bytes) {
+
+    // Internal bridge — always exposed, same contract as iopage.js
+    // (__yapdpBridge.dlReceiveQueue / dlConsoleBreak / setOutputHook).
+    // The legacy window.dlReceiveQueue / dlConsoleBreak /
+    // __consoleOutputHook surface is ?bridge=1-gated (external tooling).
+    var bridgeEnabled = /[?&]bridge=1/.test(location.search);
+    function bridgeReceive(unit, bytes) {
         var dev = unit === 0 ? consoleDev : machine.findDevice("tty" + unit);
         if (dev) dev.receive(bytes);
+    }
+    window.__yapdpBridge = {
+        dlReceiveQueue: bridgeReceive,
+        dlConsoleBreak: function () { consoleDev.breakSignal(); },
+        setOutputHook: function (fn) {
+            var prev = outputHook;
+            outputHook = fn;
+            return prev; // chain: caller can re-install the old hook
+        },
     };
-    window.dlConsoleBreak = function () { consoleDev.breakSignal(); };
+    if (bridgeEnabled) {
+        window.dlReceiveQueue = bridgeReceive;
+        window.dlConsoleBreak = function () { consoleDev.breakSignal(); };
+        Object.defineProperty(window, "__consoleOutputHook", {
+            get: function () { return outputHook; },
+            set: function (fn) { outputHook = fn; },
+            configurable: true,
+        });
+        if (userTerminals >= 1) {
+            window["dlReceiveQueue1"] = function (unit, bytes) { machine.findDevice("tty1").receive(bytes); };
+        }
+        if (userTerminals >= 2) {
+            window["dlReceiveQueue2"] = function (unit, bytes) { machine.findDevice("tty2").receive(bytes); };
+        }
+    }
     if (userTerminals >= 1) {
         var tty1 = makeConsole(1, 0o310, 0o17776500);
-        window["dlReceiveQueue1"] = function (unit, bytes) { tty1.receive(bytes); };
     }
     if (userTerminals >= 2) {
         var tty2 = makeConsole(2, 0o320, 0o17776510);
-        window["dlReceiveQueue2"] = function (unit, bytes) { tty2.receive(bytes); };
     }
 
     // ------------------------------------------------------------------

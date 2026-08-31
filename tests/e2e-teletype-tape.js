@@ -120,7 +120,7 @@ async function openPage(browser) {
 
     // E2E_CORE=1 exercises the refactored machine layer (?core=1).
     const coreParam = process.env.E2E_CORE ? "core=1&" : "";
-    await page.goto(`${BASE}/pdp11.html?${coreParam}cfg=teletype`, { waitUntil: "load", timeout: 90000 });
+    await page.goto(`${BASE}/pdp11.html?${coreParam}bridge=1&cfg=teletype`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 
@@ -654,7 +654,8 @@ async function main() {
             // Collect bytes the keyboard sends, WITHOUT forwarding to the
             // guest (this is the last check; RT-11 must not see 200 keys).
             const got = [];
-            window.dlReceiveQueue = function (unit, bytes) {
+            const bridge = window.__yapdpBridge || {};
+            bridge.dlReceiveQueue = function (unit, bytes) {
                 for (const b of bytes) got.push(b & 0x7F);
             };
             const keys = document.querySelectorAll(

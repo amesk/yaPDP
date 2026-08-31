@@ -247,8 +247,12 @@
             if (window.g60Console && typeof window.g60Console.writeChar === 'function') {
                 window.g60Console.writeChar(b);
             }
-        } else if (window.ttyMode === 'line' && typeof window.dlReceiveQueue === 'function') {
-            window.dlReceiveQueue(0, [b]);
+        } else if (window.ttyMode === 'line') {
+            // In-page feature: internal bridge first; legacy window surface
+            // (?bridge=1-gated) as fallback for older callers.
+            var bridge = window.__yapdpBridge;
+            var q = bridge ? bridge.dlReceiveQueue : window.dlReceiveQueue;
+            if (typeof q === 'function') q(0, [b]);
         }
         if (body && body.firstChild) {
             body.removeChild(body.firstChild);

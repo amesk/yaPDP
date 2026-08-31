@@ -146,13 +146,22 @@ async function bootRT11(opts = {}) {
   const raw = sb.fzstd.decompress(new Uint8Array(zst));
   sb.DataLoader.mount(urlName, raw);
 
-  // Capture console output through the existing hook.
+  // Capture console output through the machine bridge. The sandbox has no
+  // ?bridge=1 URL flag, so iopage.js exposes the internal __yapdpBridge
+  // (dlReceiveQueue/setOutputHook) unconditionally; fall back to the legacy
+  // window surface only if the bridge is missing (older iopage).
+  const bridge = sb.window.__yapdpBridge;
   let out = "";
   const prev = sb.window.__consoleOutputHook;
-  sb.window.__consoleOutputHook = function (ch) {
+  const hook = function (ch) {
     if (typeof prev === "function") prev(ch);
     out += String.fromCharCode(ch & 0x7f);
   };
+  if (bridge && bridge.setOutputHook) {
+    bridge.setOutputHook(hook);
+  } else {
+    sb.window.__consoleOutputHook = hook;
+  }
 
   const t0 = Date.now();
   let bootPromptMs = -1;
@@ -167,7 +176,9 @@ async function bootRT11(opts = {}) {
     await sleep(50);
   }
   bootPromptMs = Date.now() - t0;
-  sb.window.dlReceiveQueue(0, bytes(bootCmd));
+  const inject = (sb.window.__yapdpBridge && sb.window.__yapdpBridge.dlReceiveQueue) ||
+    sb.window.dlReceiveQueue;
+  inject(0, bytes(bootCmd));
 
   // Wait for the guest prompt marker at line start.
   const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");
