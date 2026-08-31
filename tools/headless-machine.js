@@ -39,6 +39,7 @@ const { ConsoleDL11 } = require("../src/devices/dl11.js");
 const { Rk11 } = require("../src/devices/rk11.js");
 const { Rl11 } = require("../src/devices/rl11.js");
 const { Rp11 } = require("../src/devices/rp11.js");
+const { Tm11 } = require("../src/devices/tm11.js");
 const { Uda50 } = require("../src/devices/uda50.js");
 const { CpuRegs } = require("../src/devices/cpu-regs.js");
 const { MmuRegs } = require("../src/devices/mmu-regs.js");
@@ -264,6 +265,13 @@ async function bootHeadless(opts = {}) {
   machine.addDevice(rl);
   rl.install();
 
+  // --- TM11 (TU10) — RSTS/E rollin tapes on tm0-tm2 ---
+  const tm = new Tm11(machine, "tm0", {
+    regions: [{ address: 0o17772520, count: 6 }],
+  });
+  machine.addDevice(tm);
+  tm.install();
+
   // --- UDA50 (MSCP, RA81) — BSD 2.11/RSTS "ra" drives on ra0-ra2 ---
   const uda = new Uda50(machine, "ra0", {
     regions: [{ address: 0o17772150, count: 2 }],
@@ -350,6 +358,24 @@ async function bootHeadless(opts = {}) {
         const start = n * IO_BLOCKSIZE;
         if (start >= rlRaw.length) return new Uint8Array(0);
         return rlRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, rlRaw.length));
+      },
+      writeBlock: async () => { /* headless: writes are discarded */ },
+    });
+  }
+
+  // --- TM11 tapes (tm0-tm2): LAZY decompress on first read. ---
+  for (const tm of [0, 1, 2]) {
+    const tmUrl = `tm${tm}.tap`;
+    let tmRaw = null;
+    machine.mountDrive(tmUrl, {
+      readBlock: async (n) => {
+        if (!tmRaw) {
+          const z = fs.readFileSync(path.join(REPO, `media/${tmUrl}.zst`));
+          tmRaw = sb.fzstd.decompress(new Uint8Array(z));
+        }
+        const start = n * IO_BLOCKSIZE;
+        if (start >= tmRaw.length) return new Uint8Array(0);
+        return tmRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, tmRaw.length));
       },
       writeBlock: async () => { /* headless: writes are discarded */ },
     });
