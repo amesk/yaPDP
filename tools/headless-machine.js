@@ -37,6 +37,7 @@ const { Machine } = require("../src/core/machine.js");
 const { NodeIO } = require("../src/core/io.js");
 const { ConsoleDL11 } = require("../src/devices/dl11.js");
 const { Rk11 } = require("../src/devices/rk11.js");
+const { Rl11 } = require("../src/devices/rl11.js");
 const { Rp11 } = require("../src/devices/rp11.js");
 const { Uda50 } = require("../src/devices/uda50.js");
 const { CpuRegs } = require("../src/devices/cpu-regs.js");
@@ -256,6 +257,13 @@ async function bootHeadless(opts = {}) {
   machine.addDevice(rp);
   rp.install();
 
+  // --- RL11 (RL01/RL02) — BSD 2.9, RSX-11M, RSTS/E, XXDP on rl0-rl3 ---
+  const rl = new Rl11(machine, "rl0", {
+    regions: [{ address: 0o17774400, count: 4 }],
+  });
+  machine.addDevice(rl);
+  rl.install();
+
   // --- UDA50 (MSCP, RA81) — BSD 2.11/RSTS "ra" drives on ra0-ra2 ---
   const uda = new Uda50(machine, "ra0", {
     regions: [{ address: 0o17772150, count: 2 }],
@@ -324,6 +332,24 @@ async function bootHeadless(opts = {}) {
         const start = n * IO_BLOCKSIZE;
         if (start >= raRaw.length) return new Uint8Array(0);
         return raRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, raRaw.length));
+      },
+      writeBlock: async () => { /* headless: writes are discarded */ },
+    });
+  }
+
+  // --- RL11 drives (rl0-rl3): LAZY decompress on first read. ---
+  for (const rl of [0, 1, 2, 3]) {
+    const rlUrl = `rl${rl}.dsk`;
+    let rlRaw = null;
+    machine.mountDrive(rlUrl, {
+      readBlock: async (n) => {
+        if (!rlRaw) {
+          const z = fs.readFileSync(path.join(REPO, `media/${rlUrl}.zst`));
+          rlRaw = sb.fzstd.decompress(new Uint8Array(z));
+        }
+        const start = n * IO_BLOCKSIZE;
+        if (start >= rlRaw.length) return new Uint8Array(0);
+        return rlRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, rlRaw.length));
       },
       writeBlock: async () => { /* headless: writes are discarded */ },
     });
