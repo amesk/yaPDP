@@ -83,7 +83,7 @@
                 // (map regs 16–31) answers NXM, which breaks guests whose
                 // DMA buffers live above 0x20000 (BSD 2.11 re-reads its
                 // disklabel through map[26]).
-                this.bus.register(0o17770200, 128, this); // Unibus Map
+                this.bus.register(0o17770200, 64, this); // Unibus Map
             }
         }
 
@@ -102,8 +102,11 @@
             if (a >= 0o17770200 && a < 0o17770300) {
                 if (this.cpuType !== 70) return -1;
                 if (data >= 0 && typeof process !== "undefined" && process.env && process.env.DEBUG_MMU) {
+                    const pc = this.machine && this.machine.host && this.machine.host.cpu &&
+                        this.machine.host.cpu.registerVal
+                        ? this.machine.host.cpu.registerVal[7].toString(8) : "?";
                     process.stderr.write("MMU MAP " + physicalAddress.toString(8) + "=" +
-                        data.toString(8) + "\n");
+                        data.toString(8) + " @" + pc + "\n");
                 }
                 const index = (physicalAddress >>> 2) & 0x1f;
                 if (physicalAddress & 0o2) { // high word (control + upper addr)
