@@ -315,14 +315,23 @@ async function bootHeadless(opts = {}) {
   ptr.install();
 
   const zst = fs.readFileSync(path.join(REPO, image));
-  const raw = sb.fzstd.decompress(new Uint8Array(zst));
+  // imageBytes lets callers continue from a previous (written-back) image
+  // instead of re-reading the pristine .zst — the write-back overlay is
+  // kept in memory and exposed back as r.imageBytes.
+  const raw = opts.imageBytes || sb.fzstd.decompress(new Uint8Array(zst));
   machine.mountDrive(urlName, {
     readBlock: async (n) => {
       const start = n * IO_BLOCKSIZE;
       if (start >= raw.length) return new Uint8Array(0);
       return raw.subarray(start, Math.min(start + IO_BLOCKSIZE, raw.length));
     },
-    writeBlock: async () => { /* headless: writes are discarded (read-only boot) */ },
+    writeBlock: async (n, bytes) => {
+      // Write-back into the in-memory image (overlay). The provider's
+      // readBlock then sees guest writes — same image, next boot included
+      // (pass r.imageBytes to bootHeadless to continue from it).
+      const start = n * IO_BLOCKSIZE;
+      if (start + bytes.length <= raw.length) raw.set(bytes, start);
+    },
   });
 
   // --- UDA50 RA drives (ra0-ra2): LAZY decompress on first read, so
@@ -331,17 +340,25 @@ async function bootHeadless(opts = {}) {
   for (const ra of [0, 1, 2]) {
     const raUrl = `ra${ra}.dsk`;
     let raRaw = null;
+    const raEnsure = () => {
+      if (!raRaw) {
+        const z = fs.readFileSync(path.join(REPO, `media/${raUrl}.zst`));
+        raRaw = sb.fzstd.decompress(new Uint8Array(z));
+      }
+      return raRaw;
+    };
     machine.mountDrive(raUrl, {
       readBlock: async (n) => {
-        if (!raRaw) {
-          const z = fs.readFileSync(path.join(REPO, `media/${raUrl}.zst`));
-          raRaw = sb.fzstd.decompress(new Uint8Array(z));
-        }
+        const r = raEnsure();
         const start = n * IO_BLOCKSIZE;
-        if (start >= raRaw.length) return new Uint8Array(0);
-        return raRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, raRaw.length));
+        if (start >= r.length) return new Uint8Array(0);
+        return r.subarray(start, Math.min(start + IO_BLOCKSIZE, r.length));
       },
-      writeBlock: async () => { /* headless: writes are discarded */ },
+      writeBlock: async (n, bytes) => {
+        const r = raEnsure();
+        const start = n * IO_BLOCKSIZE;
+        if (start + bytes.length <= r.length) r.set(bytes, start);
+      },
     });
   }
 
@@ -349,17 +366,25 @@ async function bootHeadless(opts = {}) {
   for (const rl of [0, 1, 2, 3]) {
     const rlUrl = `rl${rl}.dsk`;
     let rlRaw = null;
+    const rlEnsure = () => {
+      if (!rlRaw) {
+        const z = fs.readFileSync(path.join(REPO, `media/${rlUrl}.zst`));
+        rlRaw = sb.fzstd.decompress(new Uint8Array(z));
+      }
+      return rlRaw;
+    };
     machine.mountDrive(rlUrl, {
       readBlock: async (n) => {
-        if (!rlRaw) {
-          const z = fs.readFileSync(path.join(REPO, `media/${rlUrl}.zst`));
-          rlRaw = sb.fzstd.decompress(new Uint8Array(z));
-        }
+        const r = rlEnsure();
         const start = n * IO_BLOCKSIZE;
-        if (start >= rlRaw.length) return new Uint8Array(0);
-        return rlRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, rlRaw.length));
+        if (start >= r.length) return new Uint8Array(0);
+        return r.subarray(start, Math.min(start + IO_BLOCKSIZE, r.length));
       },
-      writeBlock: async () => { /* headless: writes are discarded */ },
+      writeBlock: async (n, bytes) => {
+        const r = rlEnsure();
+        const start = n * IO_BLOCKSIZE;
+        if (start + bytes.length <= r.length) r.set(bytes, start);
+      },
     });
   }
 
@@ -367,17 +392,25 @@ async function bootHeadless(opts = {}) {
   for (const tm of [0, 1, 2]) {
     const tmUrl = `tm${tm}.tap`;
     let tmRaw = null;
+    const tmEnsure = () => {
+      if (!tmRaw) {
+        const z = fs.readFileSync(path.join(REPO, `media/${tmUrl}.zst`));
+        tmRaw = sb.fzstd.decompress(new Uint8Array(z));
+      }
+      return tmRaw;
+    };
     machine.mountDrive(tmUrl, {
       readBlock: async (n) => {
-        if (!tmRaw) {
-          const z = fs.readFileSync(path.join(REPO, `media/${tmUrl}.zst`));
-          tmRaw = sb.fzstd.decompress(new Uint8Array(z));
-        }
+        const r = tmEnsure();
         const start = n * IO_BLOCKSIZE;
-        if (start >= tmRaw.length) return new Uint8Array(0);
-        return tmRaw.subarray(start, Math.min(start + IO_BLOCKSIZE, tmRaw.length));
+        if (start >= r.length) return new Uint8Array(0);
+        return r.subarray(start, Math.min(start + IO_BLOCKSIZE, r.length));
       },
-      writeBlock: async () => { /* headless: writes are discarded */ },
+      writeBlock: async (n, bytes) => {
+        const r = tmEnsure();
+        const start = n * IO_BLOCKSIZE;
+        if (start + bytes.length <= r.length) r.set(bytes, start);
+      },
     });
   }
 
@@ -468,6 +501,9 @@ async function bootHeadless(opts = {}) {
     out, stats: { bootPromptMs, readyMs }, getOut: () => out,
     evalIn: (code) => vm.runInContext(code, sb),
     machine,
+    // The (possibly written-back) boot image — pass to a later
+    // bootHeadless({ imageBytes }) to continue from guest writes.
+    imageBytes: raw,
     halt: () => vm.runInContext("CPU.runState = CPU.STATE_HALT", sb),
   };
 }
