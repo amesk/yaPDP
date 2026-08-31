@@ -78,21 +78,33 @@
             this.bus.register(0o17777600, 16, this); // User PDR
             this.bus.register(0o17777640, 16, this); // User PAR
             if (this.cpuType === 70) {
-                this.bus.register(0o17770200, 64, this); // Unibus Map
+                // 32 double words = 128 bytes (0o17770200–0o17770377).
+                // iopage.js registers only 64 bytes here — the second half
+                // (map regs 16–31) answers NXM, which breaks guests whose
+                // DMA buffers live above 0x20000 (BSD 2.11 re-reads its
+                // disklabel through map[26]).
+                this.bus.register(0o17770200, 128, this); // Unibus Map
             }
         }
 
         access(physicalAddress, data, byteFlag) {
             const cpu = this._cpu();
             if (!cpu) return -1;
-            const a = physicalAddress & 0o177777;
+            // Bus passes full 22-bit addresses (0o1777xxxx); compare against
+            // full addresses. The index formula below only touches bits
+            // 0–9, so it is unaffected by the 0o100000/0o200000 top bits.
+            const a = physicalAddress;
             let result;
 
             // ------------------------------------------------------------
             // 17770200–17770277 — Unibus map (11/70 only): 32 double words
             // ------------------------------------------------------------
-            if (a >= 0o70200 && a < 0o70300) {
+            if (a >= 0o17770200 && a < 0o17770300) {
                 if (this.cpuType !== 70) return -1;
+                if (data >= 0 && typeof process !== "undefined" && process.env && process.env.DEBUG_MMU) {
+                    process.stderr.write("MMU MAP " + physicalAddress.toString(8) + "=" +
+                        data.toString(8) + "\n");
+                }
                 const index = (physicalAddress >>> 2) & 0x1f;
                 if (physicalAddress & 0o2) { // high word (control + upper addr)
                     result = insertData(cpu.unibusMap[index] >>> 16,
@@ -115,12 +127,12 @@
             // ------------------------------------------------------------
             // PDR / PAR regions
             // ------------------------------------------------------------
-            const isPar = (a >= 0o72340 && a < 0o72400) ||
-                (a >= 0o72240 && a < 0o72300) ||
-                (a >= 0o77640 && a < 0o77700);
-            const isPdr = (a >= 0o72300 && a < 0o72340) ||
-                (a >= 0o72200 && a < 0o72240) ||
-                (a >= 0o77600 && a < 0o77640);
+            const isPar = (a >= 0o17772340 && a < 0o17772400) ||
+                (a >= 0o17772240 && a < 0o17772300) ||
+                (a >= 0o17777640 && a < 0o17777700);
+            const isPdr = (a >= 0o17772300 && a < 0o17772340) ||
+                (a >= 0o17772200 && a < 0o17772240) ||
+                (a >= 0o17777600 && a < 0o17777640);
             if (!isPar && !isPdr) return -1; // not ours (other slots)
 
             const index = (((a & 0o0600) >>> 3) ^ ((a & 0o0100) >>> 2)) |

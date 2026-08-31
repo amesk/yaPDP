@@ -64,14 +64,23 @@
             // Log NXM except for PSW (opt-in: guest OSes scan the bus on
             // boot, which would spam the console; the browser iopage.js
             // stays silent, so headless does too unless DEBUG_BUS=1).
-            if (result < 0 && this.host.pswAddress &&
-                physicalAddress !== this.host.pswAddress &&
-                typeof process !== "undefined" && process.env.DEBUG_BUS) {
+            // With DEBUG_BUS=2 also log every I/O write (data >= 0).
+            if (typeof process !== "undefined" && process.env.DEBUG_BUS) {
                 const pc = this.host.pc !== undefined ? this.host.pc : "?";
-                console.log(
-                    "bus nxm " + physicalAddress.toString(8) + " " +
-                    data.toString(8) + " @" + pc.toString(8)
-                );
+                if (result < 0 && this.host.pswAddress &&
+                    physicalAddress !== this.host.pswAddress) {
+                    console.log(
+                        "bus nxm " + physicalAddress.toString(8) + " " +
+                        data.toString(8) + " @" + pc.toString(8)
+                    );
+                } else if (process.env.DEBUG_BUS === "2" && data >= 0 &&
+                    this.host.pswAddress &&
+                    physicalAddress !== this.host.pswAddress) {
+                    console.log(
+                        "bus wr  " + physicalAddress.toString(8) + " " +
+                        data.toString(8) + " @" + pc.toString(8)
+                    );
+                }
             }
 
             return result;
