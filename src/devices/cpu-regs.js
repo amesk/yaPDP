@@ -64,6 +64,8 @@
             // 17777760–66: 11/70 size / system-ID / CPU-error registers.
             if (this.cpuType === 70) {
                 this.bus.register(0o17777760, 4, this);
+                // 17777740–46: 11/70 error-address / cache-control stubs.
+                this.bus.register(0o17777740, 4, this);
             }
         }
 
@@ -171,6 +173,27 @@
                         }
                         result &= 0xff00;
                     }
+                    break;
+
+                // --------------------------------------------------------
+                // 17777740–46 — 11/70 error address + cache control stubs
+                // (iopage.js returns fixed values, ignores writes)
+                // --------------------------------------------------------
+                case 0o17777740: // Low error address
+                    if (this.cpuType !== 70) break;
+                    result = insertData(0o177740, physicalAddress, data, byteFlag);
+                    break;
+                case 0o17777742: // High error address
+                    if (this.cpuType !== 70) break;
+                    result = insertData(0o3, physicalAddress, data, byteFlag);
+                    break;
+                case 0o17777744: // Memory system error
+                    if (this.cpuType !== 70) break;
+                    result = insertData(0, physicalAddress, data, byteFlag);
+                    break;
+                case 0o17777746: // Cache control
+                    if (this.cpuType !== 70) break;
+                    result = insertData(0o17, physicalAddress, data, byteFlag);
                     break;
 
                 // --------------------------------------------------------
