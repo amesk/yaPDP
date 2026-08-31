@@ -224,6 +224,13 @@
     machine.addDevice(rp);
     rp.install();
 
+    // --- RL11 (RL01/RL02) — BSD 2.9, RSX-11M, RSTS/E, XXDP on rl0-rl3 ---
+    var rl = new core.Rl11(machine, "rl0", {
+        regions: [{ address: 0o17774400, count: 4 }],
+    });
+    machine.addDevice(rl);
+    rl.install();
+
     // --- UDA50 (MSCP, RA81) — BSD 2.11/RSTS "ra" drives on ra0-ra2 ---
     var uda = new core.Uda50(machine, "ra0", {
         regions: [{ address: 0o17772150, count: 2 }],
@@ -284,6 +291,9 @@
         }
         for (var p = 0; p < 5; p++) {
             machine.mountDrive("rp" + p + ".dsk", dataLoaderProvider("rp" + p + ".dsk"));
+        }
+        for (var l = 0; l < 4; l++) {
+            machine.mountDrive("rl" + l + ".dsk", dataLoaderProvider("rl" + l + ".dsk"));
         }
         for (var a = 0; a < 4; a++) {
             machine.mountDrive("ra" + a + ".dsk", dataLoaderProvider("ra" + a + ".dsk"));
