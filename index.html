@@ -14,6 +14,8 @@
        DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
     <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
 
+    <link rel="stylesheet" href="css/landing.css" type="text/css" charset="utf-8" media="all" />
+
     <!-- Main-page-only rules. The base pdp11.css already supplies the body
        photo backdrop, fonts and the .app-layout chrome; here we
        only adapt the content slab (mirroring #page-instructions) and the
@@ -140,43 +142,6 @@
             font-size: 13px;
             letter-spacing: 0.5px;
             margin: 8px 0 0 0;
-        }
-
-        .cta-row {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 18px 0 6px 0;
-        }
-
-        .cta-btn {
-            display: inline-block;
-            padding: 10px 18px;
-            background: linear-gradient(180deg, #5a4a30, #3a3528);
-            border: 1px solid #c8a860;
-            border-radius: 4px;
-            color: #f0e6c8;
-            font-weight: bold;
-            text-decoration: none;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 11px;
-            box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
-            transition: background 0.2s, border-color 0.2s, color 0.2s;
-        }
-
-        .cta-btn:hover {
-            background: linear-gradient(180deg, #6a5838, #4a4030);
-            border-color: #e0c880;
-            color: #fff6e0;
-        }
-
-        /* Inline icon inside a CTA button (e.g. the YouTube logo) */
-        .cta-btn .cta-icon {
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 6px;
         }
 
         /* Small feature badges in the feature table (reuses .disk/.system) */
@@ -317,6 +282,171 @@
         .lightbox-close:hover {
             background: linear-gradient(180deg, #6a5838, #4a4030);
         }
+
+        /* Animated GIF banner container */
+        .gif-banner-link {
+            display: inline-block;
+            text-decoration: none;
+            position: relative;
+            cursor: pointer;
+            /* Changes the cursor to a hand pointer */
+            overflow: hidden;
+            /* Keeps the tooltip animation strictly inside the image borders */
+        }
+
+        .gif-banner-link img {
+            display: block;
+            border: 1px solid #4a453a;
+            /* Default dark border matching the site theme */
+            transition: border-color 0.2s ease, filter 0.2s ease;
+        }
+
+        /* Hover effect for the banner image */
+        .gif-banner-link:hover img {
+            border-color: #c8a860;
+            /* Amber/gold border on hover */
+            filter: brightness(0.7) blur(1px);
+            /* Slightly dims and blurs the GIF so the text is readable */
+        }
+
+        /* New bulletproof tooltip overlay */
+        .gif-banner-link .banner-tooltip {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+
+            /* Starts slightly lower (15px) for the slide-up effect */
+            transform: translate(-50%, calc(-50% + 15px));
+
+            /* DEC 1960s/1970s color palette matching the shared modals */
+            background: rgba(28, 24, 20, 0.9);
+            /* Translucent dark background */
+            color: #ffd27f;
+            /* Amber text color */
+            border: 1px solid #c8a860;
+            /* Gold bezel border */
+            padding: 10px 20px;
+
+            /* Authentic VT52 terminal font from the project typography */
+            font-family: 'VT52', monospace;
+            font-size: 16px;
+            letter-spacing: 1px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+
+            /* Smooth fade-in and slide-up animation toggles */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+            z-index: 10;
+        }
+
+        /* Smoothly displays and slides up the tooltip on hover */
+        .gif-banner-link:hover .banner-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%);
+            /* Moves exactly to the center */
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .gif-banner-link:hover img {
+                filter: brightness(0.7);
+                /* Убираем blur */
+            }
+
+            .gif-banner-link .banner-tooltip {
+                transform: translate(-50%, -50%) !important;
+                /* Убираем сдвиг снизу вверх, показываем сразу в центре */
+                transition: opacity 0.1s ease;
+            }
+        }
+
+        /* Guest OS Card Container (the figure element) */
+        figure.carousel-item.os-card-link {
+            margin: 0;
+            /* Resets default browser figure margins */
+            background: #1a1815;
+            /* Dark background from the project theme */
+            border: 1px solid #4a4438;
+            /* Default muted border */
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            /* Makes the cursor a hand pointer */
+            display: inline-block;
+
+            /* CRITICAL FIX: Removed default transform to prevent bottom clipping */
+            transform: none;
+
+            /* Smooth transition for border, background, and glow effects */
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+        }
+
+        /* Hover State: Applies rich amber neon glow and highlights the border */
+        figure.carousel-item.os-card-link:hover {
+            border-color: #c8a860;
+            /* Amber/gold border matching site buttons */
+            background-color: #24201a;
+            /* Slightly lighter background to show interactive state */
+
+            /* CRITICAL FIX: Removed hover transform to prevent top clipping */
+            transform: none;
+
+            /* Soft, wide amber neon glow that spreads evenly in all directions */
+            box-shadow: 0 0 20px rgba(200, 168, 96, 0.35), 0 2px 8px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Image inside the card */
+        figure.carousel-item.os-card-link img {
+            display: block;
+            border-radius: 4px;
+            border: 1px solid #2a2722;
+            transition: filter 0.25s ease;
+        }
+
+        /* Slight brightness boost for the screenshot on hover */
+        figure.carousel-item.os-card-link:hover img {
+            filter: brightness(1.08);
+        }
+
+        /* Caption text styling at the bottom */
+        figure.carousel-item.os-card-link figcaption {
+            margin-top: 10px;
+            font-family: arial, helvetica, sans-serif;
+            font-size: 13px;
+            font-weight: bold;
+            color: #9a9488;
+            /* Muted text color from the project theme */
+            text-align: center;
+            transition: color 0.25s ease;
+        }
+
+        /* Highlights the text in pure amber when the card is hovered */
+        figure.carousel-item.os-card-link:hover figcaption {
+            color: #ffd27f;
+            /* Bright amber text color used in active states */
+        }
+
+        /* Base style for the enlarge hint (hidden by default) */
+        figure.carousel-item.os-card-link figcaption .enlarge-hint {
+            display: block;
+            font-size: 11px;
+            font-weight: normal;
+            color: #8a857a;
+            /* Muted hint text color from the project theme */
+            margin-top: 4px;
+            opacity: 0;
+            transition: opacity 0.25s ease, color 0.25s ease;
+        }
+
+        /* Smoothly displays the hint in amber when the card is hovered */
+        figure.carousel-item.os-card-link:hover figcaption .enlarge-hint {
+            opacity: 1;
+            color: #c8a860;
+            /* Amber/gold color matching the active theme */
+        }
     </style>
 </head>
 
@@ -332,6 +462,17 @@
         </defs>
     </svg>
 
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="icon-telegram" viewBox="0 0 24 24">
+                <!-- Official Telegram blue background circle -->
+                <circle cx="12" cy="12" r="11" fill="#24A1DE" />
+                <!-- Official Telegram white paper airplane silhouette -->
+                <path d="M17.5 7.5L6.5 12.25L9.5 13.5L16 9.5L11.5 14.25L15.5 17.25L17.5 7.5Z" fill="#FFFFFF" />
+            </symbol>
+        </defs>
+    </svg>
+
     <div class="app-layout">
         <div class="landing-page">
 
@@ -342,22 +483,44 @@
                 <p class="zero-setup">No plugins. No downloads. No setup. Just open the page and you're standing in
                     front of a PDP‑11.</p>
                 <p>
-                    <img src="assets/pdp11-animated-panel.gif" alt="PDP‑11/70 Front Panel">
+                    <a href="pdp11.html" class="gif-banner-link">
+                        <img src="assets/pdp11-animated-panel.gif" alt="PDP-11/70 Front Panel">
+                        <span class="banner-tooltip">Click to launch the emulator</span>
+                    </a>
                 </p>
-                <div class="cta-row">
-                    <a class="cta-btn" href="pdp11.html">Launch the Emulator Online</a>
-                    <a class="cta-btn" href="manual.html">User Manual</a>
-                    <a class="cta-btn" href="https://github.com/amesk/yaPDP">Project Page</a>
-                    <a class="cta-btn" href="https://github.com/amesk/yaPDP/releases">Download</a>
-                    <a class="cta-btn" href="https://www.youtube.com/playlist?list=PLbR5Jg6Ojbn0">
-                        <svg class="cta-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
-                            focusable="false">
-                            <use href="#icon-youtube" />
+                <!-- Primary Action Row (Centered under the console GIF banner) -->
+                <div class="panel-actions-landing">
+                    <a href="pdp11.html" class="btn-primary">LAUNCH ONLINE!</a>
+                    <a href="manual.html" class="btn-secondary">MANUAL</a>
+                    <a href="https://www.youtube.com/playlist?list=PLbR5Jg6Ojbn0" target="_blank"
+                        class="btn-secondary">YOUTUBE DEMO</a>
+                </div>
+
+                <!-- Elegant contextual link for standalone desktop app -->
+                <div class="download-subtext">
+                    Also available as a standalone app.
+                    <a href="https://github.com/amesk/yaPDP/releases" target="_blank">Download for Desktop</a>
+                </div>
+
+                <!-- Secondary Corner Hooks / Badges (Keeps landing focused, push links to edges or footer) -->
+                <div class="app-corner-links">
+                    <a href="https://github.com/amesk/yaPDP" target="_blank" class="corner-link">
+                        <svg class="corner-icon" viewBox="0 0 16 16" width="14" height="14">
+                            <path fill="currentColor"
+                                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
                         </svg>
-                        Watch the Demo
+                        GitHub
+                    </a>
+                    <a href="https://t.me/yaPDP_news_ru" target="_blank" class="corner-link">
+                        <svg class="corner-icon" viewBox="0 0 24 24" width="14" height="14">
+                            <path fill="currentColor"
+                                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.41.52-.46-.01-1.35-.26-2.01-.48-.81-.27-1.46-.42-1.4-.88.03-.24.37-.49 1.03-.74 4.04-1.76 6.74-2.92 8.09-3.48 3.85-1.6 4.64-1.88 5.17-1.89.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.13-.03.19z" />
+                        </svg>
+                        Telegram (RU)
                     </a>
                 </div>
             </div>
+
 
             <hr>
 
@@ -373,33 +536,33 @@
                 <button class="carousel-arrow prev" type="button" aria-label="Previous">◀</button>
                 <div class="carousel-viewport">
                     <div class="carousel-track">
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/unix_v5.png" alt="Unix V5" width="200" height="150">
-                            <figcaption>Unix V5</figcaption>
+                            <figcaption>Unix V5<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/bsd.png" alt="2.11 BSD" width="200" height="150">
-                            <figcaption>2.11 BSD</figcaption>
+                            <figcaption>2.11 BSD<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/rt11.png" alt="RT-11" width="200" height="150">
-                            <figcaption>RT-11</figcaption>
+                            <figcaption>RT-11<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/rt11-vt52.png" alt="RT-11 on VT52" width="200" height="150">
-                            <figcaption>RT-11 · VT52</figcaption>
+                            <figcaption>RT-11 · VT52<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/basic.png" alt="DEC BASIC-11" width="200" height="150">
-                            <figcaption>DEC BASIC-11</figcaption>
+                            <figcaption>DEC BASIC-11<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/lunar-lander.png" alt="Lunar Lander" width="200" height="150">
-                            <figcaption>Lunar Lander</figcaption>
+                            <figcaption>Lunar Lander<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
-                        <figure class="carousel-item">
+                        <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/xxdp.png" alt="XXDP+ diagnostics" width="200" height="150">
-                            <figcaption>XXDP+</figcaption>
+                            <figcaption>XXDP+<span class="enlarge-hint">Click to enlarge</span></figcaption>
                         </figure>
                     </div>
                 </div>
@@ -427,13 +590,15 @@
                 <tbody>
                     <tr>
                         <td class="disk">Authentic Front Panel</td>
-                        <td>Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the
+                        <td>Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader
+                            the
                             way DEC
                             engineers did in the 1970s.</td>
                     </tr>
                     <tr>
                         <td class="disk">Model 33 ASR Teletype</td>
-                        <td>A fully animated Google60-style teletype connected as the operator console — complete with
+                        <td>A fully animated Google60-style teletype connected as the operator console — complete
+                            with
                             paper
                             printing, keypunch sounds, line-feed whirs and authentic nroff/man overstrike rendering.
                         </td>
@@ -445,18 +610,21 @@
                     </tr>
                     <tr>
                         <td class="disk">VT11 Display</td>
-                        <td>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page,
+                        <td>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT
+                            page,
                             enabled
                             from the CONFIG page.</td>
                     </tr>
                     <tr>
                         <td class="disk">16 Guest OSes</td>
-                        <td>Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11,
+                        <td>Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1),
+                            RT‑11,
                             XXDP diagnostics, and more.</td>
                     </tr>
                     <tr>
                         <td class="disk">Persistent Storage</td>
-                        <td>All disk and tape images are preloaded. Changes to disk contents persist in browser storage
+                        <td>All disk and tape images are preloaded. Changes to disk contents persist in browser
+                            storage
                             across
                             sessions.</td>
                     </tr>
@@ -477,22 +645,28 @@
                 PDP‑11 emulators are plentiful today. They span every platform and every level of ambition — from
                 lightweight interpreters to cycle‑accurate recreations. But for all their differences they share the
                 same sore spot: getting one up and running is a struggle. Configuration screens full of cryptic
-                options, an engineer's interface built for utility rather than for the experience, and the eternal hunt
-                for a disk image that actually works with this particular emulator — the part that should be effortless
+                options, an engineer's interface built for utility rather than for the experience, and the eternal
+                hunt
+                for a disk image that actually works with this particular emulator — the part that should be
+                effortless
                 usually turns out to be the hardest.
             </p>
 
             <p>
-                Solving those problems is necessary, but it is not the whole story. The other half of the equation is
-                what emulation is really about — immersion. The spirit of the era, the hum of the power supply, paper
+                Solving those problems is necessary, but it is not the whole story. The other half of the equation
+                is
+                what emulation is really about — immersion. The spirit of the era, the hum of the power supply,
+                paper
                 rattling through the teletype, the soft glow of a phosphor screen. We emulate not merely to run old
                 software, but to feel, for a while, what it was like to work with it.
             </p>
 
             <p>
-                That is exactly what yaPDP sets out to do. It pairs a zero‑configuration, instant start — open the page
+                That is exactly what yaPDP sets out to do. It pairs a zero‑configuration, instant start — open the
+                page
                 and you're standing at the console of a PDP‑11/70 — with an authenticity that reaches down to the
-                smallest detail, even the sound: the drone of the machine, the clatter of the Model 33 ASR, the rhythm
+                smallest detail, even the sound: the drone of the machine, the clatter of the Model 33 ASR, the
+                rhythm
                 of the line printer — whose finished printout can be sent to your real printer or saved as a file.
                 Not just a faithful emulator. A faithful experience.
             </p>
@@ -504,16 +678,23 @@
             <p>As it turns out, rather a lot of people:</p>
 
             <ul>
-                <li><b>Those who were there.</b> If you remember the clatter of a line printer or the smell of a warm
+                <li><b>Those who were there.</b> If you remember the clatter of a line printer or the smell of a
+                    warm
                     front panel, this is a one‑way ticket back to the machine room — no time machine, no soldering
                     iron and no security clearance required.</li>
-                <li><b>Those who arrived later.</b> If you were born after the PDP‑11 was gently retired, this is where
-                    a surprising share of today's mainstream ideas began: time‑sharing, multiuser systems, hierarchical
-                    file systems, the C language, Unix itself. It all started somewhere. This is that somewhere.</li>
-                <li><b>Museums of computing history.</b> An interactive exhibit that never needs dusting, winding, or a
+                <li><b>Those who arrived later.</b> If you were born after the PDP‑11 was gently retired, this is
+                    where
+                    a surprising share of today's mainstream ideas began: time‑sharing, multiuser systems,
+                    hierarchical
+                    file systems, the C language, Unix itself. It all started somewhere. This is that somewhere.
+                </li>
+                <li><b>Museums of computing history.</b> An interactive exhibit that never needs dusting, winding,
+                    or a
                     helpful gentleman in the basement with a box of spare transistors.</li>
-                <li><b>Students and the merely curious.</b> A fine instrument for learning — from the days when trees
-                    were green, the sky was blue, and a computer announced its thinking with a sound you could actually
+                <li><b>Students and the merely curious.</b> A fine instrument for learning — from the days when
+                    trees
+                    were green, the sky was blue, and a computer announced its thinking with a sound you could
+                    actually
                     hear and lights that actually showed something useful.</li>
             </ul>
 
@@ -522,12 +703,14 @@
             <h2>A Personal Note</h2>
 
             <p>
-                I first saw DEC minicomputers as a child at my parents' workplace. The blinking lights, the whir of disk
+                I first saw DEC minicomputers as a child at my parents' workplace. The blinking lights, the whir of
+                disk
                 drives, the smell of ozone and paper — it left an impression that never faded.
             </p>
 
             <p>
-                My real hands‑on encounter came later, when I found myself in front of the Soviet clones of DEC hardware
+                My real hands‑on encounter came later, when I found myself in front of the Soviet clones of DEC
+                hardware
                 —
                 the <b>SM‑4</b> and <b>SM‑1420</b> — running <b>RSX‑11M</b>. And with them came C. The language that
                 lets you
@@ -548,9 +731,12 @@
             </p>
 
             <p>
-                I never got to run <b>real UNIX</b> on those machines. The Soviet replicas lived under RSX‑11M, and by
-                the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs. But
-                decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and boot
+                I never got to run <b>real UNIX</b> on those machines. The Soviet replicas lived under RSX‑11M, and
+                by
+                the time I understood what UNIX V5 or 2.11 BSD truly meant, the world had already moved to x86 PCs.
+                But
+                decades later, thanks to the incredible work of Paul Nankervis, I can finally open a browser and
+                boot
                 Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E, RT‑11 — each one a time capsule of computing history.
             </p>
 
@@ -618,7 +804,8 @@
                     </tr>
                     <tr>
                         <td class="disk">README</td>
-                        <td><a href="README.md">README.md</a> — build instructions, guest OS table, desktop app variants
+                        <td><a href="README.md">README.md</a> — build instructions, guest OS table, desktop app
+                            variants
                         </td>
                     </tr>
                     <tr>
@@ -639,9 +826,11 @@
 
             <p>
                 The native desktop application (Windows x64) is built locally with
-                <code>npm run desktop:full</code> — it produces NSIS/MSI installers plus a portable executable, either
+                <code>npm run desktop:full</code> — it produces NSIS/MSI installers plus a portable executable,
+                either
                 in a
-                tiny <b>Minimal</b> variant or a fully-offline <b>Full</b> variant with every disk/tape image bundled.
+                tiny <b>Minimal</b> variant or a fully-offline <b>Full</b> variant with every disk/tape image
+                bundled.
                 See the README for details.
             </p>
 
@@ -691,10 +880,12 @@
             <h3>Paul Nankervis — Original PDP‑11 Emulator</h3>
 
             <p>
-                Paul wrote the original <a href="https://github.com/paulnank/pdp11-js">pdp11-js</a> emulator, which this
+                Paul wrote the original <a href="https://github.com/paulnank/pdp11-js">pdp11-js</a> emulator, which
+                this
                 repository is forked from. His meticulous work — cycle‑accurate CPU emulation, beautifully rendered
                 front
-                panels, and a meticulously curated collection of vintage operating systems — made this project possible.
+                panels, and a meticulously curated collection of vintage operating systems — made this project
+                possible.
             </p>
 
             <blockquote>
@@ -708,9 +899,12 @@
             <p>
                 The Model 33 ASR teletype emulation is adapted from <a
                     href="https://www.masswerk.at/google60/">Google60</a> by
-                <b>Norbert Landsteiner</b> of <a href="https://www.masswerk.at/">mass:werk</a>. Google60 is a brilliant
-                simulation of the Google search interface as it would have appeared on a Model 33 ASR Teletype in the
-                1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance animation
+                <b>Norbert Landsteiner</b> of <a href="https://www.masswerk.at/">mass:werk</a>. Google60 is a
+                brilliant
+                simulation of the Google search interface as it would have appeared on a Model 33 ASR Teletype in
+                the
+                1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance
+                animation
                 and
                 authentic sound effects — brings the teletype to life. This project repurposes his engine as the
                 operator
@@ -720,10 +914,12 @@
             <h3>Additional Sources</h3>
 
             <ul>
-                <li><a href="http://bitsavers.org/pdf/dec/pdp11/">Bitsavers</a> — DEC PDP‑11 documentation archive</li>
+                <li><a href="http://bitsavers.org/pdf/dec/pdp11/">Bitsavers</a> — DEC PDP‑11 documentation archive
+                </li>
                 <li><a href="http://bitsavers.org/bits/DEC/pdp11/">Bitsavers Software</a> — PDP‑11 software and disk
                     images</li>
-                <li><a href="https://www.tuhs.org/">The Unix Heritage Society (TUHS)</a> — Preserving UNIX history</li>
+                <li><a href="https://www.tuhs.org/">The Unix Heritage Society (TUHS)</a> — Preserving UNIX history
+                </li>
                 <li><a href="http://www.rsts.org/">RSTS.ORG</a> — RSTS/E community and software preservation</li>
             </ul>
 

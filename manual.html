@@ -13,6 +13,7 @@
     <!-- Same stylesheet as the emulator, so the manual shares the exact
        DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
     <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
+    <link rel="stylesheet" href="css/landing.css" type="text/css" charset="utf-8" media="all" />
 
     <!-- Manual-page-only rules. Identical to the main page (index.html):
        the base pdp11.css already supplies the body photo backdrop, fonts and
@@ -142,35 +143,6 @@
             margin: 8px 0 0 0;
         }
 
-        .cta-row {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 18px 0 6px 0;
-        }
-
-        .cta-btn {
-            display: inline-block;
-            padding: 10px 18px;
-            background: linear-gradient(180deg, #5a4a30, #3a3528);
-            border: 1px solid #c8a860;
-            border-radius: 4px;
-            color: #f0e6c8;
-            font-weight: bold;
-            text-decoration: none;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 11px;
-            box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
-            transition: background 0.2s, border-color 0.2s, color 0.2s;
-        }
-
-        .cta-btn:hover {
-            background: linear-gradient(180deg, #6a5838, #4a4030);
-            border-color: #e0c880;
-            color: #fff6e0;
-        }
 
         /* Small feature badges in the feature table (reuses .disk/.system) */
         .landing-page td.disk {
@@ -269,9 +241,9 @@
                     machine room, not in the documentation.</p>
                 <p class="zero-setup">Everything below applies to both the browser version and the Tauri desktop app.
                 </p>
-                <div class="cta-row">
-                    <a class="cta-btn" href="pdp11.html">Launch the Emulator</a>
-                    <a class="cta-btn" href="index.html">Back to the Home Page</a>
+                <div class="panel-actions-landing">
+                    <a class="btn-primary" href="pdp11.html">Launch Online!</a>
+                    <a class="btn-secondary" href="index.html">Back to the Home Page</a>
                 </div>
             </div>
 
@@ -318,9 +290,10 @@
 
             <ol>
                 <li>Opens a picker listing every guest operating system (and the <a href="#storage">paper
-                    tapes</a>) whose image this build ships — the picker is filtered by the build manifest
+                        tapes</a>) whose image this build ships — the picker is filtered by the build manifest
                     (<code>media/manifest.json</code>), plus any images you have imported by
-                    <a href="#storage">drag &amp; drop</a>. Paper tapes always stay listed.</li>
+                    <a href="#storage">drag &amp; drop</a>. Paper tapes always stay listed.
+                </li>
                 <li>Chooses one, switches to the <a href="#console">operator console</a>, and reboots the machine.</li>
                 <li>Types the <code>boot <device></code> command — and the login too, where the credentials are
                     known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login <code>root</code>).</li>
@@ -438,7 +411,8 @@
                 <li><b>ASR reader/punch.</b> Beside the machine sits the ASR tape reader/punch unit. Every byte echoed
                     to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track
                     8 = parity). As on a real ASR‑33 the punch is <b>OFF by default</b> — enable it from the
-                    <a href="#config">CONFIG page</a> or its own control.</li>
+                    <a href="#config">CONFIG page</a> or its own control.
+                </li>
                 <li><b>Paper-tape reader.</b> The <b>Load tape</b> button below the machine opens a file dialog and
                     inserts a paper tape into the reader — a raw <code>.ptap</code> (as saved by the punch or the
                     Storage page), a compressed <code>.ptap.zst</code>, or a plain <code>.txt</code> whose characters
@@ -452,13 +426,15 @@
                             console speed (authentic ~10 chars/sec or the fast CONFIG pace);</li>
                         <li><b>AUTO</b> — sends one byte and then feeds the next only when the machine's DL11 has
                             accepted the previous one (paused by <code>DC3 / X-OFF</code>, resumed by
-                            <code>DC1 / X-ON</code>);</li>
+                            <code>DC1 / X-ON</code>);
+                        </li>
                         <li><b>STOP</b> — pauses;</li>
                         <li><b>FREE</b> — releases the tape and shows the <b>Remove tape from reader</b> button
                             (hidden in every other mode) to pull it out.</li>
                     </ul>
                     Clicking a position label jumps straight to it; clicking the round switch disc itself turns it
-                    one detent clockwise (<b>START → STOP → FREE → AUTO</b>), like rotating the real switch.</li>
+                    one detent clockwise (<b>START → STOP → FREE → AUTO</b>), like rotating the real switch.
+                </li>
                 <li><b>CCU knob.</b> The LINE / OFF / LOCAL knob on the apron works the same way: click a label to
                     jump, or click the knob itself to turn it one detent clockwise (<b>LINE → OFF → LOCAL</b>). The
                     CCU routes every read byte exactly like the keyboard: in <b>LOCAL</b> the tape prints on the
@@ -525,9 +501,10 @@
             <p class="shot-caption">The LP11 line printer printing a job listing.</p>
 
             <ul>
-                <li><b>Speed.</b> Like the real LP11, it echoes characters far faster than the <a
-                        href="#console">Model 33 ASR console
-                    teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300
+                <li><b>Speed.</b> Like the real LP11, it echoes characters far faster than the <a href="#console">Model
+                        33 ASR console
+                        teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's
+                    ~300
                     lines/min.</li>
                 <li><b>DONE handshake.</b> The LP11 honours the historical DONE handshake: writing LPDB clears DONE and
                     re-asserts it as each character is consumed by the mechanism, so a guest print job is throttled at
@@ -566,7 +543,8 @@
             <h2 id="storage">Storage (paper tape, disk & tape images)</h2>
 
             <p>The Storage page manages every kind of storage media. It has two tabs — <b>Images</b> and
-                <b>Paper Tapes</b> — because the two workflows are completely different.</p>
+                <b>Paper Tapes</b> — because the two workflows are completely different.
+            </p>
 
             <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab"></p>
             <p class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and
@@ -578,7 +556,8 @@
                 <li><b>Drag & drop drop zone.</b> Drop any disk/tape image here — <code>.dsk</code>,
                     <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are
                     supported. While the Storage page is active you can also drop a file anywhere over the window —
-                    a full-window drop target appears.</li>
+                    a full-window drop target appears.
+                </li>
                 <li><b>Mounted images / Unmount list.</b> Shows currently mounted images and lets you unmount them.
                     Mounted images persist in browser storage (IndexedDB) and are re-mounted automatically on the
                     next launch — changes to disk contents survive across sessions.</li>
@@ -588,7 +567,8 @@
                     pristine state.</li>
             </ul>
 
-            <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab"></p>
+            <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab">
+            </p>
             <p class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code>
                 drop zone and the punch-tape export.</p>
 
@@ -597,9 +577,11 @@
             <ul>
                 <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11,
                     ODT‑11, ED‑11, or <a href="#vt11">Lunar Lander</a> from simulated paper tape — then boot with
-                    <code>BOOT PR</code>. Dropped <code>.ptap</code> files appear here too.</li>
+                    <code>BOOT PR</code>. Dropped <code>.ptap</code> files appear here too.
+                </li>
                 <li><b>Drop paper tape.</b> A small drop zone accepting <code>.ptap</code> and
-                    <code>.ptap.zst</code> — dropped tapes are added to the reader file selector.</li>
+                    <code>.ptap.zst</code> — dropped tapes are added to the reader file selector.
+                </li>
                 <li><b>Export paper tape.</b> Downloads the punched paper tape (<code>.ptap</code>) from the punch
                     buffer, or clears the buffer.</li>
             </ul>
@@ -659,11 +641,13 @@
                         <li><b>Console terminal</b> — the <a href="#console">operator console</a> (tty0): a Model 33
                             ASR teletype or a DECscope VT52.</li>
                         <li><b>User terminals</b> — 0–2 extra <a href="#user-terminals">VT52 terminals (TTY 1 /
-                            TTY 2)</a>, each with its own sidebar page.</li>
+                                TTY 2)</a>, each with its own sidebar page.</li>
                         <li><b>Line printer (LP11)</b> — install the animated LP11 line printer on its own
-                            <a href="#printer">Printer page</a>.</li>
+                            <a href="#printer">Printer page</a>.
+                        </li>
                         <li><b>VT11 graphics display</b> — install the DEC VT11 vector-graphics terminal on its own
-                            <a href="#vt11">Display page</a>.</li>
+                            <a href="#vt11">Display page</a>.
+                        </li>
                         <li><b>Teletype print width</b> — 72 or 80 columns for the Model 33 ASR console (a teletype is
                             at most an 80-column machine).</li>
                         <li><b>Printer width</b> — 72/80/100/132 columns for the LP11 printer page.</li>
