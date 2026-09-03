@@ -8,7 +8,13 @@
  *
  *   rk0    Unix V5   — auto-login typed by the wizard, shell "#" after "login:"
  *   rk1    RT-11     — "." monitor prompt after the boot output settles
+ *   rk2    RSTS V06C — "START" at the Option: prompt, "You currently have:"
+ *   rk3    XXDP      — "ENTER DATE" after the DIAG monitor reports BOOTED
+ *   rl0    BSD 2.9   — wizard drives single-user "#" then login: + root shell
+ *   rp0    ULTRIX-11 — kernel boot to the single-user "#" prompt
  *   rp1    BSD 2.11  — auto-login typed by the wizard, shell "#" after "login:"
+ *   rp2    RSTS/E 9.6— "Today's date?" (also anchors the UDA50 browser crash fix)
+ *   rp3    RSX-11M 4.6 — autostart runs startup, date/time prompt (1912K mapped)
  *   basic  BASIC-11  — "*O " BASIC prompt
  *
  * Readiness is detected on the GENERATED console output (the same
@@ -57,6 +63,12 @@ const GUESTS = [
     { device: "rk1",   name: "RT-11",
         cfg: { consoleType: "teletype", printer: true, vt11: false },
         stable: 2500, prompt: ".", timeout: 120000 },
+    { device: "rk2",   name: "RSTS V06C-03",
+        cfg: { consoleType: "teletype", printer: true, vt11: false },
+        readyWhen: "You currently have:", timeout: 120000 },
+    { device: "rk3",   name: "XXDP",
+        cfg: { consoleType: "teletype", printer: false, vt11: false },
+        readyWhen: "ENTER DATE", timeout: 60000 },
     { device: "rl0",   name: "BSD 2.9",
         // Known emulator bug: console input stops working once the kernel
         // switches to multi-user (getty prints "login:" but typed bytes are
@@ -73,6 +85,12 @@ const GUESTS = [
     { device: "rp1",   name: "BSD 2.11",
         cfg: { consoleType: "vt52", printer: true, vt11: false },
         readyWhen: "#", readyAfter: "login:", timeout: 180000 },
+    { device: "rp2",   name: "RSTS/E v9.6",
+        cfg: { consoleType: "teletype", printer: true, vt11: false },
+        readyWhen: "Today's date?", timeout: 120000 },
+    { device: "rp3",   name: "RSX-11M v4.6",
+        cfg: { consoleType: "vt52", printer: true, vt11: false },
+        readyWhen: "PLEASE ENTER TIME AND DATE", timeout: 120000 },
     { device: "basic", name: "BASIC-11",
         cfg: { consoleType: "teletype", printer: false, vt11: false },
         readyWhen: "*O ", timeout: 90000 },
