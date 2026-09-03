@@ -2,10 +2,12 @@
 /**
  * DiskStore write-back cache modular tests.
  *
- * These tests extract the DiskStore, createCache, and fetchBlock sections
- * directly from the real source file (src/iopage.js) so they exercise the
- * actual production code rather than a copy, then run them in an isolated
- * VM context with a lightweight in-memory IndexedDB stub.
+ * These tests extract the DiskStore section from the real source file
+ * (src/diskstore.js, the refactored home of the write-back layer) and the
+ * createCache/fetchBlock sections from src/iopage.js (their original
+ * location) so they exercise the actual production code rather than a
+ * copy, then run them in an isolated VM context with a lightweight
+ * in-memory IndexedDB stub.
  *
  * Run with:  node tests/diskstore.test.js
  *
@@ -18,7 +20,8 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
-const SOURCE_PATH = path.join(__dirname, "..", "src", "iopage.js");
+const DISKSTORE_PATH = path.join(__dirname, "..", "src", "diskstore.js");
+const IOPAGE_PATH = path.join(__dirname, "..", "src", "iopage.js");
 
 // ------------------------------------------------------------------
 // Minimal brace-balancing extractor for a single top-level declaration
@@ -132,13 +135,14 @@ function buildSandbox() {
 }
 
 function loadSections() {
-  const src = fs.readFileSync(SOURCE_PATH, "utf8");
+  const diskSrc = fs.readFileSync(DISKSTORE_PATH, "utf8");
+  const ioSrc = fs.readFileSync(IOPAGE_PATH, "utf8");
   const ioBlockSize = "const IO_BLOCKSIZE = 131072;";
-  const diskStore = extractBlock(src, "var DiskStore = (() => {", ")();");
-  const createCache = extractBlock(src, "function createCache(cache, block, dataView)");
-  const fetchBlock = extractBlock(src, "async function fetchBlock(controlBlock, block)");
-  const imageError = extractBlock(src, "function imageError(reason, message)");
-  const assertCompleteImage = extractBlock(src, "function assertCompleteImage(response, buffer, url)");
+  const diskStore = extractBlock(diskSrc, "var DiskStore = (() => {", ")();");
+  const createCache = extractBlock(ioSrc, "function createCache(cache, block, dataView)");
+  const fetchBlock = extractBlock(ioSrc, "async function fetchBlock(controlBlock, block)");
+  const imageError = extractBlock(ioSrc, "function imageError(reason, message)");
+  const assertCompleteImage = extractBlock(ioSrc, "function assertCompleteImage(response, buffer, url)");
   return { ioBlockSize, diskStore, createCache, fetchBlock, imageError, assertCompleteImage };
 }
 
