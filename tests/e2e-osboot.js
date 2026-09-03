@@ -19,6 +19,13 @@
  *
  * Run with:  node tests/e2e-osboot.js
  * (needs puppeteer; starts the dev server itself if :1170 is not serving)
+ *
+ * Stack selection: the refactored machine layer (core classes + devices,
+ * browser-machine.js) is the DEFAULT since the refactor; the legacy
+ * monolithic iopage.js runs only with ?core=0. Set E2E_LEGACY=1 to run
+ * the whole guest matrix against the legacy stack — together with the
+ * default run this is the stack-parity gate (both stacks must boot every
+ * guest). E2E_LEGACY=1 replaced the old tools/_check-basic.js parity tool.
  */
 "use strict";
 
@@ -32,6 +39,12 @@ const ROOT = path.join(__dirname, "..");
 const ARTIFACTS = path.join(__dirname, "artifacts");
 const PORT = 1170;
 const BASE = `http://127.0.0.1:${PORT}`;
+
+// E2E_LEGACY=1 runs the guest matrix against the legacy monolithic
+// iopage.js stack (?core=0). The default run exercises the refactored
+// core stack, which is now the mode the page boots into by default.
+const STACK_PARAM = process.env.E2E_LEGACY ? "core=0&" : "";
+const STACK_LABEL = process.env.E2E_LEGACY ? "legacy iopage (?core=0)" : "refactored core (default)";
 
 // Device -> config that EXACTLY matches the OSBoot scenario's `hardware`
 // block (mirrors tools/screenshots-os.js OS_CFG). Seeding it means the
@@ -131,7 +144,7 @@ async function openPage(browser, guest) {
         } catch (err) { /* ignore storage errors */ }
     }, cfg);
 
-    await page.goto(`${BASE}/pdp11.html?bridge=1`, { waitUntil: "load", timeout: 90000 });
+    await page.goto(`${BASE}/pdp11.html?${STACK_PARAM}bridge=1`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 
@@ -283,6 +296,7 @@ async function bootGuest(browser, guest) {
         args: ["--no-sandbox", "--disable-setuid-sandbox",
             "--disable-dev-shm-usage"],
     });
+    console.log(`e2e-osboot: stack = ${STACK_LABEL}`);
     try {
         for (const guest of GUESTS) {
             await bootGuest(browser, guest);
