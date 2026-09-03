@@ -61,7 +61,8 @@
     // all holes — brittle, tears when loaded into the reader). A fresh tape
     // automatically starts with TAPE_LEADER blank NUL rows; disengaging the
     // punch (DC4 or the OFF button) punches the same trailer before the
-    // tape stops.
+    // tape stops — but only when something was actually punched after the
+    // lead-in (the lead-in itself does not count, so a bare tape stays bare).
     var TAPE_LEADER = 6;
 
     /**
@@ -267,11 +268,18 @@
      * punchTrailer() - Punch the automatic NUL trailer (TAPE_LEADER blank
      * rows) when the punch is disengaged (DC4 or the OFF button): the tape
      * gets a blank mechanical tail before it stops, like a real operator
-     * finishing a tape. No-op when the tape UI is absent.
+     * finishing a tape. No-op when the tape UI is absent, or when nothing
+     * was punched after the automatic lead-in: the lead-in (TAPE_LEADER
+     * NUL rows) does not count as punched data, so a bare tape stays bare
+     * and receives no trailer.
      */
     function punchTrailer() {
         if (!body) init();
         if (!body) return;
+        // The buffer always starts with exactly TAPE_LEADER lead-in rows and
+        // never shrinks (BSP/overpunch only change a row's content in place),
+        // so a longer buffer means data was punched after the lead-in.
+        if (buffer.length <= TAPE_LEADER) return;
         for (var i = 0; i < TAPE_LEADER; i++) punchQuiet(0);
     }
 
