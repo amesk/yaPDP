@@ -243,7 +243,7 @@
                         break;
 
                     default:
-                        if (process.env && process.env.DEBUG_UDA) {
+                        if (typeof process !== "undefined" && process.env && process.env.DEBUG_UDA) {
                             console.log("Unknown MSCP opcode:" + opcode.toString(16) +
                                 " unit:" + unit + " idx:" + this.rspIdx +
                                 " buff:" + rspPkt.toString(8) +
@@ -255,7 +255,7 @@
                         break;
                 }
 
-                if (process.env && process.env.DEBUG_UDA) {
+                if (typeof process !== "undefined" && process.env && process.env.DEBUG_UDA) {
                     console.log("RES:" + opcode.toString(16) + " unit:" + unit +
                         " idx:" + this.rspIdx + " buff:" + rspPkt.toString(8) +
                         " bytes:" + byteCount + " sts:" + sts.toString(8));
@@ -314,7 +314,7 @@
             const unit = this._readWord(cmdPkt + PKT_UNIT);
             const opcode = this._readLong(cmdPkt + PKT_OPCODE);
 
-            if (process.env && process.env.DEBUG_UDA) {
+            if (typeof process !== "undefined" && process.env && process.env.DEBUG_UDA) {
                 console.log("CMD:" + opcode.toString(16) + " unit:" + unit +
                     " idx:" + this.cmdIdx + " buff:" + cmdPkt.toString(8));
             }
@@ -456,7 +456,7 @@
                                     this.unitOnline[unit] = STS_AVAILABLE; // Unit available - not online
                                 }
                                 this.sa = 0; // Echo ready!
-                                if (process.env && process.env.DEBUG_UDA) {
+                                if (typeof process !== "undefined" && process.env && process.env.DEBUG_UDA) {
                                     console.log("INIT base:" + this.rspRingBase.toString(16) +
                                         " rspSize:" + this.rspRingSize +
                                         " cmdSize:" + this.cmdRingSize +
