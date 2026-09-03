@@ -92,9 +92,12 @@ var OSBoot = (function () {
             bootDev: "rk1", url: "rk1.dsk", steps: [], autoLogin: false,
             upperCase: true,
             hardware: { console: "vt52", printer: true, vt11: false } },
-        // RSTS — LP11 line printer; console is the user's choice.
+        // RSTS — LP11 line printer; console is the user's choice. At the
+        // "Option:" prompt "START" begins timesharing (an empty CR is
+        // rejected; the historic ^J answer starts it, but the wizard sends
+        // CR, so START is the reliable answer).
         { device: "rk2", label: "RSTS V06C-03", boot: "BOOT RK2",
-            steps: [{ send: "11,70" }, { send: "PDP" }], autoLogin: true,
+            steps: [{ send: "START", waitFor: "Option:" }], autoLogin: false,
             upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // XXDP — diagnostics, no special requirements.
@@ -122,14 +125,16 @@ var OSBoot = (function () {
                 { ctrlD: true }, { send: "root", waitFor: "login:", wait: 3000 }],
             autoLogin: true,
             hardware: { console: "teletype", printer: true, vt11: false } },
-        // RSX-11M — LP11 line printer; console is the user's choice.
+        // RSX-11M — LP11 line printer; console is the user's choice. The
+        // disk image autostarts: MCR runs the system startup on its own and
+        // stops at the date/time prompt, so no typed steps are needed.
         { device: "rl1", label: "RSX-11M v3.2", boot: "BOOT RL1",
-            steps: [{ send: "1,2" }, { send: "SYSTEM" }], autoLogin: true,
+            steps: [], autoLogin: false,
             upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
-        // RSTS/E v7.0 — LP11 line printer.
+        // RSTS/E v7.0 — LP11 line printer. Same "Option:" flow as rk2.
         { device: "rl2", label: "RSTS/E v7.0", boot: "BOOT RL2",
-            steps: [{ send: "11,70" }, { send: "PDP" }], autoLogin: true,
+            steps: [{ send: "START", waitFor: "Option:" }], autoLogin: false,
             upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
         // XXDP (extended) — diagnostics, no special requirements.
@@ -162,9 +167,11 @@ var OSBoot = (function () {
             steps: [], autoLogin: false,
             upperCase: true,
             hardware: { console: null, printer: true, vt11: false } },
-        // RSX-11M v4.6 — LP11 line printer.
+        // RSX-11M v4.6 — LP11 line printer; VT52 console. The disk image
+        // autostarts (MCR runs the startup and stops at the date/time
+        // prompt), so no typed steps are needed.
         { device: "rp3", label: "RSX-11M v4.6", boot: "BOOT RP3",
-            steps: [{ send: "1,2" }, { send: "SYSTEM" }], autoLogin: true,
+            steps: [], autoLogin: false,
             upperCase: true,
             hardware: { console: "vt52", printer: true, vt11: false } },
         // RSTS/E v10.1 — LP11 line printer.
