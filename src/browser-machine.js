@@ -251,9 +251,37 @@
         // the current mounted bytes instead of closing over a snapshot.
         // If the image is not mounted yet, fall back to the network path
         // (media/<url>.zst) exactly like iopage.js fetchBlock() does.
+        //
+        // Write-back: DiskStore (src/diskstore.js) is the shared
+        // persistent overlay — the same IndexedDB layer iopage.js uses.
+        // Guest writes land in the provider's control-block cache and are
+        // reported via markDirty(); flush() (periodic + pagehide) persists
+        // them to IDB, and readBlock() consults DiskStore BEFORE the
+        // base-image path so a saved block always wins. Snapshot
+        // capture/restore (snapshots.js) works through the same overlay.
         var fetched = false;
+        // controlBlock mirrors the iopage.js contract DiskStore expects:
+        // { url, cache: [Uint16Array words] }.
+        var controlBlock = { url: url, cache: [] };
 
-        async function bytes() {
+        function packWords(bytes) {
+            var u16 = new Uint16Array(bytes.length >>> 1);
+            for (var i = 0; i < u16.length; i++) {
+                u16[i] = bytes[i * 2] | (bytes[i * 2 + 1] << 8);
+            }
+            return u16;
+        }
+
+        function unpackBytes(u16) {
+            var bytes = new Uint8Array(u16.length * 2);
+            for (var i = 0; i < u16.length; i++) {
+                bytes[i * 2] = u16[i] & 0xFF;
+                bytes[i * 2 + 1] = (u16[i] >>> 8) & 0xFF;
+            }
+            return bytes;
+        }
+
+        async function baseBytes() {
             if (typeof DataLoader === 'undefined') return undefined;
             var local = DataLoader.get(url);
             if (local !== undefined) return local;
@@ -275,13 +303,29 @@
 
         return {
             readBlock: async function (n) {
-                var local = await bytes();
+                // 1. Session write-back cache (written this run, not yet
+                //    necessarily flushed to IDB).
+                if (controlBlock.cache[n] !== undefined) {
+                    return unpackBytes(controlBlock.cache[n]);
+                }
+                // 2. Persistent overlay: saved blocks win over the base.
+                if (typeof DiskStore !== 'undefined' && DiskStore.getBlock) {
+                    var saved = await DiskStore.getBlock(url, n);
+                    if (saved !== undefined) return saved;
+                }
+                // 3. Base image (DataLoader or network).
+                var local = await baseBytes();
                 if (local === undefined) return new Uint8Array(0);
                 var start = n * 131072;
                 if (start >= local.length) return new Uint8Array(0);
                 return local.subarray(start, Math.min(start + 131072, local.length));
             },
-            writeBlock: async function () { /* write-back to IDB: later step */ },
+            writeBlock: async function (n, bytes) {
+                controlBlock.cache[n] = packWords(bytes);
+                if (typeof DiskStore !== 'undefined' && DiskStore.markDirty) {
+                    DiskStore.markDirty(controlBlock, n);
+                }
+            },
             length: function () {
                 if (typeof DataLoader === 'undefined') return undefined;
                 var local = DataLoader.get(url);
