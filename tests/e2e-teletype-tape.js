@@ -23,6 +23,10 @@
  *      punch, output bytes punch rows, DC4 (0x14) disengages — punching
  *      the automatic NUL trailer first; the control bytes are never
  *      printed themselves.
+ *   6a. bare tape: disengaging the punch (OFF button or DC4) when nothing
+ *      was punched after the automatic NUL lead-in adds NO trailer — the
+ *      lead-in alone does not count as punched data, so a bare tape stays
+ *      bare (regression test for the bare-tape trailer fix).
  *   7. AUTO reader + X-ON/X-OFF: DC3 pauses the auto-fed reader, DC1
  *      resumes it (the guest drives the tape flow).
  *   8. HERE IS: the answerback drum taps CR LF ACK "PDP-11/70" CR LF into
@@ -558,6 +562,31 @@ async function main() {
             paperText6.indexOf("\u0012") === -1 &&
             paperText6.indexOf("\u0014") === -1,
             "paper delta: " + (paperText6.length - paperBefore6));
+
+        // ---- 6a. Bare tape: disengage adds no NUL trailer ---------------
+        // A fresh tape holds exactly the automatic TAPE_LEADER NUL lead-in
+        // and nothing else. Disengaging the punch (OFF button, then DC4)
+        // must NOT append the NUL trailer when nothing was punched after
+        // the lead-in — a bare tape stays bare (the lead-in alone does not
+        // count as punched data).
+        await setTtyMode(page, "line");
+        await tapeClear(page);
+        const bareRows = await tapeRows(page);
+        check("bare tape holds exactly the TAPE_LEADER lead-in rows",
+            bareRows === leader, "rows=" + bareRows);
+        await punchOff(page); // OFF button: nothing punched -> no trailer
+        const bareRowsAfterOff = await tapeRows(page);
+        check("OFF on a bare tape adds no NUL trailer",
+            bareRowsAfterOff === bareRows,
+            "rows: " + bareRows + " -> " + bareRowsAfterOff);
+        await page.evaluate(() => window.g60ConsoleWrite(0x12)); // DC2 engage
+        await sleep(300); // punch arms; no output -> no rows
+        await page.evaluate(() => window.g60ConsoleWrite(0x14)); // DC4
+        await sleep(300);
+        const bareRowsAfterDc4 = await tapeRows(page);
+        check("DC4 on a bare tape adds no NUL trailer",
+            bareRowsAfterDc4 === bareRows,
+            "rows: " + bareRows + " -> " + bareRowsAfterDc4);
 
         // ---- 7. AUTO reader: DC3 pauses, DC1 resumes ---------------------
         await loadTape(page, tapeAbcdef);
