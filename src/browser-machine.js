@@ -403,7 +403,20 @@
     window.iopage = {
         access: function (pa, d, b) { return machine.bus.access(pa, d, b); },
         poll: function () { return machine.bus.poll(); },
-        reset: function () { return machine.bus.reset(); },
+        reset: function () {
+            var result = machine.bus.reset();
+            // iopage.js parity: boot()/reset forgets the PTR tape (the
+            // device's reset() clears ptControlblock), but the legacy PTR
+            // lazily rebuilds its control block from the Storage "#ptr"
+            // select on the next GO. QuickBoot sets select.value
+            // programmatically (no "change" event) and calls boot()
+            // afterwards, so nothing would re-mount the tape here — the
+            // boot ROM's first PTR GO would hit ERR and the guest boot
+            // would hang (BASIC-11 paper-tape boot). Re-apply the
+            // currently selected tape after every reset instead.
+            if (ptrSelect) mountSelectedTape();
+            return result;
+        },
         register: function (address, count, device) {
             // External modules (vt11.js) register their devices through the
             // same iopage.register contract — delegate to the bus.
@@ -419,7 +432,15 @@
             }
         },
         snapshotDevices: function () { return machine.bus.snapshotDevices(); },
-        restoreDevices: function (state) { return machine.bus.restoreDevices(state); },
+        restoreDevices: function (state) {
+            var result = machine.bus.restoreDevices(state);
+            // Device state does not include the PTR tape control block
+            // (same as iopage.js), so a restore forgets the tape. Re-apply
+            // the selected tape so the next PTR GO reads it from the start
+            // instead of raising ERR.
+            if (ptrSelect) mountSelectedTape();
+            return result;
+        },
     };
 
     window.__coreMachine = machine; // diagnostics / future tools
