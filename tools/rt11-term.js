@@ -546,7 +546,9 @@ async function cmdStatus() {
 }
 
 async function handleCommand(line) {
-    const rest = line.slice(PREFIX.length).trim();
+    // The ':' prefix is optional (command mode enters commands bare, SIMH
+    // style); guest-mode ':' lines and batch lines keep working unchanged.
+    const rest = (line.startsWith(PREFIX) ? line.slice(PREFIX.length) : line).trim();
     const [cmd, ...argParts] = rest.split(/\s+/);
     const arg = argParts.join(" ");
     switch (cmd) {
@@ -591,7 +593,10 @@ async function handleCommand(line) {
                 "  :raw <hex>      send raw bytes (e.g. :raw 03 = ^C)\n" +
                 "  :status         show reader tape / punch bytes / mode\n" +
                 "  :quit | :exit   exit\n" +
-                "  :help           this help");
+                "  :help           this help\n" +
+                "Command mode (SIMH-style): Ctrl+E on an empty line enters or\n" +
+                "leaves it. In command mode the ':' prefix is optional and\n" +
+                "'guest' (or 'go') returns to the RT-11 console.");
             break;
         case "quit":
         case "exit":
@@ -653,10 +658,47 @@ async function runInteractive() {
     rl.on("close", () => {
         shutdown(0);
     });
+
+    // SIMH-style command mode: Ctrl+E (0x05) on an empty line enters or
+    // leaves it. In command mode every line is a utility command and the
+    // ':' prefix is optional; 'guest' (or 'go') returns to the console.
+    // The switch is accepted only on an empty line so a half-typed guest
+    // line is never mangled (same convention as Ctrl+D-to-exit).
+    let cmdMode = false;
+    const CMD_PROMPT = "rt11-term> ";
+    const enterCmdMode = () => {
+        cmdMode = true;
+        rl.setPrompt(CMD_PROMPT);
+        rl.prompt();
+        console.error("rt11-term: command mode (SIMH-style). Commands without ':' " +
+            "(:help lists them); 'guest' or Ctrl+E returns to the RT-11 console.");
+    };
+    const leaveCmdMode = () => {
+        cmdMode = false;
+        rl.setPrompt("");
+        rl.prompt();
+        console.error("rt11-term: back to the RT-11 console (Ctrl+E re-enters command mode).");
+    };
+    process.stdin.on("keypress", (str, key) => {
+        if (!key || !key.ctrl || key.name !== "e") return;
+        if (cmdMode) {
+            if (!rl.line) leaveCmdMode();
+        } else if (!rl.line) {
+            enterCmdMode();
+        }
+    });
+
     rl.prompt();
     rl.on("line", async (line) => {
         if (shuttingDown) return;
-        if (line.startsWith(PREFIX)) {
+        if (cmdMode) {
+            const t = line.trim();
+            if (t === "guest" || t === "go") {
+                leaveCmdMode();
+            } else {
+                await handleCommand(line);
+            }
+        } else if (line.startsWith(PREFIX)) {
             await handleCommand(line);
         } else {
             await sendLine(line);
@@ -664,7 +706,8 @@ async function runInteractive() {
         rl.prompt();
     });
     console.error("rt11-term: RT-11 console online. Lines go to the guest; " +
-        PREFIX + "prefix = utility commands (:help). Ctrl+C -> ^C to guest, Ctrl+D exits.");
+        PREFIX + "prefix = utility commands (:help). Ctrl+C -> ^C to guest, " +
+        "Ctrl+D exits, Ctrl+E (empty line) toggles command mode (SIMH-style).");
 }
 
 // ----------------------------------------------------------------------
