@@ -1,0 +1,255 @@
+/* ==========================================================================
+   GLOBAL BUTTON STYLES (Reusable across Landing and Manual pages)
+   ========================================================================== */
+
+/* Base button structure shared by all types */
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 4px;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    user-select: none;
+    box-sizing: border-box;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Primary CTA Style: Filled */
+.btn-primary {
+    background: #c8a860;
+    /* Solid brand amber color fill */
+    color: #12100e;
+    /* High contrast dark text inside the fill */
+    border: 1px solid #c8a860;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.btn-primary:hover {
+    background: #e0be78;
+    /* Brighter gold lift on hover */
+    border-color: #e0be78;
+    box-shadow: 0 4px 12px rgba(200, 168, 96, 0.35);
+}
+
+/* Secondary CTA Style: Outlined */
+.btn-secondary {
+    background: transparent;
+    color: #ffd27f;
+    /* Muted theme text color */
+    border: 1px solid #4a453a;
+    /* Default muted border width */
+}
+
+.btn-secondary:hover {
+    border-color: #c8a860;
+    /* Glow boundary changes to brand color */
+    color: #ffd27f;
+    box-shadow: inset 0 0 4px rgba(200, 168, 96, 0.1);
+}
+
+
+/* ==========================================================================
+   CONTAINERS & LAYOUTS
+   ========================================================================== */
+
+/* Landing Page Action Row */
+.panel-actions-landing {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto 8px auto;
+    padding: 0;
+    width: 100%;
+    max-width: 800px;
+}
+
+/* Base Landing Button Blueprint */
+.panel-actions-landing a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 4px;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    user-select: none;
+    box-sizing: border-box;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Primary CTA Button: Filled Style */
+.panel-actions-landing .btn-primary {
+    background: #c8a860;
+    /* Solid brand amber color fill */
+    color: #12100e;
+    /* High contrast dark text inside the fill */
+    border: 1px solid #c8a860;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.panel-actions-landing .btn-primary:hover {
+    background: #e0be78;
+    /* Brighter gold lift on hover */
+    border-color: #e0be78;
+    box-shadow: 0 4px 12px rgba(200, 168, 96, 0.35);
+}
+
+/* Secondary CTA Button: Outlined Style */
+.panel-actions-landing .btn-secondary {
+    background: transparent;
+    color: #ffd27f;
+    /* Muted theme text color */
+    border: 1px solid #4a453a;
+    /* Default muted border width */
+}
+
+.panel-actions-landing .btn-secondary:hover {
+    border-color: #c8a860;
+    /* Glow boundary changes to brand color */
+    color: #ffd27f;
+    box-shadow: inset 0 0 4px rgba(200, 168, 96, 0.1);
+}
+
+
+/* Variant 3: Desktop Download Contextual Subtext Line */
+.download-subtext {
+    text-align: center;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 12px;
+    color: #8a8274;
+    margin: 0 auto 20px auto;
+    width: 100%;
+}
+
+.download-subtext a {
+    color: #c8a860;
+    text-decoration: none;
+    font-weight: bold;
+    margin-left: 4px;
+    border-bottom: 1px dashed rgba(200, 168, 96, 0.4);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.download-subtext a:hover {
+    color: #ffd27f;
+    border-bottom-color: #ffd27f;
+}
+
+/* Relocated Corner Metadata / Social Channels Positioning */
+.app-corner-links {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 12px;
+    z-index: 900;
+}
+
+.corner-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #8a8274;
+    text-decoration: none;
+    font-family: arial, helvetica, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 10px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.corner-link:hover {
+    color: #ffd27f;
+    border-color: #4a453a;
+    background-color: rgba(26, 24, 21, 0.6);
+}
+
+.corner-icon {
+    display: block;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+}
+
+.corner-link:hover .corner-icon {
+    opacity: 1;
+}
+
+
+/* ==========================================================================
+   RESPONSIVE MEDIA QUERIES
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    body {
+        overflow-y: auto;
+    }
+
+    .download-subtext {
+        display: none !important;
+    }
+
+    .app-corner-links {
+        position: static;
+        margin: 20px auto;
+        justify-content: center;
+        width: 100%;
+        padding: 10px 0;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .corner-link {
+        font-size: 12px;
+        padding: 8px 14px;
+        background-color: rgba(26, 24, 21, 0.4);
+        border-color: #4a453a;
+    }
+
+    /* Shared layout collapse for the landing button row */
+    .panel-actions-landing {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+        max-width: 280px;
+        margin: 16px auto;
+    }
+
+    .panel-actions-landing a {
+        width: 100%;
+        height: 44px;
+        font-size: 12px;
+    }
+
+    .gif-banner-link {
+        display: block;
+        width: 100%;
+        max-width: calc(100vw - 32px);
+        margin: 0 auto;
+    }
+
+    .gif-banner-link img {
+        width: 100%;
+        height: auto;
+    }
+
+    .gif-banner-link .banner-tooltip {
+        display: none !important;
+    }
+}
