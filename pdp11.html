@@ -1724,10 +1724,12 @@ Hello world
   <script src='src/dataloader.js'></script>
   <script src='src/diskstore.js'></script>
   <script>
-    // ?core=1 loads the refactored machine layer (core classes + devices)
-    // instead of the monolithic iopage.js. Both modes expose the same
-    // global `iopage` contract, so the rest of the UI is unchanged.
-    window.__coreMode = /[?&]core=1/.test(location.search);
+    // The refactored machine layer (core classes + devices) is the DEFAULT.
+    // The legacy monolithic iopage.js remains available for comparison /
+    // rollback via ?core=0 (it registers its own copies of every device).
+    // Both modes expose the same global `iopage` contract, so the rest of
+    // the UI is unchanged.
+    window.__coreMode = !/[?&]core=0/.test(location.search);
     if (window.__coreMode) {
       document.write("<script src='src/core/bus.js'><\/script>");
       document.write("<script src='src/core/device.js'><\/script>");
