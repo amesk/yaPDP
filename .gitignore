@@ -32,3 +32,4 @@ tests/artifacts/
 # ---- Landing (React SPA) ----
 landing/node_modules/
 landing/dist/
+site/
