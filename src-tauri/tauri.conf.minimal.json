@@ -27,7 +27,7 @@
     },
     "bundle": {
         "active": true,
-        "targets": "all",
+        "targets": ["msi", "nsis", "portable"],
         "category": "Utility",
         "shortDescription": "yaPDP - Yet Another PDP-11/70 web emulator desktop app (minimal)",
         "longDescription": "yaPDP - Yet Another PDP-11/70 emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Minimal build: ships the core boot images only; other disk/tape images can be dragged & dropped.",
