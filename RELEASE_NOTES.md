@@ -1,8 +1,50 @@
-## Unreleased — changes since v0.1.0-alpha2
+# yaPDP v0.1.0 — Release Notes
 
-The next release is still in the works; these notes are kept up to date as
-the project develops. The highlights since alpha2:
+- **Release date:** 2026-09-04
+- **Baseline:** [v0.1.0-alpha2](https://github.com/amesk/yaPDP/releases/tag/v0.1.0-alpha2) (2026-08-24)
+- **Full diff:** [v0.1.0-alpha2...releases/v0.1.0](https://github.com/amesk/yaPDP/compare/v0.1.0-alpha2...releases/v0.1.0)
 
+**yaPDP — Yet Another PDP-11/70 web emulator** with an authentic front panel,
+a Model 33 ASR teletype, DECscope VT52 terminals and a DEC LP11 line printer
+— and, as of this release, a machine layer that finally looks like the
+hardware it emulates.
+
+## Headline: the machine layer becomes cards on a bus
+
+The biggest change of 0.1.0 is invisible on screen and changes everything
+under it. The emulator's machine was welded to the browser UI in one
+monolithic file; it is now a set of device *cards* on a *bus*
+(`src/core/` + `src/devices/`) — the same architectural idea DEC shipped
+with the real PDP-11 in 1969. The same machine assembles in the browser
+(default) and in pure Node, where RT-11 boots to its prompt in ~1.6 s with
+no browser at all. Tooling that used to drive a whole Chromium now runs
+headless (`tools/headless-term.js`, with a SIMH-style Ctrl+E command mode).
+
+Every guest OS the project supports is the acceptance test: **ten operating
+systems** — Unix V5, RT-11 (×2), RSX-11M 3.2/4.6, RSTS V06C/V7.0/E 9.6/10.1,
+XXDP, BSD 2.9/2.11 and BASIC-11 — boot through the quick-boot wizard on the
+new stack, and the same matrix runs against the legacy stack
+(`E2E_LEGACY=1`) as the parity gate. The guests even found real bugs during
+the migration: RSTS/E 9.6 crashed the browser on an unguarded debug hook,
+BSD 2.11's loader exposed a Unibus-map range bug, BASIC-11 taught us that a
+paper tape must be re-mounted after a reset. All fixed, all green.
+
+The legacy monolith stays behind `?core=0` for comparison and rollback;
+retiring it is tracked ([#18](https://github.com/amesk/yaPDP/issues/18)).
+
+## What's New since alpha2
+
+
+- **Stack-parity e2e gate (10 guests × 2 stacks).** `npm run e2e:os` now
+  boots ten real guest OSes to their ready prompts on the refactored core
+  stack; `E2E_LEGACY=1` repeats the whole matrix on the legacy stack.
+- **Automatic NUL lead-in/trailer on the ASR paper tape** — a fresh tape
+  starts with the historic 6-row blank lead-in, and disengaging the punch
+  adds a matching trailer (only when data was actually punched — a bare
+  tape stays bare).
+- **Project roadmap & issue tracking**: `docs/ROADMAP.md`, known issues
+  linked to GitHub issues (#15 ULTRIX panic, #16 e2e flake, #18 legacy
+  retirement).
 - **Full machine-state snapshots (L2/L3).** Save/restore now captures the
   whole machine: CPU, RAM, MMU, mounted images, the registers of all nine
   I/O-page devices (including the punch buffer), the punched paper tape,
