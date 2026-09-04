@@ -100,10 +100,14 @@ const SAMPLE_LP11 = [
 // --- Inject helpers (run inside the page context) ------------------------
 
 // Feed sample text into a VT52 terminal unit (0 = console, 1/2 = user tty).
+// Real terminal output moves the cursor with CR LF pairs; a bare LF only
+// advances the line and leaves the column where it was, so the injected
+// sample text must use CR LF too — otherwise the lines step diagonally
+// ("\r not working") in the screenshot while live sessions look fine.
 async function vt52Text(page, unit, text) {
     await page.evaluate((u, s) => {
         if (typeof window.vt52Write === "function") window.vt52Write(u, s);
-    }, unit, text);
+    }, unit, text.replace(/\n/g, "\r\n"));
 }
 
 // Print a sample job on the LP11 line-printer paper.
