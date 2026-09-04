@@ -1,7 +1,13 @@
 # ---------------------------------------------------------------------------
 # yaPDP site deploy — build the React landing and publish the whole site
 # (landing SPA as index.html + the emulator and its media at the repo root)
-# to GitHub Pages from Actions (replaces the manual web-UI publish).
+# to GitHub Pages from Actions.
+#
+# The public demo follows the release cadence: it publishes when a
+# releases/v* tag is pushed (i.e. what we validated and shipped), not on
+# every master commit. Manual dispatch (Actions -> Run workflow) accepts
+# any branch — the rollback path: a checkout without landing/ publishes
+# the classic static site.
 #
 # The deployed site is the repository root with landing/dist overlaid, so
 # the emulator stays same-origin: the SPA links /pdp11.html directly and
@@ -11,16 +17,7 @@ name: pages
 
 on:
   push:
-    branches: [master]
-    paths:
-      - 'index.html'
-      - 'manual.html'
-      - 'pdp11.html'
-      - 'assets/**'
-      - 'css/**'
-      - 'media/**'
-      - 'src/**'
-      - 'landing/**'
+    tags: ['releases/v*']
   workflow_dispatch:
     inputs:
       branch:
