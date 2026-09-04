@@ -10,6 +10,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Nothing yet — see [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## [0.1.0] - 2026-09-04
+
+### Architecture: the machine layer becomes cards on a bus
+
+- **Core machine stack (`?core=1` era ended — it is now the default).** The
+  PDP‑11/70 machine is no longer welded to the UI. Following the hardware's
+  own Unibus idea (1969), the machine layer is split into core base classes
+  (`src/core/`: bus, device, machine) and one module per peripheral
+  (`src/devices/`): DL11, KW11, RK11, RL11, RP11, TM11, UDA50 (MSCP),
+  PTR11/PTP11, LP11, MMU and CPU registers — 1:1 DOM-free ports of the
+  legacy iopage closures. `pdp11.html` boots the core stack by default; the
+  monolithic `src/iopage.js` remains reachable with `?core=0` as the
+  reference/rollback implementation.
+- **Headless machine.** The same cards assemble in pure Node
+  (`tools/headless-machine.js`) — RT‑11 boots to its prompt in ~1.6 s with
+  no browser. `tools/headless-term.js` is the CLI tool of record
+  (`:mount`/`:export`/`:wait`/`:raw`, Ctrl+E SIMH-style command mode);
+  `tools/rt11-term.js` (puppeteer era) is deprecated.
+- **Shared write-back.** DiskStore moved to `src/diskstore.js`; the browser
+  core stack persists guest writes through the same IndexedDB overlay as
+  legacy.
+- **Tooling seam.** Internal `__yapdpBridge` is always exposed; the legacy
+  `window.*` bridge surface is gated behind `?bridge=1`.
+- **Stack-parity gate.** `tests/e2e-osboot.js` boots **ten guest OSes**
+  (Unix V5, RT‑11 ×2, RSX‑11M 3.2/4.6, RSTS V06C/V7.0/E 9.6/10.1, XXDP,
+  BSD 2.9/2.11, BASIC‑11) through the wizard on the core stack;
+  `E2E_LEGACY=1` runs the same matrix on `?core=0`. RSTS/E 9.6+10.1 boot
+  is a regression anchor for the UDA50 fix below.
+- **Docs:** `docs/machine-layer.md` (design deep-dive), ARCHITECTURE
+  updated for both stacks, `docs/ROADMAP.md` added, known issues linked to
+  GitHub issues.
+
+### Fixed
+
+- **UDA50 debug guard.** `process.env.DEBUG_UDA` was read without a
+  `typeof process` guard, crashing the browser CPU loop when RSTS/E 9.6 /
+  10.1 autoconfigured the UDA50 (they probe every controller, even when
+  booting from RP).
+- **Paper-tape re-mount after reset.** `boot()`/device reset forgot the PTR
+  tape; the DOM-free card cannot lazily rebuild from the Storage select, so
+  the adapter re-applies the selected tape after reset/restore — BASIC‑11
+  boots on the core stack again (`@BOOT PR` → `*O` in ~2 s).
+- **RSTS/RSX quick-boot scenarios.** RSTS `Option:` answers corrected
+  (`START` starts timesharing; the historic `^J` is honoured, blind
+  `11,70`/`PDP` dropped); RSX‑11M images autostart, so the blind MCR typing
+  was removed.
+
+
+### Added
+
 - **Automatic NUL lead-in / trailer on the ASR paper tape.** A fresh tape
   (tear-off) now starts with 6 blank NUL rows — the historic lead-in: the
   punch feeds the tape while no data pins fire, so the tape gets a
@@ -497,5 +549,7 @@ controls.
 
 Initial public alpha release.
 
+[0.1.0]: https://github.com/amesk/yaPDP/compare/v0.1.0-alpha2...releases/v0.1.0
+[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0...HEAD
 [0.1.0-alpha2]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2
 [0.1.0-alpha1]: https://github.com/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1
