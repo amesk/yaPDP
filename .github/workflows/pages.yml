@@ -41,13 +41,19 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.branch || 'master' }}
+          # Manual dispatch: publish the requested branch (default master).
+          # Tag push (releases/v*): publish the tagged commit itself — never
+          # the default branch, which may have moved past the release.
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: landing/package-lock.json
+          # Key on the root lockfile: it exists in every checkout, including
+          # the static-site rollback path where landing/ is absent (the npm
+          # cache is content-addressed, so landing packages still hit).
+          cache-dependency-path: package-lock.json
 
       - name: Build the landing SPA (skipped when landing/ is absent — rollback path)
         working-directory: landing
