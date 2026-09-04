@@ -6,7 +6,6 @@ import {
   Copy,
   Check,
   Search,
-  ExternalLink,
   ChevronUp,
   Download,
   Info,
@@ -139,16 +138,6 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             <span>{lang === 'en' ? 'Launch Emulator' : 'Запустить эмулятор'}</span>
           </button>
 
-          <a
-            href="manual.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold uppercase tracking-wider rounded border border-[#524939] bg-[#1e1a14] hover:bg-[#2a241b] text-[#d4c4a0] hover:text-[#f0e6c8] transition-all"
-            title={lang === 'en' ? 'Open standalone static manual' : 'Открыть отдельный файл manual.html'}
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-[#c8a860]" />
-            <span>{lang === 'en' ? 'Standalone manual.html' : 'Отдельный manual.html'}</span>
-          </a>
         </div>
       </div>
 
@@ -185,7 +174,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             <Sliders className="w-4 h-4 text-[#c8a860]" />
             {lang === 'en' ? 'Table of Contents' : 'Оглавление руководства'}
           </h2>
-          <span className="text-[11px] text-[#8a7650] font-mono">12 SECTIONS</span>
+          <span className="text-[11px] text-[#8a7650] font-mono">{MANUAL_SECTIONS.length} SECTIONS</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -883,11 +872,65 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
         </div>
       </section>
 
+      {/* SECTION 8: MACHINE STATE */}
+      <section id="machine-state" className="space-y-5 scroll-mt-20">
+        <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
+            <span className="font-mono text-[#c8a860] text-lg">§8</span>
+            {lang === 'en' ? 'Machine State (STATE button)' : 'Состояние машины (кнопка STATE)'}
+          </h2>
+        </div>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The round STATE button (top-left corner, right of REBOOT) opens the machine-state dialog — a full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype and LP11, the VT52 screen contents and even the VT11 vector-display picture are all captured. Think of it as a save file of the whole machine.'
+            : 'Круглая кнопка STATE (в верхнем левом углу, справа от REBOOT) открывает диалог состояния машины — полное сохранение/восстановление эмулируемого PDP-11, а не только процессора: регистры, память, все устройства ввода-вывода (консоль, терминалы, принтер, диски, лента, считыватель/перфоратор), бумага в телетайпе и LP11, содержимое экранов VT52 и даже картинка векторного дисплея VT11. По сути это файл сохранения всей машины.'}
+        </p>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+          <img
+            src="assets/images/manual/dialog-state.png"
+            alt="The machine-state dialog"
+            className="w-full h-auto rounded cursor-pointer"
+            onClick={() =>
+              openImage('assets/images/manual/dialog-state.png', 'The machine-state dialog with one freshly saved state')
+            }
+          />
+        </div>
+
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Save state' : 'Сохранить состояние'}</strong>{' '}
+            {lang === 'en'
+              ? 'captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.'
+              : 'фиксирует машину как есть под автоматически сгенерированным именем (дата и время). Конфигурация оборудования входит в состояние: при восстановлении повторно применяются тип консоли, терминалы, принтер и дисплей VT11, и машина перезапускается под них.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Load' : 'Загрузить'}</strong>{' '}
+            {lang === 'en'
+              ? 'restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working.'
+              : 'восстанавливает выбранное состояние и перезапускает машину (с подтверждением). Состояния, сохранённые старыми версиями эмулятора, продолжают работать.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Rename / Delete' : 'Переименовать / Удалить'}</strong>{' '}
+            {lang === 'en'
+              ? 'organise the list or remove states; the counter next to the list shows how many states you have.'
+              : 'приводят список в порядок или удаляют состояния; счётчик рядом со списком показывает их количество.'}
+          </li>
+        </ul>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The STATE button mirrors REBOOT and is available on the Panel, Console (teletype or VT52) and TTY pages. States are stored in the browser IndexedDB and survive reloads and sessions.'
+            : 'Кнопка STATE зеркалит REBOOT и доступна на страницах Panel, Console (телетайп или VT52) и TTY. Состояния хранятся в IndexedDB браузера и переживают перезагрузки и сеансы.'}
+        </p>
+      </section>
+
       {/* SECTION 8: CONFIGURATION */}
       <section id="config" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
-            <span className="font-mono text-[#c8a860] text-lg">§8</span>
+            <span className="font-mono text-[#c8a860] text-lg">§13</span>
             {lang === 'en' ? 'Configuration (Config page)' : 'Конфигурация (страница Config)'}
           </h2>
         </div>

@@ -72,9 +72,7 @@ export function Hero({ lang, onLaunchOnline, onOpenManual }: HeroProps) {
           </button>
         ) : (
           <a
-            href="manual.html"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="#manual"
             className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider rounded border border-[#c8a860] bg-gradient-to-b from-[#4a3e2a] to-[#2c261c] hover:from-[#5c4d34] hover:to-[#383124] text-[#f0e6c8] hover:text-[#fff6e0] shadow-[inset_0_1px_0_rgba(255,200,80,0.15),0_2px_4px_rgba(0,0,0,0.5)] transition-all text-center"
           >
             <BookOpen className="w-4 h-4 text-[#e8d080] shrink-0" />

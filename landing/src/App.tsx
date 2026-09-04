@@ -168,15 +168,12 @@ export default function App() {
                 Telegram (RU)
               </a>
               <span>·</span>
-              <a
-                href="manual.html"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#c8a860] transition-colors"
-                title="Standalone manual.html"
+              <button
+                onClick={() => handleSelectView('manual')}
+                className="hover:text-[#c8a860] transition-colors cursor-pointer"
               >
-                manual.html
-              </a>
+                {lang === 'en' ? 'Manual' : 'Руководство'}
+              </button>
               <span>·</span>
               <button
                 onClick={() => setIsEmulatorOpen(true)}
