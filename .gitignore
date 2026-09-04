@@ -26,3 +26,4 @@ tests/artifacts/
 
 # ---- Scratch probe scripts (never commit) ----
 *.tmp.js
+.wireit/

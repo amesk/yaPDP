@@ -17,7 +17,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node tools/run-tests.js",
+    "test": "wireit",
     "rebuild-boot": "node tools/rebuild-bootcode.js",
     "stage": "node tools/build-desktop.js",
     "desktop": "node tools/build-desktop.js && node tools/tauri-build.js",
@@ -31,16 +31,84 @@
     "video:demo": "node tools/assemble-video.js",
     "clean": "node tools/build-desktop.js --clean",
     "version:sync": "node tools/sync-version.js",
-    "manifest": "node tools/gen-media-manifest.js",
-    "e2e:os": "node tests/e2e-osboot.js"
+    "manifest": "wireit",
+    "e2e:os": "wireit",
+    "e2e:os:legacy": "wireit",
+    "validate": "wireit",
+    "term": "node tools/headless-term.js"
   },
   "devDependencies": {
     "canvas": "^3.2.3",
     "ffmpeg-static": "^5.3.0",
     "puppeteer-core": "^25.8.0",
-    "puppeteer-stream": "^3.0.23"
+    "puppeteer-stream": "^3.0.23",
+    "wireit": "file:../../../tmp/wireit.tgz"
   },
   "dependencies": {
     "puppeteer": "^25.9.0"
+  },
+  "wireit": {
+    "manifest": {
+      "command": "node tools/gen-media-manifest.js",
+      "files": [
+        "media/**",
+        "tools/gen-media-manifest.js",
+        "media/README.md"
+      ],
+      "output": [
+        "media/manifest.json"
+      ]
+    },
+    "test": {
+      "command": "node tools/run-tests.js",
+      "dependencies": [
+        "manifest"
+      ],
+      "files": [
+        "src/**",
+        "tests/**",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "e2e:os": {
+      "command": "node tests/e2e-osboot.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-osboot.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "e2e:os:legacy": {
+      "command": "node tests/e2e-osboot.js --legacy",
+      "dependencies": [
+        "e2e:os"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-osboot.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "validate": {
+      "dependencies": [
+        "e2e:os",
+        "e2e:os:legacy"
+      ]
+    }
   }
 }

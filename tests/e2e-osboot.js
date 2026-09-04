@@ -46,11 +46,14 @@ const ARTIFACTS = path.join(__dirname, "artifacts");
 const PORT = 1170;
 const BASE = `http://127.0.0.1:${PORT}`;
 
-// E2E_LEGACY=1 runs the guest matrix against the legacy monolithic
-// iopage.js stack (?core=0). The default run exercises the refactored
-// core stack, which is now the mode the page boots into by default.
-const STACK_PARAM = process.env.E2E_LEGACY ? "core=0&" : "";
-const STACK_LABEL = process.env.E2E_LEGACY ? "legacy iopage (?core=0)" : "refactored core (default)";
+// E2E_LEGACY=1 (or --legacy) runs the guest matrix against the legacy
+// monolithic iopage.js stack (?core=0). The default run exercises the
+// refactored core stack, which is now the mode the page boots into by
+// default.
+const legacyMode = process.env.E2E_LEGACY === "1" ||
+    process.argv.includes("--legacy");
+const STACK_PARAM = legacyMode ? "core=0&" : "";
+const STACK_LABEL = legacyMode ? "legacy iopage (?core=0)" : "refactored core (default)";
 
 // Device -> config that EXACTLY matches the OSBoot scenario's `hardware`
 // block (mirrors tools/screenshots-os.js OS_CFG). Seeding it means the
