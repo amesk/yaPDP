@@ -63,7 +63,7 @@ bump → document → build → publish. Total time: under an hour.
 
 ### 5. Build artifacts
 
-On **Windows** (MSI / NSIS / portable exe):
+On **Windows** (MSI / NSIS):
 
 - [ ] `npm run desktop:minimal`
 - [ ] `npm run desktop:full`

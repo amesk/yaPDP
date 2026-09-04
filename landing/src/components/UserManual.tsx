@@ -1277,8 +1277,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
-            ? 'Prefer a native app? The same emulator is also packaged as an offline desktop application — for Windows (installer, MSI and portable) and Linux (deb, rpm and AppImage). Two variants are available:'
-            : 'Предпочитаете нативное приложение? Тот же эмулятор выпускается и как автономная офлайн-программа — для Windows (установщик, MSI и портативная версия) и Linux (deb, rpm и AppImage). Доступно два варианта:'}
+            ? 'Prefer a native app? The same emulator is also packaged as an offline desktop application — for Windows (installer and MSI) and Linux (deb, rpm and AppImage). Two variants are available:'
+            : 'Предпочитаете нативное приложение? Тот же эмулятор выпускается и как автономная офлайн-программа — для Windows (установщик и MSI) и Linux (deb, rpm и AppImage). Доступно два варианта:'}
         </p>
 
         <div className="overflow-x-auto rounded-lg border border-[#4a453a] bg-[#12100d]">

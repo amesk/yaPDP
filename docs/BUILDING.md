@@ -26,8 +26,8 @@ download and a fully-offline bundle with every disk/tape image:
 ### Artifacts (Linux x64)
 
 Built on Linux (no cross-compilation — see below). `.deb` for Debian/Ubuntu
-family, `.rpm` for Fedora/RHEL/openSUSE, `.AppImage` is the portable
-download-and-run format (the analogue of the Windows portable `.exe`):
+family, `.rpm` for Fedora/RHEL/openSUSE, `.AppImage` is a self-contained
+download-and-run format (no installation):
 
 | Artifact | Size |
 |----------|------|
@@ -159,7 +159,7 @@ npm run desktop:full      # yaPDP-Full: deb + AppImage
 
 The first build downloads the AppImage tooling (linuxdeploy) automatically.
 The `.deb` installs system-wide via `apt`/`dpkg` (Debian/Ubuntu family); the
-`.AppImage` is the Linux analogue of the portable `.exe` — download, `chmod +x`,
+`.AppImage` is the self-contained Linux format — download, `chmod +x`,
 run, no installation required. Runtime dependencies of the `.deb` (WebKitGTK,
 GTK3, …) are pulled in automatically by the package manager.
 
@@ -173,7 +173,7 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | Script | Action |
 |--------|--------|
 | `npm run stage` | Stage the lightweight frontend (excludes heavy `media/`) into `desktop/`; default variant is `minimal` |
-| `npm run desktop` / `desktop:minimal` | Stage + build installers for the current platform (Windows: MSI + NSIS + portable exe; Linux: deb + AppImage), `minimal` variant (rk0/rk1/bootcode) |
+| `npm run desktop` / `desktop:minimal` | Stage + build installers for the current platform (Windows: MSI + NSIS; Linux: deb + AppImage), `minimal` variant (rk0/rk1/bootcode) |
 | `npm run desktop:full` | Stage + build installers with every disk/tape image bundled |
 | `npm test` | Run the modular tests (Config + clipboard paste (PasteUtil) + DataLoader + onboarding + image-load error + quick-boot scenarios + VT52 (overstrike + escape sequences) + LP11 text + LP11 scaling + front-panel scaling + teletype scaling + LP11 ON LINE/DONE/ERROR semantics + teletype paper growth (CSS contract + `teletypePaperMaxHeight` helper) + teletype cabinet/keycaps CSS contract + VT52 cabinet CSS sizing + G60Printer paper geometry/flush + DL11 console receive + VT11 display + fullscreen toggle + machine hum + NavActivity sidebar lamps + sidebar nav tooltips + PanelLed panel status) — driven by [`tools/run-tests.js`](../tools/run-tests.js) (`npm test -- <substr>` runs matching files only) |
 | `npm run e2e:os` | Boot real guest OSes (Unix V5, RT-11, BSD 2.11, BASIC-11) through the quick-boot wizard in Chromium and assert each reaches its ready state — covers the emulator core + boot sequences + the wizard's prompt-aware auto-login ([`tests/e2e-osboot.js`](../tests/e2e-osboot.js)) |
