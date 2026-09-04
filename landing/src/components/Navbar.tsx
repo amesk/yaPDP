@@ -5,15 +5,13 @@ interface NavbarProps {
   view: 'overview' | 'manual' | 'emulator';
   onSelectView: (view: 'overview' | 'manual' | 'emulator') => void;
   onToggleLang: () => void;
-  onOpenEmulator: () => void;
 }
 
 export function Navbar({
   lang,
   view,
   onSelectView,
-  onToggleLang,
-  onOpenEmulator
+  onToggleLang
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-40 bg-[#1c1915]/95 backdrop-blur-md border-b border-[#3a3528] px-2.5 sm:px-4 py-2 w-full">
@@ -213,18 +211,6 @@ export function Navbar({
             <span className={lang === 'en' ? 'text-[#e8d080] font-bold' : 'opacity-60'}>EN</span>
             <span className="text-[#524939]">/</span>
             <span className={lang === 'ru' ? 'text-[#e8d080] font-bold' : 'opacity-60'}>RU</span>
-          </button>
-
-          {/* Online Emulator Button */}
-          <button
-            onClick={onOpenEmulator}
-            type="button"
-            className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] hover:from-[#6a5838] hover:to-[#4a4030] text-[#f0e6c8] hover:text-[#fff6e0] shadow-xs transition-all whitespace-nowrap"
-          >
-            <Terminal className="w-3 h-3 text-[#e8d080] shrink-0" />
-            <span>
-              {lang === 'en' ? 'Play Online' : 'Запустить'}
-            </span>
           </button>
 
           {/* Telegram Link */}
