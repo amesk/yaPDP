@@ -1,0 +1,77 @@
+# ---------------------------------------------------------------------------
+# yaPDP site deploy — build the React landing and publish the whole site
+# (landing SPA as index.html + the emulator and its media at the repo root)
+# to GitHub Pages from Actions (replaces the manual web-UI publish).
+#
+# The deployed site is the repository root with landing/dist overlaid, so
+# the emulator stays same-origin: the SPA links /pdp11.html directly and
+# every guest image keeps working.
+# ---------------------------------------------------------------------------
+name: pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'index.html'
+      - 'manual.html'
+      - 'pdp11.html'
+      - 'assets/**'
+      - 'css/**'
+      - 'media/**'
+      - 'src/**'
+      - 'landing/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+
+      - name: Install landing dependencies
+        working-directory: landing
+        run: npm ci
+
+      - name: Build the landing SPA
+        working-directory: landing
+        run: npm run build
+
+      - name: Assemble the site (repo root + landing/dist overlay)
+        run: |
+          mkdir -p site
+          rsync -a --exclude .git --exclude .github --exclude .wireit \
+            --exclude landing --exclude node_modules --exclude tests \
+            --exclude docs --exclude tools --exclude src-tauri \
+            --exclude desktop --exclude macro-asm --exclude .roo \
+            ./ site/
+          cp -r landing/dist/* site/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

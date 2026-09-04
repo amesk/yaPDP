@@ -26,4 +26,9 @@ tests/artifacts/
 
 # ---- Scratch probe scripts (never commit) ----
 *.tmp.js
+# ---- Wireit cache ----
 .wireit/
+
+# ---- Landing (React SPA) ----
+landing/node_modules/
+landing/dist/
