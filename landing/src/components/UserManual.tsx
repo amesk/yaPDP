@@ -415,8 +415,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               <div className="flex-1">
                 <p className="text-xs text-[#d4c4a0] mb-1">
                   {lang === 'en'
-                    ? 'At the Boot> prompt, type the boot command and press ENTER:'
-                    : 'В приглашении Boot> введите команду загрузки и нажмите ENTER:'}
+                    ? 'At the @ prompt, type the boot command and press ENTER:'
+                    : 'В приглашении @ введите команду загрузки и нажмите ENTER:'}
                 </p>
                 <div className="flex items-center justify-between bg-black/60 rounded px-3 py-1.5 font-mono text-xs text-[#e8d080] border border-[#3a3528]">
                   <span>boot rp1</span>
@@ -655,14 +655,14 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               onClick={() =>
                 openImage(
                   'assets/images/manual/console-teletype.png',
-                  'The Model 33 ASR operator console at the Boot> prompt'
+                  'The Model 33 ASR operator console at the @ prompt'
                 )
               }
             />
             <p className="mt-1.5 text-center text-xs text-[#8a7650] italic">
               {lang === 'en'
-                ? 'The Model 33 ASR operator console at the Boot> prompt.'
-                : 'Консоль оператора Model 33 ASR со строкой приглашения Boot>.'}
+                ? 'The Model 33 ASR operator console at the @ prompt.'
+                : 'Консоль оператора Model 33 ASR со строкой приглашения @.'}
             </p>
           </div>
 
