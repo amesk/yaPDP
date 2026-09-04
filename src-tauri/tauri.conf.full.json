@@ -1,84 +1,84 @@
 {
-    "$schema": "https://schema.tauri.app/config/2",
-    "productName": "yaPDP-Full",
-    "version": "0.1.0",
-    "identifier": "org.yapdp.emulator.full",
-    "build": {
-        "frontendDist": "../desktop"
-    },
-    "app": {
-        "withGlobalTauri": true,
-        "windows": [
-            {
-                "label": "main",
-                "title": "yaPDP \u2014 PDP-11/70 Emulator",
-                "url": "pdp11.html",
-                "width": 1280,
-                "height": 920,
-                "minWidth": 900,
-                "minHeight": 640,
-                "resizable": true,
-                "fullscreen": false
-            }
-        ],
-        "security": {
-            "csp": null
-        }
-    },
-    "bundle": {
-        "active": true,
-        "targets": ["msi", "nsis", "portable"],
-        "category": "Utility",
-        "shortDescription": "yaPDP - Yet Another PDP-11/70 web emulator desktop app (full)",
-        "longDescription": "yaPDP - Yet Another PDP-11/70 emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Full build: ships every disk/tape image (RK/RL/RP/RA/TM + paper tapes) for fully offline booting of all 16 guest operating systems.",
-        "icon": [
-            "icons/32x32.png",
-            "icons/128x128.png",
-            "icons/128x128@2x.png",
-            "icons/icon.ico"
-        ],
-        "windows": {
-            "nsis": {
-                "sidebarImage": "installer/sidebar.bmp"
-            },
-            "wix": {
-                "bannerPath": "installer/banner.bmp",
-                "dialogImagePath": "installer/dialog.bmp"
-            }
-        },
-        "resources": {
-            "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
-            "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
-            "../media/rk2.dsk.zst": "media/rk2.dsk.zst",
-            "../media/rk3.dsk.zst": "media/rk3.dsk.zst",
-            "../media/rk4.dsk.zst": "media/rk4.dsk.zst",
-            "../media/rk5.dsk.zst": "media/rk5.dsk.zst",
-            "../media/rl0.dsk.zst": "media/rl0.dsk.zst",
-            "../media/rl1.dsk.zst": "media/rl1.dsk.zst",
-            "../media/rl2.dsk.zst": "media/rl2.dsk.zst",
-            "../media/rl3.dsk.zst": "media/rl3.dsk.zst",
-            "../media/rp0.dsk.zst": "media/rp0.dsk.zst",
-            "../media/rp1.dsk.zst": "media/rp1.dsk.zst",
-            "../media/rp2.dsk.zst": "media/rp2.dsk.zst",
-            "../media/rp3.dsk.zst": "media/rp3.dsk.zst",
-            "../media/rp4.dsk.zst": "media/rp4.dsk.zst",
-            "../media/ra0.dsk.zst": "media/ra0.dsk.zst",
-            "../media/ra1.dsk.zst": "media/ra1.dsk.zst",
-            "../media/ra2.dsk.zst": "media/ra2.dsk.zst",
-            "../media/tm0.tap.zst": "media/tm0.tap.zst",
-            "../media/tm1.tap.zst": "media/tm1.tap.zst",
-            "../media/tm2.tap.zst": "media/tm2.tap.zst",
-            "../media/bootcode.ptap": "media/bootcode.ptap",
-            "../media/DEC-11-AJPB-PB.ptap.zst": "media/DEC-11-AJPB-PB.ptap.zst",
-            "../media/DEC-11-O2PA-PB.ptap.zst": "media/DEC-11-O2PA-PB.ptap.zst",
-            "../media/ED-11-V004B-8K.ptap.zst": "media/ED-11-V004B-8K.ptap.zst",
-            "../media/lander.ptap": "media/lander.ptap"
-        },
-        "publisher": "Alexei Eskenazi",
-        "copyright": "\u00a9 2026 Alexei Eskenazi",
-        "linux": {
-            "deb": {},
-            "appimage": {}
-        }
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "yaPDP-Full",
+  "version": "0.1.0",
+  "identifier": "org.yapdp.emulator.full",
+  "build": {
+    "frontendDist": "../desktop"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "yaPDP — PDP-11/70 Emulator",
+        "url": "pdp11.html",
+        "width": 1280,
+        "height": 920,
+        "minWidth": 900,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
     }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Utility",
+    "shortDescription": "yaPDP - Yet Another PDP-11/70 web emulator desktop app (full)",
+    "longDescription": "yaPDP - Yet Another PDP-11/70 emulator with an authentic front panel and Model 33 ASR teletype, packaged as a native desktop app. Full build: ships every disk/tape image (RK/RL/RP/RA/TM + paper tapes) for fully offline booting of all 16 guest operating systems.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "sidebarImage": "installer/sidebar.bmp"
+      },
+      "wix": {
+        "bannerPath": "installer/banner.bmp",
+        "dialogImagePath": "installer/dialog.bmp"
+      }
+    },
+    "resources": {
+      "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
+      "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
+      "../media/rk2.dsk.zst": "media/rk2.dsk.zst",
+      "../media/rk3.dsk.zst": "media/rk3.dsk.zst",
+      "../media/rk4.dsk.zst": "media/rk4.dsk.zst",
+      "../media/rk5.dsk.zst": "media/rk5.dsk.zst",
+      "../media/rl0.dsk.zst": "media/rl0.dsk.zst",
+      "../media/rl1.dsk.zst": "media/rl1.dsk.zst",
+      "../media/rl2.dsk.zst": "media/rl2.dsk.zst",
+      "../media/rl3.dsk.zst": "media/rl3.dsk.zst",
+      "../media/rp0.dsk.zst": "media/rp0.dsk.zst",
+      "../media/rp1.dsk.zst": "media/rp1.dsk.zst",
+      "../media/rp2.dsk.zst": "media/rp2.dsk.zst",
+      "../media/rp3.dsk.zst": "media/rp3.dsk.zst",
+      "../media/rp4.dsk.zst": "media/rp4.dsk.zst",
+      "../media/ra0.dsk.zst": "media/ra0.dsk.zst",
+      "../media/ra1.dsk.zst": "media/ra1.dsk.zst",
+      "../media/ra2.dsk.zst": "media/ra2.dsk.zst",
+      "../media/tm0.tap.zst": "media/tm0.tap.zst",
+      "../media/tm1.tap.zst": "media/tm1.tap.zst",
+      "../media/tm2.tap.zst": "media/tm2.tap.zst",
+      "../media/bootcode.ptap": "media/bootcode.ptap",
+      "../media/DEC-11-AJPB-PB.ptap.zst": "media/DEC-11-AJPB-PB.ptap.zst",
+      "../media/DEC-11-O2PA-PB.ptap.zst": "media/DEC-11-O2PA-PB.ptap.zst",
+      "../media/ED-11-V004B-8K.ptap.zst": "media/ED-11-V004B-8K.ptap.zst",
+      "../media/lander.ptap": "media/lander.ptap"
+    },
+    "publisher": "Alexei Eskenazi",
+    "copyright": "© 2026 Alexei Eskenazi",
+    "linux": {
+      "deb": {},
+      "appimage": {}
+    }
+  }
 }
