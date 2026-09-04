@@ -182,13 +182,6 @@ export const RESOURCE_LINKS: ResourceLinkItem[] = [
     notes: 'Build instructions, guest OS table, desktop app variants',
   },
   {
-    id: 'manual',
-    name: 'User manual',
-    displayUrl: 'manual.html',
-    url: 'manual.html',
-    notes: 'Step-by-step user guide for the emulator',
-  },
-  {
     id: 'pdp11js',
     name: 'Original pdp11-js',
     displayUrl: 'https://github.com/paulnank/pdp11-js/',
