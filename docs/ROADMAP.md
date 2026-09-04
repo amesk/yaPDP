@@ -44,6 +44,12 @@ linked docs/issues. Known emulator bugs are tracked separately in
   `index.html`/`manual.html`.
 - **Full-disk write-back UX.** Guest writes already persist (DiskStore
   overlay); surface it in the UI (dirty indicators, reset-to-pristine).
+- **Release artifacts built in CI.** The 0.1.0 dirty-tree incident (a local
+  uncommitted teletype CSS experiment shipped in the Windows installers
+  while the clean-built site was fine) proved the last non-CI release step
+  is the local desktop build. Move installer builds (Windows + Linux) onto
+  a releases/v* workflow: clean tag checkout, windows/ubuntu runners, and
+  the artifacts attach to the GitHub Release automatically.
 
 ## Done (0.1.0)
 
