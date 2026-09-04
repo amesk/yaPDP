@@ -149,8 +149,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <p className="text-xs sm:text-sm text-[#8a7650] font-mono mb-6">
           {lang === 'en'
-            ? 'Everything below applies to both the in-browser emulator and the Tauri desktop app.'
-            : 'Всё описанное ниже в равной мере относится как к браузерной версии, так и к десктопному приложению на Tauri.'}
+            ? 'Everything below applies to both the in-browser emulator and the standalone desktop app.'
+            : 'Всё описанное ниже в равной мере относится как к браузерной версии, так и к автономному десктопному приложению.'}
         </p>
 
         {/* Action buttons */}
