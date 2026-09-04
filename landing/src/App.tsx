@@ -86,7 +86,6 @@ export default function App() {
           view={view}
           onSelectView={handleSelectView}
           onToggleLang={toggleLanguage}
-          onOpenEmulator={() => handleSelectView('emulator')}
         />
 
         {/* Main Content */}
@@ -95,8 +94,7 @@ export default function App() {
             <UserManual
               lang={lang}
               onBackToHome={() => handleSelectView('overview')}
-              onOpenEmulator={() => handleSelectView('emulator')}
-            />
+                />
           ) : view === 'emulator' ? (
             <PDP11Emulator
               lang={lang}
