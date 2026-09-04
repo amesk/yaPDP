@@ -25,7 +25,11 @@ linked docs/issues. Known emulator bugs are tracked separately in
   certifying the emulation, as an e2e extension. Bonus fact for the Habr
   series: XXDP's name comes from the DECsystem-10/20 world.
 - **ULTRIX-11 multi-user panic** — root-cause and fix (MMU/user-mode
-  candidate); see known-issues.md.
+  candidate); tracked as [#15](https://github.com/amesk/yaPDP/issues/15),
+  details in known-issues.md.
+- **e2e-teletype-tape "HERE IS" LOCAL flake** — timing-sensitive output
+  check, occasional spurious failure; tracked as
+  [#16](https://github.com/amesk/yaPDP/issues/16).
 - **`E2E_CORE` semantics cleanup.** After the core stack became the default,
   `E2E_CORE=1` in the teletype/tape/snapshot e2e suites is a no-op; legacy
   coverage there should be expressed as `?core=0` (or dropped with the
