@@ -27,6 +27,7 @@ const EXCLUDE_TOP = new Set([
     "landing", "node_modules", "tests", "docs", "tools",
     "src-tauri", "desktop", "macro-asm",
     "dist-linux", "video",
+    "site", // the output directory itself — never copy it into itself
     "package.json", "package-lock.json",
     "CHANGELOG.md", "LICENSE", "README.md",
 ]);
