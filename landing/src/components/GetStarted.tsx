@@ -172,7 +172,7 @@ export function GetStarted({ lang, onLaunchOnline }: GetStartedProps) {
             <code className="bg-black/50 px-1.5 py-0.5 rounded text-[#e8d080] font-mono border border-[#4a453a] break-all">
               npm run desktop:full
             </code>{' '}
-            — it produces NSIS/MSI installers plus a portable executable, either in a tiny <strong>Minimal</strong> variant or a fully-offline <strong>Full</strong> variant with every disk/tape image bundled. See the README for details.
+            — it produces NSIS/MSI installers, either in a tiny <strong>Minimal</strong> variant or a fully-offline <strong>Full</strong> variant with every disk/tape image bundled. See the README for details.
           </>
         ) : (
           <>
@@ -180,7 +180,7 @@ export function GetStarted({ lang, onLaunchOnline }: GetStartedProps) {
             <code className="bg-black/50 px-1.5 py-0.5 rounded text-[#e8d080] font-mono border border-[#4a453a] break-all">
               npm run desktop:full
             </code>{' '}
-            — на выходе формируются инсталляторы NSIS/MSI и портативный исполняемый файл, либо в компактном варианте <strong>Minimal</strong>, либо в полностью автономном <strong>Full</strong> со всеми образами дисков и лент.
+            — на выходе формируются инсталляторы NSIS/MSI, либо в компактном варианте <strong>Minimal</strong>, либо в полностью автономном <strong>Full</strong> со всеми образами дисков и лент.
           </>
         )}
       </p>
