@@ -194,17 +194,10 @@ export function Navbar({
               </a>
             </>
           ) : (
-            <>
-              <a href="pdp11.html" target="_blank" rel="noopener noreferrer" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Standalone HTML' : 'Автономный HTML'}
-              </a>
-              <a href="#quick-boot" onClick={() => window.scrollTo({ top: 700, behavior: 'smooth' })} className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Boot Commands' : 'Команды загрузки'}
-              </a>
-              <a href="#switch-guide" onClick={() => window.scrollTo({ top: 700, behavior: 'smooth' })} className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Switch Guide' : 'Тумблеры'}
-              </a>
-            </>
+            // Emulator view: the machine fills the page; the window's own
+            // control bar (Back / Manual / Open standalone / Reset) covers
+            // navigation, so no duplicated centre shortcuts here.
+            <></>
           )}
         </nav>
 
