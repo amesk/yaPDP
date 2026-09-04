@@ -20,6 +20,10 @@ bump → document → build → publish. Total time: under an hour.
 ### 1. Pre-flight — master must be green
 
 - [ ] `git checkout master && git pull`
+- [ ] **`git status --short` is EMPTY.** A dirty working tree silently ships
+      stale/experimental files (a local teletype CSS experiment once made it
+      into the Windows installers while the live site — built from clean
+      master — was fine). Stash or commit local work before building.
 - [ ] CI on master is green (`.github/workflows/ci.yml` — npm test + e2e)
 - [ ] `npm test` passes locally
 - [ ] `npm run e2e:os` passes (boots Unix V5, RT-11, BSD 2.11, BASIC-11)
