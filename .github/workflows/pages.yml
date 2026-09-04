@@ -22,6 +22,12 @@ on:
       - 'src/**'
       - 'landing/**'
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch/commit to publish (default: master). A branch without landing/ falls back to the classic static site — one-click rollback.'
+        required: false
+        default: 'master'
+        type: string
 
 permissions:
   contents: read
@@ -37,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.branch || 'master' }}
 
       - uses: actions/setup-node@v7
         with:
@@ -44,13 +52,12 @@ jobs:
           cache: npm
           cache-dependency-path: landing/package-lock.json
 
-      - name: Install landing dependencies
+      - name: Build the landing SPA (skipped when landing/ is absent — rollback path)
         working-directory: landing
-        run: npm ci
-
-      - name: Build the landing SPA
-        working-directory: landing
-        run: npm run build
+        if: hashFiles('landing/package.json') != ''
+        run: |
+          npm ci
+          npm run build
 
       - name: Assemble the site (repo root + landing/dist overlay)
         run: |
@@ -63,7 +70,7 @@ jobs:
             --exclude package.json --exclude package-lock.json \
             --exclude CHANGELOG.md --exclude LICENSE --exclude README.md \
             ./ site/
-          cp -r landing/dist/* site/
+          if [ -d landing/dist ]; then cp -r landing/dist/* site/; fi
 
       - uses: actions/upload-pages-artifact@v3
         with:
