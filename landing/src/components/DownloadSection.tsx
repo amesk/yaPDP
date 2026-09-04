@@ -17,29 +17,11 @@ export function DownloadSection({ lang }: DownloadSectionProps) {
       <p className="text-xs sm:text-sm text-[#d4c4a0] leading-relaxed mb-4">
         {lang === 'en' ? (
           <>
-            Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64 with{' '}
-            <a
-              href="https://tauri.app/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#c8a860] hover:text-[#e8d080] underline font-semibold"
-            >
-              Tauri
-            </a>
-            . Two installer variants are available, so you can pick between a tiny download and a fully-offline bundle with every disk/tape image:
+            Prefer a native app? The same emulator is also packaged as an offline desktop application — for Windows (installer, MSI and portable) and Linux (deb, rpm and AppImage). Two variants are available: a small download that boots Unix V5 and RT-11 out of the box (every other image is added by drag & drop), and a fully-offline bundle with every disk/tape image:
           </>
         ) : (
           <>
-            Предпочитаете нативное приложение? Этот же эмулятор упакован как полностью автономное десктопное приложение для Windows x64 с помощью{' '}
-            <a
-              href="https://tauri.app/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#c8a860] hover:text-[#e8d080] underline font-semibold"
-            >
-              Tauri
-            </a>
-            . Доступно два варианта сборки: сверхкомпактный инсталлятор и полный автономный архив со всеми образами:
+            Предпочитаете нативное приложение? Тот же эмулятор выпускается и как автономная офлайн-программа — для Windows (установщик, MSI и портативная версия) и Linux (deb, rpm и AppImage). Доступно два варианта: компактный, который из коробки запускает Unix V5 и RT-11 (остальные образы добавляются перетаскиванием), и полный автономный, со всеми образами дисков и лент:
           </>
         )}
       </p>
@@ -86,8 +68,8 @@ export function DownloadSection({ lang }: DownloadSectionProps) {
         <div>
           <p className="text-xs sm:text-sm text-[#e0d8c8] font-medium">
             {lang === 'en'
-              ? 'Download the latest binaries for Windows x64 (MSI / NSIS / Portable):'
-              : 'Скачать свежие сборки для Windows x64 (MSI / NSIS / Portable):'}
+              ? 'Download the latest binaries — Windows (MSI / NSIS / Portable) and Linux (deb / rpm / AppImage):'
+              : 'Скачать свежие сборки — Windows (MSI / NSIS / Portable) и Linux (deb / rpm / AppImage):'}
           </p>
           <span className="text-[11px] text-[#a09278] font-mono">
             Directly from Alexei Eskenazi&apos;s GitHub release repository
