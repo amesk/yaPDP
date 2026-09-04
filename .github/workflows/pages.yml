@@ -59,6 +59,9 @@ jobs:
             --exclude landing --exclude node_modules --exclude tests \
             --exclude docs --exclude tools --exclude src-tauri \
             --exclude desktop --exclude macro-asm --exclude .roo \
+            --exclude dist-linux --exclude video --exclude "*.log" \
+            --exclude package.json --exclude package-lock.json \
+            --exclude CHANGELOG.md --exclude LICENSE --exclude README.md \
             ./ site/
           cp -r landing/dist/* site/
 
