@@ -7,6 +7,8 @@
 
 ## ULTRIX-11 (rp0): `panic: trap` при переходе из single-user в multi-user
 
+**GitHub issue:** [#15](https://github.com/amesk/yaPDP/issues/15)
+
 **Статус:** открыто (не регрессия — воспроизводится и в v0.1.0-alpha2).
 
 **Симптом.** ULTRIX-11 V3.1 грузится до single-user (`#`), но Ctrl-D
