@@ -15,7 +15,10 @@ linked docs/issues. Known emulator bugs are tracked separately in
   untouched; cabinet CSS contract tests are rewritten deliberately.
 - **Retire the legacy stack (`?core=0`).** Once the core stack has soaked,
   drop the monolithic `src/iopage.js` path and the `E2E_LEGACY` parity run
-  (the 10-guest matrix on the core stack remains the gate).
+  (the 10-guest matrix on the core stack remains the gate); delete the
+  deprecated puppeteer CLI `tools/rt11-term.js` (headless-term is the tool
+  of record). Tracked as
+  [#18](https://github.com/amesk/yaPDP/issues/18).
 
 ## Backlog / ideas
 
