@@ -1346,7 +1346,48 @@
       <h2>yaPDP — Yet Another PDP‑11/70 Emulator</h2>
 
       <p style="text-align:center;">
-        <img src="assets/pdp11-animated-panel.gif" alt="PDP‑11/70 Front Panel" style="max-width:100%; height:auto;">
+        <!-- The animated front panel invites a click — make it honest: it
+             opens the live Panel page (no URL change), with the same amber
+             hover hint as the landing. -->
+        <a href="#panel" class="info-panel-link"
+           onclick="try{switchPage('panel');}catch(e){} return false;"
+           title="Open the live front panel">
+          <span class="info-panel-frame">
+            <img src="assets/pdp11-animated-panel.gif" alt="PDP‑11/70 Front Panel"
+                 style="max-width:100%; height:auto; display:block;">
+            <span class="info-panel-hint">▸ OPEN THE FRONT PANEL ◂</span>
+          </span>
+        </a>
+        <style>
+          .info-panel-link { text-decoration: none; display: inline-block; max-width: 100%; }
+          .info-panel-frame { position: relative; display: inline-block; max-width: 100%; }
+          .info-panel-frame img { transition: filter 0.2s ease; }
+          .info-panel-link:hover .info-panel-frame img {
+              filter: brightness(0.6);
+          }
+          .info-panel-hint {
+              position: absolute; top: 50%; left: 50%;
+              transform: translate(-50%, -50%);
+              font-family: 'VT52', monospace;
+              color: #ffd27f;
+              background: rgba(28, 24, 20, 0.9);
+              border: 1px solid #c8a860;
+              border-radius: 4px;
+              padding: 6px 14px;
+              letter-spacing: 1px;
+              white-space: nowrap;
+              text-shadow: 0 0 8px rgba(255,210,127,0.8), 0 0 20px rgba(200,168,96,0.5);
+              opacity: 0; visibility: hidden;
+              transition: opacity 0.25s ease, visibility 0.25s;
+              z-index: 5;
+          }
+          .info-panel-link:hover .info-panel-hint {
+              opacity: 1; visibility: visible;
+          }
+          @media (max-width: 640px) {
+              .info-panel-hint { font-size: 11px; padding: 4px 8px; }
+          }
+        </style>
       </p>
 
       <hr>
