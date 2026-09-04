@@ -43,8 +43,21 @@ export function Hero({ lang, onLaunchOnline, onOpenManual }: HeroProps) {
           <img
             src="assets/pdp11-animated-panel.gif"
             alt="PDP‑11/70 Front Panel"
-            className="w-full max-w-[800px] h-auto rounded border border-[#4a453a] group-hover:border-[#c8a860] transition-colors shadow-lg block mx-auto"
+            className="w-full max-w-[800px] h-auto rounded border border-[#4a453a] group-hover:border-[#c8a860] group-hover:brightness-[0.6] transition-all shadow-lg block mx-auto cursor-pointer"
           />
+          {/* Hover hint — the glowing amber invitation, as on the classic
+              landing: the panel dims and the VT52 legend slides up. */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <span
+              className="rounded border border-[#c8a860] bg-[#1c1814]/90 px-4 py-2 text-sm sm:text-base tracking-[1px] whitespace-nowrap shadow-[0_4px_20px_rgba(0,0,0,0.7)] text-[#ffd27f]"
+              style={{
+                fontFamily: "'VT52', monospace",
+                textShadow: '0 0 8px rgba(255,210,127,0.8), 0 0 20px rgba(200,168,96,0.5)',
+              }}
+            >
+              {lang === 'en' ? '▸ CLICK TO LAUNCH ◂' : '▸ НАЖМИТЕ ДЛЯ ЗАПУСКА ◂'}
+            </span>
+          </div>
         </div>
       </div>
 
