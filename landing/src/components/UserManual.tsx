@@ -988,7 +988,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
       <section id="config" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
-            <span className="font-mono text-[#c8a860] text-lg">§13</span>
+            <span className="font-mono text-[#c8a860] text-lg">§9</span>
             {lang === 'en' ? 'Configuration (Config page)' : 'Конфигурация (страница Config)'}
           </h2>
         </div>
@@ -1078,7 +1078,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
       <section id="guest-oses" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
-            <span className="font-mono text-[#c8a860] text-lg">§9</span>
+            <span className="font-mono text-[#c8a860] text-lg">§10</span>
             {lang === 'en' ? 'Guest Operating Systems' : 'Гостевые операционные системы'}
           </h2>
           <span className="text-xs font-mono text-[#c8a860]">16 GUEST SYSTEMS</span>
@@ -1152,7 +1152,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
       <section id="controls" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
-            <span className="font-mono text-[#c8a860] text-lg">§10</span>
+            <span className="font-mono text-[#c8a860] text-lg">§11</span>
             {lang === 'en'
               ? 'Buttons, Shortcuts & Indicators'
               : 'Кнопки, горячие клавиши и индикаторы'}
@@ -1220,7 +1220,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
       <section id="troubleshooting" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
-            <span className="font-mono text-[#c8a860] text-lg">§11</span>
+            <span className="font-mono text-[#c8a860] text-lg">§12</span>
             {lang === 'en' ? 'Troubleshooting' : 'Устранение неполадок'}
           </h2>
         </div>
@@ -1270,15 +1270,15 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
       <section id="desktop" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
-            <span className="font-mono text-[#c8a860] text-lg">§12</span>
+            <span className="font-mono text-[#c8a860] text-lg">§13</span>
             {lang === 'en' ? 'The Desktop App' : 'Настольное приложение'}
           </h2>
         </div>
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
-            ? 'Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64 with Tauri. Two installer variants are available:'
-            : 'Предпочитаете нативное приложение? Эмулятор упакован в автономную программу для Windows x64 на базе Tauri. Доступно два варианта сборки:'}
+            ? 'Prefer a native app? The same emulator is also packaged as an offline desktop application — for Windows (installer, MSI and portable) and Linux (deb, rpm and AppImage). Two variants are available:'
+            : 'Предпочитаете нативное приложение? Тот же эмулятор выпускается и как автономная офлайн-программа — для Windows (установщик, MSI и портативная версия) и Linux (deb, rpm и AppImage). Доступно два варианта:'}
         </p>
 
         <div className="overflow-x-auto rounded-lg border border-[#4a453a] bg-[#12100d]">
@@ -1296,8 +1296,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 <td className="py-2.5 px-3 text-[#f0e6c8]">rk0, rk1, bootcode</td>
                 <td className="py-2.5 px-3 text-[#bfae90]">
                   {lang === 'en'
-                    ? 'Small download (~3 MB). All other images are dragged & dropped at runtime.'
-                    : 'Компактный установщик (~3 МБ). Остальные образы добавляются перетаскиванием.'}
+                    ? 'Small download. Boots Unix V5 and RT-11 out of the box; every other image is added by drag & drop at runtime.'
+                    : 'Компактный установщик. Запускает Unix V5 и RT-11 из коробки; остальные образы добавляются перетаскиванием.'}
                 </td>
               </tr>
               <tr className="hover:bg-[#191611]">
@@ -1309,8 +1309,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 </td>
                 <td className="py-2.5 px-3 text-[#bfae90]">
                   {lang === 'en'
-                    ? 'All 16 guest OSes boot completely offline with zero additional steps.'
-                    : 'Все 16 гостевых ОС запускаются в оффлайне без необходимости скачивать что-либо еще.'}
+                    ? 'Every guest system in this manual boots completely offline — nothing to download, no setup.'
+                    : 'Все гостевые системы из этого руководства запускаются в оффлайне — ничего не нужно скачивать или настраивать.'}
                 </td>
               </tr>
             </tbody>
