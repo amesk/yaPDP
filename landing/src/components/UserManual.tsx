@@ -70,6 +70,41 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Full-manual search: section titles (EN/RU), subsection titles and a
+  // curated keyword list per section, so a query like "teletype", "lp11",
+  // "boot rp1" or "save" jumps to the right place instead of silently
+  // filtering a table the user cannot see.
+  const SECTION_KEYWORDS: Record<string, string[]> = {
+    'quick-start': ['boot', 'wizard', 'magic wand', 'root', 'login', 'get started', 'launch'],
+    'front-panel': ['switches', 'toggle', 'power', 'lock', 'panel', 'lights', 'odt'],
+    'console': ['teletype', 'asr', 'keyboard', 'paper', 'vt52 console', 'type'],
+    'user-terminals': ['tty', 'terminal', 'users'],
+    'printer': ['lp11', 'print', 'paper feed'],
+    'vt11': ['display', 'vector', 'graphics', 'lander', 'crv'],
+    'storage': ['disk', 'tape', 'ptap', 'image', 'dsk', 'mount', 'reader', 'punch', 'drop'],
+    'machine-state': ['save', 'load', 'snapshot', 'state', 'restore'],
+    'config': ['settings', 'options', 'equipment', 'tabs', 'speed', 'sound'],
+    'guest-oses': ['os', 'operating system', 'boot rk', 'boot rp', 'boot rl', 'unix', 'rt-11', 'rsx', 'rsts', 'bsd', 'xxdp', 'basic'],
+    'controls': ['button', 'shortcut', 'indicator', 'reboot', 'mute', 'fullscreen', 'magic'],
+    'troubleshooting': ['problem', 'fix', 'error', 'help'],
+    'desktop': ['tauri', 'install', 'app', 'download'],
+  };
+
+  const sectionMatches = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const out: { id: string; titleEn: string; titleRu: string }[] = [];
+    for (const sec of MANUAL_SECTIONS) {
+      const kw = (SECTION_KEYWORDS[sec.id] || []).join(' ').toLowerCase();
+      const sub = (sec.subsections || []).map((x) => x.titleEn + ' ' + x.titleRu).join(' ').toLowerCase();
+      const hay = (sec.titleEn + ' ' + sec.titleRu + ' ' + sub + ' ' + kw).toLowerCase();
+      if (hay.includes(q)) {
+        out.push({ id: sec.id, titleEn: sec.titleEn, titleRu: sec.titleRu });
+      }
+    }
+    return out.slice(0, 8);
+  }, [searchQuery]);
+
   const filteredOsList = useMemo(() => {
     if (!searchQuery.trim()) return GUEST_OS_TABLE;
     const q = searchQuery.toLowerCase();
@@ -165,6 +200,29 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             </button>
           )}
         </div>
+
+        {sectionMatches.length > 0 && (
+          <div className="relative max-w-xl mx-auto">
+            <div className="absolute z-30 mt-1 w-full rounded-lg border border-[#4a453a] bg-[#16130e] shadow-xl overflow-hidden">
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-[#8a7650] font-mono border-b border-[#3a3528]">
+                {lang === 'en' ? 'Manual sections' : 'Разделы руководства'}
+              </div>
+              {sectionMatches.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setSearchQuery('');
+                    scrollToSection(m.id);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-[#d4c4a0] hover:bg-[#221d15] hover:text-[#f0e6c8] transition-colors cursor-pointer flex items-center gap-2"
+                >
+                  <BookOpen className="w-3 h-3 text-[#c8a860] shrink-0" />
+                  {lang === 'en' ? m.titleEn : m.titleRu}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table of Contents Grid */}
