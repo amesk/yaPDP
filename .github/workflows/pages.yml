@@ -50,7 +50,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: landing/package-lock.json
+          # Key on the root lockfile: it exists in every checkout, including
+          # the static-site rollback path where landing/ is absent (the npm
+          # cache is content-addressed, so landing packages still hit).
+          cache-dependency-path: package-lock.json
 
       - name: Build the landing SPA (skipped when landing/ is absent — rollback path)
         working-directory: landing
