@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'VT52';
+  src: url('/assets/fonts/vt52.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Authentic DEC 1960s/70s custom scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #8a7650 #1a1815;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1815;
+  border: 1px solid #4a453a;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8a7650, #6b5a40);
+  border: 2px solid #1a1815;
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.12);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #c8a860, #a89060);
+  box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.2);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #e8d080, #c8a860);
+}
+
+::-webkit-scrollbar-corner {
+  background: #1a1815;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #1a1815;
+  background-image:
+    linear-gradient(rgba(24, 21, 17, 0.82), rgba(24, 21, 17, 0.82)),
+    url("/assets/images/pdp11-machine-room.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #e0d8c8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  min-height: 100vh;
+}
