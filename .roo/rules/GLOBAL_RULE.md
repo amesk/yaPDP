@@ -12,4 +12,4 @@ Language rules:
 - **Reply to the user in Russian.** Always — even though these rules are written in English.
 - Comments in generated source code and git commit messages must be in English (see RESPONSE_RULES.md).
 
-At the start of a dialogue, state that you have read PROJECT_MAP.md and RESPONSE_RULES.md
+Rules are loaded into context at session start; do not recite that you have read them — actually follow them.
