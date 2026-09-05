@@ -484,7 +484,13 @@ async function bootHeadless(opts = {}) {
 
     const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");
     while (!re.test(out)) {
-      if (Date.now() - t0 > timeoutMs) throw new Error("timeout waiting for prompt '" + waitFor + "'\n" + out);
+      if (Date.now() - t0 > timeoutMs) {
+        // Carry the accumulated guest output out with the error so the
+        // caller can show where boot stalled instead of losing it.
+        const err = new Error("timeout waiting for prompt '" + waitFor + "'\n" + out);
+        err.partialOut = out;
+        throw err;
+      }
       const tickInterval = opts.debugTickInterval || 500;
       if (typeof opts.debugTick === "function" && Date.now() - lastTick > tickInterval) {
         lastTick = Date.now();
