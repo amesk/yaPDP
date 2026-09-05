@@ -172,6 +172,26 @@ let disk = null;
 let shuttingDown = false;
 let rlRef = null;            // interactive readline (for prompt redraw)
 
+// Paper-tape tracking. The PtrPtp device holds tape data in the shared
+// DiskService and exposes only ptControlblock/tapeState; :rewind forgets
+// the device's block (so ptControlblock.url would read "(none)"), and the
+// device's tapeState is coarse. Track the mounted tape name + state here so
+// :status stays truthful after a rewind and can report reader state
+// the way the legacy puppeteer tool did.
+let mountedTapeName = null;  // basename of the tape loaded in the reader
+let mountedTapeState = "none"; // none|at-start|ready|consumed (from PtrPtp)
+
+/** tapeStateLabel — human label for a PtrPtp tapeState. */
+function tapeStateLabel(state) {
+    switch (state) {
+        case "at-start": return "at start";
+        case "ready":  return "ready";
+        case "consumed": return "end";
+        case "none":  return "(no tape)";
+        default:      return state || "?";
+    }
+}
+
 // Prompt engine state (identical contract to rt11-term.js).
 let outTail = "";            // recent console output (for :wait matching)
 let lineStart = true;        // next char starts a fresh line
@@ -376,13 +396,27 @@ function mountTape(hostFile) {
         length: raw.length,
     });
     ptr.loadTape(name);
+    mountedTapeName = name;
+    mountedTapeState = ptr.tapeState || "at-start";
     console.error("headless-term: mounted " + path.basename(hostFile) + " (" + raw.length + " bytes)");
     return true;
 }
 
 function rewindTape() {
-    ptr.rewind();
-    console.error("headless-term: reader tape rewound");
+    // Rewind the reader to the start of the CURRENTLY mounted tape. The
+    // PtrPtp device forgets its control block on rewind (ptControlblock =>
+    // undefined, tapeState => "none"), but the tape data lives on in the
+    // shared DiskService. Remember the mounted name so :status stays
+    // truthful — a rewind doesn't unmount the tape.
+    if (!mountedTapeName && !(ptr.ptControlblock || {}).url) {
+        console.error("headless-term: no tape mounted — nothing to rewind");
+        return;
+    }
+    const name = mountedTapeName || (ptr.ptControlblock && ptr.ptControlblock.url);
+    mountedTapeName = name;
+    ptr.loadTape(name); // re-mount at position 0 (start of tape)
+    mountedTapeState = "at-start";
+    console.error("headless-term: reader tape rewound (" + name + ")");
 }
 
 function exportPunch(hostFile) {
@@ -438,8 +472,15 @@ async function handleCommand(line) {
             break;
         }
         case "status":
+            // Truthful reader tape name/state tracked here: the PtrPtp
+            // device forgets ptControlblock on rewind, and its live tapeState
+            // is coarse — so surface our tracked mount + a human state label.
+            const tapeName = mountedTapeName ||
+                (ptr.ptControlblock && ptr.ptControlblock.url) || null;
+            const stateLabel = tapeStateLabel(ptr.tapeState || "none");
             console.error("headless-term: device=" + (opts.device || "custom") +
-                " | reader tape=" + (ptr.ptControlblock ? ptr.ptControlblock.url : "(none)") +
+                " | reader tape=" + (tapeName || "(none)") +
+                " (" + stateLabel + ")" +
                 " | punch=" + ptr.punchBytes().length + " bytes" +
                 " | prompt=" + JSON.stringify(opts.prompt));
             break;
