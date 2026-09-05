@@ -49,6 +49,7 @@
     "resources": {
       "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
       "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
+      "../media/bootcode.ptap": "media/bootcode.ptap",
       "../media/DEC-11-AJPB-PB.ptap.zst": "media/DEC-11-AJPB-PB.ptap.zst",
       "../media/DEC-11-O2PA-PB.ptap.zst": "media/DEC-11-O2PA-PB.ptap.zst",
       "../media/ED-11-V004B-8K.ptap.zst": "media/ED-11-V004B-8K.ptap.zst",
