@@ -425,8 +425,11 @@ function exportPunch(hostFile) {
         console.error("headless-term: punch buffer is empty — nothing to export");
         return false;
     }
-    fs.writeFileSync(path.resolve(REPO, hostFile), Buffer.from(out));
-    console.error("headless-term: exported " + out.length + " bytes to " + hostFile);
+    // Resolve relative to the caller's CWD, matching rt11-term and :mount's
+    // CWD-first candidate lookup — an exported tape lands where the user is
+    // working, not hard-coded into the repo root.
+    fs.writeFileSync(path.resolve(hostFile), Buffer.from(out));
+    console.error("headless-term: exported " + out.length + " bytes to " + path.resolve(hostFile));
     ptr.clearPunch();
     return true;
 }
