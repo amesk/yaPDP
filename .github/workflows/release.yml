@@ -85,7 +85,9 @@ jobs:
       # Compile (not bundle): produces src-tauri/target/release/{yapdp,
       # yapdp.exe}. Wrap in tauri build with --no-bundle so Tauri validates
       # config/features but skips the (slow) bundling we do per-variant.
+      # run from src-tauri/ because tauri-cli locates tauri.conf.json by CWD.
       - name: Build Rust (no bundle)
+        working-directory: src-tauri
         run: cargo tauri build --no-bundle
 
       # Upload the compiled binary + deps that bundling needs. We upload the
