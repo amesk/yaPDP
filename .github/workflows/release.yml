@@ -2,19 +2,20 @@
 # yaPDP release pipeline — build all desktop installer artifacts for a
 # releases/v* tag and publish them as a GitHub Draft release.
 #
-# Triggered two ways:
-#   * push of a releases/v* tag   (automatic — the classic release flow)
-#   * manual workflow_dispatch with an explicit tag/ref to build
+# Two phase, to avoid compiling Rust four times per release:
 #
-# After the matrix builds (Linux + Windows x Minimal + Full), one aggregator
-# job collects the bundles, adds the CHANGELOG.md / RELEASE_NOTES.md assets,
-# computes a yaPDP-$TAG-SHA256SUMS.txt file, and creates/updates a DRAFT
-# release (never publishes). Publish the draft by hand after the smoke test.
+#   build-rust       (Linux + Windows x 1)   cargo compile ONCE per OS
+#   package-linux    (minimal + full)        `cargo tauri bundle` from the
+#   package-windows  (minimal + full)          prebuilt binary — no recompile
+#   assemble         collect bundles, CHANGELOG/RELEASE_NOTES, SHA256SUMS,
+#                    create/update a DRAFT release (never auto-publishes)
+#
+# toolchain: tools/tauri-build.js gained a --bundle-only mode that runs
+# `cargo tauri bundle` (package an already-built target/release, no cargo).
 #
 # The workflow lives in the repo where it runs: rehearsed end-to-end on
-# yapdp-bot/yaPDP (git pages + artifact upload/check), then promoted verbatim
-# to amesk/yaPDP via a normal PR once the rehearsal is clean. Real releases
-# are only tagged on amesk/yaPDP after full rehearsal.
+# yapdp-bot/yaPDP, then promoted verbatim to amesk/yaPDP via a PR once the
+# rehearsal is clean. Real releases are tagged on amesk/yaPDP only by hand.
 # ---------------------------------------------------------------------------
 name: release
 
@@ -37,13 +38,76 @@ concurrency:
   cancel-in-progress: false    # do not abort assembly mid-release
 
 jobs:
-  build:
-    name: ${{ matrix.os }} / ${{ matrix.variant }}
+  # -------------------------------------------------------------------------
+  # Compile the Rust/Tauri binary ONCE per OS. No bundling here.
+  # -------------------------------------------------------------------------
+  build-rust:
+    name: Build Rust / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install Linux build deps (Tauri v2 system libs)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Cache Cargo registry/git + compiled tauri-cli + the app target dir
+      # (speeds up subsequent runs; the first is a cold build). OS is in the
+      # key so ubuntu/windows never share incompatible build artifacts.
+      - name: Cache Cargo (registry, git, tauri-cli, target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      # Compile (not bundle): produces src-tauri/target/release/{yapdp,
+      # yapdp.exe}. Wrap in tauri build with --no-bundle so Tauri validates
+      # config/features but skips the (slow) bundling we do per-variant.
+      - name: Build Rust (no bundle)
+        run: cargo tauri build --no-bundle
+
+      # Upload the compiled binary + deps that bundling needs. We upload the
+      # whole target/release so `cargo tauri bundle` finds the binary.
+      - name: Upload Rust build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-build-${{ matrix.os }}
+          path: |
+            src-tauri/target/release/
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------------
+  # Package BOTH minimal & full from the SAME prebuilt Linux binary.
+  # -------------------------------------------------------------------------
+  package-linux:
+    name: Package Linux / ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    needs: [build-rust]
+    strategy:
+      fail-fast: false
+      matrix:
         variant: [minimal, full]
     steps:
       - uses: actions/checkout@v7
@@ -55,112 +119,175 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install Linux build deps (Tauri v2 system libs)
-        if: runner.os == 'Linux'
+      - name: Install Linux build deps (needed for bundling too)
         run: |
           sudo apt-get update
-          # Tauri v2 native build/runtime deps (see README.md build prereqs) +
-          # libfuse2/patchelf for AppImage bundling. Without the gtk/glib/webkit
-          # dev packages the rehearsal build fails compiling glib-sys/gtk-sys.
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            libwebkit2gtk-4.1-dev build-essential file libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev \
             libfuse2 patchelf
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # Cache Cargo registry/git + the compiled tauri-cli binary + the build
-      # target dir. Without this every matrix job re-runs `cargo install
-      # tauri-cli` (~5min) and recompiles all Tauri/GTK crates from scratch in
-      # the Build step (~4min). The key encodes runner.os (artifacts are not
-      # portable across OS/toolchain) and the Cargo.lock state.
-      - name: Cache Cargo (registry, git, tauri-cli, target)
+      - name: Cache Cargo (restore for tauri-cli, optional)
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-            src-tauri/target
-          # OS in the key so ubuntu/windows never share incompatible build
-          # artifacts; the tauri-cli version is pinned by '^2' and the cargo
-          # toolchain is stable on all runners.
           key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # tauri-build.js runs `cargo tauri build`; the cargo-tauri CLI is a
-      # separate binary that is NOT installed by the rust toolchain. The
-      # rehearsal run failed with "error: no such command: tauri" for this
-      # reason. Install tauri-cli v2 (matches README build prereqs). The
-      # binary installs to ~/.cargo/bin, which the cache above restores.
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Download Rust build
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-build-ubuntu-latest
+          path: src-tauri/target/
+
+      - name: Restore executable permission
+        run: |
+          chmod +x src-tauri/target/release/yapdp || true
 
       - name: Install frontend deps
         run: npm ci
 
-      - name: Build ${{ matrix.variant }} bundle
-        run: npm run desktop:${{ matrix.variant }}
+      - name: Prepare ${{ matrix.variant }}
+        run: node tools/build-desktop.js --variant ${{ matrix.variant }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Package ${{ matrix.variant }} (no recompile)
+        run: node tools/tauri-build.js --bundle-only --variant ${{ matrix.variant }}
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
         with:
-          name: bundle-${{ matrix.os }}-${{ matrix.variant }}
+          name: bundle-ubuntu-latest-${{ matrix.variant }}
           path: src-tauri/target/release/bundle/
+          if-no-files-found: error
 
-  assemble:
-    name: Assemble draft release
-    runs-on: ubuntu-latest
-    needs: build
+  # -------------------------------------------------------------------------
+  # Package BOTH minimal & full from the SAME prebuilt Windows binary.
+  # -------------------------------------------------------------------------
+  package-windows:
+    name: Package Windows / ${{ matrix.variant }}
+    runs-on: windows-latest
+    needs: [build-rust]
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [minimal, full]
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/setup-node@v7
         with:
+          node-version: 22
+          cache: npm
+
+      # Rust toolchain + tauri-cli on Windows shell (mingw).
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo (restore for tauri-cli, optional)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Download Rust build
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-build-windows-latest
+          path: src-tauri/target/
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Prepare ${{ matrix.variant }}
+        run: node tools/build-desktop.js --variant ${{ matrix.variant }}
+
+      - name: Package ${{ matrix.variant }} (no recompile)
+        run: node tools/tauri-build.js --bundle-only --variant ${{ matrix.variant }}
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-windows-latest-${{ matrix.variant }}
+          path: src-tauri/target/release/bundle/
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------------
+  # Assemble: collect every bundle + docs + checksums into a DRAFT release.
+  # -------------------------------------------------------------------------
+  assemble:
+    name: Assemble draft release
+    runs-on: ubuntu-latest
+    needs: [package-linux, package-windows]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
           path: bundles/
           merge-multiple: true
 
       - name: Resolve tag name
         id: tag
+        shell: bash
         run: |
-          # The release tag: an explicit manual tag wins, else the pushed tag.
-          REF="${{ inputs.tag || github.ref_name }}"
+          REF="${{ inputs.tag || github.ref }}"
           TAG="${REF##refs/tags/}"
           echo "TAG=$TAG" >> "$GITHUB_ENV"
-          # Version for the checksum filename: strip the "releases/" prefix so
-          # the file is yaPDP-0.2.0-SHA256SUMS.txt, not yaPDP-releases/v0.2.0-...
           VERSION="${TAG##releases/}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Resolved release tag: $TAG (version $VERSION)"
 
-      # CHANGELOG + RELEASE_NOTES as release assets; checksums over every
-      # installer artifact. Named yaPDP-<version>-SHA256SUMS.txt (release canon).
       - name: Stage docs and checksums
+        shell: bash
         run: |
           mkdir -p staged
-          cp CHANGELOG.md RELEASE_NOTES.md staged/
-          # sha256sum is available on the ubuntu runner; name per convention.
+          cp CHANGELOG.md staged/
+          cp RELEASE_NOTES.md staged/
           SUMFILE="yaPDP-$VERSION-SHA256SUMS.txt"
-          # Only files (skip directories) under bundles/, relative names.
-          find bundles -type f -print0 | xargs -0 sha256sum | sed "s|^bundles/||" > "staged/$SUMFILE"
+          find bundles -type f -print0 \
+            | xargs -0 sha256sum \
+            | sed "s|^bundles/||" \
+            > "staged/$SUMFILE"
           cat "staged/$SUMFILE"
 
       - name: Create / update draft release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          # Idempotent over the same tag (re-run): create fails if the draft
-          # already exists, which is fine — subsequent uploads use --clobber.
           gh release create "$TAG" --draft \
             --title "$TAG" \
-            --notes-file RELEASE_NOTES.md 2>/dev/null || true
-          # Docs + checksums first, then only the installer files. Do NOT
-          # upload bundles/**/* wildcard: the artifacts directory also holds
-          # Tauri bundle intermediates (.AppDir, .pkg dirs, 'empty'), and gh
-          # fails on "is a directory". Upload just the release artifacts.
+            --notes-file RELEASE_NOTES.md \
+            2>/dev/null || true
+          # Docs + checksums first, then only the installer files (not the
+          # Tauri bundle intermediates like .AppDir / 'empty' dirs).
           gh release upload "$TAG" staged/* --clobber
-          gh release upload "$TAG" $(find bundles -type f \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.msi' -o -name '*.exe' \)) --clobber
-          echo "Draft release $TAG staged. Review, smoke-test, then publish."
+          find bundles -type f \
+            \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
+               -o -name '*.msi' -o -name '*.exe' \) \
+            -print0 | xargs -0 gh release upload "$TAG" --clobber
+          echo "Draft release $TAG staged. Review, then publish."
