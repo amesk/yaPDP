@@ -65,11 +65,19 @@ const DEVICE_PROFILES = {
     rk4:     { image: "media/rk4.dsk.zst", urlName: "rk0.dsk", bootCmd: "BOOT RK0\r" },
     // BSD 2.11 (RP06 on drive 1). The loader asks for a CR before the
     // kernel starts; pass --step "|login:" --step "root|#" to get a shell.
-    rp1:     { image: "media/rp1.dsk.zst", urlName: "rp1.dsk", bootCmd: "boot rp1\r" },
-    // RSTS/E 9.6 and RSX-11M 4.6 (RP04 on drives 2/3).
-    rp2:     { image: "media/rp2.dsk.zst", urlName: "rp2.dsk", bootCmd: "BOOT RP2\r" },
-    rp3:     { image: "media/rp3.dsk.zst", urlName: "rp3.dsk", bootCmd: "BOOT RP3\r" },
+    // Boot reaches "login:" in ~160s of wall time (init spends ~70 virtual
+    // seconds before the network/rc phase) — needs a generous boot timeout.
+    rp1:     { image: "media/rp1.dsk.zst", urlName: "rp1.dsk", bootCmd: "boot rp1\r", timeoutMs: 240000 },
+    // RSTS/E 9.6 and RSX-11M 4.6 (RP04 on drives 2/3) — full autoconfiguration
+    // before a prompt; keep a generous boot timeout too.
+    rp2:     { image: "media/rp2.dsk.zst", urlName: "rp2.dsk", bootCmd: "BOOT RP2\r", timeoutMs: 240000 },
+    rp3:     { image: "media/rp3.dsk.zst", urlName: "rp3.dsk", bootCmd: "BOOT RP3\r", timeoutMs: 240000 },
 };
+
+// How long bootHeadless waits for the prompt to appear. Individual profiles
+// may override (see DEVICE_PROFILES: rp* guests boot slowly to login). The
+// interactive/batch prompt sync after boot uses --prompt-timeout instead.
+const DEFAULT_BOOT_TIMEOUT_MS = 90000;
 
 // ----------------------------------------------------------------------
 // CLI arguments
@@ -588,7 +596,10 @@ async function shutdown(code) {
         bootCmd: opts.steps.length ? undefined : bootCmd,
         steps: opts.steps.length ? opts.steps : undefined,
         waitFor: opts.prompt,
-        timeoutMs: 90000,
+        // Honor a per-profile boot timeout (rp* guests boot slowly to login;
+        // see DEVICE_PROFILES) falling back to the default. Custom images
+        // (no profile) keep DEFAULT_BOOT_TIMEOUT_MS.
+        timeoutMs: (prof && prof.timeoutMs) || DEFAULT_BOOT_TIMEOUT_MS,
     });
     consoleDev = boot.machine.findDevice("console");
     ptr = boot.machine.findDevice("ptr");
@@ -612,6 +623,30 @@ async function shutdown(code) {
         await runBatch();
     }
 })().catch((e) => {
+    // Explicit, unmistakable timeout notice (plus the guest output we managed
+    // to capture, so the point where boot stalled is visible). Tailouts embed
+    // the collected console text either on the error object (partialOut) or in
+    // the message after the first newline; surface it, then report clearly.
+    const isTimeout = /timeout/i.test(String(e && e.message || e));
+    if (isTimeout) {
+      // Collect whatever console output came with the error.
+      let captured = "";
+      if (e && e.partialOut) captured = e.partialOut;
+      else if (e && e.message) {
+        const nl = e.message.indexOf("\n");
+        if (nl !== -1) captured = e.message.slice(nl + 1);
+      }
+      const head = (e && e.message || "").split("\n")[0];
+      console.error("headless-term: TIMEOUT -- " + head);
+      console.error("headless-term: (boot did not reach the expected prompt; " +
+        "raise --prompt-timeout or the profile timeout if this is a slow guest)");
+      if (captured) {
+        process.stdout.write(captured);
+        if (!/\n$/.test(captured)) process.stdout.write("\n");
+      }
+      shutdown(2);
+      return;
+    }
     console.error("headless-term: fatal: " + (e && e.stack || e));
     shutdown(2);
 });
