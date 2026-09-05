@@ -82,6 +82,15 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
+      # tauri.conf.json is NOT in git (gitignored; only tauri.conf.{minimal,
+      # full}.json are). build-desktop.js --variant generates it (and stages
+      # the static desktop/ frontend). On a fresh runner cargo tauri can't
+      # find a Tauri project without this generated config, so stage it
+      # before compiling. Rust output is variant-independent; we pick minimal
+      # here only to obtain a tauri.conf.json for the compile step.
+      - name: Stage frontend + config
+        run: node tools/build-desktop.js --variant minimal
+
       # Compile (not bundle): produces src-tauri/target/release/{yapdp,
       # yapdp.exe}. Wrap in tauri build with --no-bundle so Tauri validates
       # config/features but skips the (slow) bundling we do per-variant.
