@@ -70,10 +70,31 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # Cache Cargo registry/git + the compiled tauri-cli binary + the build
+      # target dir. Without this every matrix job re-runs `cargo install
+      # tauri-cli` (~5min) and recompiles all Tauri/GTK crates from scratch in
+      # the Build step (~4min). The key encodes runner.os (artifacts are not
+      # portable across OS/toolchain) and the Cargo.lock state.
+      - name: Cache Cargo (registry, git, tauri-cli, target)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            src-tauri/target
+          # OS in the key so ubuntu/windows never share incompatible build
+          # artifacts; the tauri-cli version is pinned by '^2' and the cargo
+          # toolchain is stable on all runners.
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       # tauri-build.js runs `cargo tauri build`; the cargo-tauri CLI is a
       # separate binary that is NOT installed by the rust toolchain. The
       # rehearsal run failed with "error: no such command: tauri" for this
-      # reason. Install tauri-cli v2 (matches README build prereqs).
+      # reason. Install tauri-cli v2 (matches README build prereqs). The
+      # binary installs to ~/.cargo/bin, which the cache above restores.
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
