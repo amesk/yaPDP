@@ -159,7 +159,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: rust-build-ubuntu-latest
-          path: src-tauri/target/
+          # upload-artifact stored the release/ CONTENT at the artifact root, so
+          # restore it straight into target/release/ for `cargo tauri bundle`.
+          path: src-tauri/target/release/
 
       - name: Restore executable permission
         run: |
@@ -224,7 +226,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: rust-build-windows-latest
-          path: src-tauri/target/
+          # upload-artifact stored the release/ CONTENT at the artifact root, so
+          # restore it straight into target/release/ for cargo tauri bundle.
+          path: src-tauri/target/release/
 
       - name: Install frontend deps
         run: npm ci
