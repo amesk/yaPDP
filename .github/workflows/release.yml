@@ -80,7 +80,15 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2" --locked
+        # cache restores ~/.cargo/bin/cargo-tauri from previous runs; cargo
+        # install refuses to overwrite an existing binary, so only install when
+        # it is not already present (idempotent across cache hits).
+        run: |
+          if ! command -v cargo-tauri >/dev/null 2>&1; then
+            cargo install tauri-cli --version "^2" --locked
+          else
+            echo "cargo-tauri already installed ($(cargo-tauri --version))"
+          fi
 
       # tauri.conf.json is NOT in git (gitignored; only tauri.conf.{minimal,
       # full}.json are). build-desktop.js --variant generates it (and stages
@@ -153,7 +161,15 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2" --locked
+        # cache restores ~/.cargo/bin/cargo-tauri from previous runs; cargo
+        # install refuses to overwrite an existing binary, so only install when
+        # it is not already present (idempotent across cache hits).
+        run: |
+          if ! command -v cargo-tauri >/dev/null 2>&1; then
+            cargo install tauri-cli --version "^2" --locked
+          else
+            echo "cargo-tauri already installed ($(cargo-tauri --version))"
+          fi
 
       - name: Download Rust build
         uses: actions/download-artifact@v4
@@ -220,7 +236,15 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2" --locked
+        # cache restores ~/.cargo/bin/cargo-tauri from previous runs; cargo
+        # install refuses to overwrite an existing binary, so only install when
+        # it is not already present (idempotent across cache hits).
+        run: |
+          if ! command -v cargo-tauri >/dev/null 2>&1; then
+            cargo install tauri-cli --version "^2" --locked
+          else
+            echo "cargo-tauri already installed ($(cargo-tauri --version))"
+          fi
 
       - name: Download Rust build
         uses: actions/download-artifact@v4
