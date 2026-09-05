@@ -83,6 +83,9 @@ jobs:
         # cache restores ~/.cargo/bin/cargo-tauri from previous runs; cargo
         # install refuses to overwrite an existing binary, so only install when
         # it is not already present (idempotent across cache hits).
+        # windows-latest default shell is pwsh which cannot parse bash `if
+        # ! command -v`, so force Git Bash.
+        shell: bash
         run: |
           if ! command -v cargo-tauri >/dev/null 2>&1; then
             cargo install tauri-cli --version "^2" --locked
@@ -163,7 +166,10 @@ jobs:
       - name: Install Tauri CLI
         # cache restores ~/.cargo/bin/cargo-tauri from previous runs; cargo
         # install refuses to overwrite an existing binary, so only install when
-        # it is not already present (idempotent across cache hits).
+        # it is not already present (idempotent across cache hits). For
+        # windows-latest (this job is linux, but keep parity) pwsh does not
+        # parse bash conditionals, so force Git Bash.
+        shell: bash
         run: |
           if ! command -v cargo-tauri >/dev/null 2>&1; then
             cargo install tauri-cli --version "^2" --locked
@@ -238,7 +244,9 @@ jobs:
       - name: Install Tauri CLI
         # cache restores ~/.cargo/bin/cargo-tauri from previous runs; cargo
         # install refuses to overwrite an existing binary, so only install when
-        # it is not already present (idempotent across cache hits).
+        # it is not already present (idempotent across cache hits). windows
+        # default shell pwsh can't parse bash conditionals → force Git Bash.
+        shell: bash
         run: |
           if ! command -v cargo-tauri >/dev/null 2>&1; then
             cargo install tauri-cli --version "^2" --locked
