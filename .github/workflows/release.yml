@@ -1,0 +1,124 @@
+# ---------------------------------------------------------------------------
+# yaPDP release pipeline — build all desktop installer artifacts for a
+# releases/v* tag and publish them as a GitHub Draft release.
+#
+# Triggered two ways:
+#   * push of a releases/v* tag   (automatic — the classic release flow)
+#   * manual workflow_dispatch with an explicit tag/ref to build
+#
+# After the matrix builds (Linux + Windows x Minimal + Full), one aggregator
+# job collects the bundles, adds the CHANGELOG.md / RELEASE_NOTES.md assets,
+# computes a yaPDP-$TAG-SHA256SUMS.txt file, and creates/updates a DRAFT
+# release (never publishes). Publish the draft by hand after the smoke test.
+#
+# The workflow lives in the repo where it runs: rehearsed end-to-end on
+# yapdp-bot/yaPDP (git pages + artifact upload/check), then promoted verbatim
+# to amesk/yaPDP via a normal PR once the rehearsal is clean. Real releases
+# are only tagged on amesk/yaPDP after full rehearsal.
+# ---------------------------------------------------------------------------
+name: release
+
+on:
+  push:
+    tags: ['releases/v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git ref/tag to build (e.g. releases/v0.2.0-rc1, master)'
+        required: true
+        default: 'releases/v0.2.0-rc1'
+        type: string
+
+permissions:
+  contents: write          # create the draft release and upload assets
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false    # do not abort assembly mid-release
+
+jobs:
+  build:
+    name: ${{ matrix.os }} / ${{ matrix.variant }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        variant: [minimal, full]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Linux bundling deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 patchelf
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Build ${{ matrix.variant }} bundle
+        run: npm run desktop:${{ matrix.variant }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.os }}-${{ matrix.variant }}
+          path: src-tauri/target/release/bundle/
+
+  assemble:
+    name: Assemble draft release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: bundles/
+          merge-multiple: true
+
+      - name: Resolve tag name
+        id: tag
+        run: |
+          # The release tag: an explicit manual tag wins, else the pushed tag.
+          REF="${{ inputs.tag || github.ref_name }}"
+          TAG="${REF##refs/tags/}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "Resolved release tag: $TAG"
+
+      # CHANGELOG + RELEASE_NOTES as release assets; checksums over every
+      # installer artifact. Named yaPDP-<tag>-SHA256SUMS.txt (release canon).
+      - name: Stage docs and checksums
+        run: |
+          mkdir -p staged
+          cp CHANGELOG.md RELEASE_NOTES.md staged/
+          # sha256sum is available on the ubuntu runner; name per convention.
+          SUMFILE="yaPDP-$TAG-SHA256SUMS.txt"
+          (cd bundles && sha256sum $(find . -type f) > "$OLDPWD/staged/$SUMFILE")
+          cat "staged/$SUMFILE"
+
+      - name: Create / update draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Idempotent over the same tag (re-run): create fails if the draft
+          # already exists, which is fine — subsequent uploads use --clobber.
+          gh release create "$TAG" --draft \
+            --title "$TAG" \
+            --notes-file RELEASE_NOTES.md 2>/dev/null || true
+          # Docs + checksums first, then all installer bundles.
+          gh release upload "$TAG" staged/* --clobber
+          gh release upload "$TAG" bundles/**/* --clobber
+          echo "Draft release $TAG staged. Review, smoke-test, then publish."
