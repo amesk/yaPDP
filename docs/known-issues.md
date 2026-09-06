@@ -1,7 +1,7 @@
-# Known Issues / Открытые задачи
+# Known Issues
 
-Открытые баги эмуляции и долгие задачи, которые не вписываются в один
-коммит. Каждая запись: симптом, как воспроизвести, что уже выяснено.
+Open emulation bugs and long-running tasks that do not fit in a single
+commit. Each entry: symptom, how to reproduce, what is already known.
 
 ---
 
@@ -25,14 +25,17 @@ dump). A ring tracer (intercept console.log → a 300-entry ring in the VM,
 `__tracePC` ranges) works and barely affects timing.
 
 **Debugging candidate:** MMU/trap handling, or initialization timing.
+
 ---
 
-## ULTRIX-11 (rp0): `panic: trap` при переходе из single-user в multi-user
+## ULTRIX-11 (rp0): `panic: trap` when transitioning from single-user to multi-user
 
-**Статус:** открыто (не регрессия — воспроизводится и в v0.1.0-alpha2).
+**GitHub issue:** [#15](https://github.com/amesk/yaPDP/issues/15)
 
-**Симптом.** ULTRIX-11 V3.1 грузится до single-user (`#`), но Ctrl-D
-(переход в multi-user) роняет ядро:
+**Status:** open (not a regression — reproduces on v0.1.0-alpha2 too).
+
+**Symptom.** ULTRIX-11 V3.1 boots to single-user (`#`), but Ctrl-D
+(transition to multi-user) panics the kernel:
 
 ```
 # ^D
@@ -49,40 +52,40 @@ trap type 0
 panic: trap
 ```
 
-**Воспроизведение.**
-1. `node tools/serve.js` (порт 1170), открыть `pdp11.html?bridge=1`.
-2. Boot → `boot rp0` → дождаться single-user `#`.
-3. Отправить Ctrl-D (`dlReceiveQueue(0, [4])`).
+**Reproduction.**
+1. `node tools/serve.js` (port 1170), open `pdp11.html?bridge=1`.
+2. Boot → `boot rp0` → wait for single-user `#`.
+3. Send Ctrl-D (`dlReceiveQueue(0, [4])`).
 
-Либо e2e-сценарий: `node /tmp/ctrld-probe.js rp0` (скрипт-прототип).
+Or the e2e scenario: `node /tmp/ctrld-probe.js rp0` (prototype script).
 
-**Что выяснено.**
-- В v0.1.0-alpha2 паника идентичная (тот же `pc=136250`, `trap type 0`) —
-  баг в общей части эмулятора (pdp11.js / MMU / user-mode), не в
-  iopage-устройствах и не в рефакторинге.
-- Ядро успевает смонтировать /usr и /user1 и записать error log — падает
-  при возврате в user mode / старте init.
-- Тот же «класс» проблем (multi-user / user-mode) наблюдался у BSD 2.9
-  (ввод после `login:`), но там причина оказалась в госте (getty
-  TIOCFLUSH) — здесь, судя по `panic: trap`, баг именно эмулятора.
+**What was found.**
+- On v0.1.0-alpha2 the panic is identical (same `pc=136250`, `trap type 0`) —
+  the bug is in the common part of the emulator (pdp11.js / MMU / user-mode),
+  not in the iopage devices and not in the refactor.
+- The kernel manages to mount /usr and /user1 and writes the error log —
+  it panics when returning to user mode / starting init.
+- The same "class" of problems (multi-user / user-mode) was seen on BSD 2.9
+  (input after `login:`), but there the cause was in the guest (getty
+  TIOCFLUSH) — here, judging by `panic: trap`, the bug is in the emulator.
 
-**Кандидаты для поиска.**
-- MMU-трансляция в user mode (PAR/PDR user-наборов) при переключении
+**Search candidates.**
+- MMU translation in user mode (PAR/PDR user sets) when switching
   kernel→user.
-- Обработка прерываний/trap в user mode (PSW-биты mode, стеки).
-- Возможно, связано с `mapVirtualToPhysical` / `CPU.mmuMode` при
-  смене контекста процесса.
+- Interrupt/trap handling in user mode (PSW mode bits, stacks).
+- Possibly related to `mapVirtualToPhysical` / `CPU.mmuMode` when
+  switching process context.
 
-**Инструменты:** `window.__tracePC` (окна трассировки инструкций),
-`DEBUG_MMU`/`DEBUG_TRAP` (headless), дампы `CPU.mmuPAR/PDR`.
+**Tools:** `window.__tracePC` (instruction-trace windows),
+`DEBUG_MMU`/`DEBUG_TRAP` (headless), dumps of `CPU.mmuPAR/PDR`.
 
 ---
 
-## (История) BSD 2.9 (rl0): ввод после `login:` «терялся»
+## (History) BSD 2.9 (rl0): input after `login:` was lost
 
-**Статус:** решено — не баг эмуляции.
+**Status:** resolved — not an emulator bug.
 
-Getty BSD 2.9 сбрасывает входной буфер (TIOCFLUSH) при старте: логин,
-набранный мгновенно после `login:`, теряется. Решение — пауза в
-сценарии wizard: `{ send: "root", waitFor: "login:", wait: 3000 }`
-(quickboot поддерживает `wait` с коммита 7dd3aa2).
+BSD 2.9 getty clears its input buffer (TIOCFLUSH) on startup: a login typed
+immediately after `login:` is lost. The fix is a pause in the wizard
+scenario: `{ send: "root", waitFor: "login:", wait: 3000 }`
+(quickboot supports `wait` since commit 7dd3aa2).
