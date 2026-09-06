@@ -17,7 +17,11 @@
  *                                               # name without the .png suffix)
  *   npm run screenshots:manual
  *
- * Output: assets/images/manual/<name>.png
+ * Output: assets/images/manual/<name>.png (the repo-root copy, which is the
+ * canonical one) and landing/public/assets/images/manual/<name>.png (the React
+ * landing mirror). The emulator manual page and the landing's User Manual
+ * section must show identical illustrations, so every shot is written to both
+ * tracked locations to keep them from drifting apart.
  */
 "use strict";
 
@@ -28,7 +32,25 @@ const { spawn } = require("child_process");
 const puppeteer = require("puppeteer-core");
 
 const ROOT = path.resolve(__dirname, "..");
-const OUT_DIR = path.join(ROOT, "assets", "images", "manual");
+// Each generated shot is written to every tracked manual-images directory so
+// the docs and the React landing can never drift apart. Order: canonical
+// repo-root copy first, then the landing mirror.
+const OUT_DIRS = [
+    path.join(ROOT, "assets", "images", "manual"),
+    path.join(ROOT, "landing", "public", "assets", "images", "manual")
+];
+
+// Write one PNG into every OUT_DIR under the given file name, making the
+// parent directory on demand. Returns the canonical (first) path so callers
+// can report/stat a single representative file.
+function writeShot(fileName, buf) {
+    const canonical = path.join(OUT_DIRS[0], fileName);
+    for (const dir of OUT_DIRS) {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, fileName), buf);
+    }
+    return canonical;
+}
 const PORT = 11790;
 const BASE = `http://127.0.0.1:${PORT}`;
 const VIEWPORT = { width: 1280, height: 800 };
@@ -278,8 +300,7 @@ async function captureScenario(browser, cfg, shots, label) {
             await page.evaluate((p) => window.switchPage(p), shot.page);
             if (shot.prep) await shot.prep(page);
             await sleep(shot.wait);
-            const file = path.join(OUT_DIR, shot.file);
-            const opts = { path: file, type: "png" };
+            const opts = { type: "png" };
             // `clip: true` crops to the page's own content column: from the
             // first child (the page heading) down to the .config-actions bar,
             // at the page block's width — the sidebar and the empty backdrop
@@ -305,7 +326,8 @@ async function captureScenario(browser, cfg, shots, label) {
                 });
                 if (clip) opts.clip = clip;
             }
-            await page.screenshot(opts);
+            const png = await page.screenshot(opts);
+            const file = writeShot(shot.file, png);
             const kb = Math.round(fs.statSync(file).size / 1024);
             console.log(`  saved ${shot.file} (${kb} kB)`);
         } catch (err) {
@@ -345,7 +367,8 @@ async function captureButtons(browser, wants) {
                 console.log(`  MISSING ${b.file} (${b.id})`);
                 continue;
             }
-            await el.screenshot({ path: path.join(OUT_DIR, b.file) });
+            const png = await el.screenshot();
+            writeShot(b.file, png);
             console.log(`  saved ${b.file}`);
         } catch (err) {
             console.error(`  FAILED ${b.file}: ${err.message}`);
@@ -395,7 +418,8 @@ async function captureDialogs(browser, wants) {
     async function snap(page, file, wait) {
         try {
             await sleep(wait || 600);
-            await page.screenshot({ path: path.join(OUT_DIR, file), type: "png" });
+            const png = await page.screenshot({ type: "png" });
+            writeShot(file, png);
             console.log(`  saved ${file}`);
         } catch (err) {
             console.error(`  FAILED ${file}: ${err.message}`);
@@ -565,8 +589,8 @@ async function captureVt11Lander(browser) {
     try {
         await page.evaluate(() => window.switchPage("vt11"));
         await sleep(1500);
-        const file = path.join(OUT_DIR, "vt11.png");
-        await page.screenshot({ path: file, type: "png" });
+        const png = await page.screenshot({ type: "png" });
+        const file = writeShot("vt11.png", png);
         console.log(`  saved vt11.png (${Math.round(fs.statSync(file).size / 1024)} kB)`);
     } catch (err) {
         console.error(`  FAILED vt11.png: ${err.message}`);
@@ -589,7 +613,9 @@ async function captureVt11Lander(browser) {
                 name.toLowerCase().replace(/\.png$/, "") === selector;
         }
 
-        fs.mkdirSync(OUT_DIR, { recursive: true });
+        // Ensure every output directory exists up front (writeShot also
+        // mkdirs lazily, so this is just insurance/consistency).
+        for (const dir of OUT_DIRS) fs.mkdirSync(dir, { recursive: true });
         server = await ensureServer();
         browser = await launchBrowser();
 
@@ -615,7 +641,7 @@ async function captureVt11Lander(browser) {
         }
 
         console.log("\nDone. Screenshots written to " +
-            path.relative(ROOT, OUT_DIR) + ".");
+            OUT_DIRS.map((d) => path.relative(ROOT, d)).join(" and ") + ".");
     } catch (err) {
         console.error(err.message);
         process.exitCode = 1;
