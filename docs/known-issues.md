@@ -5,29 +5,29 @@
 
 ---
 
-## XXDP cache-тесты (EKBCD1/EKBDE0): недетерминированный HALT at pc=10
+## XXDP cache tests (EKBCD1/EKBDE0): non-deterministic HALT at pc=10
 
-**№:** (нет GitHub issue) — зафиксировано при исследовании XXDP-диагностик.
+**Number:** (no GitHub issue yet) — found while exploring the XXDP diagnostics.
 
-**Статус:** открыто (требует отдельной отладки, активной работы нет).
+**Status:** open (needs separate debugging; no active work).
 
-**Симптом.** `EKBCD1` (banner «11/70 CACHE #1») и `EKBDE0` («CACHE #2»)
-запускаются в headless, но поведение недетерминированное: в одних прогонах
-после баннера и ~2.4 с исполнения (PC 153576→156076) CPU выдаёт
-`HALT at 10 PSW: 0`, в других тест тихо исполняется дольше (RUN, PC в
-153xxx) без падения. Это не «всегда падает из-за отсутствия cache» —
-часть прогонов работает.
+**Symptom.** `EKBCD1` (banner "11/70 CACHE #1") and `EKBDE0` ("CACHE #2")
+run on the headless stack, but behaviour is non-deterministic: in some runs,
+after the banner and ~2.4 s of work (PC 153576→156076) the CPU emits
+`HALT at 10 PSW: 0`; in others the test runs quietly longer (RUN, PC in
+153xxx) without failing. It is not a stable "always halts because the cache
+controller is absent" — some runs work.
 
-**Что выяснено.** pc=10 (octal) лежит в области векторов — подозрение на
-системный trap (вектор 4/неправильный адрес), а не на осмысленную cache-
-проверку; достоверно не установлено (нужен стабильно воспроизводимый
-кейс + дамп вектора). Ring-трассер (перехват console.log → кольцо 300 в
-VM, `__tracePC` диапазонами) работает и почти не влияет на тайминг.
+**What was found.** pc=10 (octal) is in the vector area — suspicion of a
+system trap (vector 4 / bad address) rather than a meaningful cache check;
+not established for certain (need a reliably reproducible run + a vector
+dump). A ring tracer (intercept console.log → a 300-entry ring in the VM,
+`__tracePC` ranges) works and barely affects timing.
 
-**Кандидат на отладку:** MMU/trap либо тайминг инициализации.
+**Debugging candidate:** MMU/trap handling, or initialization timing.
 ---
 
-**GitHub issue:** [#15](https://github.com/amesk/yaPDP/issues/15)
+## ULTRIX-11 (rp0): `panic: trap` при переходе из single-user в multi-user
 
 **Статус:** открыто (не регрессия — воспроизводится и в v0.1.0-alpha2).
 
