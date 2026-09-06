@@ -291,11 +291,26 @@
             fetched = true;
             try {
                 var resp = await fetch('media/' + url + '.zst');
-                if (!resp.ok) return undefined;
-                var buf = await resp.arrayBuffer();
-                var raw = fzstd.decompress(new Uint8Array(buf));
-                DataLoader.mount(url, raw);
-                return raw;
+                if (resp.ok) {
+                    var buf = await resp.arrayBuffer();
+                    var raw = fzstd.decompress(new Uint8Array(buf));
+                    DataLoader.mount(url, raw);
+                    return raw;
+                }
+            } catch (e) {
+                // Paper tapes may ship compressed (.ptap.zst) or raw (.ptap),
+                // so a failed .zst probe is not fatal — fall through to the
+                // raw-file fetch below. (Mirrors iopage.js fetchBlock()/reader.)
+            }
+            // No .zst image available: fall back to the raw file (e.g. Lander
+            // ships as a raw lander.ptap, while every disk/tape image ships
+            // .zst-compressed).
+            try {
+                var rawResp = await fetch('media/' + url);
+                if (!rawResp.ok) return undefined;
+                var rawBytes = new Uint8Array(await rawResp.arrayBuffer());
+                DataLoader.mount(url, rawBytes);
+                return rawBytes;
             } catch (e) {
                 return undefined;
             }
