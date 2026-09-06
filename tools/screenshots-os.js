@@ -39,7 +39,24 @@ const puppeteer = require("puppeteer-core");
 const consoleWait = require("./console-wait");
 
 const ROOT = path.resolve(__dirname, "..");
-const OUT_DIR = path.join(ROOT, "assets", "images", "os");
+// Write each shot to every tracked OS-image directory (repo-root canonical
+// copy + the React landing mirror) so the OS carousel never drifts from the
+// emulator's own copy.
+const OUT_DIRS = [
+    path.join(ROOT, "assets", "images", "os"),
+    path.join(ROOT, "landing", "public", "assets", "images", "os")
+];
+
+// Write one PNG into every OUT_DIR under the given file name, making the
+// parent directory on demand. Returns the canonical (first) path.
+function writeShot(fileName, buf) {
+    const canonical = path.join(OUT_DIRS[0], fileName);
+    for (const dir of OUT_DIRS) {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, fileName), buf);
+    }
+    return canonical;
+}
 const PORT = 11790;
 const BASE = `http://127.0.0.1:${PORT}`;
 
@@ -163,12 +180,16 @@ function findBrowserExecutable() {
 
 async function launchBrowser() {
     const executablePath = findBrowserExecutable();
+    // Sandboxed CI/container environments (no unprivileged user namespaces)
+    // need --no-sandbox; opt in via PUPPETEER_NO_SANDBOX=1 so desktop runs
+    // keep the default sandbox.
+    const args = process.env.PUPPETEER_NO_SANDBOX ? ["--no-sandbox"] : [];
     if (executablePath) {
-        return puppeteer.launch({ executablePath, headless: true });
+        return puppeteer.launch({ executablePath, headless: true, args });
     }
     for (const channel of ["msedge", "chrome"]) {
         try {
-            return await puppeteer.launch({ channel, headless: true });
+            return await puppeteer.launch({ channel, headless: true, args });
         } catch (err) { /* try the next channel */ }
     }
     throw new Error(
@@ -215,7 +236,7 @@ async function openPage(browser, shot) {
         } catch (err) { /* ignore storage errors */ }
     }, { cfg });
 
-    await page.goto(`${BASE}/pdp11.html`, { waitUntil: "load", timeout: 90000 });
+    await page.goto(`${BASE}/pdp11.html?bridge=1`, { waitUntil: "load", timeout: 90000 });
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
     try {
@@ -366,8 +387,8 @@ async function captureConsoleOS(browser, shot) {
 
         await sleep(shot.settle || 2000);
 
-        const file = path.join(OUT_DIR, shot.file);
-        await page.screenshot({ path: file, type: "png" });
+        const png = await page.screenshot({ type: "png" });
+        const file = writeShot(shot.file, png);
         const kb = Math.round(fs.statSync(file).size / 1024);
         console.log(`  saved ${shot.file} (${kb} kB)`);
     } finally {
@@ -437,8 +458,8 @@ async function captureLander(browser, shot) {
         await page.evaluate(() => window.switchPage("vt11"));
         await sleep(1500);
 
-        const file = path.join(OUT_DIR, shot.file);
-        await page.screenshot({ path: file, type: "png" });
+        const png = await page.screenshot({ type: "png" });
+        const file = writeShot(shot.file, png);
         const kb = Math.round(fs.statSync(file).size / 1024);
         console.log(`  saved ${shot.file} (${kb} kB)`);
     } finally {
@@ -457,7 +478,7 @@ async function captureLander(browser, shot) {
         // slow shot (e.g. Lunar Lander) does not force the whole batch.
         const selector = (process.argv[2] || "").toLowerCase().replace(/\.png$/, "");
 
-        fs.mkdirSync(OUT_DIR, { recursive: true });
+        for (const dir of OUT_DIRS) fs.mkdirSync(dir, { recursive: true });
         server = await ensureServer();
         browser = await launchBrowser();
 
@@ -476,7 +497,7 @@ async function captureLander(browser, shot) {
         }
 
         console.log("\nDone. Screenshots written to " +
-            path.relative(ROOT, OUT_DIR) + ".");
+            OUT_DIRS.map((d) => path.relative(ROOT, d)).join(" and ") + ".");
     } catch (err) {
         console.error(err.message);
         process.exitCode = 1;
