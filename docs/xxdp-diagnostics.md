@@ -51,8 +51,17 @@ Full catalog (entry `D` in the monitor), grouped by device under test:
 ### KB11 CPU diagnostics (EK* / CK*)
 - `EKBBF0` — **passes** today (the 11/70 CPU #2 test; self-identifies the
   CPU as a KB11-B/C or KB11-CM). See `tests/e2e-xxdp-ekbbf0.js`.
-- `EKBAD0`, `EKBCD1`, `EKBDE0`, `EKBEE1`, `EKBFD1`, `EKBGC0`
+- `KFPAD0` — **passes** today (FP11-F floating point; see
+  `tests/e2e-xxdp-kfp.js`).
+- `EKBAD0`, `EKBEE1`, `EKBFD1`, `EKBGC0`
 - `CKBAB0`, `CKBBB0`, `CKBCC0`, `CKBDC0`, `CKBEC0`, `CKBIB0` (+`CKBCB0.PAT`)
+
+> **Not CPU tests — 11/70 cache.** Despite the `EK` prefix, `EKBCD1` and
+> `EKBDE0` are cache-memory diagnostics (their banner reads
+> `CEKBC-D  11/70 CACHE #1` / `CEKBD-E   11/70 CACHE  #2`). They halt
+> without running passes because the emulator has no 11/70 cache
+> controller — and they behave the same in the Web UI, so it is not a
+> headless artifact. Skip them when picking a CPU authenticity-gate test.
 
 ### FP11 / FPU diagnostics (KFP*)
 - `KFPAD0`, `KFPBC0`, `KFPCD0`
