@@ -155,6 +155,12 @@ function mapUnibus(CPU, ba) {
  *   steps     [{send, waitFor}] multi-step boot: send each line after the
  *             bootloader prompt and wait for its marker in the output
  *             produced after the send (Unix V5, RSTS, ...)
+ *   stableMs  (optional) wait-for-silence: instead of matching a readiness
+ *             marker, consider boot ready once console output has NOT grown
+ *             for stableMs ms. For unknown/under-exploration images where no
+ *             marker is known yet (see waitForMode doc).
+ *   waitForMode "line" | "substring" — how waitFor is matched (see
+ *             bootHeadless). Default "line".
  *   timeoutMs overall budget, default 90000
  * @returns {Promise<{out, stats, halt, evalIn}>}
  */
@@ -163,6 +169,17 @@ async function bootHeadless(opts = {}) {
   const urlName = opts.urlName || "rk0.dsk";
   const bootCmd = opts.bootCmd || "BOOT RK0\r";
   const waitFor = opts.waitFor || ".";
+  // How the readiness marker is matched against console output:
+  //   "line"      — the marker must be an entire line (optionally with
+  //                 trailing whitespace). Safe default for short/noisy
+  //                 anchors like RT-11's "." or Unix/BSD "#", which occur
+  //                 mid-text long before the real prompt.
+  //   "substring" — the marker may appear anywhere in the console stream.
+  //                 For long, specific markers (XXDP "ENTER DATE", RSTS
+  //                 "Today's date?", "login:", "Option:") that never occur
+  //                 by chance. Matches the `--step`/core e2e behaviour.
+  const waitForMode = opts.waitForMode || "line";
+  const stableMs = opts.stableMs || 0;
   const timeoutMs = opts.timeoutMs || 90000;
 
   const sb = buildSandbox();
@@ -482,12 +499,28 @@ async function bootHeadless(opts = {}) {
   } else {
     sb.window.dlReceiveQueue(0, bytes(bootCmd));
 
-    const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");
-    while (!re.test(out)) {
+    // Readiness: either a quiet period (stableMs set — wait until the
+    // console has not grown for stableMs, marker-free; used to explore an
+    // unknown image before its prompts are known), or a marker match
+    // (waitFor, matched whole-line or as a substring per waitForMode).
+    let lastLen = out.length;
+    let lastGrow = Date.now();
+    const matched = waitForMode === "substring"
+      ? () => out.includes(waitFor)
+      : (() => {
+          const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");
+          return () => re.test(out);
+        })();
+    while (true) {
+      const quiet = stableMs > 0 && out.length === lastLen &&
+        Date.now() - lastGrow >= stableMs;
+      if (quiet || matched()) break;
       if (Date.now() - t0 > timeoutMs) {
         // Carry the accumulated guest output out with the error so the
         // caller can show where boot stalled instead of losing it.
-        const err = new Error("timeout waiting for prompt '" + waitFor + "'\n" + out);
+        const err = new Error("timeout " + (stableMs > 0
+          ? "waiting for the console to go quiet (stableMs=" + stableMs + ")"
+          : "waiting for prompt '" + waitFor + "'") + "\n" + out);
         err.partialOut = out;
         throw err;
       }
@@ -499,6 +532,10 @@ async function bootHeadless(opts = {}) {
         opts.debugTick({ out, pc, runState: rs, evalIn: (c) => vm.runInContext(c, sb) });
       }
       await sleep(100);
+      if (out.length !== lastLen) {
+        lastLen = out.length;
+        lastGrow = Date.now();
+      }
     }
   }
   readyMs = Date.now() - t0;

@@ -69,6 +69,25 @@ async function run() {
     JSON.stringify(getOut().slice(-80)) + ")");
   h2();
   console.log("PASS test 3: guest round-trip via console device");
+
+  // ---- Test 4: wait-for-silence (stableMs) needs no readiness marker --
+  // For an unknown image you may not know a marker yet (XXDP's "ENTER
+  // DATE" is not a whole line, and you may not know it exists until you
+  // have explored the boot). Boot XXDP rk3 with stableMs only — readiness
+  // is console output not growing for stableMs — and confirm the boot
+  // output is present without ever supplying a waitFor marker.
+  const { out: o4, stats: s4, halt: h4 } = await bootHeadless({
+    image: "media/rk3.dsk.zst", urlName: "rk0.dsk",
+    bootCmd: "BOOT RK0\r", stableMs: 1500, timeoutMs: 30000,
+  });
+  assert.ok(s4.readyMs >= 0, "stable-readiness detected");
+  assert.ok(s4.readyMs < 30000, "stable boot within budget (" + s4.readyMs + "ms)");
+  assert.ok(o4.indexOf("XXDP+") !== -1, "XXDP+ banner present in boot output");
+  assert.ok(o4.indexOf("ENTER DATE") !== -1,
+    "boot settled after printing its prompt (no marker required)");
+  h4();
+  console.log("PASS test 4: wait-for-silence (stableMs) boots without a marker (" +
+    s4.readyMs + "ms)");
 }
 
 run().then(() => {

@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`bootHeadless` wait-for-silence readiness (`stableMs`).** Besides
+  matching a known prompt marker (`waitFor`, whole-line by default, or as a
+  substring with `waitForMode: "substring"`), the headless boot machinery
+  can now treat the boot as ready once console output stays quiet for
+  `stableMs` ms — no marker required. This makes it possible to explore an
+  unknown guest image (whose prompts are not known yet) headlessly and then
+  derive the readiness markers from the captured boot output.
+  (`tools/headless-machine.js`, test 4 in `tests/headless-machine.test.js`)
 - Nothing yet — see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [0.1.0] - 2026-09-04
