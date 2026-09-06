@@ -18,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unknown guest image (whose prompts are not known yet) headlessly and then
   derive the readiness markers from the captured boot output.
   (`tools/headless-machine.js`, test 4 in `tests/headless-machine.test.js`)
+
+### Fixed
+
+- **Manual screenshots written to both repo-root and landing sets.**
+  `tools/screenshots-manual.js` previously wrote every shot only to
+  `assets/images/manual/`, letting the React landing's mirror
+  (`landing/public/assets/images/manual/`) drift out of date. Each generated
+  PNG is now written to both tracked locations, and all manual illustrations
+  were regenerated from current `master` — they now show the machine's real
+  quiet `@` bootstrap prompt instead of the stale `Boot>` banner.
 - Nothing yet — see [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## [0.1.0] - 2026-09-04
