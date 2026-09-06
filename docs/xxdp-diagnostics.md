@@ -56,12 +56,14 @@ Full catalog (entry `D` in the monitor), grouped by device under test:
 - `EKBAD0`, `EKBEE1`, `EKBFD1`, `EKBGC0`
 - `CKBAB0`, `CKBBB0`, `CKBCC0`, `CKBDC0`, `CKBEC0`, `CKBIB0` (+`CKBCB0.PAT`)
 
-> **Not CPU tests — 11/70 cache.** Despite the `EK` prefix, `EKBCD1` and
-> `EKBDE0` are cache-memory diagnostics (their banner reads
-> `CEKBC-D  11/70 CACHE #1` / `CEKBD-E   11/70 CACHE  #2`). They halt
-> without running passes because the emulator has no 11/70 cache
-> controller — and they behave the same in the Web UI, so it is not a
-> headless artifact. Skip them when picking a CPU authenticity-gate test.
+> **Not silent-pass — they are hard-error diagnostics.** Despite the `EK`
+> prefix, `EKBCD1` and `EKBDE0` identify as 11/70 **cache** tests. Like
+> several old XXDP diagnostics they are "hard": a clean run stays quiet
+> (no per-pass text) and a detected fault **halts the CPU** instead of
+> printing. Running them needs the correct switch-register (silence/PASS
+> semantics) and a readiness model that treats HALT-with-an-address as an
+> error, not a hang. `EKBCD1` halts at pc=`10` — worth decoding via its
+> listing (retrocmp scan) when debugging 11/70 cache behaviour.
 
 ### FP11 / FPU diagnostics (KFP*)
 - `KFPAD0`, `KFPBC0`, `KFPCD0`
