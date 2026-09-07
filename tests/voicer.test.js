@@ -28,7 +28,9 @@ const path = require("path");
 const voicer = require(path.join(__dirname, "..", "tools", "voicer.js"));
 
 const { parseArgs, parseDshowDevices, findLoopbackDevice,
-    cultureIdFor, escPS, buildSapiScript, DEFAULTS } = voicer;
+    cultureIdFor, escPS, buildSapiScript, DEFAULTS,
+    ENGINES, KOKORO_MODEL_ID, KOKORO_DTYPE, KOKORO_DEFAULT_VOICE,
+    normaliseEngine, kokoroConfig } = voicer;
 
 // --- 1. parseArgs ----------------------------------------------------------
 
@@ -172,7 +174,49 @@ const quoted = buildSapiScript({ outPath: "C:\\tmp\\o'brien.wav", lang: "en-US" 
 assert.ok(quoted.includes("SetOutputToWaveFile('C:\\tmp\\o''brien.wav');"),
     "the output path must be single-quote escaped");
 
-// --- 6. buildVoiceHtml -----------------------------------------------------
+// --- 6. engine selection / kokoro config -----------------------------------
+
+assert.ok(ENGINES.includes("auto"), "auto engine must exist (historical path)");
+assert.ok(ENGINES.includes("kokoro"), "kokoro engine must exist");
+assert.strictEqual(DEFAULTS.engine, "auto",
+    "the default engine must be auto (backward compatible)");
+
+// --engine parsing.
+assert.strictEqual(parseArgs(["--engine", "kokoro"]).engine, "kokoro");
+assert.strictEqual(parseArgs(["--engine", "sapi"]).engine, "sapi");
+assert.strictEqual(parseArgs(["--engine", "auto"]).engine, "auto");
+// Legacy --force-sapi folds into engine "sapi".
+assert.strictEqual(parseArgs(["--force-sapi"]).engine, "sapi",
+    "--force-sapi must map to engine sapi");
+assert.strictEqual(parseArgs(["--engine", "kokoro", "--force-sapi"]).engine,
+    "kokoro", "an explicit --engine must win over --force-sapi");
+
+// normaliseEngine: lowercases, tolerates defaults, rejects unknowns.
+assert.strictEqual(normaliseEngine("KOKORO"), "kokoro",
+    "engine names must be case-insensitive");
+assert.strictEqual(normaliseEngine(undefined), "auto");
+assert.strictEqual(normaliseEngine(null), "auto");
+assert.throws(() => normaliseEngine("acapela"),
+    "an unknown engine must be rejected");
+
+// kokoroConfig defaults: US Michael voice, CPU, q8, official ONNX repo and a
+// local cache dir — all pinned so a CI checkout reuses the cached model.
+const cfg = kokoroConfig({});
+assert.strictEqual(cfg.modelId, KOKORO_MODEL_ID);
+assert.strictEqual(cfg.modelId, "onnx-community/Kokoro-82M-v1.0-ONNX");
+assert.strictEqual(cfg.dtype, KOKORO_DTYPE);
+assert.strictEqual(cfg.dtype, "q8", "quantized q8 weights must be the default");
+assert.strictEqual(cfg.device, "cpu", "Node synthesis must run on the CPU");
+assert.strictEqual(cfg.voice, KOKORO_DEFAULT_VOICE);
+assert.strictEqual(cfg.voice, "am_michael",
+    "the default Kokoro voice must be US Michael (am_michael)");
+assert.ok(cfg.cacheDir.endsWith(path.join("PDP11", ".cache", "kokoro")) ||
+    cfg.cacheDir.includes(".cache") && cfg.cacheDir.includes("kokoro"),
+    "the model cache must live in the repo .cache/kokoro");
+// An explicit --voice must override the Kokoro default.
+assert.strictEqual(kokoroConfig({ voice: "af_heart" }).voice, "af_heart");
+
+// --- 7. buildVoiceHtml -----------------------------------------------------
 
 // The browser TTS page must be generated in-memory — there is no external
 // voice.html fixture anymore. It carries the #speakBtn + VOICE_OPTS /

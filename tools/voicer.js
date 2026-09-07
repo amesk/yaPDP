@@ -6,16 +6,26 @@
  * pipeline (tools/assemble-video.js) can mix a "computer voice" narration over
  * the clips later.
  *
- * Two capture paths, tried in order:
- *   1. Browser loopback (Windows DirectShow) — the primary path. A headed
- *      Chrome renders a generated in-memory page and speaks the text through
- *      the Web Speech API;
- *      ffmpeg records the browser's audio output from a loopback capture
- *      device (Stereo Mix / VB-Cable / ...) into raw PCM and wraps it into a
- *      WAV. This preserves the browser "ancient computer" effect (pitch/rate).
- *   2. Windows SAPI — the fallback. When no loopback device (or no browser)
- *      is available, a PowerShell System.Speech synthesizer writes the WAV
- *      directly. No browser or capture device needed.
+ * The engine is chosen with --engine (default "auto"):
+ *   kokoro  — Kokoro-82M, an open neural TTS model, run locally through the
+ *             kokoro-js package (Transformers.js + onnxruntime-node on CPU).
+ *             Sounds far more natural than the OS voices; no browser, no
+ *             loopback capture device and no network voice dependency. The
+ *             model (one quantized .onnx, ~86 MB) is downloaded from Hugging
+ *             Face into .cache/kokoro on first use, then reused. Voices are
+ *             shipped inside the kokoro-js package, so only the chosen one is
+ *             read (default: am_michael, US Michael).
+ *   auto    — browser loopback (Windows DirectShow) then Windows SAPI.
+ *   browser — only the browser Web Speech API loopback capture.
+ *   sapi    — only Windows SAPI.
+ * The browser/SAPI paths use the OS "ancient computer" effect (pitch/rate).
+ *
+ * Browser loopback details (the "auto" primary): a headed Chrome renders a
+ * generated in-memory page and speaks the text through the Web Speech API;
+ * ffmpeg records the browser's audio output from a loopback capture device
+ * (Stereo Mix / VB-Cable / ...) into raw PCM and wraps it into a WAV. Windows
+ * SAPI is the fallback: a PowerShell System.Speech synthesizer writes the WAV
+ * directly — no browser or capture device needed.
  *
  * Why not the old CDP approach: Media.startScreencast yields VIDEO frames and
  * Chrome's speechSynthesis is not routed into WebRTC tab capture, so neither
@@ -26,6 +36,7 @@
  *   node voicer.js --text "Hello, I'm yaPDP" --out voice-out.wav
  *   node voicer.js --file script.txt --out voice-out.wav --device "CABLE Input"
  *   node voicer.js --text "Hello" --out voice-out.wav --force-sapi
+ *   node voicer.js --text "Hello" --out voice-out.wav --engine kokoro
  *
  * The module exports its pure helpers for unit tests (tests/voicer.test.js);
  * the CLI runs only when the file is executed directly.
@@ -37,15 +48,34 @@ const path = require("path");
 const os = require("os");
 const { spawn, spawnSync } = require("child_process");
 
+// --- Engine selection -------------------------------------------------------
+// Voice engines. "auto" keeps the historical behaviour (browser loopback,
+// then Windows SAPI). "kokoro" is the local neural TTS (kokoro-js) and is the
+// recommended choice for natural narration.
+const ENGINES = ["auto", "browser", "sapi", "kokoro"];
+
+// Kokoro-82M, the official ONNX repo consumed by kokoro-js (Transformers.js).
+const KOKORO_MODEL_ID = "onnx-community/Kokoro-82M-v1.0-ONNX";
+// Quantized weights: tiny enough for a CPU synth while staying natural.
+const KOKORO_DTYPE = "q8";
+// Default voice = US Michael ("am" = American English, male). The user asked
+// for exactly this voice; every voice ships inside the kokoro-js package, so
+// no per-voice download happens.
+const KOKORO_DEFAULT_VOICE = "am_michael";
+// Local Transformers.js model cache, inside the repo but gitignored, so a CI
+// checkout does not re-download the ~86 MB .onnx on every run.
+const KOKORO_CACHE_DIR = path.join(__dirname, "..", ".cache", "kokoro");
+
 // --- CLI defaults (the "ancient computer" browser TTS effect) ---
 const DEFAULTS = {
     text: "Hello, I'm yaPDP - ancient computer in your head!",
     out: "voice-out.wav",
+    engine: "auto",  // auto | browser | sapi | kokoro
     lang: "en-US",   // browser voice language
     rate: 0.95,      // browser speech rate
     pitch: 0.7,      // browser speech pitch (lower = "ancient")
     volume: 1.0,     // browser speech volume
-    voice: null,     // explicit SAPI voice name (fallback path)
+    voice: null,     // explicit SAPI voice name / Kokoro voice code
     sapiRate: -1,    // SAPI Rate (-10..10); -1 ≈ slower, closer to low pitch
     sapiVolume: 100, // SAPI Volume (0..100)
     device: null,    // explicit DirectShow loopback device name
@@ -53,7 +83,8 @@ const DEFAULTS = {
 };
 
 const HELP = `yaPDP voice recorder
-Writes spoken text to a WAV file via browser loopback capture or Windows SAPI.
+Writes spoken text to a WAV file via the kokoro-js neural TTS, a browser
+loopback capture, or Windows SAPI.
 
 Usage:
   node tools/voicer.js [options]
@@ -62,16 +93,23 @@ Options:
   --text <text>       Text to speak (default: a yaPDP greeting).
   --file <path>       Read the text from a file instead of --text.
   --out <path>        Output WAV file (default: voice-out.wav).
+  --engine <name>     Voice engine: kokoro (neural, recommended) |
+                      auto (browser loopback -> SAPI) | browser | sapi.
+                      (default: auto).
+  --voice <name>      Voice selector: a Kokoro voice code (e.g. am_michael,
+                      af_heart) for --engine kokoro, or a Windows SAPI voice
+                      name for the browser/SAPI paths. Kokoro default is
+                      am_michael (US Michael).
   --lang <code>       Browser TTS language, e.g. en-US (default: en-US).
   --rate <float>      Browser TTS rate (default: 0.95).
   --pitch <float>     Browser TTS pitch (default: 0.7).
   --volume <float>    Browser TTS volume 0..1 (default: 1.0).
   --device <name>     DirectShow loopback device (default: auto-detect
                       Stereo Mix / VB-Cable from the device list).
-  --voice <name>      SAPI voice name for the fallback path.
   --sapi-rate <int>   SAPI rate -10..10 (default: -1).
   --sapi-volume <int> SAPI volume 0..100 (default: 100).
-  --force-sapi        Skip the browser-loopback path and use SAPI directly.
+  --force-sapi        Skip the browser-loopback path and use SAPI directly
+                      (equivalent to --engine sapi).
   -h, --help          Show this help.
 `;
 
@@ -92,6 +130,7 @@ function parseArgs(argv) {
     if (value("text") !== null) opts.text = value("text");
     if (value("file") !== null) opts.file = value("file");
     if (value("out") !== null) opts.out = value("out");
+    if (value("engine") !== null) opts.engine = value("engine");
     if (value("lang") !== null) opts.lang = value("lang");
     if (value("rate") !== null) opts.rate = parseFloat(value("rate"));
     if (value("pitch") !== null) opts.pitch = parseFloat(value("pitch"));
@@ -101,7 +140,34 @@ function parseArgs(argv) {
     if (value("sapi-volume") !== null) opts.sapiVolume = parseInt(value("sapi-volume"), 10);
     if (value("device") !== null) opts.device = value("device");
     if (bool("force-sapi")) opts.forceSapi = true;
+    // --force-sapi is legacy for --engine sapi; a single effective engine
+    // drives main() below.
+    if (opts.engine === "auto" && opts.forceSapi) opts.engine = "sapi";
     return opts;
+}
+
+// Lowercase/validate an engine name against the known set. Pure and testable.
+function normaliseEngine(name) {
+    const engine = String(name == null ? "auto" : name).toLowerCase().trim();
+    if (!ENGINES.includes(engine)) {
+        throw new Error("unknown voice engine '" + name +
+            "' (expected one of: " + ENGINES.join(", ") + ")");
+    }
+    return engine;
+}
+
+// Resolve the concrete Kokoro synthesis parameters from parsed CLI options.
+// Pure and testable — kokoroSpeak() (below) is the only place that touches the
+// real model, so unit tests can pin the defaults without downloading it.
+function kokoroConfig(opts) {
+    opts = opts || {};
+    return {
+        modelId: KOKORO_MODEL_ID,
+        dtype: KOKORO_DTYPE,
+        device: "cpu",
+        voice: opts.voice || KOKORO_DEFAULT_VOICE,
+        cacheDir: opts.kokoroCacheDir || KOKORO_CACHE_DIR
+    };
 }
 
 // Parse `ffmpeg -list_devices true -f dshow -i dummy` stderr into the audio
@@ -464,6 +530,40 @@ async function sapiSpeak(text, opts) {
     });
 }
 
+// Kokoro path: synthesize locally with the kokoro-js neural TTS (Kokoro-82M).
+// The quantized model is downloaded once into the repo-local .cache/kokoro by
+// Transformers.js; the voice binary is read from inside the kokoro-js package.
+// No headed browser, no loopback capture device and no network voice needed.
+async function kokoroSpeak(text, opts, outWav) {
+    let kokoro;
+    try {
+        kokoro = require("kokoro-js");
+    } catch (err) {
+        throw new Error("the kokoro engine needs the kokoro-js package " +
+            "(npm install --save-dev kokoro-js)");
+    }
+    const cfg = kokoroConfig(opts);
+    fs.mkdirSync(cfg.cacheDir, { recursive: true });
+    // Point Transformers.js at our cache so a fresh CI checkout does not
+    // re-download the ~86 MB .onnx on every run, then load the quantized
+    // model on the CPU backend. `env` is a shared singleton, so mutating it
+    // here affects the from_pretrained() call below.
+    const transformers = require("@huggingface/transformers");
+    if (transformers.env) {
+        transformers.env.cacheDir = cfg.cacheDir;
+        transformers.env.allowRemoteModels = true;
+    }
+    process.stdout.write("Loading Kokoro-82M (first run downloads the model " +
+        "into " + cfg.cacheDir + ", may take a while)...\n");
+    const tts = await kokoro.KokoroTTS.from_pretrained(cfg.modelId, {
+        dtype: cfg.dtype,
+        device: cfg.device
+    });
+    process.stdout.write("Speaking with Kokoro voice '" + cfg.voice + "'...\n");
+    const audio = await tts.generate(text, { voice: cfg.voice });
+    await audio.save(path.resolve(outWav));
+}
+
 // --- CLI ------------------------------------------------------------------
 
 async function main() {
@@ -480,8 +580,20 @@ async function main() {
     const outWav = path.resolve(opts.out);
     fs.mkdirSync(path.dirname(outWav), { recursive: true });
 
+    // parseArgs already folds --force-sapi into engine "sapi"; this is the
+    // single place that decides which capture/synthesis path runs.
+    const engine = normaliseEngine(opts.engine);
     let method;
-    if (!opts.forceSapi) {
+    if (engine === "kokoro") {
+        await kokoroSpeak(text, opts, outWav);
+        method = "Kokoro-82M (kokoro-js, voice " + kokoroConfig(opts).voice + ")";
+    } else if (engine === "sapi") {
+        await sapiSpeak(text, opts);
+        method = "Windows SAPI";
+    } else if (engine === "browser") {
+        await captureLoopbackTts(text, opts, outWav);
+        method = "browser loopback";
+    } else { // auto: browser loopback first, then the Windows SAPI fallback.
         try {
             await captureLoopbackTts(text, opts, outWav);
             method = "browser loopback";
@@ -496,9 +608,6 @@ async function main() {
                     "loopback: " + err.message + "\nsapi: " + err2.message);
             }
         }
-    } else {
-        await sapiSpeak(text, opts);
-        method = "Windows SAPI";
     }
 
     const kb = Math.round(fs.statSync(outWav).size / 1024);
@@ -513,8 +622,15 @@ if (require.main === module) {
 }
 
 module.exports = {
+    ENGINES,
+    KOKORO_MODEL_ID,
+    KOKORO_DTYPE,
+    KOKORO_DEFAULT_VOICE,
+    KOKORO_CACHE_DIR,
     DEFAULTS,
     parseArgs,
+    normaliseEngine,
+    kokoroConfig,
     parseDshowDevices,
     findLoopbackDevice,
     cultureIdFor,
