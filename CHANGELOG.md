@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Demo-reel voice-over narration on the title cards.** `tools/assemble-video.js`
+  now speaks the intro, every clip's title card and the outro with a generated
+  English narration (`tools/voicer.js`, browser-loopback TTS or Windows SAPI);
+  the WAVs are cached in `video/voice/` (rebuilt with `--voice-regen`, and the
+  light reverb / pseudo-stereo added to the dry mono voice can be disabled with
+  `--no-voice-reverb`). The intro card waits a beat (~3 s, until its title
+  has fully faded in) before the voice starts. A card whose narration is
+  longer than its default duration is stretched — freezing the last fully
+  visible frame (just before the card's fade-out), so the speech never runs
+  on an already-blackened screen — until the narration (plus its reverb tail)
+  fits entirely, and the background music is ducked while it plays. The pure
+  timing helpers live in `tools/reel-voice-util.js` with unit tests in
+  `tests/reel-voice.test.js`.
+
 - **`bootHeadless` wait-for-silence readiness (`stableMs`).** Besides
   matching a known prompt marker (`waitFor`, whole-line by default, or as a
   substring with `waitForMode: "substring"`), the headless boot machinery

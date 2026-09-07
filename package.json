@@ -35,7 +35,8 @@
     "e2e:os": "wireit",
     "e2e:os:legacy": "wireit",
     "validate": "wireit",
-    "term": "node tools/headless-term.js"
+    "term": "node tools/headless-term.js",
+    "voice": "node tools/voicer.js"
   },
   "devDependencies": {
     "canvas": "^3.2.3",
