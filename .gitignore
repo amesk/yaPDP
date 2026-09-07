@@ -28,6 +28,8 @@ tests/artifacts/
 *.tmp.js
 # ---- Wireit cache ----
 .wireit/
+# ---- Kokoro-82M model cache (downloaded on first use by kokoro-js) ----
+.cache/
 
 # ---- Landing (React SPA) ----
 landing/node_modules/

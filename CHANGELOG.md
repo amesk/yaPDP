@@ -24,6 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timing helpers live in `tools/reel-voice-util.js` with unit tests in
   `tests/reel-voice.test.js`.
 
+- **Kokoro-82M neural narration engine for the demo reel.** The voice-over
+  recorder (`tools/voicer.js`) can now synthesize the narration locally with
+  **Kokoro-82M** through the official `kokoro-js` package (Transformers.js +
+  onnxruntime-node on CPU, voice **US Michael** by default) — far less
+  synthetic than the browser/SAPI OS voices, and fully headless: no headed
+  Chrome and no loopback capture device. The quantized model (~86 MB) is
+  downloaded once into the gitignored `.cache/kokoro/` and then reused (a CI
+  checkout never re-downloads it); voices ship inside the package. Select it
+  with `node tools/voicer.js --engine kokoro ...` or, for the whole reel,
+  `node tools/assemble-video.js --voice-engine kokoro --voice-regen`; the
+  `auto` engine (browser loopback, then Windows SAPI) remains the default.
+  Pure engine-selection/config helpers are pinned in `tests/voicer.test.js`.
+  (`package.json`, `tools/voicer.js`, `tools/assemble-video.js`,
+  `tests/voicer.test.js`, `.gitignore`)
+
 - **`bootHeadless` wait-for-silence readiness (`stableMs`).** Besides
   matching a known prompt marker (`waitFor`, whole-line by default, or as a
   substring with `waitForMode: "substring"`), the headless boot machinery

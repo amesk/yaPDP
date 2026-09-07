@@ -22,7 +22,12 @@
  * Usage:
  *   node tools/assemble-video.js
  *   node tools/assemble-video.js --music assets/music/loop.mp3
+ *   node tools/assemble-video.js --voice-engine kokoro --voice-regen
  *   npm run video:demo
+ *
+ * --voice-engine selects the narration engine for tools/voicer.js: auto
+ * (default; browser loopback, then Windows SAPI) or kokoro (the local neural
+ * Kokoro-82M TTS). --voice-regen regenerates every cached narration WAV.
  *
  * Output: video/yaPDP-demo.mp4 and video/<clip>.mp4 for every clip.
  */
@@ -71,8 +76,8 @@ const BACKDROP = path.join(ROOT, "assets", "images", "pdp11-machine-room.jpg");
 // card's visual duration the card is stretched to fit it (see mixSpeech).
 const INTRO_VOICE = "Welcome to y-a-PDP, a faithful PDP-11-70 emulator. Step " +
     "into the era in one click — no disks, no setup, nothing to configure. " +
-    "Let's boot some classic DEC software.";
-const OUTRO_VOICE = "Thanks for watching. yaPDP brings the PDP-11 back to " +
+    "Let's boot some classic DECK software.";
+const OUTRO_VOICE = "Thanks for watching. y-a-PDP brings the PDP-11 back to " +
     "life: instant, immersive, always ready to run.";
 
 // --- The clips, in reel order ---------------------------------------------
@@ -464,27 +469,32 @@ function runChild(args) {
     });
 }
 
-// Speak `text` through tools/voicer.js into `outWav` (the recorder itself
-// falls back from the browser-loopback capture to Windows SAPI).
-async function speakToWav(text, outWav) {
+// Speak `text` through tools/voicer.js into `outWav`. The voicer itself picks
+// the engine from --engine; `engine` here is the --voice-engine the caller
+// chose (auto -> the recorder's historical browser-loopback-then-SAPI chain,
+// kokoro -> the local neural Kokoro-82M TTS). Not passing it keeps auto.
+async function speakToWav(text, outWav, engine) {
     const voicer = path.join(__dirname, "voicer.js");
-    await runChild([process.execPath, voicer, "--text", text, "--out", outWav]);
+    const args = [process.execPath, voicer, "--text", text, "--out", outWav];
+    if (engine && engine !== "auto") args.push("--engine", engine);
+    await runChild(args);
 }
 
 // Make sure `name` has a narration WAV in video/voice/, generating it through
 // voicer.js only when the cached file is missing (or --voice-regen forced a
 // rebuild). TTS may be unavailable on a machine — in that case the caller
 // gets null and the card is simply assembled without narration.
-async function ensureVoiceWav(name, text, force) {
+async function ensureVoiceWav(name, text, force, engine) {
     fs.mkdirSync(VOICE_DIR, { recursive: true });
     const file = path.join(VOICE_DIR, name + ".wav");
     if (!force && fs.existsSync(file) && fs.statSync(file).size > 0) return file;
     if (force && fs.existsSync(file)) {
         try { fs.unlinkSync(file); } catch (err) { /* best effort */ }
     }
-    process.stdout.write("Voicing card '" + name + "' (TTS)...\n");
+    process.stdout.write("Voicing card '" + name + "' (TTS" +
+        (engine && engine !== "auto" ? ", engine " + engine : "") + ")...\n");
     try {
-        await speakToWav(text, file);
+        await speakToWav(text, file, engine);
         if (!fs.existsSync(file)) throw new Error("voicer produced no WAV");
         return file;
     } catch (err) {
@@ -591,18 +601,25 @@ function voicedCardDuration(wav, baseDur, preSec) {
 
         // Voice-over knobs: --voice-regen forces a TTS rebuild of every WAV,
         // --no-voice-reverb turns the narration's light reverb/pseudo-stereo
-        // preset off (leaving a dry, mono voice).
+        // preset off (leaving a dry, mono voice). --voice-engine selects the
+        // voicer engine: auto (default, browser loopback -> Windows SAPI) or
+        // kokoro (the local neural Kokoro-82M TTS via kokoro-js).
         const reverb = !process.argv.includes("--no-voice-reverb");
         const voiceForce = process.argv.includes("--voice-regen");
+        const ve = process.argv.indexOf("--voice-engine");
+        const voiceEngine = ve !== -1 ? process.argv[ve + 1] : "auto";
 
         // Narration pre-pass: make sure every card that will carry voice has
         // its WAV ready (cached under video/voice/, generated via voicer.js
         // only when missing). In single-clip mode only the chosen clip's slide
         // is voiced; otherwise every clip card is.
-        console.log("Preparing narration (tools/voicer.js)...");
+        console.log("Preparing narration (tools/voicer.js" +
+            (voiceEngine !== "auto" ? ", engine " + voiceEngine : "") + ")...");
         const voices = {};
-        voices["intro"] = await ensureVoiceWav("intro", INTRO_VOICE, voiceForce);
-        voices["outro"] = await ensureVoiceWav("outro", OUTRO_VOICE, voiceForce);
+        voices["intro"] = await ensureVoiceWav("intro", INTRO_VOICE,
+            voiceForce, voiceEngine);
+        voices["outro"] = await ensureVoiceWav("outro", OUTRO_VOICE,
+            voiceForce, voiceEngine);
         if (selector) {
             const aliases = { lander: "lunar-lander" };
             const s = aliases[selector] || selector;
@@ -611,12 +628,14 @@ function voicedCardDuration(wav, baseDur, preSec) {
                 path.basename(c.file, ".webm") === s);
             if (clip) {
                 const key = "slide-" + path.basename(clip.file, ".webm");
-                voices[key] = await ensureVoiceWav(key, clip.voice, voiceForce);
+                voices[key] = await ensureVoiceWav(key, clip.voice,
+                    voiceForce, voiceEngine);
             }
         } else {
             for (const c of CLIPS) {
                 const key = "slide-" + path.basename(c.file, ".webm");
-                voices[key] = await ensureVoiceWav(key, c.voice, voiceForce);
+                voices[key] = await ensureVoiceWav(key, c.voice,
+                    voiceForce, voiceEngine);
             }
         }
         const voiceCtx = { voices, reverb };
