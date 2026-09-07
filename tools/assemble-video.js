@@ -31,8 +31,9 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { spawnSync } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const ffmpegPath = require("ffmpeg-static");
+const vutil = require("./reel-voice-util.js");
 
 const ROOT = path.resolve(__dirname, "..");
 // Clips live in ./video/ (gitignored) — never assets/, which is published.
@@ -40,6 +41,8 @@ const VIDEOS = path.join(ROOT, "video");
 // YouTube-ready MP4 (H.264 + AAC) — the WebM clips under ./video/ are the
 // intermediate raw captures; every published file is an MP4.
 const OUT = path.join(VIDEOS, "yaPDP-demo.mp4");
+// Narration WAV cache (also under the gitignored video/ tree).
+const VOICE_DIR = path.join(VIDEOS, "voice");
 
 const WIDTH = 1280;
 const HEIGHT = 800;
@@ -61,17 +64,46 @@ const FONT_BOLD = "C\\\\:/Windows/Fonts/arialbd.ttf";
 // background ("70% transparent") on every title card.
 const BACKDROP = path.join(ROOT, "assets", "images", "pdp11-machine-room.jpg");
 
+// --- Narration for the reel's own cards -----------------------------------
+// Intro and outro voice-overs: the intro card opens every reel/clip, the
+// outro (black project-URL card) closes it. Individual clip cards use the
+// `voice` field of each CLIPS entry below. When speech is longer than the
+// card's visual duration the card is stretched to fit it (see mixSpeech).
+const INTRO_VOICE = "Welcome to y-a-PDP, a faithful PDP-11-70 emulator. Step " +
+    "into the era in one click — no disks, no setup, nothing to configure. " +
+    "Let's boot some classic DEC software.";
+const OUTRO_VOICE = "Thanks for watching. yaPDP brings the PDP-11 back to " +
+    "life: instant, immersive, always ready to run.";
+
 // --- The clips, in reel order ---------------------------------------------
 const CLIPS = [
-    { file: "basic.webm",        title: "DEC BASIC-11" },
-    { file: "basic-tape.webm",   title: "DEC BASIC-11 (ASR TAPE)" },
-    { file: "unix_v5.webm",      title: "BOOTING UNIX V5" },
-    { file: "bsd.webm",          title: "2.11 BSD" },
-    { file: "rt11.webm",         title: "RT-11 v4.0" },
-    { file: "rt11-vt52.webm",    title: "RT-11 v4.0 (VT52)" },
-    { file: "rt11-panel-boot.webm", title: "MANUAL BOOTSTRAP" },
-    { file: "xxdp.webm",         title: "XXDP DIAGNOSTICS" },
-    { file: "lunar-lander.webm", title: "LUNAR LANDER  ·  VT11" }
+    { file: "basic.webm",        title: "DEC BASIC-11",
+      voice: "This demo boots DEC BASIC-11 from an RK05 disk. Type a few " +
+        "lines, and the PDP-11 answers in classic BASIC." },
+    { file: "basic-tape.webm",   title: "DEC BASIC-11 (ASR TAPE)",
+      voice: "BASIC-11 again, this time loading from punched tape on the " +
+        "Model 33 teletype. Watch the paper tape reader spin." },
+    { file: "unix_v5.webm",      title: "BOOTING UNIX V5",
+      voice: "Now we boot UNIX Version 5 — an early UNIX from 1975, running " +
+        "on the PDP-11 slash 70." },
+    { file: "bsd.webm",          title: "2.11 BSD",
+      voice: "This is 2.11 BSD, the last and most polished UNIX for the " +
+        "PDP-11. Log in and explore." },
+    { file: "rt11.webm",         title: "RT-11 v4.0",
+      voice: "RT-11, Digital's single-user real-time operating system, " +
+        "booting from disk. A workhorse of the PDP-11 era." },
+    { file: "rt11-vt52.webm",    title: "RT-11 v4.0 (VT52)",
+      voice: "RT-11 again, this time on a VT52 terminal. Green phosphor, " +
+        "command lines, and an interactive monitor." },
+    { file: "rt11-panel-boot.webm", title: "MANUAL BOOTSTRAP",
+      voice: "A manual bootstrap: loading a tiny boot program with the " +
+        "front-panel switches, the way operators did it back in 1977." },
+    { file: "xxdp.webm",         title: "XXDP DIAGNOSTICS",
+      voice: "XXDP diagnostics test every board in the machine. A serious " +
+        "tool from Digital's own field service." },
+    { file: "lunar-lander.webm", title: "LUNAR LANDER  ·  VT11",
+      voice: "And finally, a favourite: Lunar Lander, running on the VT11 " +
+        "vector graphics terminal. Try to set her down gently." }
 ];
 
 // --- Utilities ------------------------------------------------------------
@@ -240,11 +272,15 @@ function alignStreams(input, out) {
 // what the demo shows (the same slide the reel uses), then the raw clip, then
 // the quiet background music mixed under the clip audio. The WebM raw captures
 // are never published — every uploadable file is an MP4.
-function exportIndividual(clip, music, tmp, srcPath) {
+function exportIndividual(clip, music, tmp, srcPath, ctx) {
     const introPath = path.join(VIDEOS, "yapdp-intro.webm");
     const clipPath = srcPath || path.join(VIDEOS, clip.file);
     if (!fs.existsSync(introPath) || !fs.existsSync(clipPath)) return;
     const base = path.basename(clip.file, ".webm");
+    // ctx = { voices, reverb }; voices maps card key -> WAV (see main).
+    const voices = (ctx && ctx.voices) || null;
+    const reverb = !ctx || ctx.reverb !== false;
+    const slideKey = "slide-" + base;
 
     const nIntro = path.join(tmp, "ind_" + base + "_intro.webm");
     const nSlide = path.join(tmp, "ind_" + base + "_slide.webm");
@@ -260,11 +296,12 @@ function exportIndividual(clip, music, tmp, srcPath) {
     // the intro's subtitle style (bold sans-serif, light with an outline) and
     // is sized up so it reads clearly; it is held ~3x longer than the reel's
     // quick title cards so the description is readable.
-    genSlide(nSlide, clip.title, "", CLIP_SLIDE_MS / 1000, {
-        sans: true,
-        size: 68,
-        scanlines: true
-    });
+    genSlide(nSlide, clip.title, "",
+        voicedCardDuration(voices && voices[slideKey], CLIP_SLIDE_MS / 1000), {
+            sans: true,
+            size: 68,
+            scanlines: true
+        });
     normalise(introPath, nIntro);
     normalise(clipPath, nClip);
     alignStreams(nIntro, aIntro);
@@ -272,22 +309,39 @@ function exportIndividual(clip, music, tmp, srcPath) {
     alignStreams(nClip, aClip);
     // Final URL card (black + project URL) fades in after the clip, so the
     // clip fades out and every upload ends on the project URL.
-    genUrlCard(outroRaw, OUTRO_SECONDS);
+    genUrlCard(outroRaw,
+        voicedCardDuration(voices && voices["outro"], OUTRO_SECONDS));
     normalise(outroRaw, nOutro);
     alignStreams(nOutro, aOutro);
 
+    // Lay the voice-overs onto the voiced cards AFTER they are normalised and
+    // aligned (mixSpeech expects an aligned stereo segment): the intro, the
+    // labelled slide and the outro. A card without narration (no WAV) is
+    // passed through untouched.
+    // The intro gets the longer lead-in (VOICE_PRE_INTRO): its title is fully
+    // on screen before the narration starts. Slides/outro talk sooner.
+    const vIntro = voicedOr(aIntro, voices && voices["intro"], tmp,
+        "ind_" + base + "_intro_vd", reverb, vutil.VOICE_PRE_INTRO);
+    const vSlide = voicedOr(aSlide, voices && voices[slideKey], tmp,
+        "ind_" + base + "_slide_vd", reverb);
+    const vOutro = voicedOr(aOutro, voices && voices["outro"], tmp,
+        "ind_" + base + "_outro_vd", reverb);
+
     // Cross-fade intro -> slide -> clip -> outro (video xfade + acrossfade).
-    const dIntro = probeDuration(aIntro);
-    const dSlide = probeDuration(aSlide);
+    // Durations are read from the VOICED variants, so the cards that were
+    // stretched to fit their narration shift the offsets correctly.
+    const dIntro = probeDuration(vIntro);
+    const dSlide = probeDuration(vSlide);
     const dClip = probeDuration(aClip);
+    const dOutro = probeDuration(vOutro);
     const fade = 0.6;
     const concatOut = path.join(tmp, "ind_" + base + "_plain.mp4");
     run([
         "-y",
-        "-i", aIntro,
-        "-i", aSlide,
+        "-i", vIntro,
+        "-i", vSlide,
         "-i", aClip,
-        "-i", aOutro,
+        "-i", vOutro,
         "-filter_complex",
         `[0:v]settb=AVTB[v0];[1:v]settb=AVTB[v1];[2:v]settb=AVTB[v2];[3:v]settb=AVTB[v3];` +
             `[v0][v1]xfade=transition=fade:duration=${fade}:offset=${(dIntro - fade).toFixed(3)}[x1];` +
@@ -309,6 +363,25 @@ function exportIndividual(clip, music, tmp, srcPath) {
     if (music) {
         const mixed = path.join(tmp, "ind_" + base + "_mixed.mp4");
         const dur = probeDuration(concatOut);
+        // Duck the music only while each voiced card's narration is actually
+        // audible (after its lead-in, until its reverb tail), so the track
+        // starts/continues at its normal level otherwise.
+        const voicedMeta = [];
+        if (voices && voices["intro"]) {
+            voicedMeta.push({ idx: 0, pre: vutil.VOICE_PRE_INTRO,
+                dur: probeDuration(voices["intro"]) });
+        }
+        if (voices && voices[slideKey]) {
+            voicedMeta.push({ idx: 1, pre: vutil.VOICE_PRE,
+                dur: probeDuration(voices[slideKey]) });
+        }
+        if (voices && voices["outro"]) {
+            voicedMeta.push({ idx: 3, pre: vutil.VOICE_PRE,
+                dur: probeDuration(voices["outro"]) });
+        }
+        const duckChain = vutil.musicDuckFilters(
+            vutil.speechDuckWindows([dIntro, dSlide, dClip, dOutro], voicedMeta, fade)
+        ).join(",");
         run([
             "-y",
             // Loop the music indefinitely so it plays for the whole clip even
@@ -318,7 +391,7 @@ function exportIndividual(clip, music, tmp, srcPath) {
             "-i", music,
             "-i", concatOut,
             "-filter_complex",
-            `[0:a]volume=0.08[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
+            `[0:a]${duckChain}[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
             "-map", "1:v", "-map", "[aout]",
             "-t", dur.toFixed(3),
             "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
@@ -376,6 +449,124 @@ function prepareSource(clip, tmp) {
     return path.join(VIDEOS, clip.file);
 }
 
+// --- Voice-over (tools/voicer.js TTS + mixSpeech) --------------------------
+
+// Run an arbitrary child process to completion; resolves on exit code 0.
+function runChild(args) {
+    return new Promise((resolve, reject) => {
+        const child = spawn(args[0], args.slice(1), { cwd: ROOT, stdio: "inherit" });
+        child.once("error", reject);
+        child.once("exit", (code, signal) => {
+            if (code === 0) resolve();
+            else reject(new Error("process exited with code " + code +
+                (signal ? " (signal " + signal + ")" : "")));
+        });
+    });
+}
+
+// Speak `text` through tools/voicer.js into `outWav` (the recorder itself
+// falls back from the browser-loopback capture to Windows SAPI).
+async function speakToWav(text, outWav) {
+    const voicer = path.join(__dirname, "voicer.js");
+    await runChild([process.execPath, voicer, "--text", text, "--out", outWav]);
+}
+
+// Make sure `name` has a narration WAV in video/voice/, generating it through
+// voicer.js only when the cached file is missing (or --voice-regen forced a
+// rebuild). TTS may be unavailable on a machine — in that case the caller
+// gets null and the card is simply assembled without narration.
+async function ensureVoiceWav(name, text, force) {
+    fs.mkdirSync(VOICE_DIR, { recursive: true });
+    const file = path.join(VOICE_DIR, name + ".wav");
+    if (!force && fs.existsSync(file) && fs.statSync(file).size > 0) return file;
+    if (force && fs.existsSync(file)) {
+        try { fs.unlinkSync(file); } catch (err) { /* best effort */ }
+    }
+    process.stdout.write("Voicing card '" + name + "' (TTS)...\n");
+    try {
+        await speakToWav(text, file);
+        if (!fs.existsSync(file)) throw new Error("voicer produced no WAV");
+        return file;
+    } catch (err) {
+        process.stdout.write("note: narration for '" + name + "' unavailable (" +
+            err.message + "); the card stays silent.\n");
+        return null;
+    }
+}
+
+// Lay `wav` narration over an already-normalised/aligned card segment `input`
+// and write the result to `out`. The audio is stretched by mixing the
+// narration in, and the card's video — when the speech is longer than the
+// card — by FREEZING the last fully visible frame (the one just before the
+// card's fade-out begins), NOT the final already-faded frame; otherwise the
+// narration would run on a black screen. The (mono, dry) TTS voice is
+// optionally warmed by a light aecho reverb / pseudo-stereo.
+// `preSec` overrides the silent lead-in before the speech (the intro card
+// starts talking later so its title is fully on screen first).
+function mixSpeech(input, wav, out, reverb, preSec) {
+    const pre = (preSec != null ? preSec : vutil.VOICE_PRE);
+    const speechDur = probeDuration(wav);
+    const inputDur = probeDuration(input);
+    const target = vutil.speechTargetDuration(inputDur, speechDur, pre);
+    const padDur = Math.max(0, target - inputDur);
+    const preMs = Math.round(pre * 1000);
+    // Narration chain: resample to the reel's stereo/44.1k/fltp, delay to the
+    // pre-roll, optionally a tiny room reverb, then a limiter so mixing it
+    // over clip/music audio cannot clip. No apad: the tail must stay finite
+    // for amix=duration=longest.
+    let voiceChain = "aresample=44100," +
+        "aformat=sample_fmts=fltp:channel_layouts=stereo," +
+        "adelay=" + preMs + ":all=1";
+    if (reverb) voiceChain += "," + vutil.REVERB_AECHO;
+    voiceChain += ",alimiter=limit=0.97[sp]";
+    // When the card must be stretched, cut it just before its fade-out and
+    // clone THAT (bright) frame up to the target length.
+    let vidPad;
+    if (padDur > 0.001) {
+        const holdAt = Math.max(0.2, inputDur - vutil.VOICE_HOLD_EDGE);
+        const stop = Math.max(0, target - holdAt);
+        vidPad = "[0:v]trim=start=0:end=" + holdAt.toFixed(3) +
+            ",setpts=PTS-STARTPTS," +
+            "tpad=stop_mode=clone:stop_duration=" + stop.toFixed(3) + "[v0];";
+    } else {
+        vidPad = "[0:v]null[v0];";
+    }
+    const fc = vidPad +
+        "[0:a]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo[a0];" +
+        "[1:a]" + voiceChain + ";" +
+        "[a0][sp]amix=inputs=2:duration=longest:dropout_transition=0[aout]";
+    run([
+        "-y",
+        "-i", input,
+        "-i", wav,
+        "-filter_complex", fc,
+        "-map", "[v0]", "-map", "[aout]",
+        "-t", target.toFixed(3),
+        "-c:v", "libvpx", "-b:v", "12M", "-c:a", "libopus",
+        "-r", String(FPS), "-video_track_timescale", "30000",
+        out
+    ]);
+    return out;
+}
+
+// Return the voiced variant of a card segment when its narration WAV exists,
+// otherwise pass the input through untouched (no speech, no re-encode).
+function voicedOr(input, wav, tmp, tag, reverb, preSec) {
+    if (!wav) return input;
+    const out = path.join(tmp, tag + ".webm");
+    return mixSpeech(input, wav, out, reverb, preSec);
+}
+
+// Card duration that fits its narration: when a WAV exists the card is
+// rendered at the target length straight away (see genSlide/genUrlCard), so
+// the card's own fade-out lands AFTER the speech and the picture never goes
+// dark under the voice. Without a WAV the plain base duration is kept.
+// `preSec` mirrors mixSpeech's optional lead-in override for the intro card.
+function voicedCardDuration(wav, baseDur, preSec) {
+    if (!wav) return baseDur;
+    return vutil.speechTargetDuration(baseDur, probeDuration(wav), preSec);
+}
+
 // --- Main -----------------------------------------------------------------
 
 (async function main() {
@@ -398,23 +589,64 @@ function prepareSource(clip, tmp) {
         const slides = CLIPS.map((c) =>
             path.join(tmp, "slide_" + path.basename(c.file, ".webm") + ".webm"));
 
+        // Voice-over knobs: --voice-regen forces a TTS rebuild of every WAV,
+        // --no-voice-reverb turns the narration's light reverb/pseudo-stereo
+        // preset off (leaving a dry, mono voice).
+        const reverb = !process.argv.includes("--no-voice-reverb");
+        const voiceForce = process.argv.includes("--voice-regen");
+
+        // Narration pre-pass: make sure every card that will carry voice has
+        // its WAV ready (cached under video/voice/, generated via voicer.js
+        // only when missing). In single-clip mode only the chosen clip's slide
+        // is voiced; otherwise every clip card is.
+        console.log("Preparing narration (tools/voicer.js)...");
+        const voices = {};
+        voices["intro"] = await ensureVoiceWav("intro", INTRO_VOICE, voiceForce);
+        voices["outro"] = await ensureVoiceWav("outro", OUTRO_VOICE, voiceForce);
+        if (selector) {
+            const aliases = { lander: "lunar-lander" };
+            const s = aliases[selector] || selector;
+            const clip = CLIPS.find((c) =>
+                c.file === s + ".webm" ||
+                path.basename(c.file, ".webm") === s);
+            if (clip) {
+                const key = "slide-" + path.basename(clip.file, ".webm");
+                voices[key] = await ensureVoiceWav(key, clip.voice, voiceForce);
+            }
+        } else {
+            for (const c of CLIPS) {
+                const key = "slide-" + path.basename(c.file, ".webm");
+                voices[key] = await ensureVoiceWav(key, c.voice, voiceForce);
+            }
+        }
+        const voiceCtx = { voices, reverb };
+
         // Intro: the canvas-rendered title card from tools/make-intro.js (amber
         // glow, green phosphor typing, fade in/out); fall back to a drawtext
         // card if the intro has not been generated yet.
         const introPath = path.join(VIDEOS, "yapdp-intro.webm");
         let intro = introPath;
         if (!fs.existsSync(introPath)) {
+            // Fallback intro card: generated here, so it can be stretched to
+            // fit the spoken intro (the pre-rendered yapdp-intro.webm from
+            // make-intro.js cannot be stretched, only held on its last frame).
             intro = path.join(tmp, "intro.webm");
-            genSlide(intro, "yaPDP", "PDP-11/70 web emulator", 4, {
-                size: 150, font: FONT_BOLD,
-                footer: "-- created with love for the DEC era"
-            });
+            genSlide(intro, "yaPDP", "PDP-11/70 web emulator",
+                voicedCardDuration(voices["intro"], 4, vutil.VOICE_PRE_INTRO), {
+                    size: 150, font: FONT_BOLD,
+                    footer: "-- created with love for the DEC era"
+                });
         }
 
         console.log("Rendering title cards...");
-        CLIPS.forEach((c, i) => genSlide(slides[i], c.title, "", SLIDE_MS / 1000));
-        // The reel ends on the black project-URL card (fade out at the very end).
-        genUrlCard(outro, OUTRO_SECONDS);
+        CLIPS.forEach((c, i) => {
+            const key = "slide-" + path.basename(c.file, ".webm");
+            genSlide(slides[i], c.title, "",
+                voicedCardDuration(voices[key], SLIDE_MS / 1000));
+        });
+        // The reel ends on the black project-URL card (fade out at the very
+        // end); stretched so the farewell speech fits before the fade.
+        genUrlCard(outro, voicedCardDuration(voices["outro"], OUTRO_SECONDS));
 
         // Resolve effective sources: Lunar Lander is cut down (the long wait
         // is trimmed out with a fade) before it enters the reel.
@@ -432,25 +664,50 @@ function prepareSource(clip, tmp) {
                 path.basename(c.file, ".webm") === sel);
             if (!clip) throw new Error("Unknown clip selector: " + selector);
             console.log("Exporting individual clip: " + clip.file);
-            exportIndividual(clip, music, tmp, srcFor[clip.file]);
+            exportIndividual(clip, music, tmp, srcFor[clip.file], voiceCtx);
             console.log("Done.");
             return;
         }
 
         // Build the ordered list of raw segments: intro, slide, clip, slide, ...
-        const raw = [intro];
-        CLIPS.forEach((c, i) => { raw.push(slides[i], srcFor[c.file]); });
-        raw.push(outro);
+        // Each entry carries the narration key of the voiced cards (intro,
+        // slides, outro); raw clips have no voice.
+        const raw = [{ file: intro, voiceKey: voices["intro"] ? "intro" : null }];
+        CLIPS.forEach((c, i) => {
+            const key = "slide-" + path.basename(c.file, ".webm");
+            raw.push(
+                { file: slides[i], voiceKey: voices[key] ? key : null },
+                { file: srcFor[c.file], voiceKey: null });
+        });
+        raw.push({ file: outro, voiceKey: voices["outro"] ? "outro" : null });
 
         console.log("Normalising segments...");
-        const inputs = raw.map((f, i) => {
+        const inputs = [];
+        // Metadata of every voiced card (where on the timeline its narration
+        // actually plays) — used to duck the music only during the speech.
+        const voicedMeta = [];
+        raw.forEach((entry, i) => {
             const n = path.join(tmp, "seg_" + i + ".webm");
             const a = path.join(tmp, "seg_" + i + "_aligned.webm");
-            normalise(f, n);
+            normalise(entry.file, n);
             // Trim the longer stream so video and audio end at the same time
             // (keeps the xfade offsets and the acrossfade chain in sync).
             alignStreams(n, a);
-            return a;
+            if (entry.voiceKey) {
+                // Stretch the card to fit its narration (mixSpeech) and use
+                // the voiced variant for the reel chain. The intro talks after
+                // its longer lead-in (VOICE_PRE_INTRO).
+                const preSec = entry.voiceKey === "intro"
+                    ? vutil.VOICE_PRE_INTRO
+                    : vutil.VOICE_PRE;
+                const v = path.join(tmp, "seg_" + i + "_voiced.webm");
+                const speechDur = probeDuration(voices[entry.voiceKey]);
+                mixSpeech(a, voices[entry.voiceKey], v, reverb, preSec);
+                voicedMeta.push({ idx: i, pre: preSec, dur: speechDur });
+                inputs.push(v);
+            } else {
+                inputs.push(a);
+            }
         });
 
         console.log("Probing durations...");
@@ -505,6 +762,12 @@ function prepareSource(clip, tmp) {
             console.log("Mixing background music (looped): " + music);
             const mixed = path.join(tmp, "mixed.mp4");
             const dur = probeDuration(OUT);
+            // Duck the music only while the narration of a voiced card
+            // (intro/slides/outro) is actually audible; before it starts and
+            // after it ends the track keeps its normal level.
+            const duckChain = vutil.musicDuckFilters(
+                vutil.speechDuckWindows(durs, voicedMeta, FADE)
+            ).join(",");
             run([
                 "-y",
                 // Loop the music indefinitely so it plays for the whole reel
@@ -514,7 +777,7 @@ function prepareSource(clip, tmp) {
                 "-i", music,
                 "-i", OUT,
                 "-filter_complex",
-                `[0:a]volume=0.08[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
+                `[0:a]${duckChain}[m];[1:a][m]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
                 "-map", "1:v", "-map", "[aout]",
                 "-t", dur.toFixed(3),
                 "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
@@ -529,7 +792,8 @@ function prepareSource(clip, tmp) {
 
         // --- Individual YouTube-ready clips ------------------------------------
         console.log("Exporting individual clips...");
-        CLIPS.forEach((c) => exportIndividual(c, music, tmp, srcFor[c.file]));
+        CLIPS.forEach((c) =>
+            exportIndividual(c, music, tmp, srcFor[c.file], voiceCtx));
 
         const kb = Math.round(fs.statSync(OUT).size / 1024);
         console.log("Done. Reel written to " + path.relative(ROOT, OUT) + " (" + kb + " kB).");
