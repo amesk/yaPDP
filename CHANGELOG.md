@@ -28,7 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   PNG is now written to both tracked locations, and all manual illustrations
   were regenerated from current `master` — they now show the machine's real
   quiet `@` bootstrap prompt instead of the stale `Boot>` banner.
-- Nothing yet — see [docs/ROADMAP.md](docs/ROADMAP.md).
+- **Lunar Lander hangs after the first screen in `?core=1` mode.**
+  VT11 (`src/vt11.js`) calls the global `requestInterrupt()` function that
+  was only defined in the legacy `src/iopage.js`.  The refactored machine
+  layer (`src/browser-machine.js`) now provides the same global so the
+  VT11 can signal interrupts and the lander simulation proceeds past the
+  GREETINGS screen into the landing phase.
 
 ## [0.1.0] - 2026-09-04
 
