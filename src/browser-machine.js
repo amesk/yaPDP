@@ -86,6 +86,14 @@
         },
     };
 
+    // VT11 (src/vt11.js) is not yet refactored into a Device class and
+    // still calls the global requestInterrupt() from iopage.js.  Provide
+    // the same contract here so the VT11 works in ?core=1 mode.
+    window.requestInterrupt = function () {
+        CPU.interruptRequested = 1;
+        if (CPU.runState === 2) CPU.runState = 0; // STATE_WAIT → STATE_RUN
+    };
+
     var core = window.yapdpCore;
     var machine = new core.Machine({}, host);
 
