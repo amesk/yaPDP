@@ -42,6 +42,7 @@ const http = require("http");
 const { spawn } = require("child_process");
 const { launch, getStream, wss } = require("puppeteer-stream");
 const consoleWait = require("./console-wait");
+const timeline = require("./reel-timeline-util.js");
 
 const ROOT = path.resolve(__dirname, "..");
 // Output goes to ./video/ (gitignored) — never assets/, which is published.
@@ -158,7 +159,8 @@ const VIDEO_SHOTS = [
     // before running DUNGEON. Handled by capturePanelBoot().
     { device: "rk1panel", file: "rt11-panel-boot.webm", readyWhen: null,
         extra: [
-            { send: "R DUNGEON", waitFor: ">" },
+            { chapter: "DUNGEON", speak: "Time for DUNGEON, Digital's text adventure.",
+                send: "R DUNGEON", waitFor: ">" },
             { send: "OPEN MAILBOX", waitFor: ">" },
             { send: "LOOK", waitFor: ">" },
             { send: "TAKE LEAFLET", waitFor: ">" },
@@ -167,7 +169,10 @@ const VIDEO_SHOTS = [
     // Unix V5: the shell prompt "#" can also appear inside kernel boot text,
     // so it is only accepted after "login:" (auto-login has completed).
     { device: "rk0",    file: "unix_v5.webm",      readyWhen: "#", readyAfter: "login:",
-        extra: ["cal 8 2026"], settle: 6000, tail: 3000 },
+        extra: [
+            { chapter: "UNIX V5", speak: "UNIX Version 5, the 1975 original." },
+            "cal 8 2026"
+        ], settle: 6000, tail: 3000 },
     // 2.11 BSD on a DECscope VT52 operator console. The loader prints a lot
     // before "login:"; `man cal` shows off a pager on the video terminal.
     { device: "rp1",    file: "bsd.webm",           readyWhen: "#", readyAfter: "login:",
@@ -179,7 +184,8 @@ const VIDEO_SHOTS = [
     // RT-11 monitor (K-MON) at the end.
     { device: "rk1",    file: "rt11.webm",         readyWhen: null,
         extra: [
-            { send: "R DUNGEON", waitFor: ">" },
+            { chapter: "DUNGEON", speak: "Time for DUNGEON, Digital's text adventure.",
+                send: "R DUNGEON", waitFor: ">" },
             { send: "OPEN MAILBOX", waitFor: ">" },
             { send: "LOOK", waitFor: ">" },
             { send: "TAKE LEAFLET", waitFor: ">" },
@@ -188,7 +194,8 @@ const VIDEO_SHOTS = [
     // RT-11 on a DECscope VT52 operator console — same rk1 image, monitor look.
     { device: "rk1vt52", file: "rt11-vt52.webm",   readyWhen: null,
         extra: [
-            { send: "R DUNGEON", waitFor: ">" },
+            { chapter: "DUNGEON (VT52)", speak: "DUNGEON again, on the VT52.",
+                send: "R DUNGEON", waitFor: ">" },
             { send: "OPEN MAILBOX", waitFor: ">" },
             { send: "LOOK", waitFor: ">" },
             { send: "TAKE LEAFLET", waitFor: ">" },
@@ -201,7 +208,10 @@ const VIDEO_SHOTS = [
     // BASIC-11: engage the punch before boot so the program and its RUN
     // output are duplicated onto the paper tape (visible in the clip).
     { device: "basic",  file: "basic.webm",        readyWhen: "*O",
-        extra: BASIC_PROGRAM, settle: 5000, tail: 3000, punch: true },
+        extra: [
+            { chapter: "BASIC-11", speak: "BASIC-11 from disk. Let's write a small program." },
+            ...BASIC_PROGRAM
+        ], settle: 5000, tail: 3000, punch: true },
     // BASIC-11 from the ASR tape: boot BASIC, then load the program tape into
     // the Model 33 reader (AUTO) so the heart program + RUN are fed from the
     // tape instead of being typed — and the drawing prints on the paper.
@@ -746,12 +756,85 @@ async function stopRecording(rec) {
     await new Promise((resolve) => rec.file.end(() => resolve()));
 }
 
+// --- Timed reel events ----------------------------------------------------
+// While a clip is being recorded the scenario stamps timed events — chapter
+// markers, big banner titles, spoken phrases and bottom subtitles — so the
+// assembler can later voice the phrases, burn the overlays and write the
+// YouTube chapter/subtitle files at exactly the right moments. Media time is
+// the wall-clock elapsed since start(), i.e. since the tab capture began (the
+// recording is real-time, so media time ~= elapsed real time).
+// Events are accumulated in memory and written to video/<base>.events.json
+// right after the capture (see writeEventSidecar). Event timing maps 1:1 onto
+// the clip timeline for now (no trimming); events must sit on spans that
+// survive into the reel.
+
+// Create the per-shot event recorder. start() resets the time origin — call it
+// as soon as startRecording() has begun so t is measured against the media.
+function createEventRecorder() {
+    let origin = Date.now();
+    const events = [];
+    const stamp = (type, text, extra) => {
+        const clean = String(text == null ? "" : text).trim();
+        if (!clean) return null;
+        const t = Math.max(0, (Date.now() - origin) / 1000);
+        const e = Object.assign({ type: type, t: t, text: clean }, extra || {});
+        events.push(e);
+        return e;
+    };
+    return {
+        events: events,
+        // Reset the media-time origin (call right after the capture starts).
+        start() { origin = Date.now(); },
+        // Seconds since start() — useful for tests / debugging.
+        elapsed() { return Math.max(0, (Date.now() - origin) / 1000); },
+        markChapter(text) { return stamp("chapter", text); },
+        title(text, durSec) {
+            return stamp("title", text, durSec != null ? { dur: durSec } : {});
+        },
+        speak(text) { return stamp("speak", text); },
+        subtitle(text, durSec) {
+            return stamp("subtitle", text, durSec != null ? { dur: durSec } : {});
+        }
+    };
+}
+
+// Stamp the declarative timed events a shot.extra step may carry (chapter /
+// speak / title / subtitle strings) at the moment that step begins. A step is
+// both the plain string form and the { send, waitFor, chapter, speak, ... }
+// object form; pure annotation objects ({ chapter: ... } with no send) are
+// handled by the caller (they must not type anything).
+function stampStepEvents(recorder, cmd) {
+    if (!recorder || !cmd || typeof cmd !== "object") return;
+    if (cmd.chapter) recorder.markChapter(cmd.chapter);
+    if (cmd.speak) recorder.speak(cmd.speak);
+    if (cmd.title) recorder.title(cmd.title);
+    if (cmd.subtitle) recorder.subtitle(cmd.subtitle);
+}
+
+// Write the recorded events next to the raw clip as video/<base>.events.json
+// (only when at least one event was stamped). Timestamps are validated/sorted
+// by the shared reel-timeline model so the assembler can trust the file.
+function writeEventSidecar(shot, recorder) {
+    if (!recorder || !Array.isArray(recorder.events) || !recorder.events.length) return;
+    const base = String(shot.file).replace(/\.webm$/, "");
+    const data = {
+        clip: shot.file,
+        events: timeline.validateEvents(recorder.events)
+    };
+    fs.writeFileSync(path.join(OUT_DIR, base + ".events.json"),
+        JSON.stringify(data, null, 2) + "\n");
+    console.log(`  events ${base}.events.json (${data.events.length})`);
+}
+
 // --- Captures -------------------------------------------------------------
 
 // One console-based guest OS: start the recording, boot via the wizard, wait
 // for the ready marker, type the demo commands, settle and stop.
 async function captureConsoleOS(browser, shot) {
     const page = await openPage(browser, shot);
+    // Records the timed reel events (chapters/speak/titles) stamped by the
+    // demo steps below; written to the .events.json sidecar after the capture.
+    const events = createEventRecorder();
     let rec = null;
     // Timestamp of the OS readiness marker (prompt) — the recording must linger
     // for at least 5 s after it so the viewer can read the final prompt.
@@ -769,6 +852,8 @@ async function captureConsoleOS(browser, shot) {
         }
 
         rec = await startRecording(page, shot);
+        // Media-time origin for the reel events: the moment the capture began.
+        events.start();
 
         // Human pacing: let the viewer see the initial state before the first
         // click on the magic-wand button.
@@ -840,6 +925,9 @@ async function captureConsoleOS(browser, shot) {
             }, linesToTapeBytes(shot.tape));
             // Let the viewer take in the loaded tape before the reader starts.
             await sleep(2500);
+            // Announce the tape-load demo while the loaded tape is in view.
+            events.markChapter("TAPE LOAD");
+            events.speak("Loading the heart program from punched tape.");
             await page.evaluate(() => {
                 if (typeof window.setReaderMode === "function") {
                     window.setReaderMode("auto");
@@ -861,6 +949,14 @@ async function captureConsoleOS(browser, shot) {
         // ~110 baud pace (a VT52 accepts the whole line instantly).
         const humanTyping = !isVt52;
         for (const cmd of shot.extra || []) {
+            // Stamp any declarative timed events this step carries (chapter /
+            // speak / title / subtitle) at the moment the step begins.
+            if (cmd && typeof cmd === "object") {
+                stampStepEvents(events, cmd);
+                // A pure annotation step ({ chapter: ... }, no command to type)
+                // has nothing else to do here.
+                if (!cmd.send && !cmd.ctrlC) continue;
+            }
             if (cmd && cmd.ctrlC) {
                 // ^C on the console: interrupt the running program (Dungeon)
                 // and return to the RT-11 monitor (K-MON).
@@ -921,6 +1017,7 @@ async function captureConsoleOS(browser, shot) {
         rec = null;
         const kb = Math.round(fs.statSync(path.join(OUT_DIR, shot.file)).size / 1024);
         console.log(`  saved ${shot.file} (${kb} kB)`);
+        writeEventSidecar(shot, events);
     } finally {
         if (rec) { try { await stopRecording(rec); } catch (err) { /* best effort */ } }
         await page.close();
@@ -934,12 +1031,17 @@ async function captureConsoleOS(browser, shot) {
 // recorded so the viewer sees the operator work the switches.
 async function capturePanelBoot(browser, shot) {
     const page = await openPage(browser, shot);
+    // Records the timed reel events (chapters/speak/titles) stamped by the
+    // operator steps below; written to the .events.json sidecar afterwards.
+    const events = createEventRecorder();
     let rec = null;
     // Timestamp of the "." readiness prompt — the recording must linger at
     // least 5 s after it so the viewer can read the final RT-11 prompt.
     let readyAt = Date.now();
     try {
         rec = await startRecording(page, shot);
+        // Media-time origin for the reel events: the moment the capture began.
+        events.start();
 
         // Human pacing: let the viewer see the cold, powered-off machine.
         await sleep(shot.leadMs || 3000);
@@ -981,7 +1083,10 @@ async function capturePanelBoot(browser, shot) {
         await clickPanelControl(page, '#panel-sticker-btn');
         await sleep(1500);
 
-        // 3. Toggle in the bootstrap loader and START it.
+        // 3. Toggle in the bootstrap loader and START it — announce the step
+        // with a big banner while the operator works the switches.
+        events.title("MANUAL BOOTSTRAP", 6);
+        events.markChapter("Manual bootstrap");
         await toggleInPanelBootstrap(page);
         await sleep(500);
 
@@ -1000,6 +1105,14 @@ async function capturePanelBoot(browser, shot) {
 
         // 5. Demo commands on the VT52 console.
         for (const cmd of shot.extra || []) {
+            // Stamp any declarative timed events this step carries (chapter /
+            // speak / title / subtitle) at the moment the step begins.
+            if (cmd && typeof cmd === "object") {
+                stampStepEvents(events, cmd);
+                // A pure annotation step ({ chapter: ... }, no command to type)
+                // has nothing else to do here.
+                if (!cmd.send && !cmd.ctrlC) continue;
+            }
             if (cmd && cmd.ctrlC) {
                 await page.evaluate(() => {
                     if (typeof window.dlReceiveQueue === "function") {
@@ -1030,6 +1143,7 @@ async function capturePanelBoot(browser, shot) {
         rec = null;
         const kb = Math.round(fs.statSync(path.join(OUT_DIR, shot.file)).size / 1024);
         console.log(`  saved ${shot.file} (${kb} kB)`);
+        writeEventSidecar(shot, events);
 
         // A hand-toggled RK05 bootstrap is read-only by definition, but this
         // RT-11 image writes its directory/home area during a cold panel boot
@@ -1056,6 +1170,11 @@ async function capturePanelBoot(browser, shot) {
 // vector drawing is underway, let the lander descend, then stop.
 async function captureLander(browser, shot) {
     const page = await openPage(browser, shot);
+    // Records the timed reel events stamped below; written to the .events.json
+    // sidecar after the capture. Events are only placed near the START of the
+    // run (the pre-trim title card) — the assembler cuts out the long middle
+    // terrain draw, and cut remapping is not wired up yet.
+    const events = createEventRecorder();
     let rec = null;
     try {
         await launchDevice(page, "lander");
@@ -1080,6 +1199,12 @@ async function captureLander(browser, shot) {
         // Moving the mouse across the window keeps the page painting (same
         // trick as the screenshot generator).
         rec = await startRecording(page, shot);
+        // Media-time origin: the run's start-up title card is on screen now.
+        events.start();
+        // Announce the clip with a big banner while the title card is shown —
+        // this sits in the pre-trim span (t<10 s), which survives the cut.
+        events.title("LUNAR LANDER  ·  VT11", 5);
+        events.markChapter("Lunar Lander");
         const total = 100000; // ~100 s covers the text, the draw and a descent
         const steps = 40;
         for (let i = 0; i < steps; i++) {
@@ -1096,6 +1221,7 @@ async function captureLander(browser, shot) {
         rec = null;
         const kb = Math.round(fs.statSync(path.join(OUT_DIR, shot.file)).size / 1024);
         console.log(`  saved ${shot.file} (${kb} kB)`);
+        writeEventSidecar(shot, events);
     } finally {
         if (rec) { try { await stopRecording(rec); } catch (err) { /* best effort */ } }
         await page.close();

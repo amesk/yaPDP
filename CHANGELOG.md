@@ -39,6 +39,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`package.json`, `tools/voicer.js`, `tools/assemble-video.js`,
   `tests/voicer.test.js`, `.gitignore`)
 
+- **Timed reel events while a demo clip is recorded.** The clip recorder
+  (`tools/record-video.js`) now lets the scenario stamp timed events on the
+  media timeline as it drives the machine — chapters (YouTube chapter
+  markers), banner titles, spoken phrases and bottom subtitles — either
+  declaratively on `extra` steps (`{ chapter/speak/title }`) or imperatively
+  via a per-shot event recorder (`markChapter()`, `speak()`, `title()`,
+  `subtitle()`). The events are written to `video/<base>.events.json`, and
+  `tools/assemble-video.js` turns them into narration: every spoken phrase is
+  synthesised through `tools/voicer.js` (content-addressed WAV cache) and mixed
+  into the clip audio at its media offset, banner titles are burned into the
+  finished MP4s, and `video/*.chapters.txt` + `video/*.srt` sidecars are
+  written next to each output (`--burn-subtitles` also burns the bottom
+  subtitle lines). Pure event/timing helpers live in `tools/reel-timeline-util.js`
+  with unit tests in `tests/reel-timeline.test.js`; structural wiring tests in
+  `tests/record-events.test.js` and `tests/assemble-events.test.js`.
+  (`tools/record-video.js`, `tools/assemble-video.js`,
+  `tools/reel-timeline-util.js`, the three new test files)
+
 - **`bootHeadless` wait-for-silence readiness (`stableMs`).** Besides
   matching a known prompt marker (`waitFor`, whole-line by default, or as a
   substring with `waitForMode: "substring"`), the headless boot machinery
