@@ -50,6 +50,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Stale narration WAVs are invalidated when the script or engine changes.**
+  The demo-reel voice cache (`video/voice/<name>.wav`) used to be keyed only by
+  card name, so after editing a narration text (or switching `--voice-engine`)
+  a build silently reused the old WAV unless `--voice-regen` was passed. Each
+  cached WAV now carries a `<name>.sig` sidecar with a fingerprint of the
+  script text and engine (`voiceSignature`, `tools/reel-voice-util.js`); a
+  mismatch regenerates that card automatically, while unchanged cards stay
+  cached. `--voice-regen` still forces a full rebuild.
+  (`tools/assemble-video.js`, `tools/reel-voice-util.js`,
+  `tests/reel-voice.test.js`)
 - **Manual screenshots written to both repo-root and landing sets.**
   `tools/screenshots-manual.js` previously wrote every shot only to
   `assets/images/manual/`, letting the React landing's mirror

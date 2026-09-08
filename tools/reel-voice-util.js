@@ -153,6 +153,19 @@ function musicDuckFilters(windows, opts) {
     return f;
 }
 
+// Stable fingerprint of what a card's narration was rendered from: the script
+// text plus the voicer engine. assemble-video.js only trusts a cached WAV when
+// this signature matches the sidecar <name>.sig it wrote next to it, so
+// editing the narration script or switching engines regenerates the voice
+// automatically instead of silently reusing a stale WAV.
+function voiceSignature(text, engine) {
+    return JSON.stringify({
+        v: 1,
+        engine: engine || "auto",
+        text: String(text)
+    });
+}
+
 module.exports = {
     VOICE_PRE,
     VOICE_PRE_INTRO,
@@ -167,5 +180,6 @@ module.exports = {
     reelVoiceWindows,
     speechDuckWindows,
     segmentStarts,
-    musicDuckFilters
+    musicDuckFilters,
+    voiceSignature
 };

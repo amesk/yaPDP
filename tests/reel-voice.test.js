@@ -27,7 +27,8 @@ const util = require(path.join(__dirname, "..", "tools", "reel-voice-util.js"));
 
 const { VOICE_PRE, VOICE_PRE_INTRO, VOICE_POST, REVERB_TAIL, VOICE_HOLD_EDGE,
     REVERB_AECHO, speechTargetDuration, voicedSpan, reelVoiceWindows,
-    speechDuckWindows, musicDuckFilters, DUCK_BASE, DUCK_LEVEL } = util;
+    speechDuckWindows, musicDuckFilters, DUCK_BASE, DUCK_LEVEL,
+    voiceSignature } = util;
 
 const near = (a, b, eps) => assert.ok(Math.abs(a - b) < (eps || 1e-6),
     `expected ${a} ~= ${b}`);
@@ -135,5 +136,23 @@ assert.strictEqual(custom[1], "volume=0.5:enable='between(t,0.000,4.000)'");
 
 // Degenerate (empty/inverted) windows must not emit a volume filter.
 assert.deepStrictEqual(musicDuckFilters([[5, 5]]).length, 1);
+
+// --- 4. voiceSignature -----------------------------------------------------
+
+// A narration cache hit is only trusted when the (text, engine) fingerprint
+// matches the sidecar .sig — so editing the script or switching engines must
+// produce a different signature (forcing a regenerate) while identical input
+// stays stable (allowing cache reuse).
+const s1 = voiceSignature("Welcome to yaPDP.", "kokoro");
+assert.strictEqual(voiceSignature("Welcome to yaPDP.", "kokoro"), s1,
+    "same text+engine must produce a stable signature");
+assert.notStrictEqual(voiceSignature("Welcome back to yaPDP.", "kokoro"), s1,
+    "a changed script must invalidate the cache");
+assert.notStrictEqual(voiceSignature("Welcome to yaPDP.", "auto"), s1,
+    "a changed engine must invalidate the cache");
+assert.strictEqual(voiceSignature("x", undefined), voiceSignature("x", null),
+    "a missing engine must normalise to the same signature as null/auto");
+assert.strictEqual(JSON.parse(voiceSignature("x", "auto")).v, 1,
+    "the signature must carry a version field for future format bumps");
 
 process.stdout.write("All reel-voice tests passed.\n");
