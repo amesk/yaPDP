@@ -95,6 +95,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`build-promo-videos` no longer fails exporting the Chromium path.**
+  `puppeteer.executablePath()` became async (returns a `Promise`) in
+  Puppeteer v25, so the old
+  `node -p "require('puppeteer').executablePath()"` dumped the raw
+  inspect-formatted Promise output (indented/quoted) into `$GITHUB_ENV`,
+  which GitHub Actions rejected with `Invalid format`. The workflow now
+  resolves the promise and prints a plain `PUPPETEER_EXECUTABLE_PATH=...`
+  line. (`.github/workflows/videos.yml`)
 - **`buildSapiScript()` no longer re-resolves the output path.** The pure
   PowerShell-script builder embedded `path.resolve(outPath)` into the emitted
   script. On Linux (the CI runner) `path.resolve` of a Windows-style path such

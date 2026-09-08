@@ -14,6 +14,10 @@
 #     PUPPETEER_EXECUTABLE_PATH is exported from puppeteer.executablePath() so
 #     tools/record-video.js finds it (its own findBrowserExecutable() also has
 #     Linux fallbacks now, as a belt-and-braces).
+#   * puppeteer.executablePath() is async (returns a Promise) since Puppeteer
+#     v25, so the export below awaits it and prints a plain NAME=value line;
+#     `node -p` cannot await, it would dump the raw Promise inspect output
+#     into $GITHUB_ENV and GitHub Actions rejects it ("Invalid format").
 #   * Narration uses Kokoro-82M (--voice-engine kokoro): fully headless, no
 #     Windows SAPI dependency — SAPI does not exist on the Linux runner.
 #   * The tools draw their title/banner fonts from repo-committed assets/fonts
@@ -88,7 +92,7 @@ jobs:
 
       - name: Export Chromium path for the recorder
         run: |
-          echo "PUPPETEER_EXECUTABLE_PATH=$(node -p "require('puppeteer').executablePath()")" >> "$GITHUB_ENV"
+          node -e "require('puppeteer').executablePath().then(p => console.log('PUPPETEER_EXECUTABLE_PATH=' + p))" >> "$GITHUB_ENV"
 
       # For reliable in-tab audio the recorder runs headed under a virtual
       # framebuffer. xvfb-run -a picks a free display; Chrome uses its bundled
