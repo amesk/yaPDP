@@ -152,7 +152,9 @@ function escPS(s) {
 
 // Build the PowerShell System.Speech script that writes a WAV for `text`.
 // The text itself is NOT embedded — the caller pipes it to the process stdin,
-// so arbitrary text never needs shell escaping. Pure and testable.
+// so arbitrary text never needs shell escaping. Pure and testable: `outPath`
+// is embedded verbatim (only single-quote escaped), so the caller resolves it
+// to an absolute path before calling (sapiSpeak does path.resolve(opts.out)).
 function buildSapiScript(opts) {
     const lines = [];
     lines.push('$ErrorActionPreference = "Stop";');
@@ -183,7 +185,7 @@ function buildSapiScript(opts) {
                 "} catch { /* no matching voice, use default */ }");
         }
     }
-    lines.push(`$synth.SetOutputToWaveFile('${escPS(path.resolve(opts.outPath))}');`);
+    lines.push(`$synth.SetOutputToWaveFile('${escPS(opts.outPath)}');`);
     lines.push("$text = [Console]::In.ReadToEnd();");
     lines.push("if ($text) { $synth.Speak($text); }");
     lines.push("$synth.Dispose();");

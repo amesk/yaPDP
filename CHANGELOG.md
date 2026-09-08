@@ -95,6 +95,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`buildSapiScript()` no longer re-resolves the output path.** The pure
+  PowerShell-script builder embedded `path.resolve(outPath)` into the emitted
+  script. On Linux (the CI runner) `path.resolve` of a Windows-style path such
+  as `C:\tmp\voice-out.wav` treated it as relative and prefixed the CWD, so the
+  emitted `SetOutputToWaveFile(...)` argument no longer matched the expected
+  verbatim path — breaking `tests/voicer.test.js` on the Linux unit job. The
+  caller (`sapiSpeak`) already resolves the path before handing it in, so the
+  builder now embeds `outPath` verbatim (single-quote escaped only), staying
+  pure and platform-independent. (`tools/voicer.js`, `tests/voicer.test.js`)
+
 - **Stale narration WAVs are invalidated when the script or engine changes.**
   The demo-reel voice cache (`video/voice/<name>.wav`) used to be keyed only by
   card name, so after editing a narration text (or switching `--voice-engine`)
