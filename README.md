@@ -52,6 +52,12 @@ and every guest OS boot command. Its page illustrations are live screenshots of
 the emulator, regenerated with `npm run screenshots:manual`
 ([`tools/screenshots-manual.js`](tools/screenshots-manual.js)).
 
+The promo demo-reel (the voiced videos used in the articles/landing) is recorded
+and assembled by [`tools/record-video.js`](tools/record-video.js) +
+[`tools/assemble-video.js`](tools/assemble-video.js); the same pipeline runs
+server-side on demand via the **build-promo-videos** GitHub Actions workflow —
+see [`docs/BUILDING.md`](docs/BUILDING.md).
+
 ## Desktop App (Tauri)
 
 The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/),

@@ -271,18 +271,33 @@ async function ensureServer() {
     throw new Error(`Static server did not start on port ${PORT}`);
 }
 
-// Resolve an installed Edge/Chrome for the browser launch.
+// Resolve an installed Edge/Chrome for the browser launch. The order matters:
+// an explicit PUPPETEER_EXECUTABLE_PATH always wins (CI sets it from the
+// Chromium that the `puppeteer` postinstall downloads), then the well-known
+// Windows paths, then the common Linux Chromium/Chrome locations, and finally
+// the browser bundled by the `puppeteer` package (~/.cache/puppeteer).
 function findBrowserExecutable() {
     const candidates = [
         process.env.PUPPETEER_EXECUTABLE_PATH,
         "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
         "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
         "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe"
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser"
     ].filter(Boolean);
     for (const p of candidates) {
         if (p && fs.existsSync(p)) return p;
     }
+    // Last resort: the Chromium that `puppeteer` downloaded into its cache on
+    // `npm install` (also where a GitHub Actions runner keeps it after a
+    // PUPPETEER_CACHE hit). Throws only when puppeteer is missing entirely.
+    try {
+        const bundled = require("puppeteer").executablePath();
+        if (bundled && fs.existsSync(bundled)) return bundled;
+    } catch (err) { /* no puppeteer installation to fall back on */ }
     return null;
 }
 
