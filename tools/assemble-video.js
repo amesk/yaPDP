@@ -481,21 +481,35 @@ async function speakToWav(text, outWav, engine) {
 }
 
 // Make sure `name` has a narration WAV in video/voice/, generating it through
-// voicer.js only when the cached file is missing (or --voice-regen forced a
-// rebuild). TTS may be unavailable on a machine — in that case the caller
-// gets null and the card is simply assembled without narration.
+// voicer.js only when the cached file is stale. The cache is content-addressed:
+// every WAV has a <name>.sig sidecar holding voiceSignature(text, engine), so
+// editing the narration script or switching --voice-engine regenerates the
+// voice automatically (no forgotten --voice-regen), while unchanged cards are
+// reused without re-synthesizing. --voice-regen still forces a full rebuild.
+// TTS may be unavailable on a machine — in that case the caller gets null and
+// the card is simply assembled without narration.
 async function ensureVoiceWav(name, text, force, engine) {
     fs.mkdirSync(VOICE_DIR, { recursive: true });
     const file = path.join(VOICE_DIR, name + ".wav");
-    if (!force && fs.existsSync(file) && fs.statSync(file).size > 0) return file;
-    if (force && fs.existsSync(file)) {
+    const sigFile = path.join(VOICE_DIR, name + ".sig");
+    const sig = vutil.voiceSignature(text, engine);
+    const cached = fs.existsSync(file) && fs.statSync(file).size > 0;
+    const fresh = cached && fs.existsSync(sigFile) &&
+        fs.readFileSync(sigFile, "utf8").trim() === sig;
+    if (!force && fresh) return file;
+    if (cached) {
+        // Stale WAV (text/engine changed, or --voice-regen): drop both the
+        // audio and its signature, so a failed synth never leaves a mismatched
+        // cache entry behind.
         try { fs.unlinkSync(file); } catch (err) { /* best effort */ }
+        try { fs.unlinkSync(sigFile); } catch (err) { /* best effort */ }
     }
     process.stdout.write("Voicing card '" + name + "' (TTS" +
         (engine && engine !== "auto" ? ", engine " + engine : "") + ")...\n");
     try {
         await speakToWav(text, file, engine);
         if (!fs.existsSync(file)) throw new Error("voicer produced no WAV");
+        fs.writeFileSync(sigFile, sig);
         return file;
     } catch (err) {
         process.stdout.write("note: narration for '" + name + "' unavailable (" +
