@@ -57,6 +57,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`tools/record-video.js`, `tools/assemble-video.js`,
   `tools/reel-timeline-util.js`, the three new test files)
 
+- **Server-side demo-video builds (GitHub Actions).** The whole demo-reel
+  pipeline now runs on demand from the server: the manually-triggered
+  **build-promo-videos** workflow (`.github/workflows/videos.yml`) checks out
+  the requested branch, records every guest-OS clip on an `ubuntu-latest`
+  runner (Chrome from the `puppeteer` postinstall, optional Xvfb-backed headed
+  capture for reliable in-tab audio), assembles the reel + per-clip MP4s with
+  the local Kokoro-82M narration and uploads them as a downloadable artifact.
+  Two cross-platform gaps were closed along the way: the drawtext cards no
+  longer hard-code Windows-only fonts — `tools/reel-font-util.js` resolves
+  Consolas/Arial Bold on Windows and the repo-committed Courier Prime/Michroma
+  faces on Linux/macOS (`YAPDP_FONT`/`YAPDP_FONT_BOLD` override); and
+  `tools/record-video.js` now also discovers the common Linux Chromium paths
+  and the browser bundled by `puppeteer`.
+  (`.github/workflows/videos.yml`, `tools/reel-font-util.js`,
+  `tools/assemble-video.js`, `tools/record-video.js`, `tests/reel-font.test.js`,
+  `tests/record-browser.test.js`)
+
 - **`bootHeadless` wait-for-silence readiness (`stableMs`).** Besides
   matching a known prompt marker (`waitFor`, whole-line by default, or as a
   substring with `waitForMode: "substring"`), the headless boot machinery

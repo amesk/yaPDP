@@ -46,6 +46,7 @@ const { spawn, spawnSync } = require("child_process");
 const ffmpegPath = require("ffmpeg-static");
 const vutil = require("./reel-voice-util.js");
 const timeline = require("./reel-timeline-util.js");
+const fonts = require("./reel-font-util.js");
 
 const ROOT = path.resolve(__dirname, "..");
 // Clips live in ./video/ (gitignored) — never assets/, which is published.
@@ -69,9 +70,10 @@ const CLIP_SLIDE_MS = SLIDE_MS * 3;
 const BG = "0x181511";
 const FG = "0xc8b890";
 const DIM = "0x8a7a50";
-const FONT = "C\\\\:/Windows/Fonts/consola.ttf";
-// Bold display font for the intro/outro title (a 1970s-style heavy sans).
-const FONT_BOLD = "C\\\\:/Windows/Fonts/arialbd.ttf";
+// drawtext fonts: Consolas (mono body) + Arial Bold (display) on Windows, with
+// a fallback to the repo-committed Courier Prime / Michroma faces on Linux/mac
+// so the reel also assembles on a bare CI runner (see tools/reel-font-util.js).
+const { FONT, FONT_BOLD } = fonts.resolveFontPaths();
 // The landing page's photo backdrop, shown at 30% opacity over the dark card
 // background ("70% transparent") on every title card.
 const BACKDROP = path.join(ROOT, "assets", "images", "pdp11-machine-room.jpg");

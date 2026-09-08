@@ -214,3 +214,36 @@ All three are BMP because NSIS Modern UI 2 and the WiX UI extension require that
 format. They are wired in via `bundle.windows.nsis.sidebarImage` and
 `bundle.windows.wix.bannerPath` / `bundle.windows.wix.dialogImagePath` in
 `src-tauri/tauri.conf.minimal.json` / `src-tauri/tauri.conf.full.json`.
+
+## Promo videos (GitHub Actions)
+
+The demo-reel pipeline — recording every guest-OS demo clip
+(`tools/record-video.js`) and assembling the promo reel + per-clip MP4s
+(`tools/assemble-video.js`, voiced with `tools/voicer.js`) — runs **on demand
+from the server** through the manually triggered
+[`.github/workflows/videos.yml`](../.github/workflows/videos.yml) workflow:
+**Actions → Run workflow → build-promo-videos**. It checks out the requested
+branch, records all clips on an `ubuntu-latest` runner (Chrome comes from the
+`puppeteer` postinstall), assembles the videos with the local Kokoro‑82M TTS and
+uploads everything (`.mp4`/`.webm`/`.srt`/`.chapters.txt`/`.events.json`) as a
+downloadable artifact.
+
+Two cross-platform gaps were closed so the same scripts work headlessly on a
+bare Linux runner:
+
+- **Fonts.** `tools/assemble-video.js` burned Windows-only font paths
+  (`C:/Windows/Fonts/consola.ttf`, `arialbd.ttf`) into its drawtext cards.
+  [`tools/reel-font-util.js`](../tools/reel-font-util.js) now resolves the
+  faces per platform: Windows keeps Consolas/Arial Bold; Linux/macOS fall back
+  to the repo-committed `assets/fonts` (Courier Prime / Michroma), so no
+  `apt`-installed fonts are needed. `YAPDP_FONT` / `YAPDP_FONT_BOLD` override
+  either face.
+- **Browser discovery.** `tools/record-video.js` now also looks for the common
+  Linux Chromium/Chrome paths and the browser bundled by the `puppeteer`
+  postinstall, besides the Windows Edge/Chrome locations; CI exports
+  `PUPPETEER_EXECUTABLE_PATH` from `puppeteer.executablePath()`.
+
+Locally the same pipeline still runs with `npm run record:video` and
+`npm run video:demo`. The workflow inputs select the branch, the recording
+backend (`headed` under Xvfb for reliable in-tab audio vs headless) and whether
+bottom subtitles are burned into the MP4s.

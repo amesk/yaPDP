@@ -1,0 +1,148 @@
+# ---------------------------------------------------------------------------
+# yaPDP promo-video build — record + assemble ALL demo clips on a Linux runner
+# and publish them as a downloadable artifact.
+#
+# Manual workflow (Actions -> Run workflow). Records every guest-OS demo clip
+# with tools/record-video.js (headless Chrome via puppeteer-stream, WebRTC tab
+# capture), then tools/assemble-video.js turns them into the promo reel
+# (yaPDP-demo.mp4) and one standalone YouTube-ready MP4 per clip, voiced with
+# the local Kokoro-82M neural TTS (tools/voicer.js) and the timed reel events
+# recorded in video/<clip>.events.json (chapters / narration / subtitles).
+#
+# Runner notes:
+#   * Chromium comes from the `puppeteer` postinstall (~/.cache/puppeteer);
+#     PUPPETEER_EXECUTABLE_PATH is exported from puppeteer.executablePath() so
+#     tools/record-video.js finds it (its own findBrowserExecutable() also has
+#     Linux fallbacks now, as a belt-and-braces).
+#   * Narration uses Kokoro-82M (--voice-engine kokoro): fully headless, no
+#     Windows SAPI dependency — SAPI does not exist on the Linux runner.
+#   * The tools draw their title/banner fonts from repo-committed assets/fonts
+#     on non-Windows (tools/reel-font-util.js), so no apt font install needed.
+#   * Audio capture is most reliable with a real (Xvfb-backed) browser window:
+#     the default headed=true runs the recorder under xvfb-run --headed. If a
+#     headless run is preferred, set the `headed` input to false.
+#
+# Outputs are uploaded as a GitHub Actions artifact (not committed — video/ is
+# gitignored); download it from the run summary page.
+# ---------------------------------------------------------------------------
+name: build-promo-videos
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch/commit to build videos from (default: master)'
+        required: false
+        default: 'master'
+        type: string
+      headed:
+        description: 'Record with a visible browser under Xvfb (reliable tab audio)'
+        required: false
+        default: true
+        type: boolean
+      burn-subtitles:
+        description: 'Burn the bottom subtitle lines into the MP4s (default true)'
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: promo-videos-${{ github.event.inputs.branch || 'master' }}
+  cancel-in-progress: false    # never abort a long recording mid-run
+
+jobs:
+  videos:
+    name: Record + assemble promo videos
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.branch || 'master' }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (downloads puppeteer Chromium)
+        run: npm ci
+
+      # Reuse the Chromium the e2e job downloads (same key scheme as ci.yml),
+      # so repeated runs skip the ~150 MB browser download.
+      - name: Cache puppeteer Chromium
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Kokoro-82M is ~86 MB of ONNX weights downloaded from Hugging Face into
+      # .cache/kokoro on first synthesis; cache it across runs.
+      - name: Cache Kokoro-82M TTS model
+        uses: actions/cache@v6
+        with:
+          path: .cache/kokoro
+          key: kokoro-${{ runner.os }}-q8
+          restore-keys: |
+            kokoro-${{ runner.os }}-
+
+      - name: Export Chromium path for the recorder
+        run: |
+          echo "PUPPETEER_EXECUTABLE_PATH=$(node -p "require('puppeteer').executablePath()")" >> "$GITHUB_ENV"
+
+      # For reliable in-tab audio the recorder runs headed under a virtual
+      # framebuffer. xvfb-run -a picks a free display; Chrome uses its bundled
+      # software GL fallback, so no GPU is needed.
+      - name: Install Xvfb (headed capture backend)
+        if: ${{ github.event.inputs.headed != 'false' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Record all demo clips
+        run: |
+          if [ "${{ github.event.inputs.headed }}" != "false" ]; then
+            xvfb-run -a node tools/record-video.js --headed
+          else
+            node tools/record-video.js
+          fi
+
+      # Assemble the reel + per-clip MP4s. --voice-engine kokoro avoids the
+      # Windows-only SAPI fallback. The Kokoro cache is populated by the first
+      # spoken phrase and reused for every clip in this run.
+      - name: Assemble the reel and standalone clips
+        run: |
+          BURN=""
+          if [ "${{ github.event.inputs.burn-subtitles }}" != "false" ]; then
+            BURN="--burn-subtitles"
+          fi
+          node tools/assemble-video.js --voice-engine kokoro $BURN
+
+      # Sanity check: the reel must exist and have an audio stream (the whole
+      # point of the promo is the voiced narration + machine audio). Probed via
+      # the bundled ffmpeg-static binary (ffprobe is not a project dependency).
+      - name: Verify outputs
+        run: |
+          test -f video/yaPDP-demo.mp4 || { echo "missing video/yaPDP-demo.mp4"; exit 1; }
+          ls -la video/*.mp4 video/*.srt video/*.chapters.txt 2>/dev/null || true
+          node -e '
+            const { spawnSync } = require("child_process");
+            const ff = require("ffmpeg-static");
+            const r = spawnSync(ff, ["-i", "video/yaPDP-demo.mp4"], { encoding: "utf8" });
+            const hasAudio = /Stream #\d+:\d+(?:\(\w+\))?: Audio/.test(r.stderr);
+            console.log(hasAudio ? "audio stream present" : "WARNING: no audio stream found");
+            if (!hasAudio) process.exit(1);
+          '
+
+      - name: Upload promo video artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: yaPDP-promo-videos
+          path: |
+            video/*.mp4
+            video/*.webm
+            video/*.srt
+            video/*.chapters.txt
+            video/*.events.json
+          if-no-files-found: error
+          retention-days: 30
