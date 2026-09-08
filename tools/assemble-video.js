@@ -29,6 +29,12 @@
  * (default; Kokoro-82M, falling back to Windows SAPI) | kokoro | sapi.
  * --voice-regen regenerates every cached narration WAV.
  *
+ * Timed reel events recorded by tools/record-video.js into video/<base>.events.json
+ * (chapters, spoken phrases, banner titles, bottom subtitles) are voiced into
+ * the clip audio at their media offsets and emitted as video/*.chapters.txt +
+ * video/*.srt sidecars next to each MP4; banner titles are burned into the
+ * video, and --burn-subtitles also burns the bottom subtitle lines.
+ *
  * Output: video/yaPDP-demo.mp4 and video/<clip>.mp4 for every clip.
  */
 "use strict";
@@ -39,6 +45,7 @@ const os = require("os");
 const { spawn, spawnSync } = require("child_process");
 const ffmpegPath = require("ffmpeg-static");
 const vutil = require("./reel-voice-util.js");
+const timeline = require("./reel-timeline-util.js");
 
 const ROOT = path.resolve(__dirname, "..");
 // Clips live in ./video/ (gitignored) — never assets/, which is published.
@@ -282,9 +289,11 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
     const clipPath = srcPath || path.join(VIDEOS, clip.file);
     if (!fs.existsSync(introPath) || !fs.existsSync(clipPath)) return;
     const base = path.basename(clip.file, ".webm");
-    // ctx = { voices, reverb }; voices maps card key -> WAV (see main).
+    // ctx = { voices, reverb, clipEvents, burnSubtitles } (see main).
     const voices = (ctx && ctx.voices) || null;
     const reverb = !ctx || ctx.reverb !== false;
+    const clipEv = (ctx && ctx.clipEvents && ctx.clipEvents[base]) || [];
+    const burnSubtitles = !!(ctx && ctx.burnSubtitles);
     const slideKey = "slide-" + base;
 
     const nIntro = path.join(tmp, "ind_" + base + "_intro.webm");
@@ -312,6 +321,13 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
     alignStreams(nIntro, aIntro);
     alignStreams(nSlide, aSlide);
     alignStreams(nClip, aClip);
+    // Mix any spoken phrases recorded inside this clip into its audio at their
+    // media offsets (no stretch — the clip keeps its own length).
+    const clipPhrasesNow = clipPhrases(clipEv);
+    const aClipSeg = clipPhrasesNow.length
+        ? mixClipPhrases(aClip, clipPhrasesNow,
+            path.join(tmp, "ind_" + base + "_clip_phr.webm"))
+        : aClip;
     // Final URL card (black + project URL) fades in after the clip, so the
     // clip fades out and every upload ends on the project URL.
     genUrlCard(outroRaw,
@@ -337,7 +353,7 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
     // stretched to fit their narration shift the offsets correctly.
     const dIntro = probeDuration(vIntro);
     const dSlide = probeDuration(vSlide);
-    const dClip = probeDuration(aClip);
+    const dClip = probeDuration(aClipSeg);
     const dOutro = probeDuration(vOutro);
     const fade = 0.6;
     const concatOut = path.join(tmp, "ind_" + base + "_plain.mp4");
@@ -345,7 +361,7 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
         "-y",
         "-i", vIntro,
         "-i", vSlide,
-        "-i", aClip,
+        "-i", aClipSeg,
         "-i", vOutro,
         "-filter_complex",
         `[0:v]settb=AVTB[v0];[1:v]settb=AVTB[v1];[2:v]settb=AVTB[v2];[3:v]settb=AVTB[v3];` +
@@ -408,6 +424,20 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
         fs.unlinkSync(mixed);
     } else {
         fs.copyFileSync(concatOut, out);
+    }
+    // Chapters / subtitles / banner overlays from this clip's timed events,
+    // mapped onto the standalone-clip timeline (the clip is segment 2, so its
+    // own t=0 sits at segmentStarts(...)[2] on the final MP4).
+    if (clipEv.length) {
+        const starts = vutil.segmentStarts([dIntro, dSlide, dClip, dOutro], fade);
+        const art = timeline.planArtifacts(clipEv, starts[2]);
+        writeMediaSidecars(out, art.chapters, art.srt);
+        if (art.banners.length || (burnSubtitles && art.srt.length)) {
+            const burned = path.join(tmp, "ind_" + base + "_burn.mp4");
+            burnOverlays(out, burned, art.banners, art.srt, burnSubtitles);
+            fs.copyFileSync(burned, out);
+            fs.unlinkSync(burned);
+        }
     }
     const kb = Math.round(fs.statSync(out).size / 1024);
     console.log("  exported " + path.relative(ROOT, out) + " (" + kb + " kB)");
@@ -591,6 +621,121 @@ function voicedCardDuration(wav, baseDur, preSec) {
     return vutil.speechTargetDuration(baseDur, probeDuration(wav), preSec);
 }
 
+// --- Timed reel events (chapters / subtitles / phrases / banners) ----------
+// Each recorded clip may carry a video/<base>.events.json sidecar (written by
+// tools/record-video.js) with timed reel events — chapters, spoken phrases,
+// banner titles and bottom subtitles. The assembler synthesises the phrases
+// through tools/voicer.js and mixes them into the clip audio at their media
+// offsets, then turns the chapters + subtitles + banner titles into YouTube
+// sidecars (.chapters.txt / .srt) and burned overlays on the final MP4.
+// Event media time maps 1:1 onto the (un-cut) clip timeline; events must sit
+// on spans that survive any clip cut (Lunar Lander) — remapping is future work.
+
+// Read + validate a clip's events sidecar; a missing/malformed file yields [].
+function readClipEvents(base) {
+    const file = path.join(VIDEOS, base + ".events.json");
+    if (!fs.existsSync(file)) return [];
+    try {
+        const data = JSON.parse(fs.readFileSync(file, "utf8"));
+        return timeline.validateEvents((data && data.events) || []);
+    } catch (err) {
+        console.error("note: ignoring bad events sidecar " +
+            path.relative(ROOT, file) + " (" + err.message + ")");
+        return [];
+    }
+}
+
+// Synthesise every spoken phrase through tools/voicer.js (content-addressed WAV
+// cache under video/voice/) and attach each speak event's wav + measured
+// duration, so the audio mixer and the subtitle planner can use them.
+async function voiceClipEvents(events, force, engine) {
+    for (const e of events) {
+        if (e.type !== "speak") continue;
+        const name = "phr-" + timeline.phraseCacheKey(e.text, engine);
+        const wav = await ensureVoiceWav(name, e.text, force, engine);
+        e.wav = wav || null;
+        e.dur = wav ? probeDuration(wav) : 0;
+    }
+    return events;
+}
+
+// The spoken phrases of a clip (speak events whose WAV was synthesised).
+function clipPhrases(events) {
+    return (events || []).filter((e) => e.type === "speak" && e.wav);
+}
+
+// Mix spoken phrases into an aligned stereo clip segment at their media offsets
+// (adelay + amix). amix duration=first keeps the original segment length, so a
+// phrase that would overrun the segment end is naturally cut off there (the
+// guard). Returns the input unchanged when there is nothing to mix.
+function mixClipPhrases(input, phrases, out) {
+    if (!phrases || !phrases.length) return input;
+    const args = ["-y", "-i", input];
+    const chains = [];
+    const mixIns = [];
+    phrases.forEach((p, i) => {
+        const idx = i + 1;
+        args.push("-i", p.wav);
+        const offMs = Math.round(Math.max(0, p.t) * 1000);
+        chains.push(`[${idx}:a]aresample=44100,` +
+            `aformat=sample_fmts=fltp:channel_layouts=stereo,` +
+            `adelay=${offMs}:all=1,apad[px${idx}]`);
+        mixIns.push(`[px${idx}]`);
+    });
+    const fc = chains.join(";") +
+        `;[0:a]aformat=sample_fmts=fltp:channel_layouts=stereo[a0];` +
+        `[a0]${mixIns.join("")}amix=inputs=${mixIns.length + 1}:` +
+        `duration=first:dropout_transition=0[aout]`;
+    run([...args,
+        "-filter_complex", fc,
+        "-map", "0:v", "-map", "[aout]",
+        "-c:v", "copy", "-c:a", "libopus",
+        out
+    ]);
+    return out;
+}
+
+// Write the chapter + subtitle sidecars next to an output MP4 (only when the
+// formatted text is non-empty), e.g. video/yaPDP-demo.chapters.txt + .srt.
+function writeMediaSidecars(outMp4, chapters, srt) {
+    const stem = path.join(VIDEOS, path.basename(outMp4, ".mp4"));
+    const c = timeline.formatChapters(chapters);
+    if (c) fs.writeFileSync(stem + ".chapters.txt", c + "\n");
+    const s = timeline.formatSrt(srt);
+    if (s) fs.writeFileSync(stem + ".srt", s + "\n");
+}
+
+// Burn banner titles (and, with --burn-subtitles, the bottom subtitles) onto a
+// finished MP4, re-encoding the video while keeping the AAC audio as-is.
+// Banners use the bold display font at the top; subtitles the mono font at the
+// bottom — two different layers, so they never overlap on purpose.
+function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
+    const draws = [];
+    for (const b of banners || []) {
+        draws.push(`drawtext=fontfile=${FONT_BOLD}:text='${escFilter(b.text)}':` +
+            `fontsize=46:fontcolor=0xeaeaea:borderw=4:bordercolor=black:` +
+            `x=(w-text_w)/2:y=44:enable='between(t,${b.start.toFixed(2)},${b.end.toFixed(2)})'`);
+    }
+    if (burnSubtitles) {
+        for (const s of subtitles || []) {
+            draws.push(`drawtext=fontfile=${FONT}:text='${escFilter(s.text)}':` +
+                `fontsize=26:fontcolor=white:borderw=2:bordercolor=black:` +
+                `x=(w-text_w)/2:y=h-110:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'`);
+        }
+    }
+    if (!draws.length) return input;
+    run([
+        "-y", "-i", input,
+        "-vf", draws.join(","),
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "copy",
+        "-movflags", "+faststart",
+        out
+    ]);
+    return out;
+}
+
 // --- Main -----------------------------------------------------------------
 
 (async function main() {
@@ -622,6 +767,9 @@ function voicedCardDuration(wav, baseDur, preSec) {
         const voiceForce = process.argv.includes("--voice-regen");
         const ve = process.argv.indexOf("--voice-engine");
         const voiceEngine = ve !== -1 ? process.argv[ve + 1] : "auto";
+        // --burn-subtitles also burns the bottom subtitle lines into the video;
+        // the .srt sidecar is written either way, and banner titles always burn.
+        const burnSubtitles = process.argv.includes("--burn-subtitles");
 
         // Narration pre-pass: make sure every card that will carry voice has
         // its WAV ready (cached under video/voice/, generated via voicer.js
@@ -652,7 +800,18 @@ function voicedCardDuration(wav, baseDur, preSec) {
                     voiceForce, voiceEngine);
             }
         }
-        const voiceCtx = { voices, reverb };
+        // Timed reel events: load each clip's .events.json sidecar (written by
+        // tools/record-video.js) and synthesise its spoken phrases up front so
+        // the clip audio can be mixed and the sidecars/banners rendered later.
+        const clipEvents = {};
+        for (const c of CLIPS) {
+            const base = path.basename(c.file, ".webm");
+            const ev = readClipEvents(base);
+            if (ev.length) {
+                clipEvents[base] = await voiceClipEvents(ev, voiceForce, voiceEngine);
+            }
+        }
+        const voiceCtx = { voices, reverb, clipEvents, burnSubtitles };
 
         // Intro: the canvas-rendered title card from tools/make-intro.js (amber
         // glow, green phosphor typing, fade in/out); fall back to a drawtext
@@ -710,7 +869,8 @@ function voicedCardDuration(wav, baseDur, preSec) {
             const key = "slide-" + path.basename(c.file, ".webm");
             raw.push(
                 { file: slides[i], voiceKey: voices[key] ? key : null },
-                { file: srcFor[c.file], voiceKey: null });
+                { file: srcFor[c.file], voiceKey: null,
+                    base: path.basename(c.file, ".webm") });
         });
         raw.push({ file: outro, voiceKey: voices["outro"] ? "outro" : null });
 
@@ -739,12 +899,25 @@ function voicedCardDuration(wav, baseDur, preSec) {
                 voicedMeta.push({ idx: i, pre: preSec, dur: speechDur });
                 inputs.push(v);
             } else {
-                inputs.push(a);
+                // A raw clip segment may carry spoken reel phrases — mix them
+                // into its audio at their media offsets before the chain.
+                const phrases = entry.base && clipEvents[entry.base]
+                    ? clipPhrases(clipEvents[entry.base]) : [];
+                inputs.push(phrases.length
+                    ? mixClipPhrases(a, phrases,
+                        path.join(tmp, "seg_" + i + "_phr.webm"))
+                    : a);
             }
         });
 
         console.log("Probing durations...");
         const durs = inputs.map((f) => probeDuration(f));
+
+        // Absolute start of every raw segment on the final reel timeline, plus
+        // a map from clip base name -> its segment index (for reel events).
+        const segStarts = vutil.segmentStarts(durs, FADE);
+        const rawIndexByBase = {};
+        raw.forEach((entry, i) => { if (entry.base) rawIndexByBase[entry.base] = i; });
 
         // --- Video chain: xfade -------------------------------------------------
         const filters = [];
@@ -821,6 +994,28 @@ function voicedCardDuration(wav, baseDur, preSec) {
             // instead of rename (rename across devices fails with EXDEV).
             fs.copyFileSync(mixed, OUT);
             fs.unlinkSync(mixed);
+        }
+
+        // Chapters / subtitles / banner overlays from every clip's timed reel
+        // events, mapped onto the final reel timeline (OUT).
+        const reelChapters = [];
+        const reelSrt = [];
+        const reelBanners = [];
+        for (const c of CLIPS) {
+            const base = path.basename(c.file, ".webm");
+            const evs = clipEvents[base];
+            if (!evs) continue;
+            const art = timeline.planArtifacts(evs, segStarts[rawIndexByBase[base]]);
+            reelChapters.push(...art.chapters);
+            reelSrt.push(...art.srt);
+            reelBanners.push(...art.banners);
+        }
+        writeMediaSidecars(OUT, reelChapters, reelSrt);
+        if (reelBanners.length || (burnSubtitles && reelSrt.length)) {
+            const burned = path.join(tmp, "reel_burn.mp4");
+            burnOverlays(OUT, burned, reelBanners, reelSrt, burnSubtitles);
+            fs.copyFileSync(burned, OUT);
+            fs.unlinkSync(burned);
         }
 
         // --- Individual YouTube-ready clips ------------------------------------
