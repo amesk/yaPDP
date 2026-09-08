@@ -26,8 +26,8 @@
  *   npm run video:demo
  *
  * --voice-engine selects the narration engine for tools/voicer.js: auto
- * (default; browser loopback, then Windows SAPI) or kokoro (the local neural
- * Kokoro-82M TTS). --voice-regen regenerates every cached narration WAV.
+ * (default; Kokoro-82M, falling back to Windows SAPI) | kokoro | sapi.
+ * --voice-regen regenerates every cached narration WAV.
  *
  * Output: video/yaPDP-demo.mp4 and video/<clip>.mp4 for every clip.
  */
@@ -471,8 +471,8 @@ function runChild(args) {
 
 // Speak `text` through tools/voicer.js into `outWav`. The voicer itself picks
 // the engine from --engine; `engine` here is the --voice-engine the caller
-// chose (auto -> the recorder's historical browser-loopback-then-SAPI chain,
-// kokoro -> the local neural Kokoro-82M TTS). Not passing it keeps auto.
+// chose (auto -> Kokoro-82M, falling back to Windows SAPI; kokoro/sapi -> that
+// single engine). Not passing it keeps auto.
 async function speakToWav(text, outWav, engine) {
     const voicer = path.join(__dirname, "voicer.js");
     const args = [process.execPath, voicer, "--text", text, "--out", outWav];
@@ -616,8 +616,8 @@ function voicedCardDuration(wav, baseDur, preSec) {
         // Voice-over knobs: --voice-regen forces a TTS rebuild of every WAV,
         // --no-voice-reverb turns the narration's light reverb/pseudo-stereo
         // preset off (leaving a dry, mono voice). --voice-engine selects the
-        // voicer engine: auto (default, browser loopback -> Windows SAPI) or
-        // kokoro (the local neural Kokoro-82M TTS via kokoro-js).
+        // voicer engine: auto (default, Kokoro-82M -> Windows SAPI fallback),
+        // kokoro (the local neural Kokoro-82M TTS via kokoro-js) or sapi.
         const reverb = !process.argv.includes("--no-voice-reverb");
         const voiceForce = process.argv.includes("--voice-regen");
         const ve = process.argv.indexOf("--voice-engine");

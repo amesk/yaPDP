@@ -4,8 +4,7 @@
  *
  * tools/assemble-video.js speaks a TTS narration (tools/voicer.js) over its
  * title cards. All the timing maths that does not touch ffmpeg/disk lives
- * here so it can be unit-tested without a browser, a loopback device or even
- * an ffmpeg binary:
+ * here so it can be unit-tested without a browser or even an ffmpeg binary:
  *   1. target lengths: how long a card must be so the speech (plus a little
  *      reverb tail) fits entirely;
  *   2. ducking windows: the [start,end] time spans, on the FINAL timeline,
