@@ -2,20 +2,21 @@
 /**
  * yaPDP — voicer.js pure-helper tests.
  *
- * tools/record-video.js cannot capture Chrome's speechSynthesis (it is not
- * routed into WebRTC tab capture) and CDP screencast is video-only, so
- * voicer.js records TTS by loopback-capturing the browser audio output
- * (ffmpeg DirectShow) with a Windows SAPI fallback. Those paths need real
- * hardware/voices and are exercised by hand; this test pins the PURE pieces
- * that drive them so the mechanics cannot silently drift:
- *   1. parseArgs() maps the CLI flags onto the option defaults.
- *   2. parseDshowDevices() splits `ffmpeg -list_devices` output into the audio
- *      and video device lists.
- *   3. findLoopbackDevice() picks a real loopback capture endpoint (Stereo
- *      Mix / VB-Cable) over the plain microphone.
- *   4. buildSapiScript() emits a well-formed PowerShell System.Speech script
+ * tools/voicer.js writes the narration WAV through one of two engines:
+ * Kokoro-82M (kokoro-js) or Windows SAPI, with "auto" trying Kokoro first and
+ * falling back to SAPI. The real synthesis needs the model / OS voices and is
+ * exercised by hand; this test pins the PURE pieces that drive it so the
+ * mechanics cannot silently drift:
+ *   1. parseArgs() maps the CLI flags onto the option defaults (and ignores
+ *      the removed browser/capture flags: --device, --force-sapi, --rate,
+ *      --pitch, --volume).
+ *   2. cultureIdFor() maps a language tag to a Windows LCID.
+ *   3. buildSapiScript() emits a well-formed PowerShell System.Speech script
  *      (rate/volume clamp, optional voice, en-US culture hint, single-quote
  *      escaping, UTF-8 stdin read).
+ *   4. engine selection pins the two engines (kokoro/sapi) plus the "auto"
+ *      default, rejects the removed "browser" engine, and resolves the Kokoro
+ *      config defaults.
  *
  * Run with:  node tests/voicer.test.js
  *
@@ -27,47 +28,35 @@ const assert = require("assert");
 const path = require("path");
 const voicer = require(path.join(__dirname, "..", "tools", "voicer.js"));
 
-const { parseArgs, parseDshowDevices, findLoopbackDevice,
-    cultureIdFor, escPS, buildSapiScript, DEFAULTS,
+const { parseArgs, cultureIdFor, escPS, buildSapiScript, DEFAULTS,
     ENGINES, KOKORO_MODEL_ID, KOKORO_DTYPE, KOKORO_DEFAULT_VOICE,
     normaliseEngine, kokoroConfig } = voicer;
 
 // --- 1. parseArgs ----------------------------------------------------------
 
-assert.strictEqual(DEFAULTS.rate, 0.95, "default browser rate must be 0.95");
-assert.strictEqual(DEFAULTS.pitch, 0.7, "default browser pitch must be 0.7");
 assert.strictEqual(DEFAULTS.lang, "en-US", "default language must be en-US");
+assert.strictEqual(DEFAULTS.engine, "auto",
+    "the default engine must be auto (Kokoro -> SAPI fallback)");
 
 const noArgs = parseArgs([]);
 assert.strictEqual(noArgs.help, false);
 assert.strictEqual(noArgs.text, DEFAULTS.text, "no --text keeps the greeting");
-assert.strictEqual(noArgs.forceSapi, false);
 assert.ok(!("file" in noArgs), "--file must not be present when not given");
 
 const full = parseArgs([
     "--text", "Hello world",
     "--out", "demo.wav",
     "--lang", "ru-RU",
-    "--rate", "1.2",
-    "--pitch", "0.5",
-    "--volume", "0.8",
     "--voice", "Microsoft Irina Desktop",
     "--sapi-rate", "-3",
-    "--sapi-volume", "80",
-    "--device", "CABLE Input",
-    "--force-sapi"
+    "--sapi-volume", "80"
 ]);
 assert.strictEqual(full.text, "Hello world");
 assert.strictEqual(full.out, "demo.wav");
 assert.strictEqual(full.lang, "ru-RU");
-assert.strictEqual(full.rate, 1.2);
-assert.strictEqual(full.pitch, 0.5);
-assert.strictEqual(full.volume, 0.8);
 assert.strictEqual(full.voice, "Microsoft Irina Desktop");
 assert.strictEqual(full.sapiRate, -3);
 assert.strictEqual(full.sapiVolume, 80);
-assert.strictEqual(full.device, "CABLE Input");
-assert.strictEqual(full.forceSapi, true, "--force-sapi must be parsed");
 
 assert.strictEqual(parseArgs(["--help"]).help, true);
 assert.strictEqual(parseArgs(["-h"]).help, true);
@@ -77,56 +66,20 @@ assert.strictEqual(fileOnly.file, "script.txt");
 assert.strictEqual(fileOnly.text, DEFAULTS.text,
     "text default must stay when only --file is given");
 
-// --- 2. parseDshowDevices --------------------------------------------------
+// The browser/capture-device path was removed — its flags must no longer
+// surface on the parsed options or change the effective engine.
+const legacy = parseArgs(["--device", "CABLE Input", "--force-sapi",
+    "--rate", "1.2", "--pitch", "0.5", "--volume", "0.8"]);
+assert.ok(!("device" in legacy), "the removed --device flag must be ignored");
+assert.ok(!("forceSapi" in legacy),
+    "the removed --force-sapi flag must be ignored");
+assert.ok(!("rate" in legacy), "the removed --rate flag must be ignored");
+assert.ok(!("pitch" in legacy), "the removed --pitch flag must be ignored");
+assert.ok(!("volume" in legacy), "the removed --volume flag must be ignored");
+assert.strictEqual(legacy.engine, "auto",
+    "browser-only flags must not change the default engine");
 
-const FFMPEG_DEVICE_OUTPUT = [
-    "[dshow @ 000001] DirectShow video devices (some may be both video and audio devices)",
-    '[dshow @ 000001]  "OBS Virtual Camera"',
-    "[dshow @ 000001] DirectShow audio devices (some may be both video and audio devices)",
-    '[dshow @ 000001]  "Microphone (Realtek High Definition Audio)"',
-    '[dshow @ 000001]  "Stereo Mix (Realtek High Definition Audio)"',
-    '[dshow @ 000001]  "CABLE Input (VB-Audio Virtual Cable)"',
-    "[dshow @ 000001] Could not enumerate video devices (or none associated with this device)."
-].join("\r\n");
-
-const devices = parseDshowDevices(FFMPEG_DEVICE_OUTPUT);
-assert.ok(Array.isArray(devices.audio), "audio list must be an array");
-assert.deepStrictEqual(devices.video, ["OBS Virtual Camera"],
-    "video section must list only video devices");
-assert.ok(devices.audio.includes("Microphone (Realtek High Definition Audio)"),
-    "audio section must include the microphone");
-assert.ok(devices.audio.includes("Stereo Mix (Realtek High Definition Audio)"),
-    "audio section must include Stereo Mix");
-assert.ok(devices.audio.includes("CABLE Input (VB-Audio Virtual Cable)"),
-    "audio section must include the VB-Cable input");
-
-assert.deepStrictEqual(parseDshowDevices("").audio, [],
-    "empty output must yield no devices");
-
-// --- 3. findLoopbackDevice -------------------------------------------------
-
-assert.strictEqual(
-    findLoopbackDevice(["Microphone (Realtek)", "Stereo Mix (Realtek)"]),
-    "Stereo Mix (Realtek)",
-    "Stereo Mix must be preferred over the microphone");
-assert.strictEqual(
-    findLoopbackDevice(["CABLE Input (VB-Audio Virtual Cable)"]),
-    "CABLE Input (VB-Audio Virtual Cable)",
-    "VB-Cable input must be detected");
-assert.strictEqual(
-    findLoopbackDevice(["Microphone (Realtek)"]),
-    null,
-    "a plain microphone must NOT be treated as a loopback device");
-assert.strictEqual(
-    findLoopbackDevice(["Stereo Mix (Realtek)", "CABLE Input (VB-Audio)"]),
-    "CABLE Input (VB-Audio)",
-    "VB-Cable must win over Stereo Mix when both exist");
-assert.strictEqual(
-    findLoopbackDevice(["Loopback Audio (Virtual)"]),
-    "Loopback Audio (Virtual)",
-    "a generic 'Loopback' device must be detected");
-
-// --- 4. cultureIdFor / escPS -----------------------------------------------
+// --- 2. cultureIdFor / escPS -----------------------------------------------
 
 assert.strictEqual(cultureIdFor("en-US"), 0x0409);
 assert.strictEqual(cultureIdFor("en-us"), 0x0409);
@@ -138,7 +91,7 @@ assert.strictEqual(cultureIdFor(null), null);
 assert.strictEqual(escPS("O'Brien"), "O''Brien",
     "single quotes must be doubled inside a PowerShell string");
 
-// --- 5. buildSapiScript ----------------------------------------------------
+// --- 3. buildSapiScript ----------------------------------------------------
 
 const OUT = "C:\\tmp\\voice-out.wav";
 const script = buildSapiScript({ outPath: OUT, lang: "en-US",
@@ -174,28 +127,29 @@ const quoted = buildSapiScript({ outPath: "C:\\tmp\\o'brien.wav", lang: "en-US" 
 assert.ok(quoted.includes("SetOutputToWaveFile('C:\\tmp\\o''brien.wav');"),
     "the output path must be single-quote escaped");
 
-// --- 6. engine selection / kokoro config -----------------------------------
+// --- 4. engine selection / kokoro config -----------------------------------
 
-assert.ok(ENGINES.includes("auto"), "auto engine must exist (historical path)");
+assert.ok(ENGINES.includes("auto"), "auto engine must exist (Kokoro->SAPI)");
 assert.ok(ENGINES.includes("kokoro"), "kokoro engine must exist");
-assert.strictEqual(DEFAULTS.engine, "auto",
-    "the default engine must be auto (backward compatible)");
+assert.ok(ENGINES.includes("sapi"), "sapi engine must exist");
+assert.ok(!ENGINES.includes("browser"),
+    "the browser loopback capture engine must be gone");
 
 // --engine parsing.
 assert.strictEqual(parseArgs(["--engine", "kokoro"]).engine, "kokoro");
 assert.strictEqual(parseArgs(["--engine", "sapi"]).engine, "sapi");
 assert.strictEqual(parseArgs(["--engine", "auto"]).engine, "auto");
-// Legacy --force-sapi folds into engine "sapi".
-assert.strictEqual(parseArgs(["--force-sapi"]).engine, "sapi",
-    "--force-sapi must map to engine sapi");
-assert.strictEqual(parseArgs(["--engine", "kokoro", "--force-sapi"]).engine,
-    "kokoro", "an explicit --engine must win over --force-sapi");
 
-// normaliseEngine: lowercases, tolerates defaults, rejects unknowns.
+// normaliseEngine: lowercases, tolerates defaults, rejects unknowns —
+// including the removed "browser" engine.
 assert.strictEqual(normaliseEngine("KOKORO"), "kokoro",
+    "engine names must be case-insensitive");
+assert.strictEqual(normaliseEngine("SAPI"), "sapi",
     "engine names must be case-insensitive");
 assert.strictEqual(normaliseEngine(undefined), "auto");
 assert.strictEqual(normaliseEngine(null), "auto");
+assert.throws(() => normaliseEngine("browser"),
+    "the removed browser engine must be rejected");
 assert.throws(() => normaliseEngine("acapela"),
     "an unknown engine must be rejected");
 
@@ -215,22 +169,5 @@ assert.ok(cfg.cacheDir.endsWith(path.join("PDP11", ".cache", "kokoro")) ||
     "the model cache must live in the repo .cache/kokoro");
 // An explicit --voice must override the Kokoro default.
 assert.strictEqual(kokoroConfig({ voice: "af_heart" }).voice, "af_heart");
-
-// --- 7. buildVoiceHtml -----------------------------------------------------
-
-// The browser TTS page must be generated in-memory — there is no external
-// voice.html fixture anymore. It carries the #speakBtn + VOICE_OPTS /
-// __voiceEnded contract and must stay a STATIC template (no ${} interpolation,
-// so arbitrary text can never inject markup into the page).
-assert.strictEqual(typeof voicer.buildVoiceHtml, "function",
-    "buildVoiceHtml must be exported");
-const pageHtml = voicer.buildVoiceHtml();
-for (const needle of ["id=\"speakBtn\"", "VOICE_OPTS", "__voiceEnded",
-    "speechSynthesis.speak"]) {
-    assert.ok(pageHtml.includes(needle),
-        "generated TTS page must contain " + needle);
-}
-assert.ok(!pageHtml.includes("${"),
-    "the page must be a static template (no interpolation)");
 
 console.log("All voicer pure-helper tests passed.");

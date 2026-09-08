@@ -7,7 +7,7 @@
  * All of the timing maths that decides (a) how long a card must be to fit its
  * speech and (b) where on the final timeline the music must turn down lives in
  * tools/reel-voice-util.js, away from ffmpeg — so this file pins it without a
- * browser, a loopback device or even an ffmpeg binary:
+ * browser or even an ffmpeg binary:
  *   1. speechTargetDuration() stretches a card to fit the narration;
  *   2. voicedSpan() reports the narration's audible span (incl. reverb tail);
  *   3. reelVoiceWindows() maps voiced cards onto the final xfade/acrossfade

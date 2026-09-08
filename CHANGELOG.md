@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Demo-reel voice-over narration on the title cards.** `tools/assemble-video.js`
   now speaks the intro, every clip's title card and the outro with a generated
-  English narration (`tools/voicer.js`, browser-loopback TTS or Windows SAPI);
+  English narration (`tools/voicer.js`, Kokoro-82M or Windows SAPI);
   the WAVs are cached in `video/voice/` (rebuilt with `--voice-regen`, and the
   light reverb / pseudo-stereo added to the dry mono voice can be disabled with
   `--no-voice-reverb`). The intro card waits a beat (~3 s, until its title
@@ -28,13 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recorder (`tools/voicer.js`) can now synthesize the narration locally with
   **Kokoro-82M** through the official `kokoro-js` package (Transformers.js +
   onnxruntime-node on CPU, voice **US Michael** by default) — far less
-  synthetic than the browser/SAPI OS voices, and fully headless: no headed
-  Chrome and no loopback capture device. The quantized model (~86 MB) is
-  downloaded once into the gitignored `.cache/kokoro/` and then reused (a CI
-  checkout never re-downloads it); voices ship inside the package. Select it
-  with `node tools/voicer.js --engine kokoro ...` or, for the whole reel,
+  synthetic than the Windows SAPI voice, and fully headless: no browser and
+  no network voice dependency. The quantized model (~86 MB) is downloaded
+  once into the gitignored `.cache/kokoro/` and then reused (a CI checkout
+  never re-downloads it); voices ship inside the package. Select it with
+  `node tools/voicer.js --engine kokoro ...` or, for the whole reel,
   `node tools/assemble-video.js --voice-engine kokoro --voice-regen`; the
-  `auto` engine (browser loopback, then Windows SAPI) remains the default.
+  `auto` engine (Kokoro, falling back to Windows SAPI) remains the default.
   Pure engine-selection/config helpers are pinned in `tests/voicer.test.js`.
   (`package.json`, `tools/voicer.js`, `tools/assemble-video.js`,
   `tests/voicer.test.js`, `.gitignore`)
@@ -47,6 +47,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unknown guest image (whose prompts are not known yet) headlessly and then
   derive the readiness markers from the captured boot output.
   (`tools/headless-machine.js`, test 4 in `tests/headless-machine.test.js`)
+
+### Removed
+
+- **Browser loopback capture voice engine.** `tools/voicer.js` no longer
+  records Chrome's Web Speech API through an ffmpeg DirectShow loopback device:
+  the `browser` engine and its `--device`/`--force-sapi`/`--rate`/`--pitch`/
+  `--volume` flags are gone. The narration is produced by the two remaining
+  mechanisms — Kokoro-82M (`kokoro`) and Windows SAPI (`sapi`) — with `auto`
+  trying Kokoro first and falling back to SAPI.
+  (`tools/voicer.js`, `tools/assemble-video.js`, `tests/voicer.test.js`)
 
 ### Fixed
 
