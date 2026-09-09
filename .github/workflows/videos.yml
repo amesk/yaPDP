@@ -14,10 +14,6 @@
 #     PUPPETEER_EXECUTABLE_PATH is exported from puppeteer.executablePath() so
 #     tools/record-video.js finds it (its own findBrowserExecutable() also has
 #     Linux fallbacks now, as a belt-and-braces).
-#   * puppeteer.executablePath() is async (returns a Promise) since Puppeteer
-#     v25, so the export below awaits it and prints a plain NAME=value line;
-#     `node -p` cannot await, it would dump the raw Promise inspect output
-#     into $GITHUB_ENV and GitHub Actions rejects it ("Invalid format").
 #   * Narration uses Kokoro-82M (--voice-engine kokoro): fully headless, no
 #     Windows SAPI dependency — SAPI does not exist on the Linux runner.
 #   * The tools draw their title/banner fonts from repo-committed assets/fonts
@@ -92,7 +88,7 @@ jobs:
 
       - name: Export Chromium path for the recorder
         run: |
-          node -e "require('puppeteer').executablePath().then(p => console.log('PUPPETEER_EXECUTABLE_PATH=' + p))" >> "$GITHUB_ENV"
+          node -e "require('puppeteer').executablePath().then(p=>console.log('PUPPETEER_EXECUTABLE_PATH='+p))" >> "$GITHUB_ENV"
 
       # For reliable in-tab audio the recorder runs headed under a virtual
       # framebuffer. xvfb-run -a picks a free display; Chrome uses its bundled
@@ -103,6 +99,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb
 
+      # The static ffmpeg-static build lacks the drawtext filter (no usable
+      # libfreetype path), but the reel burns title/banner text with drawtext.
+      # Install the distro ffmpeg (has drawtext) and let assemble-video.js pick
+      # it via its system-ffmpeg fallback / FFMPEG_PATH.
+      - name: Install system ffmpeg (drawtext support)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
       - name: Record all demo clips
         run: |
           if [ "${{ github.event.inputs.headed }}" != "false" ]; then
@@ -110,6 +115,27 @@ jobs:
           else
             node tools/record-video.js
           fi
+
+      # Diagnostics: dump the container streams of every recorded WebM right
+      # after capture. This distinguishes the two failure modes for the final
+      # 'no audio stream found' check — (a) the recorded clips carry no audio
+      # (WebRTC tabCapture found no input under this runner) vs (b) audio was
+      # recorded but lost later during reel assembly. Each line ends with
+      # [AUDIO] or [NO-AUDIO] for greppable runs.
+      - name: Probe recorded clips for audio (diagnostic)
+        if: always()
+        run: |
+          for f in video/*.webm; do
+            [ -f "$f" ] || continue
+            echo "== $f =="
+            ffprobe -v error -show_entries stream=index,codec_type,codec_name,channels -of compact "$f" 2>&1
+            if ffprobe -v error -select_streams a -show_entries stream=codec_name -of csv=p=0 "$f" 2>/dev/null | grep -q .; then
+              echo "[AUDIO] $f"
+            else
+              echo "[NO-AUDIO] $f"
+            fi
+          done
+          echo "Probe complete."
 
       # Assemble the reel + per-clip MP4s. --voice-engine kokoro avoids the
       # Windows-only SAPI fallback. The Kokoro cache is populated by the first
@@ -133,7 +159,7 @@ jobs:
             const { spawnSync } = require("child_process");
             const ff = require("ffmpeg-static");
             const r = spawnSync(ff, ["-i", "video/yaPDP-demo.mp4"], { encoding: "utf8" });
-            const hasAudio = /Stream #\d+:\d+(?:\(\w+\))?: Audio/.test(r.stderr);
+            const hasAudio = /Stream #\d+:\d+(?:\[[^\]]+\])?(?:\([^)]*\))?: Audio/.test(r.stderr);
             console.log(hasAudio ? "audio stream present" : "WARNING: no audio stream found");
             if (!hasAudio) process.exit(1);
           '
