@@ -3,7 +3,18 @@ name: Cleanup Old Workflow Runs
 on:
   schedule:
     - cron: '0 0 * * *' # Run every night at 00:00 UTC
-  workflow_dispatch:   # Allows running the cleanup manually via the button
+  workflow_dispatch:    # Allows running the cleanup manually via the button
+    inputs:
+      days_to_keep:
+        description: 'Always keep runs created within the last N days'
+        required: false
+        default: '7'
+        type: number
+      runs_to_keep:
+        description: 'Always keep the N most recent runs regardless of age'
+        required: false
+        default: '3'
+        type: number
 
 jobs:
   cleanup:
@@ -11,8 +22,25 @@ jobs:
     permissions:
       actions: write # Required to delete logs and runs
     steps:
-      - name: Delete runs older than 7 days
+      - name: Validate manual inputs
+        env:
+          DAYS_TO_KEEP: ${{ github.event.inputs.days_to_keep || '7' }}
+          RUNS_TO_KEEP: ${{ github.event.inputs.runs_to_keep || '3' }}
+        run: |
+          # Reject negative or non-numeric manual inputs to prevent wiping the history.
+          # days_to_keep = 0 is allowed and means "keep nothing by age, only by count".
+          # The scheduled run always falls back to the defaults and passes validation.
+          if [[ ! "$DAYS_TO_KEEP" =~ ^[0-9]+$ ]]; then
+            echo "::error::days_to_keep must be a non-negative integer, got: '$DAYS_TO_KEEP'"
+            exit 1
+          fi
+          if [[ ! "$RUNS_TO_KEEP" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::runs_to_keep must be a positive integer, got: '$RUNS_TO_KEEP'"
+            exit 1
+          fi
+
+      - name: Delete old workflow runs
         uses: dmytro-diachenko/clean-workflow-action@v1.3.0
         with:
-          runs_older_than: 7
-          runs_to_keep: 3 # Just in case, keep the 3 most recent runs
+          runs_older_than: ${{ github.event.inputs.days_to_keep || 7 }}
+          runs_to_keep: ${{ github.event.inputs.runs_to_keep || 3 }}
