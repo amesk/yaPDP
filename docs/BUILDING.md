@@ -247,3 +247,23 @@ Locally the same pipeline still runs with `npm run record:video` and
 `npm run video:demo`. The workflow inputs select the branch, the recording
 backend (`headed` under Xvfb for reliable in-tab audio vs headless) and whether
 bottom subtitles are burned into the MP4s.
+
+## Workflow-run history cleanup
+
+To keep the **Actions** tab tidy, the
+[`.github/workflows/clean-history.yml`](../.github/workflows/clean-history.yml)
+workflow runs **nightly** (`schedule`) and deletes old workflow-run history: it
+always keeps the runs created within the last **7 days** and the **3 most
+recent** runs.
+
+A manual run (**Actions → Cleanup Old Workflow Runs → Run workflow**) accepts two
+override inputs:
+
+- `days_to_keep` — always keep runs created within the last N days
+  (`0` keeps nothing by age, i.e. a purge down to `runs_to_keep`);
+- `runs_to_keep` — always keep the N most recent runs.
+
+The inputs are validated before the cleanup runs (they must be integers;
+`days_to_keep ≥ 0`, `runs_to_keep ≥ 1`), which stops negative or non-numeric
+values from wiping the whole history. The nightly schedule always falls back to
+the defaults above.
