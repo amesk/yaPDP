@@ -314,7 +314,13 @@ async function launchBrowser(headed) {
     return launch({
         executablePath,
         headless: headed ? false : "new",
-        defaultViewport: { width: WIDTH, height: HEIGHT }
+        defaultViewport: { width: WIDTH, height: HEIGHT },
+        // CI runners run as root, where Chromium's sandbox refuses to start
+        // (Chrome exits immediately -> "Target closed"). locals run as an
+        // unprivileged user, so these flags only matter on hosted runners but
+        // are harmless everywhere. --disable-dev-shm-usage avoids /dev/shm
+        // exhaustion on small shared-memory CI machines.
+        args: ["--no-sandbox", "--disable-dev-shm-usage"]
     });
 }
 

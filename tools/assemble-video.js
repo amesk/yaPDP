@@ -43,7 +43,30 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { spawn, spawnSync } = require("child_process");
-const ffmpegPath = require("ffmpeg-static");
+const ffmpegStatic = require("ffmpeg-static");
+
+// ffmpeg-static is convenient but some of its builds ship WITHOUT the drawtext
+// filter (no libfreetype), and the promo reel burns all its title/banner text
+// with drawtext. When the chosen ffmpeg lacks drawtext we fall back to a
+// system ffmpeg (which normally has it built in) or an explicit FFMPEG_PATH.
+function resolveFfmpegPath() {
+    if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
+    const hasDrawtext = (p) => {
+        try {
+            const r = spawnSync(p, ["-hide_banner", "-filters"], { encoding: "utf8" });
+            return /^.* drawtext /m.test((r.stdout || "") + (r.stderr || ""));
+        } catch (e) {
+            return false;
+        }
+    };
+    if (ffmpegStatic && hasDrawtext(ffmpegStatic)) return ffmpegStatic;
+    const systemCandidates = ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "ffmpeg"];
+    for (const cand of systemCandidates) {
+        if (hasDrawtext(cand)) return cand;
+    }
+    return ffmpegStatic; // best-effort last resort; drawtext will fail loudly
+}
+const ffmpegPath = resolveFfmpegPath();
 const vutil = require("./reel-voice-util.js");
 const timeline = require("./reel-timeline-util.js");
 const fonts = require("./reel-font-util.js");
@@ -139,7 +162,18 @@ function probeDuration(file) {
 }
 
 function escFilter(s) {
-    return String(s).replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,");
+    // Escape filtergraph specials that would otherwise break the parsed graph
+    // when a drawtext filter is spliced into a -vf / filter_complex string:
+    //   '  -> \u0027  (literal apostrophe; a backslash-escaped \' is NOT accepted
+    //               by ffmpeg inside text='...' and instead breaks the option
+    //               so the following enable='between(t,49.83,...' reads as its
+    //               own "filter" -> "No such filter: '49.83'")
+    //   :  -> \:   (option separator)
+    //   ,  -> \,   (filter separator inside values)
+    return String(s)
+        .replace(/'/g, "\\u0027")
+        .replace(/:/g, "\\:")
+        .replace(/,/g, "\\,");
 }
 
 // Render a title card (video + silent stereo audio) as a short WebM clip: a
@@ -752,7 +786,17 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
 
         // Optional selector: a clip file name (without extension). When given,
         // only that individual clip is exported — no full reel is assembled.
-        const selector = (process.argv.slice(2).find((a) => !a.startsWith("--")) || "")
+        // Look only at positional args, ignoring values consumed by flags such
+        // as --voice-engine kokoro / --music FILE (those follow their flag and
+        // must not be mistaken for a clip selector).
+        const argv = process.argv.slice(2);
+        const valueTakingFlags = new Set(["--voice-engine", "--music"]);
+        const positional = argv.filter((a, i) => {
+            if (a.startsWith("--")) return false;
+            const prev = argv[i - 1];
+            return !valueTakingFlags.has(prev);
+        });
+        const selector = (positional[0] || "")
             .toLowerCase().replace(/\.(webm|mp4)$/, "");
 
         tmp = fs.mkdtempSync(path.join(os.tmpdir(), "yapdp-reel-"));
