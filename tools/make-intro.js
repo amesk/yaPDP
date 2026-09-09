@@ -31,15 +31,27 @@ const WIDTH = 1280;
 const HEIGHT = 800;
 const FPS = 30;
 const GREEN_TEXT = "-- created with love for the DEC era";
-// Timeline: 1 s fade-in, typing starts at 2 s, 4 s hold on the final frame,
-// 1 s fade-out. That leaves 5 s after typing ends before the fade-out starts —
-// long enough to read the green "DEC era" line, short enough to keep the
-// intro snappy now that the clip is no longer trimmed by its audio length.
+// Timeline (in frames): 1 s fade-in, typing starts at 2 s (TEXT_START_FRAME),
+// runs TYPE_FRAMES (~3.5 s) until the line is fully typed, then the STATIC
+// last frame is held until the 1 s fade-out. Because the hold is a static
+// frame anyway, the whole card is length-adaptable: an optional CLI duration
+// (`node tools/make-intro.js [seconds]`, passed by assemble-video.js to fit
+// the narration) only changes TOTAL via the hold; without an argument the
+// classic 11.5 s intro is produced.
 const TEXT_START_FRAME = FPS * 2;
 const TYPE_FRAMES = GREEN_TEXT.length * 3;
-const HOLD_FRAMES = FPS * 4;
+const TYPE_END_FRAME = TEXT_START_FRAME + TYPE_FRAMES;
 const FADE_FRAMES = FPS;
-const TOTAL_FRAMES = FADE_FRAMES + TEXT_START_FRAME + TYPE_FRAMES + HOLD_FRAMES + FADE_FRAMES;
+// Classic default length: fade-in + 2 s wait + typing + 4 s hold + fade-out.
+const DEFAULT_TARGET_SEC =
+    (FADE_FRAMES + TEXT_START_FRAME + TYPE_FRAMES + FPS * 4 + FADE_FRAMES) / FPS;
+// Shortest card that still fits the whole typing run plus both fades.
+const MIN_DURATION_SEC = (TYPE_END_FRAME + FADE_FRAMES) / FPS;
+const cliSec = parseFloat(process.argv[2]);
+const TARGET_SEC = (Number.isFinite(cliSec) && cliSec > 0)
+    ? Math.max(cliSec, MIN_DURATION_SEC)
+    : DEFAULT_TARGET_SEC;
+const TOTAL_FRAMES = Math.round(TARGET_SEC * FPS);
 const DURATION_SEC = TOTAL_FRAMES / FPS;
 const FRAME_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "yapdp-intro-"));
 

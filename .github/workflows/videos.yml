@@ -65,6 +65,16 @@ jobs:
           node-version: 22
           cache: npm
 
+      # The reel intro card is rendered with node-canvas (tools/make-intro.js),
+      # which assemble-video.js now invokes to fit the narration length. canvas
+      # links against the system cairo/pango stack, so install those native
+      # libraries BEFORE npm ci — they are also required if canvas has to build
+      # from source because no prebuilt binary matches this runner.
+      - name: Install canvas native libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
       - name: Install dependencies (downloads puppeteer Chromium)
         run: npm ci
 
@@ -164,10 +174,24 @@ jobs:
             if (!hasAudio) process.exit(1);
           '
 
+      # assemble-video.js exports every guest-OS clip as a standalone MP4 next
+      # to the compiled reel (yaPDP-demo.mp4); without the canvas intro those
+      # per-clip exports used to be skipped silently. Fail if any is missing so
+      # the artifact below always carries the full set.
+      - name: Verify individual clip exports
+        run: |
+          for f in basic basic-tape unix_v5 bsd rt11 rt11-vt52 rt11-panel-boot xxdp lunar-lander; do
+            test -f "video/$f.mp4" || { echo "missing video/$f.mp4"; exit 1; }
+          done
+          echo "all individual clip MP4s present"
+
       - name: Upload promo video artifacts
         uses: actions/upload-artifact@v7
         with:
           name: yaPDP-promo-videos
+          # video/*.mp4 carries BOTH the compiled reel (yaPDP-demo.mp4) and the
+          # standalone per-clip MP4s; the rest are the raw captures, sidecars
+          # and timed events that produced them.
           path: |
             video/*.mp4
             video/*.webm

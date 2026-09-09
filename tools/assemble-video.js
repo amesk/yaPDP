@@ -118,7 +118,7 @@ const CLIPS = [
       voice: "This demo boots DEC BASIC-11 from an RK05 disk. Type a few " +
         "lines, and the PDP-11 answers in classic BASIC." },
     { file: "basic-tape.webm",   title: "DEC BASIC-11 (ASR TAPE)",
-      voice: "BASIC-11 again, this time loading from punched tape on the " +
+      voice: "BASIC-11, this time loading from punched tape on the " +
         "Model 33 teletype. Watch the paper tape reader spin." },
     { file: "unix_v5.webm",      title: "BOOTING UNIX V5",
       voice: "Now we boot UNIX Version 5 — an early UNIX from 1975, running " +
@@ -130,7 +130,7 @@ const CLIPS = [
       voice: "RT-11, Digital's single-user real-time operating system, " +
         "booting from disk. A workhorse of the PDP-11 era." },
     { file: "rt11-vt52.webm",    title: "RT-11 v4.0 (VT52)",
-      voice: "RT-11 again, this time on a VT52 terminal. Green phosphor, " +
+      voice: "RT-11, this time on a VT52 terminal. Green phosphor, " +
         "command lines, and an interactive monitor." },
     { file: "rt11-panel-boot.webm", title: "MANUAL BOOTSTRAP",
       voice: "A manual bootstrap: loading a tiny boot program with the " +
@@ -139,7 +139,7 @@ const CLIPS = [
       voice: "XXDP diagnostics test every board in the machine. A serious " +
         "tool from Digital's own field service." },
     { file: "lunar-lander.webm", title: "LUNAR LANDER  ·  VT11",
-      voice: "And finally, a favourite: Lunar Lander, running on the VT11 " +
+      voice: "A favourite: Lunar Lander, running on the VT11 " +
         "vector graphics terminal. Try to set her down gently." }
 ];
 
@@ -163,17 +163,32 @@ function probeDuration(file) {
 
 function escFilter(s) {
     // Escape filtergraph specials that would otherwise break the parsed graph
-    // when a drawtext filter is spliced into a -vf / filter_complex string:
-    //   '  -> \u0027  (literal apostrophe; a backslash-escaped \' is NOT accepted
-    //               by ffmpeg inside text='...' and instead breaks the option
-    //               so the following enable='between(t,49.83,...' reads as its
-    //               own "filter" -> "No such filter: '49.83'")
+    // when a fixed drawtext string is spliced into a -vf / filter_complex
+    // string:
     //   :  -> \:   (option separator)
     //   ,  -> \,   (filter separator inside values)
     return String(s)
-        .replace(/'/g, "\\u0027")
         .replace(/:/g, "\\:")
         .replace(/,/g, "\\,");
+}
+
+// Apostrophes (and any other character) cannot survive inside drawtext's
+// text='...': every escaping tried (\\', \\u0027, raw quote) either drops the
+// apostrophe or breaks the option parse, and the result never matches a
+// textfile= control render. Dynamic text is therefore always burned through
+// textfile= — the file content bypasses filtergraph escaping entirely, so it
+// renders exactly as written on every ffmpeg build (static and distro alike).
+const _textFiles = fs.mkdtempSync(path.join(os.tmpdir(), "yapdp-text-"));
+process.on("exit", () => {
+    try { fs.rmSync(_textFiles, { recursive: true, force: true }); } catch (e) { /* best-effort */ }
+});
+let _textSeq = 0;
+function textfileFilter(text) {
+    // Forward slashes + escaped drive colon: the exact pattern verified to be
+    // read back correctly on Windows; on Linux/macOS no escaping is needed.
+    const f = path.join(_textFiles, "txt-" + String(++_textSeq) + ".txt");
+    fs.writeFileSync(f, String(text));
+    return "textfile='" + f.replace(/\\/g, "/").replace(/:/g, "\\:") + "'";
 }
 
 // Render a title card (video + silent stereo audio) as a short WebM clip: a
@@ -191,13 +206,13 @@ function genSlide(file, text, subtitle, duration, opts) {
     const textFont = opts.sans ? FONT_BOLD : font;
     const textColor = (opts.sans ? "0xeaeaea" : FG) + "@0.85";
     const draw = [
-        `drawtext=fontfile=${textFont}:text='${escFilter(text)}':fontsize=${size}:fontcolor=${textColor}:` +
+        `drawtext=fontfile=${textFont}:${textfileFilter(text)}:fontsize=${size}:fontcolor=${textColor}:` +
             `borderw=3:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2-50`,
-        `drawtext=fontfile=${font}:text='${escFilter(subtitle || "")}':fontsize=30:fontcolor=${DIM}:` +
+        `drawtext=fontfile=${font}:${textfileFilter(subtitle || "")}:fontsize=30:fontcolor=${DIM}:` +
             `x=(w-text_w)/2:y=(h)/2+40`
     ];
     if (opts.footer) {
-        draw.push(`drawtext=fontfile=${FONT}:text='${escFilter(opts.footer)}':fontsize=26:fontcolor=${DIM}:` +
+        draw.push(`drawtext=fontfile=${FONT}:${textfileFilter(opts.footer)}:fontsize=26:fontcolor=${DIM}:` +
             `x=(w-text_w)/2:y=h-70`);
     }
     const fc =
@@ -748,13 +763,13 @@ function writeMediaSidecars(outMp4, chapters, srt) {
 function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
     const draws = [];
     for (const b of banners || []) {
-        draws.push(`drawtext=fontfile=${FONT_BOLD}:text='${escFilter(b.text)}':` +
+        draws.push(`drawtext=fontfile=${FONT_BOLD}:${textfileFilter(b.text)}:` +
             `fontsize=46:fontcolor=0xeaeaea:borderw=4:bordercolor=black:` +
             `x=(w-text_w)/2:y=44:enable='between(t,${b.start.toFixed(2)},${b.end.toFixed(2)})'`);
     }
     if (burnSubtitles) {
         for (const s of subtitles || []) {
-            draws.push(`drawtext=fontfile=${FONT}:text='${escFilter(s.text)}':` +
+            draws.push(`drawtext=fontfile=${FONT}:${textfileFilter(s.text)}:` +
                 `fontsize=26:fontcolor=white:borderw=2:bordercolor=black:` +
                 `x=(w-text_w)/2:y=h-110:enable='between(t,${s.start.toFixed(2)},${s.end.toFixed(2)})'`);
         }
@@ -860,21 +875,50 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
         const voiceCtx = { voices, reverb, clipEvents, burnSubtitles };
 
         // Intro: the canvas-rendered title card from tools/make-intro.js (amber
-        // glow, green phosphor typing, fade in/out); fall back to a drawtext
-        // card if the intro has not been generated yet.
+        // "YAPDP" glow, "YET ANOTHER PDP-11 EMULATOR" subtitle, green phosphor
+        // typing, CRT scanlines). make-intro.js accepts a target length and
+        // stretches only its static hold, so the card is rendered to end right
+        // when the narration (with its lead-in) finishes — the fade-out lands
+        // after the speech, never under it. The card is (re)generated whenever
+        // it is missing or too short for the current narration; the `canvas`
+        // devDependency is required (its native libraries are installed on CI
+        // by the build-promo-videos workflow). There is deliberately NO
+        // drawtext fallback card: silently substituting a plain card is how the
+        // intro effects (glow/scanlines/typing) used to vanish, so a failed
+        // intro render now fails the build with a clear message.
         const introPath = path.join(VIDEOS, "yapdp-intro.webm");
-        let intro = introPath;
-        if (!fs.existsSync(introPath)) {
-            // Fallback intro card: generated here, so it can be stretched to
-            // fit the spoken intro (the pre-rendered yapdp-intro.webm from
-            // make-intro.js cannot be stretched, only held on its last frame).
-            intro = path.join(tmp, "intro.webm");
-            genSlide(intro, "yaPDP", "PDP-11/70 web emulator",
-                voicedCardDuration(voices["intro"], 4, vutil.VOICE_PRE_INTRO), {
-                    size: 150, font: FONT_BOLD,
-                    footer: "-- created with love for the DEC era"
-                });
+        const introVoice = voices["intro"] || null;
+        // Lead-in + speech + post-roll, plus the canvas card's 1 s fade-out.
+        // make-intro's fade-out occupies the LAST second of the card, so making
+        // total = pre + speech + post + 1.0 means the fade begins VOICE_POST
+        // (0.8 s) AFTER the voice ends — mixSpeech (preSec = VOICE_PRE_INTRO)
+        // never plays under the fade and never needs to freeze a frame.
+        let introTargetSec = null;
+        if (introVoice) {
+            const speech = probeDuration(introVoice);
+            introTargetSec = vutil.VOICE_PRE_INTRO + speech +
+                vutil.VOICE_POST + 1.0;
         }
+        const needIntro = !fs.existsSync(introPath) ||
+            (introTargetSec !== null &&
+                probeDuration(introPath) < introTargetSec);
+        if (needIntro) {
+            console.log("Rendering canvas intro card (" +
+                (introTargetSec !== null
+                    ? introTargetSec.toFixed(2) + " s to fit the narration"
+                    : "default length") + ")...");
+            const args = [path.join(__dirname, "make-intro.js")];
+            if (introTargetSec !== null) args.push(String(introTargetSec));
+            const render = spawnSync(process.execPath, args, { stdio: "inherit" });
+            if (render.status !== 0) {
+                throw new Error("tools/make-intro.js failed (status " +
+                    render.status + "). The canvas intro card is required; make " +
+                    "sure the `canvas` devDependency is installed (`npm ci`). On " +
+                    "CI the build-promo-videos workflow installs its native " +
+                    "libraries before assembling.");
+            }
+        }
+        const intro = introPath;
 
         console.log("Rendering title cards...");
         CLIPS.forEach((c, i) => {
