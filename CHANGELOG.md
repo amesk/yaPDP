@@ -136,6 +136,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   layer (`src/browser-machine.js`) now provides the same global so the
   VT11 can signal interrupts and the lander simulation proceeds past the
   GREETINGS screen into the landing phase.
+- **Apostrophes burned into demo-reel captions are real again.** The drawtext
+  cards in `tools/assemble-video.js` (title/subtitle/footer lines and the
+  banner/subtitle overlays) used to embed text through `text='...'` and escaped
+  an apostrophe as `\u0027`; ffmpeg's drawtext does not expand that escape, so
+  every `'` was burned as the literal text `\u0027` (also into title cards).
+  Dynamic text is now always fed through `textfile=` (a per-card temp file),
+  whose contents bypass filtergraph escaping and render a genuine apostrophe on
+  every ffmpeg build — the `ffmpeg-static` used locally and the distro ffmpeg
+  the CI runner assembles with. `escFilter()` now only escapes `:`/`,` for the
+  fixed project-URL card. (`tools/assemble-video.js`)
+- **Server-built demo-reel videos open on the real canvas intro again.** The
+  promo pipeline relied on a pre-rendered, fixed-length intro
+  (`video/yapdp-intro.webm` from `tools/make-intro.js`) that was never generated
+  on the CI runner, so `assemble-video.js` silently substituted a plain drawtext
+  card — losing the amber "YAPDP" glow, the "YET ANOTHER PDP-11 EMULATOR"
+  subtitle, the green phosphor typing of "-- created with love for the DEC era"
+  and the CRT scanlines. `tools/make-intro.js` now accepts a target length and
+  adapts only its static hold; `assemble-video.js` (re)renders the intro
+  whenever it is missing or too short for the current narration, so the card
+  ends right when the speech (with its lead-in) finishes and the fade-out lands
+  after it. The `build-promo-videos` workflow installs the node-canvas native
+  libraries. The degraded drawtext fallback card was removed — a failed intro
+  render now fails the build instead of quietly degrading the look. Because the
+  intro is now always present, the standalone per-clip MP4s (which the exporter
+  used to skip whenever `video/yapdp-intro.webm` was missing) are exported again
+  and land in the uploaded artifact; the workflow verifies every per-clip export
+  before uploading.
+  (`tools/make-intro.js`, `tools/assemble-video.js`, `.github/workflows/videos.yml`)
 
 ## [0.1.0] - 2026-09-04
 
