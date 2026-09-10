@@ -326,15 +326,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh release create "$TAG" --draft \
-            --title "$TAG" \
-            --notes-file RELEASE_NOTES.md \
-            2>/dev/null || true
+          set -euo pipefail
+          # Create the draft release if it does not exist yet, otherwise update
+          # its title/notes. Do NOT swallow errors here: a silent failure is
+          # exactly how an empty draft (0 assets) went unnoticed.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Draft release $TAG already exists — updating title/notes"
+            gh release edit "$TAG" --title "$TAG" --notes-file RELEASE_NOTES.md
+          else
+            gh release create "$TAG" --draft \
+              --title "$TAG" \
+              --notes-file RELEASE_NOTES.md
+          fi
           # Docs + checksums first, then only the installer files (not the
           # Tauri bundle intermediates like .AppDir / 'empty' dirs).
           gh release upload "$TAG" staged/* --clobber
-          find bundles -type f \
+          mapfile -d '' INSTALLERS < <(find bundles -type f \
             \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
-               -o -name '*.msi' -o -name '*.exe' \) \
-            -print0 | xargs -0 gh release upload "$TAG" --clobber
+               -o -name '*.msi' -o -name '*.exe' \) -print0)
+          if [ "${#INSTALLERS[@]}" -eq 0 ]; then
+            echo "::error::No installer files found under bundles/ (*.deb/*.rpm/*.AppImage/*.msi/*.exe)"
+            exit 1
+          fi
+          gh release upload "$TAG" "${INSTALLERS[@]}" --clobber
+          # Verify the release actually carries the expected assets.
+          COUNT=$(gh release view "$TAG" --json assets --jq '.assets | length')
+          echo "Draft release $TAG now has $COUNT asset(s)."
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Draft release $TAG has no assets after upload"
+            exit 1
+          fi
           echo "Draft release $TAG staged. Review, then publish."

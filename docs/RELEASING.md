@@ -29,6 +29,13 @@ bump → document → build → publish. Total time: under an hour.
 - [ ] `npm run e2e:os` passes (boots Unix V5, RT-11, BSD 2.11, BASIC-11)
 - [ ] `npm run manifest` — run it if `media/` changed since the last release
       (the committed manifest feeds the quick-boot picker)
+- [ ] **Screenshots in sync** — if any UI or document (user manual, README,
+      landing) visually changed since the last release, regenerate and commit:
+      `npm run screenshots:manual` writes every shot to **both** the repo
+      source (`assets/images/manual/`) and the React landing mirror
+      (`landing/public/assets/images/manual/`) — confirm both trees are
+      updated and committed together so the docs never show a stale look.
+      (`docs/BUILDING.md` lists the command under the User-manual section)
 - [ ] CHANGELOG `[Unreleased]` contains everything significant since the last
       tag — if the CHANGELOG maintenance rule was followed, it already does
 

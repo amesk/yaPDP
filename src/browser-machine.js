@@ -293,6 +293,18 @@
             if (typeof DataLoader === 'undefined') return undefined;
             var local = DataLoader.get(url);
             if (local !== undefined) return local;
+            // Desktop bundle: images are mounted asynchronously by
+            // tauri-bundled.js. Do NOT fall through to a network fetch (the
+            // desktop build ships media/ as Tauri resources, not as static
+            // files, so 'media/<url>' would 404). Wait for the bundle to
+            // finish mounting, then re-check DataLoader. Without this a
+            // guest whose image is not mounted yet reads an empty image and
+            // appears not to start (slow images mount last).
+            if (window.__yapdpBundledReady && typeof window.__yapdpBundledReady.then === 'function') {
+                try { await window.__yapdpBundledReady; } catch (e) { /* keep going */ }
+                var afterBundle = DataLoader.get(url);
+                if (afterBundle !== undefined) return afterBundle;
+            }
             if (fetched || typeof fetch !== 'function' || typeof fzstd === 'undefined') {
                 return undefined;
             }
