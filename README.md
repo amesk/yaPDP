@@ -56,7 +56,9 @@ The promo demo-reel (the voiced videos used in the articles/landing) is recorded
 and assembled by [`tools/record-video.js`](tools/record-video.js) +
 [`tools/assemble-video.js`](tools/assemble-video.js); the same pipeline runs
 server-side on demand via the **build-promo-videos** GitHub Actions workflow —
-see [`docs/BUILDING.md`](docs/BUILDING.md).
+see [`docs/BUILDING.md`](docs/BUILDING.md). The assembled clips are published to
+the project's YouTube playlist in one command (`npm run youtube:publish`) — see
+[`docs/YOUTUBE.md`](docs/YOUTUBE.md).
 
 ## Desktop App (Tauri)
 
