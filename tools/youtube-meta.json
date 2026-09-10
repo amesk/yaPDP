@@ -1,0 +1,36 @@
+{
+    "//": [
+        "yaPDP YouTube publishing config (tools/youtube-publish.js).",
+        "Committed on purpose: it holds no secrets. The OAuth client id/secret live",
+        "in .youtube-client.json or YT_CLIENT_ID/YT_CLIENT_SECRET, the refresh token",
+        "in .youtube-token.json - both gitignored.",
+        "Leave `playlistId` and `featured` empty until the playlist exists; run",
+        "`npm run youtube:publish -- --list-playlists` to find the id, then paste it",
+        "here and list the clips that should be published by default."
+    ],
+    "playlistId": "",
+    "defaults": {
+        "privacy": "unlisted",
+        "captions": true,
+        "captionLanguage": "en",
+        "categoryId": "28",
+        "addToPlaylist": true,
+        "description": ""
+    },
+    "links": {
+        "repo": "",
+        "site": ""
+    },
+    "hashtags": [
+        "#PDP11",
+        "#retrocomputing",
+        "#emulator"
+    ],
+    "featured": [],
+    "reel": {
+        "slug": "yaPDP-demo",
+        "title": "yaPDP - PDP-11/70 web emulator - full demo reel",
+        "description": "Every guest OS demo in one continuous reel: DEC BASIC-11, UNIX V5, 2.11 BSD, RT-11, XXDP diagnostics and Lunar Lander on the VT11 display, running on a faithful PDP-11/70 emulator with its original control panel."
+    },
+    "overrides": {}
+}

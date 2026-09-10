@@ -132,7 +132,7 @@ Building **yaPDP** involved implementing low-level computer architecture and rea
 * **Memory & Memory-Mapped I/O (`src/iopage.js`):** Interconnects CPU execution with virtual hardware peripheral registers.
 * **Application & State Glue (`src/pdp11-app.js`, `src/config.js`):** Connects the emulation engine to browser DOM elements, sound players, and state synchronization.
 * **Bootstrap Loader & OS Wizard (`src/bootcode.js`, `src/osboot.js`, `src/quickboot.js`):** Bootloader injection logic and prompt-aware automated OS startup scripts.
-* **Automation & Video Pipeline:** Automated screenshot generation via [`tools/screenshots-manual.js`](tools/screenshots-manual.js) and headless promo video assembly via [`tools/record-video.js`](tools/record-video.js) / [`tools/assemble-video.js`](tools/assemble-video.js).
+* **Automation & Video Pipeline:** Automated screenshot generation via [`tools/screenshots-manual.js`](tools/screenshots-manual.js) and headless promo video assembly via [`tools/record-video.js`](tools/record-video.js) / [`tools/assemble-video.js`](tools/assemble-video.js). The assembled clips are published to the project's YouTube playlist in one command (`npm run youtube:publish`) — setup and quota rules in [`docs/YOUTUBE.md`](docs/YOUTUBE.md).
 
 Full directory structure and module descriptions are detailed in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the Unibus machine layer has its own deep dive in [`docs/machine-layer.md`](docs/machine-layer.md) and the XXDP diagnostics in [`docs/xxdp-diagnostics.md`](docs/xxdp-diagnostics.md).
 

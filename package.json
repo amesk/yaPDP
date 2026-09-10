@@ -58,6 +58,9 @@
     "manual:pdf": "wireit",
     "devlog:build": "wireit",
     "devlog:check": "node tools/build-devlog.js --check",
+    "youtube:auth": "node tools/youtube-publish.js --auth",
+    "youtube:publish": "node tools/youtube-publish.js",
+    "youtube-public": "node tools/youtube-publish.js",
     "docs": "wireit"
   },
   "devDependencies": {
