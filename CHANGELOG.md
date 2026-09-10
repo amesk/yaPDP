@@ -6,6 +6,8 @@ documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-10
+
 ## [Unreleased]
 
 ### Added
@@ -95,14 +97,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **`build-promo-videos` no longer fails exporting the Chromium path.**
-  `puppeteer.executablePath()` became async (returns a `Promise`) in
-  Puppeteer v25, so the old
-  `node -p "require('puppeteer').executablePath()"` dumped the raw
-  inspect-formatted Promise output (indented/quoted) into `$GITHUB_ENV`,
-  which GitHub Actions rejected with `Invalid format`. The workflow now
-  resolves the promise and prints a plain `PUPPETEER_EXECUTABLE_PATH=...`
-  line. (`.github/workflows/videos.yml`)
+- **Server-built demo-reel videos run end to end on CI.** The
+  `build-promo-videos` workflow no longer dies at any point of the pipeline:
+  it records every guest-OS clip (Chromium launch made root-safe, the
+  browser executable path exported asynchronously — `puppeteer.executablePath()`
+  is a `Promise` in Puppeteer v25 and previously leaked a raw `Promise { … }`
+  literal into `$GITHUB_ENV`, which GitHub Actions rejected) and assembles a
+  correct reel and per-clip MP4s with the distro ffmpeg (the static
+  `ffmpeg-static` build lacks the `drawtext` filter the caption cards need).
+  The Verify step no longer misreports the assembled audio as missing: the
+  reel and every clip carry a real audio stream, and the check now matches it.
+  (`.github/workflows/videos.yml`, `tools/record-video.js`,
+  `tools/assemble-video.js`)
 - **`buildSapiScript()` no longer re-resolves the output path.** The pure
   PowerShell-script builder embedded `path.resolve(outPath)` into the emitted
   script. On Linux (the CI runner) `path.resolve` of a Windows-style path such
@@ -113,57 +119,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   builder now embeds `outPath` verbatim (single-quote escaped only), staying
   pure and platform-independent. (`tools/voicer.js`, `tests/voicer.test.js`)
 
-- **Stale narration WAVs are invalidated when the script or engine changes.**
-  The demo-reel voice cache (`video/voice/<name>.wav`) used to be keyed only by
-  card name, so after editing a narration text (or switching `--voice-engine`)
-  a build silently reused the old WAV unless `--voice-regen` was passed. Each
-  cached WAV now carries a `<name>.sig` sidecar with a fingerprint of the
-  script text and engine (`voiceSignature`, `tools/reel-voice-util.js`); a
-  mismatch regenerates that card automatically, while unchanged cards stay
-  cached. `--voice-regen` still forces a full rebuild.
-  (`tools/assemble-video.js`, `tools/reel-voice-util.js`,
-  `tests/reel-voice.test.js`)
-- **Manual screenshots written to both repo-root and landing sets.**
+- **Emulator hangs, image loads and headless-tool correctness fixed.**
+  VT11 (`src/vt11.js`) calls the global `requestInterrupt()` function that
+  was only defined in the legacy `src/iopage.js`; the refactored machine layer
+  (`src/browser-machine.js`) now provides the same global so the VT11 can
+  signal interrupts and Lunar Lander proceeds past the GREETINGS screen into
+  the landing phase. The image loader also accepts a plain file when no
+  compressed `.zst` variant exists (`lander.ptap` ships raw — previously a
+  404), the Minimal desktop build ships the bootcode tape it needs again, and
+  the Manual page's "Launch the Emulator" button actually launches.
+  On the headless/CLI side, `headless-term` keeps the guest's captured output
+  when a boot times out (instead of discarding it), `:export` resolves output
+  paths from the working directory (not the repo root) and `:status` after a
+  `:rewind` reports the tape state truthfully; `bootHeadless` can treat a
+  console that has stayed quiet for `stableMs` as booted so an unknown guest
+  image can be explored and its readiness prompt captured.
+
+- **Manual screenshots stay in sync with the React landing.**
   `tools/screenshots-manual.js` previously wrote every shot only to
-  `assets/images/manual/`, letting the React landing's mirror
+  `assets/images/manual/`, letting the landing mirror
   (`landing/public/assets/images/manual/`) drift out of date. Each generated
   PNG is now written to both tracked locations, and all manual illustrations
   were regenerated from current `master` — they now show the machine's real
   quiet `@` bootstrap prompt instead of the stale `Boot>` banner.
-- **Lunar Lander hangs after the first screen in `?core=1` mode.**
-  VT11 (`src/vt11.js`) calls the global `requestInterrupt()` function that
-  was only defined in the legacy `src/iopage.js`.  The refactored machine
-  layer (`src/browser-machine.js`) now provides the same global so the
-  VT11 can signal interrupts and the lander simulation proceeds past the
-  GREETINGS screen into the landing phase.
-- **Apostrophes burned into demo-reel captions are real again.** The drawtext
-  cards in `tools/assemble-video.js` (title/subtitle/footer lines and the
-  banner/subtitle overlays) used to embed text through `text='...'` and escaped
-  an apostrophe as `\u0027`; ffmpeg's drawtext does not expand that escape, so
-  every `'` was burned as the literal text `\u0027` (also into title cards).
-  Dynamic text is now always fed through `textfile=` (a per-card temp file),
-  whose contents bypass filtergraph escaping and render a genuine apostrophe on
-  every ffmpeg build — the `ffmpeg-static` used locally and the distro ffmpeg
-  the CI runner assembles with. `escFilter()` now only escapes `:`/`,` for the
-  fixed project-URL card. (`tools/assemble-video.js`)
-- **Server-built demo-reel videos open on the real canvas intro again.** The
-  promo pipeline relied on a pre-rendered, fixed-length intro
-  (`video/yapdp-intro.webm` from `tools/make-intro.js`) that was never generated
-  on the CI runner, so `assemble-video.js` silently substituted a plain drawtext
-  card — losing the amber "YAPDP" glow, the "YET ANOTHER PDP-11 EMULATOR"
-  subtitle, the green phosphor typing of "-- created with love for the DEC era"
-  and the CRT scanlines. `tools/make-intro.js` now accepts a target length and
-  adapts only its static hold; `assemble-video.js` (re)renders the intro
-  whenever it is missing or too short for the current narration, so the card
-  ends right when the speech (with its lead-in) finishes and the fade-out lands
-  after it. The `build-promo-videos` workflow installs the node-canvas native
-  libraries. The degraded drawtext fallback card was removed — a failed intro
-  render now fails the build instead of quietly degrading the look. Because the
-  intro is now always present, the standalone per-clip MP4s (which the exporter
-  used to skip whenever `video/yapdp-intro.webm` was missing) are exported again
-  and land in the uploaded artifact; the workflow verifies every per-clip export
-  before uploading.
-  (`tools/make-intro.js`, `tools/assemble-video.js`, `.github/workflows/videos.yml`)
 
 ## [0.1.0] - 2026-09-04
 
@@ -703,6 +681,7 @@ controls.
 Initial public alpha release.
 
 [0.1.0]: https://github.com/amesk/yaPDP/compare/v0.1.0-alpha2...releases/v0.1.0
-[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0...HEAD
+[0.2.0]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0...releases/v0.2.0
+[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.2.0...HEAD
 [0.1.0-alpha2]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2
 [0.1.0-alpha1]: https://github.com/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1

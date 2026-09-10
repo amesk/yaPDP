@@ -84,7 +84,9 @@
                 return item.url;
             })
             .catch(function (err) {
-                console.warn("Bundled image load failed:", item.resource, err);
+                // Loud, named: a silently skipped image is how a missing
+                // bundled resource (or a slow one) went unnoticed.
+                console.error("Bundled image load failed:", item.resource, err);
                 return null;
             });
     }
@@ -96,15 +98,19 @@
             console.warn("DataLoader not available; skipping bundled images");
             return;
         }
-        var chain = Promise.resolve();
-        BUNDLED.forEach(function (item) {
-            chain = chain.then(function () { return loadOne(item); });
-        });
-        chain.then(function (results) {
+        // Mount every bundled image in PARALLEL, not as a strict chain.
+        // A sequential chain made the last entries (e.g. lander.ptap, the
+        // ra*/rp* disks) unavailable for seconds while the big .zst images
+        // decompressed one after another — a guest booting from one of them
+        // read an empty image and appeared to "not start". Parallel mount
+        // removes that ordering race entirely.
+        // Expose a readiness promise so consumers (baseBytes) can wait for
+        // the bundle instead of falling back to a network fetch that does
+        // not exist in the desktop build.
+        var pending = BUNDLED.map(function (item) { return loadOne(item); });
+        var ready = Promise.all(pending).then(function (results) {
             var ok = (results || []).filter(Boolean).length;
-            if (ok > 0) {
-                console.info("yaPDP desktop: mounted " + ok + " bundled image(s)");
-            }
+            console.info("yaPDP desktop: mounted " + ok + " bundled image(s)");
             // The quick-boot wizard filters its list by what is mounted; if
             // the dialog is already open (opened during the mount window)
             // re-render it so it settles on the bundled set.
@@ -113,6 +119,8 @@
                 QuickBoot.refresh();
             }
         });
+        // Signal for lazy provider reads (browser-machine baseBytes).
+        window.__yapdpBundledReady = ready;
     }
 
     if (document.readyState === "loading") {
