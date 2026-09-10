@@ -36,7 +36,10 @@
     "e2e:os:legacy": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
-    "voice": "node tools/voicer.js"
+    "voice": "node tools/voicer.js",
+    "youtube:auth": "node tools/youtube-publish.js --auth",
+    "youtube:publish": "node tools/youtube-publish.js",
+    "youtube-public": "node tools/youtube-publish.js"
   },
   "devDependencies": {
     "canvas": "^3.2.3",

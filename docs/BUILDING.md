@@ -246,7 +246,10 @@ bare Linux runner:
 Locally the same pipeline still runs with `npm run record:video` and
 `npm run video:demo`. The workflow inputs select the branch, the recording
 backend (`headed` under Xvfb for reliable in-tab audio vs headless) and whether
-bottom subtitles are burned into the MP4s.
+bottom subtitles are burned into the MP4s. The assembler also writes
+`video/youtube-manifest.json`, and publishing the assembled clips to YouTube
+(description, chapters, captions and playlist entries in one command) is
+documented separately in [`YOUTUBE.md`](YOUTUBE.md).
 
 ## Workflow-run history cleanup
 
