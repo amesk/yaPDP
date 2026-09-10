@@ -15,6 +15,13 @@ node_modules/
 # ---- Generated demo videos (kept out of assets/ so they never reach the site) ----
 video/
 
+# ---- YouTube publish credentials (never commit; see docs/YOUTUBE.md) ----
+# The refresh token (tools/youtube-publish.js --auth) and the OAuth desktop
+# client. The generated video/youtube-state.json / youtube-manifest.json live
+# under the gitignored video/ tree already.
+.youtube-client.json
+.youtube-token.json
+
 # ---- Local dev server log ----
 serve.log
 
