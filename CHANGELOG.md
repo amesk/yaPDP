@@ -243,6 +243,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/pdp11-app.js`, `css/g60printer.css`, `tests/tty-quad-matrix.test.js`,
   `tests/teletype-cabinet-css.test.js`)
 
+### Changed
+
+- **The TAPE PUNCH operator buttons got the Model 33 keycap look.** REL/OFF/BSP/ON
+  are flat-top dark cylinders now, exactly like the keyboard keycaps
+  (`#punchkeyboard .m33-key`): the same dark radial plastic and a solid side
+  wall, 6px high (the keycaps use 4px) so the buttons stand a touch higher. In
+  the tilted ASR block the wall stands to the RIGHT and BELOW the cap (3px/6px)
+  rather than straight down, and pressing drops the cap onto that base by the
+  same offset. The latching buttons (REL/ON/OFF) stay visibly pressed down — the
+  cap sinks and KEEPS the sunk position — while momentary BSP is only down while
+  held. The buttons never light up: the gold rim, the `.active` colour highlight
+  and the hover brightening are all gone, so the only feedback is the physical
+  sink. `tests/punchtape.test.js` pins the sunk latch and the absence of any
+  highlight. (`css/g60printer.css`, `tests/punchtape.test.js`)
+
 ### Removed
 
 - **Browser loopback capture voice engine.** `tools/voicer.js` no longer

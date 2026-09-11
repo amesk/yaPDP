@@ -1499,15 +1499,19 @@
 }
 
 .asr-btn {
-    background: linear-gradient(180deg, #5a4a30, #3a3528);
-    color: #f0e6c8;
-    border: 1px solid #c8a860;
-    /* Round push-button: fixed width == height with 50% radius gives a true
-       circle (a pill would only be an ellipse); text is centred via flex.
-       Generous diameter so the 3-letter legends (ON/OFF/BSP/REL) sit well
-       clear of the circle edge. */
+    /* Same flat-top cylinder as the Model 33 keycaps (see #punchkeyboard
+       .m33-key): dark plastic, a solid side wall and a soft drop shadow. The
+       wall is 6px — the page keycaps use 4px — so the punch buttons sit a
+       touch higher on the panel. Unlike the key deck, the ASR block is tilted,
+       so its side wall stands to the RIGHT and BELOW the cap (3px/6px) instead
+       of straight down. Fixed width == height with 50% radius gives a true
+       circle; the 3-letter legends (ON/OFF/BSP/REL) are centred via flex. */
+    background: radial-gradient(circle at 35% 35%, #6e6458 0%, #403830 100%);
+    color: #e8e4da;
+    border: none;
     width: 28px;
     height: 28px;
+    box-sizing: border-box;
     border-radius: 50%;
     padding: 0;
     display: inline-flex;
@@ -1517,17 +1521,24 @@
     font-size: 13px;
     font-weight: bold;
     cursor: pointer;
+    user-select: none;
+    box-shadow:
+        3px 6px 0 #241f1a,
+        4px 8px 10px rgba(0, 0, 0, 0.5);
 }
 
-.asr-btn:hover {
-    filter: brightness(1.15);
-}
-
-/* Punch is ON: the ON button lights up. */
+/* Pressed: the cap drops onto its dark base — it moves by the wall's offset
+   and the wall collapses, exactly like a Model 33 keycap (see .m33-key.down).
+   LATCHED (REL/ON/OFF — the .active class the JS toggles) keeps the cap in that
+   pressed position, so the button stays visibly down; BSP, which is momentary,
+   is only down while held (:active). No colour change either way: the buttons
+   never light up, they only sink. */
+.asr-btn:active,
 .asr-btn.active {
-    background: linear-gradient(180deg, #8a6a30, #5a4a28);
-    color: #ffe9a8;
-    border-color: #e8c878;
+    transform: translate(3px, 6px);
+    box-shadow:
+        0 0 0 #241f1a,
+        1px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* Four-position tape reader switch (START/STOP/FREE/AUTO) styled like the
