@@ -2,22 +2,25 @@
 /**
  * Model 33 ASR cabinet + keycaps — CSS contract tests.
  *
- * Guards css/g60printer.css so the console teletype keeps the visual
- * contract:
- *   1. The sand-beige cabinet tone (#d1b48c) on the printer body; the
- *      keyboard deck, the printer face and the ASR tape unit share ONE
- *      plastic — the sand gradient (#d6bd99→#bfa67e / #e3cdaa→#c6a87e)
- *      with the same subtle grain and inner top shadow. The ASR unit has
- *      no contrasting frame (border: none). The punch/reader contours are
- *      raised plastic PLATES — a lighter sand tone than the body, same
- *      grain, top highlight + drop shadow (relief plastic), equal width
- *      (170px), with the TAPE PUNCH / TAPE READER labels centred on them.
- *   2. The flat-top cylindrical keycaps: a radial highlight over a solid
- *      dark side wall (box-shadow: 0 4px 0 #241f1a) that collapses when the
- *      key is pressed (translateY(4px) on the .down state).
+ * The console teletype cabinet is drawn by assets/Model-33-ASR.svg; the
+ * SVG <-> CSS geometry contract lives in tests/teletype-svg-backdrop.test.js.
+ * This suite guards what css/g60printer.css must still provide on top of that
+ * artwork:
+ *   1. The artwork backs the page and the CSS-drawn skin layers (Google60
+ *      body, side skins, paper slot, face plate, cover dome, carriage window,
+ *      wordmark) are switched OFF, so the artwork is the single source of the
+ *      machine's look.
+ *   2. Every control keeps its native px layout (key block 576x212, plate
+ *      170x164, apron 118x66) and is anchored to its marker rect in the shared
+ *      coordinate system (--tty-u * marker coordinate), contain-fitted so the
+ *      round keycaps and the knob never distort.
+ *   3. The flat-top cylindrical keycaps: a radial highlight over a solid dark
+ *      side wall (box-shadow: 0 4px 0 #241f1a) that collapses when the key is
+ *      pressed (translateY(4px) on the .down state).
  *
  * These are deliberately simple string checks on the production CSS so a
- * future "simplification" back to the cream body / domed caps is caught.
+ * future "simplification" back to a CSS-drawn cabinet, or a control that
+ * silently drops its marker anchor, is caught.
  *
  * Run with:  node tests/teletype-cabinet-css.test.js
  *
@@ -30,6 +33,7 @@ const path = require("path");
 const assert = require("assert");
 
 const CSS_PATH = path.join(__dirname, "..", "css", "g60printer.css");
+const HTML_PATH = path.join(__dirname, "..", "pdp11.html");
 
 // Extract a top-level CSS rule body given the selector prefix (first match).
 function extractRule(css, selectorStart) {
@@ -50,105 +54,223 @@ function extractRule(css, selectorStart) {
   throw new Error("unbalanced braces for: " + selectorStart);
 }
 
+// Extract the LAST matching rule (the art-layer block wins the cascade over
+// the base rules earlier in the sheet).
+function extractLastRule(css, selectorStart) {
+  const idx = css.lastIndexOf(selectorStart);
+  if (idx === -1) {
+    throw new Error("rule not found: " + selectorStart);
+  }
+  const braceOpen = css.indexOf("{", idx);
+  let depth = 0;
+  for (let i = braceOpen; i < css.length; i++) {
+    const c = css[i];
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return css.slice(idx, i + 1);
+    }
+  }
+  throw new Error("unbalanced braces for: " + selectorStart);
+}
+
 function run() {
   const css = fs.readFileSync(CSS_PATH, "utf8");
 
-  // --- Sand cabinet tone on the printer body ------------------------------
+  // --- The artwork backs the teletype page ---------------------------------
   {
-    const rule = extractRule(css, "#g60printer {");
-    assert.ok(/background-color\s*:\s*#d1b48c\s*;/.test(rule),
-      "the printer body must use the sand-beige #d1b48c:\n" + rule);
-    assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(rule),
-      "the printer body border must use the sand border #a68c66:\n" + rule);
-    assert.ok(!/background-color\s*:\s*#ddd6c4\s*;/.test(rule),
-      "the printer body must NOT use the old cream #ddd6c4:\n" + rule);
+    const rule = extractRule(css, "#tty-backdrop {");
+    assert.ok(/background\s*:\s*url\('\.\.\/assets\/Model-33-ASR\.svg'\)/.test(rule),
+      "the backdrop must load assets/Model-33-ASR.svg:\n" + rule);
+    assert.ok(/pointer-events\s*:\s*none\s*;/.test(rule),
+      "the backdrop must be inert to the mouse (pointer-events: none):\n" + rule);
   }
 
-  // --- Lower face plate ends where the right skin begins --------------------
+  // --- The rig is laid out in artwork (viewBox) units ----------------------
   {
-    const rule = extractRule(css, "#g60printer div#printer_frontpannel {");
-    // right skin starts at left:742px, face plate at left:67px → width 675px,
-    // so the plate meets the side skin in a clean seam instead of tucking
-    // under it.
-    assert.ok(/width\s*:\s*675px\s*;/.test(rule),
-      "the lower face plate must end where the right skin begins (width 675px):\n" + rule);
-    assert.ok(/left\s*:\s*67px\s*;/.test(rule),
-      "the lower face plate must start after the left skin (left 67px):\n" + rule);
+    const rule = extractRule(css, "#teletype-rig {");
+    assert.ok(/width\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-vb-w\)\)\s*;/.test(rule),
+      "the rig width must be the viewBox width in --tty-u units:\n" + rule);
+    assert.ok(/height\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-vb-h\)\)\s*;/.test(rule),
+      "the rig height must be the viewBox height in --tty-u units:\n" + rule);
+    // Every scale() factor must be UNITLESS: a length there makes the whole
+    // transform invalid and the browser drops it silently — a real bug the
+    // browser probe caught (the keys stayed unscaled because the factor was
+    // derived from the length --tty-u instead of the number --tty-u-num).
+    for (const name of ["--tty-kbd-sx", "--tty-kbd-sy", "--tty-kbd-k",
+                        "--tty-punch-k", "--tty-reader-k", "--tty-apron-k",
+                        "--tty-sheet-k"]) {
+      const decl = new RegExp(name + "\\s*:\\s*([^;]+);").exec(rule);
+      assert.ok(decl, name + " must be declared in the rig rule:\n" + rule);
+      assert.ok(/var\(--tty-u-num\)/.test(decl[1]),
+        name + " must derive from the UNITLESS --tty-u-num:\n" + decl[1]);
+      assert.ok(!/var\(--tty-u\)/.test(decl[1]),
+        name + " must not use the length --tty-u:\n" + decl[1]);
+    }
   }
 
-  // --- Black paper slot + layering ------------------------------------------
+  // --- The CSS-drawn cabinet skin is switched off --------------------------
+  // #printer must stay VISIBLE (the paper sheet is its child, see setupPrinter
+  // in src/g60printer.js) and only lose its plastic.
   {
-    const rule = extractRule(css, "#g60printer div#printer::after {");
-    assert.ok(/top\s*:\s*305px\s*;/.test(rule),
-      "the paper slot's bottom must sit at the top of the lower face plate (top 305px):\n" + rule);
-    assert.ok(/height\s*:\s*22px\s*;/.test(rule),
-      "the paper slot must be 22px tall (centre on the carriage line at 316px):\n" + rule);
-    assert.ok(/background\s*:\s*#0a0a0a\s*;/.test(rule),
-      "the paper slot must be near-black (#0a0a0a):\n" + rule);
-    assert.ok(/width\s*:\s*675px\s*;/.test(rule),
-      "the paper slot must end where the right skin begins (width 675px):\n" + rule);
-    assert.ok(/z-index\s*:\s*3\s*;/.test(rule),
-      "the paper slot must draw above the face plate (z-index 3):\n" + rule);
+    // The LAST rule wins the cascade: the art-layer block sits below the
+    // Google60 base rule.
+    const rule = extractLastRule(css, "#g60printer div#printer {");
+    assert.ok(/background\s*:\s*none\s*;/.test(rule),
+      "the printer's CSS plastic must be dropped (the artwork draws it):\n" + rule);
+    assert.ok(!/display\s*:\s*none\s*;/.test(rule),
+      "#printer must NOT be display:none — the paper sheet lives inside it:\n" + rule);
+    assert.ok(!/linear-gradient/.test(rule),
+      "the Google60 sand gradient must be gone from #printer:\n" + rule);
   }
   {
-    // The paper must pass IN FRONT of the slot (paper z-index above the slot's 3).
-    const rule = extractRule(css, "#g60printer div#paper {");
-    assert.ok(/z-index\s*:\s*4\s*;/.test(rule),
-      "the paper must pass in front of the paper slot (z-index 4):\n" + rule);
+    const rule = extractRule(css, "#g60printer div#printer::after,");
+    assert.ok(/display\s*:\s*none\s*;/.test(rule),
+      "the CSS-drawn skin layers must be hidden (the artwork draws them):\n" + rule);
+    for (const sel of ["#g60printer div#printer::after,",
+                       "#g60printer div#printer_left,",
+                       "#g60printer div#printer_right,",
+                       "#g60printer div#printer_frontpannel,",
+                       "#g60printer::before,",
+                       "#g60printer::after {"]) {
+      assert.ok(rule.indexOf(sel) !== -1,
+        "the hidden-skin rule must cover '" + sel + "':\n" + rule);
+    }
   }
 
-  // --- Sand keyboard deck --------------------------------------------------
+  // --- Printer block: sheet on the Paper marker, print line on the Caret ----
+  {
+    const rule = extractLastRule(css, "#g60printer {");
+    assert.ok(/left\s*:\s*calc\(\(var\(--tty-paper-x\)\s*\+\s*var\(--tty-paper-w\)\s*\/\s*2\)\s*\*\s*var\(--tty-u\)\s*-\s*404px\s*\*\s*var\(--tty-sheet-k\)\)\s*;/.test(rule),
+      "the printer block must be centred on the Paper marker (the sheet is centred in the 808px body):\n" + rule);
+    assert.ok(/top\s*:\s*calc\(var\(--tty-caret-line-y\)\s*\*\s*var\(--tty-u\)/.test(rule),
+      "the print line must land on the Caret marker's bottom edge:\n" + rule);
+    assert.ok(/transform\s*:\s*scale\(var\(--tty-sheet-k\)\)\s*;/.test(rule),
+      "the printer block must be contain-fitted by --tty-sheet-k:\n" + rule);
+    assert.ok(/overflow\s*:\s*visible\s*;/.test(rule),
+      "the printer block must not clip the rising sheet:\n" + rule);
+  }
+
+  // --- Keyboard deck: native key layout, driven by the Keyboard marker ------
+  // The block is anchored to the marker's TOP-LEFT corner and stretched to the
+  // marker's width/height: while the artwork draws the keycaps the DOM keys are
+  // invisible hit areas, so following the marker exactly is what keeps them on
+  // the drawn caps.
+  {
+    const rule = extractRule(css, "#punchkeyboard {");
+    assert.ok(/left\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-kbd-x\)\s*\)\s*;/.test(rule),
+      "the keyboard must be anchored to the Keyboard marker's x:\n" + rule);
+    assert.ok(/top\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-kbd-y\)\s*\)\s*;/.test(rule),
+      "the keyboard must be anchored to the Keyboard marker's y:\n" + rule);
+    assert.ok(/width\s*:\s*576px\s*;/.test(rule),
+      "the key block must keep its native width (576px):\n" + rule);
+    assert.ok(/height\s*:\s*212px\s*;/.test(rule),
+      "the key block must keep its native height (212px):\n" + rule);
+    assert.ok(/transform\s*:\s*scale\(var\(--tty-kbd-sx\),\s*var\(--tty-kbd-sy\)\)\s*;/.test(rule),
+      "the keyboard must be fitted to the marker's width and height:\n" + rule);
+  }
+
+  // --- Page-drawn keycaps keep round caps (uniform, centred fit) ------------
+  {
+    const rule = extractRule(css, "#punchkeyboard.m33-css-caps {");
+    assert.ok(/transform\s*:\s*scale\(var\(--tty-kbd-k\)\)\s*;/.test(rule),
+      "the CSS keycaps must use the uniform contain factor:\n" + rule);
+    assert.ok(/var\(--tty-kbd-x\)\s*\+\s*var\(--tty-kbd-w\)\s*\/\s*2/.test(rule),
+      "the CSS keycap block must be centred on the marker:\n" + rule);
+  }
+
+  // --- The deck itself is only a positioning layer -------------------------
   {
     const rule = extractRule(css, "#punchkeypane {");
-    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#d6bd99\s*0%,\s*#bfa67e\s*100%\)\s*;/.test(rule),
-      "the keyboard deck must carry the grain over the sand gradient #d6bd99→#bfa67e:\n" + rule);
-    assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(rule),
-      "the keyboard deck border must use #a68c66:\n" + rule);
+    assert.ok(/position\s*:\s*absolute\s*;/.test(rule),
+      "#punchkeypane must be absolutely positioned at the rig origin:\n" + rule);
+    assert.ok(/left\s*:\s*0\s*;/.test(rule) && /top\s*:\s*0\s*;/.test(rule),
+      "#punchkeypane must sit at the rig origin so controls use artwork coordinates:\n" + rule);
+    assert.ok(/background\s*:\s*none\s*;/.test(rule),
+      "the deck plastic must come from the artwork (no CSS background):\n" + rule);
   }
 
-  // --- ASR tape unit: cast from the same plastic as the cover ---------------
+  // --- Punch / reader plates: native frame, anchored to their markers -------
   {
-    const rule = extractRule(css, "#asr-tape-unit {");
-    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#d6bd99\s*0%,\s*#bfa67e\s*100%\)\s*;/.test(rule),
-      "the ASR unit must carry the grain over the same sand gradient as the deck:\n" + rule);
-    assert.ok(/border\s*:\s*none\s*;/.test(rule),
-      "the ASR unit must have no contrasting frame (border: none):\n" + rule);
-    assert.ok(/inset\s+0\s+10px\s+16px\s+rgba\(0,\s*0,\s*0,\s*0\.16\)/.test(rule),
-      "the ASR unit must carry the deck's inner top shadow:\n" + rule);
+    const plates = [["punch", extractRule(css, "#asr-punch {")],
+                    ["reader", extractRule(css, "#asr-reader {")]];
+    for (const [name, rule] of plates) {
+      const anchor = new RegExp(
+        "left\\s*:\\s*calc\\(var\\(--tty-u\\)\\s*\\*\\s*var\\(--tty-" + name + "-x\\)");
+      const fit = new RegExp("scale\\(var\\(--tty-" + name + "-k\\)\\)");
+      assert.ok(anchor.test(rule),
+        "the " + name + " plate must be anchored to its marker's x:\n" + rule);
+      assert.ok(fit.test(rule),
+        "the " + name + " plate must be contain-fitted by --tty-" + name + "-k:\n" + rule);
+      assert.ok(/width\s*:\s*170px\s*;/.test(rule),
+        "the " + name + " plate must keep its native width (170px):\n" + rule);
+      assert.ok(/height\s*:\s*164px\s*;/.test(rule),
+        "the " + name + " plate must keep its native height (164px):\n" + rule);
+      assert.ok(/background\s*:\s*none\s*;/.test(rule),
+        "the " + name + " plate plastic must come from the artwork:\n" + rule);
+    }
   }
 
-  // --- Punch / reader are raised relief-plastic plates -----------------------
+  // --- CCU apron: knob + labels anchored to the Apron marker ----------------
   {
-    const punch = extractRule(css, "#asr-punch {");
-    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#e0c9a4\s*0%,\s*#d0b58b\s*100%\)\s*;/.test(punch),
-      "the punch plate must carry the grain over the lighter sand gradient #e0c9a4→#d0b58b:\n" + punch);
-    assert.ok(/0\s+2px\s+4px\s+rgba\(0,\s*0,\s*0,\s*0\.3\)/.test(punch),
-      "the punch plate must have a drop shadow lifting it off the body:\n" + punch);
-    const reader = extractRule(css, "#asr-reader {");
-    assert.ok(/background\s*:\s*url\("data:image\/svg\+xml,[\s\S]*?linear-gradient\(180deg,\s*#e0c9a4\s*0%,\s*#d0b58b\s*100%\)\s*;/.test(reader),
-      "the reader plate must carry the grain over the same lighter sand gradient:\n" + reader);
-    assert.ok(/0\s+2px\s+4px\s+rgba\(0,\s*0,\s*0,\s*0\.3\)/.test(reader),
-      "the reader plate must have the same drop shadow:\n" + reader);
+    const rule = extractRule(css, "#ccu-apron {");
+    assert.ok(/left\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-apron-x\)/.test(rule),
+      "the CCU block must be anchored to the Apron marker's x:\n" + rule);
+    assert.ok(/top\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-apron-y\)/.test(rule),
+      "the CCU block must be anchored to the Apron marker's y:\n" + rule);
+    assert.ok(/width\s*:\s*118px\s*;/.test(rule),
+      "the CCU block must keep its native width (118px):\n" + rule);
+    assert.ok(/height\s*:\s*66px\s*;/.test(rule),
+      "the CCU block must keep its native height (66px):\n" + rule);
+    assert.ok(/transform\s*:\s*translate\(-50%,\s*-50%\)\s*scale\(var\(--tty-apron-k\)\)\s*;/.test(rule),
+      "the CCU block must be contain-fitted and centred on the marker:\n" + rule);
+    assert.ok(/background\s*:\s*none\s*;/.test(rule),
+      "the apron pad must come from the artwork:\n" + rule);
   }
 
-  // --- The plates are the SAME width (labels centre on them) ------------------
+  // --- Paper draws in front of the platen ----------------------------------
   {
-    const punch = extractRule(css, "#asr-punch {");
-    const reader = extractRule(css, "#asr-reader {");
-    const w = (r) => /width\s*:\s*(\d+)px\s*;/.exec(r) && /width\s*:\s*(\d+)px\s*;/.exec(r)[1];
-    assert.ok(w(punch) === w(reader),
-      "the punch and reader plates must be the same width:\n" + w(punch) + " vs " + w(reader));
+    const rule = extractRule(css, "#g60printer div#paper {");
+    assert.ok(/z-index\s*:\s*4\s*;/.test(rule),
+      "the paper must pass in front of the platen opening (z-index 4):\n" + rule);
   }
 
-  // --- Sand top cover dome (two rounded corners) ---------------------------
+  // --- Keycap layout switch: artwork caps (default) vs CSS caps ------------
+  // With the default layout the caps and legends belong to the artwork, so the
+  // DOM keys must be invisible hit areas in the same boxes (the flat grid in
+  // src/pdp11-app.js); the CONFIG option adds .m33-css-caps and the CSS caps
+  // draw themselves again.
   {
-    const rule = extractRule(css, "#g60printer::before {");
-    assert.ok(/background\s*:\s*linear-gradient\(180deg,\s*#e3cdaa\s*0%,\s*#d6bb95\s*60%,\s*#c6a87e\s*100%\)\s*;/.test(rule),
-      "the top cover dome must use the sand gradient #e3cdaa→#d6bb95→#c6a87e:\n" + rule);
-    assert.ok(/border\s*:\s*1px\s+solid\s+#a68c66\s*;/.test(rule),
-      "the top cover dome border must use #a68c66:\n" + rule);
-    assert.ok(!/#f2ecdc/.test(rule),
-      "the top cover dome must NOT use the old cream #f2ecdc:\n" + rule);
+    const rule = extractRule(css, "#punchkeyboard:not(.m33-css-caps) .m33-key,");
+    assert.ok(/background\s*:\s*none\s*;/.test(rule),
+      "artwork-caps mode must drop the keycap plastic:\n" + rule);
+    assert.ok(/box-shadow\s*:\s*none\s*;/.test(rule),
+      "artwork-caps mode must drop the keycap side wall:\n" + rule);
+    assert.ok(/cursor\s*:\s*pointer\s*;/.test(rule),
+      "the invisible key must keep a pointer cursor:\n" + rule);
+  }
+  {
+    const rule = extractRule(css, "#punchkeyboard:not(.m33-css-caps) .m33-key.down,");
+    assert.ok(/transform\s*:\s*none\s*;/.test(rule),
+      "artwork-caps mode has nothing to sink when a key is pressed:\n" + rule);
+    assert.ok(/box-shadow\s*:\s*none\s*;/.test(rule),
+      "artwork-caps mode has no side wall to collapse:\n" + rule);
+  }
+  {
+    const rule = extractRule(css, "#punchkeyboard:not(.m33-css-caps) .m33-key .m33-top,");
+    assert.ok(/visibility\s*:\s*hidden\s*;/.test(rule),
+      "the legends must come from the artwork in artwork-caps mode:\n" + rule);
+  }
+  {
+    const html = fs.readFileSync(HTML_PATH, "utf8");
+    assert.ok(html.indexOf('id="config-field-keyboardLayout"') !== -1,
+      "the CONFIG page must offer the keycap layout field");
+    for (const value of ["drawn", "grid"]) {
+      assert.ok(html.indexOf('name="keyboardLayout" value="' + value + '"') !== -1,
+        "the CONFIG page must offer the '" + value + "' keycap layout");
+    }
+    assert.ok(html.indexOf("m33-css-caps") === -1,
+      "the markup must not hardcode the layout class — the default is the artwork caps");
   }
 
   // --- Flat-top cylindrical keycaps ----------------------------------------

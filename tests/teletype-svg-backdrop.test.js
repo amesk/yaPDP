@@ -1,0 +1,326 @@
+#!/usr/bin/env node
+/**
+ * Model 33 ASR SVG art layer — geometry contract tests.
+ *
+ * The console teletype cabinet is drawn by assets/Model-33-ASR.svg and the
+ * live controls on top of it are positioned by css/g60printer.css in the SAME
+ * units as the artwork's viewBox. That makes the artwork the single source of
+ * truth: the markers layer of the SVG ("Keyboard", "Apron", "Puncher",
+ * "Reader", "Paper", "Caret") and the --tty-* variables of the teletype rig
+ * rule must agree, and every contain factor must be the documented
+ * min(marker / native) ratio.
+ *
+ * This suite parses BOTH files and fails when either side drifts, so moving a
+ * marker in Inkscape without updating the CSS (or the other way round) cannot
+ * ship silently.
+ *
+ * Run with:  node tests/teletype-svg-backdrop.test.js
+ *
+ * Exit code 0 = all tests passed, non-zero = failure.
+ */
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+const assert = require("assert");
+
+const SVG_PATH = path.join(__dirname, "..", "assets", "Model-33-ASR.svg");
+const CSS_PATH = path.join(__dirname, "..", "css", "g60printer.css");
+const APP_PATH = path.join(__dirname, "..", "src", "pdp11-app.js");
+
+// Marker id -> the CSS variable prefix holding its x/y/w/h.
+const MARKERS = [
+  { id: "Keyboard", var: "--tty-kbd" },
+  { id: "Apron", var: "--tty-apron" },
+  { id: "Puncher", var: "--tty-punch" },
+  { id: "Reader", var: "--tty-reader" }
+];
+
+// Marker ids carrying only an x/y (the paper band is a plane, not a block).
+const PLANE_MARKERS = [
+  { id: "Paper", var: "--tty-paper" },
+  { id: "Caret", var: "--tty-caret" }
+];
+
+// Native px sizes of the live controls the contain factors are derived from.
+const NATIVE = {
+  kbdW: 576, kbdH: 212,      // key block, see model33KeyGrid in src/pdp11-app.js
+  plateW: 170, plateH: 164,  // punch / reader plate frames
+  apronW: 118, apronH: 66,   // CCU apron block
+  sheetW: 741                // paper sheet inside the 808px printer block
+};
+
+const EPS = 1e-4;
+
+function close(actual, expected, message) {
+  assert.ok(Number.isFinite(actual) && Math.abs(actual - expected) < EPS,
+    message + " (expected " + expected + ", got " + actual + ")");
+}
+
+// Extract one top-level function body from the production source (brace
+// matching), so the runtime parser can be exercised outside the browser.
+function extractBlock(src, marker) {
+  const start = src.indexOf(marker);
+  assert.ok(start !== -1, "function not found: " + marker);
+  const braceOpen = src.indexOf("{", start);
+  assert.ok(braceOpen !== -1, "no opening brace for: " + marker);
+  let depth = 0;
+  for (let i = braceOpen; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}") {
+      depth--;
+      if (depth === 0) return src.slice(start, i + 1);
+    }
+  }
+  throw new Error("unbalanced braces for: " + marker);
+}
+
+// Pull the whole rect element of a marker id out of the SVG text.
+function rectElement(svg, id) {
+  const re = new RegExp('<rect[^>]*id="' + id + '"[^>]*/>');
+  const m = re.exec(svg);
+  assert.ok(m, 'the artwork must declare a marker rect with id="' + id + '"');
+  return m[0];
+}
+
+function attr(rectText, name, id) {
+  const re = new RegExp(name + '="([-0-9.eE]+)"');
+  const m = re.exec(rectText);
+  assert.ok(m, "the " + id + " marker must carry a numeric " + name);
+  return parseFloat(m[1]);
+}
+
+function markerRect(svg, id) {
+  const text = rectElement(svg, id);
+  return {
+    x: attr(text, "x", id),
+    y: attr(text, "y", id),
+    w: attr(text, "width", id),
+    h: attr(text, "height", id)
+  };
+}
+
+// All --tty-* declarations of the teletype rig rule (the last one wins).
+function rigVars(css) {
+  const idx = css.lastIndexOf("#teletype-rig {");
+  assert.ok(idx !== -1, "css/g60printer.css must define the #teletype-rig rule");
+  const open = css.indexOf("{", idx);
+  let depth = 0;
+  let end = -1;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}") {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  assert.ok(end !== -1, "unbalanced braces in the #teletype-rig rule");
+  const body = css.slice(open, end);
+  const vars = {};
+  const re = /(--tty-[a-z0-9-]+)\s*:\s*([^;]+);/g;
+  let m;
+  while ((m = re.exec(body)) !== null) vars[m[1]] = m[2].trim();
+  return vars;
+}
+
+// Slice a top-level array literal: from its declaration to the closing "];".
+function extractArray(src, marker) {
+  const start = src.indexOf(marker);
+  assert.ok(start !== -1, "array not found: " + marker);
+  const end = src.indexOf("];", start);
+  assert.ok(end !== -1, "unterminated array: " + marker);
+  return src.slice(start, end + 2);
+}
+
+// "calc(var(--tty-u-num) * 0.44550)" -> 0.44550
+function containRatio(value, name) {
+  if (value === undefined) throw new Error("missing CSS variable " + name);
+  const m = /\*\s*([0-9.]+)\s*\)/.exec(value);
+  assert.ok(m, name + " must be declared as calc(var(--tty-u-num) * <ratio>), got: " + value);
+  return parseFloat(m[1]);
+}
+
+function run() {
+  const svg = fs.readFileSync(SVG_PATH, "utf8");
+  const css = fs.readFileSync(CSS_PATH, "utf8");
+
+  // --- The artwork must stay valid XML -------------------------------------
+  // A double hyphen is illegal inside an XML comment. When the file stops being
+  // valid XML the browser renders the artwork as NOTHING (the HTML overlays stay
+  // visible, so it looks like "the backdrop disappeared") — exactly the bug a
+  // "tty-*" mention written as a CSS custom property once caused. This guard
+  // keeps that class of typo from shipping.
+  {
+    const comments = svg.match(/<!--[\s\S]*?-->/g) || [];
+    assert.ok(comments.length >= 2,
+      "the artwork keeps its documentation comments");
+    for (const comment of comments) {
+      assert.ok(comment.slice(4, -3).indexOf("--") === -1,
+        "an XML comment must not contain '--' (the artwork would fail to parse):\n" +
+        comment.slice(0, 240));
+    }
+    assert.ok(/<\/svg>\s*$/.test(svg), "the artwork must close with </svg>");
+  }
+
+  // --- The markers layer exists and is never rendered ----------------------
+  // Every rect carries display:none in its OWN style: Inkscape rewrites the
+  // LAYER's display when the file is saved (it turns it back to "inline"), but
+  // an object's own style survives, so the red/yellow markers can never paint
+  // over the cabinet.
+  {
+    assert.ok(svg.indexOf('id="layer4"') !== -1,
+      "the artwork must keep the markers layer (id=\"layer4\")");
+    for (const marker of MARKERS.concat(PLANE_MARKERS)) {
+      const rect = rectElement(svg, marker.id);
+      assert.ok(/display\s*:\s*none/.test(rect),
+        "the " + marker.id + " marker must carry display:none itself:\n" + rect);
+    }
+  }
+
+  // --- viewBox and rig variables agree -------------------------------------
+  const vars = rigVars(css);
+  {
+    const vb = /viewBox="0 0 ([-0-9.eE]+) ([-0-9.eE]+)"/.exec(svg);
+    assert.ok(vb, "the artwork must declare a viewBox");
+    close(parseFloat(vars["--tty-vb-w"]), parseFloat(vb[1]),
+      "--tty-vb-w must match the artwork viewBox width");
+    close(parseFloat(vars["--tty-vb-h"]), parseFloat(vb[2]),
+      "--tty-vb-h must match the artwork viewBox height");
+  }
+
+  // --- Every marker rect matches its CSS variables -------------------------
+  for (const marker of MARKERS) {
+    const rect = markerRect(svg, marker.id);
+    close(parseFloat(vars[marker.var + "-x"]), rect.x,
+      marker.var + "-x must match the " + marker.id + " marker x");
+    close(parseFloat(vars[marker.var + "-y"]), rect.y,
+      marker.var + "-y must match the " + marker.id + " marker y");
+    close(parseFloat(vars[marker.var + "-w"]), rect.w,
+      marker.var + "-w must match the " + marker.id + " marker width");
+    close(parseFloat(vars[marker.var + "-h"]), rect.h,
+      marker.var + "-h must match the " + marker.id + " marker height");
+  }
+  for (const marker of PLANE_MARKERS) {
+    const rect = markerRect(svg, marker.id);
+    close(parseFloat(vars[marker.var + "-x"]), rect.x,
+      marker.var + "-x must match the " + marker.id + " marker x");
+    close(parseFloat(vars[marker.var + "-y"]), rect.y,
+      marker.var + "-y must match the " + marker.id + " marker y");
+    close(parseFloat(vars[marker.var + "-w"]), rect.w,
+      marker.var + "-w must match the " + marker.id + " marker width");
+    close(parseFloat(vars[marker.var + "-h"]), rect.h,
+      marker.var + "-h must match the " + marker.id + " marker height");
+  }
+
+  // --- The print line is the Caret band's bottom edge ----------------------
+  {
+    const caret = markerRect(svg, "Caret");
+    close(parseFloat(vars["--tty-caret-line-y"]), caret.y + caret.h,
+      "--tty-caret-line-y must be the Caret marker's bottom edge (y + h)");
+  }
+
+  // --- Contain factors are min(marker / native) ----------------------------
+  {
+    const kbd = markerRect(svg, "Keyboard");
+    close(containRatio(vars["--tty-kbd-k"], "--tty-kbd-k"),
+      Math.min(kbd.w / NATIVE.kbdW, kbd.h / NATIVE.kbdH),
+      "--tty-kbd-k must be min(markerW/576, markerH/212)");
+
+    const punch = markerRect(svg, "Puncher");
+    close(containRatio(vars["--tty-punch-k"], "--tty-punch-k"),
+      Math.min(punch.w / NATIVE.plateW, punch.h / NATIVE.plateH),
+      "--tty-punch-k must be min(markerW/170, markerH/164)");
+
+    const reader = markerRect(svg, "Reader");
+    close(containRatio(vars["--tty-reader-k"], "--tty-reader-k"),
+      Math.min(reader.w / NATIVE.plateW, reader.h / NATIVE.plateH),
+      "--tty-reader-k must be min(markerW/170, markerH/164)");
+
+    const apron = markerRect(svg, "Apron");
+    close(containRatio(vars["--tty-apron-k"], "--tty-apron-k"),
+      Math.min(apron.w / NATIVE.apronW, apron.h / NATIVE.apronH),
+      "--tty-apron-k must be min(markerW/118, markerH/66)");
+
+    // The sheet is special: the printer lays it out per column count, so the
+    // page publishes the REAL width in --tty-sheet-native and the factor is
+    // markerW / nativeSheetW. The unit test pins the formula and the no-JS
+    // fallback; the live value is checked in the browser (the sheet must fill
+    // the marker exactly).
+    const paper = markerRect(svg, "Paper");
+    const sheetK = vars["--tty-sheet-k"] || "";
+    assert.ok(/var\(--tty-paper-w\)/.test(sheetK),
+      "--tty-sheet-k must divide the Paper marker width:\n" + sheetK);
+    assert.ok(/var\(--tty-sheet-native\)/.test(sheetK),
+      "--tty-sheet-k must divide by the sheet the printer laid out:\n" + sheetK);
+    assert.ok(/var\(--tty-u-num\)/.test(sheetK),
+      "--tty-sheet-k must derive from the unitless --tty-u-num:\n" + sheetK);
+    close(parseFloat(vars["--tty-sheet-native"]), NATIVE.sheetW,
+      "the --tty-sheet-native fallback must be the CSS base sheet width (741)");
+    // The marker really is the numerator: the old hard-coded 741-based factor
+    // (paper.w / 741) is NOT what the page must use any more — it left the sheet
+    // visibly narrower than the platen.
+    assert.ok(paper.w / NATIVE.sheetW !== paper.w / 606,
+      "the fallback ratio must differ from the 72-column sheet ratio (the page " +
+      "recomputes the factor from the real sheet width)");
+  }
+
+  // --- --tty-u is a length derived from the unitless --tty-u-num -----------
+  {
+    assert.ok(/calc\(var\(--tty-u-num\)\s*\*\s*1px\)/.test(vars["--tty-u"] || ""),
+      "--tty-u must be calc(var(--tty-u-num) * 1px): " + vars["--tty-u"]);
+    assert.ok(Number.isFinite(parseFloat(vars["--tty-u-num"])) &&
+      parseFloat(vars["--tty-u-num"]) > 0,
+      "--tty-u-num must be a positive number: " + vars["--tty-u-num"]);
+  }
+
+  // --- The runtime parser reads the very same numbers ----------------------
+  // src/pdp11-app.js fetches the artwork at page load (installTtyArtLayer) and
+  // pushes the marker numbers into the --tty-* variables of #teletype-rig, so
+  // moving a marker is enough. The parser is pinned here to the same values the
+  // CSS fallback uses, so the runtime path and the fallback cannot diverge.
+  {
+    const src = fs.readFileSync(APP_PATH, "utf8");
+    const code =
+      extractArray(src, "var TTY_MARKER_VARS = [") + "\n" +
+      extractBlock(src, "function ttyMarkerVars") + "\n" +
+      "; this.parse = ttyMarkerVars;";
+    const sandbox = {};
+    vm.createContext(sandbox);
+    vm.runInContext(code, sandbox);
+
+    const parsed = sandbox.parse(svg);
+    assert.ok(parsed, "ttyMarkerVars must parse the artwork");
+
+    const viewBox = /viewBox="0 0 ([-0-9.eE]+) ([-0-9.eE]+)"/.exec(svg);
+    close(parseFloat(parsed["--tty-vb-w"]), parseFloat(viewBox[1]),
+      "the parser must report the viewBox width");
+    close(parseFloat(parsed["--tty-vb-h"]), parseFloat(viewBox[2]),
+      "the parser must report the viewBox height");
+
+    for (const marker of MARKERS.concat(PLANE_MARKERS)) {
+      const rect = markerRect(svg, marker.id);
+      close(parseFloat(parsed[marker.var + "-x"]), rect.x,
+        "the parser must report the " + marker.id + " x");
+      close(parseFloat(parsed[marker.var + "-y"]), rect.y,
+        "the parser must report the " + marker.id + " y");
+      close(parseFloat(parsed[marker.var + "-w"]), rect.w,
+        "the parser must report the " + marker.id + " width");
+      close(parseFloat(parsed[marker.var + "-h"]), rect.h,
+        "the parser must report the " + marker.id + " height");
+    }
+
+    const caret = markerRect(svg, "Caret");
+    close(parseFloat(parsed["--tty-caret-line-y"]), caret.y + caret.h,
+      "the parser must derive the print line from the Caret band");
+
+    // Defensive: garbage input never throws and yields no variables.
+    assert.strictEqual(sandbox.parse(""), null, "empty input -> null");
+    assert.deepStrictEqual(Object.keys(sandbox.parse("<svg/>")).length, 0,
+      "an artwork without markers -> no variables (CSS fallback stays)");
+  }
+
+  console.log("teletype-svg-backdrop: all tests passed");
+}
+
+run();

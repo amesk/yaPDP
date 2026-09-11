@@ -420,29 +420,49 @@
    ================================================================== */
 
 #punchkeypane {
-    position: relative;
-    /* Same slim width as the printer (940px − 2 × 66px). */
-    width: 808px;
-    height: 240px;
-    /* Sand ASR33 deck (no dark keyboardbg.jpg texture). The deck sits
-       directly under the (now lowered) printer body — no gap between them. */
-    background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-        linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
+    /* The keyboard deck plastic is drawn by the artwork now. This element
+       stays for two reasons: it is the paste target wired in
+       src/pdp11-app.js, and it is the positioning context of the keys and the
+       CCU knob at the RIG ORIGIN — a zero-sized box, so their left/top are
+       artwork (SVG viewBox) coordinates. */
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
     margin: 0;
     padding: 0;
-    border: 1px solid #a68c66;
-    border-top: none;
-    border-radius: 0 0 12px 12px;
-    box-shadow: inset 0 10px 16px rgba(0, 0, 0, 0.16);
+    background: none;
+    border: none;
+    box-shadow: none;
 }
 
 #punchkeyboard {
+    /* Model 33 key deck: the keys keep their native 576x212 px layout (pitch
+       40px, staggered rows — see MODEL33_KEYS / model33KeyGrid in
+       src/pdp11-app.js) and the block is fitted onto the artwork's Keyboard
+       marker: anchored to the marker's top-left corner and stretched to its
+       width/height (--tty-kbd-sx / --tty-kbd-sy). While the artwork owns the
+       keycaps the DOM keys are invisible hit areas, so an anisotropic fit is
+       exactly what keeps them on top of the drawn caps; the deck plastic comes
+       from the artwork as well. */
     position: absolute;
-    top: 14px;
-    /* Shifted left so the rightmost keys — including BREAK in the middle row —
-       clear the CCU apron (LINE/OFF/LOCAL) on the right side of the deck. */
-    left: 70px;
+    left: calc(var(--tty-u) * var(--tty-kbd-x));
+    top: calc(var(--tty-u) * var(--tty-kbd-y));
+    width: 576px;
+    height: 212px;
+    transform-origin: 0 0;
+    transform: scale(var(--tty-kbd-sx), var(--tty-kbd-sy));
+}
+
+/* With the keycaps drawn by the page (CONFIG -> Keyboard keycaps -> Drawn by
+   the page) the round caps must stay round, so the block is contain-fitted
+   uniformly (--tty-kbd-k) and centred on the marker instead of stretched. */
+#punchkeyboard.m33-css-caps {
+    left: calc(var(--tty-u) * (var(--tty-kbd-x) + var(--tty-kbd-w) / 2) - 288px * var(--tty-kbd-k));
+    top: calc(var(--tty-u) * (var(--tty-kbd-y) + var(--tty-kbd-h) / 2) - 106px * var(--tty-kbd-k));
+    transform-origin: 0 0;
+    transform: scale(var(--tty-kbd-k));
 }
 
 /* ---- Round keycaps (diameter 36px, pitch 40px) ---- */
@@ -590,6 +610,36 @@
     box-shadow:
         0 0 0 #241f1a,
         0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Keycap layout: drawn by the artwork or by the page --------------
+   The default layout leaves the keycaps AND their legends to the artwork
+   (assets/Model-33-ASR.svg), so the DOM keys are invisible hit areas in
+   exactly the same boxes — pressing a drawn keycap keeps working, and the key
+   ids/positions come from the flat grid in src/pdp11-app.js
+   (model33KeyGrid). The CONFIG option "Keyboard keycaps -> Drawn by the page"
+   adds .m33-css-caps to #punchkeyboard and the CSS keycaps below draw
+   themselves again (the pre-artwork behaviour, kept as the fallback). */
+#punchkeyboard:not(.m33-css-caps) .m33-key,
+#punchkeyboard:not(.m33-css-caps) .m33-space {
+    /* Transparent hit area: no plastic, no side wall, no cursor dead zone. */
+    background: none;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+#punchkeyboard:not(.m33-css-caps) .m33-key.down,
+#punchkeyboard:not(.m33-css-caps) .m33-space.down {
+    /* Nothing to sink and nothing to light up while the artwork owns the caps. */
+    transform: none;
+    box-shadow: none;
+}
+
+#punchkeyboard:not(.m33-css-caps) .m33-key .m33-top,
+#punchkeyboard:not(.m33-css-caps) .m33-key .m33-shift,
+#punchkeyboard:not(.m33-css-caps) .m33-key .m33-center {
+    /* Legends (CTRL names, shift symbols, base glyphs) belong to the artwork. */
+    visibility: hidden;
 }
 
 /* ==================================================================
@@ -1037,9 +1087,51 @@
    fresh line up away from the carriage. Scoped to #g60printer; the
    LP11 printer page (#lp11_printer) is untouched.
    ================================================================== */
-/* Let the rising paper leave the top of the machine body. */
+/* Lay the native 808x380 px printer block onto the artwork and let the rising
+   paper leave the top of the machine body. The block is CENTRED on the Paper
+   marker's centre (the sheet itself is centred in the 808px body — see
+   computePaperGeometry — so its centre is the block's centre, 404px) and the
+   print line (native 316px from the block top, the carriage line) lands on the
+   BOTTOM edge of the Caret marker. The block is then scaled by --tty-sheet-k so
+   the platen opening keeps the sheet's proportion to the machine. The sand
+   body, side skins, paper slot and face plate are switched off below — the SVG
+   draws them — so only the live sheet and the print head remain. */
 #g60printer {
+    position: absolute;
+    left: calc((var(--tty-paper-x) + var(--tty-paper-w) / 2) * var(--tty-u) - 404px * var(--tty-sheet-k));
+    top: calc(var(--tty-caret-line-y) * var(--tty-u) - 316px * var(--tty-sheet-k));
+    width: 808px;
+    height: 380px;
+    margin: 0;
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     overflow: visible;
+    transform-origin: 0 0;
+    transform: scale(var(--tty-sheet-k));
+    z-index: 4;
+}
+
+/* The artwork carries the machine body, the platen rollers, the carriage
+   window and the TELETYPE wordmark, so the Google60 / CSS-drawn skin layers
+   would double them: drop their paint on the console teletype only. The
+   #printer element itself must stay VISIBLE — the paper sheet is its child
+   (setupPrinter in src/g60printer.js appends #paper to it) — so only its
+   plastic is dropped. Scoped to #g60printer: the LP11 page draws its own
+   cabinet around #lp11_printer. */
+#g60printer div#printer {
+    background: none;
+    border-radius: 0;
+}
+
+#g60printer div#printer::after,
+#g60printer div#printer_left,
+#g60printer div#printer_right,
+#g60printer div#printer_frontpannel,
+#g60printer::before,
+#g60printer::after {
+    display: none;
 }
 
 /* Anchor the paper to the bottom (bottom:52px keeps its lower edge at
@@ -1085,52 +1177,141 @@
 }
 
 /* ==================================================================
-   Model 33 ASR — tape reader / punch unit and the punched paper tape.
-   The ASR block sits to the LEFT of the printer + keyboard (see the
-   #page-teletype markup in pdp11.html). Every byte echoed to the
-   console punches one row of holes on the tape (#punchtape), which
-   grows downwards; once it overflows the window a scrollbar appears
-   and the view follows the freshly punched row (see punchtape.js).
+   Model 33 ASR — SVG art layer: the coordinate system shared by the
+   artwork and every control on top of it.
+
+   The machine is drawn by assets/Model-33-ASR.svg in #tty-backdrop (inert to
+   the mouse). Each control below is placed in the SAME units as the artwork's
+   viewBox: an offset is calc(var(--tty-u) * <marker coordinate>) and a block
+   is scaled by a contain factor derived from its marker. The marker numbers
+   MIRROR the artwork's "Markers" layer — tests/teletype-svg-backdrop.test.js
+   parses both and fails on drift.
+
+   --tty-u is px per SVG unit. The rig is laid out at its natural artwork size
+   and installTeletypeScaling() shrinks it as a whole (--tty-scale), so the
+   machine and its controls scale as ONE piece on any window.
    ================================================================== */
 #teletype-rig {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: stretch;
-    gap: 12px;
+    --tty-vb-w: 502.41464;
+    /* viewBox width, SVG units */
+    --tty-vb-h: 328.45203;
+    /* viewBox height, SVG units */
+    --tty-u-num: 2.89;
+    /* px per SVG unit (unitless: scaled by --tty-u) */
+    --tty-u: calc(var(--tty-u-num) * 1px);
+
+    /* ---- Marker rects (x / y / w / h, SVG units) ------------------- */
+    --tty-kbd-x: 127.64988;
+    --tty-kbd-y: 183.911;
+    --tty-kbd-w: 216.34595;
+    --tty-kbd-h: 77.712708;
+    --tty-apron-x: 439.00543;
+    --tty-apron-y: 289.03168;
+    --tty-apron-w: 44.612446;
+    --tty-apron-h: 16.611017;
+    --tty-punch-x: 21.748732;
+    --tty-punch-y: 114.29581;
+    --tty-punch-w: 46.92091;
+    --tty-punch-h: 83.097519;
+    --tty-reader-x: 17.445614;
+    --tty-reader-y: 218.46942;
+    --tty-reader-w: 46.985447;
+    --tty-reader-h: 53.629852;
+    --tty-paper-x: 144.93832;
+    --tty-paper-y: 89.086563;
+    --tty-paper-w: 182.78258;
+    --tty-paper-h: 8.1296091;
+    --tty-caret-x: 145.08318;
+    --tty-caret-y: 97.534988;
+    --tty-caret-w: 182.72144;
+    --tty-caret-h: 13.763669;
+    /* The print line is the Caret band's BOTTOM edge (caret y + h). */
+    --tty-caret-line-y: 111.298657;
+
+    /* ---- Contain factors ------------------------------------------
+       k = --tty-u-num * min(markerW / nativeW, markerH / nativeH) against the
+       native control sizes: keyboard 576x212, punch/reader plate 170x164,
+       CCU apron 118x66, paper sheet 741px wide. */
+    --tty-kbd-k: calc(var(--tty-u-num) * 0.36657);
+    /* min(216.34595/576, 77.712708/212) — uniform fit, page-drawn caps */
+    --tty-punch-k: calc(var(--tty-u-num) * 0.27601);
+    /* min(46.92091/170, 83.097519/164) */
+    --tty-reader-k: calc(var(--tty-u-num) * 0.27638);
+    --tty-apron-k: calc(var(--tty-u-num) * 0.25168);
+    /* min(44.612446/118, 16.611017/66) */
+    /* Printable width: the artwork's Paper marker sets it. The sheet itself is
+       laid out by the printer (computePaperGeometry, per column count), so the
+       page publishes its real width in the UNITLESS --tty-sheet-native; 741 is
+       only the no-JS fallback (the CSS base paper width). Dividing two numbers
+       keeps the factor unitless — a length here would make scale() invalid. */
+    --tty-sheet-native: 741;
+    --tty-sheet-k: calc(var(--tty-u-num) * var(--tty-paper-w) / var(--tty-sheet-native));
+
+    /* ---- Keyboard: the marker drives the key grid -------------------
+       The key block is anchored to the marker's top-left corner and stretched
+       to the marker's width and height, so the INVISIBLE hit areas cover
+       exactly the keycaps the artwork draws (cap shapes do not matter while
+       the artwork owns them). Both factors are derived from the marker, so
+       resizing the Keyboard marker in the SVG resizes the keys. */
+    --tty-kbd-sx: calc(var(--tty-u-num) * var(--tty-kbd-w) / 576);
+    --tty-kbd-sy: calc(var(--tty-u-num) * var(--tty-kbd-h) / 212);
+
+    position: relative;
+    display: block;
+    width: calc(var(--tty-u) * var(--tty-vb-w));
+    height: calc(var(--tty-u) * var(--tty-vb-h));
 }
 
+/* The artwork itself. pointer-events:none keeps every control's own hit area. */
+#tty-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: url('../assets/Model-33-ASR.svg') center center / 100% 100% no-repeat;
+}
+
+/* The coordinate space of the controls — same box as the backdrop. */
+#tty-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+}
+
+/* The printer + keyboard column is a positioning context at the rig origin
+   only (zero-sized), so a control's left/top are rig (artwork) coordinates. */
+#teletype-main {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+}
+
+/* ==================================================================
+   Model 33 ASR — tape reader / punch unit and the punched paper tape.
+   Every byte echoed to the console punches one row of holes on the tape
+   (#punchtape), which grows downwards; once it overflows the window a
+   scrollbar appears and the view follows the freshly punched row (see
+   punchtape.js). Both hanging tapes are children of #asr-tape-unit.
+   ================================================================== */
+
 #asr-tape-unit {
-    position: relative;
-    /* Cabinet: the punch sits ABOVE the reader in one vertical stack (as on
-       the historical machine), and the punched tape hangs below the punch.
-       The cabinet is WIDER than the punch/reader plates (170px each): both
-       plates span the same horizontal range — from the reader's original
-       left edge to the punch's original right edge — so they align
-       perfectly, and the cabinet is centred on them, leaving an 8px margin
-       on each side. The BOTTOM is aligned with the
-       bottom of the keyboard deck (#punchkeypane: 396px top + 240px height
-       = 636px); the taller 360px cabinet grows UPWARD (top at 276px) and,
-       together with the 10px top/bottom insets on #asr-mech, leaves clear
-       breathing room above the punch and below the reader. */
-    width: 186px;
-    height: 360px;
-    margin-top: 276px;
-    /* Cast from the SAME plastic as the teletype cover: the sand gradient
-       of the keyboard deck with the same subtle grain and deep top inner
-       shadow — no contrasting frame, so the unit reads as one body with
-       the console, separated only by the drop shadow. */
-    background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-        linear-gradient(180deg, #d6bd99 0%, #bfa67e 100%);
-    border: none;
-    border-radius: 8px;
-    box-shadow:
-        inset 0 10px 16px rgba(0, 0, 0, 0.16),
-        0 4px 10px rgba(0, 0, 0, 0.25);
-    overflow: visible;
-    /* let the punched tape spill past the cabinet */
+    /* The ASR cabinet is drawn by the artwork now. The element stays as the
+       positioning context of the punch/reader plates and of both hanging
+       tapes, so it spans the WHOLE rig in artwork coordinates. */
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    /* Structure contract (tests/punchtape.test.js): never clip the hanging
+       tapes, and keep the former flex alignment declaration. */
     align-self: flex-start;
+    overflow: visible;
+    background: none;
+    border: none;
+    box-shadow: none;
 }
 
 /* (The decorative corner screws were removed at Alexei's request.) */
@@ -1162,86 +1343,39 @@
    reader surfaces use the SAME cream as the LINE/OFF/LOCAL block
    (#ccu-apron), so the whole ASR unit reads as one plastic body. */
 #asr-punch {
-    position: relative;
-    flex: 1 1 0;
-    width: 170px;
-    /* Both plates span the same range (8px margin): from the reader's
-       original left edge to the punch's original right edge, so the two
-       plates align perfectly in the cabinet. */
-    align-self: flex-start;
-    margin-left: 8px;
-    /* Raised plastic plate defining the punch contour: a lighter sand
-       tone than the cast body, with the same grain — a top highlight
-       and a drop shadow lift it off the body (relief plastic). Same
-       width as the reader plate (170px); the TAPE PUNCH label centres
-       on it. */
-    background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-        linear-gradient(180deg, #e0c9a4 0%, #d0b58b 100%);
-    border: 1px solid rgba(166, 140, 102, 0.6);
-    border-radius: 8px;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.5),
-        inset 0 -2px 3px rgba(0, 0, 0, 0.1),
-        0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* Decorative recessed groove for visual balance: the punch mechanism
-   (slot + buttons) sits RIGHT of the plate centre, the reader mechanism
-   (switch + slot) sits LEFT of it, so the empty zones are on opposite
-   sides. A concave strip fills each empty zone and mirrors the dark slot
-   on the opposite edge — each plate then carries two dark vertical
-   accents at its edges. The strip spans the mechanism zone vertically
-   (38px = buttons/switch top .. 121px = the slot's bottom edge) and is
-   centred in the empty zone: punch left 17px (absolute 202px = centre
-   208), reader left 142px (absolute 327px = centre 333). */
-#asr-punch::before,
-#asr-reader::after {
-    content: "";
     position: absolute;
-    top: 38px;
-    width: 12px;
-    height: 83px;
-    border-radius: 3px;
-    /* A routed channel: clearly darker than the plate, dark at the top
-       edge (shadow inside), lighter floor in the middle, hairline light
-       at the bottom rim — plus soft shading on both side walls. */
-    background: linear-gradient(180deg, #b09264 0%, #c8ae86 55%, #ab8d5f 100%);
-    box-shadow:
-        inset 0 3px 5px rgba(0, 0, 0, 0.45),
-        inset 0 -1px 0 rgba(255, 255, 255, 0.4),
-        inset 2px 0 3px rgba(0, 0, 0, 0.2),
-        inset -2px 0 3px rgba(0, 0, 0, 0.2);
-}
-#asr-punch::before {
-    left: 17px;
-}
-#asr-reader::after {
-    left: 142px;
+    /* Contain-fitted onto the artwork's Puncher marker: the plate keeps its
+       native 170x164 px control frame (label, 2x2 buttons, slot) and is
+       centred on the marker. The plate plastic comes from the artwork. */
+    left: calc(var(--tty-u) * var(--tty-punch-x) + var(--tty-u) * var(--tty-punch-w) / 2);
+    top: calc(var(--tty-u) * var(--tty-punch-y) + var(--tty-u) * var(--tty-punch-h) / 2);
+    width: 170px;
+    height: 164px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform-origin: 50% 50%;
+    transform: translate(-50%, -50%) scale(var(--tty-punch-k));
 }
 
-/* Reader: at the bottom — same size as the punch (170px), same cream
-   surface, aligned with it: both plates span the same horizontal range
-   (8px margin from the cabinet's left wall), so the pair is centred in
-   the cabinet. The labels centre on the plates; the slots, controls and
-   hanging tapes keep their former offsets (see #readertape). */
+
+/* Reader: same native 170x164 px frame as the punch, contain-fitted onto the
+   artwork's Reader marker. The labels centre on the plate; the switch, the
+   slot and the hanging tape keep their former offsets inside that frame (see
+   #readertape). */
 #asr-reader {
-    position: relative;
-    flex: 1 1 0;
+    position: absolute;
+    left: calc(var(--tty-u) * var(--tty-reader-x) + var(--tty-u) * var(--tty-reader-w) / 2);
+    top: calc(var(--tty-u) * var(--tty-reader-y) + var(--tty-u) * var(--tty-reader-h) / 2);
     width: 170px;
-    align-self: flex-start;
-    margin-left: 8px;
-    /* Same raised plastic plate as the punch: same width (170px), same
-       relief treatment; the TAPE READER label centres on it. */
-    background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-        linear-gradient(180deg, #e0c9a4 0%, #d0b58b 100%);
-    border: 1px solid rgba(166, 140, 102, 0.6);
-    border-radius: 8px;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.5),
-        inset 0 -2px 3px rgba(0, 0, 0, 0.1),
-        0 2px 4px rgba(0, 0, 0, 0.3);
+    height: 164px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform-origin: 50% 50%;
+    transform: translate(-50%, -50%) scale(var(--tty-reader-k));
 }
 
 .asr-label {
@@ -1505,18 +1639,19 @@
    reaches the window edge; 60vh is only the pre-JS fallback. */
 #punchtape {
     position: absolute;
-    /* Emerge from the MIDDLE of the TAPE PUNCH slot: the punch block starts
-       at the 10px #asr-mech top inset and the slot sits at top 106px within
-       it, so the slot centre lands at 10 + 106 + 6 = 122px. Horizontally
-       the slot keeps its FORMER position (the plate widened but the
-       mechanism did not re-centre), so tape left stays at 58px. Draws
-       ABOVE every other element of the ASR unit (the reader
-       switch, the slots), so the punched tape always passes in front of the
-       mechanism — including in front of the READER tape (#readertape, same
-       z-index but later in the DOM): with equal z-index the later sibling
-       would win, so the punch tape sits one step higher. */
-    top: 122px;
-    left: 58px;
+    /* Emerge from the MIDDLE of the TAPE PUNCH slot, which in the plate's
+       native 170x164 px frame sits 15px right of the plate centre (left 46px +
+       half of the 106px outer slot width) and 32px below it (top 106px + half
+       of the 14px outer slot height); the plate is centred on the Puncher
+       marker, so the axis is expressed in artwork coordinates. 48px is half of
+       the 97px tape body, so the tape hangs centred on that axis. Draws ABOVE
+       every other element of the ASR unit (the reader switch, the slots), so
+       the punched tape always passes in front of the mechanism — including in
+       front of the READER tape (#readertape, same z-index but later in the
+       DOM): with equal z-index the later sibling would win, so the punch tape
+       sits one step higher. */
+    top: calc(var(--tty-u) * var(--tty-punch-y) + var(--tty-u) * var(--tty-punch-h) / 2 + 32px * var(--tty-punch-k));
+    left: calc(var(--tty-u) * var(--tty-punch-x) + var(--tty-u) * var(--tty-punch-w) / 2 + 15px * var(--tty-punch-k) - 48px);
     z-index: 11;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
        transparent background: scrollbar-gutter: stable reserves the gutter
@@ -1633,12 +1768,13 @@
    and the rest moves up through the slot. */
 #readertape {
     position: absolute;
-    /* Hangs from the reader slot but keeps the original left:31px offset:
-       the punched tape hangs on the aligned slot axis (46px) and draws in
-       front of it (z-index 11 > 10), so a 15px strip of the reader tape
-       stays visible to the left. */
-    top: 298px;
-    left: 31px;
+    /* Hangs from the reader slot: the slot sits 11px LEFT of the plate centre
+       in the plate frame (left 20px + half of the 106px outer slot width vs
+       the 85px half-width) and 32px below it, and the tape keeps the former
+       extra 13px left offset so the punched tape hanging on the punch axis
+       (z-index 11 > 10) never covers it completely. */
+    top: calc(var(--tty-u) * var(--tty-reader-y) + var(--tty-u) * var(--tty-reader-h) / 2 + 32px * var(--tty-reader-k));
+    left: calc(var(--tty-u) * var(--tty-reader-x) + var(--tty-u) * var(--tty-reader-w) / 2 - 24px * var(--tty-reader-k) - 48px);
     z-index: 10;
     width: 107px;
     max-width: 100%;
@@ -1720,23 +1856,20 @@
    corner of the keyboard deck (#punchkeypane), clear of the keys.
    ================================================================== */
 #ccu-apron {
+    /* CCU (LINE/OFF/LOCAL) knob and its three labels, contain-fitted onto the
+       artwork's Apron marker. The flat apron pad itself is drawn by the
+       artwork, so the block carries no plastic of its own. */
     position: absolute;
-    right: 14px;
-    bottom: 10px;
+    left: calc(var(--tty-u) * var(--tty-apron-x) + var(--tty-u) * var(--tty-apron-w) / 2);
+    top: calc(var(--tty-u) * var(--tty-apron-y) + var(--tty-u) * var(--tty-apron-h) / 2);
     width: 118px;
     height: 66px;
-    /* Same relief-plastic treatment as the punch/reader plates: sand
-       gradient + grain, sand border, radius 8px, top highlight and
-       drop shadow (the labels already use the plate label colour). */
-    background:
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
-        linear-gradient(180deg, #e0c9a4 0%, #d0b58b 100%);
-    border: 1px solid rgba(166, 140, 102, 0.6);
-    border-radius: 8px;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.5),
-        inset 0 -2px 3px rgba(0, 0, 0, 0.1),
-        0 2px 4px rgba(0, 0, 0, 0.3);
+    background: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform-origin: 50% 50%;
+    transform: translate(-50%, -50%) scale(var(--tty-apron-k));
     z-index: 2;
 }
 
