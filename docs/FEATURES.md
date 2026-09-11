@@ -91,11 +91,14 @@ The TAPE READER reads a loaded tape into the machine: **Load tape** opens a
 file dialog for a raw `.ptap`, a compressed `.ptap.zst`, or a `.txt` (its
 characters become 7-bit tape codes), and the full tape hangs from the reader
 slot down to the window edge, its ragged free end torn like the punched
-tape's. The four-position switch (**START / STOP / FREE / AUTO**, **STOP by
-default**) governs reading: START runs the reader continuously at the console
-speed; AUTO sends one byte and feeds the next only when the machine's DL11 has
-accepted the previous one, pausing on **DC3 / X-OFF (0x13)** and resuming on
-**DC1 / X-ON (0x11)**; STOP pauses; **STOP** and **FREE** both show the
+tape's. Reading is governed by the authentic **vertical four-detent reader
+lever** — **START** at the top, then **AUTO**, **STOP** and **FREE** at the
+bottom, printed top to bottom as on the machine (**STOP by default**): drag the
+handle up or down the slot, click it to step one position down, or click a
+label. START runs the reader continuously at the console speed; AUTO sends one
+byte and feeds the next only when the machine's DL11 has accepted the previous
+one, pausing on **DC3 / X-OFF (0x13)** and resuming on **DC1 / X-ON (0x11)**;
+STOP pauses; **STOP** and **FREE** both show the
 **Remove tape** button (hidden while the reader is START or AUTO, so a tape is
 never pulled out mid-run; FREE is now a purely decorative switch position).
 **Load tape** always switches the reader to **STOP** first, so a freshly

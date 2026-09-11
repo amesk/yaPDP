@@ -75,13 +75,15 @@ function punchTapeTrailer() {
   }
 }
 
-// Tape reader switch state. On a real Model 33 ASR the reader has a
-// four-position switch: START (continuous reading), STOP (pause), FREE
-// (tape released for manual pull) and AUTO (remote control: reading starts
-// when the mode is engaged — one byte goes out, then each next byte follows
-// the DL11 "input drained" signal — and can be paused by DC3/X-OFF and
-// resumed by DC1/X-ON received over the line).
-var readerModes = ['start', 'stop', 'free', 'auto'];
+// Tape reader switch state. On the automatic (ASR) Model 33 the reader is
+// controlled by a VERTICAL four-detent lever whose positions read top to
+// bottom as on the machine: START (manual run — the reader feeds continuously
+// at console speed), AUTO (line-controlled run: one byte goes out, then each
+// next byte follows the DL11 "input drained" signal, paused by DC3/X-OFF and
+// resumed by DC1/X-ON), STOP (forced stop) and FREE (tape released for manual
+// pull). The array order IS the physical order, top to bottom, so each mode's
+// index is also the lever's detent (--reader-lever-i).
+var readerModes = ['start', 'auto', 'stop', 'free'];
 var readerXoffPaused = false; // DC3/X-OFF pause latch, only used in AUTO
 
 // Recompute whether the ASR reader may feed bytes, honouring the CCU power
@@ -103,9 +105,11 @@ function setReaderMode(mode) {
   for (var i = 0; i < pos.length; i++) {
     pos[i].classList.toggle('active', pos[i].getAttribute('data-reader-mode') === mode);
   }
-  // Rotate the POWER/LOCK-style handle: START 0°, STOP 90°, FREE 180°, AUTO 270°.
-  var lever = document.getElementById('reader-switch-lever');
-  if (lever) lever.style.transform = 'rotate(' + (readerModes.indexOf(mode) * 90) + 'deg)';
+  // Slide the vertical lever to its detent: 0 = START (top) ... 3 = FREE
+  // (bottom). The CSS turns that index into the handle position over the
+  // four-detent slot (see .asr-reader-switch in css/g60printer.css).
+  var rail = document.getElementById('asr-reader-switch');
+  if (rail) rail.style.setProperty('--reader-lever-i', String(readerModes.indexOf(mode)));
   // Drive the reader mechanism (src/reader.js) and show the "Remove tape"
   // operator button: it appears while the reader is paused (STOP or FREE)
   // and hides while START or AUTO is running — pulling the tape out mid-run
@@ -2653,9 +2657,11 @@ var TTY_QUAD_MARKERS = [
   // The REL/OFF/BSP/ON cluster.
   { id: "PuncherControl", prefix: "--tty-pctrl", name: "--tty-pctrl-matrix",
     anchor: "corner", w: 106, h: 64 },
-  // The START/STOP/FREE/AUTO switch block (its native 92x62 px frame).
+  // The vertical four-detent reader lever block (its native PORTRAIT 40x115 px
+  // frame — the artist's ReaderControl marker is a vertical slot, so the quad
+  // projection must map THIS rectangle onto the marker, not the former knob).
   { id: "ReaderControl", prefix: "--tty-rctrl", name: "--tty-rctrl-matrix",
-    anchor: "corner", w: 92, h: 62 },
+    anchor: "corner", w: 40, h: 115 },
   // The key deck: anchored to the Keyboard marker's corner and stretched to its
   // width/height (576x212 — see model33KeyGrid).
   { id: "Keyboard", prefix: "--tty-kbd", name: "--tty-kbd-matrix",
@@ -3307,7 +3313,9 @@ function initTtyControls() {
     });
   }
 
-  // Four-position tape reader switch (START/STOP/FREE/AUTO).
+  // Vertical four-detent tape reader lever (START/AUTO/STOP/FREE, top to
+  // bottom). Each label is a hit target that moves the lever straight to that
+  // detent, exactly as clicking a CCU label turns the knob.
   var switchPos = document.querySelectorAll('.asr-switch-pos');
   for (var si = 0; si < switchPos.length; si++) {
     (function (btn) {
@@ -3318,13 +3326,58 @@ function initTtyControls() {
       });
     })(switchPos[si]);
   }
-  // Clicking the switch DISC itself (not a label) turns it to the next
-  // detent clockwise: START -> STOP -> FREE -> AUTO -> START.
-  var readerDisc = document.querySelector('.asr-switch-disc');
-  if (readerDisc) {
-    readerDisc.addEventListener('click', function () {
-      playSwitchClick();
-      setReaderMode(readerModes[(readerModes.indexOf(window.ttyReaderMode) + 1) % readerModes.length]);
+  // The lever itself: DRAG the handle up/down the slot to pick a detent (it
+  // follows the pointer and the mode latches on release, like pushing the real
+  // lever to the next notch), or CLICK it to step one detent DOWN:
+  // START -> AUTO -> STOP -> FREE -> START. Clicking the slot moves the lever
+  // straight to the detent under the pointer.
+  var rail = document.getElementById('asr-reader-switch');
+  var handle = document.getElementById('reader-switch-lever');
+  var slot = rail ? rail.querySelector('.asr-switch-slot') : null;
+  if (rail && handle && slot) {
+    var detents = readerModes.length;
+    var dragging = false;
+    var moved = false;
+    // Nearest detent (0..detents-1, from the top) to a viewport Y. Only the
+    // RELATIVE position inside the slot matters, so this stays correct under
+    // the rig's scale transform and a tilted ReaderControl marker.
+    var detentAt = function (clientY) {
+      var box = slot.getBoundingClientRect();
+      if (!box.height) return 0;
+      var idx = Math.round(((clientY - box.top) / box.height) * (detents - 1));
+      return Math.max(0, Math.min(detents - 1, idx));
+    };
+    var applyMode = function (idx) {
+      var mode = readerModes[idx];
+      if (window.ttyReaderMode !== mode) playSwitchClick();
+      setReaderMode(mode);
+    };
+    handle.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      dragging = true;
+      moved = false;
+      handle.classList.add('dragging');
+      if (handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
+    });
+    handle.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      moved = true;
+      // Preview the detent under the pointer; the mode latches on release.
+      rail.style.setProperty('--reader-lever-i', String(detentAt(e.clientY)));
+    });
+    var releaseLever = function (e) {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove('dragging');
+      applyMode(moved
+        ? detentAt(e.clientY)
+        : (readerModes.indexOf(window.ttyReaderMode) + 1) % detents);
+    };
+    handle.addEventListener('pointerup', releaseLever);
+    handle.addEventListener('pointercancel', releaseLever);
+    slot.addEventListener('click', function (e) {
+      if (e.target === handle) return; // the handle's own click steps instead
+      applyMode(detentAt(e.clientY));
     });
   }
 
