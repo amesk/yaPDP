@@ -24,9 +24,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="0.78840488"
-     inkscape:cx="625.31323"
-     inkscape:cy="719.80782"
+     inkscape:zoom="0.55748644"
+     inkscape:cx="588.35512"
+     inkscape:cy="535.43904"
      inkscape:window-width="3440"
      inkscape:window-height="1369"
      inkscape:window-x="1912"
@@ -162,35 +162,29 @@
      inkscape:groupmode="layer"
      id="layer4"
      inkscape:label="Markers"
-     style="display:none"><!-- Model 33 ASR overlay markers — NOT artwork, never rendered.
-       The CONSOLE page anchors its HTML overlays (keyboard, CCU apron, punch
-       control + tape, reader control + tape, paper sheet, print caret) to
-       these rects; the art layer in css/g60printer.css mirrors the numbers and
+     style="display:inline"><!-- Model 33 ASR overlay markers — NOT artwork, never rendered.
+       The CONSOLE page anchors its HTML overlays (keyboard, CCU apron, punch,
+       reader, paper sheet, print caret) to these rects; the art layer in
+       css/g60printer.css mirrors the numbers and
        tests/teletype-svg-backdrop.test.js fails if the geometry drifts.
 
-         Keyboard        x=127.64988  y=183.911     w=216.34595  h=77.712708
-         Apron           x=545.05432  y=299.60672   w=32.433464  h=17.285152  tilted
-         PuncherControl  x=43.746887  y=123.93871   w=41.191868  h=28.906223  tilted
-         PuncherTape     x=33.821438  y=183.21991   w=27.412594  h=1.8400521
-         ReaderControl   x=64.733955  y=242.43582   w=31.239086  h=23.328508  tilted
-         ReaderTape      x=26.909184  y=202.69734   w=27.412594  h=1.8400521
-         Paper           x=144.93832  y=89.086563   w=182.78258  h=8.1296091
-         Caret           x=145.08318  y=97.534988   w=182.72144  h=13.763669
-
-       A tilted rect carries its own transform; the app projects the matching
-       HTML layer onto the resulting quad. The artwork Foreground layer is
-       inlined above every overlay (see #tty-foreground in css/g60printer.css).
+         Keyboard x=108.20891  y=176.55138  w=262.92868  h=94.445496
+         Apron    x=439.00543  y=289.03168  w=44.612446  h=16.611017
+         Puncher  x=23.730022  y=116.27711  w=46.985447  h=53.629852
+         Reader   x=17.445614  y=218.46942  w=46.985447  h=53.629852
+         Paper    x=144.93832  y=89.086563  w=182.78258  h=8.1296091
+         Caret    x=145.08318  y=97.534988  w=182.72144  h=13.763669
 
        viewBox: 0 0 502.41464 328.45203 -->
      <rect
-   style="display:none;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.217707"
+   style="fill:#ff0000;stroke:#4b3d2e;stroke-width:0.217707"
    id="Keyboard"
    width="216.34595"
    height="77.712708"
    x="127.64988"
    y="183.911"
    inkscape:label="Keyboard" /><rect
-   style="display:none;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.230127"
+   style="fill:#ff0000;stroke:#4b3d2e;stroke-width:0.230127"
    id="Apron"
    width="32.433464"
    height="17.285152"
@@ -198,45 +192,45 @@
    y="299.60672"
    inkscape:label="Apron"
    transform="matrix(1,0,-0.2676684,0.96351109,0,0)" /><rect
-   style="display:none;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.0374341"
+   style="display:inline;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.0374341"
    id="PuncherTape"
    width="27.412594"
    height="1.8400521"
    x="33.821438"
    y="183.21991"
    inkscape:label="PuncherTape" /><rect
-   style="display:none;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.0374341"
+   style="display:inline;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.0374341"
    id="ReaderTape"
    width="27.412594"
    height="1.8400521"
    x="26.909184"
    y="202.69734"
    inkscape:label="ReaderTape" /><rect
-   style="display:none;fill:#ff0000;stroke:#4b3d2e;stroke-width:0.203179"
+   style="fill:#ff0000;stroke:#4b3d2e;stroke-width:0.203179"
    id="Paper"
    width="182.78258"
    height="8.1296091"
    x="144.93832"
    y="89.086563"
    inkscape:label="Paper" /><rect
-   style="display:none;fill:#ffff00;stroke:#4b3d2e;stroke-width:0.264325"
+   style="fill:#ffff00;stroke:#4b3d2e;stroke-width:0.264325"
    id="Caret"
    width="182.72144"
    height="13.763669"
    x="145.08318"
    y="97.534988"
    inkscape:label="Caret" /><rect
-   style="display:none;fill:#aa0000;stroke:#4b3d2e;stroke-width:0.211121"
+   style="fill:#aa0000;stroke:#4b3d2e;stroke-width:0.186129"
    id="PuncherControl"
-   width="41.191868"
-   height="28.906223"
-   x="43.746887"
-   y="123.93871"
+   width="41.215778"
+   height="22.454559"
+   x="48.322926"
+   y="124.42154"
    inkscape:label="PuncherControl"
-   transform="matrix(0.999942,-0.01077044,-0.12629874,0.99199225,0,0)"
-   inkscape:transform-center-x="-1.0617046"
-   inkscape:transform-center-y="-0.060632634" /><rect
-   style="display:none;fill:#aa0000;stroke:#4b3d2e;stroke-width:0.235266"
+   transform="matrix(0.99996541,-0.00831691,-0.1626852,0.98667803,0,0)"
+   inkscape:transform-center-x="-1.0623448"
+   inkscape:transform-center-y="-0.046843147" /><rect
+   style="fill:#aa0000;stroke:#4b3d2e;stroke-width:0.235266"
    id="ReaderControl"
    width="31.239086"
    height="23.328508"
