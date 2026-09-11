@@ -364,6 +364,30 @@ function run() {
       "the apron pad must come from the artwork:\n" + rule);
   }
 
+  // --- CCU knob: a raised two-step cylinder with dark moulded legends -------
+  {
+    const base = extractRule(css, ".ccu-switch::before {");
+    assert.ok(/border-radius\s*:\s*50%\s*;/.test(base) &&
+      /width\s*:\s*44px\s*;/.test(base) &&
+      /inset\s+0\s+-3px\s+5px/.test(base),
+      "the knob must stand on a WIDE moulded base (raised, not recessed):\n" + base);
+    const cap = extractRule(css, ".ccu-switch-disc {");
+    assert.ok(/width\s*:\s*28px\s*;/.test(cap) &&
+      /inset\s+0\s+-1px\s+2px/.test(cap),
+      "the CAP on top must be smaller than the base, with a flat-shaded " +
+      "face:\n" + cap);
+    const beak = extractRule(css, ".ccu-switch-lever {");
+    assert.ok(/transform-origin\s*:\s*50%\s+22px\s*;/.test(beak),
+      "the BEAK must orbit the CAP centre (the cap keeps its shading):\n" + beak);
+    const pos = extractRule(css, ".ccu-switch-pos {");
+    assert.ok(/color\s*:\s*#2f2a22\s*;/.test(pos) && /text-shadow\s*:/.test(pos),
+      "the CCU legends must be DARK moulded lettering, as on the real " +
+      "apron:\n" + pos);
+    const app = fs.readFileSync(APP_PATH, "utf8");
+    assert.ok(app.indexOf("document.getElementById('ccu-switch-lever')") !== -1,
+      "setTtyMode must rotate the beak, not the knob");
+  }
+
   // --- Paper draws in front of the platen ----------------------------------
   {
     const rule = extractRule(css, "#g60printer div#paper {");
