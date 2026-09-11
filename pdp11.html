@@ -749,78 +749,88 @@
     <div class="page" id="page-teletype">
       <p class=clear><br>
       <div id="teletype-rig">
-        <!-- Model 33 ASR: the tape reader / punch unit sits to the LEFT of
+        <!-- The machine is drawn by assets/Model-33-ASR.svg in #tty-backdrop
+             (pointer-events: none, so it never steals a click). Everything
+             below stays live HTML, laid out inside #tty-overlay in the SAME
+             coordinate system as the artwork: the "SVG art layer" block in
+             css/g60printer.css anchors each block to one of the SVG's marker
+             rects (Keyboard / Apron / Puncher / Reader / Paper / Caret) and
+             mirrors their numbers — keep the two in sync. -->
+        <div id="tty-backdrop"></div>
+        <div id="tty-overlay">
+          <!-- Model 33 ASR: the tape reader / punch unit sits to the LEFT of
              the printer + keyboard, with the punched tape spilling from the
              punch down into a scrollable tape window. -->
-        <div id="asr-tape-unit">
-          <!-- On a real Model 33 ASR the punch sits ABOVE the tape reader on
+          <div id="asr-tape-unit">
+            <!-- On a real Model 33 ASR the punch sits ABOVE the tape reader on
                the left of the cabinet. The punch carries four mechanical
                buttons arranged in a 2x2 block as on the historical machine
                (REL OFF on the top row, BSP ON below): ON/OFF (punch enable,
                OFF by default), BSP (backspace one tape step, punching RUBOUT)
                and REL (release the tape). -->
-          <div id="asr-mech">
-            <div id="asr-punch">
-              <div class="asr-label">TAPE PUNCH</div>
-              <div class="asr-slot"></div>
-              <div class="asr-punch-buttons">
-                <button type="button" class="asr-btn" id="punch-rel"
-                  title="REL — release the tape for manual pull-out">REL</button>
-                <button type="button" class="asr-btn" id="punch-off"
-                  title="Punch OFF — disable the punch (default)">OFF</button>
-                <button type="button" class="asr-btn" id="punch-bsp"
-                  title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
-                <button type="button" class="asr-btn" id="punch-on"
-                  title="Punch ON — duplicate all output onto the paper tape">ON</button>
+            <div id="asr-mech">
+              <div id="asr-punch">
+                <div class="asr-label">TAPE PUNCH</div>
+                <div class="asr-slot"></div>
+                <div class="asr-punch-buttons">
+                  <button type="button" class="asr-btn" id="punch-rel"
+                    title="REL — release the tape for manual pull-out">REL</button>
+                  <button type="button" class="asr-btn" id="punch-off"
+                    title="Punch OFF — disable the punch (default)">OFF</button>
+                  <button type="button" class="asr-btn" id="punch-bsp"
+                    title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
+                  <button type="button" class="asr-btn" id="punch-on"
+                    title="Punch ON — duplicate all output onto the paper tape">ON</button>
+                </div>
               </div>
-            </div>
-            <div id="asr-reader">
-              <div class="asr-label">TAPE READER</div>
-              <!-- Four-position reader switch (START/STOP/FREE/AUTO) in the
+              <div id="asr-reader">
+                <div class="asr-label">TAPE READER</div>
+                <!-- Four-position reader switch (START/STOP/FREE/AUTO) in the
                    style of the front-panel POWER/LOCK key: a round disc whose
                    handle rotates to the active position (wired by
                    setReaderMode() in pdp11-app.js). -->
-              <div class="asr-reader-switch">
-                <div class="asr-switch-disc" title="Click the disc to cycle: START → STOP → FREE → AUTO">
-                  <div class="asr-switch-lever" id="reader-switch-lever"></div>
+                <div class="asr-reader-switch">
+                  <div class="asr-switch-disc" title="Click the disc to cycle: START → STOP → FREE → AUTO">
+                    <div class="asr-switch-lever" id="reader-switch-lever"></div>
+                  </div>
+                  <button type="button" class="asr-switch-pos" data-reader-mode="start">START</button>
+                  <button type="button" class="asr-switch-pos" data-reader-mode="stop">STOP</button>
+                  <button type="button" class="asr-switch-pos" data-reader-mode="free">FREE</button>
+                  <button type="button" class="asr-switch-pos" data-reader-mode="auto">AUTO</button>
                 </div>
-                <button type="button" class="asr-switch-pos" data-reader-mode="start">START</button>
-                <button type="button" class="asr-switch-pos" data-reader-mode="stop">STOP</button>
-                <button type="button" class="asr-switch-pos" data-reader-mode="free">FREE</button>
-                <button type="button" class="asr-switch-pos" data-reader-mode="auto">AUTO</button>
+                <div class="asr-slot"></div>
               </div>
-              <div class="asr-slot"></div>
             </div>
-          </div>
-          <!-- The tape spills from the punch head downwards, hanging past the
+            <!-- The tape spills from the punch head downwards, hanging past the
                cabinet down to the window edge; its own scrollbar appears once
                the tape reaches the bottom of the window. Rows are injected by
                punchtape.js into #punchtape__body. -->
-          <div id="punchtape"></div>
-          <!-- The READER tape hangs from the TAPE READER slot (below the
+            <div id="punchtape"></div>
+            <!-- The READER tape hangs from the TAPE READER slot (below the
                punch), again down to the window edge. A loaded tape is a full
                strip rendered by reader.js into #readertape__body; as bytes
                are read the top rows vanish and the tape moves up through the
                slot, shortening once less than a windowful remains. -->
-          <div id="readertape"></div>
-        </div>
-        <div id="teletype-main">
-          <div id="g60printer"></div>
-          <div id="punchkeypane">
-            <div id="punchkeyboard"></div>
-            <!-- Call Control Unit (CCU) line switch: a rotary knob on the apron
+            <div id="readertape"></div>
+          </div>
+          <div id="teletype-main">
+            <div id="g60printer"></div>
+            <div id="punchkeypane">
+              <div id="punchkeyboard"></div>
+              <!-- Call Control Unit (CCU) line switch: a rotary knob on the apron
                  right of the keyboard, with three positions LINE / OFF / LOCAL
                  (wired by setTtyMode() in pdp11-app.js). -->
-            <div id="ccu-apron" title="Call Control Unit — LINE / OFF / LOCAL">
-              <div class="ccu-switch">
-                <button type="button" class="ccu-switch-pos" data-tty-mode="line"
-                  title="LINE — connected to the machine">LINE</button>
-                <button type="button" class="ccu-switch-pos" data-tty-mode="off"
-                  title="OFF — power off (teletype, punch and reader are disabled)">OFF</button>
-                <button type="button" class="ccu-switch-pos" data-tty-mode="local"
-                  title="LOCAL — disconnected from the machine; keyboard prints locally">LOCAL</button>
-                <div class="ccu-switch-disc" id="ccu-switch-disc" title="Click the knob to cycle: LINE → OFF → LOCAL">
-                  <div class="ccu-switch-lever" id="ccu-switch-lever"></div>
+              <div id="ccu-apron" title="Call Control Unit — LINE / OFF / LOCAL">
+                <div class="ccu-switch">
+                  <button type="button" class="ccu-switch-pos" data-tty-mode="line"
+                    title="LINE — connected to the machine">LINE</button>
+                  <button type="button" class="ccu-switch-pos" data-tty-mode="off"
+                    title="OFF — power off (teletype, punch and reader are disabled)">OFF</button>
+                  <button type="button" class="ccu-switch-pos" data-tty-mode="local"
+                    title="LOCAL — disconnected from the machine; keyboard prints locally">LOCAL</button>
+                  <div class="ccu-switch-disc" id="ccu-switch-disc" title="Click the knob to cycle: LINE → OFF → LOCAL">
+                    <div class="ccu-switch-lever" id="ccu-switch-lever"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -987,6 +997,21 @@
               <div class="config-control config-radios">
                 <label><input type="radio" name="consoleType" value="teletype"> Teletype (Model 33 ASR)</label>
                 <label><input type="radio" name="consoleType" value="vt52"> VT52 (TT0:)</label>
+              </div>
+            </div>
+
+            <!-- Who draws the Model 33 keycaps: the artwork (default) or the
+                 page (the CSS grid). Teletype-only, like the fields below. -->
+            <div class="config-field" id="config-field-keyboardLayout">
+              <span class="config-label">Keyboard keycaps</span>
+              <div class="config-control config-radios">
+                <label><input type="radio" name="keyboardLayout" value="drawn"> Drawn in the artwork
+                  (SVG)</label>
+                <label><input type="radio" name="keyboardLayout" value="grid"> Drawn by the page (current
+                  grid)</label>
+                <span class="config-hint">With the artwork keycaps the keys keep their exact positions
+                  but the caps and their legends come from the machine drawing; the page-drawn grid
+                  keeps the CSS keycaps. Applied immediately.</span>
               </div>
             </div>
 
@@ -1349,43 +1374,65 @@
         <!-- The animated front panel invites a click — make it honest: it
              opens the live Panel page (no URL change), with the same amber
              hover hint as the landing. -->
-        <a href="#panel" class="info-panel-link"
-           onclick="try{switchPage('panel');}catch(e){} return false;"
-           title="Open the live front panel">
+        <a href="#panel" class="info-panel-link" onclick="try{switchPage('panel');}catch(e){} return false;"
+          title="Open the live front panel">
           <span class="info-panel-frame">
             <img src="assets/pdp11-animated-panel.gif" alt="PDP‑11/70 Front Panel"
-                 style="max-width:100%; height:auto; display:block;">
+              style="max-width:100%; height:auto; display:block;">
             <span class="info-panel-hint">▸ OPEN THE FRONT PANEL ◂</span>
           </span>
         </a>
         <style>
-          .info-panel-link { text-decoration: none; display: inline-block; max-width: 100%; }
-          .info-panel-frame { position: relative; display: inline-block; max-width: 100%; }
-          .info-panel-frame img { transition: filter 0.2s ease; }
+          .info-panel-link {
+            text-decoration: none;
+            display: inline-block;
+            max-width: 100%;
+          }
+
+          .info-panel-frame {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+          }
+
+          .info-panel-frame img {
+            transition: filter 0.2s ease;
+          }
+
           .info-panel-link:hover .info-panel-frame img {
-              filter: brightness(0.6);
+            filter: brightness(0.6);
           }
+
           .info-panel-hint {
-              position: absolute; top: 50%; left: 50%;
-              transform: translate(-50%, -50%);
-              font-family: 'VT52', monospace;
-              color: #ffd27f;
-              background: rgba(28, 24, 20, 0.9);
-              border: 1px solid #c8a860;
-              border-radius: 4px;
-              padding: 6px 14px;
-              letter-spacing: 1px;
-              white-space: nowrap;
-              text-shadow: 0 0 8px rgba(255,210,127,0.8), 0 0 20px rgba(200,168,96,0.5);
-              opacity: 0; visibility: hidden;
-              transition: opacity 0.25s ease, visibility 0.25s;
-              z-index: 5;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'VT52', monospace;
+            color: #ffd27f;
+            background: rgba(28, 24, 20, 0.9);
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            padding: 6px 14px;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            text-shadow: 0 0 8px rgba(255, 210, 127, 0.8), 0 0 20px rgba(200, 168, 96, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s;
+            z-index: 5;
           }
+
           .info-panel-link:hover .info-panel-hint {
-              opacity: 1; visibility: visible;
+            opacity: 1;
+            visibility: visible;
           }
+
           @media (max-width: 640px) {
-              .info-panel-hint { font-size: 11px; padding: 4px 8px; }
+            .info-panel-hint {
+              font-size: 11px;
+              padding: 4px 8px;
+            }
           }
         </style>
       </p>
@@ -1408,11 +1455,13 @@
           </tr>
           <tr>
             <td class="disk"><b>Website</b></td>
-            <td><a href="https://github.com/amesk/yaPDP" target="_blank" rel="noopener noreferrer">https://github.com/amesk/yaPDP</a></td>
+            <td><a href="https://github.com/amesk/yaPDP" target="_blank"
+                rel="noopener noreferrer">https://github.com/amesk/yaPDP</a></td>
           </tr>
           <tr>
             <td class="disk"><b>Manual</b></td>
-            <td><a href="https://amesk.github.io/yaPDP/#manual" target="_blank" rel="noopener noreferrer">online user manual</a></td>
+            <td><a href="https://amesk.github.io/yaPDP/#manual" target="_blank" rel="noopener noreferrer">online user
+                manual</a></td>
           </tr>
           <tr>
             <td class="disk"><b>Author</b></td>
@@ -1420,7 +1469,8 @@
           </tr>
           <tr>
             <td class="disk"><b>License</b></td>
-            <td>MIT — see <a href="https://github.com/amesk/yaPDP/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">LICENSE</a></td>
+            <td>MIT — see <a href="https://github.com/amesk/yaPDP/blob/master/LICENSE" target="_blank"
+                rel="noopener noreferrer">LICENSE</a></td>
           </tr>
         </tbody>
       </table>

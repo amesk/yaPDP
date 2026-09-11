@@ -18,6 +18,10 @@
  *     this to avoid double-punching and covers the dropped control codes.
  *   - model33UpperOnly(ch, upperCaseOnly): folds lower-case letters to
  *     upper case when the physical-keyboard Upper-Case-Only flag is set.
+ *   - model33KeyGrid(rows, pitch, spaceW, cell): flattens the staggered
+ *     MODEL33_KEYS rows into the flat per-key grid (stable 'r<row>c<col>' ids
+ *     plus the baseline box of every key) that both the DOM click areas and
+ *     the keycaps drawn in assets/Model-33-ASR.svg are measured against.
  *
  * Run with:  node tests/model33-keyboard.test.js
  *
@@ -54,6 +58,18 @@ function extractBlock(src, startMarker) {
     }
   }
   throw new Error("unbalanced braces for: " + startMarker);
+}
+
+// The flat key grid lives outside the keyboard IIFE (it is pure data
+// derivation), so it is extracted on its own.
+function loadGrid() {
+  const src = fs.readFileSync(SOURCE_PATH, "utf8");
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(
+    extractBlock(src, "function model33KeyGrid") +
+    "\n; this.grid = model33KeyGrid;", sandbox);
+  return sandbox.grid;
 }
 
 function loadHelpers() {
@@ -257,6 +273,68 @@ function run() {
   assert.strictEqual(upperOnly(0x61, false), 0x61, "a passes through");
   assert.strictEqual(upperOnly(0x7A, false), 0x7A, "z passes through");
   assert.strictEqual(upperOnly(0x41, false), 0x41, "A passes through");
+
+  // --- Flat key grid (the artwork's keycap grid) ------------------------
+  // The rows below replicate the production geometry of MODEL33_KEYS (row tops
+  // 0/44/88/132/176, staggered lefts 0/20/20/0/160, 13/13/14/12 keys plus the
+  // 196px space bar). The grid is the single source both the DOM click areas
+  // and the artwork's drawn keycaps are measured against, so its block bounds
+  // must equal the Keyboard marker contract used by
+  // tests/teletype-svg-backdrop.test.js (576 x 212).
+  {
+    const keyGrid = loadGrid();
+    const PITCH = 40, CELL = 36, SPACE_W = 196;
+    const rows = [
+      { top: 0, left: 0, keys: new Array(13).fill({ label: "x" }) },
+      { top: 44, left: 20, keys: new Array(13).fill({ label: "x" }) },
+      { top: 88, left: 20, keys: new Array(14).fill({ label: "x" }) },
+      { top: 132, left: 0, keys: new Array(12).fill({ label: "x" }) },
+      { top: 176, left: 160, keys: [{ space: true, special: "space" }] },
+    ];
+    const grid = keyGrid(rows, PITCH, SPACE_W, CELL);
+    assert.strictEqual(grid.length, 53, "13+13+14+12 keys plus the space bar");
+
+    const ids = new Set(grid.map((slot) => slot.id));
+    assert.strictEqual(ids.size, 53, "every slot carries a unique positional id");
+
+    // Top-left key of the top row.
+    const first = grid[0];
+    assert.strictEqual(first.id, "r0c0");
+    assert.strictEqual(first.row, 0);
+    assert.strictEqual(first.col, 0);
+    assert.strictEqual(first.x, 0);
+    assert.strictEqual(first.y, 0);
+    assert.strictEqual(first.w, CELL, "letter keys are one cell wide");
+    assert.strictEqual(first.h, CELL, "letter keys are one cell tall");
+
+    // The stagger: the second and third rows start 20px to the right.
+    assert.strictEqual(grid.find((s) => s.id === "r1c0").x, 20);
+    assert.strictEqual(grid.find((s) => s.id === "r2c0").x, 20);
+    assert.strictEqual(grid.find((s) => s.id === "r2c0").y, 88);
+    assert.strictEqual(grid.find((s) => s.id === "r3c0").x, 0, "bottom row flushes left");
+
+    // Pitch: consecutive keys of a row are exactly one pitch apart, so the
+    // last key of the 14-key middle row sits at left + 13 * pitch.
+    const row2 = grid.filter((s) => s.row === 2);
+    assert.strictEqual(row2.length, 14, "the middle letter row holds 14 keys");
+    assert.strictEqual(row2[row2.length - 1].x, 20 + 13 * PITCH);
+    assert.strictEqual(row2[1].x - row2[0].x, PITCH, "keys are one pitch apart");
+
+    // The space bar is its own slot: wider than a key, bottom row, offset right.
+    const space = grid[grid.length - 1];
+    assert.strictEqual(space.id, "r4c0");
+    assert.strictEqual(space.x, 160);
+    assert.strictEqual(space.y, 176);
+    assert.strictEqual(space.w, SPACE_W, "the space bar spans 196px");
+    assert.strictEqual(space.def.special, "space");
+
+    // Block bounds — the Keyboard marker contract (and the width/height the
+    // CSS sizes #punchkeyboard to).
+    const right = Math.max.apply(null, grid.map((s) => s.x + s.w));
+    const bottom = Math.max.apply(null, grid.map((s) => s.y + s.h));
+    assert.strictEqual(right, 576, "key block width matches the marker contract");
+    assert.strictEqual(bottom, 212, "key block height matches the marker contract");
+  }
 
   console.log("model33-keyboard: all tests passed");
 }

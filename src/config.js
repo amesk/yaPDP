@@ -17,6 +17,11 @@
  *   - teletypeSpeed: console teletype echo speed, 'authentic' (real Model 33 ASR,
  *                    110 baud = 10 chars/sec) or 'fast' (accelerated dev pace,
  *                    ~33 chars/sec). Applied live, no reboot needed.
+ *   - keyboardLayout: who draws the Model 33 keycaps — 'drawn' (default) leaves
+ *                    them (and their legends) to the artwork
+ *                    (assets/Model-33-ASR.svg), so the DOM keys are invisible
+ *                    hit areas in exactly the same boxes; 'grid' draws the caps
+ *                    in CSS (the pre-artwork behaviour). Applied live.
  *   - upperCaseOnly: force the physical keyboard to send letters in upper case
  *                    (0x41-0x5A), matching the Upper-Case-Only Model 33 ASR.
  *                    Off by default so lower-case passes through (e.g. 2.11 BSD,
@@ -69,6 +74,7 @@ var Config = (function () {
         printWidth: 72,          // 72 | 80 (console teletype, Model 33 ASR)
         printerWidth: 132,       // 72 | 80 | 100 | 132 (LP11 printer page)
         teletypeSpeed: "authentic", // 'authentic' | 'fast' (console teletype echo)
+        keyboardLayout: "drawn", // 'drawn' (caps in the artwork) | 'grid' (caps in CSS)
         upperCaseOnly: false,    // boolean (physical keyboard upper-case only)
         keyClick: false,         // boolean (VT52 key click)
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
@@ -133,6 +139,9 @@ var Config = (function () {
             printerWidth: normalizePrintWidth(o.printerWidth, DEFAULTS.printerWidth),
             // Absent/garbage falls back to 'authentic' (the real Model 33 ASR speed).
             teletypeSpeed: o.teletypeSpeed === "fast" ? "fast" : DEFAULTS.teletypeSpeed,
+            // Absent/garbage falls back to 'drawn': the artwork owns the keycaps
+            // unless the operator explicitly asks for the CSS-drawn grid.
+            keyboardLayout: o.keyboardLayout === "grid" ? "grid" : DEFAULTS.keyboardLayout,
             upperCaseOnly: Boolean(o.upperCaseOnly),
             keyClick: Boolean(o.keyClick),
             vt52ReverseVideo: Boolean(o.vt52ReverseVideo),

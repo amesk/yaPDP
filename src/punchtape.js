@@ -104,14 +104,17 @@
         cachedTop = top;
         var maxH = window.innerHeight - top - 12; // 12px bottom margin
         if (maxH < 40) maxH = 40;
-        // The tape hangs inside the CSS-scaled teletype rig (--tty-scale < 1,
-        // set by installTeletypeScaling in pdp11-app.js): divide the LOCAL
-        // max-height by the scale so the VISUAL tape still reaches the bottom
-        // of the window.
+        // The tape hangs inside the scaled teletype rig: the visual scale is
+        // the element's rendered width (transforms applied) over its layout
+        // width (transform-free) — the same rule as ttyScaleFor() in
+        // pdp11-app.js. Divide the LOCAL max-height by it so the VISUAL tape
+        // still reaches the bottom of the window.
         var scale = 1;
-        var v = window.getComputedStyle(container).getPropertyValue('--tty-scale');
-        var parsed = parseFloat(v);
-        if (isFinite(parsed) && parsed > 0) scale = parsed;
+        var rectW = container.getBoundingClientRect().width;
+        if (rectW > 0 && container.offsetWidth > 0) {
+            scale = rectW / container.offsetWidth;
+            if (!isFinite(scale) || scale <= 0) scale = 1;
+        }
         container.style.maxHeight = Math.floor(maxH / scale) + 'px';
     }
 
