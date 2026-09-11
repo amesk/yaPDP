@@ -274,6 +274,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/punchtape.test.js`, `tests/teletype-cabinet-css.test.js`,
   `tests/teletype-svg-backdrop.test.js`)
 
+- **The CCU (LINE/OFF/LOCAL) switch is modelled as the real knob again, with the
+  original dark lettering.** It is a RAISED two-step cylinder now — a wide
+  moulded base standing proud of the apron with a smaller flat cap set LOW on it
+  (its centre sits on the base's centre, not lifted above the turning axis),
+  instead of a flat disc. The base and the cap keep their moulded shading
+  fixed while only the BEAK turns: `setTtyMode` rotates `#ccu-switch-lever`,
+  whose orbit origin follows the smaller cap. The LINE/OFF/LOCAL legends went
+  back to dark moulded lettering on the apron (a light stamp with a faint light
+  catch, as the real panel prints them dark, not glowing). (`css/g60printer.css`,
+  `src/pdp11-app.js`, `tests/teletype-cabinet-css.test.js`)
+
 - **The reader tape now comes OUT of the slot as it is read.** It used to be
   rendered in full and pulled UP into the reader (the top rows disappearing) —
   which is backwards: on the machine the tape is fed through the slot and spills

@@ -1949,36 +1949,63 @@
     bottom: 0;
 }
 
-/* Round knob: a circle with a thick gray ring and a light centre. The
-   whole knob (disc + beak) rotates around its OWN centre like a real
-   rotary knob: the small triangular beak is a child of the disc, so it
-   orbits the centre as the knob turns. LINE = -60°, OFF = 0° (up),
-   LOCAL = +60°. */
+/* The real knob is a RAISED two-step cylinder: a wide moulded base standing
+   proud of the apron with a smaller, almost flat cap on top of it (the beak
+   then sits on that cap). The base lives on the non-rotating parent, so the
+   light never turns with the pointer. */
+.ccu-switch::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: 44px;
+    height: 44px;
+    margin-left: -22px;
+    border-radius: 50%;
+    /* Dark moulded plastic: lit along the top edge, deep shade under the
+       bottom lip, so the base reads as standing out of the apron. */
+    background: linear-gradient(180deg,
+            #8e8e8b 0%,
+            #646461 38%,
+            #3a3a38 72%,
+            #232322 100%);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.55),
+        inset 0 -3px 5px rgba(0, 0, 0, 0.65),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+        0 4px 7px rgba(0, 0, 0, 0.65),
+        0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* The smaller CAP on top of the base: nearly flat, just enough shading to read
+   as a step, and it never turns either — the BEAK orbits its centre. The cap
+   is smaller than the base, which is what makes the knob a two-step cylinder.
+   LINE = -60°, OFF = 0° (up), LOCAL = +60°. */
 .ccu-switch-disc {
     position: absolute;
     left: 50%;
-    bottom: 6px;
-    width: 34px;
-    height: 34px;
-    margin-left: -17px;
+    /* The dark cap sits LOW on the base — centred on the moulded base (its
+       centre 26px up against the base centre at 24px), NOT lifted above the
+       turning axis: the knob then reads as a cylinder with a flat top rather
+       than a raised mushroom. */
+    bottom: 12px;
+    width: 28px;
+    height: 28px;
+    margin-left: -14px;
     border-radius: 50%;
     cursor: pointer;
-    /* Light centre (the molded indicator) inside a thick DARK ring, drawn
-       as one radial gradient (no border, so the beak's bottom:100% lands
-       exactly on the knob's outer edge). Darker ring = closer to the real
-       ASR-33 knob (near-black plastic). Symmetric (50% 50%) so rotating
-       the knob is invisible except for the beak. */
-    background: radial-gradient(circle at 50% 50%,
-            #f6f6f6 0%,
-            #e0e0e0 58%,
-            #5f5f5f 68%,
-            #545454 94%,
-            #666666 100%);
+    /* Almost flat top: a faint light catch at the top edge and a soft shade
+       towards the bottom edge — no radial dome, this is the flat face. */
+    background: linear-gradient(180deg,
+            #5a5854 0%,
+            #45433f 45%,
+            #2c2a27 100%);
     box-shadow:
-        inset 0 0 0 1px rgba(0, 0, 0, 0.12),
-        0 2px 3px rgba(0, 0, 0, 0.4);
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -1px 2px rgba(0, 0, 0, 0.5),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.3),
+        0 3px 5px rgba(0, 0, 0, 0.55);
     transform-origin: 50% 50%;
-    transition: transform 0.2s;
     z-index: 2;
 }
 
@@ -1993,8 +2020,16 @@
     width: 10px;
     height: 8px;
     margin-left: -5px;
-    background: linear-gradient(180deg, #d0d0d0 0%, #8a8a8a 100%);
+    /* A raised moulded tab, not a flat sticker: bright top, shaded tip, plus
+       its own drop shadow onto the disc. */
+    background: linear-gradient(180deg, #f4f4f2 0%, #bcbcb9 55%, #7c7c79 100%);
     clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
+    /* The CAP stays put (its moulded shading must not spin): the BEAK orbits
+       the cap centre instead. The beak's own top sits 8px above the cap edge,
+       and the cap radius is 14px, so the centre is 8 + 14 = 22px below it. */
+    transform-origin: 50% 22px;
+    transition: transform 0.2s;
     pointer-events: none;
     z-index: 3;
 }
@@ -2005,7 +2040,13 @@
     background: transparent;
     border: 0;
     padding: 0;
-    color: #5c5442;
+    /* Dark legends, as on the real apron: moulded/painted dark lettering, with
+       a faint light catch under the stroke so it still reads on the shaded
+       plastic (a printed stamp, not glowing paint). */
+    color: #2f2a22;
+    text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.18),
+        0 0 1px rgba(255, 255, 255, 0.10);
     font-family: 'Courier Prime', arial, helvetica, sans-serif;
     font-size: 13px;
     font-weight: bold;
@@ -2033,8 +2074,12 @@
 }
 
 .ccu-switch-pos.active {
-    color: #7a5a20;
-    text-shadow: 0 0 4px rgba(122, 90, 32, 0.5);
+    /* Still dark lettering (as on the machine), just pressed deeper into the
+       plastic with a warm tint so the active detent is told apart. */
+    color: #1d1913;
+    text-shadow:
+        0 1px 0 rgba(255, 235, 190, 0.22),
+        0 0 6px rgba(255, 200, 90, 0.35);
 }
 
 /* Teletype machine chrome keeps the pixel VT323 (narrow advance, tuned
