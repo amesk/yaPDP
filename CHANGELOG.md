@@ -258,6 +258,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sink. `tests/punchtape.test.js` pins the sunk latch and the absence of any
   highlight. (`css/g60printer.css`, `tests/punchtape.test.js`)
 
+- **The TAPE READER switch is now the authentic vertical four-detent lever.**
+  The rotary knob with four labels around a disc was wrong: on the automatic
+  (ASR) Model 33 the reader is controlled by a lever that slides up and down a
+  slot and clicks into four fixed positions, printed top to bottom as
+  **START** (manual run — the reader feeds continuously), **AUTO**
+  (line-controlled run: X-ON starts, X-OFF pauses), **STOP** (forced stop) and
+  **FREE** (tape released for manual pull). The handle can be dragged to a
+  detent (it follows the pointer and the mode latches on release, with the
+  switch click), clicked to step one position down, and the labels stay direct
+  hit targets. The block is PORTRAIT now: the 40x115 native frame matches the
+  artwork's portrait `ReaderControl` slot, which it is fitted onto. `readerModes`
+  is stored in the machine's top-to-bottom order, so each mode's index is also
+  the lever's detent. (`pdp11.html`, `css/g60printer.css`, `src/pdp11-app.js`,
+  `tests/punchtape.test.js`, `tests/teletype-cabinet-css.test.js`,
+  `tests/teletype-svg-backdrop.test.js`)
+
+- **Marker fallbacks re-synced with the re-cut punch/reader markers.** The
+  artwork's `PuncherControl` and the now PORTRAIT `ReaderControl` slots were
+  re-cut, so the stylesheet's marker numbers and contain factors (`--tty-pctrl-*`,
+  `--tty-rctrl-*`, and `--tty-rctrl-switch-k` over the new 40px-wide lever
+  block) were brought back in step, and the markers layer returned to its
+  release state (per-rect `display:none`). (`assets/Model-33-ASR.svg`,
+  `css/g60printer.css`)
+
 ### Removed
 
 - **Browser loopback capture voice engine.** `tools/voicer.js` no longer
@@ -269,6 +293,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`tools/voicer.js`, `tools/assemble-video.js`, `tests/voicer.test.js`)
 
 ### Fixed
+
+- **The teletype rig was being squashed vertically, so overlays could never
+  line up with the artwork markers.** `#teletype-rig` is a flex item of the
+  column-flex `#page-teletype`, so on windows shorter than the artwork it was
+  SHRUNK to fit instead of keeping its aspect ratio. The backdrop stretches to
+  the rig box (`background-size: 100% 100%`), so the squashed rig smeared the
+  whole drawing at a different px-per-unit than the HTML overlays (which live in
+  `--tty-u` units) — no amount of re-drawing the markers could make the two
+  agree. The rig now declares `flex: none` and is fitted the way
+  `installTeletypeScaling()` was designed to fit it: one uniform
+  `transform: scale()` on an unsquashed rig. Measured after the fix: the reader
+  lever block and its `ReaderControl` marker differ by 0 px on all four sides.
+  The quad projection for the reader was also brought in step with the new
+  portrait lever block (40x115 native, instead of the former 92x62 knob).
+  (`css/g60printer.css`, `src/pdp11-app.js`)
 
 - **Server-built demo-reel videos run end to end on CI.** The
   `build-promo-videos` workflow no longer dies at any point of the pipeline:

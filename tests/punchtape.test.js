@@ -160,10 +160,17 @@ function testMarkup() {
         pos[0] < pos[1] && pos[1] < pos[2] && pos[2] < pos[3],
       "punch buttons must be ordered REL/OFF/BSP/ON (2x2: REL OFF over BSP ON)");
   }
-  // Four-position reader switch (START/STOP/FREE/AUTO) on the TAPE READER.
+  // Vertical four-detent reader lever on the TAPE READER — the authentic
+  // control of the automatic (ASR) reader. The handle slides in a slot and the
+  // labels are printed top to bottom as on the machine:
+  // START / AUTO / STOP / FREE, so the DOM order must match that order.
   assert.ok(html.indexOf('id="reader-switch-lever"') !== -1,
     "pdp11.html must contain the reader switch lever (#reader-switch-lever)");
-  for (const mode of ["start", "stop", "free", "auto"]) {
+  assert.ok(html.indexOf('class="asr-switch-handle"') !== -1,
+    "the lever must be the sliding handle (.asr-switch-handle)");
+  assert.ok(html.indexOf('class="asr-switch-slot"') !== -1,
+    "the lever must travel in a vertical slot (.asr-switch-slot)");
+  for (const mode of ["start", "auto", "stop", "free"]) {
     assert.ok(html.indexOf('data-reader-mode="' + mode + '"') !== -1,
       "pdp11.html must contain the reader switch position '" + mode + "'");
   }
@@ -194,7 +201,8 @@ function testCss() {
     ".asr-btn.active",
     ".asr-reader-switch",
     ".asr-switch-pos",
-    ".asr-switch-lever",
+    ".asr-switch-slot",
+    ".asr-switch-handle",
     ".pt-row",
     ".pt-hole",
     ".pt-sprocket",

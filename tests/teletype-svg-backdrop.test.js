@@ -51,7 +51,7 @@ const NATIVE = {
   kbdW: 576, kbdH: 212,      // key block, see model33KeyGrid in src/pdp11-app.js
   plateW: 170, plateH: 164,  // punch / reader plate frames
   ctrlW: 106,                // REL/OFF/BSP/ON cluster (2x2 grid) width
-  switchW: 92,               // START/STOP/FREE/AUTO reader switch block
+  switchW: 40,               // vertical four-detent reader lever block (40x115)
   apronW: 118, apronH: 66,   // CCU apron block
   sheetW: 741                // paper sheet inside the 808px printer block
 };
@@ -299,7 +299,7 @@ function run() {
     assert.ok(/var\(--tty-rctrl-w\)/.test(rswitchK),
       "--tty-rctrl-switch-k must be derived from the marker width:\n" + rswitchK);
     assert.ok(new RegExp("/\\s*" + NATIVE.switchW).test(rswitchK),
-      "--tty-rctrl-switch-k must divide by the switch block's native width (92):\n" + rswitchK);
+      "--tty-rctrl-switch-k must divide by the lever block's native width (40):\n" + rswitchK);
     assert.ok(/var\(--tty-u-num\)/.test(rswitchK),
       "--tty-rctrl-switch-k must derive from the unitless --tty-u-num:\n" + rswitchK);
 
