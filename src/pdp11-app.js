@@ -148,8 +148,11 @@ function setTtyMode(mode) {
   for (var i = 0; i < pos.length; i++) {
     pos[i].classList.toggle('active', pos[i].getAttribute('data-tty-mode') === mode);
   }
-  var knob = document.getElementById('ccu-switch-disc');
-  if (knob) knob.style.transform = 'rotate(' + ttyLeverAngle(mode) + 'deg)';
+  // Turn the BEAK, not the whole knob: the disc keeps its moulded shading and
+  // the fixed highlight on the apron (see .ccu-switch in css/g60printer.css)
+  // while the pointer sweeps to the active detent.
+  var beak = document.getElementById('ccu-switch-lever');
+  if (beak) beak.style.transform = 'rotate(' + ttyLeverAngle(mode) + 'deg)';
   // OFF cuts power to the whole unit: disengage the punch and stop the
   // reader from feeding. Returning to LINE/LOCAL restores the reader's feed
   // permission according to the reader-mode switch.
