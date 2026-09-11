@@ -284,8 +284,27 @@ function run() {
       "and fall back to the uniform width-driven fit otherwise:\n" + rule);
     assert.ok(/transform-origin\s*:\s*0\s+0\s*;/.test(rule),
       "the switch scales from its top-left corner (marker anchored):\n" + rule);
-    assert.ok(/width\s*:\s*92px\s*;/.test(rule) && /height\s*:\s*62px\s*;/.test(rule),
-      "the switch must keep its native 92x62 frame:\n" + rule);
+    assert.ok(/width\s*:\s*40px\s*;/.test(rule) && /height\s*:\s*115px\s*;/.test(rule),
+      "the switch must keep its native PORTRAIT 40x115 frame (the marker is a " +
+      "portrait slot):\n" + rule);
+    assert.ok(/--reader-lever-step\s*:/.test(rule),
+      "the switch must define the step between the four lever detents:\n" + rule);
+    assert.ok(/--reader-lever-i\s*:/.test(rule),
+      "the switch must expose the lever detent index (--reader-lever-i):\n" + rule);
+  }
+
+  // --- The reader lever is a VERTICAL four-detent lever, not a rotary knob --
+  {
+    const slot = extractRule(css, ".asr-switch-slot {");
+    assert.ok(/width\s*:\s*12px\s*;/.test(slot) && /height\s*:\s*107px\s*;/.test(slot),
+      "the lever slot must be tall and narrow (vertical travel):\n" + slot);
+    const handle = extractRule(css, ".asr-switch-handle {");
+    assert.ok(/top\s*:\s*calc\(var\(--reader-lever-i\)\s*\*\s*var\(--reader-lever-step\)\)\s*;/.test(handle),
+      "the handle must sit on the --reader-lever-i detent:\n" + handle);
+    assert.ok(/touch-action\s*:\s*none\s*;/.test(handle),
+      "the draggable handle must opt out of browser panning:\n" + handle);
+    assert.ok(css.indexOf(".asr-switch-disc") === -1,
+      "the old rotary reader knob (.asr-switch-disc) must be gone");
   }
 
   // --- CCU apron: knob + labels anchored to the Apron marker ----------------

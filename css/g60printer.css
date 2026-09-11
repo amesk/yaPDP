@@ -1220,20 +1220,20 @@
     --tty-apron-y: 299.60672;
     --tty-apron-w: 32.433464;
     --tty-apron-h: 17.285152;
-    --tty-pctrl-x: 43.746887;
-    --tty-pctrl-y: 123.93871;
-    --tty-pctrl-w: 41.191868;
-    --tty-pctrl-h: 28.906223;
+    --tty-pctrl-x: 48.322926;
+    --tty-pctrl-y: 124.42154;
+    --tty-pctrl-w: 41.215778;
+    --tty-pctrl-h: 22.454559;
     --tty-ptape-x: 33.821438;
     --tty-ptape-y: 183.21991;
     --tty-ptape-w: 27.412594;
     --tty-ptape-h: 1.8400521;
     /* The reader unit is split the same way as the punch: the switch plate and
        the loaded tape are separate drawings, so they carry separate markers. */
-    --tty-rctrl-x: 64.733955;
-    --tty-rctrl-y: 242.43582;
-    --tty-rctrl-w: 31.239086;
-    --tty-rctrl-h: 23.328508;
+    --tty-rctrl-x: 31.09285;
+    --tty-rctrl-y: 234.60966;
+    --tty-rctrl-w: 12.177683;
+    --tty-rctrl-h: 35.106007;
     --tty-rtape-x: 26.909184;
     --tty-rtape-y: 202.69734;
     --tty-rtape-w: 27.412594;
@@ -1255,8 +1255,8 @@
        CCU apron 118x66, paper sheet 741px wide. */
     --tty-kbd-k: calc(var(--tty-u-num) * 0.36657);
     /* min(216.34595/576, 77.712708/212) — uniform fit, page-drawn caps */
-    --tty-pctrl-k: calc(var(--tty-u-num) * 0.17626);
-    /* min(41.191868/170, 28.906223/164) — the (now empty) TAPE PUNCH plate frame
+    --tty-pctrl-k: calc(var(--tty-u-num) * 0.13692);
+    /* min(41.215778/170, 22.454559/164) — the (now empty) TAPE PUNCH plate frame
        is contain-fitted onto the PuncherControl marker. */
     --tty-pctrl-btn-k: calc(var(--tty-u-num) * var(--tty-pctrl-w) / 106);
     /* The REL/OFF/BSP/ON cluster is a 106px-wide 2x2 grid: a UNIFORM, width-
@@ -1272,12 +1272,14 @@
        and its first row starts at the marker's lower edge. */
     --tty-rtape-cy: calc(var(--tty-rtape-y) + var(--tty-rtape-h));
     --tty-rtape-cx: calc(var(--tty-rtape-x) + var(--tty-rtape-w) / 2);
-    /* min(31.239086/170, 23.328508/164) — the (now empty) TAPE READER plate
+    /* min(12.177683/170, 35.106007/164) — the (now empty) TAPE READER plate
        frame is contain-fitted onto the ReaderControl marker. */
-    --tty-rctrl-k: calc(var(--tty-u-num) * 0.14225);
-    /* The 92px-wide switch block is fitted by WIDTH onto the same marker, so the
-       round disc never distorts while the outer edges follow the artwork. */
-    --tty-rctrl-switch-k: calc(var(--tty-u-num) * var(--tty-rctrl-w) / 92);
+    --tty-rctrl-k: calc(var(--tty-u-num) * 0.0716334);
+    /* The 40px-wide vertical lever block is fitted by WIDTH onto the same
+       marker: the marker is a portrait slot (12.18 x 35.11 units — the same
+       1:2.88 ratio as the 40x115 native block), so the lever follows the
+       artwork without distorting. */
+    --tty-rctrl-switch-k: calc(var(--tty-u-num) * var(--tty-rctrl-w) / 40);
     --tty-apron-k: calc(var(--tty-u-num) * 0.26190);
     /* min(32.433464/118, 17.285152/66) */
     /* Printable width: the artwork's Paper marker sets it. The sheet itself is
@@ -1301,6 +1303,15 @@
     display: block;
     width: calc(var(--tty-u) * var(--tty-vb-w));
     height: calc(var(--tty-u) * var(--tty-vb-h));
+    /* The rig is a flex item of #page-teletype (a column flex container), so
+       WITHOUT this it gets SHRUNK on short windows instead of keeping its
+       artwork aspect ratio. The backdrop stretches to the rig box
+       (background-size: 100% 100%), so a squashed rig smears the whole drawing
+       vertically at a different px-per-unit than the HTML overlays (which are
+       positioned in --tty-u units) — the two could then never line up, however
+       carefully the markers were drawn. installTeletypeScaling() is what really
+       fits the machine: one uniform transform: scale() on the untouched rig. */
+    flex: none;
 }
 
 /* The artwork itself. pointer-events:none keeps every control's own hit area. */
@@ -1541,20 +1552,23 @@
         1px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Four-position tape reader switch (START/STOP/FREE/AUTO) styled like the
-   CCU line switch (LINE/OFF/LOCAL): a round rotary knob with a light centre,
-   a gray ring and a protruding triangular beak that points at the active
-   position. The JS rotates #reader-switch-lever (0/90/180/270°), so the beak
-   orbits the disc centre and lands on START/STOP/FREE/AUTO.
+/* Vertical four-position tape reader lever — the authentic control of the
+   AUTOMATIC (ASR) Model 33 reader. Not a rotary knob: the handle slides up and
+   down a slot and clicks into four detents, printed top to bottom on the real
+   machine as START / AUTO / STOP / FREE. setReaderMode() in src/pdp11-app.js
+   sets --reader-lever-i (0 = START at the top ... 3 = FREE at the bottom).
    The block left the reader plate frame: it is anchored to the artwork's
    ReaderControl marker itself, so the artwork owns where the switch sits.
-   Uniform width-driven fit (see --tty-rctrl-switch-k) keeps the disc round. */
+   Uniform width-driven fit (see --tty-rctrl-switch-k) keeps the handle square. */
 .asr-reader-switch {
     position: absolute;
     left: calc(var(--tty-u) * var(--tty-rctrl-x));
     top: calc(var(--tty-u) * var(--tty-rctrl-y));
-    width: 92px;
-    height: 62px;
+    /* PORTRAIT frame (40x115 px = the 1:2.88 ratio of the artwork's portrait
+       ReaderControl slot): the lever travels vertically, so the block is taller
+       than it is wide. */
+    width: 40px;
+    height: 115px;
     transform-origin: 0 0;
     /* When the artist marks ReaderControl as a QUADRILATERAL (it is tilted in
        the artwork), the page publishes a matrix3d() that projects the switch
@@ -1564,90 +1578,93 @@
     /* Same layer as the punch cluster: below both hanging tapes (10/11), so a
        punched tape still passes in front of the reader mechanism. */
     z-index: 5;
+    /* Distance between two detents: (slot height 107px - handle 12px) / 3. */
+    --reader-lever-step: 31.6667px;
+    /* Which detent the lever sits in (0..3, top to bottom); set by the JS. */
+    --reader-lever-i: 0;
 }
 
-.asr-switch-disc {
+/* The vertical slot the lever travels in, with its four detents. */
+.asr-switch-slot {
     position: absolute;
-    left: 26px;
-    top: 13px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    left: 4px;
+    top: 4px;
+    width: 12px;
+    height: 107px;
+    border-radius: 6px;
     cursor: pointer;
-    /* Light centre inside a thick dark ring, matching the CCU knob. */
-    background: radial-gradient(circle at 50% 50%,
-            #f6f6f6 0%,
-            #e0e0e0 58%,
-            #5f5f5f 68%,
-            #545454 94%,
-            #666666 100%);
+    /* A dark recessed channel the metal handle travels in. */
+    background: linear-gradient(90deg, #17140f 0%, #2f2922 45%, #17140f 100%);
     box-shadow:
-        inset 0 0 0 1px rgba(0, 0, 0, 0.12),
-        0 2px 3px rgba(0, 0, 0, 0.4);
+        inset 0 2px 4px rgba(0, 0, 0, 0.75),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Triangular beak, like the CCU knob, sticking out of the disc. It rotates
-   around the disc centre: the beak box sits at top:-8px, so an origin 26px
-   below its top lands exactly on the disc centre (13px + 18px). */
-.asr-switch-lever {
+/* The lever handle: a bright metal tab that slides between the detents and
+   stays where it is released — the transition is what the operator sees as the
+   lever clicks from one position to the next. */
+.asr-switch-handle {
     position: absolute;
-    left: 50%;
-    top: -8px;
-    width: 10px;
-    height: 8px;
-    margin-left: -5px;
-    background: linear-gradient(180deg, #d0d0d0 0%, #8a8a8a 100%);
-    clip-path: polygon(50% 0, 100% 100%, 0 100%);
-    transform-origin: 50% 26px;
-    transition: transform 0.2s;
-    pointer-events: none;
-    z-index: 2;
+    /* Centred on the 12px slot (slot spans x = 4..16px, so its centre is 10px):
+       a 20px tab sits at x = 0..20px. */
+    left: 0;
+    top: calc(var(--reader-lever-i) * var(--reader-lever-step));
+    width: 20px;
+    height: 12px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #f2f2f0 0%, #cfcfcb 45%, #8d8d89 100%);
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.6),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.28);
+    cursor: grab;
+    /* The operator drags the handle, so the browser must not scroll/zoom. */
+    touch-action: none;
+    transition: top 0.18s ease;
 }
 
-/* Position labels around the disc, kept clear of the disc. */
+/* While the operator holds the handle it follows the pointer, so no easing. */
+.asr-switch-handle.dragging {
+    cursor: grabbing;
+    transition: none;
+}
+
+/* The position labels, printed down the side of the slot in the order the real
+   machine reads them (START / AUTO / STOP / FREE, top to bottom). Clicking a
+   label moves the lever straight to that detent; the label matching the current
+   mode is highlighted (as the CCU LINE/OFF/LOCAL labels are). */
 .asr-switch-pos {
     position: absolute;
+    left: 22px;
+    width: 46px;
+    height: 14px;
     background: transparent;
     border: 0;
     padding: 0;
+    text-align: left;
     color: #5c5442;
     font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: bold;
-    letter-spacing: 1px;
+    line-height: 14px;
     cursor: pointer;
 }
 
-/* START sits above the disc: its horizontal centre aligns with the disc
-   centre (X = 26 + 36/2 = 44px). */
+/* Each label is centred on its detent: the slot spans y = 4..111px, so the four
+   detent centres sit at y = 10 / 41.67 / 73.33 / 105px. */
 .asr-switch-pos[data-reader-mode="start"] {
-    left: 44px;
-    top: 0;
-    transform: translateX(-50%);
+    top: 3px;
 }
 
-/* STOP sits to the right of the disc, clear of the rotating beak: its
-   vertical centre aligns with the disc centre (Y = 8 + 36/2 = 26px). */
-.asr-switch-pos[data-reader-mode="stop"] {
-    left: 76px;
-    top: 31px;
-    transform: translateY(-50%);
-}
-
-/* FREE sits below the disc: its horizontal centre aligns with the disc
-   centre (X = 44px). */
-.asr-switch-pos[data-reader-mode="free"] {
-    left: 44px;
-    bottom: 0;
-    transform: translateX(-50%);
-}
-
-/* AUTO sits to the left of the disc, clear of the rotating beak: its
-   vertical centre aligns with the disc centre (Y = 26px). */
 .asr-switch-pos[data-reader-mode="auto"] {
-    left: -14px;
-    top: 31px;
-    transform: translateY(-50%);
+    top: 34.6667px;
+}
+
+.asr-switch-pos[data-reader-mode="stop"] {
+    top: 66.3333px;
+}
+
+.asr-switch-pos[data-reader-mode="free"] {
+    top: 98px;
 }
 
 .asr-switch-pos.active {

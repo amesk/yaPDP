@@ -797,23 +797,33 @@
               <!-- The reader plate frame is EMPTY as well: the artwork draws the
                    plate, its TAPE READER lettering and the tape slot. -->
               <div id="asr-reader"></div>
-              <!-- The four-position reader switch left the plate frame: on a real
-                   Model 33 the reader control area is its own drawing, so it is
-                   anchored to the artwork's ReaderControl marker (see
-                   css/g60printer.css) — exactly like the punch button cluster.
-                   It stays inside #asr-mech so the ASR font stack still applies.
-                   Four-position switch (START/STOP/FREE/AUTO) in the style of
-                   the front-panel POWER/LOCK key: a round disc whose handle
-                   rotates to the active position (wired by setReaderMode() in
-                   pdp11-app.js). -->
+              <!-- The reader control area left the plate frame: on a real Model 33
+                   it is its own drawing, so it is anchored to the artwork's
+                   ReaderControl marker (see css/g60printer.css) — exactly like
+                   the punch button cluster. It stays inside #asr-mech so the ASR
+                   font stack still applies.
+                   On the automatic (ASR) reader the switch is a VERTICAL
+                   four-detent lever, not a rotary knob: the operator drags the
+                   handle up/down the slot and it clicks into one of four
+                   positions, printed top to bottom on the real machine as
+                   START (manual run) / AUTO (line-controlled run — X-ON starts
+                   and X-OFF pauses) / STOP (forced stop) / FREE (tape released
+                   for manual pull). Clicking the handle steps one detent DOWN;
+                   clicking a label moves the lever straight to that position.
+                   Wired by setReaderMode() in src/pdp11-app.js. -->
               <div id="asr-reader-switch" class="asr-reader-switch">
-                <div class="asr-switch-disc" title="Click the disc to cycle: START → STOP → FREE → AUTO">
-                  <div class="asr-switch-lever" id="reader-switch-lever"></div>
+                <button type="button" class="asr-switch-pos" data-reader-mode="start"
+                  title="START — manual run: the reader feeds continuously">START</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="auto"
+                  title="AUTO — line-controlled run: X-ON starts, X-OFF pauses">AUTO</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="stop"
+                  title="STOP — forced stop of the reader">STOP</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="free"
+                  title="FREE — tape released for manual pull-out">FREE</button>
+                <div class="asr-switch-slot">
+                  <div class="asr-switch-handle" id="reader-switch-lever"
+                    title="Drag the lever up/down, or click to step down one position"></div>
                 </div>
-                <button type="button" class="asr-switch-pos" data-reader-mode="start">START</button>
-                <button type="button" class="asr-switch-pos" data-reader-mode="stop">STOP</button>
-                <button type="button" class="asr-switch-pos" data-reader-mode="free">FREE</button>
-                <button type="button" class="asr-switch-pos" data-reader-mode="auto">AUTO</button>
               </div>
             </div>
             <!-- The tape spills from the punch head downwards, hanging past the
