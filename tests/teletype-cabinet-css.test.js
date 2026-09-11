@@ -141,8 +141,9 @@ function run() {
     const app = fs.readFileSync(APP_PATH, "utf8");
     assert.ok(app.indexOf("function ttyArtLayerId") !== -1 &&
       app.indexOf("installTtyForeground(text)") !== -1 &&
-      app.indexOf("'ForegroundBack'") !== -1,
-      "src/pdp11-app.js must find and inline both front-most layers");
+      app.indexOf("'Middle'") !== -1,
+      "src/pdp11-app.js must find and inline both front-most layers " +
+      "(the artwork's Middle and Foreground labels)");
     assert.ok(/setAttribute\(['"]width['"],\s*['"]100%['"]\)/.test(app) &&
       /setAttribute\(['"]height['"],\s*['"]100%['"]\)/.test(app),
       "the inlined artwork must be sized to the rig box exactly like the " +
