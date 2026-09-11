@@ -1323,19 +1323,36 @@
     background: url('../assets/Model-33-ASR.svg') center center / 100% 100% no-repeat;
 }
 
-/* The coordinate space of the controls — same box as the backdrop. */
+/* The coordinate space of the controls — same box as the backdrop. It must NOT
+   create a stacking context of its own (hence no z-index): the hanging tapes
+   inside it are ordered against #tty-foreground-back and #tty-foreground, which
+   are SIBLINGS of this box. Inside an isolated context the whole overlay (both
+   tapes included) would sit under every front-most layer, and the punched tape
+   could never come out OVER the punch tongue. */
 #tty-overlay {
     position: absolute;
     inset: 0;
-    z-index: 3;
 }
 
-/* The artwork's Foreground layer, inlined by installTtyForeground(): the parts
-   the artist marked as "in front of everything" must paint ABOVE the live
-   controls — keys, hanging tapes (z-index 10/11), printed sheet, knobs — which
-   a background image behind them can never do. Same box and the same stretch
-   as the backdrop (background-size: 100% 100%), so the two line up pixel for
-   pixel. Cosmetic only: it must never take a click. */
+/* The artwork's BACK front-most layer (its `ForegroundBack` label), inlined by
+   installTtyForeground(): it must paint BETWEEN the two hanging tapes — above
+   the reader tape (z-index 10) and below the punched tape (z-index 12). That is
+   what lets the punched tape come out OVER the punch tongue while the reader
+   tape still slips UNDER its own translucent tongue. Same box and the same
+   stretch as the backdrop (background-size: 100% 100%), so they line up. */
+#tty-foreground-back {
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    pointer-events: none;
+}
+
+/* The artwork's FRONT layer (its `Foreground` label): the parts the artist
+   marked as "in front of everything" must paint ABOVE the live controls — keys,
+   hanging tapes (z-index 10/12), printed sheet, knobs — which a background
+   image behind them can never do. Same box and the same stretch as the
+   backdrop (background-size: 100% 100%), so the two line up pixel for pixel.
+   Cosmetic only: it must never take a click. */
 #tty-foreground {
     position: absolute;
     inset: 0;
@@ -1691,15 +1708,16 @@
        the 97px tape body, so the tape hangs centred on that axis. Draws ABOVE
        every other element of the ASR unit (the reader switch, the slots), so
        the punched tape always passes in front of the mechanism — including in
-       front of the READER tape (#readertape, same z-index but later in the
-       DOM): with equal z-index the later sibling would win, so the punch tape
-       sits one step higher. */
+       front of the READER tape (#readertape, z-index 10) AND in front of the
+       artwork's ForegroundBack layer (#tty-foreground-back, z-index 11), so the
+       punched tape comes out OVER the punch tongue drawn there while the reader
+       tape still passes UNDER its own tongue. */
     /* The tape leaves the mechanism along the PuncherTape marker: its axis is
        the marker's horizontal centre and its first row sits on the marker's
        lower edge (48px is half of the 97px tape body). */
     top: calc(var(--tty-u) * var(--tty-ptape-cy));
     left: calc(var(--tty-u) * var(--tty-ptape-cx) - 48px);
-    z-index: 11;
+    z-index: 12;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
        transparent background: scrollbar-gutter: stable reserves the gutter
        up front in EVERY browser, so the scrollbar never resizes the tape or

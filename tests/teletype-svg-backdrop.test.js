@@ -361,9 +361,10 @@ function run() {
       extractBlock(src, "function ttyMatrixMultiply") + "\n" +
       extractBlock(src, "function ttyMarkerTransform") + "\n" +
       extractBlock(src, "function ttyMarkerQuad") + "\n" +
+      extractBlock(src, "function ttyArtLayerId") + "\n" +
       extractBlock(src, "function ttyForegroundLayerId") + "\n" +
       "; this.parse = ttyMarkerVars; this.quad = ttyMarkerQuad; " +
-      "this.foreground = ttyForegroundLayerId;";
+      "this.artLayer = ttyArtLayerId; this.foreground = ttyForegroundLayerId;";
     const sandbox = {};
     vm.createContext(sandbox);
     vm.runInContext(code, sandbox);
@@ -420,6 +421,27 @@ function run() {
       assert.strictEqual(sandbox.foreground("<svg><g id='layer1'/></svg>"), "",
         "an artwork without such a layer yields an empty id (nothing inlined)");
       assert.strictEqual(sandbox.foreground(""), "", "empty input yields an empty id");
+
+      // The BACK front-most layer (the punch tongue, inlined between the two
+      // hanging tapes) is addressed the same way, by its Inkscape label, and an
+      // artwork that has not been split yet simply yields nothing there.
+      assert.strictEqual(
+        sandbox.artLayer('<g inkscape:label="ForegroundBack" id="layer9"/>',
+          "ForegroundBack"),
+        "layer9", "a layer must be found through its Inkscape label");
+      assert.strictEqual(sandbox.artLayer('<g id="ForegroundBack"/>', "ForegroundBack"),
+        "ForegroundBack", "an id mentioning the label is the fallback signal");
+      assert.strictEqual(sandbox.artLayer('<g id="ForegroundBack"/>', "Foreground"),
+        "", "the plain Foreground lookup must not swallow the back layer");
+      assert.strictEqual(sandbox.artLayer('<g id="layer7"/>', "ForegroundBack"), "",
+        "a missing back layer yields an empty id");
+      const back = sandbox.artLayer(svg, "ForegroundBack");
+      if (back) {
+        const backTag = new RegExp('<g\\b[^>]*\\bid="' + back + '"[^>]*>').exec(svg);
+        assert.ok(backTag && /inkscape:label="ForegroundBack"/.test(backTag[0]),
+          "the back layer, when the artwork carries one, must be found through " +
+          "its label, got: " + back);
+      }
     }
 
     // A TILTED marker rect must be listed in TTY_QUAD_MARKERS, otherwise it

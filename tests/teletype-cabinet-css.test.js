@@ -87,27 +87,62 @@ function run() {
       "the backdrop must be inert to the mouse (pointer-events: none):\n" + rule);
   }
 
-  // --- The artwork's Foreground layer paints ABOVE the live controls --------
-  // The machine itself is a background image BEHIND every control, so the layer
-  // the artist marked as "in front of everything" is inlined into its own
-  // element (installTtyForeground, src/pdp11-app.js) and stacked above the
-  // hanging tapes (z-index 10/11) and every other control.
+  // --- The artwork's front-most layers paint over the live controls ---------
+  // The machine itself is a background image BEHIND every control, so the layers
+  // the artist marked as being in front of it are inlined into their own
+  // elements (installTtyForeground, src/pdp11-app.js). There are two of them:
+  //   ForegroundBack — the punch tongue, which the PUNCHED tape comes out OVER,
+  //                    so it must sit between the reader tape (10) and the
+  //                    punched tape (12);
+  //   Foreground     — above everything.
   {
     const rule = extractRule(css, "#tty-foreground {");
     assert.ok(/position\s*:\s*absolute\s*;/.test(rule),
       "the foreground must be positioned like the backdrop:\n" + rule);
     const z = /z-index\s*:\s*(\d+)\s*;/.exec(rule);
-    assert.ok(z && Number(z[1]) > 11,
-      "the foreground must stack above both hanging tapes (z-index > 11):\n" + rule);
+    assert.ok(z && Number(z[1]) > 12,
+      "the foreground must stack above both hanging tapes (z-index > 12):\n" + rule);
     assert.ok(/pointer-events\s*:\s*none\s*;/.test(rule),
       "the foreground is cosmetic — it must never take a click:\n" + rule);
+
+    const backRule = extractRule(css, "#tty-foreground-back {");
+    assert.ok(/position\s*:\s*absolute\s*;/.test(backRule),
+      "the back front-most layer must be positioned like the backdrop:\n" + backRule);
+    const zb = /z-index\s*:\s*(\d+)\s*;/.exec(backRule);
+    assert.ok(zb && Number(zb[1]) > 10 && Number(zb[1]) < Number(z[1]),
+      "the back layer must sit between the two hanging tapes and the front " +
+      "layer (10 < z < front):\n" + backRule);
+    assert.ok(/pointer-events\s*:\s*none\s*;/.test(backRule),
+      "the back layer is cosmetic — it must never take a click:\n" + backRule);
+
+    const tape = extractRule(css, "#punchtape {");
+    const zt = /z-index\s*:\s*(\d+)\s*;/.exec(tape);
+    assert.ok(zt && Number(zt[1]) > Number(zb[1]),
+      "the punched tape must come out OVER the punch tongue (z-index above the " +
+      "back layer's):\n" + tape);
+    const reader = extractRule(css, "#readertape {");
+    const zr = /z-index\s*:\s*(\d+)\s*;/.exec(reader);
+    assert.ok(zr && Number(zr[1]) < Number(zb[1]),
+      "the reader tape must still slip UNDER its own tongue (z-index below the " +
+      "back layer's):\n" + reader);
+
+    // #tty-overlay must NOT isolate the tapes in a stacking context of its own,
+    // otherwise the whole overlay (both tapes included) would sit under every
+    // front-most layer and the punched tape could never come out over the tongue.
+    const overlay = extractRule(css, "#tty-overlay {");
+    assert.ok(!/z-index\s*:/.test(overlay),
+      "#tty-overlay must not create a stacking context (no z-index):\n" + overlay);
+
     const html = fs.readFileSync(HTML_PATH, "utf8");
     assert.ok(html.indexOf('id="tty-foreground"') !== -1,
       "pdp11.html must carry the #tty-foreground host");
+    assert.ok(html.indexOf('id="tty-foreground-back"') !== -1,
+      "pdp11.html must carry the #tty-foreground-back host");
     const app = fs.readFileSync(APP_PATH, "utf8");
-    assert.ok(app.indexOf("function ttyForegroundLayerId") !== -1 &&
-      app.indexOf("installTtyForeground(text)") !== -1,
-      "src/pdp11-app.js must find and inline the artwork's Foreground layer");
+    assert.ok(app.indexOf("function ttyArtLayerId") !== -1 &&
+      app.indexOf("installTtyForeground(text)") !== -1 &&
+      app.indexOf("'ForegroundBack'") !== -1,
+      "src/pdp11-app.js must find and inline both front-most layers");
     assert.ok(/setAttribute\(['"]width['"],\s*['"]100%['"]\)/.test(app) &&
       /setAttribute\(['"]height['"],\s*['"]100%['"]\)/.test(app),
       "the inlined artwork must be sized to the rig box exactly like the " +
