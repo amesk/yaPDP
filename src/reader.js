@@ -224,9 +224,10 @@
 
     /**
      * feedByte() - Send the next tape byte to the console DL11 and advance
-     * the tape: the top row disappears and the remaining tape moves up
-     * through the reader slot. When the last byte is read the tape has gone
-     * into the machine and the reader is empty.
+     * the tape: the byte just read becomes the fresh row right under the head
+     * and the already-read part spills DOWNWARDS, exactly like the punched
+     * tape leaving the punch (see punchtape.js). When the last byte is read the
+     * whole tape has come out of the slot and hangs outside it.
      */
     function feedByte() {
         if (!hasTape()) { tapeConsumed(); return; }
@@ -260,23 +261,31 @@
             var q = bridge ? bridge.dlReceiveQueue : window.dlReceiveQueue;
             if (typeof q === 'function') q(0, [b]);
         }
-        if (body && body.firstChild) {
-            body.removeChild(body.firstChild);
+        // The tape comes OUT of the reader slot as it is read (the same
+        // mechanic as the punch tape): prepend the fresh row right under the
+        // head, so the already-read part spills downwards and the tape grows
+        // downwards instead of being pulled up into the slot.
+        if (body) {
+            var row = makeRow(b);
+            if (body.firstChild) body.insertBefore(row, body.firstChild);
+            else body.appendChild(row);
+            updateMaxHeight();
             keepHeadVisible();
         }
         if (!hasTape()) tapeConsumed();
     }
 
     /**
-     * tapeConsumed() - The whole tape has been read: stop the motor, drop
-     * the (empty) tape and free the reader for a new load.
+     * tapeConsumed() - The whole tape has been read: stop the motor and free
+     * the reader for a new load. The tape has left the slot completely, so its
+     * rows STAY on screen (hanging outside, the tail at the bottom); pulling
+     * the tape out by hand (removeTape) or loading a fresh one clears them.
      */
     function tapeConsumed() {
         stopTimer();
         pendingAuto = false;
         tapeBytes = null;
         pos = 0;
-        if (body) body.innerHTML = '';
     }
 
     function startTimer() {
@@ -382,9 +391,10 @@
     // ---- Loading / removal ----------------------------------------------
 
     /**
-     * loadBytes(bytes) - Insert a full tape: render every byte as a hanging
-     * row (first byte under the reader head) and reset the read position.
-     * Replaces any previously loaded tape.
+     * loadBytes(bytes) - Insert a tape into the reader: the whole tape sits
+     * INSIDE the machine (nothing hangs out of the slot yet) and, as bytes are
+     * read, it comes out of the slot and spills downwards — the same way the
+     * punched tape leaves the punch (see punchtape.js). Replaces any tape.
      * @param {Uint8Array} bytes
      */
     function loadBytes(bytes) {
@@ -395,10 +405,8 @@
         pos = 0;
         if (!body) init();
         if (!body) return;
+        // Nothing has come out of the slot yet: the tape is inside the reader.
         body.innerHTML = '';
-        for (var i = 0; i < tapeBytes.length; i++) {
-            body.appendChild(makeRow(tapeBytes[i] & 0x7F));
-        }
         updateMaxHeight();
         keepHeadVisible();
     }
@@ -436,8 +444,13 @@
         var read = Math.max(0, Math.min(snap.pos || 0, tapeBytes.length));
         pos = read;
         if (body) {
+            // Re-play the rows that had already come out of the slot, in the
+            // order they were read: each fresh row is prepended, so the byte
+            // read first ends up furthest down (the tail).
             for (var i = 0; i < read; i++) {
-                if (body.firstChild) body.removeChild(body.firstChild);
+                var row = makeRow(tapeBytes[i] & 0x7F);
+                if (body.firstChild) body.insertBefore(row, body.firstChild);
+                else body.appendChild(row);
             }
             keepHeadVisible();
         }
