@@ -274,6 +274,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/punchtape.test.js`, `tests/teletype-cabinet-css.test.js`,
   `tests/teletype-svg-backdrop.test.js`)
 
+- **The reader tape now comes OUT of the slot as it is read.** It used to be
+  rendered in full and pulled UP into the reader (the top rows disappearing) —
+  which is backwards: on the machine the tape is fed through the slot and spills
+  forwards, downwards. A loaded tape now sits INSIDE the reader (0 rows hang
+  out) and every byte read prepends a fresh row under the head, so the tape
+  grows downwards — the same mechanic as the punched tape (`punchtape.js`).
+  When the last byte is read the whole tape has left the slot and stays hanging
+  (the tail at the bottom) until it is pulled out or a new tape is loaded;
+  `restore()` re-plays the rows that had already come out, in read order.
+  (`src/reader.js`, `tests/reader.test.js`, `tests/e2e-teletype-tape.js`)
+
 - **The artwork can now carry a second front-most layer for the tape tongues.**
   A layer labelled `ForegroundBack` (see `TTY_ART_LAYERS` in `src/pdp11-app.js`)
   is inlined into its own host, `#tty-foreground-back`, which the stylesheet

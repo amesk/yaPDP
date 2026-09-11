@@ -596,7 +596,7 @@ async function main() {
         await page.evaluate(() => window.g60ConsoleWrite(0x13)); // X-OFF first
         await page.evaluate(() => window.g60ConsoleWrite(0x11)); // X-ON
         check("AUTO reader starts feeding on X-ON",
-            await waitFor(async () => (await readerRows(page)) < 8, 10000),
+            await waitFor(async () => (await readerRows(page)) > 2, 10000),
             "readerRows=" + (await readerRows(page)));
         await page.evaluate(() => window.g60ConsoleWrite(0x13)); // X-OFF
         await sleep(300);

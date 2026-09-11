@@ -212,12 +212,15 @@ async function browserProbe() {
     const loaded = await page.evaluate(() => {
       const rows = document.querySelectorAll("#readertape__body .pt-row").length;
       const btnHidden = document.getElementById("tty-remove-tape").classList.contains("hidden");
-      return { rows, btnHidden };
+      const has = window.tapeReader.hasTape();
+      return { rows, btnHidden, has };
     });
-    assert.strictEqual(loaded.rows, 36, "loaded tape renders 36 rows");
+    assert.strictEqual(loaded.rows, 0,
+      "a freshly loaded tape sits INSIDE the reader - nothing hangs out yet");
+    assert.strictEqual(loaded.has, true, "the tape is loaded (hasTape)");
     assert.strictEqual(loaded.btnHidden, false,
       "loading forces STOP, so Remove tape is visible right away");
-    console.log("OK  browser: tape loaded, 36 rows hang from the reader");
+    console.log("OK  browser: tape loaded inside the reader (0 rows out)");
 
     // Remove tape shows in STOP and FREE (reader paused), hides in START
     // and AUTO (reader running).
@@ -244,13 +247,15 @@ async function browserProbe() {
       rows: document.querySelectorAll("#readertape__body .pt-row").length,
     }));
     assert.strictEqual(afterReload.mode, "stop", "Load tape forces STOP");
-    assert.strictEqual(afterReload.rows, 36, "reloaded tape renders 36 rows");
+    assert.strictEqual(afterReload.rows, 0,
+      "a reloaded tape starts inside the reader again (nothing out)");
     console.log("OK  browser: Load tape forces STOP");
 
     const countRows = () => page.evaluate(() =>
       document.querySelectorAll("#readertape__body .pt-row").length);
 
-    // START feeds: rows disappear over time and bytes reach the DL11.
+    // START feeds: the tape comes OUT of the reader slot and spills downwards
+    // (same mechanic as the punched tape), so the row count GROWS.
     await page.click('[data-reader-mode="start"]');
     await new Promise((r) => setTimeout(r, 1500));
     const fed = await page.evaluate(() => {
@@ -258,8 +263,10 @@ async function browserProbe() {
       const has = window.tapeReader.hasTape();
       return { rows, has };
     });
-    assert.ok(fed.rows < 36, "START consumed rows (" + fed.rows + " left)");
-    console.log("OK  browser: START feeds, tape moves up (" + fed.rows + " rows left)");
+    assert.ok(fed.rows > 0,
+      "START makes the tape come out of the slot (" + fed.rows + " rows out)");
+    console.log("OK  browser: START feeds, tape comes out of the slot (" +
+      fed.rows + " rows out)");
 
     // LOCAL: the tape becomes paper text only — nothing reaches the DL11.
     // Spy on dlReceiveQueue and count characters actually rendered on paper
@@ -305,8 +312,8 @@ async function browserProbe() {
       rows: document.querySelectorAll("#readertape__body .pt-row").length,
       dlCalls: window.__dlCalls,
     }));
-    const localConsumed = localBefore - local.rows;
-    assert.ok(localConsumed > 5, "LOCAL consumed rows (" + localConsumed + ")");
+    const localConsumed = local.rows - localBefore;
+    assert.ok(localConsumed > 5, "LOCAL read rows (" + localConsumed + ")");
     assert.strictEqual(local.dlCalls, 0,
       "LOCAL sends nothing to the machine (dlReceiveQueue calls: " + local.dlCalls + ")");
     const dbg = await page.evaluate(() =>
@@ -328,7 +335,7 @@ async function browserProbe() {
       const start = Date.now();
       while (Date.now() - start < timeoutMs) {
         const rows = await countRows();
-        if (rows <= target) return rows;
+        if (rows >= target) return rows;
         await new Promise((r) => setTimeout(r, 50));
       }
       return countRows();
@@ -336,14 +343,14 @@ async function browserProbe() {
     await page.click('[data-reader-mode="stop"]');
     const beforeAuto = await countRows();
     await page.click('[data-reader-mode="auto"]');
-    const afterKick = await waitForRows(beforeAuto - 1, 2000);
-    assert.strictEqual(afterKick, beforeAuto - 1,
+    const afterKick = await waitForRows(beforeAuto + 1, 2000);
+    assert.strictEqual(afterKick, beforeAuto + 1,
       "AUTO sends one byte on engagement");
 
     // Drained signal -> the next byte goes out.
     await page.evaluate(() => window.onConsoleInputDrained());
-    const afterDrained = await waitForRows(afterKick - 1, 2000);
-    assert.strictEqual(afterDrained, afterKick - 1,
+    const afterDrained = await waitForRows(afterKick + 1, 2000);
+    assert.strictEqual(afterDrained, afterKick + 1,
       "AUTO feeds one byte per drained signal");
 
     // DC3 (X-OFF) pauses the AUTO reader; drained signals feed nothing.
@@ -356,8 +363,8 @@ async function browserProbe() {
 
     // DC1 (X-ON) resumes: one byte goes out again.
     await page.evaluate(() => window.g60ConsoleWrite(0x11));
-    const afterXon = await waitForRows(afterXoff - 1, 2000);
-    assert.strictEqual(afterXon, afterXoff - 1,
+    const afterXon = await waitForRows(afterXoff + 1, 2000);
+    assert.strictEqual(afterXon, afterXoff + 1,
       "DC1/X-ON resumes the AUTO reader");
     console.log("OK  browser: AUTO per-byte handshake + X-ON/X-OFF");
 
@@ -391,8 +398,8 @@ async function browserProbe() {
       punchRows: document.querySelectorAll("#punchtape__body .pt-row").length,
       rendered: window.__rendered,
     }));
-    const dupConsumed = dupBefore - dup.readerRows;
-    assert.ok(dupConsumed > 3, "duplication consumed rows (" + dupConsumed + ")");
+    const dupConsumed = dup.readerRows - dupBefore;
+    assert.ok(dupConsumed > 3, "duplication read rows (" + dupConsumed + ")");
     // The fresh tape automatically starts with the NUL lead-in
     // (punchtape.js TAPE_LEADER), so the punch shows leader + one row per
     // duplicated byte. Read the constant from the live page rather than
@@ -437,8 +444,8 @@ async function browserProbe() {
       dlCalls: window.__dlCalls,
       rendered: window.__rendered,
     }));
-    const lineConsumed = lineBefore - line.rows;
-    assert.ok(lineConsumed > 3, "LINE consumed rows (" + lineConsumed + ")");
+    const lineConsumed = line.rows - lineBefore;
+    assert.ok(lineConsumed > 3, "LINE read rows (" + lineConsumed + ")");
     assert.strictEqual(line.dlCalls, lineConsumed,
       "LINE sent every byte to the machine (" + line.dlCalls + " of " + lineConsumed + ")");
     assert.strictEqual(line.rendered, 0,

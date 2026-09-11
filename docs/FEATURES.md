@@ -106,9 +106,11 @@ loaded tape never starts feeding on its own. The CCU routes every read byte
 exactly like the keyboard: in **LOCAL** the tape prints on paper only
 (tape-to-paper copy), in **LINE** it is sent to the machine and printed by the
 machine's echo. With the punch engaged, every read byte is also punched onto
-the output tape — the classic ASR trick for duplicating tapes. As the tape is
-read it moves up through the slot and shortens; when the last byte is read the
-tape has gone into the machine and a new one can be loaded. Mode is chosen
+the output tape — the classic ASR trick for duplicating tapes. A loaded tape
+sits **inside** the reader; as it is read it comes **out of the slot** and
+spills downwards, exactly like the punched tape leaving the punch, so at the end
+the whole tape hangs outside (the tail at the bottom) until it is pulled out or
+a fresh tape is loaded. Mode is chosen
 with the **Call Control Unit (CCU)** rotary knob on the apron right of the
 keyboard — **LINE / OFF / LOCAL** (LINE connects to the machine, OFF powers the
 whole unit down — teletype, punch and reader — and LOCAL prints the keyboard
