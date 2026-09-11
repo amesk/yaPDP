@@ -757,11 +757,17 @@
              rects (Keyboard / Apron / Puncher / Reader / Paper / Caret) and
              mirrors their numbers — keep the two in sync. -->
         <div id="tty-backdrop"></div>
-        <!-- The artwork's Foreground layer is inlined HERE (see
+        <!-- The artwork's front-most layers are inlined HERE (see
              installTtyForeground in src/pdp11-app.js), so the parts the artist
-             marked as "in front of everything" paint ABOVE the live controls —
+             marked as being in front of the machine paint ABOVE the controls —
              something the backdrop can never do, because the whole artwork is a
-             background image behind them. Cosmetic only (pointer-events: none). -->
+             background image behind them. There are two of them: the BACK one
+             (`ForegroundBack`) paints BETWEEN the two hanging tapes — the punch
+             tongue the punched tape comes out OVER, while the reader tape still
+             passes UNDER its own translucent tongue — and the FRONT one
+             (`Foreground`) above everything. Both are cosmetic only
+             (pointer-events: none). -->
+        <div id="tty-foreground-back"></div>
         <div id="tty-foreground"></div>
         <div id="tty-overlay">
           <!-- Model 33 ASR: the tape reader / punch unit sits to the LEFT of

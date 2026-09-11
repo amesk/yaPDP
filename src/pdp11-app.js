@@ -2830,38 +2830,65 @@ function ttyMarkerVars(svgText) {
   return out;
 }
 
-// Pure: the id of the artwork's Foreground layer — the one the artist wants
-// painted ABOVE the live controls — or "" when the artwork carries none.
-// Matched by Inkscape's layer label first (the id may be renamed by the editor),
-// then by an id that mentions "foreground".
-function ttyForegroundLayerId(svgText) {
+// Pure: the id of the artwork layer addressed by its Inkscape LABEL (the id
+// itself may be renamed by the editor at any save) — "" when there is none.
+// The top layer is "Foreground"; the artist may also publish a
+// "ForegroundBack" layer that paints BETWEEN the two hanging tapes (a tongue
+// the punched tape comes out OVER while the reader tape still passes UNDER
+// it). The id fallback ignores a "foregroundback" id when the plain
+// "foreground" layer is looked up, so the two can never collide when the
+// labels happen to be missing.
+function ttyArtLayerId(svgText, wanted) {
+  var want = String(wanted || "").toLowerCase();
+  if (!want) return "";
   var tags = String(svgText || "").match(/<g\b[^>]*>/g) || [];
-  for (var i = 0; i < tags.length; i++) {
-    var label = /inkscape:label="([^"]*)"/.exec(tags[i]);
-    if (label && /^foreground$/i.test(label[1].trim())) {
-      var id = /id="([^"]*)"/.exec(tags[i]);
+  var i, label, id;
+  for (i = 0; i < tags.length; i++) {
+    label = /inkscape:label="([^"]*)"/.exec(tags[i]);
+    if (label && label[1].trim().toLowerCase() === want) {
+      id = /id="([^"]*)"/.exec(tags[i]);
       if (id && id[1]) return id[1];
     }
   }
-  for (var j = 0; j < tags.length; j++) {
-    var named = /id="([^"]*)"/.exec(tags[j]);
-    if (named && /foreground/i.test(named[1])) return named[1];
+  for (i = 0; i < tags.length; i++) {
+    id = /id="([^"]*)"/.exec(tags[i]);
+    if (!id || !id[1]) continue;
+    var lower = id[1].toLowerCase();
+    if (lower.indexOf(want) === -1) continue;
+    if (want === "foreground" && lower.indexOf("foregroundback") !== -1) continue;
+    return id[1];
   }
   return "";
 }
 
+// The artwork's top layer: the one painted ABOVE every live control.
+function ttyForegroundLayerId(svgText) {
+  return ttyArtLayerId(svgText, "Foreground");
+}
+
+// The front-most layers the page inlines out of the artwork, nearest-first is
+// irrelevant — the stylesheet owns the stacking order (see css/g60printer.css):
+//   ForegroundBack — between the two hanging tapes (the punch tongue the
+//                    punched tape comes out OVER);
+//   Foreground     — above everything.
+// Either layer may be absent: its host is then simply left empty.
+var TTY_ART_LAYERS = [
+  { host: 'tty-foreground-back', label: 'ForegroundBack' },
+  { host: 'tty-foreground', label: 'Foreground' }
+];
+
 // The machine itself is the #tty-backdrop background image, i.e. BEHIND every
 // control, so a layer that must cover the keys or the hanging tapes cannot be
 // part of it. The page therefore inlines the SAME artwork — fetched once —
-// stripped down to that one layer (plus <defs>, where the artwork's gradients
-// live) into #tty-foreground, which the stylesheet stacks above everything. The
-// rest of the drawing is not copied: the backdrop already paints it.
-function installTtyForeground(svgText) {
-  var host = document.getElementById('tty-foreground');
-  if (!host || typeof DOMParser === 'undefined') return;
-  host.textContent = '';
-  var id = ttyForegroundLayerId(svgText);
-  if (!id) return; // no such layer: nothing has to paint on top
+// stripped down to those layers (plus <defs>, where the artwork's gradients
+// live) into their host elements, which the stylesheet stacks over the
+// controls. The rest of the drawing is not copied: the backdrop already
+// paints it.
+function installTtyLayer(svgText, hostId, id) {
+  var node = document.getElementById(hostId);
+  if (!node || typeof DOMParser === 'undefined') return;
+  node.textContent = '';
+  if (!id) return; // no such layer: nothing has to paint there
   var parsed = new DOMParser().parseFromString(String(svgText), 'image/svg+xml');
   var root = parsed && parsed.documentElement;
   if (!root || root.localName !== 'svg') return; // malformed artwork
@@ -2870,7 +2897,7 @@ function installTtyForeground(svgText) {
   var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', viewBox);
   // The backdrop stretches the artwork to the rig box (background-size: 100%
-  // 100%), so this copy has to stretch exactly the same way to line up. The
+  // 100%), so these copies have to stretch exactly the same way to line up. The
   // size lives on the element itself: a stylesheet rule for the inlined <svg>
   // would only add a second place to keep in step.
   svg.setAttribute('preserveAspectRatio', 'none');
@@ -2888,7 +2915,16 @@ function installTtyForeground(svgText) {
   }
   if (!layer) return;
   svg.appendChild(document.importNode(layer, true));
-  host.appendChild(svg);
+  node.appendChild(svg);
+}
+
+// Inline every front-most artwork layer into its host (see TTY_ART_LAYERS).
+function installTtyForeground(svgText) {
+  for (var i = 0; i < TTY_ART_LAYERS.length; i++) {
+    installTtyLayer(svgText,
+      TTY_ART_LAYERS[i].host,
+      ttyArtLayerId(svgText, TTY_ART_LAYERS[i].label));
+  }
 }
 
 // Fetch the artwork, apply the markers and re-derive everything that depends on
