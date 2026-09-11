@@ -225,13 +225,18 @@ function testCss() {
   }
 
   // The tape must be absolutely positioned (out of the flow, so the page
-  // never resizes) hanging from the bottom of the cabinet, and scroll itself
-  // once it reaches the bottom of the window.
+  // never resizes) hanging from the TAPE PUNCH slot, and scroll itself once
+  // it reaches the bottom of the window. The slot axis is expressed in the
+  // artwork's coordinate system (Puncher marker) because the punch plate is
+  // contain-fitted onto that marker — see tests/teletype-svg-backdrop.test.js
+  // for the marker <-> CSS geometry contract.
   const tapeRule = extractBlock(css, "#punchtape {", "");
   assert.ok(/position\s*:\s*absolute\s*;/.test(tapeRule),
     "#punchtape must be absolutely positioned (out of flow, no page resize):\n" + tapeRule);
-  assert.ok(/top\s*:\s*122px\s*;/.test(tapeRule),
-    "#punchtape must emerge from the MIDDLE of the TAPE PUNCH slot (top: 122px = 10px mech inset + slot top 106px + half slot 6px):\n" + tapeRule);
+  assert.ok(/top\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-punch-y\)/.test(tapeRule),
+    "#punchtape must emerge from the TAPE PUNCH slot (top anchored to the Puncher marker):\n" + tapeRule);
+  assert.ok(/left\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-punch-x\)/.test(tapeRule),
+    "#punchtape must hang on the slot axis (left anchored to the Puncher marker):\n" + tapeRule);
   assert.ok(/overflow-y\s*:\s*auto\s*;/.test(tapeRule),
     "#punchtape must scroll vertically once it reaches the window edge (overflow-y: auto):\n" + tapeRule);
 

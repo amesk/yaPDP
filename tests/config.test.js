@@ -11,6 +11,7 @@
  *   vt11 (bool, VT11 graphics display), printWidth (72/80, Model 33 ASR
  *   teletype), printerWidth (72/80/100/132, LP11),
  *   teletypeSpeed (authentic/fast),
+ *   keyboardLayout (drawn = keycaps in the artwork / grid = keycaps in CSS),
  *   upperCaseOnly (bool, physical-keyboard upper-case normalisation),
  *   keyClick (bool),
  *   vt52ReverseVideo (bool, historical VT52 reverse-video mode),
@@ -75,6 +76,7 @@ function run() {
             printWidth: 72,
             printerWidth: 132,
             teletypeSpeed: "authentic",
+            keyboardLayout: "drawn",
             upperCaseOnly: false,
             keyClick: false,
             vt52ReverseVideo: false,
@@ -128,6 +130,13 @@ function run() {
         assert.strictEqual(C.validate({ teletypeSpeed: "fast" }).teletypeSpeed, "fast");
         assert.strictEqual(C.validate({ teletypeSpeed: "authentic" }).teletypeSpeed, "authentic");
         assert.strictEqual(C.validate({ teletypeSpeed: "garbage" }).teletypeSpeed, "authentic");
+
+        // keyboardLayout only drawn|grid; absent/garbage -> the artwork caps.
+        assert.strictEqual(C.validate({}).keyboardLayout, "drawn");
+        assert.strictEqual(C.validate({ keyboardLayout: "drawn" }).keyboardLayout, "drawn");
+        assert.strictEqual(C.validate({ keyboardLayout: "grid" }).keyboardLayout, "grid");
+        assert.strictEqual(C.validate({ keyboardLayout: "garbage" }).keyboardLayout, "drawn");
+        assert.strictEqual(C.validate({ keyboardLayout: 1 }).keyboardLayout, "drawn");
         assert.deepStrictEqual(plain(C.TELETYPE_SPEEDS), ["authentic", "fast"], "teletype speed list");
 
         // booleans coerced.
@@ -215,6 +224,7 @@ function run() {
             printWidth: 80,
             printerWidth: 80,
             teletypeSpeed: "fast",
+            keyboardLayout: "grid",
             upperCaseOnly: true,
             keyClick: true,
             vt52ReverseVideo: true,

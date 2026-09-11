@@ -150,10 +150,16 @@
         cachedTop = top;
         var maxH = window.innerHeight - top - 12;
         if (maxH < 40) maxH = 40;
+        // Same rule as ttyScaleFor() in pdp11-app.js: the element's rendered
+        // width (transforms applied) over its layout width (transform-free) is
+        // the visual scale of the hanging tape, so the LOCAL max-height must be
+        // divided by it to keep the VISUAL tape reaching the window bottom.
         var scale = 1;
-        var v = window.getComputedStyle(container).getPropertyValue('--tty-scale');
-        var parsed = parseFloat(v);
-        if (isFinite(parsed) && parsed > 0) scale = parsed;
+        var rectW = container.getBoundingClientRect().width;
+        if (rectW > 0 && container.offsetWidth > 0) {
+            scale = rectW / container.offsetWidth;
+            if (!isFinite(scale) || scale <= 0) scale = 1;
+        }
         container.style.maxHeight = Math.floor(maxH / scale) + 'px';
     }
 

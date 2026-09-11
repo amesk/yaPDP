@@ -65,7 +65,8 @@ contract, the bridge and the write-back storage split.
 | [`src/panel-led.js`](../src/panel-led.js) | Panel nav-button status indicators — polls the machine power + CPU run state; the green power lamp lights while powered on, and a pause/play glyph in the button's top-left corner shows whether the CPU is halted or running (hidden while the machine is off) |
 | [`css/pdp11.css`](../css/pdp11.css) | Front panel and application styles |
 | [`css/landing.css`](../css/landing.css) | Landing-page (index.html) styles |
-| [`css/g60printer.css`](../css/g60printer.css) | Teletype printer styles |
+| [`css/g60printer.css`](../css/g60printer.css) | Teletype printer styles — including the "SVG art layer" block: the `--tty-*` marker variables, the backdrop and the marker-anchored overlay rules |
+| [`assets/Model-33-ASR.svg`](../assets/Model-33-ASR.svg) | Model 33 ASR artwork — the console teletype cabinet used as the page backdrop. Its markers layer (`Keyboard`, `Apron`, `Puncher`, `Reader`, `Paper`, `Caret`, each rect `display: none`) carries the rects the HTML controls are anchored to: the page reads them at load (`ttyMarkerVars` in `src/pdp11-app.js`) and writes them into the rig's `--tty-*` variables, so editing the artwork moves the controls. `css/g60printer.css` keeps the same numbers as a fallback; `tests/teletype-svg-backdrop.test.js` pins parser, numbers and the never-paint rule |
 
 ## Tests
 

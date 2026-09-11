@@ -424,12 +424,53 @@ var MODEL33_ANSWERBACK = [13, 10, 6]; // CR LF ACK
   MODEL33_ANSWERBACK.push(13, 10); // CR LF
 })();
 
+// ---- Flat key grid (one entry per key, row by row) ------------------
+// The Model 33 keycap grid, derived from MODEL33_KEYS so the keycaps drawn in
+// assets/Model-33-ASR.svg and the click boxes in the DOM can never disagree:
+// every entry carries a stable positional id ('r<row>c<col>'), the baseline
+// x/y of its box (staggered rows, 40px pitch, 36px caps, 196px space bar) and
+// its key definition. The block it spans is 576x212 px (KEY_BLOCK_W/H below),
+// which is what #punchkeyboard is sized to and what the "Keyboard" marker of
+// the artwork is contain-fitted to. Pure and unit-testable
+// (see tests/model33-keyboard.test.js).
+var M33_GRID_PITCH = 40;    // key pitch (px)
+var M33_GRID_CELL = 36;     // keycap diameter (px)
+var M33_GRID_SPACE_W = 196; // space-bar width (px)
+
+function model33KeyGrid(rows, pitch, spaceW, cell) {
+  var out = [];
+  for (var r = 0; r < rows.length; r++) {
+    for (var c = 0; c < rows[r].keys.length; c++) {
+      var def = rows[r].keys[c];
+      out.push({
+        id: 'r' + r + 'c' + c,
+        row: r,
+        col: c,
+        x: rows[r].left + c * pitch,
+        y: rows[r].top,
+        w: def.space ? spaceW : cell,
+        h: cell,
+        def: def
+      });
+    }
+  }
+  return out;
+}
+
 var g60Keyboard = (function () {
   'use strict';
 
-  // Key geometry: pitch 40px, visible diameter 36px (the layout data lives
-  // in MODEL33_KEYS above; positions are absolute within #punchkeyboard).
-  var KEY_W = 40;
+  // Key geometry: the flat grid above (40px pitch, 36px caps, staggered rows);
+  // positions are absolute within #punchkeyboard.
+  var GRID = model33KeyGrid(MODEL33_KEYS, M33_GRID_PITCH, M33_GRID_SPACE_W,
+    M33_GRID_CELL);
+
+  // Who draws the keycaps: 'drawn' (default) leaves the caps AND their legends
+  // to the artwork — the DOM keys stay in the same boxes as invisible hit
+  // areas — while 'grid' draws them in CSS (the pre-artwork behaviour, kept as
+  // the fallback). The container class is the single switch, see the
+  // keycap-layout rules in css/g60printer.css.
+  var layout = 'drawn';
 
   var shifted = false;
   var ctrlHeld = false;
@@ -450,20 +491,23 @@ var g60Keyboard = (function () {
     var kbd = document.getElementById('punchkeyboard');
     if (!kbd) return;
     kbd.innerHTML = '';
+    applyLayout();
 
-    for (var ri = 0; ri < MODEL33_KEYS.length; ri++) {
-      var row = MODEL33_KEYS[ri];
-      for (var ci = 0; ci < row.keys.length; ci++) {
-        var def = row.keys[ci];
-        var x = row.left + ci * KEY_W;
+    for (var gi = 0; gi < GRID.length; gi++) {
+      var slot = GRID[gi];
+      var def = slot.def;
 
-        var el = document.createElement('div');
-        el._def = def;
-        el.style.left = x + 'px';
-        el.style.top = row.top + 'px';
+      var el = document.createElement('div');
+      el._def = def;
+      // Stable positional id of this key in the flat grid — exactly the box
+      // the artwork draws its keycap in.
+      el.dataset.key = slot.id;
+      el.style.left = slot.x + 'px';
+      el.style.top = slot.y + 'px';
+      if (def.space) el.style.width = slot.w + 'px';
 
-        if (def.space) {
-          el.className = 'm33-space';
+      if (def.space) {
+        el.className = 'm33-space';
         } else {
           el.className = 'm33-key ' + (def.cls === 'alpha' ? 'alpha' : 'mod');
           if (def.title) el.title = def.title;
@@ -515,8 +559,7 @@ var g60Keyboard = (function () {
           }
         });
 
-        kbd.appendChild(el);
-      }
+      kbd.appendChild(el);
     }
   }
 
@@ -761,7 +804,23 @@ var g60Keyboard = (function () {
     bridgeSendToUnit(0, bytes);
   }
 
-  return { init: function () { buildKeyboard(); installPhysicalKeyboard(); } };
+  // Apply the selected keycap layout to the keyboard container: the class is
+  // absent for 'drawn' (the artwork draws the caps) and present for 'grid'
+  // (the page draws them — see css/g60printer.css).
+  function applyLayout() {
+    var kbd = document.getElementById('punchkeyboard');
+    if (kbd) kbd.classList.toggle('m33-css-caps', layout === 'grid');
+  }
+
+  return {
+    init: function () { buildKeyboard(); installPhysicalKeyboard(); },
+    // CONFIG page: 'drawn' (keycaps in the artwork, default) or 'grid'
+    // (keycaps drawn by CSS). Applied live, no reload.
+    setLayout: function (name) {
+      layout = (name === 'grid') ? 'grid' : 'drawn';
+      applyLayout();
+    }
+  };
 })();
 
 // ---- VT52 page keyboard handler (parameterized by unit and page) ----
@@ -1647,6 +1706,7 @@ function initConfigForm() {
   if (!cfg) return;
 
   var radios = document.querySelectorAll('input[name="consoleType"]');
+  var capRadios = document.querySelectorAll('input[name="keyboardLayout"]');
   var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
   var userTerm = document.getElementById('config-userTerminals');
   var printerEl = document.getElementById('config-printer');
@@ -1676,6 +1736,7 @@ function initConfigForm() {
 
   // Populate the form from the persisted config.
   setRadioChecked(radios, cfg.consoleType);
+  setRadioChecked(capRadios, cfg.keyboardLayout);
   setRadioChecked(speedRadios, cfg.teletypeSpeed);
   if (userTerm) userTerm.value = String(cfg.userTerminals);
   if (printerEl) printerEl.checked = cfg.printer;
@@ -1713,8 +1774,13 @@ function initConfigForm() {
     for (var j = 0; j < speedRadios.length; j++) {
       if (speedRadios[j].checked) teletypeSpeed = speedRadios[j].value;
     }
+    var keyboardLayout = 'drawn';
+    for (var m = 0; m < capRadios.length; m++) {
+      if (capRadios[m].checked) keyboardLayout = capRadios[m].value;
+    }
     return {
       consoleType: consoleType,
+      keyboardLayout: keyboardLayout,
       userTerminals: (userTerm) ? Number(userTerm.value) : cfg.userTerminals,
       printer: (printerEl) ? printerEl.checked : cfg.printer,
       vt11: (vt11El) ? vt11El.checked : cfg.vt11,
@@ -1765,6 +1831,7 @@ function initConfigForm() {
       form.printWidth !== current.printWidth ||
       form.printerWidth !== current.printerWidth ||
       form.teletypeSpeed !== current.teletypeSpeed ||
+      form.keyboardLayout !== current.keyboardLayout ||
       form.keyClick !== current.keyClick ||
       form.upperCaseOnly !== current.upperCaseOnly ||
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
@@ -1780,6 +1847,7 @@ function initConfigForm() {
     if (g60printer) {
       if (g60printer.setMaxCols) g60printer.setMaxCols(f.printWidth);
       if (g60printer.setCharPrintDelay) g60printer.setCharPrintDelay(teletypeDelay(f.teletypeSpeed));
+      ttySyncSheetWidth();
     }
     if (window.lp11G60Printer && window.lp11G60Printer.setMaxCols) {
       window.lp11G60Printer.setMaxCols(f.printerWidth);
@@ -1824,7 +1892,8 @@ function initConfigForm() {
     var ttyFields = [
       document.getElementById('config-field-printWidth'),
       document.getElementById('config-field-teletypeSpeed'),
-      document.getElementById('config-field-upperCaseOnly')
+      document.getElementById('config-field-upperCaseOnly'),
+      document.getElementById('config-field-keyboardLayout')
     ];
     for (var k = 0; k < ttyFields.length; k++) {
       if (ttyFields[k]) setFieldDisabled(ttyFields[k], !teletype);
@@ -1891,11 +1960,28 @@ function initConfigForm() {
     });
   }
 
+  // Keycap layout applies live (no reload): persist the choice and switch the
+  // keyboard between the keycaps drawn by the artwork and the CSS-drawn caps.
+  for (var n = 0; n < capRadios.length; n++) {
+    capRadios[n].addEventListener('change', function () {
+      if (!this.checked) return;
+      if (typeof Config !== 'undefined') Config.set({ keyboardLayout: this.value });
+      if (typeof g60Keyboard !== 'undefined' && g60Keyboard.setLayout) {
+        g60Keyboard.setLayout(this.value);
+      }
+      updateDirtyUI();
+    });
+  }
+
   // Live changes apply without reloading.
   if (pwEl) {
     pwEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ printWidth: Number(this.value) });
       if (g60printer && g60printer.setMaxCols) g60printer.setMaxCols(Number(this.value));
+      // The printable width changed: publish the new sheet width and re-fit the
+      // sheet onto the artwork's Paper marker (the scale is derived from it).
+      ttySyncSheetWidth();
+      if (typeof window.__ttyRescale === 'function') window.__ttyRescale();
       updateDirtyUI();
     });
   }
@@ -2004,6 +2090,7 @@ function initConfigForm() {
       if (typeof Config === 'undefined') return;
       var d = Config.DEFAULTS;
       setRadioChecked(radios, d.consoleType);
+      setRadioChecked(capRadios, d.keyboardLayout);
       setRadioChecked(speedRadios, d.teletypeSpeed);
       if (userTerm) userTerm.value = String(d.userTerminals);
       if (printerEl) printerEl.checked = d.printer;
@@ -2278,11 +2365,150 @@ function teletypePaperMaxHeight(carriageBottomPx, topReservePx) {
   return max > 0 ? max : 0;
 }
 
-// Measure the carriage's distance to the top of the window and size the
-// console paper's growth ceiling accordingly (CSS variable --tty-paper-max,
-// consumed by css/g60printer.css). Hidden pages (display:none → rect 0) are
-// skipped and re-sized once they become visible, because the ResizeObserver
-// fires when the page's layout size changes.
+// Visual scale of a teletype element: its rendered width (transforms applied)
+// over its layout width (transform-free). The rig is scaled as a whole
+// (installTeletypeScaling sets --tty-scale) and every block inside it carries
+// its own contain scale (--tty-*-k, see the "SVG art layer" block in
+// css/g60printer.css), so the ratio IS the product of those transforms — the
+// paper window and the two hanging tapes divide their viewport-driven
+// max-height by it to still reach the window edge. Pure (both widths are
+// injected) so it can be extracted and unit-tested in Node.
+function ttyScaleFor(rectWidth, offsetWidth) {
+  var rendered = Number(rectWidth);
+  var layout = Number(offsetWidth);
+  if (!isFinite(rendered) || !isFinite(layout) || layout <= 0 || rendered <= 0) {
+    return 1;
+  }
+  return rendered / layout;
+}
+
+// ---- The artwork is the source of truth ------------------------------------
+// The marker rects of assets/Model-33-ASR.svg are read AT RUNTIME and pushed
+// into the --tty-* variables of #teletype-rig, so moving a marker in Inkscape
+// moves the matching HTML control — the numbers in css/g60printer.css are only
+// the fallback for builds where the artwork cannot be fetched (strict file://
+// origin). The parser is pure and unit-tested
+// (tests/teletype-svg-backdrop.test.js).
+var TTY_ART_URL = 'assets/Model-33-ASR.svg';
+
+// Marker id -> CSS variable prefix (the order is irrelevant).
+var TTY_MARKER_VARS = [
+  { id: 'Keyboard', prefix: '--tty-kbd' },
+  { id: 'Apron', prefix: '--tty-apron' },
+  { id: 'Puncher', prefix: '--tty-punch' },
+  { id: 'Reader', prefix: '--tty-reader' },
+  { id: 'Paper', prefix: '--tty-paper' },
+  { id: 'Caret', prefix: '--tty-caret' }
+];
+
+// Pure: SVG text -> { '--tty-kbd-x': '127.64988', ... } (x/y/w/h per marker
+// plus the viewBox and the derived print line). Missing markers are skipped, so
+// a partial result keeps the stylesheet fallback for whatever is absent.
+function ttyMarkerVars(svgText) {
+  if (!svgText) return null;
+  var out = {};
+  var viewBox = /viewBox="0 0 ([-0-9.eE]+) ([-0-9.eE]+)"/.exec(svgText);
+  if (viewBox) {
+    out['--tty-vb-w'] = viewBox[1];
+    out['--tty-vb-h'] = viewBox[2];
+  }
+  for (var i = 0; i < TTY_MARKER_VARS.length; i++) {
+    var marker = TTY_MARKER_VARS[i];
+    var element = new RegExp('<rect[^>]*id="' + marker.id + '"[^>]*/>').exec(svgText);
+    if (!element) continue;
+    var rect = element[0];
+    var value = function (attr) {
+      var m = new RegExp(attr + '="([-0-9.eE]+)"').exec(rect);
+      return m ? m[1] : null;
+    };
+    var x = value('x'), y = value('y'), w = value('width'), h = value('height');
+    if (x === null || y === null || w === null || h === null) continue;
+    out[marker.prefix + '-x'] = x;
+    out[marker.prefix + '-y'] = y;
+    out[marker.prefix + '-w'] = w;
+    out[marker.prefix + '-h'] = h;
+  }
+  // The print line is the Caret band's BOTTOM edge (y + h).
+  if (out['--tty-caret-y'] && out['--tty-caret-h']) {
+    out['--tty-caret-line-y'] = String(parseFloat(out['--tty-caret-y']) +
+      parseFloat(out['--tty-caret-h']));
+  }
+  return out;
+}
+
+// Fetch the artwork, apply the markers and re-derive everything that depends on
+// them (the rig scale, the paper ceiling and the two hanging tapes).
+function installTtyArtLayer() {
+  var rig = document.getElementById('teletype-rig');
+  if (!rig || typeof fetch !== 'function') return;
+  fetch(TTY_ART_URL)
+    .then(function (res) { return res && res.ok ? res.text() : null; })
+    .then(function (text) {
+      var vars = ttyMarkerVars(text);
+      if (!vars) return;
+      for (var name in vars) {
+        if (Object.prototype.hasOwnProperty.call(vars, name)) {
+          rig.style.setProperty(name, vars[name]);
+        }
+      }
+      window.__ttyMarkerVars = vars; // inspectable from the console/tests
+      // The sheet scale follows the marker AND the real sheet width.
+      ttySyncSheetWidth();
+      if (typeof window.__ttyRescale === 'function') window.__ttyRescale();
+      else teletypePaperGrowthApply();
+      if (window.paperTape && typeof window.paperTape.refreshHeight === 'function') {
+        window.paperTape.refreshHeight();
+      }
+      if (window.tapeReader && typeof window.tapeReader.refreshHeight === 'function') {
+        window.tapeReader.refreshHeight();
+      }
+    })
+    .catch(function () { /* keep the stylesheet fallbacks */ });
+}
+
+// Publish the width of the sheet the printer actually laid out (it depends on
+// the configured column count: computePaperGeometry centres the roll inside the
+// 808px body). css/g60printer.css divides the artwork's Paper marker by it, so
+// the printed sheet always fills the platen the SVG draws — without this the
+// stylesheet could only assume the CSS base width (741px), which is wider than
+// the real sheet and made the paper look too narrow with room to spare (and the
+// text smaller than it should be).
+function ttySyncSheetWidth() {
+  var rig = document.getElementById('teletype-rig');
+  var paper = document.getElementById('paper');
+  if (!rig || !paper) return;
+  // offsetWidth is 0 while the CONSOLE page is hidden (display:none), so this is
+  // re-run whenever the page becomes visible (installTeletypeScaling.apply).
+  var native = paper.offsetWidth; // layout px — transforms excluded
+  if (native > 0) {
+    // MUST live on the rig: --tty-sheet-k is computed there and inherited by the
+    // printer block, so setting it on the block itself would have no effect.
+    rig.style.setProperty('--tty-sheet-native', String(native));
+  }
+}
+
+// Size the console paper's growth ceiling from the carriage's live distance to
+// the top of the window (CSS variable --tty-paper-max, consumed by
+// css/g60printer.css). Split out of installTeletypePaperGrowth() so it can also
+// be re-run when the artwork markers move the sheet (installTtyArtLayer).
+function teletypePaperGrowthApply() {
+  var container = document.getElementById('g60printer');
+  var paper = document.getElementById('paper');
+  if (!container || !paper) return;
+  var bottom = paper.getBoundingClientRect().bottom;
+  if (bottom <= 0) return; // hidden page — skip until visible
+  // The paper lives in a scaled space: the rig is scaled as a whole and the
+  // printer block is scaled again onto the artwork's Paper marker, so the
+  // local max-height must be divided by the measured product (ttyScaleFor)
+  // for the sheet's VISUAL top to still reach the window top.
+  var scale = ttyScaleFor(container.getBoundingClientRect().width,
+                          container.offsetWidth);
+  container.style.setProperty('--tty-paper-max',
+      (teletypePaperMaxHeight(bottom, 0) / scale) + 'px');
+}
+
+// Keep the ceiling fresh while the page is on screen: the observer fires when
+// the page's layout size changes (show/hide of the page, window resize).
 function installTeletypePaperGrowth() {
   if (typeof ResizeObserver === 'undefined') return;
   var page = document.getElementById('page-teletype');
@@ -2291,20 +2517,7 @@ function installTeletypePaperGrowth() {
   if (!page || !container || !paper) return;
 
   function apply() {
-    var bottom = paper.getBoundingClientRect().bottom;
-    if (bottom <= 0) return; // hidden page — skip until visible
-    // When the whole rig is CSS-scaled (--tty-scale < 1, set by
-    // installTeletypeScaling), the paper's local max-height must be divided by
-    // the scale so its VISUAL top still reaches the top of the window.
-    var scale = 1;
-    var rig = document.getElementById('teletype-rig');
-    if (rig) {
-      var v = window.getComputedStyle(rig).getPropertyValue('--tty-scale');
-      var parsed = parseFloat(v);
-      if (isFinite(parsed) && parsed > 0) scale = parsed;
-    }
-    container.style.setProperty('--tty-paper-max',
-        (teletypePaperMaxHeight(bottom, 0) / scale) + 'px');
+    teletypePaperGrowthApply();
   }
 
   apply();
@@ -2352,6 +2565,10 @@ function installTeletypeScaling() {
     var natW = rig.offsetWidth;
     var natH = rig.offsetHeight;
     if (!natW || !natH) return; // hidden page - skip until visible
+    // The page is visible now, so the sheet can finally be measured: publish its
+    // width, which the stylesheet divides the Paper marker by (see
+    // ttySyncSheetWidth — it is a no-op while the page is hidden).
+    ttySyncSheetWidth();
 
     // Measure the live vertical room around the rig's layout centre (the
     // page flex-centres the rig, but the top <p class=clear> spacer shifts
@@ -2379,11 +2596,15 @@ function installTeletypeScaling() {
     rig.style.transform = (s < 1) ? 'scale(' + s + ')' : '';
 
     // Re-derive the paper's growth ceiling for the new scale (the local
-    // max-height must be divided so the sheet's visual top stays at y=0).
+    // max-height must be divided by the FULL scale — rig transform times the
+    // printer's own contain scale — so the sheet's visual top stays at y=0;
+    // ttyScaleFor measures that product on the rendered block).
     var bottom = paper.getBoundingClientRect().bottom;
     if (bottom > 0) {
+      var blockScale = ttyScaleFor(container.getBoundingClientRect().width,
+                                   container.offsetWidth);
       container.style.setProperty('--tty-paper-max',
-          (teletypePaperMaxHeight(bottom, 0) / s) + 'px');
+          (teletypePaperMaxHeight(bottom, 0) / blockScale) + 'px');
     }
     // The hanging punchtape is measured in the same scaled space; refresh it
     // so it still reaches the bottom of the window after the scale changes.
@@ -2395,6 +2616,9 @@ function installTeletypeScaling() {
   apply();
   var ro = new ResizeObserver(apply);
   ro.observe(page);
+  // Exposed so installTtyArtLayer() can re-run the fit right after the artwork
+  // markers have been applied (the rig size follows the marker numbers).
+  window.__ttyRescale = apply;
 }
 
 // ---- Global sound mute button (bottom-left, magic-wand style) ----
@@ -2658,7 +2882,11 @@ function initTtyControls() {
 var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
 
 initG60Printer();
+ttySyncSheetWidth();
 g60Keyboard.init();
+// Keycap layout (CONFIG -> Keyboard keycaps): 'drawn' (default) lets the
+// artwork draw the caps, 'grid' draws them in CSS.
+g60Keyboard.setLayout((__appCfg && __appCfg.keyboardLayout) || 'drawn');
 // Prepare the ASR paper tape (finds #punchtape and creates the tape body).
 if (window.paperTape && typeof window.paperTape.init === 'function') {
   window.paperTape.init();
@@ -2696,6 +2924,11 @@ installTeletypePaperGrowth();
 // Fit the Model 33 ASR teletype rig to the available window size
 // (proportional scaling, mirroring the VT52/LP11/panel scalers above).
 installTeletypeScaling();
+
+// Read the artwork's marker rects and push them into the rig variables: the SVG
+// is the single source of truth for the overlay geometry (the numbers in
+// css/g60printer.css are only the fallback for fetch-less builds).
+installTtyArtLayer();
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);

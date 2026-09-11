@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Configurable keycap layout for the Model 33 keyboard.** The CONFIG page
+  (Equipment tab, right under the console-terminal radios) lets the operator
+  choose who draws the keycaps: **Drawn in the artwork** (default — the caps and
+  their legends come from `assets/Model-33-ASR.svg`, and the DOM keys stay in
+  exactly the same boxes as invisible hit areas) or **Drawn by the page** (the
+  CSS-drawn keycaps, i.e. the pre-artwork behaviour). Applied live and persisted
+  as `keyboardLayout`; the flat key grid behind both modes
+  (`model33KeyGrid` — 53 keys, 40px pitch, staggered rows, stable
+  `r<row>c<col>` ids on every DOM key) is pinned by
+  `tests/model33-keyboard.test.js` and the CSS contract tests.
+  (`src/config.js`, `src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`,
+  `tests/model33-keyboard.test.js`, `tests/config.test.js`,
+  `tests/teletype-cabinet-css.test.js`)
+
 - **Demo-reel voice-over narration on the title cards.** `tools/assemble-video.js`
   now speaks the intro, every clip's title card and the outro with a generated
   English narration (`tools/voicer.js`, Kokoro-82M or Windows SAPI);
@@ -84,6 +98,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unknown guest image (whose prompts are not known yet) headlessly and then
   derive the readiness markers from the captured boot output.
   (`tools/headless-machine.js`, test 4 in `tests/headless-machine.test.js`)
+
+### Changed
+
+- **The Model 33 ASR console cabinet is drawn from SVG artwork.** The machine
+  itself — the sand-cream body, the platen rollers, the carriage window and the
+  Teletype Corporation wordmark — now comes from `assets/Model-33-ASR.svg` as a
+  `pointer-events: none` backdrop, while the live controls stay HTML on top:
+  the keyboard, the punch/reader plates, the CCU LINE/OFF/LOCAL knob, the
+  printed sheet and both hanging tapes are anchored to the artwork's marked
+  areas (`Keyboard`, `Apron`, `Puncher`, `Reader`, `Paper`, `Caret`) in ONE
+  coordinate system — the `--tty-*` variables of the "SVG art layer" block in
+  `css/g60printer.css`, which `tests/teletype-svg-backdrop.test.js` pins to the
+  artwork so the two can never drift apart. Each control keeps its native
+  pixel layout and is contain-fitted into its marker (round keycaps and knob
+  never distort); the paper still rises out of the top of the machine and the
+  tapes still hang past the rig to the bottom of the window. Behaviour, sounds,
+  snapshots and the LP11 page are untouched; the CSS-drawn cabinet rules and
+  their contract tests were retired deliberately.
+  (`assets/Model-33-ASR.svg`, `pdp11.html`, `css/g60printer.css`,
+  `src/pdp11-app.js`, `src/punchtape.js`, `src/reader.js`,
+  `tests/teletype-svg-backdrop.test.js`, `tests/teletype-cabinet-css.test.js`,
+  `tests/punchtape.test.js`, `tests/teletype-scaling.test.js`)
+
+- **The artwork's markers are read at runtime and drive the keyboard grid.**
+  The page now fetches `assets/Model-33-ASR.svg`, parses the marker rects
+  (`ttyMarkerVars` in `src/pdp11-app.js`) and pushes them into the `--tty-*`
+  variables of `#teletype-rig`, so moving a marker in Inkscape moves the
+  matching control without touching any code (the stylesheet keeps the same
+  numbers only as the fallback for fetch-less builds, and both sides are pinned
+  by `tests/teletype-svg-backdrop.test.js`). The Model 33 key block is anchored
+  to the Keyboard marker's corner and stretched to its width/height, so the
+  invisible hit areas always cover the keycaps the artwork draws; the
+  page-drawn keycaps keep the uniform centred fit (round caps). The printed
+  sheet follows the Paper marker the same way: the printer publishes the width
+  of the sheet it actually laid out (it depends on the column count) and the
+  stylesheet scales the block by marker / that width, so the paper fills the
+  platen the artwork draws instead of assuming the CSS base width (741px) — the
+  sheet used to sit ~18% narrow inside the marker with dead margins and a
+  correspondingly smaller font. Every marker
+  rect also carries `display:none` in its own style, because Inkscape resets the
+  LAYER's display on save and the markers must never paint over the cabinet —
+  the same suite also guards the file against invalid XML, since a double hyphen
+  inside a comment turns the artwork into a blank backdrop while the HTML
+  overlays stay visible.
 
 ### Removed
 

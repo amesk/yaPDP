@@ -19,10 +19,18 @@ VT11 terminals, the quick-boot wizard and the UI pages.
 
 ## Model 33 ASR Teletype
 
-A fully animated teletype drawn as an authentic Model 33 ASR — a light
-cream/beige cabinet with a paper roll (behind the rising sheet), a glass
-carriage window and a stamped Teletype Corporation logo on the lower face
-plate — connected as the operator console with a faithful Model 33 ASR
+A fully animated teletype drawn as an authentic Model 33 ASR. The machine
+itself — the sand-cream cabinet, the platen rollers, the glass carriage window
+and the stamped Teletype Corporation wordmark — is drawn from SVG artwork
+(`assets/Model-33-ASR.svg`) used as an inert backdrop, and every control stays
+live HTML anchored to the artwork's marked areas (keyboard, punch/reader
+plates, CCU knob, paper, hanging tapes) in one shared coordinate system: the
+`--tty-*` variables of the "SVG art layer" block in `css/g60printer.css`. The
+markers are **read from the artwork at page load** (`ttyMarkerVars`), so moving
+or resizing a marked area in the SVG is enough — the controls follow it (the
+stylesheet keeps the same numbers only as a fallback, and
+`tests/teletype-svg-backdrop.test.js` pins both sides). It is connected as the
+operator console with a faithful Model 33 ASR
 keyboard: round dark keycaps with light two-line legends (the base glyph
 centred, the CTRL-code name or shift symbol above), and the historical special
 keys ESC, LINE FEED, RETURN, DELETE (RUB OUT — with the punch engaged it
@@ -38,7 +46,10 @@ leaves the real dark overstrike blot a hard-copy terminal makes. Long lines
 faithfully jam the carriage at the right margin (72 or 80 columns; characters
 overstrike the last column instead of wrapping, no horizontal scrollbar), and
 the paper width follows the selected width so a full line reaches the paper
-edge. Like the LP11 page, the console paper is anchored to the carriage and
+edge — while the sheet itself fills the platen the artwork draws (the Paper
+marker sets the printable width, so a 72-column page gets a larger character
+cell than an 80-column one on the same machine). Like the LP11 page, the
+console paper is anchored to the carriage and
 **grows upward**: it rises out of the top of the machine body until its edge
 reaches the top of the window, at which point the paper's own scrollbar
 appears and the view follows the freshly printed line.
@@ -181,8 +192,10 @@ system chrome — the address bar in the browser, the OS window frame and the
 taskbar in the Tauri desktop app — while leaving the emulator UI untouched.
 Press it again (or Esc) to return.
 
-The **Config** page controls the console terminal type (teletype or VT52), the
-number of user terminals (0–2), the presence of the LP11 line printer and the
+The **Config** page controls the console terminal type (teletype or VT52), who
+draws the teletype keycaps (in the artwork — the default — or by the page, the
+CSS-drawn grid), the number of user terminals (0–2), the presence of the LP11
+line printer and the
 VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
 most 80 columns), the printer print width (72/80/100/132), optional VT100-style
 key-click sound for VT52 terminals, the historical VT52 reverse-video mode
