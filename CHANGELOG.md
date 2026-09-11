@@ -286,17 +286,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/reader.js`, `tests/reader.test.js`, `tests/e2e-teletype-tape.js`)
 
 - **The artwork can now carry a second front-most layer for the tape tongues.**
-  A layer labelled `ForegroundBack` (see `TTY_ART_LAYERS` in `src/pdp11-app.js`)
-  is inlined into its own host, `#tty-foreground-back`, which the stylesheet
-  stacks BETWEEN the two hanging tapes — above the reader tape (z-index 10) and
-  below the punched tape (z-index 12). That is what lets the punched tape come
-  out OVER the punch tongue while the reader tape still slips UNDER its own
+  A layer labelled `Middle` (see `TTY_ART_LAYERS` in `src/pdp11-app.js`) is
+  inlined into its own host, `#tty-foreground-back`, which the stylesheet stacks
+  BETWEEN the two hanging tapes — above the reader tape (z-index 10) and below
+  the punched tape (z-index 12). That is what lets the punched tape come out
+  OVER the punch tongue while the reader tape still slips UNDER its own
   translucent tongue. `#tty-overlay` no longer creates a stacking context of its
   own (its `z-index` is gone): an isolated context would put both tapes under
   every front-most layer, and the punched tape could never rise above the
   tongue. Layer lookup is generic now — `ttyArtLayerId(text, label)` matches
   Inkscape's label first and an id mentioning it second, and the plain
-  `Foreground` lookup never swallows the back layer. (`pdp11.html`,
+  `Foreground` lookup never swallows the middle layer. (`pdp11.html`,
   `css/g60printer.css`, `src/pdp11-app.js`, `tests/teletype-cabinet-css.test.js`,
   `tests/teletype-svg-backdrop.test.js`)
 

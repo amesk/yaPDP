@@ -2832,12 +2832,9 @@ function ttyMarkerVars(svgText) {
 
 // Pure: the id of the artwork layer addressed by its Inkscape LABEL (the id
 // itself may be renamed by the editor at any save) — "" when there is none.
-// The top layer is "Foreground"; the artist may also publish a
-// "ForegroundBack" layer that paints BETWEEN the two hanging tapes (a tongue
-// the punched tape comes out OVER while the reader tape still passes UNDER
-// it). The id fallback ignores a "foregroundback" id when the plain
-// "foreground" layer is looked up, so the two can never collide when the
-// labels happen to be missing.
+// The top layer is "Foreground"; the middle one is "Middle" (a layer painted
+// BETWEEN the two hanging tapes: the tongues the tapes slip under / come out
+// over). Matched by label first, then by an id that mentions it.
 function ttyArtLayerId(svgText, wanted) {
   var want = String(wanted || "").toLowerCase();
   if (!want) return "";
@@ -2853,9 +2850,7 @@ function ttyArtLayerId(svgText, wanted) {
   for (i = 0; i < tags.length; i++) {
     id = /id="([^"]*)"/.exec(tags[i]);
     if (!id || !id[1]) continue;
-    var lower = id[1].toLowerCase();
-    if (lower.indexOf(want) === -1) continue;
-    if (want === "foreground" && lower.indexOf("foregroundback") !== -1) continue;
+    if (id[1].toLowerCase().indexOf(want) === -1) continue;
     return id[1];
   }
   return "";
@@ -2866,14 +2861,15 @@ function ttyForegroundLayerId(svgText) {
   return ttyArtLayerId(svgText, "Foreground");
 }
 
-// The front-most layers the page inlines out of the artwork, nearest-first is
-// irrelevant — the stylesheet owns the stacking order (see css/g60printer.css):
-//   ForegroundBack — between the two hanging tapes (the punch tongue the
-//                    punched tape comes out OVER);
-//   Foreground     — above everything.
+// The front-most layers the page inlines out of the artwork (the stylesheet
+// owns the stacking order, see css/g60printer.css):
+//   Middle     — BETWEEN the two hanging tapes: the tongues drawn there — the
+//                reader tongue the reader tape slips UNDER, and the punch
+//                tongue the punched tape comes out OVER;
+//   Foreground — above everything.
 // Either layer may be absent: its host is then simply left empty.
 var TTY_ART_LAYERS = [
-  { host: 'tty-foreground-back', label: 'ForegroundBack' },
+  { host: 'tty-foreground-back', label: 'Middle' },
   { host: 'tty-foreground', label: 'Foreground' }
 ];
 

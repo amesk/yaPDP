@@ -1334,7 +1334,7 @@
     inset: 0;
 }
 
-/* The artwork's BACK front-most layer (its `ForegroundBack` label), inlined by
+/* The artwork's MIDDLE front-most layer (its `Middle` label), inlined by
    installTtyForeground(): it must paint BETWEEN the two hanging tapes — above
    the reader tape (z-index 10) and below the punched tape (z-index 12). That is
    what lets the punched tape come out OVER the punch tongue while the reader
