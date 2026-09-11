@@ -757,6 +757,12 @@
              rects (Keyboard / Apron / Puncher / Reader / Paper / Caret) and
              mirrors their numbers — keep the two in sync. -->
         <div id="tty-backdrop"></div>
+        <!-- The artwork's Foreground layer is inlined HERE (see
+             installTtyForeground in src/pdp11-app.js), so the parts the artist
+             marked as "in front of everything" paint ABOVE the live controls —
+             something the backdrop can never do, because the whole artwork is a
+             background image behind them. Cosmetic only (pointer-events: none). -->
+        <div id="tty-foreground"></div>
         <div id="tty-overlay">
           <!-- Model 33 ASR: the tape reader / punch unit sits to the LEFT of
              the printer + keyboard, with the punched tape spilling from the
@@ -769,36 +775,45 @@
                OFF by default), BSP (backspace one tape step, punching RUBOUT)
                and REL (release the tape). -->
             <div id="asr-mech">
-              <div id="asr-punch">
-                <div class="asr-label">TAPE PUNCH</div>
-                <div class="asr-slot"></div>
-                <div class="asr-punch-buttons">
-                  <button type="button" class="asr-btn" id="punch-rel"
-                    title="REL — release the tape for manual pull-out">REL</button>
-                  <button type="button" class="asr-btn" id="punch-off"
-                    title="Punch OFF — disable the punch (default)">OFF</button>
-                  <button type="button" class="asr-btn" id="punch-bsp"
-                    title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
-                  <button type="button" class="asr-btn" id="punch-on"
-                    title="Punch ON — duplicate all output onto the paper tape">ON</button>
-                </div>
+              <!-- The punch plate frame is EMPTY now: the artwork draws the plate,
+                   its TAPE PUNCH lettering and the tape-out slot with its tongue.
+                   The frame stays as the marker-anchored placeholder (see
+                   css/g60printer.css). -->
+              <div id="asr-punch"></div>
+              <!-- The REL/OFF/BSP/ON cluster left the plate frame: a real Model 33
+                   punch control area is its own drawing, so it is anchored to the
+                   artwork's PuncherControl marker (see css/g60printer.css). It stays
+                   inside #asr-tape-unit so the ASR font stack still applies. -->
+              <div id="asr-punch-buttons" class="asr-punch-buttons">
+                <button type="button" class="asr-btn" id="punch-rel"
+                  title="REL — release the tape for manual pull-out">REL</button>
+                <button type="button" class="asr-btn" id="punch-off"
+                  title="Punch OFF — disable the punch (default)">OFF</button>
+                <button type="button" class="asr-btn" id="punch-bsp"
+                  title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
+                <button type="button" class="asr-btn" id="punch-on"
+                  title="Punch ON — duplicate all output onto the paper tape">ON</button>
               </div>
-              <div id="asr-reader">
-                <div class="asr-label">TAPE READER</div>
-                <!-- Four-position reader switch (START/STOP/FREE/AUTO) in the
-                   style of the front-panel POWER/LOCK key: a round disc whose
-                   handle rotates to the active position (wired by
-                   setReaderMode() in pdp11-app.js). -->
-                <div class="asr-reader-switch">
-                  <div class="asr-switch-disc" title="Click the disc to cycle: START → STOP → FREE → AUTO">
-                    <div class="asr-switch-lever" id="reader-switch-lever"></div>
-                  </div>
-                  <button type="button" class="asr-switch-pos" data-reader-mode="start">START</button>
-                  <button type="button" class="asr-switch-pos" data-reader-mode="stop">STOP</button>
-                  <button type="button" class="asr-switch-pos" data-reader-mode="free">FREE</button>
-                  <button type="button" class="asr-switch-pos" data-reader-mode="auto">AUTO</button>
+              <!-- The reader plate frame is EMPTY as well: the artwork draws the
+                   plate, its TAPE READER lettering and the tape slot. -->
+              <div id="asr-reader"></div>
+              <!-- The four-position reader switch left the plate frame: on a real
+                   Model 33 the reader control area is its own drawing, so it is
+                   anchored to the artwork's ReaderControl marker (see
+                   css/g60printer.css) — exactly like the punch button cluster.
+                   It stays inside #asr-mech so the ASR font stack still applies.
+                   Four-position switch (START/STOP/FREE/AUTO) in the style of
+                   the front-panel POWER/LOCK key: a round disc whose handle
+                   rotates to the active position (wired by setReaderMode() in
+                   pdp11-app.js). -->
+              <div id="asr-reader-switch" class="asr-reader-switch">
+                <div class="asr-switch-disc" title="Click the disc to cycle: START → STOP → FREE → AUTO">
+                  <div class="asr-switch-lever" id="reader-switch-lever"></div>
                 </div>
-                <div class="asr-slot"></div>
+                <button type="button" class="asr-switch-pos" data-reader-mode="start">START</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="stop">STOP</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="free">FREE</button>
+                <button type="button" class="asr-switch-pos" data-reader-mode="auto">AUTO</button>
               </div>
             </div>
             <!-- The tape spills from the punch head downwards, hanging past the

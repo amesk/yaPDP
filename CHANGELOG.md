@@ -143,6 +143,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inside a comment turns the artwork into a blank backdrop while the HTML
   overlays stay visible.
 
+- **The punch unit's marker is split in two.** The punch control area and the
+  punched tape are separate drawings on a real Model 33, so they carry separate
+  markers now: `PuncherControl` anchors the REL/OFF/BSP/ON cluster (uniform,
+  width-driven fit, so the round buttons stay round) and `PuncherTape` sets the
+  strip's axis and its exit line — `#punchtape` no longer derives them from the
+  plate centre plus hand-tuned 15/32px offsets. The plate frame keeps its own
+  contain fit for the TAPE PUNCH label, while the tape-out slot and its
+  triangular tongue are gone from the DOM — the artwork draws the punch
+  mechanism now (the TAPE READER slot, which the artwork does not carry yet,
+  stays HTML). While the markers are being
+  aligned against the page the artwork's markers layer is deliberately left
+  VISIBLE: the contract test reports that as the debug state, and requires
+  `display:none` on every rect once the layer is switched off.
+  (`assets/Model-33-ASR.svg`, `pdp11.html`, `css/g60printer.css`,
+  `src/pdp11-app.js`, `tests/teletype-svg-backdrop.test.js`,
+  `tests/teletype-cabinet-css.test.js`, `tests/punchtape.test.js`)
+
+- **The reader unit's marker is split in two as well.** Mirroring the punch, the
+  reader's four-position switch and the loaded tape are separate drawings on a
+  real Model 33, so they carry their own markers now: `ReaderControl` anchors the
+  START/STOP/FREE/AUTO switch block (uniform, width-driven fit, so the disc stays
+  round) and `ReaderTape` gives `#readertape` its axis and exit line instead of
+  the former plate-centre plus hand-tuned 32/24px offsets. The switch block left
+  the plate frame for its own `#asr-reader-switch` layer, so the artwork owns
+  where the switch sits, while `#asr-reader` keeps only the TAPE READER label
+  plate (contain fit) and the reader slot. The marker the artist tilted is
+  projected with `matrix3d()` through `--tty-rctrl-matrix`, exactly like the
+  punch cluster. The geometry contract now reads both mechanisms' markers from
+  the artwork and additionally checks that a tilted rect really is recognised as
+  a quadrilateral (`tests/teletype-svg-backdrop.test.js`).
+  (`assets/Model-33-ASR.svg`, `pdp11.html`, `css/g60printer.css`,
+  `src/pdp11-app.js`, `tests/teletype-svg-backdrop.test.js`,
+  `tests/teletype-cabinet-css.test.js`, `tests/reader.test.js`)
+
+- **The artwork's Foreground layer paints above the controls.** A layer labelled
+  `Foreground` is no longer part of the backdrop: the page fetches the same SVG
+  once, keeps that single layer (plus `<defs>`, where the drawing's gradients
+  live) and inlines it into `#tty-foreground`, which the stylesheet stacks above
+  every control — the key deck, both hanging tapes, the printed sheet and the
+  knobs. The host is `pointer-events: none`, so it stays purely cosmetic, and
+  the rest of the machine remains the backdrop image behind the overlays. This
+  is what lets the paper pass behind the platen lip and the punched tape behind
+  the punch head, which a background image can never do. The layer is found
+  through Inkscape's layer label (falling back to an id mentioning
+  "foreground"), so renaming the editor id cannot break it.
+  (`pdp11.html`, `css/g60printer.css`, `src/pdp11-app.js`,
+  `tests/teletype-cabinet-css.test.js`, `tests/teletype-svg-backdrop.test.js`)
+
+- **The markers layer is switched off (release state).** Every marker rect hides
+  itself now (`display:none` in the rect's own style, which survives Inkscape
+  rewriting the LAYER's display on save) and the stylesheet fallbacks are back in
+  step with the re-cut Apron, PuncherControl, ReaderControl and tape markers, so
+  a fetch-less load still puts every overlay in place. To align the markers
+  again, make the layer visible and drop those per-rect styles — the contract
+  test names the ones it wants.
+  (`assets/Model-33-ASR.svg`, `css/g60printer.css`)
+
+- **The TAPE PUNCH / TAPE READER lettering and the tape slot are drawn by the
+  artwork.** The two printed captions and the reader's tape slot come from
+  `assets/Model-33-ASR.svg` now, so the page no longer carries a `.asr-label` or
+  a `.asr-slot` element and their CSS rules are gone. The punch and reader plate
+  frames (`#asr-punch` / `#asr-reader`) stay as empty, marker-anchored
+  placeholders — the punch's slot and its triangular tongue had already moved
+  into the drawing. (`pdp11.html`, `css/g60printer.css`)
+
+- **Any marker can now lay its layer into perspective, not just the punch.**
+  The quad projection (a marker drawn as a quadrilateral, or a rect carrying its
+  own `rotate()`/`matrix()`) is wired for the whole cabinet: the Keyboard deck,
+  the CCU apron block and the printed sheet join `PuncherControl` /
+  `ReaderControl` in `TTY_QUAD_MARKERS`, each with the anchor its stylesheet
+  fallback really uses — the marker's top-left corner for a corner-fitted block,
+  the marker centre for a centred one — and the sheet with a "dynamic scale"
+  mode that keeps the printer's own factor (its width follows the column count)
+  and adds only the artist's transform, applied in rig space so the sheet tilts
+  onto the platen the artwork draws and the paper-growth maths keeps working.
+  Nothing changes until the artist tilts a marker: with plain rectangles the
+  fallbacks render exactly as before (checked in the browser for all four
+  layers). A guard in `tests/teletype-svg-backdrop.test.js` now fails when the
+  artwork tilts a marker rect that the table does not list — exactly the gap the
+  Apron marker had — and the three modes are unit-tested
+  (`tests/tty-quad-matrix.test.js`).
+  (`src/pdp11-app.js`, `css/g60printer.css`, `tests/tty-quad-matrix.test.js`,
+  `tests/teletype-svg-backdrop.test.js`, `tests/teletype-cabinet-css.test.js`)
+
+- **Four-point (quad) markers: the artwork can lay a layer into perspective.**
+  A marker may now be drawn as a QUADRILATERAL instead of a rectangle — a
+  polygon or a straight-line path with four nodes, e.g. a Trapezoid fitted over
+  the punch control area in Inkscape. The page reads the four corners at load,
+  solves the homography and publishes a `matrix3d()` (`--tty-pctrl-matrix`),
+  which `#asr-punch-buttons` uses when present; with a plain rectangle the
+  variable is absent and the honest uniform fit stays, so nothing changes until
+  the artist draws the quad. A marker rectangle that carries its OWN transform
+  (`rotate()`, `matrix()`, `translate()`, `scale()` — e.g. a marker tilted over
+  a tilted drawing) counts as a quad too: its four transformed corners are used.
+  The parser refuses curved paths, unsupported transforms and degenerate quads
+  (the fallback applies) and is pure/unit-tested together with the solver
+  (`tests/tty-quad-matrix.test.js`).
+  (`src/pdp11-app.js`, `css/g60printer.css`, `tests/tty-quad-matrix.test.js`,
+  `tests/teletype-cabinet-css.test.js`)
+
 ### Removed
 
 - **Browser loopback capture voice engine.** `tools/voicer.js` no longer

@@ -2391,15 +2391,403 @@ function ttyScaleFor(rectWidth, offsetWidth) {
 // (tests/teletype-svg-backdrop.test.js).
 var TTY_ART_URL = 'assets/Model-33-ASR.svg';
 
+// The fetched artwork text, kept so the quad projections can be re-derived
+// whenever their inputs move (the sheet factor follows the column count).
+var ttyArtText = '';
+
 // Marker id -> CSS variable prefix (the order is irrelevant).
 var TTY_MARKER_VARS = [
   { id: 'Keyboard', prefix: '--tty-kbd' },
   { id: 'Apron', prefix: '--tty-apron' },
-  { id: 'Puncher', prefix: '--tty-punch' },
-  { id: 'Reader', prefix: '--tty-reader' },
+  // The punch unit is split in two: the control area (REL/OFF/BSP/ON buttons)
+  // and the punched tape (its axis and exit line) are separate drawings on the
+  // real machine, so they carry separate markers.
+  { id: 'PuncherControl', prefix: '--tty-pctrl' },
+  { id: 'PuncherTape', prefix: '--tty-ptape' },
+  // ... and the reader unit the same way: the switch plate and the loaded tape.
+  { id: 'ReaderControl', prefix: '--tty-rctrl' },
+  { id: 'ReaderTape', prefix: '--tty-rtape' },
   { id: 'Paper', prefix: '--tty-paper' },
   { id: 'Caret', prefix: '--tty-caret' }
 ];
+
+// ---- Four-point markers (perspective areas) --------------------------------
+// A marker may be drawn as a QUADRILATERAL instead of a rectangle: the artist
+// fits four corners over the drawing (Inkscape's Pen tool with straight
+// segments, or a polygon) and the page projects the matching HTML layer onto
+// them with a matrix3d(). Rectangles keep the honest uniform/contain fit, so
+// only markers that really are quads change behaviour.
+
+// Pure: the four corners of a marker in SVG user units, or null when it is not
+// a quadrilateral. Accepts <polygon>/<polyline points="..."> and a
+// straight-line <path> (M/L/H/V plus Z); anything with curves or arcs returns
+// null, which keeps the stylesheet fallback.
+function ttyMarkerQuad(svgText, id) {
+  // A <rect> that carries its OWN transform (Inkscape's rotate()/matrix(), as
+  // when the artist tilts a marker over a tilted drawing) is a quadrilateral
+  // too: its four transformed corners are returned. A plain rect stays null —
+  // rectangles keep the honest uniform fit.
+  var rect = new RegExp('<rect[^>]*id="' + id + '"[^>]*/?>').exec(svgText);
+  if (rect) {
+    var transform = /transform="([^"]+)"/.exec(rect[0]);
+    if (!transform) return null; // a plain rectangle: the uniform fit stays
+    var matrix = ttyMarkerTransform(transform[1]);
+    if (!matrix) return null;
+    var attrs = {};
+    var reAttr = /([a-zA-Z:-]+)="([^"]*)"/g;
+    var hit;
+    while ((hit = reAttr.exec(rect[0])) !== null) attrs[hit[1]] = hit[2];
+    var x = parseFloat(attrs.x), y = parseFloat(attrs.y);
+    var w = parseFloat(attrs.width), h = parseFloat(attrs.height);
+    if (!isFinite(x) || !isFinite(y) || !isFinite(w) || !isFinite(h)) return null;
+    var corners = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+    var out = [];
+    for (var c = 0; c < corners.length; c++) {
+      out.push([
+        matrix[0] * corners[c][0] + matrix[2] * corners[c][1] + matrix[4],
+        matrix[1] * corners[c][0] + matrix[3] * corners[c][1] + matrix[5]
+      ]);
+    }
+    return out;
+  }
+
+  var element = new RegExp('<(polygon|polyline|path)[^>]*id="' + id + '"[^>]*/?>')
+    .exec(svgText);
+  if (!element) return null;
+  var tag = element[1];
+  var text = element[0];
+  var points = [];
+  if (tag === "polygon" || tag === "polyline") {
+    var attr = /points="([^"]+)"/.exec(text);
+    if (!attr) return null;
+    var pairs = attr[1].trim().split(/[\s,]+/);
+    if (pairs.length !== 8) return null;
+    for (var i = 0; i < 8; i += 2) {
+      points.push([parseFloat(pairs[i]), parseFloat(pairs[i + 1])]);
+    }
+  } else {
+    var d = /d="([^"]+)"/.exec(text);
+    if (!d) return null;
+    points = ttyStraightPathPoints(d[1]);
+    if (!points) return null;
+  }
+  for (var j = 0; j < points.length; j++) {
+    if (!isFinite(points[j][0]) || !isFinite(points[j][1])) return null;
+  }
+  return points.length === 4 ? points : null;
+}
+
+// Pure: compose an SVG transform list (matrix/translate/scale/rotate) into the
+// [a b c d e f] matrix, or null for anything not supported (skewX/skewY, bad
+// numbers) so the caller falls back to the uniform fit.
+function ttyMarkerTransform(text) {
+  var re = /([a-zA-Z]+)\s*\(([^)]*)\)/g;
+  var m = [1, 0, 0, 1, 0, 0];
+  var part;
+  var seen = false;
+  while ((part = re.exec(String(text))) !== null) {
+    seen = true;
+    var name = part[1];
+    var args = part[2].trim().split(/[\s,]+/).filter(function (v) { return v !== ""; })
+      .map(parseFloat);
+    var t = null;
+    if (name === "matrix") {
+      t = args.length === 6 ? args.slice() : null;
+    } else if (name === "translate") {
+      t = [1, 0, 0, 1, args[0] || 0, (args.length > 1) ? args[1] : 0];
+    } else if (name === "scale") {
+      var sy = (args.length > 1) ? args[1] : args[0];
+      t = [args[0], 0, 0, sy, 0, 0];
+    } else if (name === "rotate") {
+      var rad = args[0] * Math.PI / 180;
+      var cos = Math.cos(rad), sin = Math.sin(rad);
+      if (args.length >= 3) {
+        var cx = args[1], cy = args[2];
+        t = [cos, sin, -sin, cos,
+             cx - cos * cx + sin * cy, cy - sin * cx - cos * cy];
+      } else {
+        t = [cos, sin, -sin, cos, 0, 0];
+      }
+    }
+    if (!t) return null;
+    for (var i = 0; i < 6; i++) {
+      if (!isFinite(t[i])) return null;
+    }
+    m = ttyMatrixMultiply(m, t);
+  }
+  return seen ? m : null;
+}
+
+// Pure: multiply two SVG matrices (m1 applied after m2, SVG nesting order).
+function ttyMatrixMultiply(m1, m2) {
+  return [
+    m1[0] * m2[0] + m1[2] * m2[1],
+    m1[1] * m2[0] + m1[3] * m2[1],
+    m1[0] * m2[2] + m1[2] * m2[3],
+    m1[1] * m2[2] + m1[3] * m2[3],
+    m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+    m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+  ];
+}
+
+// Pure: the corner list of a straight-line SVG path, or null when the path
+// contains curves/arcs or does not end up with exactly four points.
+function ttyStraightPathPoints(d) {
+  var tokens = String(d).match(/[a-zA-Z]|-?\d*\.?\d+(?:[eE][-+]?\d+)?/g);
+  if (!tokens) return null;
+  var points = [];
+  var cur = [0, 0];
+  var cmd = null;
+  var i = 0;
+  while (i < tokens.length) {
+    if (/^[a-zA-Z]$/.test(tokens[i])) cmd = tokens[i++];
+    var a, b;
+    switch (cmd) {
+      case "M":
+      case "m":
+        a = parseFloat(tokens[i++]);
+        b = parseFloat(tokens[i++]);
+        cur = (cmd === "m") ? [cur[0] + a, cur[1] + b] : [a, b];
+        points.push(cur.slice());
+        cmd = (cmd === "m") ? "l" : "L"; // implicit lineto follows a moveto
+        break;
+      case "L":
+      case "l":
+        a = parseFloat(tokens[i++]);
+        b = parseFloat(tokens[i++]);
+        cur = (cmd === "l") ? [cur[0] + a, cur[1] + b] : [a, b];
+        points.push(cur.slice());
+        break;
+      case "H":
+      case "h":
+        a = parseFloat(tokens[i++]);
+        cur = [(cmd === "h") ? cur[0] + a : a, cur[1]];
+        points.push(cur.slice());
+        break;
+      case "V":
+      case "v":
+        b = parseFloat(tokens[i++]);
+        cur = [cur[0], (cmd === "v") ? cur[1] + b : b];
+        points.push(cur.slice());
+        break;
+      case "Z":
+      case "z":
+        i = tokens.length;
+        break;
+      default:
+        return null; // curves, arcs, or a malformed path
+    }
+  }
+  return points.length === 4 ? points : null;
+}
+
+// Pure: the CSS matrix3d() that projects a w x h box onto four points
+// (each [x, y] in the element's LOCAL px space — quad[0] is where the element's
+// own top-left corner lands). Returns null for a degenerate quad, so the caller
+// keeps the uniform fit. Implemented as a homography solved from the four point
+// correspondences; the CSS argument list is column-major.
+function ttyQuadMatrix3d(w, h, quad) {
+  if (!quad || quad.length !== 4 || !(w > 0) || !(h > 0)) return null;
+  var src = [[0, 0], [w, 0], [w, h], [0, h]];
+  var rows = [];
+  var rhs = [];
+  for (var i = 0; i < 4; i++) {
+    var x = src[i][0], y = src[i][1];
+    var u = quad[i][0], v = quad[i][1];
+    rows.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
+    rhs.push(u);
+    rows.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
+    rhs.push(v);
+  }
+  var m = ttySolveLinear(rows, rhs);
+  if (!m) return null;
+  var args = [m[0], m[3], 0, m[6],
+              m[1], m[4], 0, m[7],
+              0, 0, 1, 0,
+              m[2], m[5], 0, 1];
+  for (var j = 0; j < args.length; j++) {
+    if (!isFinite(args[j])) return null;
+  }
+  return "matrix3d(" + args.join(", ") + ")";
+}
+
+// Pure: Gaussian elimination with partial pivoting for an n x n system.
+// Returns null when the matrix is singular (a degenerate quad).
+function ttySolveLinear(rows, rhs) {
+  var n = rows.length;
+  var a = [];
+  for (var i = 0; i < n; i++) a.push(rows[i].slice().concat([rhs[i]]));
+  for (var col = 0; col < n; col++) {
+    var pivot = col;
+    for (var r = col + 1; r < n; r++) {
+      if (Math.abs(a[r][col]) > Math.abs(a[pivot][col])) pivot = r;
+    }
+    if (Math.abs(a[pivot][col]) < 1e-12) return null;
+    var tmp = a[col]; a[col] = a[pivot]; a[pivot] = tmp;
+    for (var r2 = 0; r2 < n; r2++) {
+      if (r2 === col) continue;
+      var factor = a[r2][col] / a[col][col];
+      if (factor === 0) continue;
+      for (var c = col; c <= n; c++) a[r2][c] -= factor * a[col][c];
+    }
+  }
+  var out = [];
+  for (var k = 0; k < n; k++) out.push(a[k][n] / a[k][k]);
+  return out;
+}
+
+// Every layer that may be projected into a quad marker: the native px box it
+// occupies, the marker it belongs to and HOW its stylesheet fallback lays it
+// out (the projection must replace that fallback exactly):
+//   anchor "corner" — the layer sits at the marker's TOP-LEFT corner and its
+//     w x h box is fitted onto the marker rect (the fallback is that fit), so
+//     the projection maps the same box from the same corner;
+//   anchor "centre" — the layer is CENTRED on the marker (the fallback carries
+//     the centring), so the box is projected from the marker CENTRE;
+//   anchor "sheet"  — the layer keeps its own dynamic scale (the printed
+//     sheet's width follows the column count), so only the artist's transform
+//     is published, pivoting on `pivot` in the layer's own px.
+// Only a marker drawn as a QUAD publishes anything: a rectangle keeps the
+// stylesheet's honest fit, so nothing changes until the artist tilts a marker.
+var TTY_QUAD_MARKERS = [
+  // The REL/OFF/BSP/ON cluster.
+  { id: "PuncherControl", prefix: "--tty-pctrl", name: "--tty-pctrl-matrix",
+    anchor: "corner", w: 106, h: 64 },
+  // The START/STOP/FREE/AUTO switch block (its native 92x62 px frame).
+  { id: "ReaderControl", prefix: "--tty-rctrl", name: "--tty-rctrl-matrix",
+    anchor: "corner", w: 92, h: 62 },
+  // The key deck: anchored to the Keyboard marker's corner and stretched to its
+  // width/height (576x212 — see model33KeyGrid).
+  { id: "Keyboard", prefix: "--tty-kbd", name: "--tty-kbd-matrix",
+    anchor: "corner", w: 576, h: 212 },
+  // The CCU apron block (knob + three labels), centred on the Apron marker.
+  { id: "Apron", prefix: "--tty-apron", name: "--tty-apron-matrix",
+    anchor: "centre", w: 118, h: 66 },
+  // The printed sheet: the printer block's own scale stays (the sheet width
+  // follows the column count), and the artist's transform of the Paper marker
+  // — or, when that rect is plain, of the Caret band — is applied on top, so
+  // the sheet tilts with the platen it lies in. 404/316 is the printer's print
+  // point (sheet centre, print line) in the block's own px.
+  { id: "Paper", prefix: "--tty-paper", name: "--tty-paper-matrix",
+    anchor: "sheet", altId: "Caret", pivot: [404, 316] }
+];
+
+// Pure: the column-major matrix3d() of a 2D affine matrix [a b c d e f] in the
+// SVG convention (x' = a*x + c*y + e, y' = b*x + d*y + f).
+function ttyAffineMatrix3d(a, b, c, d, e, f) {
+  var args = [a, b, 0, 0, c, d, 0, 0, 0, 0, 1, 0, e, f, 0, 1];
+  for (var i = 0; i < args.length; i++) {
+    if (!isFinite(args[i])) return null;
+  }
+  return "matrix3d(" + args.join(", ") + ")";
+}
+
+// Pure: the transform attribute of a marker <rect> ("" when it carries none).
+function ttyMarkerRectTransform(svgText, id) {
+  var element = new RegExp('<rect[^>]*id="' + id + '"[^>]*/>').exec(svgText);
+  if (!element) return "";
+  var transform = /transform="([^"]+)"/.exec(element[0]);
+  return transform ? transform[1] : "";
+}
+
+// Pure: the matrix3d() the layer of a quad marker must consume, or null when
+// the marker is not a quad (a rectangle keeps the stylesheet fit), its numbers
+// are missing, the projection is degenerate or the layer's mode cannot express
+// the artist's transform.
+//   entry — one TTY_QUAD_MARKERS row
+//   quad  — the four marker corners, SVG units (ttyMarkerQuad)
+//   vars  — the marker numbers, SVG units (ttyMarkerVars output)
+//   opts  — { unit, sheetK, artTransform }
+function ttyQuadLayerMatrix(entry, quad, vars, opts) {
+  if (!entry || !quad || quad.length !== 4 || !opts) return null;
+  var unit = opts.unit;
+  if (!isFinite(unit) || unit <= 0) return null;
+  function marker(name) {
+    var value = parseFloat(vars ? vars[name] : NaN);
+    return isFinite(value) ? value : null;
+  }
+  if (entry.anchor === "sheet") {
+    // The printer block keeps its own scale, so only the artist's transform is
+    // published — expressed in the block's own px and pivoting on the print
+    // point. For an affine transform L/t the map is
+    //   M(p) = L*(p - pivot) + pivot + (L*C + t - C) / k
+    // where C is the print point in rig px and k the factor the stylesheet
+    // scales the block by (the block's px are k times smaller than the rig's,
+    // so a translation shrinks by k).
+    var affine = ttyMarkerTransform(opts.artTransform || "");
+    var sheetK = opts.sheetK;
+    if (!affine || !entry.pivot) return null;
+    if (!isFinite(sheetK) || sheetK <= 0) return null;
+    var cx = marker("--tty-paper-x");
+    var cw = marker("--tty-paper-w");
+    var lineY = marker("--tty-caret-line-y");
+    if (cx === null || cw === null || lineY === null) return null;
+    var line = [(cx + cw / 2) * unit, lineY * unit];
+    var pivot = entry.pivot;
+    var movedX = affine[0] * line[0] + affine[2] * line[1] + affine[4] - line[0];
+    var movedY = affine[1] * line[0] + affine[3] * line[1] + affine[5] - line[1];
+    var tx = pivot[0] - (affine[0] * pivot[0] + affine[2] * pivot[1]) + movedX / sheetK;
+    var ty = pivot[1] - (affine[1] * pivot[0] + affine[3] * pivot[1]) + movedY / sheetK;
+    return ttyAffineMatrix3d(affine[0], affine[1], affine[2], affine[3], tx, ty);
+  }
+
+  // The anchor is the point the stylesheet positions the layer BY: the marker's
+  // top-left corner (corner fit) or its centre (centred block).
+  var w = marker(entry.prefix + "-w");
+  var h = marker(entry.prefix + "-h");
+  var x = marker(entry.prefix + "-x");
+  var y = marker(entry.prefix + "-y");
+  if (w === null || h === null || x === null || y === null) return null;
+  var centred = (entry.anchor === "centre");
+  var anchorX = (centred ? x + w / 2 : x) * unit;
+  var anchorY = (centred ? y + h / 2 : y) * unit;
+  var target = [];
+  for (var i = 0; i < 4; i++) {
+    target.push([quad[i][0] * unit - anchorX, quad[i][1] * unit - anchorY]);
+  }
+  return ttyQuadMatrix3d(entry.w, entry.h, target);
+}
+
+// The factor the stylesheet scales the printer block by (--tty-sheet-k, see
+// css/g60printer.css): the Paper marker divided by the sheet the printer really
+// laid out. 741 is the fetch-less stylesheet fallback.
+function ttySheetFactor(vars, unit) {
+  var rig = document.getElementById('teletype-rig');
+  var native = rig ? parseFloat(rig.style.getPropertyValue('--tty-sheet-native')) : NaN;
+  if (!isFinite(native) || native <= 0) native = 741;
+  var w = parseFloat(vars ? vars['--tty-paper-w'] : NaN);
+  if (!isFinite(w) || !isFinite(unit) || unit <= 0) return NaN;
+  return unit * w / native;
+}
+
+// Compute the projection of every quad marker and publish it on the rig; the
+// stylesheet falls back to its own fit when the variable is absent, so a
+// rectangular marker changes nothing.
+function applyTtyQuadMatrices(rig, svgText) {
+  var vars = ttyMarkerVars(svgText) || {};
+  var unit = parseFloat(window.getComputedStyle(rig).getPropertyValue("--tty-u-num"));
+  if (!isFinite(unit) || unit <= 0) return;
+  var sheetK = ttySheetFactor(vars, unit);
+  for (var i = 0; i < TTY_QUAD_MARKERS.length; i++) {
+    var marker = TTY_QUAD_MARKERS[i];
+    var quad = ttyMarkerQuad(svgText, marker.id);
+    var source = marker.id;
+    if (!quad && marker.altId) {
+      // The printed sheet may be tilted through either of its two markers.
+      quad = ttyMarkerQuad(svgText, marker.altId);
+      source = marker.altId;
+    }
+    var matrix = quad
+      ? ttyQuadLayerMatrix(marker, quad, vars, {
+          unit: unit,
+          sheetK: sheetK,
+          artTransform: ttyMarkerRectTransform(svgText, source)
+        })
+      : null;
+    if (matrix) rig.style.setProperty(marker.name, matrix);
+    else rig.style.removeProperty(marker.name);
+  }
+}
 
 // Pure: SVG text -> { '--tty-kbd-x': '127.64988', ... } (x/y/w/h per marker
 // plus the viewBox and the derived print line). Missing markers are skipped, so
@@ -2436,6 +2824,67 @@ function ttyMarkerVars(svgText) {
   return out;
 }
 
+// Pure: the id of the artwork's Foreground layer — the one the artist wants
+// painted ABOVE the live controls — or "" when the artwork carries none.
+// Matched by Inkscape's layer label first (the id may be renamed by the editor),
+// then by an id that mentions "foreground".
+function ttyForegroundLayerId(svgText) {
+  var tags = String(svgText || "").match(/<g\b[^>]*>/g) || [];
+  for (var i = 0; i < tags.length; i++) {
+    var label = /inkscape:label="([^"]*)"/.exec(tags[i]);
+    if (label && /^foreground$/i.test(label[1].trim())) {
+      var id = /id="([^"]*)"/.exec(tags[i]);
+      if (id && id[1]) return id[1];
+    }
+  }
+  for (var j = 0; j < tags.length; j++) {
+    var named = /id="([^"]*)"/.exec(tags[j]);
+    if (named && /foreground/i.test(named[1])) return named[1];
+  }
+  return "";
+}
+
+// The machine itself is the #tty-backdrop background image, i.e. BEHIND every
+// control, so a layer that must cover the keys or the hanging tapes cannot be
+// part of it. The page therefore inlines the SAME artwork — fetched once —
+// stripped down to that one layer (plus <defs>, where the artwork's gradients
+// live) into #tty-foreground, which the stylesheet stacks above everything. The
+// rest of the drawing is not copied: the backdrop already paints it.
+function installTtyForeground(svgText) {
+  var host = document.getElementById('tty-foreground');
+  if (!host || typeof DOMParser === 'undefined') return;
+  host.textContent = '';
+  var id = ttyForegroundLayerId(svgText);
+  if (!id) return; // no such layer: nothing has to paint on top
+  var parsed = new DOMParser().parseFromString(String(svgText), 'image/svg+xml');
+  var root = parsed && parsed.documentElement;
+  if (!root || root.localName !== 'svg') return; // malformed artwork
+  var viewBox = root.getAttribute('viewBox');
+  if (!viewBox) return;
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', viewBox);
+  // The backdrop stretches the artwork to the rig box (background-size: 100%
+  // 100%), so this copy has to stretch exactly the same way to line up. The
+  // size lives on the element itself: a stylesheet rule for the inlined <svg>
+  // would only add a second place to keep in step.
+  svg.setAttribute('preserveAspectRatio', 'none');
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '100%');
+  svg.setAttribute('style', 'display:block');
+  var layer = null;
+  for (var i = 0; i < root.children.length; i++) {
+    var child = root.children[i];
+    if (child.localName === 'defs') {
+      svg.appendChild(document.importNode(child, true));
+    } else if (child.getAttribute('id') === id) {
+      layer = child;
+    }
+  }
+  if (!layer) return;
+  svg.appendChild(document.importNode(layer, true));
+  host.appendChild(svg);
+}
+
 // Fetch the artwork, apply the markers and re-derive everything that depends on
 // them (the rig scale, the paper ceiling and the two hanging tapes).
 function installTtyArtLayer() {
@@ -2446,12 +2895,17 @@ function installTtyArtLayer() {
     .then(function (text) {
       var vars = ttyMarkerVars(text);
       if (!vars) return;
+      ttyArtText = text; // kept for later re-projections (sheet factor)
       for (var name in vars) {
         if (Object.prototype.hasOwnProperty.call(vars, name)) {
           rig.style.setProperty(name, vars[name]);
         }
       }
       window.__ttyMarkerVars = vars; // inspectable from the console/tests
+      // Four-point markers (perspective areas) switch their layer to matrix3d.
+      applyTtyQuadMatrices(rig, text);
+      // The artwork's Foreground layer goes ABOVE the controls (keys, tapes).
+      installTtyForeground(text);
       // The sheet scale follows the marker AND the real sheet width.
       ttySyncSheetWidth();
       if (typeof window.__ttyRescale === 'function') window.__ttyRescale();
@@ -2484,6 +2938,9 @@ function ttySyncSheetWidth() {
     // MUST live on the rig: --tty-sheet-k is computed there and inherited by the
     // printer block, so setting it on the block itself would have no effect.
     rig.style.setProperty('--tty-sheet-native', String(native));
+    // The sheet's projection divides by that factor, so re-derive it now that
+    // the real width is known (the first pass runs before the page is visible).
+    if (ttyArtText) applyTtyQuadMatrices(rig, ttyArtText);
   }
 }
 

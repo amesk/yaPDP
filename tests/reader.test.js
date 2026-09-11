@@ -144,10 +144,12 @@ function loadReaderModule() {
   assert.ok(html.includes("src='src/reader.js'"),
     "pdp11.html loads src/reader.js");
 
-  // css/g60printer.css: the reader tape hangs from the reader slot (top 298)
-  // with the same ragged-end treatment as the punched tape.
+  // css/g60printer.css: the reader tape hangs from the artwork's own ReaderTape
+  // marker (the reader unit is split into the switch area and the tape) with the
+  // same ragged-end treatment as the punched tape.
   assert.ok(css.includes("#readertape"), "css styles #readertape");
-  assert.ok(css.includes("top: 298px"), "reader tape hangs from the reader slot");
+  assert.ok(css.includes("var(--tty-rtape-cy)") && css.includes("var(--tty-rtape-cx)"),
+    "reader tape hangs on the ReaderTape marker's axis and lower edge");
   assert.ok(css.includes("#readertape__body::after"), "reader tape has the ragged end");
   assert.ok(css.includes(".tty-btn.hidden"), "css hides the Remove tape button");
 

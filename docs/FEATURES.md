@@ -23,13 +23,22 @@ A fully animated teletype drawn as an authentic Model 33 ASR. The machine
 itself — the sand-cream cabinet, the platen rollers, the glass carriage window
 and the stamped Teletype Corporation wordmark — is drawn from SVG artwork
 (`assets/Model-33-ASR.svg`) used as an inert backdrop, and every control stays
-live HTML anchored to the artwork's marked areas (keyboard, punch/reader
-plates, CCU knob, paper, hanging tapes) in one shared coordinate system: the
+live HTML anchored to the artwork's marked areas (keyboard, the punch and
+reader control areas with their label plates, CCU knob, paper, hanging tapes)
+in one shared coordinate system: the
 `--tty-*` variables of the "SVG art layer" block in `css/g60printer.css`. The
 markers are **read from the artwork at page load** (`ttyMarkerVars`), so moving
 or resizing a marked area in the SVG is enough — the controls follow it (the
 stylesheet keeps the same numbers only as a fallback, and
-`tests/teletype-svg-backdrop.test.js` pins both sides). It is connected as the
+`tests/teletype-svg-backdrop.test.js` pins both sides). A marker may also be
+**tilted or drawn as a quadrilateral** (a rotated rect, a trapezoid): the page
+then projects the matching layer onto it with a `matrix3d()` — key deck, CCU
+block, printed sheet, punch and reader controls — so every overlay lies in the
+perspective of the cabinet drawing instead of standing upright in it. A layer
+the artist labels **Foreground** is inlined into its own `pointer-events: none`
+overlay above every control, so drawings like the platen lip and the punch head
+cover the printed paper and the hanging tape exactly as the real machine does.
+It is connected as the
 operator console with a faithful Model 33 ASR
 keyboard: round dark keycaps with light two-line legends (the base glyph
 centred, the CTRL-code name or shift symbol above), and the historical special
@@ -55,7 +64,10 @@ reaches the top of the window, at which point the paper's own scrollbar
 appears and the view follows the freshly printed line.
 
 Beside the machine sits the ASR tape **reader/punch** unit: every byte echoed
-to the console punches a matching row of holes on an 8-track paper tape
+to the console punches a matching row of holes on an 8-track paper tape.
+The punch is drawn as two marked areas — the control cluster (REL/OFF/BSP/ON)
+and the tape itself — so the artwork owns both where the strip leaves the
+mechanism and where the buttons sit,
 (tracks 1–7 = ASCII, track 8 = parity, feed holes between tracks 3/4), which
 grows downwards and gains a scrollbar once it fills the window. As on a real
 ASR-33 the punch is **OFF by default**: it engages via the **ON** button on
