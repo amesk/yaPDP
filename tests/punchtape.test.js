@@ -208,6 +208,19 @@ function testCss() {
   assert.ok(css.indexOf(".tty-btn.active") === -1,
     "css/g60printer.css must NOT define the removed .tty-btn.active (LOCAL/LINE buttons are gone)");
 
+  // The punch buttons never light up (no hover brightening), and the latched
+  // .active the JS toggles for REL/ON/OFF only presses the cap DOWN onto its
+  // dark base — it must not change the plastic or the legend colour.
+  assert.ok(css.indexOf(".asr-btn:hover") === -1,
+    "css/g60printer.css must NOT define .asr-btn:hover (no hover highlight on the punch buttons)");
+  {
+    const activeRule = extractBlock(css, ".asr-btn.active {", "");
+    assert.ok(/translate\(/.test(activeRule),
+      ".asr-btn.active must sink the cap (translate) so a latched button stays down:\n" + activeRule);
+    assert.ok(activeRule.indexOf("background") === -1 && activeRule.indexOf("color:") === -1,
+      ".asr-btn.active must NOT light the button up (no background/color):\n" + activeRule);
+  }
+
   // The cabinet must be reader+punch only and let the tape hang past it.
   {
     const unitRule = extractBlock(css, "#asr-tape-unit {", "");
