@@ -452,7 +452,11 @@
     width: 576px;
     height: 212px;
     transform-origin: 0 0;
-    transform: scale(var(--tty-kbd-sx), var(--tty-kbd-sy));
+    /* A tilted Keyboard marker projects the whole key grid onto it with
+       matrix3d, so the invisible hit areas follow the caps the artwork draws;
+       a plain rectangle keeps the honest marker fit. */
+    transform: var(--tty-kbd-matrix,
+            scale(var(--tty-kbd-sx), var(--tty-kbd-sy)));
 }
 
 /* With the keycaps drawn by the page (CONFIG -> Keyboard keycaps -> Drawn by
@@ -959,7 +963,8 @@
 
 /* Dark paper opening: a recessed slot right at the carriage, out of which the
    fanfold climbs — the same "indentation" look as the Model 33 ASR punch slot
-   (.asr-slot in this file): a black rectangle with rounded corners and an
+   (drawn by the artwork on the teletype page): a black rectangle with rounded
+   corners and an
    inset shadow. It sits BEHIND the paper (z-index 4 < 5), so the sheet never
    disappears behind it while feeding, and is only as tall as the opening
    itself — its bottom edge (bottom:60px) sits where the paper's bottom meets
@@ -1109,7 +1114,13 @@
     box-shadow: none;
     overflow: visible;
     transform-origin: 0 0;
-    transform: scale(var(--tty-sheet-k));
+    /* scale() keeps the sheet's OWN size (its width follows the column count,
+       see ttySyncSheetWidth), so a tilted Paper (or Caret) marker only adds the
+       artist's transform on top, pivoting on the print point: the sheet lies in
+       the platen the artwork draws instead of staying upright in a tilted one.
+       translate(0px, 0px) is the identity a plain rectangle keeps — the sheet
+       is byte-identical to before until the artist tilts a marker. */
+    transform: scale(var(--tty-sheet-k)) var(--tty-paper-matrix, translate(0px, 0px));
     z-index: 4;
 }
 
@@ -1205,18 +1216,28 @@
     --tty-kbd-y: 183.911;
     --tty-kbd-w: 216.34595;
     --tty-kbd-h: 77.712708;
-    --tty-apron-x: 439.00543;
-    --tty-apron-y: 289.03168;
-    --tty-apron-w: 44.612446;
-    --tty-apron-h: 16.611017;
-    --tty-punch-x: 21.748732;
-    --tty-punch-y: 114.29581;
-    --tty-punch-w: 46.92091;
-    --tty-punch-h: 83.097519;
-    --tty-reader-x: 17.445614;
-    --tty-reader-y: 218.46942;
-    --tty-reader-w: 46.985447;
-    --tty-reader-h: 53.629852;
+    --tty-apron-x: 545.05432;
+    --tty-apron-y: 299.60672;
+    --tty-apron-w: 32.433464;
+    --tty-apron-h: 17.285152;
+    --tty-pctrl-x: 43.746887;
+    --tty-pctrl-y: 123.93871;
+    --tty-pctrl-w: 41.191868;
+    --tty-pctrl-h: 28.906223;
+    --tty-ptape-x: 33.821438;
+    --tty-ptape-y: 183.21991;
+    --tty-ptape-w: 27.412594;
+    --tty-ptape-h: 1.8400521;
+    /* The reader unit is split the same way as the punch: the switch plate and
+       the loaded tape are separate drawings, so they carry separate markers. */
+    --tty-rctrl-x: 64.733955;
+    --tty-rctrl-y: 242.43582;
+    --tty-rctrl-w: 31.239086;
+    --tty-rctrl-h: 23.328508;
+    --tty-rtape-x: 26.909184;
+    --tty-rtape-y: 202.69734;
+    --tty-rtape-w: 27.412594;
+    --tty-rtape-h: 1.8400521;
     --tty-paper-x: 144.93832;
     --tty-paper-y: 89.086563;
     --tty-paper-w: 182.78258;
@@ -1234,11 +1255,31 @@
        CCU apron 118x66, paper sheet 741px wide. */
     --tty-kbd-k: calc(var(--tty-u-num) * 0.36657);
     /* min(216.34595/576, 77.712708/212) — uniform fit, page-drawn caps */
-    --tty-punch-k: calc(var(--tty-u-num) * 0.27601);
-    /* min(46.92091/170, 83.097519/164) */
-    --tty-reader-k: calc(var(--tty-u-num) * 0.27638);
-    --tty-apron-k: calc(var(--tty-u-num) * 0.25168);
-    /* min(44.612446/118, 16.611017/66) */
+    --tty-pctrl-k: calc(var(--tty-u-num) * 0.17626);
+    /* min(41.191868/170, 28.906223/164) — the (now empty) TAPE PUNCH plate frame
+       is contain-fitted onto the PuncherControl marker. */
+    --tty-pctrl-btn-k: calc(var(--tty-u-num) * var(--tty-pctrl-w) / 106);
+    /* The REL/OFF/BSP/ON cluster is a 106px-wide 2x2 grid: a UNIFORM, width-
+       driven fit keeps the round buttons round while their outer edges follow
+       the marker exactly (the marker is what the artwork draws them into). */
+    --tty-ptape-cy: calc(var(--tty-ptape-y) + var(--tty-ptape-h));
+    --tty-ptape-cx: calc(var(--tty-ptape-x) + var(--tty-ptape-w) / 2);
+    /* The punched tape leaves the mechanism along the PuncherTape marker: its
+       axis is the marker's horizontal centre, its first row starts at the
+       marker's lower edge (--tty-ptape-cy). */
+    /* The reader tape leaves the mechanism along the ReaderTape marker (its own
+       marker, mirroring PuncherTape): the axis is the marker's horizontal centre
+       and its first row starts at the marker's lower edge. */
+    --tty-rtape-cy: calc(var(--tty-rtape-y) + var(--tty-rtape-h));
+    --tty-rtape-cx: calc(var(--tty-rtape-x) + var(--tty-rtape-w) / 2);
+    /* min(31.239086/170, 23.328508/164) — the (now empty) TAPE READER plate
+       frame is contain-fitted onto the ReaderControl marker. */
+    --tty-rctrl-k: calc(var(--tty-u-num) * 0.14225);
+    /* The 92px-wide switch block is fitted by WIDTH onto the same marker, so the
+       round disc never distorts while the outer edges follow the artwork. */
+    --tty-rctrl-switch-k: calc(var(--tty-u-num) * var(--tty-rctrl-w) / 92);
+    --tty-apron-k: calc(var(--tty-u-num) * 0.26190);
+    /* min(32.433464/118, 17.285152/66) */
     /* Printable width: the artwork's Paper marker sets it. The sheet itself is
        laid out by the printer (computePaperGeometry, per column count), so the
        page publishes its real width in the UNITLESS --tty-sheet-native; 741 is
@@ -1277,6 +1318,22 @@
     inset: 0;
     z-index: 3;
 }
+
+/* The artwork's Foreground layer, inlined by installTtyForeground(): the parts
+   the artist marked as "in front of everything" must paint ABOVE the live
+   controls — keys, hanging tapes (z-index 10/11), printed sheet, knobs — which
+   a background image behind them can never do. Same box and the same stretch
+   as the backdrop (background-size: 100% 100%), so the two line up pixel for
+   pixel. Cosmetic only: it must never take a click. */
+#tty-foreground {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+}
+
+/* (The inlined <svg> is sized by installTtyForeground() itself — width/height
+   100% — so no rule here can drift away from the backdrop's stretch.) */
 
 /* The printer + keyboard column is a positioning context at the rig origin
    only (zero-sized), so a control's left/top are rig (artwork) coordinates. */
@@ -1344,11 +1401,13 @@
    (#ccu-apron), so the whole ASR unit reads as one plastic body. */
 #asr-punch {
     position: absolute;
-    /* Contain-fitted onto the artwork's Puncher marker: the plate keeps its
-       native 170x164 px control frame (label, 2x2 buttons, slot) and is
-       centred on the marker. The plate plastic comes from the artwork. */
-    left: calc(var(--tty-u) * var(--tty-punch-x) + var(--tty-u) * var(--tty-punch-w) / 2);
-    top: calc(var(--tty-u) * var(--tty-punch-y) + var(--tty-u) * var(--tty-punch-h) / 2);
+    /* Contain-fitted onto the artwork's PuncherControl marker: the frame keeps
+       its native 170x164 px layout and is centred on the marker. It is EMPTY
+       now — the artwork draws the plate, the TAPE PUNCH lettering and the
+       tape-out slot — and stays as the marker-anchored placeholder; the button
+       cluster and the tape have their OWN markers (see below). */
+    left: calc(var(--tty-u) * var(--tty-pctrl-x) + var(--tty-u) * var(--tty-pctrl-w) / 2);
+    top: calc(var(--tty-u) * var(--tty-pctrl-y) + var(--tty-u) * var(--tty-pctrl-h) / 2);
     width: 170px;
     height: 164px;
     background: none;
@@ -1356,18 +1415,36 @@
     border-radius: 0;
     box-shadow: none;
     transform-origin: 50% 50%;
-    transform: translate(-50%, -50%) scale(var(--tty-punch-k));
+    transform: translate(-50%, -50%) scale(var(--tty-pctrl-k));
+}
+
+/* The TAPE PUNCH operator buttons (REL/OFF/BSP/ON) left the plate frame: they
+   are anchored to the PuncherControl marker itself, so the artwork owns where
+   the buttons sit. Uniform width-driven fit (see --tty-pctrl-btn-k). */
+#asr-punch-buttons {
+    position: absolute;
+    left: calc(var(--tty-u) * var(--tty-pctrl-x));
+    top: calc(var(--tty-u) * var(--tty-pctrl-y));
+    transform-origin: 0 0;
+    /* When the artist marks PuncherControl as a QUADRILATERAL, the page
+       publishes a matrix3d() that projects the cluster onto it (a perspective
+       area — see applyTtyQuadMatrices in src/pdp11-app.js); with a plain
+       rectangle the variable is absent and the honest uniform width fit
+       applies. Both keep the marker's top-left corner as the anchor. */
+    transform: var(--tty-pctrl-matrix, scale(var(--tty-pctrl-btn-k)));
+    z-index: 5;
 }
 
 
 /* Reader: same native 170x164 px frame as the punch, contain-fitted onto the
-   artwork's Reader marker. The labels centre on the plate; the switch, the
-   slot and the hanging tape keep their former offsets inside that frame (see
-   #readertape). */
+   artwork's ReaderControl marker. The frame is EMPTY now — the artwork draws the
+   plate, the TAPE READER lettering and the tape slot — and stays as the
+   marker-anchored placeholder; the switch and the hanging tape have their OWN
+   markers (see #asr-reader-switch/#readertape). */
 #asr-reader {
     position: absolute;
-    left: calc(var(--tty-u) * var(--tty-reader-x) + var(--tty-u) * var(--tty-reader-w) / 2);
-    top: calc(var(--tty-u) * var(--tty-reader-y) + var(--tty-u) * var(--tty-reader-h) / 2);
+    left: calc(var(--tty-u) * var(--tty-rctrl-x) + var(--tty-u) * var(--tty-rctrl-w) / 2);
+    top: calc(var(--tty-u) * var(--tty-rctrl-y) + var(--tty-u) * var(--tty-rctrl-h) / 2);
     width: 170px;
     height: 164px;
     background: none;
@@ -1375,78 +1452,12 @@
     border-radius: 0;
     box-shadow: none;
     transform-origin: 50% 50%;
-    transform: translate(-50%, -50%) scale(var(--tty-reader-k));
+    transform: translate(-50%, -50%) scale(var(--tty-rctrl-k));
 }
 
-.asr-label {
-    position: absolute;
-    top: 3px;
-    left: 0;
-    right: 0;
-    text-align: center;
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: 15px;
-    font-weight: bold;
-    letter-spacing: 2px;
-    color: #5c5442;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-
-.asr-slot {
-    position: absolute;
-    /* The slot keeps its FORMER position in the widened plate: the plate
-       grew from 144px to 170px (left edge 184px + 1px border = padding box
-       185px), so the old centred slot (absolute left 231px) sits at 231 -
-       185 = 46px from the padding box. The buttons and the hanging tape
-       keep the same offset, so the punched tape still passes through the
-       slot. */
-    left: 46px;
-    top: 106px;
-    /* Wider than the punched tape (97px) but clearly narrower than the
-       punch/reader cabinet, so the opening's dark walls stay visible around
-       the tape as it passes through (the tape draws on top of the slot).
-       top:106px keeps the slot's distance to the block BOTTOM (26px) the
-       same as before the cabinet was made taller. */
-    width: 104px;
-    height: 12px;
-    background: #0a0a0a;
-    border: 1px solid #555;
-    border-radius: 2px;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
-}
-
-/* The reader slot also keeps its FORMER position (absolute left 205px =
-   205 - 185 = 20px from the padding box), so the reader tape (left:31px)
-   still passes through it; the label above stays centred on the plate. */
-#asr-reader .asr-slot {
-    left: 20px;
-}
-
-/* Triangular tongue sitting ON TOP of the punch tape-out slot, forming one
-   solid piece with the punch cabinet (same gradient): a full triangle whose
-   BASE is as wide as the slot itself (104px), attached to the TOP edge of
-   the slot, and whose NOSE points straight DOWN, reaching the BOTTOM edge
-   of the slot. top:-1px makes the base overlap the slot's 1px top border so
-   no hairline crack shows between the tongue and the cabinet above. The
-   dark slot walls show through as the two triangular notches on either side
-   of the nose. It draws ABOVE the hanging tape, so the punched tape appears
-   to pass out from UNDER it. */
-#asr-punch .asr-slot::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: -1px;
-    transform: translateX(-50%);
-    width: 104px;
-    height: 13px;
-    background: linear-gradient(180deg, #e0c9a4 0%, #d0b58b 100%);
-    clip-path: polygon(0 0, 100% 0, 50% 100%);
-    z-index: 20;
-}
-
-/* Both slots stay centred on their block (left:50% from the base rule): the
-   punch slot lets the tape hang straight down from the middle of the punch,
-   and the reader slot sits centred below it. */
+/* (The TAPE PUNCH / TAPE READER lettering and the tape slots are drawn by the
+   artwork now — assets/Model-33-ASR.svg — so the page carries no .asr-label
+   and no .asr-slot element any more.) */
 
 /* Punch operator buttons (REL/OFF/BSP/ON) arranged in a 2x2 block in the
    punch cabinet BETWEEN the TAPE PUNCH label and the tape-out slot, so the
@@ -1523,20 +1534,25 @@
    CCU line switch (LINE/OFF/LOCAL): a round rotary knob with a light centre,
    a gray ring and a protruding triangular beak that points at the active
    position. The JS rotates #reader-switch-lever (0/90/180/270°), so the beak
-   orbits the disc centre and lands on START/STOP/FREE/AUTO. */
+   orbits the disc centre and lands on START/STOP/FREE/AUTO.
+   The block left the reader plate frame: it is anchored to the artwork's
+   ReaderControl marker itself, so the artwork owns where the switch sits.
+   Uniform width-driven fit (see --tty-rctrl-switch-k) keeps the disc round. */
 .asr-reader-switch {
     position: absolute;
-    /* Kept at its original position (left:29px) even though the reader
-       plate is now wider — per Alexei's request the switch does not
-       re-centre on the plate. top:42px keeps the switch's distance to
-       the block BOTTOM (40px) the same as before the cabinet was made
-       taller. The hanging punch tape draws ABOVE it (see #punchtape
-       z-index), as a punched tape always passes in front of the reader
-       mechanism. */
-    left: 29px;
-    top: 42px;
+    left: calc(var(--tty-u) * var(--tty-rctrl-x));
+    top: calc(var(--tty-u) * var(--tty-rctrl-y));
     width: 92px;
     height: 62px;
+    transform-origin: 0 0;
+    /* When the artist marks ReaderControl as a QUADRILATERAL (it is tilted in
+       the artwork), the page publishes a matrix3d() that projects the switch
+       onto it; with a plain rectangle the variable is absent and the honest
+       uniform width fit applies. */
+    transform: var(--tty-rctrl-matrix, scale(var(--tty-rctrl-switch-k)));
+    /* Same layer as the punch cluster: below both hanging tapes (10/11), so a
+       punched tape still passes in front of the reader mechanism. */
+    z-index: 5;
 }
 
 .asr-switch-disc {
@@ -1650,8 +1666,11 @@
        front of the READER tape (#readertape, same z-index but later in the
        DOM): with equal z-index the later sibling would win, so the punch tape
        sits one step higher. */
-    top: calc(var(--tty-u) * var(--tty-punch-y) + var(--tty-u) * var(--tty-punch-h) / 2 + 32px * var(--tty-punch-k));
-    left: calc(var(--tty-u) * var(--tty-punch-x) + var(--tty-u) * var(--tty-punch-w) / 2 + 15px * var(--tty-punch-k) - 48px);
+    /* The tape leaves the mechanism along the PuncherTape marker: its axis is
+       the marker's horizontal centre and its first row sits on the marker's
+       lower edge (48px is half of the 97px tape body). */
+    top: calc(var(--tty-u) * var(--tty-ptape-cy));
+    left: calc(var(--tty-u) * var(--tty-ptape-cx) - 48px);
     z-index: 11;
     /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
        transparent background: scrollbar-gutter: stable reserves the gutter
@@ -1757,24 +1776,20 @@
     background-position: 50% 50%;
 }
 
-/* The READER tape hangs from the TAPE READER slot (below the punch) down
-   to the bottom of the window, mirroring #punchtape. The reader block
-   starts at 10 (mech inset) + 164 (punch block) + 12 (gap) = 186px within
-   the cabinet and its slot sits at top 106px within the block, so the slot
-   centre lands at 186 + 106 + 6 = 298px. Horizontally it keeps its ORIGINAL
-   left offset (31px) even though the reader plate is now centred — so the
-   punched tape (which hangs on the slot axis) does not cover it completely.
-   The loaded tape is a full strip; as it is read the top rows are removed
-   and the rest moves up through the slot. */
+/* The READER tape hangs from the TAPE READER slot (below the punch) down to the
+   bottom of the window, mirroring #punchtape. Its axis and its exit line come
+   from the artwork's OWN ReaderTape marker (the reader unit is split into the
+   switch area and the tape), so no hand-tuned offset inside the plate frame is
+   needed any more. Where the marker sits is also what keeps the reader tape
+   clear of the punched tape, which hangs on the punch axis.
+   The loaded tape is a full strip; as it is read the top rows are removed and
+   the rest moves up through the slot. */
 #readertape {
     position: absolute;
-    /* Hangs from the reader slot: the slot sits 11px LEFT of the plate centre
-       in the plate frame (left 20px + half of the 106px outer slot width vs
-       the 85px half-width) and 32px below it, and the tape keeps the former
-       extra 13px left offset so the punched tape hanging on the punch axis
-       (z-index 11 > 10) never covers it completely. */
-    top: calc(var(--tty-u) * var(--tty-reader-y) + var(--tty-u) * var(--tty-reader-h) / 2 + 32px * var(--tty-reader-k));
-    left: calc(var(--tty-u) * var(--tty-reader-x) + var(--tty-u) * var(--tty-reader-w) / 2 - 24px * var(--tty-reader-k) - 48px);
+    /* First row on the ReaderTape marker's lower edge, centred on the marker's
+       axis (48px is half of the 97px tape body, exactly like #punchtape). */
+    top: calc(var(--tty-u) * var(--tty-rtape-cy));
+    left: calc(var(--tty-u) * var(--tty-rtape-cx) - 48px);
     z-index: 10;
     width: 107px;
     max-width: 100%;
@@ -1868,8 +1883,15 @@
     border: none;
     border-radius: 0;
     box-shadow: none;
-    transform-origin: 50% 50%;
-    transform: translate(-50%, -50%) scale(var(--tty-apron-k));
+    /* The anchor is the marker's CENTRE (so the block stays centred on the pad),
+       and the fallback reproduces exactly what translate(-50%,-50%) scale(k)
+       used to do: the origin is the block's top-left corner, so centring is the
+       -half-of-118x66 (59x33) translate scaled by the fit factor. A tilted Apron
+       marker replaces the whole fallback with the projection
+       (--tty-apron-matrix), which maps the same native box from that centre. */
+    transform-origin: 0 0;
+    transform: var(--tty-apron-matrix,
+            translate(calc(-59px * var(--tty-apron-k)), calc(-33px * var(--tty-apron-k))) scale(var(--tty-apron-k)));
     z-index: 2;
 }
 
@@ -1971,7 +1993,6 @@
 
 /* Teletype machine chrome keeps the pixel VT323 (narrow advance, tuned
    keycap/switch geometry); Courier Prime stays for the rest of the UI. */
-#asr-tape-unit .asr-label,
 #asr-tape-unit .asr-btn,
 #asr-tape-unit .asr-switch-pos,
 #ccu-apron .ccu-switch-pos,

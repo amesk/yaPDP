@@ -34,6 +34,7 @@ const assert = require("assert");
 
 const CSS_PATH = path.join(__dirname, "..", "css", "g60printer.css");
 const HTML_PATH = path.join(__dirname, "..", "pdp11.html");
+const APP_PATH = path.join(__dirname, "..", "src", "pdp11-app.js");
 
 // Extract a top-level CSS rule body given the selector prefix (first match).
 function extractRule(css, selectorStart) {
@@ -86,6 +87,33 @@ function run() {
       "the backdrop must be inert to the mouse (pointer-events: none):\n" + rule);
   }
 
+  // --- The artwork's Foreground layer paints ABOVE the live controls --------
+  // The machine itself is a background image BEHIND every control, so the layer
+  // the artist marked as "in front of everything" is inlined into its own
+  // element (installTtyForeground, src/pdp11-app.js) and stacked above the
+  // hanging tapes (z-index 10/11) and every other control.
+  {
+    const rule = extractRule(css, "#tty-foreground {");
+    assert.ok(/position\s*:\s*absolute\s*;/.test(rule),
+      "the foreground must be positioned like the backdrop:\n" + rule);
+    const z = /z-index\s*:\s*(\d+)\s*;/.exec(rule);
+    assert.ok(z && Number(z[1]) > 11,
+      "the foreground must stack above both hanging tapes (z-index > 11):\n" + rule);
+    assert.ok(/pointer-events\s*:\s*none\s*;/.test(rule),
+      "the foreground is cosmetic — it must never take a click:\n" + rule);
+    const html = fs.readFileSync(HTML_PATH, "utf8");
+    assert.ok(html.indexOf('id="tty-foreground"') !== -1,
+      "pdp11.html must carry the #tty-foreground host");
+    const app = fs.readFileSync(APP_PATH, "utf8");
+    assert.ok(app.indexOf("function ttyForegroundLayerId") !== -1 &&
+      app.indexOf("installTtyForeground(text)") !== -1,
+      "src/pdp11-app.js must find and inline the artwork's Foreground layer");
+    assert.ok(/setAttribute\(['"]width['"],\s*['"]100%['"]\)/.test(app) &&
+      /setAttribute\(['"]height['"],\s*['"]100%['"]\)/.test(app),
+      "the inlined artwork must be sized to the rig box exactly like the " +
+      "backdrop (the size is set on the built <svg>, not by a stylesheet rule)");
+  }
+
   // --- The rig is laid out in artwork (viewBox) units ----------------------
   {
     const rule = extractRule(css, "#teletype-rig {");
@@ -98,8 +126,9 @@ function run() {
     // browser probe caught (the keys stayed unscaled because the factor was
     // derived from the length --tty-u instead of the number --tty-u-num).
     for (const name of ["--tty-kbd-sx", "--tty-kbd-sy", "--tty-kbd-k",
-                        "--tty-punch-k", "--tty-reader-k", "--tty-apron-k",
-                        "--tty-sheet-k"]) {
+                        "--tty-pctrl-k", "--tty-pctrl-btn-k",
+                        "--tty-rctrl-k", "--tty-rctrl-switch-k",
+                        "--tty-apron-k", "--tty-sheet-k"]) {
       const decl = new RegExp(name + "\\s*:\\s*([^;]+);").exec(rule);
       assert.ok(decl, name + " must be declared in the rig rule:\n" + rule);
       assert.ok(/var\(--tty-u-num\)/.test(decl[1]),
@@ -145,10 +174,25 @@ function run() {
       "the printer block must be centred on the Paper marker (the sheet is centred in the 808px body):\n" + rule);
     assert.ok(/top\s*:\s*calc\(var\(--tty-caret-line-y\)\s*\*\s*var\(--tty-u\)/.test(rule),
       "the print line must land on the Caret marker's bottom edge:\n" + rule);
-    assert.ok(/transform\s*:\s*scale\(var\(--tty-sheet-k\)\)\s*;/.test(rule),
-      "the printer block must be contain-fitted by --tty-sheet-k:\n" + rule);
+    assert.ok(/transform\s*:\s*scale\(var\(--tty-sheet-k\)\)\s*var\(--tty-paper-matrix,\s*translate\(0px,\s*0px\)\)\s*;/.test(rule),
+      "the sheet must keep its own scale (the width follows the column count) " +
+      "and take the quad projection on top — the identity while the " +
+      "Paper/Caret marker stays a plain rectangle:\n" + rule);
     assert.ok(/overflow\s*:\s*visible\s*;/.test(rule),
       "the printer block must not clip the rising sheet:\n" + rule);
+    // The sheet's quad projection pivots on the block's print point, which IS
+    // these two magic numbers: the pivot in TTY_QUAD_MARKERS (src/pdp11-app.js)
+    // must stay the same pair, or a tilted Paper marker would rotate the sheet
+    // about the wrong point.
+    {
+      const pivot = /pivot:\s*\[\s*(\d+),\s*(\d+)\s*\]/.exec(
+        fs.readFileSync(APP_PATH, "utf8"));
+      assert.ok(pivot, "TTY_QUAD_MARKERS must declare the printed sheet's pivot");
+      assert.ok(rule.indexOf("- " + pivot[1] + "px * var(--tty-sheet-k)") !== -1 &&
+        rule.indexOf("- " + pivot[2] + "px * var(--tty-sheet-k)") !== -1,
+        "the sheet pivot (" + pivot[1] + "x" + pivot[2] + ") must be the print " +
+        "point this rule positions the block by:\n" + rule);
+    }
   }
 
   // --- Keyboard deck: native key layout, driven by the Keyboard marker ------
@@ -166,8 +210,9 @@ function run() {
       "the key block must keep its native width (576px):\n" + rule);
     assert.ok(/height\s*:\s*212px\s*;/.test(rule),
       "the key block must keep its native height (212px):\n" + rule);
-    assert.ok(/transform\s*:\s*scale\(var\(--tty-kbd-sx\),\s*var\(--tty-kbd-sy\)\)\s*;/.test(rule),
-      "the keyboard must be fitted to the marker's width and height:\n" + rule);
+    assert.ok(/transform\s*:\s*var\(--tty-kbd-matrix,\s*scale\(var\(--tty-kbd-sx\),\s*var\(--tty-kbd-sy\)\)\)\s*;/.test(rule),
+      "the keyboard must be projected onto a tilted Keyboard marker and fall " +
+      "back to the marker fit otherwise:\n" + rule);
   }
 
   // --- Page-drawn keycaps keep round caps (uniform, centred fit) ------------
@@ -191,17 +236,19 @@ function run() {
   }
 
   // --- Punch / reader plates: native frame, anchored to their markers -------
+  // Both plate frames follow their CONTROL marker: each mechanism is split into
+  // the control area (its own marker) and the tape (its own marker).
   {
-    const plates = [["punch", extractRule(css, "#asr-punch {")],
-                    ["reader", extractRule(css, "#asr-reader {")]];
-    for (const [name, rule] of plates) {
+    const plates = [["pctrl", "punch", extractRule(css, "#asr-punch {")],
+                    ["rctrl", "reader", extractRule(css, "#asr-reader {")]];
+    for (const [prefix, name, rule] of plates) {
       const anchor = new RegExp(
-        "left\\s*:\\s*calc\\(var\\(--tty-u\\)\\s*\\*\\s*var\\(--tty-" + name + "-x\\)");
-      const fit = new RegExp("scale\\(var\\(--tty-" + name + "-k\\)\\)");
+        "left\\s*:\\s*calc\\(var\\(--tty-u\\)\\s*\\*\\s*var\\(--tty-" + prefix + "-x\\)");
+      const fit = new RegExp("scale\\(var\\(--tty-" + prefix + "-k\\)\\)");
       assert.ok(anchor.test(rule),
         "the " + name + " plate must be anchored to its marker's x:\n" + rule);
       assert.ok(fit.test(rule),
-        "the " + name + " plate must be contain-fitted by --tty-" + name + "-k:\n" + rule);
+        "the " + name + " plate must be contain-fitted by --tty-" + prefix + "-k:\n" + rule);
       assert.ok(/width\s*:\s*170px\s*;/.test(rule),
         "the " + name + " plate must keep its native width (170px):\n" + rule);
       assert.ok(/height\s*:\s*164px\s*;/.test(rule),
@@ -209,6 +256,36 @@ function run() {
       assert.ok(/background\s*:\s*none\s*;/.test(rule),
         "the " + name + " plate plastic must come from the artwork:\n" + rule);
     }
+  }
+
+  // --- The punch button cluster left the plate: it follows its marker --------
+  {
+    const rule = extractRule(css, "#asr-punch-buttons {");
+    assert.ok(/left\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-pctrl-x\)\s*\)\s*;/.test(rule),
+      "the button cluster must be anchored to the PuncherControl marker's x:\n" + rule);
+    assert.ok(/top\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-pctrl-y\)\s*\)\s*;/.test(rule),
+      "the button cluster must be anchored to the PuncherControl marker's y:\n" + rule);
+    assert.ok(/transform\s*:\s*var\(--tty-pctrl-matrix,\s*scale\(var\(--tty-pctrl-btn-k\)\)\)\s*;/.test(rule),
+      "the cluster must take the quad projection when the page publishes one, " +
+      "and fall back to the uniform width-driven fit otherwise:\n" + rule);
+    assert.ok(/transform-origin\s*:\s*0\s+0\s*;/.test(rule),
+      "the cluster scales from its top-left corner (marker anchored):\n" + rule);
+  }
+
+  // --- The reader switch left the plate: it follows its marker --------------
+  {
+    const rule = extractRule(css, ".asr-reader-switch {");
+    assert.ok(/left\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-rctrl-x\)\s*\)\s*;/.test(rule),
+      "the reader switch must be anchored to the ReaderControl marker's x:\n" + rule);
+    assert.ok(/top\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-rctrl-y\)\s*\)\s*;/.test(rule),
+      "the reader switch must be anchored to the ReaderControl marker's y:\n" + rule);
+    assert.ok(/transform\s*:\s*var\(--tty-rctrl-matrix,\s*scale\(var\(--tty-rctrl-switch-k\)\)\)\s*;/.test(rule),
+      "the switch must take the quad projection when the page publishes one, " +
+      "and fall back to the uniform width-driven fit otherwise:\n" + rule);
+    assert.ok(/transform-origin\s*:\s*0\s+0\s*;/.test(rule),
+      "the switch scales from its top-left corner (marker anchored):\n" + rule);
+    assert.ok(/width\s*:\s*92px\s*;/.test(rule) && /height\s*:\s*62px\s*;/.test(rule),
+      "the switch must keep its native 92x62 frame:\n" + rule);
   }
 
   // --- CCU apron: knob + labels anchored to the Apron marker ----------------
@@ -222,8 +299,12 @@ function run() {
       "the CCU block must keep its native width (118px):\n" + rule);
     assert.ok(/height\s*:\s*66px\s*;/.test(rule),
       "the CCU block must keep its native height (66px):\n" + rule);
-    assert.ok(/transform\s*:\s*translate\(-50%,\s*-50%\)\s*scale\(var\(--tty-apron-k\)\)\s*;/.test(rule),
-      "the CCU block must be contain-fitted and centred on the marker:\n" + rule);
+    assert.ok(/transform-origin\s*:\s*0\s+0\s*;/.test(rule),
+      "the CCU block scales from its own corner (its anchor is the marker " +
+      "centre, which is what the fallback's translate compensates):\n" + rule);
+    assert.ok(/transform\s*:\s*var\(--tty-apron-matrix,\s*translate\(calc\(-59px \* var\(--tty-apron-k\)\),\s*calc\(-33px \* var\(--tty-apron-k\)\)\)\s*scale\(var\(--tty-apron-k\)\)\)\s*;/.test(rule),
+      "the CCU block must be projected onto a tilted Apron marker and keep its " +
+      "contain-fitted centring (half of the native 118x66 block) otherwise:\n" + rule);
     assert.ok(/background\s*:\s*none\s*;/.test(rule),
       "the apron pad must come from the artwork:\n" + rule);
   }
