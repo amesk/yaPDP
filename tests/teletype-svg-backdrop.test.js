@@ -422,26 +422,23 @@ function run() {
         "an artwork without such a layer yields an empty id (nothing inlined)");
       assert.strictEqual(sandbox.foreground(""), "", "empty input yields an empty id");
 
-      // The BACK front-most layer (the punch tongue, inlined between the two
-      // hanging tapes) is addressed the same way, by its Inkscape label, and an
-      // artwork that has not been split yet simply yields nothing there.
+      // The MIDDLE front-most layer (drawn between the two hanging tapes: the
+      // reader tongue the tape slips under and the punch tongue it comes out
+      // over) is addressed the same way, by its Inkscape label.
       assert.strictEqual(
-        sandbox.artLayer('<g inkscape:label="ForegroundBack" id="layer9"/>',
-          "ForegroundBack"),
+        sandbox.artLayer('<g inkscape:label="Middle" id="layer9"/>', "Middle"),
         "layer9", "a layer must be found through its Inkscape label");
-      assert.strictEqual(sandbox.artLayer('<g id="ForegroundBack"/>', "ForegroundBack"),
-        "ForegroundBack", "an id mentioning the label is the fallback signal");
-      assert.strictEqual(sandbox.artLayer('<g id="ForegroundBack"/>', "Foreground"),
-        "", "the plain Foreground lookup must not swallow the back layer");
-      assert.strictEqual(sandbox.artLayer('<g id="layer7"/>', "ForegroundBack"), "",
-        "a missing back layer yields an empty id");
-      const back = sandbox.artLayer(svg, "ForegroundBack");
-      if (back) {
-        const backTag = new RegExp('<g\\b[^>]*\\bid="' + back + '"[^>]*>').exec(svg);
-        assert.ok(backTag && /inkscape:label="ForegroundBack"/.test(backTag[0]),
-          "the back layer, when the artwork carries one, must be found through " +
-          "its label, got: " + back);
-      }
+      assert.strictEqual(sandbox.artLayer('<g id="Middle"/>', "Middle"),
+        "Middle", "an id mentioning the label is the fallback signal");
+      assert.strictEqual(sandbox.artLayer('<g id="Middle"/>', "Foreground"),
+        "", "the plain Foreground lookup must not swallow the middle layer");
+      assert.strictEqual(sandbox.artLayer('<g id="layer7"/>', "Middle"), "",
+        "a missing middle layer yields an empty id");
+      const middle = sandbox.artLayer(svg, "Middle");
+      assert.ok(middle, "the artwork must carry a Middle layer");
+      const middleTag = new RegExp('<g\\b[^>]*\\bid="' + middle + '"[^>]*>').exec(svg);
+      assert.ok(middleTag && /inkscape:label="Middle"/.test(middleTag[0]),
+        "the middle layer must be found through its label, got: " + middle);
     }
 
     // A TILTED marker rect must be listed in TTY_QUAD_MARKERS, otherwise it
