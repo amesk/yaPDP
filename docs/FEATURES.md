@@ -69,7 +69,17 @@ The punch is drawn as two marked areas — the control cluster (REL/OFF/BSP/ON)
 and the tape itself — so the artwork owns both where the strip leaves the
 mechanism and where the buttons sit,
 (tracks 1–7 = ASCII, track 8 = parity, feed holes between tracks 3/4), which
-grows downwards and gains a scrollbar once it fills the window. As on a real
+grows downwards, and once it fills the window it is scrolled through with the
+**mouse wheel** — the hanging tapes deliberately draw **no scrollbar**. The
+strip does not slide silently either: every step of the mechanism — a punch
+cycle, the automatic lead-in/trailer, **BSP**, a byte read off the reader tape —
+tugs the hanging paper one row and lets it swing back with a short damped
+overshoot, so the tape answers its ratchet the way the real machine does. That
+overshoot is only physical because the tapes paint no scrollbar: it overflows
+their own viewport for a frame or two, which is exactly what used to flash a
+scrollbar on a short tape. The swing is skipped under
+`prefers-reduced-motion`, and fast output is throttled so a burst reads as one
+motion. As on a real
 ASR-33 the punch is **OFF by default**: it engages via the **ON** button on
 the TAPE PUNCH cabinet (or when the machine sends **DC2 / 0x12**) and
 disengages via **OFF** (**DC4 / 0x14**); **BSP** pulls the tape back one step —
@@ -91,7 +101,8 @@ The TAPE READER reads a loaded tape into the machine: **Load tape** opens a
 file dialog for a raw `.ptap`, a compressed `.ptap.zst`, or a `.txt` (its
 characters become 7-bit tape codes), and the full tape hangs from the reader
 slot down to the window edge, its ragged free end torn like the punched
-tape's. Reading is governed by the authentic **vertical four-detent reader
+tape's (like the punched tape it is scrolled with the mouse wheel and draws no
+scrollbar). Reading is governed by the authentic **vertical four-detent reader
 lever** — **START** at the top, then **AUTO**, **STOP** and **FREE** at the
 bottom, printed top to bottom as on the machine (**STOP by default**): drag the
 handle up or down the slot, click it to step one position down, or click a

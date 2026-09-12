@@ -153,6 +153,19 @@ function loadReaderModule() {
   assert.ok(css.includes("#readertape__body::after"), "reader tape has the ragged end");
   assert.ok(css.includes(".tty-btn.hidden"), "css hides the Remove tape button");
 
+  // The reader tape shares the punch tape's box rules: a scroll container (the
+  // operator scrolls it with the wheel) that paints NO scrollbar, with its own
+  // 97px body width — the one-step kick overshoots the tape's rest position,
+  // and a painted scrollbar would flash on a short tape. The working tree is
+  // checked out with CRLF, so multi-line matching needs normalized newlines.
+  const cssNl = css.replace(/\r\n/g, "\n");
+  assert.ok(/scrollbar-width:\s*none/.test(cssNl),
+    "css must hide the hanging tapes' scrollbars");
+  assert.ok(/#readertape::-webkit-scrollbar/.test(cssNl),
+    "css must zero the reader tape's WebKit scrollbar");
+  assert.ok(/#readertape__body\s*\{[^}]*width:\s*97px/.test(cssNl),
+    "#readertape__body must state its own 97px width (no scrollbar reserves it)");
+
   // iopage.js: the DL11 console input signals "drained" for the AUTO reader.
   assert.ok(iopage.includes("window.onConsoleInputDrained"),
     "iopage.js fires the input-drained signal");
@@ -177,9 +190,14 @@ function loadReaderModule() {
   assert.ok(snaps.includes("window.tapeReader.restore"),
     "snapshots.js restores the reader tape");
 
-  // reader.js itself: the AUTO signal listener is exposed.
+  // reader.js itself: the AUTO signal listener is exposed, and the tape is
+  // kicked through the punch tape's shared motion model, so both hanging tapes
+  // swing alike.
   assert.ok(src.includes("window.onConsoleInputDrained = onDrained"),
     "reader.js exposes the drained listener");
+  assert.ok(/window\.paperTape\.tapeKick\(\s*body,\s*1\s*\)/.test(
+      src.replace(/\r\n/g, "\n")),
+    "reader.js must kick the reader tape through window.paperTape.tapeKick");
   console.log("OK  structural checks (html/css/iopage/app/snapshots)");
 }
 
