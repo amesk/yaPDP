@@ -166,8 +166,8 @@
     function keepHeadVisible() {
         // The reader head is at the top of the tape: the view always rests
         // there so the operator sees the next row under the slot. Once the
-        // tape is longer than the window the lower part runs out of view and
-        // the scrollbar appears (the operator can scroll down to inspect).
+        // tape is longer than the window the lower part runs out of view; no
+        // scrollbar is drawn, the operator scrolls down with the wheel.
         if (container) container.scrollTop = 0;
     }
 
@@ -271,6 +271,13 @@
             else body.appendChild(row);
             updateMaxHeight();
             keepHeadVisible();
+            // Same damped one-step swing as the punch tape (the reader drags
+            // the paper out of the slot with its own ratchet). The motion model
+            // lives in punchtape.js so both hanging tapes behave alike; it is a
+            // no-op without the tape UI (Node) and under prefers-reduced-motion.
+            if (window.paperTape && typeof window.paperTape.tapeKick === 'function') {
+                window.paperTape.tapeKick(body, 1);
+            }
         }
         if (!hasTape()) tapeConsumed();
     }

@@ -8,9 +8,12 @@
  * tape spills downwards. The tape is absolutely positioned and hangs from
  * the bottom of the cabinet down to the bottom of the window (its max-height
  * is set to the remaining viewport height), so it never resizes the page.
- * Once the tape is longer than that, its own scrollbar appears while the
- * fresh row stays visible at the top (the operator can scroll down to
- * inspect older tape).
+ * Once the tape is longer than that the fresh row stays visible at the top and
+ * the operator scrolls the strip with the mouse wheel — no scrollbar is ever
+ * drawn (see the "no scrollbar" block in css/g60printer.css). Every step of the
+ * mechanism — a punch cycle, a BSP, a byte read off the reader tape — answers
+ * with a short damped swing of the hanging strip instead of a silent teleport
+ * (see tapeKick below).
  *
  * Encoding (8-track ASCII):
  *   - Tracks 1..7 (Д1..Д7) carry the 7-bit ASCII code, bit 1 = LSB.
@@ -93,9 +96,11 @@
      * updateMaxHeight() - Size the hanging tape to reach the bottom of the
      * window: max-height = remaining viewport below the tape's top edge. The
      * tape is absolutely positioned (out of the document flow), so it never
-     * resizes the teletype page; once its content exceeds this height its own
-     * scrollbar appears. Recomputes only when the tape's top offset changes
-     * (page shown, window resized), so per-character calls stay cheap.
+     * resizes the teletype page; once its content exceeds this height the
+     * operator scrolls the strip with the mouse wheel (the tape is a scroll
+     * container with no scrollbar drawn). Recomputes only when the tape's top
+     * offset changes (page shown, window resized), so per-character calls stay
+     * cheap.
      */
     function updateMaxHeight() {
         if (!container || typeof window === 'undefined') return;
@@ -123,10 +128,97 @@
             // The fresh row is punched at the top (right under the punch head)
             // and the already-punched tape spills downwards, so the view always
             // rests at the top. Once the tape is longer than the window the
-            // lower part runs out of view and the scrollbar appears; the
-            // operator can scroll down to inspect the older tape.
+            // lower part runs out of view; the operator scrolls down with the
+            // wheel to inspect the older tape.
             container.scrollTop = 0;
         }
+    }
+
+    // ---- Tape-step "kick" (shared with the reader tape) ----------------
+    // Every step of the ASR mechanism — a punched byte, an overpunch after
+    // BSP, the automatic lead-in/trailer, a byte read off the reader tape —
+    // drags the hanging paper one row (12px, the .pt-row height in
+    // css/g60printer.css). The DOM row is already in place when this runs, so
+    // the animation starts the strip one step AWAY from its new position and
+    // swings it back with a damped overshoot: the hanging tape answers its
+    // ratchet instead of teleporting a row. The overshoot is what makes the
+    // motion read as paper rather than as a slide, so it is kept.
+    //
+    // The strip hangs inside its own scroll viewport (#punchtape /
+    // #readertape), whose box is exactly as tall as the content while the tape
+    // is short, and the scrollable overflow counts the TRANSFORMED box of the
+    // rows — so the swing overflows that viewport for a frame or two. That is
+    // harmless by construction: both tapes are scroll containers that never
+    // PAINT a scrollbar (see the "no scrollbar" block in css/g60printer.css),
+    // which is exactly why the overshoot was impossible to draw before. Wheel
+    // scrolling, `scrollTop` and the height maths below are unaffected.
+    //
+    // Driven through the Web Animations API rather than a CSS class: a kick
+    // restarts reliably with no forced reflow (a class toggle needs one), no
+    // class has to be kept in sync with the DOM, and only `transform` is
+    // animated — the strip never re-enters layout, so the tape's row geometry
+    // cannot shift (the packed rows cannot re-open the subpixel seams the solid
+    // .punchtape__body background paints over).
+    //
+    // Skipped without a DOM (Node), without Element.animate, and under
+    // prefers-reduced-motion. In bursts (a runaway-output flush) restarts are
+    // capped at KICK_MIN_GAP_MS: past that rate the eye reads the tape as a
+    // blur anyway, and the compositor keeps its budget.
+    var KICK_STEP_PX = 12;    // one tape row — must match the .pt-row height
+    var KICK_MIN_GAP_MS = 40; // restart cap: above 25 swings/s is not readable
+    // Damped step response, as signed fractions of ONE row, laid on the
+    // keyframe timings below: a full step, a small overshoot past the new
+    // position, then a decaying wobble back to rest (see tapeKickKeyframes,
+    // where the sign is applied: the DOWN drag starts one row ABOVE rest).
+    var KICK_ENVELOPE = [-1, 0.18, -0.07, 0.02, 0];
+    var KICK_OFFSETS = [0, 0.45, 0.72, 0.88, 1];
+    var lastKickAt = 0;       // timestamp of the last accepted kick
+
+    /**
+     * tapeKickKeyframes(step, dir) - The damped "one tape step" swing as a
+     * Web Animations keyframe list. Pure and DOM-free (unit-tested in Node).
+     * @param {number} [step] - row height in px (default KICK_STEP_PX).
+     * @param {number} [dir] - 1: the tape leaves the mechanism and is dragged
+     *   DOWN (a punch cycle, a reader feed); -1: it is dragged back IN (BSP).
+     *   Keyframe 0 is one full step away from the new position, the tail
+     *   oscillates around it and ends at rest (offsets are the envelope).
+     * @returns {Array<Object>} keyframes: { transform, offset }.
+     */
+    function tapeKickKeyframes(step, dir) {
+        var s = (typeof step === 'number' && step > 0) ? step : KICK_STEP_PX;
+        var d = (dir === -1) ? -1 : 1;
+        var frames = [];
+        for (var i = 0; i < KICK_ENVELOPE.length; i++) {
+            var k = KICK_ENVELOPE[i];
+            frames.push({
+                transform: 'translateY(' + (d * s * k).toFixed(2) + 'px)',
+                offset: KICK_OFFSETS[i]
+            });
+        }
+        return frames;
+    }
+
+    /**
+     * tapeKick(el, dir) - Play the damped one-step swing on a hanging tape
+     * element: the punch tape (#punchtape__body) from here, the reader tape
+     * (#readertape__body) through window.paperTape from reader.js, so both
+     * tapes share one motion model. Returns true when the animation started,
+     * false when it was skipped (see the block comment above).
+     */
+    function tapeKick(el, dir) {
+        if (!el || typeof el.animate !== 'function') return false;
+        if (typeof window !== 'undefined' && window.matchMedia &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            return false;
+        }
+        var now = Date.now();
+        if (lastKickAt && now - lastKickAt < KICK_MIN_GAP_MS) return false;
+        lastKickAt = now;
+        el.animate(tapeKickKeyframes(KICK_STEP_PX, dir), {
+            duration: 190,
+            easing: 'ease-out'
+        });
+        return true;
     }
 
     function makeSpan(className) {
@@ -204,6 +296,7 @@
             armedDepth--;
             updateMaxHeight();
             keepPunchVisible();
+            tapeKick(body, 1);
             return;
         }
 
@@ -222,6 +315,7 @@
         // only now becoming visible.
         updateMaxHeight();
         keepPunchVisible();
+        tapeKick(body, 1);
     }
 
     /**
@@ -243,6 +337,9 @@
         }
         updateMaxHeight();
         keepPunchVisible();
+        // The lead-in/trailer is a real feed step, so it swings the tape too
+        // (silently — only the audible punch sounds are suppressed here).
+        tapeKick(body, 1);
     }
 
     /**
@@ -343,6 +440,9 @@
         // the hanging tape.
         body.removeChild(body.firstChild);
         updateMaxHeight();
+        // The tape is dragged back INTO the mechanism, so the swing runs the
+        // other way (dir -1).
+        tapeKick(body, -1);
     }
 
     /**
@@ -376,6 +476,11 @@
         init: init,
         punchChar: punchChar,
         backspace: backspace,
+        // One-step swing of a hanging tape (see tapeKick above). reader.js
+        // calls it for #readertape__body so both tapes share one motion model.
+        tapeKick: tapeKick,
+        // Pure keyframe factory, exported for tests.
+        tapeKickKeyframes: tapeKickKeyframes,
         clear: clear,
         punchTrailer: punchTrailer,
         save: save,

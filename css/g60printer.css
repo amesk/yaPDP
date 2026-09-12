@@ -1718,18 +1718,19 @@
     top: calc(var(--tty-u) * var(--tty-ptape-cy));
     left: calc(var(--tty-u) * var(--tty-ptape-cx) - 48px);
     z-index: 12;
-    /* Tape body (97px) PLUS a reserved scrollbar gutter (10px) with a
-       transparent background: scrollbar-gutter: stable reserves the gutter
-       up front in EVERY browser, so the scrollbar never resizes the tape or
-       shifts it left, and there is no dark gutter strip (the tape sits on the
-       page background on both sides). */
+    /* Tape body (97px) plus 10px of transparent slack on the right, so the
+       strip keeps sitting on the page background on both sides. The slack used
+       to be a reserved scrollbar gutter; the tapes draw no scrollbar any more
+       (see the "no scrollbar" block below), and the body states its own width
+       instead. */
     width: 107px;
     max-width: 100%;
     height: auto;
     max-height: 60vh;
+    /* Still a scroll container (the operator scrolls the strip with the
+       wheel), but with nothing painted. */
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-gutter: stable;
     /* The container's transparent frame must not swallow clicks meant for
        the TAPE READER switch below it (the punched tape hangs past the
        reader cabinet). Only the visible tape body stays interactive (wheel
@@ -1741,9 +1742,13 @@
     pointer-events: auto;
     display: flex;
     flex-direction: column;
-    /* Left-aligned: the tape hugs the punch slot, and the reserved scrollbar
-       gutter sits on its right without covering the tape. */
+    /* Left-aligned: the tape hugs the punch slot, and the container's
+       transparent slack sits on its right without covering the tape. */
     align-items: flex-start;
+    /* Stated explicitly: no scrollbar reserves width on this side any more
+       (see the "no scrollbar" block below), so the width must come from here
+       or the ragged ::after edge would stretch into the slack. */
+    width: 97px;
     padding: 0;
     /* Solid tape colour matching .pt-row. Under the rig's transform: scale a
        12px row lands on a fractional pixel, and the browser rounds each row
@@ -1837,13 +1842,15 @@
     top: calc(var(--tty-u) * var(--tty-rtape-cy));
     left: calc(var(--tty-u) * var(--tty-rtape-cx) - 48px);
     z-index: 10;
+    /* Same box as #punchtape: the 97px tape body plus transparent slack, a
+       scroll container that paints no scrollbar (see the "no scrollbar"
+       block below). */
     width: 107px;
     max-width: 100%;
     height: auto;
     max-height: 60vh;
     overflow-y: auto;
     overflow-x: hidden;
-    scrollbar-gutter: stable;
     /* Same click-through as #punchtape: the transparent frame must not
        block the reader switch or the slots behind it. */
     pointer-events: none;
@@ -1855,6 +1862,9 @@
     flex-direction: column;
     align-items: flex-start;
     padding: 0;
+    /* Stated explicitly, like .punchtape__body: no scrollbar reserves width
+       here any more (see the "no scrollbar" block below). */
+    width: 97px;
     background: #f6f1e5;
 }
 
@@ -1870,6 +1880,29 @@
     background-repeat: repeat-x;
     background-position: 0 0;
     transform: scaleY(-1);
+}
+
+/* ---- The hanging tapes draw NO scrollbar ----
+   #punchtape and #readertape stay scroll containers — the operator scrolls the
+   hanging strip with the mouse wheel exactly as before — but nothing is painted
+   in the gutter. That is what lets the one-step "kick" (tapeKick in
+   src/punchtape.js) overshoot the tape's rest position: the overshoot overflows
+   this viewport for a frame or two, which used to flash a scrollbar on an
+   otherwise short tape (measured in Chromium: 1px of overflow was enough).
+   With the scrollbar hidden the physical swing stays and nothing can flash.
+   Scrollbar hides are also why the tape bodies state their 97px width
+   explicitly instead of relying on scrollbar-gutter: stable. */
+#punchtape,
+#readertape {
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+#punchtape::-webkit-scrollbar,
+#readertape::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    /* Chromium / WebKit: no track, no thumb */
 }
 
 /* ==================================================================
