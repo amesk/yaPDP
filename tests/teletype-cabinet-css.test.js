@@ -91,10 +91,10 @@ function run() {
   // The machine itself is a background image BEHIND every control, so the layers
   // the artist marked as being in front of it are inlined into their own
   // elements (installTtyForeground, src/pdp11-app.js). There are two of them:
-  //   ForegroundBack — the punch tongue, which the PUNCHED tape comes out OVER,
-  //                    so it must sit between the reader tape (10) and the
-  //                    punched tape (12);
-  //   Foreground     — above everything.
+  //   Middle     — the punch tongue, which the PUNCHED tape comes out OVER,
+  //                so it must sit between the reader tape (10) and the
+  //                punched tape (12);
+  //   Foreground — above everything.
   {
     const rule = extractRule(css, "#tty-foreground {");
     assert.ok(/position\s*:\s*absolute\s*;/.test(rule),
