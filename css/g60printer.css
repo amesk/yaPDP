@@ -1230,12 +1230,12 @@
     --tty-ptape-h: 1.8400521;
     /* The reader unit is split the same way as the punch: the switch plate and
        the loaded tape are separate drawings, so they carry separate markers. */
-    --tty-rctrl-x: 31.09285;
-    --tty-rctrl-y: 234.60966;
-    --tty-rctrl-w: 12.177683;
-    --tty-rctrl-h: 35.106007;
-    --tty-rtape-x: 26.909184;
-    --tty-rtape-y: 202.69734;
+    --tty-rctrl-x: 31.214016;
+    --tty-rctrl-y: 237.60301;
+    --tty-rctrl-w: 18.959791;
+    --tty-rctrl-h: 35.107395;
+    --tty-rtape-x: 27.739735;
+    --tty-rtape-y: 215.27426;
     --tty-rtape-w: 27.412594;
     --tty-rtape-h: 1.8400521;
     --tty-paper-x: 144.93832;
@@ -1272,9 +1272,9 @@
        and its first row starts at the marker's lower edge. */
     --tty-rtape-cy: calc(var(--tty-rtape-y) + var(--tty-rtape-h));
     --tty-rtape-cx: calc(var(--tty-rtape-x) + var(--tty-rtape-w) / 2);
-    /* min(12.177683/170, 35.106007/164) — the (now empty) TAPE READER plate
+    /* min(18.959791/170, 35.107395/164) — the (now empty) TAPE READER plate
        frame is contain-fitted onto the ReaderControl marker. */
-    --tty-rctrl-k: calc(var(--tty-u-num) * 0.0716334);
+    --tty-rctrl-k: calc(var(--tty-u-num) * 0.11153);
     /* The 40px-wide vertical lever block is fitted by WIDTH onto the same
        marker: the marker is a portrait slot (12.18 x 35.11 units — the same
        1:2.88 ratio as the 40x115 native block), so the lever follows the
