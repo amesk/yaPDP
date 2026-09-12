@@ -101,6 +101,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The hanging ASR paper tapes answer every step with a damped swing, and are
+  scrolled with the wheel only.** The punched tape (`#punchtape__body`) and the
+  reader tape (`#readertape__body`) no longer just grow downwards in silence: a
+  punched byte, an overpunch after BSP, the automatic NUL lead-in/trailer and
+  every byte read off the reader tape tug the strip one row down (12px, the
+  `.pt-row` height) and let it swing back with a short damped overshoot, while
+  BSP pulls it the other way — the hanging paper answers the ratchet like the
+  real machine instead of teleporting a row into place. The motion model is one
+  Web-Animations helper (`tapeKick` / `tapeKickKeyframes` in `src/punchtape.js`,
+  reused by `src/reader.js`), so both tapes behave alike: it animates
+  `transform` only (never layout, so the tape cannot shift its rows or re-open
+  the sub-pixel seams between them), restarts at most every 40 ms (a
+  runaway-output burst reads as a blur anyway) and is skipped entirely under
+  `prefers-reduced-motion` and in Node. Both hanging tapes are now scrolled with
+  the **mouse wheel only** — they stay scroll containers but never paint a
+  scrollbar (`scrollbar-width: none` plus a zero-width
+  `::-webkit-scrollbar`, with the tape bodies stating their own 97px width
+  instead of the former `scrollbar-gutter: stable`). That is what lets the
+  swing stay physical: its overshoot overflows the tape's own viewport for a
+  frame or two, which previously flashed a scrollbar on an otherwise short
+  tape. The pure keyframe factory, the "one step = one row" contract and the
+  "scroll container, no painted scrollbar" contract are pinned by
+  `tests/punchtape.test.js`.
+  (`src/punchtape.js`, `src/reader.js`, `css/g60printer.css`,
+  `tests/punchtape.test.js`, `docs/FEATURES.md`, `manual.html`,
+  `landing/src/components/UserManual.tsx`)
+
 - **The Model 33 ASR console cabinet is drawn from SVG artwork.** The machine
   itself — the sand-cream body, the platen rollers, the carriage window and the
   Teletype Corporation wordmark — now comes from `assets/Model-33-ASR.svg` as a

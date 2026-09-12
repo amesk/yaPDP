@@ -547,7 +547,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 </button>
               </div>
               <pre className="text-xs font-mono text-[#e8d080] bg-black/60 p-2.5 rounded border border-[#3a3528] overflow-x-auto whitespace-pre">
-{`HALT, 001000, LOAD ADDRESS
+                {`HALT, 001000, LOAD ADDRESS
 012700, DEPOSIT
 000001, DEPOSIT
 006100, DEPOSIT
@@ -577,7 +577,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 </button>
               </div>
               <pre className="text-xs font-mono text-[#e8d080] bg-black/60 p-2.5 rounded border border-[#3a3528] overflow-x-auto whitespace-pre">
-{`HALT, 120000, LOAD ADDRESS, ENABLE, START`}
+                {`HALT, 120000, LOAD ADDRESS, ENABLE, START`}
               </pre>
             </div>
           </div>
@@ -706,8 +706,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               </span>
               <p className="text-[#c8b890] leading-relaxed">
                 {lang === 'en'
-                  ? 'Beside the machine sits the 8-track paper tape reader/punch unit (tracks 1–7 = ASCII, track 8 = parity). Can be enabled via CONFIG.'
-                  : 'Рядом с кареткой расположен блок 8-дорожечного перфоратора перфоленты (дорожки 1–7 = ASCII, 8 = четность). Включается на странице CONFIG.'}
+                  ? 'Beside the machine sits the 8-track paper tape reader/punch unit (tracks 1–7 = ASCII, track 8 = parity). Can be enabled via CONFIG. Both hanging tapes swing on every step of the mechanism, and a tape that reaches the bottom of the window is scrolled with the mouse wheel — neither tape draws a scrollbar.'
+                  : 'Рядом с кареткой расположен блок 8-дорожечного перфоратора перфоленты (дорожки 1–7 = ASCII, 8 = четность). Включается на странице CONFIG. Обе висящие ленты покачиваются на каждом шаге механизма, а лента, дошедшая до низа окна, прокручивается колесиком мыши — полоса прокрутки не рисуется.'}
               </p>
             </div>
           </div>
@@ -1006,11 +1006,10 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               <button
                 key={tab.id}
                 onClick={() => setActiveConfigTab(tab.id)}
-                className={`px-3 py-1.5 text-xs font-bold rounded transition-all cursor-pointer ${
-                  activeConfigTab === tab.id
+                className={`px-3 py-1.5 text-xs font-bold rounded transition-all cursor-pointer ${activeConfigTab === tab.id
                     ? 'bg-[#c8a860] text-black shadow-sm'
                     : 'bg-[#1e1a14] text-[#d4c4a0] hover:text-[#f0e6c8] border border-[#3a3528]'
-                }`}
+                  }`}
               >
                 {lang === 'en' ? tab.titleEn : tab.titleRu}
               </button>

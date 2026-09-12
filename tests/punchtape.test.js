@@ -264,6 +264,112 @@ function testCss() {
   console.log("punchtape-css: OK (tape unit + hanging scrollable tape styled)");
 }
 
+// ------------------------------------------------------------------
+// Modular: the tape-step "kick" keyframes (tapeKickKeyframes).
+// ------------------------------------------------------------------
+function loadTapeKickKeyframes() {
+  const src = fs.readFileSync(SOURCE_PATH, "utf8");
+  const fn = extractBlock(src, "function tapeKickKeyframes", "");
+  // The factory reads the module's KICK_* constants (the step and the damping
+  // envelope), so scrape them out of the real source: the sandbox then cannot
+  // drift from the shipped values.
+  const sandbox = {};
+  for (const decl of src.match(/var KICK_[A-Z_]+ = [^;]+;/g) || []) {
+    const m = decl.match(/^var (KICK_[A-Z_]+) = ([^;]+);$/);
+    sandbox[m[1]] = JSON.parse(m[2]);
+  }
+  assert.ok(sandbox.KICK_STEP_PX && sandbox.KICK_ENVELOPE,
+    "the KICK_* constants must stay scrapable (plain JSON literals)");
+  vm.createContext(sandbox);
+  vm.runInContext(fn + "\n; this.kick = tapeKickKeyframes;", sandbox);
+  return sandbox.kick;
+}
+
+function testKick() {
+  const kick = loadTapeKickKeyframes();
+  const transforms = (frames) => frames.map((f) => f.transform);
+  const offsets = (frames) => frames.map((f) => f.offset);
+  // The signed translateY of every keyframe, in px.
+  const shoves = (frames) => frames.map(
+    (f) => parseFloat(f.transform.replace(/[^-0-9.]/g, "")));
+
+  // dir = 1 (default): the tape leaves the mechanism, dragged DOWN. The DOM
+  // row is already in place, so the swing starts a full row ABOVE the new
+  // position, overshoots slightly past it and wobbles back to rest — the
+  // hanging paper answering the ratchet.
+  const down = kick(12, 1);
+  assert.strictEqual(JSON.stringify(transforms(down)),
+    JSON.stringify(["translateY(-12.00px)", "translateY(2.16px)",
+      "translateY(-0.84px)", "translateY(0.24px)", "translateY(0.00px)"]),
+    "the down kick must start one row above the new position and settle at 0");
+  assert.strictEqual(JSON.stringify(offsets(down)),
+    JSON.stringify([0, 0.45, 0.72, 0.88, 1]),
+    "the keyframe offsets must ascend from 0 to 1");
+
+  // dir = -1 (BSP / rewind): the same swing, mirrored.
+  const back = kick(12, -1);
+  assert.strictEqual(JSON.stringify(transforms(back)),
+    JSON.stringify(["translateY(12.00px)", "translateY(-2.16px)",
+      "translateY(0.84px)", "translateY(-0.24px)", "translateY(0.00px)"]),
+    "the back kick must mirror the down kick");
+
+  for (const frames of [down, back, kick(undefined, undefined)]) {
+    const px = shoves(frames);
+
+    // The swing must damp monotonically and come to rest.
+    for (let i = 1; i < px.length; i++) {
+      assert.ok(Math.abs(px[i]) < Math.abs(px[i - 1]),
+        "the swing must damp: amplitude " + i + " (" + Math.abs(px[i]) +
+        ") must be smaller than " + (i - 1) + " (" + Math.abs(px[i - 1]) + ")");
+    }
+    assert.strictEqual(px[px.length - 1], 0, "the swing must end at rest");
+  }
+
+  // Default step, and a step scales the whole swing.
+  assert.strictEqual(transforms(kick(undefined, undefined))[0],
+    "translateY(-12.00px)", "the default step must be KICK_STEP_PX (one row)");
+  assert.strictEqual(transforms(kick(24, 1))[1], "translateY(4.32px)",
+    "a larger step must scale the whole swing");
+
+  // Contract: the kick step IS one tape row, and the reduced-motion guard
+  // stays in the source (never animate for an operator who asked for calm).
+  // Sources are checked out with CRLF (core.autocrlf) while git stores LF, so
+  // normalize before matching anything multi-line.
+  const src = fs.readFileSync(SOURCE_PATH, "utf8").replace(/\r\n/g, "\n");
+  assert.ok(/var KICK_STEP_PX = 12;/.test(src),
+    "punchtape.js must keep KICK_STEP_PX = 12 (one tape row per step)");
+  assert.ok(src.indexOf("prefers-reduced-motion") !== -1,
+    "tapeKick must honour prefers-reduced-motion");
+  const css = fs.readFileSync(CSS_PATH, "utf8").replace(/\r\n/g, "\n");
+  const rowRule = extractBlock(css, ".pt-row {", "");
+  assert.ok(/height\s*:\s*12px\s*;/.test(rowRule),
+    "the kick step must equal the .pt-row height:\n" + rowRule);
+
+  // Contract: the swing overshoots the tape's rest position, which overflows
+  // the tape's OWN scroll viewport for a frame or two. Both hanging tapes must
+  // therefore stay scroll containers that paint NO scrollbar — that is what
+  // keeps the physical overshoot from flashing a scrollbar again (the old bug),
+  // while the wheel keeps scrolling them exactly as before.
+  for (const sel of ["#punchtape {", "#readertape {"]) {
+    const rule = extractBlock(css, sel, "");
+    assert.ok(/overflow-y\s*:\s*auto\s*;/.test(rule),
+      sel + " must stay wheel-scrollable (overflow-y: auto):\n" + rule);
+    assert.ok(rule.indexOf("scrollbar-gutter") === -1,
+      sel + " must not reserve a scrollbar gutter — nothing is ever painted " +
+      "there, and the tape body states its own width instead:\n" + rule);
+  }
+  const hidden = extractBlock(css, "#punchtape,\n#readertape {", "");
+  assert.ok(/scrollbar-width\s*:\s*none\s*;/.test(hidden),
+    "Firefox: the hanging tapes must hide the scrollbar:\n" + hidden);
+  const hiddenWk = extractBlock(css, "#punchtape::-webkit-scrollbar", "");
+  assert.ok(/width\s*:\s*0\s*;/.test(hiddenWk) &&
+      /height\s*:\s*0\s*;/.test(hiddenWk),
+    "Chromium/WebKit: the hanging tapes must hide the scrollbar:\n" + hiddenWk);
+
+  console.log("punchtape-kick: OK (damped one-step swing over a scrollbar-free viewport)");
+}
+
 testEncode();
 testMarkup();
 testCss();
+testKick();
