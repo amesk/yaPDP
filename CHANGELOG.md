@@ -12,20 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Configurable keycap layout for the Model 33 keyboard.** The CONFIG page
-  (Equipment tab, right under the console-terminal radios) lets the operator
-  choose who draws the keycaps: **Drawn in the artwork** (default — the caps and
-  their legends come from `assets/Model-33-ASR.svg`, and the DOM keys stay in
-  exactly the same boxes as invisible hit areas) or **Drawn by the page** (the
-  CSS-drawn keycaps, i.e. the pre-artwork behaviour). Applied live and persisted
-  as `keyboardLayout`; the flat key grid behind both modes
-  (`model33KeyGrid` — 53 keys, 40px pitch, staggered rows, stable
-  `r<row>c<col>` ids on every DOM key) is pinned by
-  `tests/model33-keyboard.test.js` and the CSS contract tests.
-  (`src/config.js`, `src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`,
-  `tests/model33-keyboard.test.js`, `tests/config.test.js`,
-  `tests/teletype-cabinet-css.test.js`)
-
 - **Demo-reel voice-over narration on the title cards.** `tools/assemble-video.js`
   now speaks the intro, every clip's title card and the outro with a generated
   English narration (`tools/voicer.js`, Kokoro-82M or Windows SAPI);
@@ -100,6 +86,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`tools/headless-machine.js`, test 4 in `tests/headless-machine.test.js`)
 
 ### Changed
+
+- **The redundant Model 33 keycap-source option was dropped.** The CONFIG page
+  no longer asks who draws the keyboard keycaps — the page always draws them
+  (the flat `model33KeyGrid` grid): the former "Drawn in the artwork" branch hid
+  the CSS keycaps in favour of `assets/Model-33-ASR.svg`, which never carried any
+  keycaps, so it only ever produced an invisible keyboard. The key block is now
+  contain-fitted uniformly (`--tty-kbd-k`) so the round caps stay round, and the
+  `keyboardLayout` config field, its CONFIG radios and the `m33-css-caps`
+  stylesheet switch are gone.
+  (`src/config.js`, `src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`,
+  `tests/config.test.js`, `tests/teletype-cabinet-css.test.js`)
 
 - **The hanging ASR paper tapes answer every step with a damped swing, and are
   scrolled with the wheel only.** The punched tape (`#punchtape__body`) and the
