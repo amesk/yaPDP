@@ -472,13 +472,6 @@ var g60Keyboard = (function () {
   var GRID = model33KeyGrid(MODEL33_KEYS, M33_GRID_PITCH, M33_GRID_SPACE_W,
     M33_GRID_CELL);
 
-  // Who draws the keycaps: 'drawn' (default) leaves the caps AND their legends
-  // to the artwork — the DOM keys stay in the same boxes as invisible hit
-  // areas — while 'grid' draws them in CSS (the pre-artwork behaviour, kept as
-  // the fallback). The container class is the single switch, see the
-  // keycap-layout rules in css/g60printer.css.
-  var layout = 'drawn';
-
   var shifted = false;
   var ctrlHeld = false;
   var reptHeld = false;
@@ -498,7 +491,6 @@ var g60Keyboard = (function () {
     var kbd = document.getElementById('punchkeyboard');
     if (!kbd) return;
     kbd.innerHTML = '';
-    applyLayout();
 
     for (var gi = 0; gi < GRID.length; gi++) {
       var slot = GRID[gi];
@@ -811,22 +803,8 @@ var g60Keyboard = (function () {
     bridgeSendToUnit(0, bytes);
   }
 
-  // Apply the selected keycap layout to the keyboard container: the class is
-  // absent for 'drawn' (the artwork draws the caps) and present for 'grid'
-  // (the page draws them — see css/g60printer.css).
-  function applyLayout() {
-    var kbd = document.getElementById('punchkeyboard');
-    if (kbd) kbd.classList.toggle('m33-css-caps', layout === 'grid');
-  }
-
   return {
-    init: function () { buildKeyboard(); installPhysicalKeyboard(); },
-    // CONFIG page: 'drawn' (keycaps in the artwork, default) or 'grid'
-    // (keycaps drawn by CSS). Applied live, no reload.
-    setLayout: function (name) {
-      layout = (name === 'grid') ? 'grid' : 'drawn';
-      applyLayout();
-    }
+    init: function () { buildKeyboard(); installPhysicalKeyboard(); }
   };
 })();
 
@@ -1713,7 +1691,6 @@ function initConfigForm() {
   if (!cfg) return;
 
   var radios = document.querySelectorAll('input[name="consoleType"]');
-  var capRadios = document.querySelectorAll('input[name="keyboardLayout"]');
   var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
   var userTerm = document.getElementById('config-userTerminals');
   var printerEl = document.getElementById('config-printer');
@@ -1743,7 +1720,6 @@ function initConfigForm() {
 
   // Populate the form from the persisted config.
   setRadioChecked(radios, cfg.consoleType);
-  setRadioChecked(capRadios, cfg.keyboardLayout);
   setRadioChecked(speedRadios, cfg.teletypeSpeed);
   if (userTerm) userTerm.value = String(cfg.userTerminals);
   if (printerEl) printerEl.checked = cfg.printer;
@@ -1781,13 +1757,8 @@ function initConfigForm() {
     for (var j = 0; j < speedRadios.length; j++) {
       if (speedRadios[j].checked) teletypeSpeed = speedRadios[j].value;
     }
-    var keyboardLayout = 'drawn';
-    for (var m = 0; m < capRadios.length; m++) {
-      if (capRadios[m].checked) keyboardLayout = capRadios[m].value;
-    }
     return {
       consoleType: consoleType,
-      keyboardLayout: keyboardLayout,
       userTerminals: (userTerm) ? Number(userTerm.value) : cfg.userTerminals,
       printer: (printerEl) ? printerEl.checked : cfg.printer,
       vt11: (vt11El) ? vt11El.checked : cfg.vt11,
@@ -1838,7 +1809,6 @@ function initConfigForm() {
       form.printWidth !== current.printWidth ||
       form.printerWidth !== current.printerWidth ||
       form.teletypeSpeed !== current.teletypeSpeed ||
-      form.keyboardLayout !== current.keyboardLayout ||
       form.keyClick !== current.keyClick ||
       form.upperCaseOnly !== current.upperCaseOnly ||
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
@@ -1899,8 +1869,7 @@ function initConfigForm() {
     var ttyFields = [
       document.getElementById('config-field-printWidth'),
       document.getElementById('config-field-teletypeSpeed'),
-      document.getElementById('config-field-upperCaseOnly'),
-      document.getElementById('config-field-keyboardLayout')
+      document.getElementById('config-field-upperCaseOnly')
     ];
     for (var k = 0; k < ttyFields.length; k++) {
       if (ttyFields[k]) setFieldDisabled(ttyFields[k], !teletype);
@@ -1962,19 +1931,6 @@ function initConfigForm() {
       if (typeof Config !== 'undefined') Config.set({ teletypeSpeed: this.value });
       if (g60printer && g60printer.setCharPrintDelay) {
         g60printer.setCharPrintDelay(teletypeDelay(this.value));
-      }
-      updateDirtyUI();
-    });
-  }
-
-  // Keycap layout applies live (no reload): persist the choice and switch the
-  // keyboard between the keycaps drawn by the artwork and the CSS-drawn caps.
-  for (var n = 0; n < capRadios.length; n++) {
-    capRadios[n].addEventListener('change', function () {
-      if (!this.checked) return;
-      if (typeof Config !== 'undefined') Config.set({ keyboardLayout: this.value });
-      if (typeof g60Keyboard !== 'undefined' && g60Keyboard.setLayout) {
-        g60Keyboard.setLayout(this.value);
       }
       updateDirtyUI();
     });
@@ -2097,7 +2053,6 @@ function initConfigForm() {
       if (typeof Config === 'undefined') return;
       var d = Config.DEFAULTS;
       setRadioChecked(radios, d.consoleType);
-      setRadioChecked(capRadios, d.keyboardLayout);
       setRadioChecked(speedRadios, d.teletypeSpeed);
       if (userTerm) userTerm.value = String(d.userTerminals);
       if (printerEl) printerEl.checked = d.printer;
@@ -3429,9 +3384,6 @@ var __appCfg = (typeof Config !== 'undefined') ? Config.get() : null;
 initG60Printer();
 ttySyncSheetWidth();
 g60Keyboard.init();
-// Keycap layout (CONFIG -> Keyboard keycaps): 'drawn' (default) lets the
-// artwork draw the caps, 'grid' draws them in CSS.
-g60Keyboard.setLayout((__appCfg && __appCfg.keyboardLayout) || 'drawn');
 // Prepare the ASR paper tape (finds #punchtape and creates the tape body).
 if (window.paperTape && typeof window.paperTape.init === 'function') {
   window.paperTape.init();

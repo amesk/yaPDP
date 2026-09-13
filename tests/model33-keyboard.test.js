@@ -20,8 +20,8 @@
  *     upper case when the physical-keyboard Upper-Case-Only flag is set.
  *   - model33KeyGrid(rows, pitch, spaceW, cell): flattens the staggered
  *     MODEL33_KEYS rows into the flat per-key grid (stable 'r<row>c<col>' ids
- *     plus the baseline box of every key) that both the DOM click areas and
- *     the keycaps drawn in assets/Model-33-ASR.svg are measured against.
+ *     plus the baseline box of every key) that the DOM click areas (and the
+ *     CSS keycaps drawn from them) are measured against.
  *
  * Run with:  node tests/model33-keyboard.test.js
  *
@@ -274,12 +274,12 @@ function run() {
   assert.strictEqual(upperOnly(0x7A, false), 0x7A, "z passes through");
   assert.strictEqual(upperOnly(0x41, false), 0x41, "A passes through");
 
-  // --- Flat key grid (the artwork's keycap grid) ------------------------
+  // --- Flat key grid (the CSS keycap grid) ------------------------------
   // The rows below replicate the production geometry of MODEL33_KEYS (row tops
   // 0/44/88/132/176, staggered lefts 0/20/20/0/160, 13/13/14/12 keys plus the
   // 196px space bar). The grid is the single source both the DOM click areas
-  // and the artwork's drawn keycaps are measured against, so its block bounds
-  // must equal the Keyboard marker contract used by
+  // and the CSS keycaps are measured against, so its block bounds must equal
+  // the Keyboard marker contract used by
   // tests/teletype-svg-backdrop.test.js (576 x 212).
   {
     const keyGrid = loadGrid();

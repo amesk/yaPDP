@@ -161,7 +161,7 @@ function run() {
     // transform invalid and the browser drops it silently — a real bug the
     // browser probe caught (the keys stayed unscaled because the factor was
     // derived from the length --tty-u instead of the number --tty-u-num).
-    for (const name of ["--tty-kbd-sx", "--tty-kbd-sy", "--tty-kbd-k",
+    for (const name of ["--tty-kbd-k",
                         "--tty-pctrl-k", "--tty-pctrl-btn-k",
                         "--tty-rctrl-k", "--tty-rctrl-switch-k",
                         "--tty-apron-k", "--tty-sheet-k"]) {
@@ -232,10 +232,9 @@ function run() {
   }
 
   // --- Keyboard deck: native key layout, driven by the Keyboard marker ------
-  // The block is anchored to the marker's TOP-LEFT corner and stretched to the
-  // marker's width/height: while the artwork draws the keycaps the DOM keys are
-  // invisible hit areas, so following the marker exactly is what keeps them on
-  // the drawn caps.
+  // The block is anchored to the marker's TOP-LEFT corner and contain-fitted
+  // with the uniform factor --tty-kbd-k, so the round CSS keycaps stay round;
+  // a tilted marker still projects the whole grid with matrix3d.
   {
     const rule = extractRule(css, "#punchkeyboard {");
     assert.ok(/left\s*:\s*calc\(var\(--tty-u\)\s*\*\s*var\(--tty-kbd-x\)\s*\)\s*;/.test(rule),
@@ -246,18 +245,9 @@ function run() {
       "the key block must keep its native width (576px):\n" + rule);
     assert.ok(/height\s*:\s*212px\s*;/.test(rule),
       "the key block must keep its native height (212px):\n" + rule);
-    assert.ok(/transform\s*:\s*var\(--tty-kbd-matrix,\s*scale\(var\(--tty-kbd-sx\),\s*var\(--tty-kbd-sy\)\)\)\s*;/.test(rule),
-      "the keyboard must be projected onto a tilted Keyboard marker and fall " +
-      "back to the marker fit otherwise:\n" + rule);
-  }
-
-  // --- Page-drawn keycaps keep round caps (uniform, centred fit) ------------
-  {
-    const rule = extractRule(css, "#punchkeyboard.m33-css-caps {");
-    assert.ok(/transform\s*:\s*scale\(var\(--tty-kbd-k\)\)\s*;/.test(rule),
-      "the CSS keycaps must use the uniform contain factor:\n" + rule);
-    assert.ok(/var\(--tty-kbd-x\)\s*\+\s*var\(--tty-kbd-w\)\s*\/\s*2/.test(rule),
-      "the CSS keycap block must be centred on the marker:\n" + rule);
+    assert.ok(/transform\s*:\s*var\(--tty-kbd-matrix,\s*scale\(var\(--tty-kbd-k\)\)\)\s*;/.test(rule),
+      "the keyboard must fall back to the uniform contain factor (round caps) " +
+      "and still accept the tilted-marker matrix:\n" + rule);
   }
 
   // --- The deck itself is only a positioning layer -------------------------
@@ -395,42 +385,18 @@ function run() {
       "the paper must pass in front of the platen opening (z-index 4):\n" + rule);
   }
 
-  // --- Keycap layout switch: artwork caps (default) vs CSS caps ------------
-  // With the default layout the caps and legends belong to the artwork, so the
-  // DOM keys must be invisible hit areas in the same boxes (the flat grid in
-  // src/pdp11-app.js); the CONFIG option adds .m33-css-caps and the CSS caps
-  // draw themselves again.
+  // --- The keycap-source CONFIG option is gone -------------------------------
+  // The keyboard always draws its own CSS keycaps (the artwork has no keycaps),
+  // so there is no longer an artwork/page switch to keep in the stylesheet or
+  // the markup.
   {
-    const rule = extractRule(css, "#punchkeyboard:not(.m33-css-caps) .m33-key,");
-    assert.ok(/background\s*:\s*none\s*;/.test(rule),
-      "artwork-caps mode must drop the keycap plastic:\n" + rule);
-    assert.ok(/box-shadow\s*:\s*none\s*;/.test(rule),
-      "artwork-caps mode must drop the keycap side wall:\n" + rule);
-    assert.ok(/cursor\s*:\s*pointer\s*;/.test(rule),
-      "the invisible key must keep a pointer cursor:\n" + rule);
-  }
-  {
-    const rule = extractRule(css, "#punchkeyboard:not(.m33-css-caps) .m33-key.down,");
-    assert.ok(/transform\s*:\s*none\s*;/.test(rule),
-      "artwork-caps mode has nothing to sink when a key is pressed:\n" + rule);
-    assert.ok(/box-shadow\s*:\s*none\s*;/.test(rule),
-      "artwork-caps mode has no side wall to collapse:\n" + rule);
-  }
-  {
-    const rule = extractRule(css, "#punchkeyboard:not(.m33-css-caps) .m33-key .m33-top,");
-    assert.ok(/visibility\s*:\s*hidden\s*;/.test(rule),
-      "the legends must come from the artwork in artwork-caps mode:\n" + rule);
-  }
-  {
+    assert.ok(css.indexOf("m33-css-caps") === -1,
+      "the stylesheet must not keep the removed keycap-layout switch");
     const html = fs.readFileSync(HTML_PATH, "utf8");
-    assert.ok(html.indexOf('id="config-field-keyboardLayout"') !== -1,
-      "the CONFIG page must offer the keycap layout field");
-    for (const value of ["drawn", "grid"]) {
-      assert.ok(html.indexOf('name="keyboardLayout" value="' + value + '"') !== -1,
-        "the CONFIG page must offer the '" + value + "' keycap layout");
-    }
-    assert.ok(html.indexOf("m33-css-caps") === -1,
-      "the markup must not hardcode the layout class — the default is the artwork caps");
+    assert.ok(html.indexOf('id="config-field-keyboardLayout"') === -1,
+      "the CONFIG page must no longer offer the removed keycap layout field");
+    assert.ok(html.indexOf('name="keyboardLayout"') === -1,
+      "the CONFIG page must no longer offer any keyboardLayout radio");
   }
 
   // --- Flat-top cylindrical keycaps ----------------------------------------

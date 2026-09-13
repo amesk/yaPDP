@@ -220,9 +220,8 @@ system chrome — the address bar in the browser, the OS window frame and the
 taskbar in the Tauri desktop app — while leaving the emulator UI untouched.
 Press it again (or Esc) to return.
 
-The **Config** page controls the console terminal type (teletype or VT52), who
-draws the teletype keycaps (in the artwork — the default — or by the page, the
-CSS-drawn grid), the number of user terminals (0–2), the presence of the LP11
+The **Config** page controls the console terminal type (teletype or VT52), the
+number of user terminals (0–2), the presence of the LP11
 line printer and the
 VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
 most 80 columns), the printer print width (72/80/100/132), optional VT100-style
