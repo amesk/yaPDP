@@ -56,6 +56,7 @@ const ORDER = [
     "imgerror.test.js",
     "osboot.test.js",
     "media-manifest.test.js",
+    "changelog-format.test.js",
     "desktop-bundle.test.js",
     "vt52.test.js",
     "g60printer-flush.test.js",
