@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Model 33 ASR: the console cabinet is drawn from SVG artwork.** The body,
+  platen, carriage window and Teletype wordmark come from
+  `assets/Model-33-ASR.svg` (a `pointer-events: none` backdrop); the live
+  controls — keyboard, punch/reader plates, CCU knob, printed sheet and both
+  hanging tapes — anchor to the artwork's marked areas in one coordinate
+  system. (`assets/Model-33-ASR.svg`, `src/pdp11-app.js`, `css/g60printer.css`,
+  `pdp11.html`)
+- The hanging ASR tapes answer each punched/read row with a short damped swing
+  (punches pull one way, BSP the other) and are scrolled with the wheel only —
+  no painted scrollbar. (`src/punchtape.js`, `src/reader.js`,
+  `css/g60printer.css`)
+- The TAPE PUNCH buttons use the Model 33 keycap look; the TAPE READER switch
+  is the authentic vertical four-detent lever; the CCU switch is the real
+  two-step knob. (`src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`)
+
+### Removed
+
+- The Model 33 "Drawn in the artwork" keyboard-source option. (`src/config.js`,
+  `src/pdp11-app.js`, `pdp11.html`)
+
+### Fixed
+
+- Manual screenshots are regenerated for the new teletype artwork, written to
+  both the repo source and the landing mirror. (`tools/screenshots-manual.js`)
+
 ## [0.2.0] - 2026-09-10
 
 ### Added
@@ -28,24 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bootHeadless` readiness by console silence (`stableMs`), for booting an
   unknown guest image without a known prompt. (`tools/headless-machine.js`)
 
-### Changed
-
-- **Model 33 ASR: the console cabinet is drawn from SVG artwork.** The body,
-  platen, carriage window and Teletype wordmark come from
-  `assets/Model-33-ASR.svg` (a `pointer-events: none` backdrop); the live
-  controls — keyboard, punch/reader plates, CCU knob, printed sheet and both
-  hanging tapes — anchor to the artwork's marked areas in one coordinate
-  system. The keyboard is always drawn by the page (the old
-  "Drawn in the artwork" option is gone — the artwork carried no caps, so it
-  only produced a blank keyboard). (`assets/Model-33-ASR.svg`, `src/pdp11-app.js`,
-  `css/g60printer.css`, `pdp11.html`)
-- The hanging ASR tapes answer each punched/read row with a short damped swing
-  (punches pull one way, BSP the other) and are scrolled with the wheel only —
-  no painted scrollbar. (`src/punchtape.js`, `src/reader.js`, `css/g60printer.css`)
-- The TAPE PUNCH buttons use the Model 33 keycap look; the TAPE READER switch
-  is the authentic vertical four-detent lever; the CCU switch is modelled as
-  the real two-step knob. (`src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`)
-
 ### Removed
 
 - The browser (Web Speech / DirectShow loopback) voice engine — narration is
@@ -64,8 +73,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.ptap` when no `.zst` exists; headless-term keeps guest output on timeout,
   resolves `:export` from the CWD and reports `:status` truthfully after a
   rewind. (`src/browser-machine.js`, `tools/headless-term.js`)
-- Manual screenshots are written to both the source and the landing mirror and
-  regenerated. (`tools/screenshots-manual.js`)
 
 ## [0.1.0] - 2026-09-04
 
