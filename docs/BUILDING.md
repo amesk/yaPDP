@@ -200,6 +200,18 @@ npm run serve
 `cargo tauri build` picks up the right set of bundled resources. Re-run the staging step
 after any web-source change before rebuilding.
 
+Frontend files need no per-file registration: the staging step copies the whole `css/`,
+`src/` and `assets/` trees, so a new font, screenshot or SVG artwork (the Teletype
+cabinet is `assets/Model-33-ASR.svg`, fetched at runtime through `TTY_ART_URL`) reaches
+the desktop app as soon as the frontend references it. Two inventories **are** maintained
+by hand, and `tests/desktop-bundle.test.js` fails when one drifts:
+
+- a payload added to `media/` must be listed in `bundle.resources` of
+  `src-tauri/tauri.conf.full.json` **and** in the `BUNDLED` table of
+  `src/tauri-bundled.js` (the minimal variant ships a documented subset);
+- the runtime artwork and every `url(...)` target of `css/*.css` must exist under
+  `assets/`.
+
 The installers are branded with a themed PDP-11 front-panel artwork (dark cabinet,
 "11" lettering, indicator lamps, toggle switches) that ships as static
 `src-tauri/installer/*.bmp`:

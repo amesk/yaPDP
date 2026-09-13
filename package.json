@@ -74,6 +74,7 @@
         "css/**",
         "*.html",
         "media/**",
+        "src-tauri/*.json",
         "package.json"
       ]
     },
