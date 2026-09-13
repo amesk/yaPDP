@@ -441,11 +441,9 @@
     /* Model 33 key deck: the keys keep their native 576x212 px layout (pitch
        40px, staggered rows — see MODEL33_KEYS / model33KeyGrid in
        src/pdp11-app.js) and the block is fitted onto the artwork's Keyboard
-       marker: anchored to the marker's top-left corner and stretched to its
-       width/height (--tty-kbd-sx / --tty-kbd-sy). While the artwork owns the
-       keycaps the DOM keys are invisible hit areas, so an anisotropic fit is
-       exactly what keeps them on top of the drawn caps; the deck plastic comes
-       from the artwork as well. */
+       marker: anchored to the marker's top-left corner and contain-fitted with
+       the uniform factor --tty-kbd-k, so the round keycaps stay round. The
+       decorative deck plastic behind the caps still comes from the artwork. */
     position: absolute;
     left: calc(var(--tty-u) * var(--tty-kbd-x));
     top: calc(var(--tty-u) * var(--tty-kbd-y));
@@ -453,20 +451,8 @@
     height: 212px;
     transform-origin: 0 0;
     /* A tilted Keyboard marker projects the whole key grid onto it with
-       matrix3d, so the invisible hit areas follow the caps the artwork draws;
-       a plain rectangle keeps the honest marker fit. */
-    transform: var(--tty-kbd-matrix,
-            scale(var(--tty-kbd-sx), var(--tty-kbd-sy)));
-}
-
-/* With the keycaps drawn by the page (CONFIG -> Keyboard keycaps -> Drawn by
-   the page) the round caps must stay round, so the block is contain-fitted
-   uniformly (--tty-kbd-k) and centred on the marker instead of stretched. */
-#punchkeyboard.m33-css-caps {
-    left: calc(var(--tty-u) * (var(--tty-kbd-x) + var(--tty-kbd-w) / 2) - 288px * var(--tty-kbd-k));
-    top: calc(var(--tty-u) * (var(--tty-kbd-y) + var(--tty-kbd-h) / 2) - 106px * var(--tty-kbd-k));
-    transform-origin: 0 0;
-    transform: scale(var(--tty-kbd-k));
+       matrix3d; a plain rectangle keeps the honest uniform marker fit. */
+    transform: var(--tty-kbd-matrix, scale(var(--tty-kbd-k)));
 }
 
 /* ---- Round keycaps (diameter 36px, pitch 40px) ---- */
@@ -614,36 +600,6 @@
     box-shadow:
         0 0 0 #241f1a,
         0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-/* ---- Keycap layout: drawn by the artwork or by the page --------------
-   The default layout leaves the keycaps AND their legends to the artwork
-   (assets/Model-33-ASR.svg), so the DOM keys are invisible hit areas in
-   exactly the same boxes — pressing a drawn keycap keeps working, and the key
-   ids/positions come from the flat grid in src/pdp11-app.js
-   (model33KeyGrid). The CONFIG option "Keyboard keycaps -> Drawn by the page"
-   adds .m33-css-caps to #punchkeyboard and the CSS keycaps below draw
-   themselves again (the pre-artwork behaviour, kept as the fallback). */
-#punchkeyboard:not(.m33-css-caps) .m33-key,
-#punchkeyboard:not(.m33-css-caps) .m33-space {
-    /* Transparent hit area: no plastic, no side wall, no cursor dead zone. */
-    background: none;
-    box-shadow: none;
-    cursor: pointer;
-}
-
-#punchkeyboard:not(.m33-css-caps) .m33-key.down,
-#punchkeyboard:not(.m33-css-caps) .m33-space.down {
-    /* Nothing to sink and nothing to light up while the artwork owns the caps. */
-    transform: none;
-    box-shadow: none;
-}
-
-#punchkeyboard:not(.m33-css-caps) .m33-key .m33-top,
-#punchkeyboard:not(.m33-css-caps) .m33-key .m33-shift,
-#punchkeyboard:not(.m33-css-caps) .m33-key .m33-center {
-    /* Legends (CTRL names, shift symbols, base glyphs) belong to the artwork. */
-    visibility: hidden;
 }
 
 /* ==================================================================
@@ -1291,13 +1247,10 @@
     --tty-sheet-k: calc(var(--tty-u-num) * var(--tty-paper-w) / var(--tty-sheet-native));
 
     /* ---- Keyboard: the marker drives the key grid -------------------
-       The key block is anchored to the marker's top-left corner and stretched
-       to the marker's width and height, so the INVISIBLE hit areas cover
-       exactly the keycaps the artwork draws (cap shapes do not matter while
-       the artwork owns them). Both factors are derived from the marker, so
+       The key block is anchored to the marker's top-left corner and
+       contain-fitted with the uniform --tty-kbd-k (declared above), so the
+       round keycaps stay round. The factor is derived from the marker, so
        resizing the Keyboard marker in the SVG resizes the keys. */
-    --tty-kbd-sx: calc(var(--tty-u-num) * var(--tty-kbd-w) / 576);
-    --tty-kbd-sy: calc(var(--tty-u-num) * var(--tty-kbd-h) / 212);
 
     position: relative;
     display: block;
