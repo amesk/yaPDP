@@ -49,14 +49,36 @@ bump → document → build → publish. Total time: under an hour.
 
 ### 3. Documentation
 
-- [ ] **CHANGELOG.md:** rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`
+**Two files, two audiences — do not duplicate content between them.**
+
+- **CHANGELOG.md** — the engineering log (for us). One `### Added / Changed /
+  Fixed / Removed` section per release. **One line per entry**: a short
+  statement of the final state, not the path taken to it. Interface names,
+  file paths and flags belong here.
+  - **No development history.** Intermediate fixes, reverts, "first did A, then
+    reworked it to B", font/colour swaps and other steps the user never saw are
+    **not** changelog entries. Write the net result once.
+  - Exception: a real regression against the **previous published release** may
+    be noted once ("X works again"), never the sequence of internal attempts.
+- **RELEASE_NOTES.md** — the user-facing summary (for people who download the
+  installer). Short: a headline plus a handful of "what's new / improved /
+  fixed" paragraphs. Plain language, **no function names, paths, flags or
+  version bumps of dev tools**. Rebuilt from scratch per release — **not a
+  copy of the CHANGELOG**.
+- A single fact lives in **either** CHANGELOG (engineer wording) **or**
+  RELEASE_NOTES (user wording) — never copied verbatim into both.
+
+Checklist:
+
+- [ ] **CHANGELOG.md:** add entries under `[Unreleased]` as work lands, one
+      line each; on release, rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`
       (Keep a Changelog format) and open a fresh empty `[Unreleased]`
 - [ ] Update the compare links at the bottom of CHANGELOG.md:
       `[X.Y.Z]: https://github.com/amesk/yaPDP/compare/releases/v<PREV>...releases/vX.Y.Z`
       and `[Unreleased]: .../compare/releases/vX.Y.Z...HEAD`
-- [ ] **RELEASE_NOTES.md:** rebuild from the released section — new headline
-      at the top (with the version), refresh Highlights / What's New /
-      Improvements / Bug Fixes from the CHANGELOG entries, prune stale text
+- [ ] **RELEASE_NOTES.md:** write the user-facing summary for this release
+      from scratch (new headline at the top with the version); do not paste
+      CHANGELOG lines — describe what the user gets, not how it was built
 - [ ] README, if the release changes anything user-visible (new guest OS,
       new page, changed default): update the relevant section — details go to
       `docs/`, one line to the README

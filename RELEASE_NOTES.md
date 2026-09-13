@@ -6,69 +6,31 @@
 
 **yaPDP — Yet Another PDP-11/70 web emulator** with an authentic front panel,
 a Model 33 ASR teletype, DECscope VT52 terminals and a DEC LP11 printer.
-This release ships the promo-video pipeline end to end and tightens the
-emulator/headless tooling.
 
-## Headline: demo-reel videos are now generated on the server
+## What's new
 
-The promo pipeline that used to live on one developer's machine now runs
-from GitHub Actions. **build-promo-videos** checks out a requested branch,
-records every guest-OS demo clip with a headless browser, dubs the reel and
-per-clip MP4s with a local **Kokoro-82M** neural narration (no cloud voice
-dependency), burns timed chapters/banner titles/subtitles and uploads the
-finished files as a downloadable artifact. The reel itself is voiced: intro,
-each clip's title card and the outro are narrated, and per-clip timed events
-(chapters, spoken phrases, bottom subtitles) are sampled while a clip is
-recorded and mixed into the audio at the right moment.
+- **Demo videos are now built on the server.** One click in GitHub Actions
+  records every guest-OS demo, assembles the reel and the per-clip MP4s, and
+  hands them back as a downloadable set — no local setup needed.
+- **The demo reel is narrated.** The intro, each clip's title card and the
+  outro are spoken with a natural local voice, with a quiet music bed that
+  steps back while the narration plays.
+- **Chapter markers and subtitles come with the videos**, ready for YouTube
+  uploads.
 
-Everything below the headline is the long tail of making that pipeline
-actually run green on CI instead of dying at some arbitrary middle step.
+## Improved
 
-## What's New since v0.1.0
+- The desktop app starts every bundled guest reliably — including Lunar Lander
+  and the disk-based systems, which on some machines previously appeared to
+  hang on start.
+- The Minimal desktop build ships only the guests it can actually boot, so the
+  quick-boot list never offers something that will not start.
 
-- **Server-side demo-video builds (GitHub Actions).** The whole demo-reel
-  pipeline runs on demand: record → dub (Kokoro) → assemble → upload, with
-  Xvfb-backed headed capture for reliable in-tab audio and distro ffmpeg
-  (the static `ffmpeg-static` build lacks the `drawtext` filter the caption
-  cards need). The workflow verifies every per-clip export before uploading.
-- **Kokoro-82M neural narration engine.** The voice-over recorder
-  (`tools/voicer.js`) synthesises narration locally with Kokoro-82M
-  (Transformers.js + onnxruntime-node on CPU, voice **US Michael** by
-  default) — fully headless, no cloud dependency. The model (~86 MB) is
-  downloaded once into the gitignored `.cache/kokoro/` and reused.
-- **Demo-reel voice-over narration.** Intro, per-clip title cards and outro
-  are spoken; a card whose narration is longer than its visual is stretched
-  (freezing the last fully-visible frame), background music is ducked while
-  speech plays, and WAVs are cached under `video/voice/` (invalidated
-  whenever the script or engine changes).
-- **Timed reel events.** The clip recorder stamps chapters / banner titles /
-  spoken phrases / bottom subtitles on the media timeline as it drives the
-  machine; the assembler turns them into narration, burned overlays and
-  `.chapters.txt` / `.srt` sidecars (same path the web UI uses).
-- **`bootHeadless` wait-for-silence readiness (`stableMs`).** Headless boots
-  now treat the machine as ready once the console has stayed quiet for
-  `stableMs`, so an unknown guest image can be explored and its readiness
-  prompt derived from the captured output.
+## Fixed
 
-## Fixes
-
-- **CI demo-video build runs end to end.** Root-safe Chromium launch, async
-  Puppeteer executable-path export (Puppeteer v25 made it a `Promise`), and
-  distro ffmpeg with the `drawtext` filter the static build lacks — the reel
-  and per-clip MP4s assemble, captions render real apostrophes, and the
-  runner's Verify step stops misreporting the (present) audio stream as
-  missing.
-- **Emulator hangs, image loads and headless-tool correctness.** VT11 gets a
-  real `requestInterrupt()` in the refactored machine layer (Lunar Lander no
-  longer hangs after the first screen in `?core=1`); the image loader accepts
-  a raw `lander.ptap` when no compressed `.zst` exists; the Minimal desktop
-  build ships the bootcode tape it needs; the Manual page's "Launch the
-  Emulator" button actually launches. `headless-term` keeps guest output on
-  timeout, resolves `:export` paths from the working directory and reports
-  `:status` truthfully after a `:rewind`.
-- **Manual screenshots stay in sync.** Every regenerated illustration is
-  written to both the repo source and the React landing mirror, and shows the
-  machine's real quiet `@` bootstrap prompt.
+- Lunar Lander no longer freezes after its first screen.
+- The Manual page's "Launch the Emulator" button works.
+- Manual screenshots in the documentation match the current look.
 
 ---
 

@@ -12,409 +12,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Demo-reel voice-over narration on the title cards.** `tools/assemble-video.js`
-  now speaks the intro, every clip's title card and the outro with a generated
-  English narration (`tools/voicer.js`, Kokoro-82M or Windows SAPI);
-  the WAVs are cached in `video/voice/` (rebuilt with `--voice-regen`, and the
-  light reverb / pseudo-stereo added to the dry mono voice can be disabled with
-  `--no-voice-reverb`). The intro card waits a beat (~3 s, until its title
-  has fully faded in) before the voice starts. A card whose narration is
-  longer than its default duration is stretched — freezing the last fully
-  visible frame (just before the card's fade-out), so the speech never runs
-  on an already-blackened screen — until the narration (plus its reverb tail)
-  fits entirely, and the background music is ducked while it plays. The pure
-  timing helpers live in `tools/reel-voice-util.js` with unit tests in
-  `tests/reel-voice.test.js`.
-
-- **Kokoro-82M neural narration engine for the demo reel.** The voice-over
-  recorder (`tools/voicer.js`) can now synthesize the narration locally with
-  **Kokoro-82M** through the official `kokoro-js` package (Transformers.js +
-  onnxruntime-node on CPU, voice **US Michael** by default) — far less
-  synthetic than the Windows SAPI voice, and fully headless: no browser and
-  no network voice dependency. The quantized model (~86 MB) is downloaded
-  once into the gitignored `.cache/kokoro/` and then reused (a CI checkout
-  never re-downloads it); voices ship inside the package. Select it with
-  `node tools/voicer.js --engine kokoro ...` or, for the whole reel,
-  `node tools/assemble-video.js --voice-engine kokoro --voice-regen`; the
-  `auto` engine (Kokoro, falling back to Windows SAPI) remains the default.
-  Pure engine-selection/config helpers are pinned in `tests/voicer.test.js`.
-  (`package.json`, `tools/voicer.js`, `tools/assemble-video.js`,
-  `tests/voicer.test.js`, `.gitignore`)
-
-- **Timed reel events while a demo clip is recorded.** The clip recorder
-  (`tools/record-video.js`) now lets the scenario stamp timed events on the
-  media timeline as it drives the machine — chapters (YouTube chapter
-  markers), banner titles, spoken phrases and bottom subtitles — either
-  declaratively on `extra` steps (`{ chapter/speak/title }`) or imperatively
-  via a per-shot event recorder (`markChapter()`, `speak()`, `title()`,
-  `subtitle()`). The events are written to `video/<base>.events.json`, and
-  `tools/assemble-video.js` turns them into narration: every spoken phrase is
-  synthesised through `tools/voicer.js` (content-addressed WAV cache) and mixed
-  into the clip audio at its media offset, banner titles are burned into the
-  finished MP4s, and `video/*.chapters.txt` + `video/*.srt` sidecars are
-  written next to each output (`--burn-subtitles` also burns the bottom
-  subtitle lines). Pure event/timing helpers live in `tools/reel-timeline-util.js`
-  with unit tests in `tests/reel-timeline.test.js`; structural wiring tests in
-  `tests/record-events.test.js` and `tests/assemble-events.test.js`.
-  (`tools/record-video.js`, `tools/assemble-video.js`,
-  `tools/reel-timeline-util.js`, the three new test files)
-
-- **Server-side demo-video builds (GitHub Actions).** The whole demo-reel
-  pipeline now runs on demand from the server: the manually-triggered
-  **build-promo-videos** workflow (`.github/workflows/videos.yml`) checks out
-  the requested branch, records every guest-OS clip on an `ubuntu-latest`
-  runner (Chrome from the `puppeteer` postinstall, optional Xvfb-backed headed
-  capture for reliable in-tab audio), assembles the reel + per-clip MP4s with
-  the local Kokoro-82M narration and uploads them as a downloadable artifact.
-  Two cross-platform gaps were closed along the way: the drawtext cards no
-  longer hard-code Windows-only fonts — `tools/reel-font-util.js` resolves
-  Consolas/Arial Bold on Windows and the repo-committed Courier Prime/Michroma
-  faces on Linux/macOS (`YAPDP_FONT`/`YAPDP_FONT_BOLD` override); and
-  `tools/record-video.js` now also discovers the common Linux Chromium paths
-  and the browser bundled by `puppeteer`.
-  (`.github/workflows/videos.yml`, `tools/reel-font-util.js`,
-  `tools/assemble-video.js`, `tools/record-video.js`, `tests/reel-font.test.js`,
-  `tests/record-browser.test.js`)
-
-- **`bootHeadless` wait-for-silence readiness (`stableMs`).** Besides
-  matching a known prompt marker (`waitFor`, whole-line by default, or as a
-  substring with `waitForMode: "substring"`), the headless boot machinery
-  can now treat the boot as ready once console output stays quiet for
-  `stableMs` ms — no marker required. This makes it possible to explore an
-  unknown guest image (whose prompts are not known yet) headlessly and then
-  derive the readiness markers from the captured boot output.
-  (`tools/headless-machine.js`, test 4 in `tests/headless-machine.test.js`)
+- Demo-reel narration: the intro, each clip's title card and the outro are
+  spoken (Kokoro-82M locally by default, Windows SAPI as fallback); narration
+  is cached, cards stretch to fit the speech, and music ducks under it.
+  (`tools/voicer.js`, `tools/assemble-video.js`, `tools/reel-voice-util.js`)
+- Timed reel events recorded with each clip — chapters, banner titles, spoken
+  phrases, bottom subtitles — turned into narration, burned overlays and
+  `.chapters.txt`/`.srt` sidecars. (`tools/record-video.js`,
+  `tools/assemble-video.js`, `tools/reel-timeline-util.js`)
+- Server-side promo-video build (`build-promo-videos` workflow): records every
+  guest-OS clip and assembles the reel + per-clip MP4s on CI, uploaded as an
+  artifact. (`.github/workflows/videos.yml`)
+- Cross-platform drawtext fonts (`tools/reel-font-util.js`): repo-committed
+  faces on Linux/macOS instead of Windows-only Consolas/Arial.
+- `bootHeadless` readiness by console silence (`stableMs`), for booting an
+  unknown guest image without a known prompt. (`tools/headless-machine.js`)
 
 ### Changed
 
-- **The redundant Model 33 keycap-source option was dropped.** The CONFIG page
-  no longer asks who draws the keyboard keycaps — the page always draws them
-  (the flat `model33KeyGrid` grid): the former "Drawn in the artwork" branch hid
-  the CSS keycaps in favour of `assets/Model-33-ASR.svg`, which never carried any
-  keycaps, so it only ever produced an invisible keyboard. The key block is now
-  contain-fitted uniformly (`--tty-kbd-k`) so the round caps stay round, and the
-  `keyboardLayout` config field, its CONFIG radios and the `m33-css-caps`
-  stylesheet switch are gone.
-  (`src/config.js`, `src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`,
-  `tests/config.test.js`, `tests/teletype-cabinet-css.test.js`)
-
-- **The hanging ASR paper tapes answer every step with a damped swing, and are
-  scrolled with the wheel only.** The punched tape (`#punchtape__body`) and the
-  reader tape (`#readertape__body`) no longer just grow downwards in silence: a
-  punched byte, an overpunch after BSP, the automatic NUL lead-in/trailer and
-  every byte read off the reader tape tug the strip one row down (12px, the
-  `.pt-row` height) and let it swing back with a short damped overshoot, while
-  BSP pulls it the other way — the hanging paper answers the ratchet like the
-  real machine instead of teleporting a row into place. The motion model is one
-  Web-Animations helper (`tapeKick` / `tapeKickKeyframes` in `src/punchtape.js`,
-  reused by `src/reader.js`), so both tapes behave alike: it animates
-  `transform` only (never layout, so the tape cannot shift its rows or re-open
-  the sub-pixel seams between them), restarts at most every 40 ms (a
-  runaway-output burst reads as a blur anyway) and is skipped entirely under
-  `prefers-reduced-motion` and in Node. Both hanging tapes are now scrolled with
-  the **mouse wheel only** — they stay scroll containers but never paint a
-  scrollbar (`scrollbar-width: none` plus a zero-width
-  `::-webkit-scrollbar`, with the tape bodies stating their own 97px width
-  instead of the former `scrollbar-gutter: stable`). That is what lets the
-  swing stay physical: its overshoot overflows the tape's own viewport for a
-  frame or two, which previously flashed a scrollbar on an otherwise short
-  tape. The pure keyframe factory, the "one step = one row" contract and the
-  "scroll container, no painted scrollbar" contract are pinned by
-  `tests/punchtape.test.js`.
-  (`src/punchtape.js`, `src/reader.js`, `css/g60printer.css`,
-  `tests/punchtape.test.js`, `docs/FEATURES.md`, `manual.html`,
-  `landing/src/components/UserManual.tsx`)
-
-- **The Model 33 ASR console cabinet is drawn from SVG artwork.** The machine
-  itself — the sand-cream body, the platen rollers, the carriage window and the
-  Teletype Corporation wordmark — now comes from `assets/Model-33-ASR.svg` as a
-  `pointer-events: none` backdrop, while the live controls stay HTML on top:
-  the keyboard, the punch/reader plates, the CCU LINE/OFF/LOCAL knob, the
-  printed sheet and both hanging tapes are anchored to the artwork's marked
-  areas (`Keyboard`, `Apron`, `Puncher`, `Reader`, `Paper`, `Caret`) in ONE
-  coordinate system — the `--tty-*` variables of the "SVG art layer" block in
-  `css/g60printer.css`, which `tests/teletype-svg-backdrop.test.js` pins to the
-  artwork so the two can never drift apart. Each control keeps its native
-  pixel layout and is contain-fitted into its marker (round keycaps and knob
-  never distort); the paper still rises out of the top of the machine and the
-  tapes still hang past the rig to the bottom of the window. Behaviour, sounds,
-  snapshots and the LP11 page are untouched; the CSS-drawn cabinet rules and
-  their contract tests were retired deliberately.
-  (`assets/Model-33-ASR.svg`, `pdp11.html`, `css/g60printer.css`,
-  `src/pdp11-app.js`, `src/punchtape.js`, `src/reader.js`,
-  `tests/teletype-svg-backdrop.test.js`, `tests/teletype-cabinet-css.test.js`,
-  `tests/punchtape.test.js`, `tests/teletype-scaling.test.js`)
-
-- **The artwork's markers are read at runtime and drive the keyboard grid.**
-  The page now fetches `assets/Model-33-ASR.svg`, parses the marker rects
-  (`ttyMarkerVars` in `src/pdp11-app.js`) and pushes them into the `--tty-*`
-  variables of `#teletype-rig`, so moving a marker in Inkscape moves the
-  matching control without touching any code (the stylesheet keeps the same
-  numbers only as the fallback for fetch-less builds, and both sides are pinned
-  by `tests/teletype-svg-backdrop.test.js`). The Model 33 key block is anchored
-  to the Keyboard marker's corner and stretched to its width/height, so the
-  invisible hit areas always cover the keycaps the artwork draws; the
-  page-drawn keycaps keep the uniform centred fit (round caps). The printed
-  sheet follows the Paper marker the same way: the printer publishes the width
-  of the sheet it actually laid out (it depends on the column count) and the
-  stylesheet scales the block by marker / that width, so the paper fills the
-  platen the artwork draws instead of assuming the CSS base width (741px) — the
-  sheet used to sit ~18% narrow inside the marker with dead margins and a
-  correspondingly smaller font. Every marker
-  rect also carries `display:none` in its own style, because Inkscape resets the
-  LAYER's display on save and the markers must never paint over the cabinet —
-  the same suite also guards the file against invalid XML, since a double hyphen
-  inside a comment turns the artwork into a blank backdrop while the HTML
-  overlays stay visible.
-
-- **The punch unit's marker is split in two.** The punch control area and the
-  punched tape are separate drawings on a real Model 33, so they carry separate
-  markers now: `PuncherControl` anchors the REL/OFF/BSP/ON cluster (uniform,
-  width-driven fit, so the round buttons stay round) and `PuncherTape` sets the
-  strip's axis and its exit line — `#punchtape` no longer derives them from the
-  plate centre plus hand-tuned 15/32px offsets. The plate frame keeps its own
-  contain fit for the TAPE PUNCH label, while the tape-out slot and its
-  triangular tongue are gone from the DOM — the artwork draws the punch
-  mechanism now (the TAPE READER slot, which the artwork does not carry yet,
-  stays HTML). While the markers are being
-  aligned against the page the artwork's markers layer is deliberately left
-  VISIBLE: the contract test reports that as the debug state, and requires
-  `display:none` on every rect once the layer is switched off.
-  (`assets/Model-33-ASR.svg`, `pdp11.html`, `css/g60printer.css`,
-  `src/pdp11-app.js`, `tests/teletype-svg-backdrop.test.js`,
-  `tests/teletype-cabinet-css.test.js`, `tests/punchtape.test.js`)
-
-- **The reader unit's marker is split in two as well.** Mirroring the punch, the
-  reader's four-position switch and the loaded tape are separate drawings on a
-  real Model 33, so they carry their own markers now: `ReaderControl` anchors the
-  START/STOP/FREE/AUTO switch block (uniform, width-driven fit, so the disc stays
-  round) and `ReaderTape` gives `#readertape` its axis and exit line instead of
-  the former plate-centre plus hand-tuned 32/24px offsets. The switch block left
-  the plate frame for its own `#asr-reader-switch` layer, so the artwork owns
-  where the switch sits, while `#asr-reader` keeps only the TAPE READER label
-  plate (contain fit) and the reader slot. The marker the artist tilted is
-  projected with `matrix3d()` through `--tty-rctrl-matrix`, exactly like the
-  punch cluster. The geometry contract now reads both mechanisms' markers from
-  the artwork and additionally checks that a tilted rect really is recognised as
-  a quadrilateral (`tests/teletype-svg-backdrop.test.js`).
-  (`assets/Model-33-ASR.svg`, `pdp11.html`, `css/g60printer.css`,
-  `src/pdp11-app.js`, `tests/teletype-svg-backdrop.test.js`,
-  `tests/teletype-cabinet-css.test.js`, `tests/reader.test.js`)
-
-- **The artwork's Foreground layer paints above the controls.** A layer labelled
-  `Foreground` is no longer part of the backdrop: the page fetches the same SVG
-  once, keeps that single layer (plus `<defs>`, where the drawing's gradients
-  live) and inlines it into `#tty-foreground`, which the stylesheet stacks above
-  every control — the key deck, both hanging tapes, the printed sheet and the
-  knobs. The host is `pointer-events: none`, so it stays purely cosmetic, and
-  the rest of the machine remains the backdrop image behind the overlays. This
-  is what lets the paper pass behind the platen lip and the punched tape behind
-  the punch head, which a background image can never do. The layer is found
-  through Inkscape's layer label (falling back to an id mentioning
-  "foreground"), so renaming the editor id cannot break it.
-  (`pdp11.html`, `css/g60printer.css`, `src/pdp11-app.js`,
-  `tests/teletype-cabinet-css.test.js`, `tests/teletype-svg-backdrop.test.js`)
-
-- **The markers layer is switched off (release state).** Every marker rect hides
-  itself now (`display:none` in the rect's own style, which survives Inkscape
-  rewriting the LAYER's display on save) and the stylesheet fallbacks are back in
-  step with the re-cut Apron, PuncherControl, ReaderControl and tape markers, so
-  a fetch-less load still puts every overlay in place. To align the markers
-  again, make the layer visible and drop those per-rect styles — the contract
-  test names the ones it wants.
-  (`assets/Model-33-ASR.svg`, `css/g60printer.css`)
-
-- **The TAPE PUNCH / TAPE READER lettering and the tape slot are drawn by the
-  artwork.** The two printed captions and the reader's tape slot come from
-  `assets/Model-33-ASR.svg` now, so the page no longer carries a `.asr-label` or
-  a `.asr-slot` element and their CSS rules are gone. The punch and reader plate
-  frames (`#asr-punch` / `#asr-reader`) stay as empty, marker-anchored
-  placeholders — the punch's slot and its triangular tongue had already moved
-  into the drawing. (`pdp11.html`, `css/g60printer.css`)
-
-- **Any marker can now lay its layer into perspective, not just the punch.**
-  The quad projection (a marker drawn as a quadrilateral, or a rect carrying its
-  own `rotate()`/`matrix()`) is wired for the whole cabinet: the Keyboard deck,
-  the CCU apron block and the printed sheet join `PuncherControl` /
-  `ReaderControl` in `TTY_QUAD_MARKERS`, each with the anchor its stylesheet
-  fallback really uses — the marker's top-left corner for a corner-fitted block,
-  the marker centre for a centred one — and the sheet with a "dynamic scale"
-  mode that keeps the printer's own factor (its width follows the column count)
-  and adds only the artist's transform, applied in rig space so the sheet tilts
-  onto the platen the artwork draws and the paper-growth maths keeps working.
-  Nothing changes until the artist tilts a marker: with plain rectangles the
-  fallbacks render exactly as before (checked in the browser for all four
-  layers). A guard in `tests/teletype-svg-backdrop.test.js` now fails when the
-  artwork tilts a marker rect that the table does not list — exactly the gap the
-  Apron marker had — and the three modes are unit-tested
-  (`tests/tty-quad-matrix.test.js`).
-  (`src/pdp11-app.js`, `css/g60printer.css`, `tests/tty-quad-matrix.test.js`,
-  `tests/teletype-svg-backdrop.test.js`, `tests/teletype-cabinet-css.test.js`)
-
-- **Four-point (quad) markers: the artwork can lay a layer into perspective.**
-  A marker may now be drawn as a QUADRILATERAL instead of a rectangle — a
-  polygon or a straight-line path with four nodes, e.g. a Trapezoid fitted over
-  the punch control area in Inkscape. The page reads the four corners at load,
-  solves the homography and publishes a `matrix3d()` (`--tty-pctrl-matrix`),
-  which `#asr-punch-buttons` uses when present; with a plain rectangle the
-  variable is absent and the honest uniform fit stays, so nothing changes until
-  the artist draws the quad. A marker rectangle that carries its OWN transform
-  (`rotate()`, `matrix()`, `translate()`, `scale()` — e.g. a marker tilted over
-  a tilted drawing) counts as a quad too: its four transformed corners are used.
-  The parser refuses curved paths, unsupported transforms and degenerate quads
-  (the fallback applies) and is pure/unit-tested together with the solver
-  (`tests/tty-quad-matrix.test.js`).
-  (`src/pdp11-app.js`, `css/g60printer.css`, `tests/tty-quad-matrix.test.js`,
-  `tests/teletype-cabinet-css.test.js`)
-
-### Changed
-
-- **The TAPE PUNCH operator buttons got the Model 33 keycap look.** REL/OFF/BSP/ON
-  are flat-top dark cylinders now, exactly like the keyboard keycaps
-  (`#punchkeyboard .m33-key`): the same dark radial plastic and a solid side
-  wall, 6px high (the keycaps use 4px) so the buttons stand a touch higher. In
-  the tilted ASR block the wall stands to the RIGHT and BELOW the cap (3px/6px)
-  rather than straight down, and pressing drops the cap onto that base by the
-  same offset. The latching buttons (REL/ON/OFF) stay visibly pressed down — the
-  cap sinks and KEEPS the sunk position — while momentary BSP is only down while
-  held. The buttons never light up: the gold rim, the `.active` colour highlight
-  and the hover brightening are all gone, so the only feedback is the physical
-  sink. `tests/punchtape.test.js` pins the sunk latch and the absence of any
-  highlight. (`css/g60printer.css`, `tests/punchtape.test.js`)
-
-- **The TAPE READER switch is now the authentic vertical four-detent lever.**
-  The rotary knob with four labels around a disc was wrong: on the automatic
-  (ASR) Model 33 the reader is controlled by a lever that slides up and down a
-  slot and clicks into four fixed positions, printed top to bottom as
-  **START** (manual run — the reader feeds continuously), **AUTO**
-  (line-controlled run: X-ON starts, X-OFF pauses), **STOP** (forced stop) and
-  **FREE** (tape released for manual pull). The handle can be dragged to a
-  detent (it follows the pointer and the mode latches on release, with the
-  switch click), clicked to step one position down, and the labels stay direct
-  hit targets. The block is PORTRAIT now: the 40x115 native frame matches the
-  artwork's portrait `ReaderControl` slot, which it is fitted onto. `readerModes`
-  is stored in the machine's top-to-bottom order, so each mode's index is also
-  the lever's detent. (`pdp11.html`, `css/g60printer.css`, `src/pdp11-app.js`,
-  `tests/punchtape.test.js`, `tests/teletype-cabinet-css.test.js`,
-  `tests/teletype-svg-backdrop.test.js`)
-
-- **The CCU (LINE/OFF/LOCAL) switch is modelled as the real knob again, with the
-  original dark lettering.** It is a RAISED two-step cylinder now — a wide
-  moulded base standing proud of the apron with a smaller flat cap set LOW on it
-  (its centre sits on the base's centre, not lifted above the turning axis),
-  instead of a flat disc. The base and the cap keep their moulded shading
-  fixed while only the BEAK turns: `setTtyMode` rotates `#ccu-switch-lever`,
-  whose orbit origin follows the smaller cap. The LINE/OFF/LOCAL legends went
-  back to dark moulded lettering on the apron (a light stamp with a faint light
-  catch, as the real panel prints them dark, not glowing). (`css/g60printer.css`,
-  `src/pdp11-app.js`, `tests/teletype-cabinet-css.test.js`)
-
-- **The reader tape now comes OUT of the slot as it is read.** It used to be
-  rendered in full and pulled UP into the reader (the top rows disappearing) —
-  which is backwards: on the machine the tape is fed through the slot and spills
-  forwards, downwards. A loaded tape now sits INSIDE the reader (0 rows hang
-  out) and every byte read prepends a fresh row under the head, so the tape
-  grows downwards — the same mechanic as the punched tape (`punchtape.js`).
-  When the last byte is read the whole tape has left the slot and stays hanging
-  (the tail at the bottom) until it is pulled out or a new tape is loaded;
-  `restore()` re-plays the rows that had already come out, in read order.
-  (`src/reader.js`, `tests/reader.test.js`, `tests/e2e-teletype-tape.js`)
-
-- **The artwork can now carry a second front-most layer for the tape tongues.**
-  A layer labelled `Middle` (see `TTY_ART_LAYERS` in `src/pdp11-app.js`) is
-  inlined into its own host, `#tty-foreground-back`, which the stylesheet stacks
-  BETWEEN the two hanging tapes — above the reader tape (z-index 10) and below
-  the punched tape (z-index 12). That is what lets the punched tape come out
-  OVER the punch tongue while the reader tape still slips UNDER its own
-  translucent tongue. `#tty-overlay` no longer creates a stacking context of its
-  own (its `z-index` is gone): an isolated context would put both tapes under
-  every front-most layer, and the punched tape could never rise above the
-  tongue. Layer lookup is generic now — `ttyArtLayerId(text, label)` matches
-  Inkscape's label first and an id mentioning it second, and the plain
-  `Foreground` lookup never swallows the middle layer. (`pdp11.html`,
-  `css/g60printer.css`, `src/pdp11-app.js`, `tests/teletype-cabinet-css.test.js`,
-  `tests/teletype-svg-backdrop.test.js`)
-
-- **Marker fallbacks re-synced with the re-cut punch/reader markers.** The
-  artwork's `PuncherControl` and the now PORTRAIT `ReaderControl` slots were
-  re-cut, so the stylesheet's marker numbers and contain factors (`--tty-pctrl-*`,
-  `--tty-rctrl-*`, and `--tty-rctrl-switch-k` over the new 40px-wide lever
-  block) were brought back in step, and the markers layer returned to its
-  release state (per-rect `display:none`). (`assets/Model-33-ASR.svg`,
-  `css/g60printer.css`)
+- **Model 33 ASR: the console cabinet is drawn from SVG artwork.** The body,
+  platen, carriage window and Teletype wordmark come from
+  `assets/Model-33-ASR.svg` (a `pointer-events: none` backdrop); the live
+  controls — keyboard, punch/reader plates, CCU knob, printed sheet and both
+  hanging tapes — anchor to the artwork's marked areas in one coordinate
+  system. The keyboard is always drawn by the page (the old
+  "Drawn in the artwork" option is gone — the artwork carried no caps, so it
+  only produced a blank keyboard). (`assets/Model-33-ASR.svg`, `src/pdp11-app.js`,
+  `css/g60printer.css`, `pdp11.html`)
+- The hanging ASR tapes answer each punched/read row with a short damped swing
+  (punches pull one way, BSP the other) and are scrolled with the wheel only —
+  no painted scrollbar. (`src/punchtape.js`, `src/reader.js`, `css/g60printer.css`)
+- The TAPE PUNCH buttons use the Model 33 keycap look; the TAPE READER switch
+  is the authentic vertical four-detent lever; the CCU switch is modelled as
+  the real two-step knob. (`src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`)
 
 ### Removed
 
-- **Browser loopback capture voice engine.** `tools/voicer.js` no longer
-  records Chrome's Web Speech API through an ffmpeg DirectShow loopback device:
-  the `browser` engine and its `--device`/`--force-sapi`/`--rate`/`--pitch`/
-  `--volume` flags are gone. The narration is produced by the two remaining
-  mechanisms — Kokoro-82M (`kokoro`) and Windows SAPI (`sapi`) — with `auto`
-  trying Kokoro first and falling back to SAPI.
-  (`tools/voicer.js`, `tools/assemble-video.js`, `tests/voicer.test.js`)
+- The browser (Web Speech / DirectShow loopback) voice engine — narration is
+  Kokoro-82M or Windows SAPI only. (`tools/voicer.js`)
 
 ### Fixed
 
-- **The teletype rig was being squashed vertically, so overlays could never
-  line up with the artwork markers.** `#teletype-rig` is a flex item of the
-  column-flex `#page-teletype`, so on windows shorter than the artwork it was
-  SHRUNK to fit instead of keeping its aspect ratio. The backdrop stretches to
-  the rig box (`background-size: 100% 100%`), so the squashed rig smeared the
-  whole drawing at a different px-per-unit than the HTML overlays (which live in
-  `--tty-u` units) — no amount of re-drawing the markers could make the two
-  agree. The rig now declares `flex: none` and is fitted the way
-  `installTeletypeScaling()` was designed to fit it: one uniform
-  `transform: scale()` on an unsquashed rig. Measured after the fix: the reader
-  lever block and its `ReaderControl` marker differ by 0 px on all four sides.
-  The quad projection for the reader was also brought in step with the new
-  portrait lever block (40x115 native, instead of the former 92x62 knob).
-  (`css/g60printer.css`, `src/pdp11-app.js`)
-
-- **Server-built demo-reel videos run end to end on CI.** The
-  `build-promo-videos` workflow no longer dies at any point of the pipeline:
-  it records every guest-OS clip (Chromium launch made root-safe, the
-  browser executable path exported asynchronously — `puppeteer.executablePath()`
-  is a `Promise` in Puppeteer v25 and previously leaked a raw `Promise { … }`
-  literal into `$GITHUB_ENV`, which GitHub Actions rejected) and assembles a
-  correct reel and per-clip MP4s with the distro ffmpeg (the static
-  `ffmpeg-static` build lacks the `drawtext` filter the caption cards need).
-  The Verify step no longer misreports the assembled audio as missing: the
-  reel and every clip carry a real audio stream, and the check now matches it.
-  (`.github/workflows/videos.yml`, `tools/record-video.js`,
+- Desktop builds: bundled images are mounted in parallel and consumers wait
+  for the bundle, so images that used to load last (Lunar Lander's paper tape,
+  the ra*/rp* disks) are no longer read empty at guest start.
+  (`src/tauri-bundled.js`, `src/browser-machine.js`)
+- Promo-video CI runs end to end; the verify step no longer reports the
+  (present) audio as missing. (`.github/workflows/videos.yml`,
   `tools/assemble-video.js`)
-- **`buildSapiScript()` no longer re-resolves the output path.** The pure
-  PowerShell-script builder embedded `path.resolve(outPath)` into the emitted
-  script. On Linux (the CI runner) `path.resolve` of a Windows-style path such
-  as `C:\tmp\voice-out.wav` treated it as relative and prefixed the CWD, so the
-  emitted `SetOutputToWaveFile(...)` argument no longer matched the expected
-  verbatim path — breaking `tests/voicer.test.js` on the Linux unit job. The
-  caller (`sapiSpeak`) already resolves the path before handing it in, so the
-  builder now embeds `outPath` verbatim (single-quote escaped only), staying
-  pure and platform-independent. (`tools/voicer.js`, `tests/voicer.test.js`)
-
-- **Emulator hangs, image loads and headless-tool correctness fixed.**
-  VT11 (`src/vt11.js`) calls the global `requestInterrupt()` function that
-  was only defined in the legacy `src/iopage.js`; the refactored machine layer
-  (`src/browser-machine.js`) now provides the same global so the VT11 can
-  signal interrupts and Lunar Lander proceeds past the GREETINGS screen into
-  the landing phase. The image loader also accepts a plain file when no
-  compressed `.zst` variant exists (`lander.ptap` ships raw — previously a
-  404), the Minimal desktop build ships the bootcode tape it needs again, and
-  the Manual page's "Launch the Emulator" button actually launches.
-  On the headless/CLI side, `headless-term` keeps the guest's captured output
-  when a boot times out (instead of discarding it), `:export` resolves output
-  paths from the working directory (not the repo root) and `:status` after a
-  `:rewind` reports the tape state truthfully; `bootHeadless` can treat a
-  console that has stayed quiet for `stableMs` as booted so an unknown guest
-  image can be explored and its readiness prompt captured.
-
-- **Manual screenshots stay in sync with the React landing.**
-  `tools/screenshots-manual.js` previously wrote every shot only to
-  `assets/images/manual/`, letting the landing mirror
-  (`landing/public/assets/images/manual/`) drift out of date. Each generated
-  PNG is now written to both tracked locations, and all manual illustrations
-  were regenerated from current `master` — they now show the machine's real
-  quiet `@` bootstrap prompt instead of the stale `Boot>` banner.
+- Lunar Lander no longer hangs in `?core=1` mode; the loader accepts a raw
+  `.ptap` when no `.zst` exists; headless-term keeps guest output on timeout,
+  resolves `:export` from the CWD and reports `:status` truthfully after a
+  rewind. (`src/browser-machine.js`, `tools/headless-term.js`)
+- Manual screenshots are written to both the source and the landing mirror and
+  regenerated. (`tools/screenshots-manual.js`)
 
 ## [0.1.0] - 2026-09-04
 
