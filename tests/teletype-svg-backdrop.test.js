@@ -106,6 +106,30 @@ function markerRect(svg, id) {
   };
 }
 
+// The whole subtree of a <g> layer, opened and closed by tag balancing. Marker
+// scanning must stay inside the Markers layer: the drawing itself legitimately
+// carries tilted rects (the small tilted block next to the TELETYPE wordmark,
+// for one) and those are artwork, never marker anchors.
+function layerSubtree(svg, id) {
+  const at = svg.indexOf('id="' + id + '"');
+  assert.ok(at !== -1, "the artwork must declare the " + id + " layer");
+  const open = svg.lastIndexOf("<g", at);
+  assert.ok(open !== -1, "the " + id + " layer must be a <g> element");
+  const re = /<g\b|<\/g>/g;
+  re.lastIndex = open;
+  let depth = 0;
+  let m;
+  while ((m = re.exec(svg)) !== null) {
+    if (m[0] === "</g>") {
+      depth--;
+      if (depth === 0) return svg.slice(open, m.index + 4);
+    } else {
+      depth++;
+    }
+  }
+  throw new Error("unbalanced <g> for the " + id + " layer");
+}
+
 // All --tty-* declarations of the teletype rig rule (the last one wins).
 function rigVars(css) {
   const idx = css.lastIndexOf("#teletype-rig {");
@@ -445,13 +469,18 @@ function run() {
     // would be ignored in silence: the anchor keeps the untransformed x/y and no
     // projection is published (an artist tilting a marker the page does not
     // know about sees nothing happen). This invariant found the Apron gap.
+    // The scan is confined to the Markers layer, so a tilted rect that belongs
+    // to the drawing is not mistaken for a marker.
     {
       const table = extractArray(src, "var TTY_QUAD_MARKERS = [");
       const covered = new Set();
       for (const hit of table.matchAll(/id:\s*"([^"]+)"/g)) covered.add(hit[1]);
       for (const hit of table.matchAll(/altId:\s*"([^"]+)"/g)) covered.add(hit[1]);
+      const markers = layerSubtree(svg, "layer4");
+      assert.ok(markers.indexOf('id="Keyboard"') !== -1,
+        "the Markers layer slice must really contain the marker rects");
       const tilted = [];
-      for (const hit of svg.matchAll(/<rect[^>]*id="([^"]+)"[^>]*\/>/g)) {
+      for (const hit of markers.matchAll(/<rect[^>]*id="([^"]+)"[^>]*\/>/g)) {
         if (/transform="/.test(hit[0])) tilted.push(hit[1]);
       }
       for (const id of tilted) {
