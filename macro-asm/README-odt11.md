@@ -81,6 +81,30 @@ commented out in the original.
 
 ## Rebuilding (RT-11SJ V04.00C in the yaPDP emulator)
 
+### bootcode (src/bootcode.js) — one command
+
+The boot loader is rebuilt end to end by `npm run rebuild-boot`
+(`tools/rebuild-bootcode.js`), which joins the three working pieces — the
+headless batch driver, the RT-11 build script below, and `bin2bootdump` — and
+writes `src/bootcode.js`. It needs no host-side cross tools (`macro11.exe` is
+not used) and fails if the result is not byte-for-byte identical to the
+shipped image.
+
+Notes for anyone editing the script:
+- the tape wants **CRLF** line endings (RT-11 reads CR as the line delimiter);
+- the headless machine mounts a **single** RK drive, so its RT-11 name is
+  `DK:` (not `DK1:` — that needs a second drive);
+- `--prompt ""` is passed to `headless-term` because the guest prompt is `.`
+in the RT-11 monitor but `*` inside MACRO/LINK, so the script drives every
+  transition with `:wait`;
+- the assembler and linker are left with Ctrl-C (`:raw 03`) instead of a
+  smoke run — running the assembled loader would take over the console;
+- the linker base is set with `/B:120000` (`DK:BOOT.SAV=DK:BOOT/B:120000`);
+  without it the module links at the RT-11 default `1000` and four absolute
+  words stay `0o117000` low.
+
+### ODT-11 (odt11.mac) — manual script
+
 1. Punch the source to paper tape (raw bytes, no header):
    `cp odt11.mac odt11.ptap`
 2. In the emulator (`tools/headless-term.js` batch mode — headless, no browser;
