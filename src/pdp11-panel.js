@@ -28,6 +28,13 @@ function switchPage(page) {
   var btn = document.querySelector('.nav-btn[data-page="' + page + '"]');
   if (btn) btn.classList.add('active');
 
+  // Tell the floating controls that the visible page changed. The VT52 zoom
+  // button is per terminal (console / TT1 / TT2), so it has to re-read which
+  // terminal is on screen and repaint its state (see src/vt52zoom.js).
+  if (typeof document !== 'undefined' && typeof document.dispatchEvent === 'function') {
+    document.dispatchEvent(new CustomEvent('yapdp:pagechange', { detail: { page: page } }));
+  }
+
   // Scroll the paper of the console teletype / LP11 printer when shown.
   // Scoped selectors keep the two G60Printer instances (teletype + printer)
   // independent even though they share the same inner element ids.
