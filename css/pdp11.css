@@ -345,17 +345,21 @@ button, select, input, textarea {
    the fullscreen button; lit while the cabinet is hidden (see src/vt52zoom.js). */
 .zoom-btn {
     position: fixed;
-    bottom: 12px;
-    right: 60px;
+    bottom: 11px;
+    right: 62px;
     z-index: 1000;
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(180deg, #3a352a, #2a2722);
     border: 1px solid #5a554a;
-    border-radius: 4px;
+    /* ROUND, like the other EMULATOR controls (mute, reboot, quick boot): the
+       zoom acts on the terminal, not on the browser window. The square
+       fullscreen button is the exception — it is about the window chrome, and
+       it stays square, which is exactly what tells the two apart. */
+    border-radius: 50%;
     color: #b8b0a0;
     cursor: pointer;
     padding: 0;
@@ -380,9 +384,11 @@ button, select, input, textarea {
 
 /* No VT52 terminal on screen (teletype, printer, panel, config…): the button
    has nothing to act on. */
-.zoom-btn:disabled {
-    opacity: 0.35;
-    cursor: default;
+/* No VT52 terminal on screen (teletype, printer, panel, config…): the button
+   has nothing to act on and leaves the corner entirely — same .hidden
+   convention as .quick-boot-btn / .console-reboot. */
+.zoom-btn.hidden {
+    display: none !important;
 }
 
 .zoom-btn .zoom-icon {

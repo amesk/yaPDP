@@ -68,8 +68,12 @@ var Vt52Zoom = (function () {
         var on = unit >= 0 && isZoomed(unit);
         var use = btn.querySelector("use");
         btn.classList.toggle("zoom-on", on);
-        btn.disabled = unit < 0;
+        // Hidden, not disabled, where there is no VT52 terminal: a greyed-out
+        // button still claims a corner and invites a click that can do nothing.
+        // The other floating controls use the same .hidden convention.
+        btn.classList.toggle("hidden", unit < 0);
         if (use) use.setAttribute("href", on ? "#icon-zoom-exit" : "#icon-zoom");
+        btn.disabled = false;
         btn.setAttribute("aria-label", on ? "Restore the VT52 cabinet" : "Zoom the VT52 screen");
         btn.title = on ? "Restore the VT52 cabinet" : "Zoom the VT52 screen";
         return on;

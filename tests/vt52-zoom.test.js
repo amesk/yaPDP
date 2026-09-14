@@ -133,6 +133,15 @@ function run() {
     // One active-state class, mirroring the fullscreen button.
     assert.ok(/\.zoom-btn\.zoom-on/.test(css),
       "the lit zoom state must be styled");
+    // Off a VT52 page the button disappears — a greyed-out control would still
+    // occupy the corner and invite a click that can do nothing. Same .hidden
+    // convention as .quick-boot-btn / .console-reboot.
+    assert.ok(/\.zoom-btn\.hidden\s*\{[^}]*display\s*:\s*none/.test(css),
+      "the zoom button must be hidden (not merely disabled) where no VT52 is shown");
+    assert.ok(/classList\.toggle\("hidden"/.test(zoom),
+      "updateUI must toggle the .hidden class from the active terminal");
+    assert.strictEqual(/\.zoom-btn:disabled/.test(css), false,
+      "the zoom button must not be styled as disabled any more");
   }
 
   // --- 5. Page change keeps the button honest -----------------------------

@@ -220,6 +220,14 @@ system chrome — the address bar in the browser, the OS window frame and the
 taskbar in the Tauri desktop app — while leaving the emulator UI untouched.
 Press it again (or Esc) to return.
 
+Next to it sits the floating **VT52 zoom** button. It hides the cabinet and
+grows the tube to the largest 4:3 box the window allows, clearing the floating
+corner controls, so the screen can be read from across the room. The state is
+**per terminal** — the console (TT0), TTY 1 and TTY 2 each remember their own —
+and is persisted between sessions. The button's icon mirrors what is on screen:
+a display while the cabinet (the artwork) is shown, the whole terminal (screen
+over a keyboard) in zoom mode. It is disabled on pages with no VT52 terminal.
+
 The **Config** page controls the console terminal type (teletype or VT52), the
 number of user terminals (0–2), the presence of the LP11
 line printer and the

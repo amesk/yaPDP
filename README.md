@@ -100,7 +100,7 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 4. Try `ls`, `ps -aux`, `df` — or compile a C program with `cc`.
 
 A detailed walkthrough of every page (Panel, Console, TTY, Printer, Display,
-Storage, Config, Info, REBOOT/STATE buttons, fullscreen, mute) and the classic
+Storage, Config, Info, REBOOT/STATE buttons, fullscreen, VT52 zoom, mute) and the classic
 panel tricks (light chaser, bootloader restart) is in
 [`docs/FEATURES.md`](docs/FEATURES.md).
 
