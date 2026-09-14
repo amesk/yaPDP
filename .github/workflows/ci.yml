@@ -2,12 +2,15 @@
 # yaPDP CI — unit tests + end-to-end guest-OS checks on every push/PR.
 #
 # Two jobs:
-#   unit  — the full npm test suite (34+ files) on Node 20 and 22.
+#   unit  — the modular npm test suite (36+ files) on Node 20 and 22.
 #   e2e   — puppeteer + real Chromium against the dev server on :1170:
 #             * e2e-quickboot-manifest  (quick-boot wizard + media manifest)
 #             * e2e-snapshots           (front-panel/teletype screenshot set)
 #             * e2e-osboot              (real guest OS boots: Unix V5, RT-11,
 #                                        BSD 2.11, BASIC-11)
+#           plus the headless full-machine shakeouts (no browser needed):
+#             * e2e-bsd-boot            (BSD 2.11 headless boot to login:)
+#             * e2e-bsd29-boot          (BSD 2.9 headless boot to a root shell)
 #
 # E2E failure artifacts (screenshots + console tails) are uploaded so a red
 # run can be diagnosed without re-running locally.
@@ -84,6 +87,12 @@ jobs:
 
       - name: e2e — guest OS boots (Unix V5, RT-11, BSD 2.11, BASIC-11)
         run: node tests/e2e-osboot.js
+
+      - name: e2e — BSD 2.11 headless boot (full-machine shakeout)
+        run: node tests/e2e-bsd-boot.js
+
+      - name: e2e — BSD 2.9 headless boot (full-machine shakeout)
+        run: node tests/e2e-bsd29-boot.js
 
       - name: Upload failure artifacts
         if: failure()

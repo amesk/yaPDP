@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 /**
- * Headless BSD 2.11 boot test (slow: ~3 minutes).
+ * Headless BSD 2.11 boot — e2e guest-OS shakeout (slow: ~3 minutes).
  *
  * Boots BSD 2.11 (rp1) in pure Node on the headless machine layer —
- * no browser, no puppeteer. This is the regression anchor for the two
- * fixes that made BSD bootable headless:
+ * no browser, no puppeteer. It exercises the whole emulator core end to
+ * end (CPU -> bus -> MMU map -> UDA50/RP11/RK11 -> console -> bootstrap ->
+ * kernel -> init -> getty -> login), so it lives with the e2e suites by
+ * the tests/e2e-*.js convention: OUT of `npm test`, in CI and in
+ * `npm run validate` (target `e2e:bsd`). Run it directly with:
+ *
+ *   node tests/e2e-bsd-boot.js      (or: npm run e2e:bsd)
+ *
+ * This is the regression anchor for the two fixes that made BSD bootable
+ * headless:
  *
  *   1. mmu-regs.js Unibus-map range check (map regs 16–31 must accept
  *      writes — BSD's boot loader maps its DMA buffer through map[26],
@@ -17,7 +25,6 @@
  * Success = the kernel boots, autoconfigures rk/xp/ra, init runs the
  * standard startup and the console reaches "login:".
  *
- * Run with:  node tests/bsd-boot.test.js
  * Exit code 0 = passed, non-zero = failure.
  */
 "use strict";
@@ -79,7 +86,7 @@ async function run() {
     "CPU not halted at login (runState=" + runState + ")");
   console.log("PASS test 4: machine alive at login (runState=" + runState + ")");
 
-  console.log("\nAll bsd-boot tests passed.");
+  console.log("\nAll e2e-bsd-boot checks passed.");
   process.exit(0); // the sandbox keeps interval timers alive — exit explicitly
 }
 
