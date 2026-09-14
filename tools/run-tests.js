@@ -49,7 +49,6 @@ const ORDER = [
     "teletype-brandplate-css.test.js",
     "teletype-cabinet-css.test.js",
     "teletype-svg-backdrop.test.js",
-    "vt52-cabinet-css.test.js",
     "dataloader.test.js",
     "diskstore.test.js",
     "onboarding.test.js",

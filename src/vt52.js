@@ -2462,6 +2462,191 @@
     }
 
     // ============================================================================
+    // Artwork projection
+    // ----------------------------------------------------------------------------
+    // The VT52 cabinet is drawn by assets/vt52.svg. The artwork's Screen marker
+    // is read AT RUNTIME and published on the rig as --vt52-screen-* variables,
+    // so moving the marker in Inkscape moves the canvas: the numbers in
+    // css/pdp11.css are only the fallback for builds where the artwork cannot be
+    // fetched (strict file:// origin). Same contract as the Model 33 artwork
+    // (see TTY_MARKER_VARS in src/pdp11-app.js).
+    var VT52_ART_URL = 'assets/vt52.svg';
+
+    // Pure: SVG text -> { '--vt52-screen-x': '4.418643', ... } (the Screen
+    // marker's x/y/w/h plus the viewBox). Returns null when there is no marker
+    // to publish, so the stylesheet fallback keeps whatever is absent.
+    function vt52MarkerVars(svgText) {
+        if (!svgText) return null;
+        var out = {};
+        var viewBox = /viewBox="0 0 ([-0-9.eE]+) ([-0-9.eE]+)"/.exec(svgText);
+        if (viewBox) {
+            out['--vt52-vb-w'] = viewBox[1];
+            out['--vt52-vb-h'] = viewBox[2];
+        }
+        // The marker is a plain <rect> with inkscape:label="Screen"; it carries
+        // no id contract, so the label is the anchor (a rect moved in Inkscape
+        // keeps its label).
+        var element = /<rect[^>]*inkscape:label="Screen"[^>]*\/>/.exec(svgText);
+        if (!element) return out;
+        var rect = element[0];
+        function value(attr) {
+            var m = new RegExp(attr + '="([-0-9.eE]+)"').exec(rect);
+            return m ? m[1] : null;
+        }
+        var x = value('x'), y = value('y'), w = value('width'), h = value('height');
+        if (x === null || y === null || w === null || h === null) return out;
+        out['--vt52-screen-x'] = x;
+        out['--vt52-screen-y'] = y;
+        out['--vt52-screen-w'] = w;
+        out['--vt52-screen-h'] = h;
+        return out;
+    }
+
+    // Publish the marker numbers on every VT52 rig in the document. Each rig
+    // owns its own copy of the artwork (variant A), so the variables are set per
+    // rig rather than on a shared ancestor.
+    function applyVt52MarkerVars(svgText) {
+        if (typeof document === 'undefined') return;
+        var vars = vt52MarkerVars(svgText);
+        if (!vars) return;
+        var rigs = document.querySelectorAll('.vt52-rig');
+        for (var i = 0; i < rigs.length; i++) {
+            for (var name in vars) {
+                if (Object.prototype.hasOwnProperty.call(vars, name)) {
+                    rigs[i].style.setProperty(name, vars[name]);
+                }
+            }
+        }
+        syncVt52Unit();
+    }
+
+    // --vt52-u is the px size of one SVG unit. The tube keeps its native
+    // bitmap (672 px wide, the <canvas> width attribute), so the unit is
+    // derived from the ARTWORK: 672 / Screen-marker width. That makes the unit
+    // independent of layout — it is right even while the page is hidden — and
+    // the whole cabinet is then laid out at its natural size, with
+    // installVT52Scaling() shrinking it as one piece (exactly like the Model 33
+    // rig, whose --tty-u-num is likewise a constant of the artwork).
+    function syncVt52Unit() {
+        if (typeof document === 'undefined') return;
+        var rigs = document.querySelectorAll('.vt52-rig');
+        for (var i = 0; i < rigs.length; i++) {
+            var rig = rigs[i];
+            var cs = getComputedStyle(rig);
+            var markerW = parseFloat(cs.getPropertyValue('--vt52-screen-w'));
+            var vbw = parseFloat(cs.getPropertyValue('--vt52-vb-w'));
+            var native = 672; // the <canvas width="672"> the artwork must frame
+            if (!isFinite(markerW) || markerW <= 0 || !isFinite(vbw) || vbw <= 0) continue;
+            var u = native / markerW;
+            if (!isFinite(u) || u <= 0) continue;
+            rig.style.setProperty('--vt52-u', u.toFixed(6));
+        }
+    }
+
+    // Inline the artwork into every .vt52-backdrop. The backdrop used to be a
+    // background-image, which the page can see but cannot STYLE: a rule could
+    // not hide or recolour anything inside the drawing (that is why the glass
+    // could not follow the reverse-video mode). Inlined, the artwork becomes
+    // part of the document and the stylesheet reaches its elements. Same trick
+    // the Model 33 rig uses for its front layers (installTtyLayer), and the
+    // reason each rig owns its own copy (variant A): an <svg> can only be in
+    // one place, so every .vt52-backdrop gets its own.
+    //
+    // The scale is pinned with width/height 100% + preserveAspectRatio="none",
+    // exactly matching the old background-size: 100% 100%, so the drawing still
+    // fills the box and the marker arithmetic is unchanged.
+    function inlineVt52Artwork(svgText) {
+        if (typeof document === 'undefined' || typeof DOMParser === 'undefined') return;
+        var hosts = document.querySelectorAll('.vt52-backdrop');
+        if (!hosts.length) return;
+        var parsed = new DOMParser().parseFromString(String(svgText), 'image/svg+xml');
+        var root = parsed && parsed.documentElement;
+        if (!root || root.localName !== 'svg') return; // malformed artwork
+        var viewBox = root.getAttribute('viewBox');
+        if (!viewBox) return;
+        for (var i = 0; i < hosts.length; i++) {
+            var host = hosts[i];
+            host.textContent = '';
+            var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', viewBox);
+            svg.setAttribute('preserveAspectRatio', 'none');
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+            svg.setAttribute('style', 'display:block');
+            // Carry the artwork's namespace declarations onto the wrapper.
+            // importNode copies the nodes but not the in-scope prefixes, so
+            // without these the imported "inkscape:label" attributes lose their
+            // namespace and a stylesheet selector for [inkscape\:label=...]
+            // never matches (the Glass / GlassInverted switch depends on it).
+            for (var a = 0; a < root.attributes.length; a++) {
+                var attr = root.attributes[a];
+                if (attr.name === 'xmlns' || attr.name.indexOf('xmlns:') === 0) {
+                    svg.setAttribute(attr.name, attr.value);
+                }
+            }
+            // Import the artwork's CHILDREN, not the <svg> root itself. The
+            // root carries width="284.22635mm" and its own viewBox; nesting it
+            // applied the millimetre scale TWICE (once on the nested root, once
+            // on this wrapper) and the drawing rendered 1.68x too large, shifted
+            // down-right. Moving the children keeps exactly one viewBox — this
+            // wrapper's — so the fit matches the old background-size: 100% 100%.
+            for (var c = 0; c < root.childNodes.length; c++) {
+                svg.appendChild(document.importNode(root.childNodes[c], true));
+            }
+            // Strip the inline 'display:inline' Inkscape stamps on the layers we
+            // switch from CSS (see the Glass / GlassInverted rules): an inline
+            // style beats any stylesheet rule and silently defeated the switch.
+            // Only 'inline' is removed — never 'none'. Hiding is a deliberate
+            // authoring decision (the tracing raster is display:none while the
+            // artist works, and the Screen marker is hidden in the shipped art),
+            // and clearing it would make those objects appear.
+            var nodes = svg.getElementsByTagName('*');
+            for (var d = 0; d < nodes.length; d++) {
+                var el = nodes[d];
+                if (!el.style || !el.style.display) continue;
+                if (el.style.display === 'inline') el.style.removeProperty('display');
+            }
+            // Publish the artwork's layer labels as PLAIN CLASSES. A stylesheet
+            // selector for [inkscape\:label="..."] is useless here twice over:
+            // inside an inlined <svg> the escaped colon is read as a pseudo-class
+            // (measured: the elements are in the DOM, the selector matches none),
+            // and writing that selector in JS throws outright
+            // ("'[inkscape:label]' is not a valid selector"). Walking the tree and
+            // reading the attribute by namespace avoids both problems.
+            var NS_INKSCAPE = 'http://www.inkscape.org/namespaces/inkscape';
+            var all = svg.getElementsByTagName('*');
+            for (var l = 0; l < all.length; l++) {
+                var label = all[l].getAttributeNS
+                    ? all[l].getAttributeNS(NS_INKSCAPE, 'label')
+                    : null;
+                if (!label) continue;
+                // classList rejects any whitespace in a token, and the artwork's
+                // labels legitimately carry spaces ("Keyboard top", "Keyboard
+                // hull", …). A thrown InvalidCharacterError used to abort the
+                // whole inliner before the <svg> was appended. Slugify instead:
+                // .vt52-layer-Keyboard-top.
+                all[l].classList.add('vt52-layer-' +
+                    String(label).replace(/[^A-Za-z0-9_-]+/g, '-'));
+            }
+            host.appendChild(svg);
+        }
+    }
+
+    // Fetch the artwork once, inline it and publish its Screen marker. A failure
+    // (offline, file:// origin) is silent: the stylesheet fallback holds the
+    // layout and the backdrop keeps its (empty) box.
+    function loadVt52Artwork() {
+        if (typeof fetch !== 'function') return;
+        fetch(VT52_ART_URL)
+            .then(function (response) { return response.text(); })
+            .then(function (text) {
+                inlineVt52Artwork(text);
+                applyVt52MarkerVars(text);
+            })
+            .catch(function () { /* keep the stylesheet fallback */ });
+    }
+
+    // ============================================================================
     // Public API
     // ----------------------------------------------------------------------------
     // vt52Initialize(unit, receiveRoutine, textArea, screenCanvas)
@@ -2531,4 +2716,9 @@
     window.vt52Write      = vt52Write;
     window.vt52SnapshotAll  = vt52SnapshotAll;
     window.vt52RestoreAll   = vt52RestoreAll;
+    // Pure marker parser (unit-tested) plus the runtime artwork loader.
+    window.vt52MarkerVars   = vt52MarkerVars;
+    window.vt52LoadArtwork  = loadVt52Artwork;
+    window.vt52InlineArtwork = inlineVt52Artwork;
+    window.vt52SyncUnit     = syncVt52Unit;
 })();

@@ -134,6 +134,20 @@
         <path d="M20 15h-5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
           stroke-linejoin="round" />
       </symbol>
+      <symbol id="icon-zoom" viewBox="0 0 24 24">
+        <!-- A screen with arrows pushing outward (drop the cabinet, grow the tube) -->
+        <rect x="3" y="6" width="18" height="12" rx="1.5" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linejoin="round" />
+        <path d="M8 12h8M12 8v8" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-zoom-exit" viewBox="0 0 24 24">
+        <!-- The same screen with the arrows pulled back in (restore the cabinet) -->
+        <rect x="3" y="6" width="18" height="12" rx="1.5" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linejoin="round" />
+        <path d="M8 12h8" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" />
+      </symbol>
       <symbol id="icon-reboot" viewBox="0 0 24 24">
         <!-- circular restart arrow with arrowhead (machine reboot) -->
         <path
@@ -889,48 +903,42 @@
     <div class="page" id="page-vt52">
       <div class="vt52-container">
         <div class="vt52-terminal">
-          <div class="vt52-badge">digital vt52</div>
+          <div class="vt52-rig">
+            <div class="vt52-backdrop"></div>
+            <div class="vt52-bezel"></div>
           <div class="vt52-crt" id="vt52-crt">
             <canvas id="vt52-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
               autocapitalize="off" spellcheck="false"></canvas>
           </div>
-        </div>
-        <div class="vt52-status">
-          <span class="led on" id="vt52-power-led"></span>
-          VT52 DECscope &mdash; TT1: &nbsp;
-          <span id="vt52-conn-status">online</span>
+          </div>
         </div>
       </div>
     </div>
     <div class="page" id="page-vt52-console">
       <div class="vt52-container">
         <div class="vt52-terminal">
-          <div class="vt52-badge">digital vt52</div>
+          <div class="vt52-rig">
+            <div class="vt52-backdrop"></div>
+            <div class="vt52-bezel"></div>
           <div class="vt52-crt" id="vt52-console-crt">
             <canvas id="vt52-console-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
               autocapitalize="off" spellcheck="false"></canvas>
           </div>
-        </div>
-        <div class="vt52-status">
-          <span class="led on" id="vt52-console-power-led"></span>
-          VT52 DECscope &mdash; console (TT0:) &nbsp;
-          <span id="vt52-console-conn-status">online</span>
+          </div>
         </div>
       </div>
     </div>
     <div class="page" id="page-vt52-2">
       <div class="vt52-container">
         <div class="vt52-terminal">
-          <div class="vt52-badge">digital vt52</div>
+          <div class="vt52-rig">
+            <div class="vt52-backdrop"></div>
+            <div class="vt52-bezel"></div>
           <div class="vt52-crt" id="vt52-2-crt">
             <canvas id="vt52-2-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
               autocapitalize="off" spellcheck="false"></canvas>
           </div>
-        </div>
-        <div class="vt52-status">
-          <span class="led on" id="vt52-2-power-led"></span>
-          VT52 DECscope &mdash; TT2: &nbsp;
-          <span id="vt52-2-conn-status">online</span>
+          </div>
         </div>
       </div>
     </div>
@@ -985,17 +993,11 @@
     <div class="page" id="page-vt11">
       <div class="vt11-container">
         <div class="vt11-terminal">
-          <div class="vt52-badge">digital vt11</div>
           <div class="vt11-crt">
             <!-- The #vt11 container is filled by src/vt11.js on first DPC write:
                  it appends the green-phosphor canvas. -->
             <div id="vt11"></div>
           </div>
-        </div>
-        <div class="vt52-status">
-          <span class="led on" id="vt11-power-led"></span>
-          VT11 DEC display processor &mdash; vector graphics &nbsp;
-          <span id="vt11-conn-status">online</span>
         </div>
       </div>
     </div>
@@ -1820,8 +1822,21 @@ Hello world
     </svg>
   </button>
 
+  <!-- Floating zoom toggle — hides the VT52 cabinet and grows the tube to the
+       largest 4:3 box the window allows (clearing the corner controls). The
+       state is PER TERMINAL (console / TT1 / TT2) and persisted through
+       Config.vt52Zoom. Wired up by src/vt52zoom.js. No data-page, like the
+       fullscreen button, so sidebar navigation never treats it as a page. -->
+  <button type="button" id="zoom-btn" class="zoom-btn" aria-label="Zoom the VT52 screen"
+    title="Zoom the VT52 screen (hide the cabinet)">
+    <svg class="zoom-icon" aria-hidden="true" focusable="false">
+      <use href="#icon-zoom" />
+    </svg>
+  </button>
+
   <script src='src/version.js'></script>
   <script src='src/pdp11-panel.js'></script>
+  <script src='src/vt52zoom.js'></script>
   <script src='src/g60printer.js'></script>
   <script src='src/config.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
