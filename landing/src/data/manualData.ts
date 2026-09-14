@@ -372,4 +372,13 @@ export const FLOATING_CONTROLS_DATA: FloatingControlEntry[] = [
     descEn: 'Floating button that hides the browser/system chrome (address bar, window frame, taskbar) while leaving the emulator UI untouched. Press again or Esc to return.',
     descRu: 'Кнопка скрытия элементов браузера и операционной системы для максимального погружения в машинный зал. Повторное нажатие или Esc возвращает обычный вид.',
   },
+  {
+    image: 'assets/images/manual/btn-zoom.png',
+    nameEn: 'VT52 zoom',
+    nameRu: 'Масштаб VT52',
+    whereEn: 'Bottom-right corner, left of the fullscreen button',
+    whereRu: 'Нижний правый угол, слева от кнопки полного экрана',
+    descEn: 'Floating button that hides the VT52 cabinet and grows the tube to the largest 4:3 box the window allows, clearing the floating corner controls. The state is per terminal (console TT0, TTY 1, TTY 2) and is remembered between sessions. The icon mirrors what is on screen — a display while the cabinet is shown, the whole terminal in zoom mode — and the button is available only on pages with a VT52 terminal.',
+    descRu: 'Кнопка скрывает корпус VT52 и увеличивает экран до максимального размера 4:3, который позволяет окно, не задевая угловые кнопки. Состояние — индивидуальное для каждого терминала (консоль TT0, TTY 1, TTY 2) и запоминается между сессиями. Иконка отражает текущий вид: дисплей, пока показан корпус, и сам терминал в режиме увеличения. Кнопка доступна только на страницах с терминалом VT52.',
+  },
 ];

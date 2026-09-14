@@ -196,6 +196,7 @@ const BUTTON_SHOTS = [
     { id: "#reboot-btn",     file: "btn-reboot.png" },
     { id: "#state-btn",      file: "btn-state.png" },
     { id: "#mute-btn",       file: "btn-mute.png" },
+    { id: "#zoom-btn",       file: "btn-zoom.png", page: "vt52" },
     { id: "#fullscreen-btn", file: "btn-fullscreen.png" }
 ];
 
@@ -357,11 +358,17 @@ async function captureButtons(browser, wants) {
         await page.evaluate(() => document.fonts.ready);
     } catch (err) { /* ignore */ }
     await sleep(3000);
-    await page.evaluate(() => window.switchPage("panel"));
-    await sleep(500);
 
     for (const b of BUTTON_SHOTS.filter((x) => wants(x.file))) {
         try {
+            // The floating controls do not all live on the same page: the VT52
+            // zoom button is HIDDEN by design wherever no VT52 terminal is
+            // shown, so it only exists on a VT52 page. Switch to the page the
+            // shot needs before capturing (screenshot() throws on a hidden
+            // element, which is how the shipped behaviour caught this).
+            await page.evaluate((page) => window.switchPage(page),
+                b.page || "panel");
+            await sleep(400);
             const el = await page.$(b.id);
             if (!el) {
                 console.log(`  MISSING ${b.file} (${b.id})`);
