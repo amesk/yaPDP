@@ -19,7 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Model 33 ASR: the console cabinet is drawn from SVG artwork.** The body,
+- **The two slow headless BSD boot checks moved to the e2e suites.**
+  `tests/bsd-boot.test.js` → `tests/e2e-bsd-boot.js` and
+  `tests/bsd29-boot.test.js` → `tests/e2e-bsd29-boot.js`: they shake out the
+  whole emulator core (CPU → bus → MMU map → UDA50/RP11/RL11 → console →
+  bootstrap → kernel → init → getty → login), so by the `tests/e2e-*.js`
+  convention they no longer run inside `npm test` (which drops from ~4.5 min
+  to ~1 min; the other 47 files take ~1.5 s in total). They now run in CI
+  next to `e2e-osboot`, and locally via `npm run e2e:bsd` /
+  `npm run e2e:bsd29`; `npm run validate` still runs everything.
+ The body,
   platen, carriage window and Teletype wordmark come from
   `assets/Model-33-ASR.svg` (a `pointer-events: none` backdrop); the live
   controls — keyboard, punch/reader plates, CCU knob, printed sheet and both

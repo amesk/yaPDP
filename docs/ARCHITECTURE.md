@@ -77,15 +77,17 @@ contract, the bridge and the write-back storage split.
 | [`tests/diskstore.test.js`](../tests/diskstore.test.js) | DiskStore write-back overlay (extracted from the real source) |
 | [`tests/writeback.test.js`](../tests/writeback.test.js) | Headless write-back: guest writes → flush → image survives reboot |
 | [`tests/headless-boot.test.js`](../tests/headless-boot.test.js) | RT‑11 boots headlessly on the core stack |
-| [`tests/bsd-boot.test.js`](../tests/bsd-boot.test.js) | BSD 2.11 boots headlessly to `login:` (Unibus-map regression anchor) |
-| [`tests/bsd29-boot.test.js`](../tests/bsd29-boot.test.js) | BSD 2.9 headless to a root shell |
+| [`tests/e2e-bsd-boot.js`](../tests/e2e-bsd-boot.js) | BSD 2.11 boots headlessly to `login:` — full-machine shakeout, so it follows the e2e rules (Unibus-map regression anchor) |
+| [`tests/e2e-bsd29-boot.js`](../tests/e2e-bsd29-boot.js) | BSD 2.9 headless to a root shell — full-machine shakeout, e2e rules |
 | [`tests/tm11.test.js`](../tests/tm11.test.js) | TM11 magtape controller on the headless base |
 | [`tests/e2e-osboot.js`](../tests/e2e-osboot.js) | **Stack-parity gate** — 10 guest OSes booted through the wizard path on the core stack; `E2E_LEGACY=1` runs the same matrix on `?core=0` |
 | [`tests/e2e-core-bsd.js`](../tests/e2e-core-bsd.js) | BSD 2.11 boot on `?core=1` in the browser |
 | [`tests/e2e-teletype.js`](../tests/e2e-teletype.js) / [`tests/e2e-teletype-tape.js`](../tests/e2e-teletype-tape.js) | Model 33 ASR keyboard/CCU and paper-tape e2e (`E2E_CORE=1` exercises the core stack) |
 
-Run everything with `npm test` (unit + headless) and the e2e suites listed in
-`package.json` (`npm run e2e:*`).
+Run the modular suite with `npm test` and the e2e suites listed in
+`package.json` (`npm run e2e:*` — note that the two slow BSD shakeouts,
+`e2e:bsd` and `e2e:bsd29`, live outside `npm test` by the `tests/e2e-*.js`
+convention). `npm run validate` runs the whole e2e set.
 
 ## Media files
 

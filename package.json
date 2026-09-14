@@ -33,6 +33,8 @@
     "version:sync": "node tools/sync-version.js",
     "manifest": "wireit",
     "e2e:os": "wireit",
+    "e2e:bsd": "wireit",
+    "e2e:bsd29": "wireit",
     "e2e:os:legacy": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
@@ -108,10 +110,38 @@
         "package.json"
       ]
     },
+    "e2e:bsd": {
+      "command": "node tests/e2e-bsd-boot.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-bsd-boot.js",
+        "tools/**",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "e2e:bsd29": {
+      "command": "node tests/e2e-bsd29-boot.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-bsd29-boot.js",
+        "tools/**",
+        "media/**",
+        "package.json"
+      ]
+    },
     "validate": {
       "dependencies": [
         "e2e:os",
-        "e2e:os:legacy"
+        "e2e:os:legacy",
+        "e2e:bsd",
+        "e2e:bsd29"
       ]
     }
   }

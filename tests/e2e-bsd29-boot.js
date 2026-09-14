@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 /**
- * Headless BSD 2.9 boot test (slow: ~2-3 minutes).
+ * Headless BSD 2.9 boot — e2e guest-OS shakeout (slow: ~2-3 minutes).
  *
  * Boots BSD 2.9 (rl0) in pure Node on the headless machine layer — no
- * browser, no puppeteer. Regression anchor for the RL11 port: the kernel
- * must boot through the RL11 controller, reach the single-user '#',
- * Ctrl-D into multi-user, and accept a login typed after getty's input
- * flush (3s settle — see docs/known-issues.md).
+ * browser, no puppeteer. Full-machine shakeout (CPU -> bus -> RL11 ->
+ * console -> bootstrap -> kernel -> init -> getty -> login), so it lives
+ * with the e2e suites by the tests/e2e-*.js convention: OUT of `npm test`,
+ * in CI and in `npm run validate` (target `e2e:bsd29`). Run it directly
+ * with:
  *
- * Run with:  node tests/bsd29-boot.test.js
+ *   node tests/e2e-bsd29-boot.js    (or: npm run e2e:bsd29)
+ *
+ * Regression anchor for the RL11 port: the kernel must boot through the
+ * RL11 controller, reach the single-user '#', Ctrl-D into multi-user, and
+ * accept a login typed after getty's input flush (3s settle — see
+ * docs/known-issues.md).
+ *
  * Exit code 0 = passed, non-zero = failure.
  */
 "use strict";
@@ -74,7 +81,7 @@ async function run() {
     "CPU not halted at root shell (runState=" + runState + ")");
   console.log("PASS test 4: machine alive at root shell");
 
-  console.log("\nAll bsd29-boot tests passed.");
+  console.log("\nAll e2e-bsd29-boot checks passed.");
   process.exit(0); // the sandbox keeps interval timers alive — exit explicitly
 }
 
