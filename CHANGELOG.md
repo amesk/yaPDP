@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A floating **VT52 zoom** button hides the cabinet and grows the tube to the
+  largest 4:3 box the window allows, clearing the corner controls. The state is
+  per terminal (console TT0, TTY 1, TTY 2) and persisted between sessions; the
+  button is hidden where no VT52 terminal is shown, and its icon mirrors the
+  current state. (`src/vt52zoom.js`, `src/config.js`, `css/pdp11.css`,
+  `pdp11.html`)
+
 ### Changed
 
 - **Model 33 ASR: the console cabinet is drawn from SVG artwork.** The body,
@@ -24,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The TAPE PUNCH buttons use the Model 33 keycap look; the TAPE READER switch
   is the authentic vertical four-detent lever; the CCU switch is the real
   two-step knob. (`src/pdp11-app.js`, `css/g60printer.css`, `pdp11.html`)
+- **VT52 DECscope: the cabinet is drawn from SVG artwork.** The body, bezel,
+  glass and keyboard come from `assets/vt52.svg`, whose Screen marker is read
+  at runtime so the canvas is projected onto the tube — moving the marker in
+  Inkscape moves the screen. The artwork is inlined into `.vt52-backdrop`
+  (a background image cannot be restyled), which lets the glass swap between
+  the dark and the light plate in reverse video, and the decorative badge and
+  status row are gone. (`assets/vt52.svg`, `src/vt52.js`, `src/pdp11-app.js`,
+  `css/pdp11.css`, `pdp11.html`)
 
 ### Removed
 
