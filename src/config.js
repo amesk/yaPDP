@@ -73,6 +73,11 @@ var Config = (function () {
         keyClick: false,         // boolean (VT52 key click)
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
         vt52TextMode: false,     // boolean (VT52 plain <textarea> instead of canvas)
+        // Zoomed VT52 tube, PER TERMINAL: [console TT0, TTY1, TTY2]. In zoom mode
+        // the cabinet is hidden and the tube grows to the largest 4:3 box the
+        // window allows (clearing the corner controls). Kept as an array so the
+        // console and each user terminal remember their own state between runs.
+        vt52Zoom: [false, false, false],
         crtEffects: true,        // boolean (VT52 pure-CSS CRT flicker/roll simulation)
         hum: true,               // boolean (ambient power-supply hum + fan noise)
         mute: false,             // boolean (global all-sounds mute)
@@ -82,6 +87,14 @@ var Config = (function () {
         powerOn: false,          // boolean (machine powered on at startup)
         autoBoot: false          // boolean (start default bootstrap on power-on)
     });
+
+    // Normalize the per-terminal zoom flags into exactly three booleans.
+    function normalizeVt52Zoom(value) {
+        var out = [false, false, false];
+        if (!Array.isArray(value)) return out;
+        for (var i = 0; i < out.length; i++) out[i] = Boolean(value[i]);
+        return out;
+    }
 
     // LP11 line-printer widths (a real LP11 is a 132-column machine).
     var PRINT_WIDTHS = Object.freeze([72, 80, 100, 132]);
@@ -141,6 +154,10 @@ var Config = (function () {
             vt52TextMode: typeof o.vt52TextMode === "undefined"
                 ? DEFAULTS.vt52TextMode
                 : Boolean(o.vt52TextMode),
+            // Always exactly three booleans (console + two user terminals); a
+            // missing/oversized/garbage array falls back to all-off, so configs
+            // saved before the option existed keep the cabinet.
+            vt52Zoom: normalizeVt52Zoom(o.vt52Zoom),
             // Absent key falls back to the default (keeps the CRT effects on
             // for old configs saved before the option existed).
             crtEffects: typeof o.crtEffects === "undefined"
