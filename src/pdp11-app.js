@@ -899,61 +899,7 @@ function installVT52Keyboard(unit, pageId) {
   }
 }
 
-// ---- DECscope VT52 cabinet builder ----
-// Recreates the recognisable DEC VT52 front: a slanted off-white moulded-plastic
-// monoblock with a vent grille, a deep bezel around the tube, a plain plastic
-// side panel with a raised ridge, and a keyboard deck (main block + keypad +
-// PF1–PF4 + the d.i.g.i.t.a.l brand). The keys are clickable: each click feeds
-// the same bytes the physical keyboard would send through the unit's DL11
-// receive queue, then returns focus to the canvas so typing keeps working.
-function buildVT52Cabinet(unit, cabinet, crt) {
-  // The earlier decorative badge/controls are superseded by the full cabinet.
-  var oldBadge = cabinet.querySelector('.vt52-badge');
-  if (oldBadge) oldBadge.remove();
-  var oldControls = cabinet.querySelector('.vt52-controls');
-  if (oldControls) oldControls.remove();
 
-  // Vent grille (drawn purely in CSS via repeating-linear-gradient).
-  var vents = document.createElement('div');
-  vents.className = 'vt52-vents';
-
-  // Top section: screen bezel (left) + plastic side (right).
-  var top = document.createElement('div');
-  top.className = 'vt52-top';
-
-  var bezel = document.createElement('div');
-  bezel.className = 'vt52-bezel';
-
-  if (crt) bezel.appendChild(crt); // move the existing tube inside the bezel
-
-  // The dark side panel is a recessed insert INSIDE the beige bezel, so the
-  // cabinet embraces both the screen and the panel as one piece.
-  var sidePlastic = document.createElement('div');
-  sidePlastic.className = 'vt52-side-plastic';
-
-  // DEC "digital" wordmark stamped at the top of the dark side panel,
-  // echoing the boxed letters of the front panel's .decLetter block.
-  var decLogo = document.createElement('div');
-  decLogo.className = 'vt52-dec-logo';
-  var brand = 'digital';
-  for (var i = 0; i < brand.length; i++) {
-    var letter = document.createElement('span');
-    letter.className = 'vt52-dec-letter';
-    letter.textContent = brand.charAt(i);
-    decLogo.appendChild(letter);
-  }
-  sidePlastic.appendChild(decLogo);
-
-  var ridge = document.createElement('div');
-  ridge.className = 'vt52-side-ridge';
-  sidePlastic.appendChild(ridge);
-  bezel.appendChild(sidePlastic);
-
-  top.appendChild(bezel);
-
-  cabinet.appendChild(vents);
-  cabinet.appendChild(top);
-}
 
 // ==================================================================
 // Authentic VT52 display font
@@ -1003,13 +949,9 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   textarea.style.display = textMode ? 'block' : 'none';
   (crt || document.body).appendChild(textarea);
 
-  // Build the authentic DECscope cabinet shell once per page (vent grille,
-  // slanted bezel around the tube, right plastic side, keyboard deck, brand and
-  // power indicator). The tube (.vt52-crt) is moved inside the bezel.
-  var cabinet = crt ? crt.parentElement : null;
-  if (cabinet && !cabinet.querySelector('.vt52-top')) {
-    buildVT52Cabinet(unit, cabinet, crt);
-  }
+  // The cabinet is the artwork (assets/vt52.svg in .vt52-backdrop): the page
+  // no longer builds a CSS shell around the tube, so .vt52-crt sits inside
+  // .vt52-terminal and the artwork's Screen marker decides where it lands.
 
   // Initialize the VT52 terminal. In text mode the screen buffer is rendered
   // through the visible textarea; in canvas mode through the CRT canvas.
@@ -1433,6 +1375,11 @@ function applyCRTEffects(enabled) {
 // Apply the configured reverse-video mode to every live VT52 terminal
 // (console + user terminals). Non-canvas terminals simply ignore it.
 function applyVT52ReverseVideo(enabled) {
+  // The canvas renderer swaps its own fg/bg (see setReverseVideo in
+  // src/vt52.js); the tube AROUND the canvas is styled from CSS, so the class
+  // tells the stylesheet to flip --vt52-bg/--vt52-fg with it. Without this the
+  // white reverse-video screen sat inside a dark CRT border.
+  document.body.classList.toggle('reverse-video', !!enabled);
   for (var u = 0; u <= 2; u++) {
     var t = (typeof window.vt52Get === 'function') ? window.vt52Get(u) : null;
     if (t && typeof t.setReverseVideo === 'function') {
@@ -1476,22 +1423,19 @@ function applyVT52TextGeometry(t) {
     t.textArea.style.transformOrigin = 'left top';
     t.textArea.style.transform = (m.scaleX < 1) ? 'scaleX(' + m.scaleX + ')' : '';
   }
-  var crt = t.screenCanvas ? t.screenCanvas.parentElement : null;
-  if (crt) {
-    crt.style.width = m.width + 'px';
-    crt.style.height = m.height + 'px';
-  }
+  // The tube's BOX is owned by the artwork: .vt52-crt is absolutely positioned
+  // on the Screen marker (see css/pdp11.css, .vt52-crt), so writing a px size
+  // here would override that geometry with inline styles (they win over any
+  // rule) and the canvas would sit outside the glass. The textarea keeps the
+  // grid instead (see below), which is what the eye reads in text mode.
 }
 
 // ---- Undo the text-mode geometry when switching back to the canvas CRT ----
 function clearVT52TextGeometry(t) {
   if (!t) return;
   if (t.textArea) t.textArea.style.transform = '';
-  var crt = t.screenCanvas ? t.screenCanvas.parentElement : null;
-  if (crt) {
-    crt.style.width = '';
-    crt.style.height = '';
-  }
+  // Nothing to undo on the tube: its box comes from the Screen marker and is
+  // never written inline (see applyVT52TextGeometry).
 }
 
 // Apply the configured text-mode preference to every live VT52 terminal
@@ -2116,6 +2060,80 @@ function initConfigForm() {
   updateDirtyUI();
 }
 
+// ---- VT52 zoom (cabinet hidden, tube grown to the window) ----
+// Zoom mode drops the cabinet artwork and grows the tube to the largest 4:3 box
+// that fits the page without touching the corner controls. It works on the
+// artwork's own unit (--vt52-u): the tube is the Screen marker times that unit,
+// so setting the unit from the available box scales the glass, the canvas and
+// the frame together. The state itself is per terminal and lives in Config
+// (see src/vt52zoom.js); these two functions only apply it.
+var VT52_SCREEN_W = 112.852;   // Screen marker width, SVG units
+var VT52_SCREEN_H = 84.639;    // Screen marker height, SVG units
+var VT52_CASE_WALL = 22;       // zoom outer case wall, px (see .vt52-zoomed)
+var VT52_BEZEL_WALL = 14;      // recessed bezel wall, px (see .vt52-zoomed .vt52-bezel)
+
+function vt52Zoom(rig) {
+  if (!rig) return;
+  var page = rig.closest('.page') || document.body;
+  // The available box, measured where the tube will actually sit. A pt52 page
+  // centres its content with a flex column, so the box does NOT start at the
+  // page top: sizing from page.clientHeight alone pushed the tube ~185px below
+  // the fold and over the corner controls. Measure from the box's real top.
+  rig.classList.add('vt52-zoomed');
+  rig.style.width = '';
+  rig.style.height = '';
+  var tube = rig.querySelector('.vt52-crt');
+  if (tube) { tube.style.width = ''; tube.style.height = ''; }
+  var boxTop = rig.getBoundingClientRect().top -
+      (page.getBoundingClientRect().top - page.scrollTop);
+  var wall = (VT52_CASE_WALL + VT52_BEZEL_WALL + 2) * 2;
+  var availW = page.clientWidth - VT52_GUTTER_SIDE * 2 - wall;
+  var availH = page.clientHeight - boxTop - VT52_GUTTER_BOTTOM - VT52_GUTTER_TOP - wall;
+  if (availW <= 0 || availH <= 0) {
+    // Fall back to the whole page when the layout is not measurable yet.
+    availH = page.clientHeight - VT52_GUTTER_TOP - VT52_GUTTER_BOTTOM - wall;
+  }
+  if (availW <= 0 || availH <= 0) return;
+  // The 4:3 tube, sized to whichever axis runs out first.
+  var u = Math.min(availW / VT52_SCREEN_W, availH / VT52_SCREEN_H);
+  if (!isFinite(u) || u <= 0) return;
+  rig.style.setProperty('--vt52-u', u.toFixed(6));
+  // Size the box in px, right here. A calc() over --vt52-u resolves to 0 when
+  // the variable is only just being written (the same trap as the cabinet box:
+  // a var() that is not yet defined makes the whole declaration invalid), so the
+  // zoomed box would collapse. The unit is already known — do the arithmetic.
+  // The box is the CASE, so it is the tube plus the case wall on each side
+  // (padding + border, mirrored by .vt52-zoomed in css/pdp11.css).
+  // Three layers, so the box is the tube plus BOTH walls on each side: the
+  // outer case (VT52_CASE_WALL) and the recessed bezel (VT52_BEZEL_WALL), plus
+  // their borders. The tube's own left/top offset is the same sum.
+  var wall = (VT52_CASE_WALL + VT52_BEZEL_WALL + 2) * 2;
+  rig.style.width = (u * VT52_SCREEN_W + wall).toFixed(2) + 'px';
+  rig.style.height = (u * VT52_SCREEN_H + wall).toFixed(2) + 'px';
+  // The tube is an absolutely positioned sibling of the case wall (see
+  // .vt52-zoomed .vt52-crt), so its own size is written here too: exactly the
+  // Screen marker, which keeps the glass overlays on the glass.
+  var tube = rig.querySelector('.vt52-crt');
+  if (tube) {
+    tube.style.width = (u * VT52_SCREEN_W).toFixed(2) + 'px';
+    tube.style.height = (u * VT52_SCREEN_H).toFixed(2) + 'px';
+  }
+}
+
+function vt52Unzoom(rig) {
+  if (!rig) return;
+  rig.classList.remove('vt52-zoomed');
+  // Drop the inline size so the artwork box rule applies again, hand the unit
+  // back to the cabinet fit (syncVt52Unit re-derives it from the artwork) and
+  // let installVT52Scaling() re-fit the whole cabinet.
+  rig.style.width = '';
+  rig.style.height = '';
+  var tube = rig.querySelector('.vt52-crt');
+  if (tube) { tube.style.width = ''; tube.style.height = ''; }
+  if (typeof window.vt52SyncUnit === 'function') window.vt52SyncUnit();
+  if (typeof window.__vt52Rescale === 'function') window.__vt52Rescale();
+}
+
 // ---- Proportional scaling of the VT52 cabinet ----
 // When the browser window is too small for the full-size DECscope cabinet,
 // scale it down proportionally (transform: scale) instead of clipping it.
@@ -2124,6 +2142,16 @@ function initConfigForm() {
 // skipped and get sized once they become visible. The container's height is
 // reserved to match the scaled cabinet (transform does not affect layout),
 // so there is no dead space or overlap.
+// Breathing space around the VT52 cabinet, in px. The artwork's outline
+// reaches the viewBox border, so without it the cabinet is flush with the
+// window edges after the fit. The vertical gutters clear the corner controls
+// (.console-reboot / .quick-boot-btn at the top, .mute-btn / .fullscreen-btn
+// at the bottom, 42px tall with a 12px inset = 54px), so the cabinet never
+// slides under them; SIDE stays tighter because the buttons hug the corners.
+var VT52_GUTTER_SIDE = 18;
+var VT52_GUTTER_TOP = 62;    // 54px of controls + 8px of air
+var VT52_GUTTER_BOTTOM = 62;
+
 function installVT52Scaling() {
   if (typeof ResizeObserver === 'undefined') return;
 
@@ -2143,7 +2171,16 @@ function installVT52Scaling() {
       // Height reserved for the status row below the cabinet.
       var statusPad = Math.max(0, container.offsetHeight - natH);
 
-      var s = Math.min(1, (page.clientWidth - 24) / natW);
+      // Fit on BOTH axes (mirrors lp11FitScale): the cabinet is taller than it
+      // is wide relative to the window, so a width-only fit left the keyboard
+      // and the top of the lid clipped by the page's overflow: hidden. The
+      // artwork's own aspect is preserved by scaling both axes by one factor.
+      // VT52_GUTTER keeps a small breathing space on every side, so the
+      // cabinet never touches the window edges (the artwork is a full-bleed
+      // drawing: its outline reaches the viewBox border).
+      var s = Math.min(1, (page.clientWidth - VT52_GUTTER_SIDE * 2) / natW);
+      var availH = page.clientHeight - statusPad - VT52_GUTTER_TOP - VT52_GUTTER_BOTTOM;
+      if (availH > 0 && natH > availH) s = Math.min(s, availH / natH);
       if (s < 0.1) s = 0.1; // never collapse below readability
       terminal.style.transformOrigin = 'top center';
       terminal.style.transform = (s < 1) ? 'scale(' + s + ')' : '';
@@ -3405,6 +3442,19 @@ if (__appCfg && __appCfg.userTerminals >= 2) {
 
 // Fit the VT52 cabinets to the available window size (proportional scaling).
 installVT52Scaling();
+window.vt52Zoom = vt52Zoom;
+window.vt52Unzoom = vt52Unzoom;
+
+// Read the artwork's Screen marker and push it into the --vt52-* variables of
+// every .vt52-rig: assets/vt52.svg is the single source of truth for the tube
+// geometry (the numbers in css/pdp11.css are only the fallback). The loader
+// re-derives --vt52-u from the laid-out box, and syncVt52Unit keeps it in step
+// when the window changes size.
+window.vt52LoadArtwork();
+if (window.Vt52Zoom && typeof window.Vt52Zoom.init === 'function') window.Vt52Zoom.init();
+window.addEventListener('resize', function () {
+  if (typeof window.vt52SyncUnit === 'function') window.vt52SyncUnit();
+});
 
 // Fit the LP11 printer cabinet to the available window size (proportional
 // scaling, mirroring the VT52 cabinets above).

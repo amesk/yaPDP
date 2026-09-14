@@ -341,6 +341,56 @@ button, select, input, textarea {
 
 /* Floating fullscreen toggle — bottom-right, above the app content but below
    the drop/modal overlays so they keep focus while they are active. */
+/* Zoom toggle — sits just left of the fullscreen button. Same DEC chrome as
+   the fullscreen button; lit while the cabinet is hidden (see src/vt52zoom.js). */
+.zoom-btn {
+    position: fixed;
+    bottom: 12px;
+    right: 60px;
+    z-index: 1000;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    border: 1px solid #5a554a;
+    border-radius: 4px;
+    color: #b8b0a0;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4);
+    transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+    user-select: none;
+}
+
+.zoom-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4a453a, #3a352a);
+    border-color: #8a7a5a;
+    color: #e0d8c8;
+}
+
+/* Lit while the terminal on screen is zoomed. */
+.zoom-btn.zoom-on {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    border-color: #c8a860;
+    color: #f0e6c8;
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* No VT52 terminal on screen (teletype, printer, panel, config…): the button
+   has nothing to act on. */
+.zoom-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.zoom-btn .zoom-icon {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
 .fullscreen-btn {
     position: fixed;
     bottom: 12px;
@@ -1883,85 +1933,77 @@ body {
         0 0 0 1px #6a655a;
 }
 
-/* DECscope VT52 cabinet (built by buildVT52Cabinet in pdp11-app.js). A slanted
-   off-white (beige) moulded-plastic monoblock: the top recedes with a soft
-   catch-light while the keyboard deck below sits on a dark base. */
-.vt52-terminal {
+/* DECscope VT52: the cabinet is the artwork (assets/vt52.svg drawn by
+   .vt52-backdrop). A slanted off-white (beige) moulded-plastic monoblock whose
+   tube sits inside the Screen marker; the CSS shell that used to be built by
+   buildVT52Cabinet is gone. */
+
+/* The rig carries the artwork's Screen marker numbers (published at runtime by
+   loadVt52Artwork in src/vt52.js). The values below are the fetch-less
+   fallback — keep them in step with assets/vt52.svg (pinned by
+   tests/vt52-svg-backdrop.test.js). Each terminal owns its own backdrop
+   (variant A): no shared instance, so the projection is per rig. */
+.vt52-rig {
+    --vt52-vb-w: 284.22635;
+    /* viewBox width, SVG units (the artwork is cropped to the cabinet) */
+    --vt52-vb-h: 219.6577;
+    /* viewBox height, SVG units */
+    /* px size of one SVG unit of the artwork. The artwork is authored in
+       MILLIMETRES (width="284.22635mm"), so one viewBox unit is one millimetre
+       and the browser rasterises it at 96/25.4 = 3.779528 px per unit. The tube
+       offsets below must use the SAME factor, otherwise the canvas drifts away
+       from the Screen marker (a mismatch of 5.954702 / 3.779528 = 1.576 was
+       exactly the "up and to the left" shift). The canvas keeps its native
+       672x504 bitmap and is scaled down with the cabinet. */
+    --vt52-u: 3.779528;
+    /* ---- Screen marker (x / y / w / h, SVG units) ------------------- */
+    --vt52-screen-x: 2.320500;
+    --vt52-screen-y: 25.766000;
+    --vt52-screen-w: 112.852000;
+    --vt52-screen-h: 84.639000;
+    /* The artwork box: its own aspect (the cropped viewBox) at --vt52-u px per
+       SVG unit. It is the positioning context for the backdrop AND the tube, so
+       both are placed in the same coordinate space (mirrors #teletype-rig).
+       The px numbers are pre-multiplied ON PURPOSE: a calc() over the marker
+       variables resolves to 0 while the artwork is still being fetched (a var()
+       that is not defined yet makes the whole declaration invalid at computed-
+       value time), which collapsed the box and left the page empty. The sizes
+       are the same arithmetic, done here once: 6.12987 * 284.22635 / 219.6577.
+       syncVt52Unit() only rewrites --vt52-u for the tube's own offsets. */
     position: relative;
-    /* Size to content so the side panel always sits inside the case. Use
-       max-content rather than fit-content: fit-content clamps the case to the
-       viewport when the window is narrower than the cabinet, so the CRT and
-       the dark side panel overflow the case edge — and the proportional
-       scaler never compensates because it measures the already-clamped width
-       (see installVT52Scaling in pdp11-app.js). */
-    width: max-content;
-    background:
-        radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.38), transparent 55%),
-        linear-gradient(180deg, #e8e2d4 0%, #ddd6c6 20%, #d0c9b6 60%, #c0b8a2 100%);
-    border: 1px solid #a89f88;
-    border-top-color: #ece6d8;
-    border-radius: 18px 18px 12px 12px;
-    padding: 14px 18px 10px 18px;
-    box-shadow:
-        inset 0 2px 6px rgba(255, 255, 255, 0.35),
-        inset 0 0 30px rgba(0, 0, 0, 0.16),
-        0 1px 0 rgba(255, 255, 255, 0.45),
-        0 26px 44px rgba(0, 0, 0, 0.5);
+    width: 1074.24px;
+    height: 830.20px;
+    flex: none;
 }
 
-/* Upper-face highlight: soft light suggesting the top of the cabinet recedes
-   backwards — pure lighting, so the rounded corners and drop shadow survive. */
-.vt52-terminal::before {
-    content: "";
+/* The cabinet artwork. It is INLINED here at runtime (inlineVt52Artwork in
+   src/vt52.js) instead of being a background-image: an inlined <svg> is part of
+   the document, so the stylesheet can reach inside the drawing — which is what
+   lets the glass follow the reverse-video mode. The inlined <svg> is pinned to
+   100% x 100% with preserveAspectRatio="none", the same fit the background had,
+   so the drawing still fills the artwork box exactly. */
+.vt52-backdrop {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 24%;
-    border-radius: 18px 18px 0 0;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0));
+    inset: 0;
     pointer-events: none;
 }
 
-/* DEC badge on terminal bezel */
-.vt52-badge {
-    text-align: center;
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: 15px;
-    letter-spacing: 2px;
-    color: #8a8274;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    user-select: none;
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+.vt52-backdrop svg {
+    display: block;
 }
 
+.vt52-terminal {
+    /* Outer wrapper: keeps the cabinet in the page flow (.vt52-container is a
+       column flex container) and is what installVT52Scaling() measures and
+       scales as one piece. It carries no size of its own — the artwork box
+       below owns the geometry. */
+    flex: none;
+    line-height: 0;
+}
 /* ===== DECscope VT52 cabinet detail styles ===== */
 /* Vent grille: a row of short vertical slots on the top panel, drawn with a
    repeating gradient so no per-slot DOM is needed. */
-.vt52-vents {
-    height: 10px;
-    width: 100%;
-    margin: -2px auto 12px auto;
-    border-radius: 2px;
-    background: repeating-linear-gradient(90deg,
-            transparent 0px,
-            transparent 3px,
-            #7d7565 3px,
-            #7d7565 4px);
-    box-shadow:
-        inset 0 1px 2px rgba(0, 0, 0, 0.35),
-        0 1px 0 rgba(255, 255, 255, 0.5);
-    pointer-events: none;
-}
-
 /* Top section: screen bezel (left) + plain plastic side (right). */
-.vt52-top {
-    display: flex;
-    align-items: stretch;
-    gap: 14px;
-}
-
 .vt52-screen-side {
     flex: 1 1 auto;
     /* Never squeeze the screen column below its tube: this is what previously
@@ -1974,26 +2016,133 @@ body {
 }
 
 /* Deep, wide bezel around the tube — the screen sits recessed inside it. */
-.vt52-bezel {
-    position: relative;
-    flex: 1 1 auto;
-    /* Never squeeze the bezel below its contents: the canvas keeps its native
-       80x24 aspect and the dark side panel sits inside the same beige bezel,
-       so the cabinet embraces both as one piece. max-content is the reliable
-       spelling of this guard (fit-content in min-width misbehaves in older
-       WebView2 on Windows 10, letting the side panel spill out of the case). */
-    min-width: max-content;
-    display: flex;
-    align-items: center;
-    /* The dark side panel is absolutely positioned against the right edge, so
-       its fixed width must be reserved inside the padding: flexbox max-content
-       measurement of this bezel ignores flex-basis-length items (flex: 0 0
-       180px) in older WebView2 on Windows 10 and collapses the bezel, letting
-       the panel spill past the case edge. Reserved slot = 180px panel + 14px
-       gap, mirrored by the 16px padding on the left. */
-    gap: 14px;
-    padding: 16px;
-    padding-right: calc(16px + 14px + 180px);
+/* Right plastic side panel — very dark charcoal, recessed beside the screen. */
+/* A single raised horizontal ridge, sitting just above the lower edge. */
+/* DEC "digital" wordmark stamped at the top of the dark side panel, echoing
+   the boxed letters of the front panel's .decLetter block, light on dark. */
+/* CRT tube (the glass area) */
+/* The tube: an absolutely positioned block pinned to the artwork's Screen
+   marker. The box is sized in the artwork's OWN units — the marker's
+   x/y/w/h multiplied by --vt52-u — so the canvas always lands in the glass,
+   whatever size the cabinet is drawn at. --vt52-u is the px size of one SVG
+   unit; 1.6667 keeps the old 672x504 footprint until JS re-derives it from the
+   artwork (applyVt52MarkerVars below). */
+/* The tube's own colours, published as variables so the REVERSE VIDEO mode can
+   swap them without touching the JS renderer: body.reverse-video flips them
+   (see applyVT52ReverseVideo in src/pdp11-app.js). #141914 / #e0e0e0 mirror
+   BG_COLOR / FG_COLOR in src/vt52.js — keep the two pairs in step. */
+body {
+    --vt52-bg: #141914;
+    --vt52-fg: #e0e0e0;
+}
+
+body.reverse-video {
+    --vt52-bg: #e0e0e0;
+    --vt52-fg: #141914;
+}
+
+/* The glass plate itself is part of the artwork, so it cannot be recoloured
+   from CSS: two paths are authored instead — "Glass" (dark) and
+   "GlassInverted" (light) — with identical geometry, and the mode picks one.
+   This is why the artwork is inlined (see inlineVt52Artwork in src/vt52.js):
+   a background-image is opaque to the stylesheet. The two fills mirror
+   BG_COLOR / FG_COLOR in src/vt52.js, so the plate and the canvas flip
+   together. */
+/* The inliner publishes each artwork layer's Inkscape label as a plain class
+   (.vt52-layer-<Label>, see inlineVt52Artwork): inside an inlined <svg> a
+   selector for [inkscape\:label="..."] does not match. */
+.vt52-layer-GlassInverted {
+    display: none;
+}
+
+body.reverse-video .vt52-layer-Glass {
+    display: none;
+}
+
+body.reverse-video .vt52-layer-GlassInverted {
+    display: inline;
+}
+
+.vt52-crt {
+    /* Marker arithmetic done ONCE, in px: left/top/width/height are the Screen
+       marker (x/y/w/h) times --vt52-u (6.12987 px per SVG unit). Written as
+       numbers for the same reason as .vt52-rig's box: a calc() over the marker
+       variables resolves to 0 until the artwork fetch lands, and left/top would
+       silently collapse to 0 (the tube then sat in the corner instead of the
+       glass). tests/vt52-svg-backdrop.test.js pins these numbers to the artwork
+       and to --vt52-u, so they cannot drift apart. */
+    position: absolute;
+    left: 154.2896px;
+    top: 194.4147px;
+    /* The tube is sized by the SCREEN MARKER, not by the canvas bitmap: the
+       artwork dictates where the glass is and how big it is, so the box is the
+       marker at --vt52-u px per unit. The canvas keeps its native 672x504
+       bitmap inside and is scaled down — the ratio stays 4:3 because the
+       marker is authored 4:3 (pinned by tests/vt52-svg-backdrop.test.js). */
+    width: 426.5272px;
+    height: 319.8954px;
+    /* Square box, no rounding and NO shadow of its own: the glass is drawn by
+       the artwork (Glass / GlassInverted), and a CSS box-shadow here drew a
+       second, hard-edged outline around the tube — invisible while both were
+       dark, but plainly visible as a frame once reverse video turned the
+       artwork's plate light. The tube contributes the picture, not the trim. */
+    overflow: hidden;
+    background: var(--vt52-bg);
+    cursor: text;
+}
+
+/* ===== Zoomed tube (cabinet hidden) =====================================
+   Zoom reproduces the ORIGINAL three-layer cabinet the page had before the
+   artwork took over — the same nesting, with the same trims:
+     1. OUTER case  (.vt52-rig)      off-white moulded plastic, light top catch
+     2. INNER bezel (.vt52-bezel)    the same plastic, recessed with an inner
+                                     shadow all round (this is the "shadowed
+                                     inner frame" the screen sits in)
+     3. TUBE        (.vt52-crt)      the dark glass itself, with its vignette
+   The two pieces of the old cabinet that belong to hidden parts of the machine
+   are NOT restored: the top vent grille (it sat on the lid) and the right-hand
+   dark panel carrying the "digital" wordmark.
+   Geometry: vt52Zoom() sizes the OUTER case to tube + wall on each side; the
+   bezel and the tube are absolute children measured from the case's inner
+   corner, so the canvas keeps its full 4:3 size instead of shrinking to a
+   leftover, and the scanline overlays cover the GLASS only. */
+.vt52-zoomed .vt52-backdrop {
+    display: none;
+}
+
+/* --- 1. outer case --- */
+.vt52-zoomed {
+    /* Wall thicknesses, published so JS, the bezel and the tube all agree:
+       --vt52-case-wall is the outer plastic, --vt52-bezel-wall the recessed
+       frame; the tube's own offset is the sum of the two. */
+    --vt52-case-wall: 22px;
+    --vt52-bezel-wall: 14px;
+    --vt52-tube-left: 36px;
+    --vt52-tube-top: 36px;
+    box-sizing: border-box;
+    border: 1px solid #a89f88;
+    border-top-color: #ece6d8;
+    border-radius: 18px 18px 12px 12px;
+    background:
+        radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.38), transparent 55%),
+        linear-gradient(180deg, #e8e2d4 0%, #ddd6c6 20%, #d0c9b6 60%, #c0b8a2 100%);
+    box-shadow:
+        inset 0 2px 6px rgba(255, 255, 255, 0.35),
+        inset 0 0 30px rgba(0, 0, 0, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.45),
+        0 26px 44px rgba(0, 0, 0, 0.5);
+}
+
+/* --- 2. inner bezel: recessed, with the shadow the tube sits in ---
+   It fills the case except for the outer wall, so the plastic reads as two
+   nested frames: the case wall, then this recessed bezel, then the glass. */
+.vt52-zoomed .vt52-bezel {
+    position: absolute;
+    box-sizing: border-box;
+    left: var(--vt52-case-wall);
+    top: var(--vt52-case-wall);
+    right: var(--vt52-case-wall);
+    bottom: var(--vt52-case-wall);
     border-radius: 12px;
     background: linear-gradient(180deg, #e2dbc9 0%, #d4ccb8 60%, #c4bba5 100%);
     border: 1px solid #a89f88;
@@ -2003,93 +2152,33 @@ body {
         0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-/* Right plastic side panel — very dark charcoal, recessed beside the screen. */
-.vt52-side-plastic {
-    /* Out of the flex flow: anchored to the bezel's right edge so the bezel
-       width is decided by its padding reservation (see .vt52-bezel) instead
-       of a flex max-content measurement that older WebView2 on Windows 10
-       gets wrong. */
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    bottom: 16px;
-    width: 180px;
-    /* Square corners, like the real DECscope side panel. */
-    border-radius: 0;
-    background: linear-gradient(180deg, #3a3a3a, #1b1b1b);
-    border: 1px solid #0e0e0e;
-    box-shadow:
-        inset 0 3px 8px rgba(0, 0, 0, 0.5),
-        0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-/* A single raised horizontal ridge, sitting just above the lower edge. */
-.vt52-side-ridge {
-    position: absolute;
-    left: 10%;
-    right: 10%;
-    bottom: 14px;
-    height: 8px;
-    border-radius: 4px;
-    background: linear-gradient(180deg, #6e6e6e 0%, #3e3e3e 45%, #262626 100%);
-    box-shadow:
-        0 1px 1px rgba(255, 255, 255, 0.18),
-        0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-/* DEC "digital" wordmark stamped at the top of the dark side panel, echoing
-   the boxed letters of the front panel's .decLetter block, light on dark. */
-.vt52-dec-logo {
-    position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 2px;
-    pointer-events: none;
-    user-select: none;
-}
-
-.vt52-dec-letter {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 18px;
-    border: 1px solid #8a8274;
-    /* Light bottom edge so the full square reads on the dark panel and the
-       letters look debossed (bright lower rim catches the top light). */
-    border-bottom-color: #b6ae9c;
-    border-radius: 2px;
-    color: #d0c9b6;
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-weight: 100;
-    font-size: 15px;
-    line-height: 1;
-    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
-}
-
-/* CRT tube (the glass area) */
-.vt52-crt {
-    position: relative;
-    /* Keep the 80x24 canvas at its native size inside the bezel so the screen
-       proportions never stretch or get clipped by the side panel. */
-    flex-shrink: 0;
+/* --- 3. the glass: inside the bezel, by the bezel's own wall --- */
+.vt52-zoomed .vt52-crt {
+    left: var(--vt52-tube-left);
+    top: var(--vt52-tube-top);
     border-radius: 10px;
     overflow: hidden;
-    /* The real VT52 faceplate is very dark grey-green glass, not pure black. */
-    background: #141914;
+    background: var(--vt52-bg);
     border: 2px solid #151515;
     box-shadow:
-        /* Vignette + glass curvature */
         inset 0 0 40px rgba(0, 0, 0, 0.30),
         inset 0 0 90px rgba(0, 0, 0, 0.65),
         inset 0 2px 6px rgba(255, 255, 255, 0.06),
-        /* Tube edge highlight and depth */
         0 0 0 1px rgba(0, 0, 0, 0.9),
         0 0 26px rgba(0, 0, 0, 0.7),
         0 0 30px rgba(255, 255, 255, 0.06);
-    cursor: text;
+}
+
+/* The canvas fills the tube: the artwork's marker is 4:3, exactly the canvas
+   aspect, so it fits without stretching. The two are coupled by the test
+   (tests/vt52-svg-backdrop.test.js). */
+.vt52-crt canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Phosphor halo: a soft glow around the white (P4) writing. */
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.30));
+    outline: none;
 }
 
 /* Glass reflection: a soft curved highlight swept across the tube plus a faint
@@ -2151,13 +2240,16 @@ body {
     border: 0;
     outline: none;
     resize: none;
-    background: #141914;
-    color: #e0e0e0;
-    caret-color: #e0e0e0;
+    background: var(--vt52-bg);
+    color: var(--vt52-fg);
+    caret-color: var(--vt52-fg);
     font-family: 'VT52', monospace;
     font-size: 20px;
     line-height: 20px;
     overflow: auto;
+    /* text mode replaces the canvas: keep it out of the glass's own shading */
+    position: relative;
+    z-index: 1;
 }
 
 /* Visual bell flash for the plain text-mode terminal (vt52TextMode): a
@@ -2304,43 +2396,6 @@ body.crt-effects .vt52-crt::after {
         opacity: 0.85;
     }
 }
-
-/* Accessibility: users who prefer reduced motion get a stable, readable
-   screen (the static scanlines and glow remain, but nothing animates). */
-@media (prefers-reduced-motion: reduce) {
-
-    body.crt-effects .vt52-crt canvas,
-    body.crt-effects .vt52-crt::before,
-    body.crt-effects .vt52-crt::after {
-        animation: none;
-    }
-}
-
-/* Status label below screen */
-.vt52-status {
-    margin-top: 10px;
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: 17px;
-    color: #6a655a;
-    text-align: center;
-    user-select: none;
-    letter-spacing: 0.5px;
-}
-
-.vt52-status .led {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 4px;
-    vertical-align: middle;
-}
-
-.vt52-status .led.on {
-    background: #0f0;
-    box-shadow: 0 0 6px #0f0;
-}
-
 /* ===== VT11 Display page — vector-graphics CRT ===== */
 /* The VT11 canvas (1024x768) is created lazily by src/vt11.js inside the
    #vt11 container; this wraps it in a matching DEC bezel + scanlines. */
@@ -2570,7 +2625,7 @@ body.crt-effects .vt52-crt::after {
 }
 
 /* Vent grille: a row of short vertical slots drawn with a repeating gradient,
-   so no per-slot DOM is needed (mirrors .vt52-vents, taller for the LP11). */
+   so no per-slot DOM is needed (taller for the LP11). */
 .lp11-vents {
     flex: 1 1 0;
     height: 22px;
@@ -2980,14 +3035,11 @@ body.no-photo-bg #page-instructions.active {
 
 /* LP11 and VT52 machine chrome keeps the pixel VT323 (same narrow-advance
    logic as the teletype); Courier Prime stays for the rest of the UI. */
-.vt52-badge,
-.vt52-status,
 .lp11-badge,
 .lp11-label,
 .lp11-key {
     font-family: 'VT323', arial, helvetica, sans-serif;
 }
-.vt52-dec-letter,
 .lp11-dec-letter {
     font-family: 'Michroma', arial, helvetica, sans-serif;
 }
