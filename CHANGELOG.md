@@ -58,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reading past the end of a mounted disk/tape image no longer stops the
+  machine: the missing cache block is now created explicitly, so the guest
+  gets a completion (zeros — a tape sees its record mark and ends the read
+  cleanly) instead of an endlessly repeated fetch. Hit short dragged-in
+  `.tap`/`.dsk` files, HTTP 416 range answers and truncated `.zst` images.
+  (`src/iopage.js`, `tests/iopage-pastend.test.js`)
 - The VT52 fit is recomputed on both zoom transitions instead of waiting for a
   window resize: leaving zoom no longer clips the lower half of the cabinet, and
   entering zoom no longer draws the maximised screen at the old cabinet scale.

@@ -2158,6 +2158,22 @@ function createCache(cache, block, dataView) {
     }
 }
 
+// --- createEmptyCacheBlock() ---
+// Allocate an explicit all-zero cache block for an address range past the end
+// of an image. createCache() with zero-length data creates NOTHING, so the
+// cache miss would stay a miss: diskIO() re-enters fetchBlock() forever and
+// the guest never receives a completion — the machine looks hung (reads past
+// the end of a mounted tape/disk, HTTP 416 range errors, truncated images).
+// The headless DiskService has the same guard (disk-service.js, _loadBlock).
+// Reading zeros is also the behaviour the tape controller needs past EOF: a
+// zero record length is a tape mark, so the guest stops instead of stalling.
+function createEmptyCacheBlock(cache, block) {
+    "use strict";
+    if (cache[block] === undefined) {
+        cache[block] = new Uint16Array(IO_BLOCKSIZE >>> 1);
+    }
+}
+
 // --- image error helpers ---
 // Build a fetch/decode error carrying the machine-readable reason that the
 // image load dialog (imgerror.js) uses to phrase its message. iopage.js only
@@ -2233,8 +2249,9 @@ async function fetchBlock(controlBlock, block) {
     if (local !== undefined) {
         const start = block * IO_BLOCKSIZE;
         if (start >= local.length) {
-            // Past end of image: create empty cache block
-            createCache(controlBlock.cache, block, "");
+            // Past end of image: create the empty cache block explicitly
+            // (createCache() with empty data would create nothing at all).
+            createEmptyCacheBlock(controlBlock.cache, block);
         } else {
             const end = Math.min(start + IO_BLOCKSIZE, local.length);
             createCache(controlBlock.cache, block, local.subarray(start, end));
@@ -2284,7 +2301,11 @@ async function fetchBlock(controlBlock, block) {
                 // (Slicing to a single block would be correct but would
                 // re-decompress the whole image on every cache miss.)
                 const start = block * IO_BLOCKSIZE;
-                createCache(controlBlock.cache, block, decompressed.subarray(start));
+                if (start >= decompressed.length) {
+                    createEmptyCacheBlock(controlBlock.cache, block);
+                } else {
+                    createCache(controlBlock.cache, block, decompressed.subarray(start));
+                }
                 downLoadAdd(controlBlock.url, controlBlock.cache);
                 return zstResponse.status;
             }
@@ -2307,8 +2328,8 @@ async function fetchBlock(controlBlock, block) {
             createCache(controlBlock.cache, block, new Uint8Array(buffer));
             return response.status;
         } else if (response.status === 416) {
-            // Range error: create empty cache block
-            createCache(controlBlock.cache, block, "");
+            // Range error (server has no such range): empty cache block
+            createEmptyCacheBlock(controlBlock.cache, block);
             return response.status;
         }
         // If other error status, fall through to .zst fallback
@@ -2342,7 +2363,11 @@ async function fetchBlock(controlBlock, block) {
             `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
     }
     const start = block * IO_BLOCKSIZE;
-    createCache(controlBlock.cache, block, decompressed.subarray(start));
+    if (start >= decompressed.length) {
+        createEmptyCacheBlock(controlBlock.cache, block);
+    } else {
+        createCache(controlBlock.cache, block, decompressed.subarray(start));
+    }
 
     // Register cache for download/export
     downLoadAdd(controlBlock.url, controlBlock.cache);
