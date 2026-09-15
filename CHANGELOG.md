@@ -58,6 +58,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reading past the end of a mounted disk/tape image no longer stops the
+  machine: the missing cache block is now created explicitly, so the guest
+  gets a completion (zeros — a tape sees its record mark and ends the read
+  cleanly) instead of an endlessly repeated fetch. Hit short dragged-in
+  `.tap`/`.dsk` files, HTTP 416 range answers and truncated `.zst` images.
+  (`src/iopage.js`, `tests/iopage-pastend.test.js`)
 - Manual screenshots are regenerated for the new teletype artwork, written to
   both the repo source and the landing mirror. (`tools/screenshots-manual.js`)
 
