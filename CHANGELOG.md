@@ -58,8 +58,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The VT52 fit is recomputed on both zoom transitions instead of waiting for a
+  window resize: leaving zoom no longer clips the lower half of the cabinet, and
+  entering zoom no longer draws the maximised screen at the old cabinet scale.
+  (`src/pdp11-app.js`)
 - Manual screenshots are regenerated for the new teletype artwork, written to
   both the repo source and the landing mirror. (`tools/screenshots-manual.js`)
+- `headless-term` batch runs keep the whole guest output and execute the first
+  scripted command: the first guest line waits for the guest's prompt, and
+  pending output is flushed before the tool exits. (`tools/headless-term.js`)
 
 ## [0.2.0] - 2026-09-10
 

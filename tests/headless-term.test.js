@@ -88,15 +88,34 @@ async function run() {
     // Same guest, booted through the step engine instead of a single
     // boot command: send "BOOT RK0", wait for the RT-11 banner, then run
     // an interactive command against the "." prompt.
+    //
+    // Repeated, because both failures this guards against are timing
+    // dependent: the banner readiness fires while the guest is still in its
+    // startup command file (RT-11 STARTF.COM runs after the banner), and
+    // piped stdout used to be truncated at process.exit.
     const script2 = [
         "DIR",
         ":quit",
     ].join("\n") + "\n";
-    const r2 = await runBatch(script2,
-        ["--step", "BOOT RK0|V04.00C", "--prompt", ".", "--prompt-timeout", "8"]);
-    assert.strictEqual(r2.code, 0, "steps boot exits 0 (got " + r2.code + ")\n" + r2.stderr);
-    assert.ok(r2.stdout.indexOf("RT-11SJ") !== -1, "steps boot reached RT-11 (banner)");
-    assert.ok(r2.stdout.indexOf("Free blocks") !== -1, "steps boot + DIR works");
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        const r2 = await runBatch(script2,
+            ["--step", "BOOT RK0|V04.00C", "--prompt", ".", "--prompt-timeout", "8"]);
+        assert.strictEqual(r2.code, 0, "steps boot exits 0 (attempt " + attempt +
+            ", got " + r2.code + ")\n" + r2.stderr);
+        assert.ok(r2.stdout.indexOf("RT-11SJ") !== -1,
+            "steps boot reached RT-11 (banner, attempt " + attempt + ")");
+        assert.ok(r2.stdout.indexOf("Free blocks") !== -1,
+            "steps boot + DIR works (attempt " + attempt + ")");
+        // The listing must be complete, prompt included: the tool quits as
+        // soon as it sees the prompt, so a lost tail shows up as a missing
+        // trailing "." — exactly the output the emulator printed last.
+        assert.ok(/Free blocks[\s\S]*\.\s*$/.test(r2.stdout),
+            "the tail of the DIR listing survived the shutdown (attempt " +
+            attempt + ")");
+        assert.ok(r2.stderr.indexOf("no prompt before the first guest") === -1,
+            "the first guest line waited for the guest prompt (attempt " +
+            attempt + ")");
+    }
 
     console.log("PASS: headless-term multi-step boot (--step send|waitFor)");
 }

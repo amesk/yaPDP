@@ -202,6 +202,7 @@ let markerWaiters = [];      // { marker, resolve, timer }
 let echoPending = null;      // line we sent, awaiting guest echo (batch)
 let echoIdx = 0;
 let echoFailed = false;
+let promptReady = false;     // prompt confirmed by silence, not yet consumed
 
 // Lazy fzstd (assets/vendor/fzstd.js) in its own VM context for .zst tapes.
 let _fzstd = null;
@@ -278,6 +279,10 @@ function armSilenceTimer() {
     if (silenceTimer) return;
     silenceTimer = setTimeout(() => {
         silenceTimer = null;
+        // Remember the confirmed prompt: a caller that starts waiting later
+        // (the batch loop before its first guest line) must not have to see
+        // the prompt character again — the guest is already idle at it.
+        promptReady = true;
         const waiters = promptWaiters;
         promptWaiters = [];
         waiters.forEach((w) => w());
@@ -293,16 +298,33 @@ function disarmSilenceTimer() {
 
 function waitForPrompt(timeoutMs) {
     return new Promise((resolve) => {
+        // A prompt already confirmed by silence counts: the guest is idle.
+        if (promptReady) {
+            promptReady = false;
+            resolve(true);
+            return;
+        }
         const t = setTimeout(() => {
             const i = promptWaiters.indexOf(resolve);
             if (i >= 0) promptWaiters.splice(i, 1);
             resolve(false);
         }, timeoutMs);
         promptWaiters.push(() => {
+            promptReady = false;
             clearTimeout(t);
             resolve(true);
         });
     });
+}
+
+// True when `text` ends with a whole prompt-marker line — the guest printed
+// its prompt and has not been heard from since. Used to seed the
+// confirmed-prompt state after a boot that synchronized on the prompt itself
+// (those characters went through the boot engine, not this hook).
+function promptLineAtEnd(text) {
+    if (!opts.prompt) return false;
+    const marker = opts.prompt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp("(^|\\n)" + marker + "[ \\t]*\\r?$").test(text);
 }
 
 // :wait <marker> — substring match anywhere in the output tail.
@@ -352,6 +374,9 @@ function sendLine(line) {
 }
 
 function sendBytes(bytes) {
+    // Typing at the guest invalidates the "idle at its prompt" state until
+    // the guest answers with a new prompt.
+    promptReady = false;
     if (consoleDev) consoleDev.receive(bytes);
 }
 
@@ -517,12 +542,28 @@ async function handleCommand(line) {
 
 async function runBatch() {
     const rl = readline.createInterface({ input: process.stdin, terminal: false });
+    let guestLineSent = false;
     for await (const line of rl) {
         if (shuttingDown) break;
         const trimmed = line.replace(/\r$/, "");
         if (trimmed.startsWith(PREFIX)) {
             await handleCommand(trimmed);
             continue;
+        }
+        // The FIRST guest line waits for the prompt: a boot that ended on a
+        // banner (--step "BOOT RK0|V04.00C") returns while the guest is still
+        // running its startup command file (RT-11 STARTF.COM). Input typed
+        // ahead of the monitor prompt is echoed by the OS but never executed,
+        // so a script would sit at the prompt and the run would end with the
+        // startup output only. Waiting costs nothing when the guest is
+        // already idle (promptReady).
+        if (!guestLineSent) {
+            guestLineSent = true;
+            if (opts.prompt &&
+                !await waitForPrompt(opts.promptTimeout * 1000)) {
+                console.error("headless-term: no prompt before the first guest " +
+                    "line — sending anyway");
+            }
         }
         // Echo the line ourselves only if the guest does not (hardcopy
         // echo). Set up the matcher, send, then wait for the prompt.
@@ -617,12 +658,38 @@ function runInteractive() {
 // Shutdown
 // ----------------------------------------------------------------------
 
+/**
+ * Wait until a stdio stream has no data buffered inside Node.
+ *
+ * process.exit() drops async writes that are still queued (documented Node
+ * behaviour), and this utility badly needs them: the emulator produces a
+ * full screenful of guest output in the time a host pipe needs to drain a
+ * single line, so when stdout is piped/batched the tail of the last
+ * command's output is still queued when we exit. Waiting for
+ * `writableLength` to hit 0 is enough — bytes already handed to the OS pipe
+ * are delivered even after our process is gone.
+ */
+function flushStream(stream, timeoutMs) {
+    return new Promise((resolve) => {
+        const deadline = Date.now() + timeoutMs;
+        const tick = () => {
+            if (!stream.writableLength || Date.now() > deadline) resolve();
+            else setTimeout(tick, 5);
+        };
+        tick();
+    });
+}
+
 async function shutdown(code) {
     if (shuttingDown) return;
     shuttingDown = true;
     if (boot && typeof boot.halt === "function") {
         try { boot.halt(); } catch (e) { /* ignore */ }
     }
+    // Halt first (no new output is produced while draining), then flush the
+    // pending pipe writes so a piped/batched run never loses its tail.
+    await flushStream(process.stdout, 2000);
+    await flushStream(process.stderr, 2000);
     process.exit(code);
 }
 
@@ -654,6 +721,11 @@ async function shutdown(code) {
     // from the boot output so :wait can match markers already printed.
     consoleDev.installOutputHook((ch) => { onConsoleChar(ch & 0x7f); });
     outTail = boot.out.slice(-MAX_TAIL);
+    // A boot that synchronized on the prompt itself (marker mode) ends with
+    // the prompt characters already printed, so this hook never saw them and
+    // the batch loop would wait for a prompt that is not coming again. Seed
+    // the confirmed-prompt state from the boot tail instead.
+    if (promptLineAtEnd(outTail)) promptReady = true;
     process.stdout.write(boot.out);
     console.error("headless-term: RT-11 is up (prompt " + JSON.stringify(opts.prompt) + ").");
 
