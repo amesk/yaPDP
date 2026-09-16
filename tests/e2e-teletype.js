@@ -435,19 +435,27 @@ async function main() {
                 }
             });
             await sleep(300);
-            const tapeBefore = await page.evaluate(() =>
-                window.paperTape.snapshot().buffer.length);
-            const paperLenB3 = (await paperText(page)).length;
+            // Print on a FRESH page. After a long DIR listing the carriage sits at
+            // the right margin, where a character overstrikes the last column
+            // instead of growing the paper text (the punch still records it), so
+            // the assertion would read an empty delta. Clearing the paper makes
+            // the single glyph land on a new sheet, where it is unambiguous.
+            const tapeBefore = await page.evaluate(() => {
+                if (window.g60printer && window.g60printer.clear) {
+                    window.g60printer.clear();
+                }
+                return window.paperTape.snapshot().buffer.length;
+            });
             await page.evaluate(() => window.g60ConsoleWrite(0x61)); // 'a'
             await waitFor(async () =>
-                (await paperText(page)).length > paperLenB3, 10000);
+                (await paperText(page)).indexOf("A") !== -1, 15000);
             await sleep(1500); // let the punch catch up with the print queue
-            const paperDelta = (await paperText(page)).slice(paperLenB3);
+            const paperDelta = await paperText(page);
             const tapeDelta = await page.evaluate((n) =>
                 window.paperTape.snapshot().buffer.slice(n), tapeBefore);
             check("lower-case machine output prints as UPPER CASE on the paper",
                 paperDelta.indexOf("A") !== -1 && paperDelta.indexOf("a") === -1,
-                "paper delta: " + JSON.stringify(paperDelta));
+                "paper: " + JSON.stringify(paperDelta.slice(0, 40)));
             check("the punch keeps the RAW lower-case byte",
                 tapeDelta.indexOf(0x61) !== -1 && tapeDelta.indexOf(0x41) === -1,
                 "tape delta: " + JSON.stringify(tapeDelta));
@@ -455,17 +463,19 @@ async function main() {
             // Off: the next character reaches the paper as lower case (the
             // option is read per printed glyph, so no reload is involved).
             await page.evaluate(() => {
+                if (window.g60printer && window.g60printer.clear) {
+                    window.g60printer.clear();
+                }
                 const cb = document.getElementById("config-forceUpperCaseOut");
                 if (cb) { cb.checked = false; cb.dispatchEvent(new Event("change")); }
             });
-            const paperLenB4 = (await paperText(page)).length;
             await page.evaluate(() => window.g60ConsoleWrite(0x62)); // 'b'
             await waitFor(async () =>
-                (await paperText(page)).length > paperLenB4, 10000);
-            const paperDelta2 = (await paperText(page)).slice(paperLenB4);
+                (await paperText(page)).indexOf("b") !== -1, 15000);
+            const paperDelta2 = await paperText(page);
             check("the option applies immediately (off: 'b' stays lower case)",
-                paperDelta2.indexOf("b") !== -1,
-                "paper delta: " + JSON.stringify(paperDelta2));
+                paperDelta2.indexOf("b") !== -1 && paperDelta2.indexOf("B") === -1,
+                "paper: " + JSON.stringify(paperDelta2.slice(0, 40)));
             // Restore the authentic default before any later inspection.
             await page.evaluate(() => {
                 const cb = document.getElementById("config-forceUpperCaseOut");
