@@ -117,10 +117,17 @@ var QuickBoot = (function () {
         if (profile.console) out.consoleType = profile.console;
         if (typeof profile.printer === "boolean") out.printer = profile.printer;
         if (typeof profile.vt11 === "boolean") out.vt11 = profile.vt11;
+        if (typeof profile.forceUpperCaseOut === "boolean") {
+            out.forceUpperCaseOut = profile.forceUpperCaseOut;
+        }
         return out;
     }
 
     // True when the current config differs from the profile's requirements.
+    // Only LAYOUT keys count: they are registered at load time, so a change
+    // needs a page reload. forceUpperCaseOut is a live option (the console
+    // printer reads it per printed character), so it must NOT force a reload —
+    // see liveProfile()/launch().
     function hardwareDirty(cfg, profile) {
         if (!profile) return false;
         if (profile.console && cfg.consoleType !== profile.console) return true;
@@ -129,6 +136,14 @@ var QuickBoot = (function () {
         if (typeof profile.vt11 === "boolean" &&
             cfg.vt11 !== profile.vt11) return true;
         return false;
+    }
+
+    // Persist the profile's LIVE options (those that need no reload) and
+    // report whether any of them actually changed. Pure — unit-testable.
+    function liveProfile(cfg, profile) {
+        var next = mergeHardware(cfg, profile);
+        var changed = !!cfg && next.forceUpperCaseOut !== cfg.forceUpperCaseOut;
+        return { changed: changed, forceUpperCaseOut: next.forceUpperCaseOut };
     }
 
     // Human-readable summary of the hardware the machine will actually boot
@@ -395,6 +410,14 @@ var QuickBoot = (function () {
             ? Config.get() : null;
         var profile = profileOf(scenario);
 
+        // Live option first: the force-upper flag needs no reload (the console
+        // printer reads it per character), so it is applied straight away and
+        // can never trigger the layout reload below on its own.
+        var live = liveProfile(cfg, profile);
+        if (live.changed && typeof Config.set === "function") {
+            Config.set({ forceUpperCaseOut: live.forceUpperCaseOut });
+        }
+
         // Apply the machine profile if the current config differs. Device
         // registration happens at load time, so a layout change reloads the
         // page (same as the CONFIG Apply button); the boot resumes afterwards.
@@ -515,6 +538,7 @@ var QuickBoot = (function () {
         profileOf: profileOf,
         mergeHardware: mergeHardware,
         hardwareDirty: hardwareDirty,
+        liveProfile: liveProfile,
         requirementText: requirementText,
         show: show,
         hide: hide,

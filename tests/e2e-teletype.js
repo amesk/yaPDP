@@ -11,13 +11,16 @@
  *      and the render hook (fired per actually-rendered character) counts
  *      hundreds of characters.
  *   2. on-screen keyboard input: clicking D/I/R/SYS etc. echoes on the
- *      paper and the guest executes the command ("Free blocks" appears).
+ *      paper and the guest executes the command ("FREE BLOCKS" appears).
  *   3. BREAK key: the machine survives an operator break and keeps
  *      accepting input afterwards.
  *   4. punch ON: output is duplicated onto the paper tape
  *      (#punchtape__body grows).
  *   5. CCU OFF: the unit is powered down — a key press neither echoes
  *      nor reaches the guest (output stops growing).
+ *   6. Force PDP Output Uppercase: lower-case machine output prints as A-Z on
+ *      the paper while the punch keeps the raw byte, and toggling the CONFIG
+ *      option applies to the very next character (no reload).
  *
  * The teletype is the most hook-dense part of the emulator (keyboard ->
  * dlReceiveQueue, rendering -> g60printer onChar, prompt-waiting ->
@@ -324,28 +327,28 @@ async function main() {
         // ---- 2. On-screen keyboard: echo + guest executes ---------------
         // DIR SYS*.* prints ~250 chars (~8s at fast speed) — a real command
         // with a distinctive footer we can wait for on the paper.
-        const before = await paperCount(page, "Free blocks");
+        const before = await paperCount(page, "FREE BLOCKS");
         await typeOnKeyboard(page, "DIR SYS*.*");
         check("keyboard input echoed on the paper",
             await waitFor(async () =>
                 (await paperText(page)).indexOf("DIR SYS*.*") !== -1, 15000),
             "paper tail: " + JSON.stringify((await paperText(page)).slice(-80)));
-        check("guest executed the typed command (Free blocks printed again)",
+        check("guest executed the typed command (FREE BLOCKS printed again)",
             await waitFor(async () =>
-                (await paperCount(page, "Free blocks")) > before, 60000),
-            "Free blocks count: " + (await paperCount(page, "Free blocks")));
+                (await paperCount(page, "FREE BLOCKS")) > before, 60000),
+            "FREE BLOCKS count: " + (await paperCount(page, "FREE BLOCKS")));
 
         // ---- 3. BREAK key ----------------------------------------------
         const breakOk = await pressSpecial(page, "break");
         check("BREAK key exists on the keyboard", breakOk);
         await sleep(1000);
-        const before2 = await paperCount(page, "Free blocks");
+        const before2 = await paperCount(page, "FREE BLOCKS");
         await typeOnKeyboard(page, "DIR SYS*.*");
         check("machine keeps working after operator BREAK",
             await waitFor(async () =>
-                (await paperCount(page, "Free blocks")) > before2, 60000),
-            "Free blocks count after BREAK: " +
-                (await paperCount(page, "Free blocks")));
+                (await paperCount(page, "FREE BLOCKS")) > before2, 60000),
+            "FREE BLOCKS count after BREAK: " +
+                (await paperCount(page, "FREE BLOCKS")));
 
         // ---- 4. Punch ON: output duplicated onto the tape ---------------
         await page.evaluate(() => {
@@ -357,10 +360,10 @@ async function main() {
             const el = document.getElementById("punchtape__body");
             return el ? el.childElementCount : 0;
         });
-        const before3 = await paperCount(page, "Free blocks");
+        const before3 = await paperCount(page, "FREE BLOCKS");
         await typeOnKeyboard(page, "DIR SYS*.*");
         await waitFor(async () =>
-            (await paperCount(page, "Free blocks")) > before3, 60000);
+            (await paperCount(page, "FREE BLOCKS")) > before3, 60000);
         await sleep(1500); // let the punch catch up with the print queue
         const tapeAfter = await page.evaluate(() => {
             const el = document.getElementById("punchtape__body");
@@ -418,6 +421,57 @@ async function main() {
             const line = document.querySelector('[data-tty-mode="line"]');
             if (line) line.click();
         });
+
+        // ---- 7. Force PDP Output Uppercase (CONFIG, ON by default) ------
+        // A real Model 33 ASR print mechanism has no lower-case type: lower-case
+        // machine output must reach the PAPER as A-Z, while the punch keeps the
+        // raw byte (an ASR punch copies the received code). Toggling the option
+        // must apply to the very next character — no reload.
+        {
+            await page.evaluate(() => {
+                if (!window.ttyPunchEnabled) {
+                    const on = document.getElementById("punch-on");
+                    if (on) on.click();
+                }
+            });
+            await sleep(300);
+            const tapeBefore = await page.evaluate(() =>
+                window.paperTape.snapshot().buffer.length);
+            const paperLenB3 = (await paperText(page)).length;
+            await page.evaluate(() => window.g60ConsoleWrite(0x61)); // 'a'
+            await waitFor(async () =>
+                (await paperText(page)).length > paperLenB3, 10000);
+            await sleep(1500); // let the punch catch up with the print queue
+            const paperDelta = (await paperText(page)).slice(paperLenB3);
+            const tapeDelta = await page.evaluate((n) =>
+                window.paperTape.snapshot().buffer.slice(n), tapeBefore);
+            check("lower-case machine output prints as UPPER CASE on the paper",
+                paperDelta.indexOf("A") !== -1 && paperDelta.indexOf("a") === -1,
+                "paper delta: " + JSON.stringify(paperDelta));
+            check("the punch keeps the RAW lower-case byte",
+                tapeDelta.indexOf(0x61) !== -1 && tapeDelta.indexOf(0x41) === -1,
+                "tape delta: " + JSON.stringify(tapeDelta));
+
+            // Off: the next character reaches the paper as lower case (the
+            // option is read per printed glyph, so no reload is involved).
+            await page.evaluate(() => {
+                const cb = document.getElementById("config-forceUpperCaseOut");
+                if (cb) { cb.checked = false; cb.dispatchEvent(new Event("change")); }
+            });
+            const paperLenB4 = (await paperText(page)).length;
+            await page.evaluate(() => window.g60ConsoleWrite(0x62)); // 'b'
+            await waitFor(async () =>
+                (await paperText(page)).length > paperLenB4, 10000);
+            const paperDelta2 = (await paperText(page)).slice(paperLenB4);
+            check("the option applies immediately (off: 'b' stays lower case)",
+                paperDelta2.indexOf("b") !== -1,
+                "paper delta: " + JSON.stringify(paperDelta2));
+            // Restore the authentic default before any later inspection.
+            await page.evaluate(() => {
+                const cb = document.getElementById("config-forceUpperCaseOut");
+                if (cb) { cb.checked = true; cb.dispatchEvent(new Event("change")); }
+            });
+        }
     } finally {
         await browser.close();
         if (server) server.kill();

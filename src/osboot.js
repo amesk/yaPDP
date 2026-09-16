@@ -22,13 +22,23 @@
  *   autoLogin — true when steps include credentials up to a login prompt
  *   hardware  — the machine profile this OS wants, applied by quickboot.js
  *               before booting. Every scenario lists ALL keys explicitly so
- *               the profile is easy to edit:
- *                 console: "teletype" | "vt52" | null  (null = keep current)
- *                 printer: true | false | null          (null = keep current)
- *                 vt11:    true | false                 (never null — see below)
+ *               the profile is easy to edit, and the console type is ALWAYS
+ *               explicit so a boot can never be ambiguous:
+ *                 console: "teletype" | "vt52"       (never null)
+ *                 printer: true | false | null       (null = keep current)
+ *                 vt11:    true | false              (never null — see below)
+ *                 forceUpperCaseOut: true for a teletype console — a real
+ *                 Model 33 ASR has no lower-case type, so a loader that writes
+ *                 lower case cannot put those letters on the paper (see
+ *                 Config.forceUpperCaseOut); null for a VT52 console, which
+ *                 prints both cases (null = leave the user's setting alone).
  *               false means "the OS does not use this device, turn it off";
- *               null (console/printer) means "the OS does not care, leave the
- *               user's choice".
+ *               null (printer) means "the OS does not care, leave the user's
+ *               choice".
+ *
+ *               BSD 2.11 is the one guest that does NOT detect a teletype: it
+ *               prints lower case at a Model 33 ASR, so its scenario keeps a
+ *               VT52 console and leaves forceUpperCaseOut untouched.
  *
  * The VT11 vector display is used ONLY by Lunar Lander; every other scenario
  * sets vt11: false so the unused device is removed from the machine.
@@ -58,63 +68,76 @@ var OSBoot = (function () {
             paperTape: "DEC-11-AJPB-PB",
             steps: [{ send: "", waitFor: "*O " }], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: null, vt11: false } },
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
         { device: "odt11", label: "ODT-11X-V004A", boot: "BOOT PR",
             paperTape: "DEC-11-O2PA-PB", steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: null, vt11: false } },
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
         { device: "ed11", label: "ED-11-V004B", boot: "BOOT PR",
             paperTape: "ED-11-V004B-8K", steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: null, vt11: false } },
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
         // Lunar Lander draws the lander on the VT11 vector display, so the
         // wizard enables it and switches to the Display page after booting.
         { device: "lander", label: "Lunar Lander", boot: "BOOT PR",
             paperTape: "lander", page: "vt11", steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: null, vt11: true } },
+            hardware: { console: "teletype", printer: null, vt11: true,
+                forceUpperCaseOut: true } },
 
         // ---- Disk / tape images ---------------------------------------
         // Unix V5 — historically a Model 33 ASR teletype console.
         { device: "rk0", label: "Unix V5", boot: "boot rk0",
             steps: [{ send: "unix" }, { send: "root", waitFor: "login:" }],
             autoLogin: true,
-            hardware: { console: "teletype", printer: null, vt11: false } },
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
         // RT-11 — teletype console and an LP11 line printer.
         { device: "rk1", label: "RT-11 v4.0", boot: "BOOT RK1",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: true, vt11: false } },
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // RT-11 variant with a VT52 terminal as the operator console — same
         // rk1.dsk image, different console profile (url/bootDev reuse the
         // underlying device so mounting and the boot command stay correct).
+        // A VT52 prints both cases, so forceUpperCaseOut is not applied.
         { device: "rk1vt52", label: "RT-11 v4.0 (VT52 console)", boot: "BOOT RK1",
             bootDev: "rk1", url: "rk1.dsk", steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "vt52", printer: true, vt11: false } },
-        // RSTS — LP11 line printer; console is the user's choice. At the
-        // "Option:" prompt "START" begins timesharing (an empty CR is
-        // rejected; the historic ^J answer starts it, but the wizard sends
-        // CR, so START is the reliable answer).
+            hardware: { console: "vt52", printer: true, vt11: false,
+                forceUpperCaseOut: null } },
+        // RSTS — LP11 line printer; historically a Model 33 ASR teletype
+        // console. At the "Option:" prompt "START" begins timesharing (an
+        // empty CR is rejected; the historic ^J answer starts it, but the
+        // wizard sends CR, so START is the reliable answer).
         { device: "rk2", label: "RSTS V06C-03", boot: "BOOT RK2",
             steps: [{ send: "START", waitFor: "Option:" }], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: true, vt11: false } },
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // XXDP — diagnostics, no special requirements.
         { device: "rk3", label: "XXDP (diagnostics)", boot: "BOOT RK3",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: null, vt11: false } },
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
         // RT-11 3B Distribution — teletype console and an LP11 line printer.
         { device: "rk4", label: "RT-11 3B Distribution", boot: "BOOT RK4",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: true, vt11: false } },
-        // RSTS 4B-17 rollin tape — LP11 printer; restore procedure is manual.
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
+        // RSTS 4B-17 rollin tape — historically a teletype console; LP11
+        // printer. The restore procedure is manual.
         { device: "tm0", label: "RSTS 4B-17 (tape)", boot: "BOOT TM0",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: true, vt11: false } },
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // BSD 2.9 — historically a teletype console. The kernel boots into
         // single-user ("#" prompt) before init; Ctrl-D must be sent AFTER
         // the "#" appears, otherwise it is lost in the bootloader/kernel.
@@ -124,24 +147,28 @@ var OSBoot = (function () {
             steps: [{ send: "rl(0,0)rlunix" }, { send: "", waitFor: "#" },
                 { ctrlD: true }, { send: "root", waitFor: "login:", wait: 3000 }],
             autoLogin: true,
-            hardware: { console: "teletype", printer: true, vt11: false } },
-        // RSX-11M — LP11 line printer; console is the user's choice. The
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
+        // RSX-11M — LP11 line printer; historically a teletype console. The
         // disk image autostarts: MCR runs the system startup on its own and
         // stops at the date/time prompt, so no typed steps are needed.
         { device: "rl1", label: "RSX-11M v3.2", boot: "BOOT RL1",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: true, vt11: false } },
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // RSTS/E v7.0 — LP11 line printer. Same "Option:" flow as rk2.
         { device: "rl2", label: "RSTS/E v7.0", boot: "BOOT RL2",
             steps: [{ send: "START", waitFor: "Option:" }], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: true, vt11: false } },
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // XXDP (extended) — diagnostics, no special requirements.
         { device: "rl3", label: "XXDP (extended)", boot: "BOOT RL3",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: null, vt11: false } },
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
         // ULTRIX-11 — historically a teletype console. The kernel boots into
         // single-user ("#") on its own. NOTE: Ctrl-D from here panics the
         // kernel ('panic: trap' during multi-user init, pc=136250) — an
@@ -151,8 +178,11 @@ var OSBoot = (function () {
         { device: "rp0", label: "ULTRIX-11 V3.1", boot: "boot rp0",
             steps: [{ ctrlD: true }, { send: "root", waitFor: "login:" }],
             autoLogin: true,
-            hardware: { console: "teletype", printer: null, vt11: false } },
-        // BSD 2.11 — historically a teletype console. The loader prints a lot
+            hardware: { console: "teletype", printer: null, vt11: false,
+                forceUpperCaseOut: true } },
+        // BSD 2.11 — the ONE guest that does not detect a teletype console:
+        // its loader prints lower case, so the scenario keeps a VT52 console
+        // and leaves forceUpperCaseOut untouched. The loader prints a lot
         // before "login:" and waits at a "Press <CR> to boot, or any other key
         // to abort:" countdown; an Enter sent as soon as that prompt appears
         // skips the countdown and starts the kernel, then the login waits for
@@ -161,24 +191,28 @@ var OSBoot = (function () {
             steps: [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
                 { send: "root", waitFor: "login:" }],
             autoLogin: true,
-            hardware: { console: "vt52", printer: true, vt11: false } },
-        // RSTS/E v9.6 — LP11 line printer.
+            hardware: { console: "vt52", printer: true, vt11: false,
+                forceUpperCaseOut: null } },
+        // RSTS/E v9.6 — LP11 line printer; historically a teletype console.
         { device: "rp2", label: "RSTS/E v9.6", boot: "BOOT RP2",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: true, vt11: false } },
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // RSX-11M v4.6 — LP11 line printer; VT52 console. The disk image
         // autostarts (MCR runs the startup and stops at the date/time
         // prompt), so no typed steps are needed.
         { device: "rp3", label: "RSX-11M v4.6", boot: "BOOT RP3",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "vt52", printer: true, vt11: false } },
-        // RSTS/E v10.1 — LP11 line printer.
+            hardware: { console: "vt52", printer: true, vt11: false,
+                forceUpperCaseOut: null } },
+        // RSTS/E v10.1 — LP11 line printer; historically a teletype console.
         { device: "rp4", label: "RSTS/E v10.1", boot: "BOOT RP4",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: null, printer: true, vt11: false } }
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } }
     ];
 
     // Logical media URL for a device (tape vs disk), matching onboarding.js.

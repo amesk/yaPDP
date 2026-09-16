@@ -269,6 +269,7 @@ export const CONFIG_TABS_DATA: ConfigTabEntry[] = [
       { label: 'Printer width', desc: '72/80/100/132 columns for the LP11 printer page.' },
       { label: 'Teletype speed', desc: 'Authentic (real 110-baud Model 33 ASR, ~10 chars/sec) or fast development pace.' },
       { label: 'Upper Case Only', desc: 'Send letters from physical keyboard in upper case (authentic Model 33 ASR); off by default so lower-case passes through.' },
+      { label: 'Force PDP Output Uppercase', desc: 'Print machine output in upper case (authentic Model 33 ASR, which has no lower-case type); on by default — the paper tape keeps the raw code, and a VT52 console is not affected.' },
     ],
     itemsRu: [
       { label: 'Консольный терминал', desc: 'Консоль оператора (tty0): телетайп Model 33 ASR или видеотерминал DECscope VT52.' },
@@ -279,6 +280,7 @@ export const CONFIG_TABS_DATA: ConfigTabEntry[] = [
       { label: 'Ширина бумаги принтера', desc: '72/80/100/132 колонки для страницы принтера LP11.' },
       { label: 'Скорость телетайпа', desc: 'Аутентичная (настоящие 110 бод, ~10 симв/сек) или ускоренная для быстрой разработки.' },
       { label: 'Только заглавные (Upper Case)', desc: 'Отправлять с физической клавиатуры буквы в верхнем регистре; по умолчанию выключено для строчных букв Unix.' },
+      { label: 'Force PDP Output Uppercase', desc: 'Печатать вывод PDP в верхнем регистре (настоящий Model 33 ASR не имеет строчных литер); включено по умолчанию — перфолента хранит исходный код, а на VT52 опция не влияет.' },
     ],
   },
   {

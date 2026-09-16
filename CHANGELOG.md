@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A **Force PDP Output Uppercase** CONFIG option (Equipment tab, on by default)
+  prints the console teletype's output in upper case: a real Model 33 ASR has no
+  lower-case type, so a loader that writes lower case cannot put those letters on
+  the paper. The punched tape keeps the raw code — reading such a tape in LOCAL
+  prints upper case while LINE delivers the original lower case to the machine —
+  and a VT52 console, which prints both cases, is unaffected. Applied
+  immediately. (`src/config.js`, `src/g60printer.js`, `src/pdp11-app.js`,
+  `pdp11.html`)
+
 - A floating **VT52 zoom** button hides the cabinet and grows the tube to the
   largest 4:3 box the window allows, clearing the corner controls. The state is
   per terminal (console TT0, TTY 1, TTY 2) and persisted between sessions; the
@@ -18,6 +27,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pdp11.html`)
 
 ### Changed
+
+- **The quick-boot profiles state the console type explicitly, and teletype
+  scenarios request the new force-upper output.** `src/osboot.js` no longer
+  leaves the console to the operator for the RSTS, RSTS/E, RSX-11M and XXDP
+  scenarios (each now names `teletype` or `vt52`), and every teletype scenario
+  carries the new `forceUpperCaseOut` profile key. BSD 2.11 keeps a VT52 console:
+  it is the one guest whose loader does not detect a teletype and prints lower
+  case. The flag is applied live by the wizard — it never triggers a reload
+  (`QuickBoot.liveProfile()`). (`src/osboot.js`, `src/quickboot.js`)
 
 - **The two slow headless BSD boot checks moved to the e2e suites.**
   `tests/bsd-boot.test.js` → `tests/e2e-bsd-boot.js` and

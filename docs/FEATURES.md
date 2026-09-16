@@ -47,7 +47,13 @@ punches the all-holes DEL row on the tape), HERE IS (answerback), REPT
 (auto-repeat) and BREAK (asserts the console DL11 break condition). Upper Case
 Only: the on-screen keycaps send only upper-case letters; the physical
 keyboard folds a-z to A-Z when the **Upper Case Only** CONFIG option is enabled
-(off by default, so 2.11 BSD receives lower case) — complete with paper
+(off by default, so 2.11 BSD receives lower case). **Force PDP Output
+Uppercase** (on by default) folds the *printed* glyph, because a real Model 33
+ASR print mechanism has no lower-case type — the paper shows A-Z even for a
+loader that writes lower case, while the punch keeps the raw byte (so reading
+such a tape in LOCAL prints upper case and in LINE delivers the original lower
+case to the machine); a VT52 console, which prints both cases, is unaffected.
+Complete with paper
 printing, keypunch sounds, line-feed whirs, and authentic nroff/man overstrike
 (^H) rendering: re-printing the same glyph gives bold, underscores give
 underline, and striking a *different* glyph (e.g. a 2.11 BSD boot countdown)
@@ -241,8 +247,8 @@ fast source-code entry), the ambient PDP-11 power-supply hum and fan noise while
 the machine is on, and the PDP-11 machine-room photo backdrop behind the pages.
 The LP11 line printer defaults to the authentic 132-column width.
 The form is split into four tabs — **Equipment** (console terminal, user
-terminals, LP11 printer, VT11 display, print widths, teletype speed and the
-Upper Case Only keyboard flag),
+terminals, LP11 printer, VT11 display, print widths, teletype speed, the
+Upper Case Only keyboard flag and the Force PDP Output Uppercase teletype flag),
 **Look & sound** (key click, reverse video, CRT effects, machine hum, photo
 backdrop), **Behaviour** (reboot confirmation) and **Development** (VT52 text
 mode) — with the **Apply** and **Restore defaults** actions in a bar below the
@@ -250,7 +256,8 @@ tabs.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
 hardware matches the configuration; print widths, the teletype speed, the Upper
-Case Only flag, the key click, the reverse video, the CRT effects, the VT52 text
+Case Only and Force PDP Output Uppercase flags, the key click, the reverse
+video, the CRT effects, the VT52 text
 mode, the machine hum and the photo backdrop apply immediately. A **Restore defaults** button fills the
 form with factory values (committed by **Apply**).
 The hum is synthesized with Web Audio on its own audio channel, so it never

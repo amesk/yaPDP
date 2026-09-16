@@ -76,6 +76,7 @@ function run() {
             printerWidth: 132,
             teletypeSpeed: "authentic",
             upperCaseOnly: false,
+            forceUpperCaseOut: true,
             keyClick: false,
             vt52ReverseVideo: false,
             vt52TextMode: false,
@@ -145,6 +146,13 @@ function run() {
         assert.strictEqual(C.validate({}).upperCaseOnly, false);
         assert.strictEqual(C.validate({ upperCaseOnly: 1 }).upperCaseOnly, true);
         assert.strictEqual(C.validate({ upperCaseOnly: 0 }).upperCaseOnly, false);
+        // forceUpperCaseOut (printed glyph folded to upper case; the punch keeps
+        // the raw code) is ON by default: absent -> true (authentic Model 33
+        // ASR), and an explicit value is coerced to boolean.
+        assert.strictEqual(C.validate({}).forceUpperCaseOut, true);
+        assert.strictEqual(C.validate({ forceUpperCaseOut: 1 }).forceUpperCaseOut, true);
+        assert.strictEqual(C.validate({ forceUpperCaseOut: 0 }).forceUpperCaseOut, false);
+        assert.strictEqual(C.validate({ forceUpperCaseOut: "yes" }).forceUpperCaseOut, true);
         // vt52ReverseVideo (historical VT52 reverse video) coerced to boolean.
         assert.strictEqual(C.validate({ vt52ReverseVideo: 1 }).vt52ReverseVideo, true);
         assert.strictEqual(C.validate({ vt52ReverseVideo: 0 }).vt52ReverseVideo, false);
@@ -217,6 +225,7 @@ function run() {
             printerWidth: 80,
             teletypeSpeed: "fast",
             upperCaseOnly: true,
+            forceUpperCaseOut: true,
             keyClick: true,
             vt52ReverseVideo: true,
             vt52TextMode: true,

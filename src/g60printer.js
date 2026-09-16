@@ -184,6 +184,14 @@
      *                            carriage keeps its column (Model 33 ASR); when
      *                            false LF snaps the head back to column 0 (LP11
      *                            line printer, no travelling carriage).
+     *   options.foldGlyph(ch)   - optional mapping applied to the PRINTED
+     *                            glyph only, AFTER onChar() has recorded the
+     *                            raw byte: a real Model 33 ASR print mechanism
+     *                            has no lower-case type, so the paper shows
+     *                            upper case while the punch copies the code
+     *                            the machine actually sent (CONFIG
+     *                            "Force PDP Output Uppercase"). The LP11 line
+     *                            printer omits it — it prints both cases.
      */
     window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
@@ -232,6 +240,10 @@
         // punch) omits it. Control bytes (CR/LF/BS/TAB/FF) are punched from
         // their dedicated handlers so every printed byte lands on the tape.
         var onChar = (typeof opts.onChar === 'function') ? opts.onChar : null;
+        // Printed-glyph mapping (see options.foldGlyph above). Called for every
+        // character of both render paths, so switching the CONFIG option mid-run
+        // takes effect on the very next character.
+        var foldGlyph = (typeof opts.foldGlyph === 'function') ? opts.foldGlyph : null;
         // Form feed (FF, 0x0C): a real line printer advances the paper to the
         // top of the next page. On the continuous G60 paper this is rendered
         // as `pageLength` empty lines (filling the rest of the sheet) followed
@@ -495,7 +507,12 @@
          * This is the actual rendering logic, separated from the pacing queue.
          */
         function doPrintChar(c) {
+            // Punch/record the RAW byte first: an ASR punch copies the received
+            // code, not the printed glyph (so a lower-case byte lands on the tape
+            // as lower case even while the paper prints it in upper case).
             if (onChar) onChar(c.charCodeAt(0));
+            // ...then fold the glyph the print mechanism is about to strike.
+            if (foldGlyph) c = foldGlyph(c);
             if (!currentLineEl) {
                 currentLineEl = document.createElement('p');
                 printArea.appendChild(currentLineEl);
@@ -997,7 +1014,10 @@
                     break;
                 }
                 if (c === '') break;
+                // Same order as doPrintChar: the raw byte is recorded, then the
+                // printed glyph is folded (see opts.foldGlyph).
                 if (onChar) onChar(c.charCodeAt(0));
+                if (foldGlyph) c = foldGlyph(c);
                 space = (c === ' ');
                 el = document.createElement('span');
                 if (!space && pos > 2 && ++missCnt > missPause && Math.random() < 0.05) {

@@ -81,6 +81,26 @@ Or the e2e scenario: `node /tmp/ctrld-probe.js rp0` (prototype script).
 
 ---
 
+## BSD 2.11 (rp1) is booted with a VT52 console, not a teletype
+
+**Status:** accepted limitation, not a bug.
+
+The quick-boot scenario for BSD 2.11 declares `console: "vt52"` even though the
+guest historically ran on a Model 33 ASR. Unlike Unix V5 and the other DEC
+guests, the 2.11 BSD loader does not detect a teletype console: it prints lower
+case, which a real Model 33 ASR cannot print. Booting it on the emulated
+teletype therefore means every lower-case byte reaches the paper folded to A-Z
+by **Force PDP Output Uppercase** (`Config.forceUpperCaseOut`), while the guest
+still believes it is writing lower case — the console output and the guest's own
+idea of it drift apart.
+
+The scenario sidesteps this by keeping the VT52 console (which prints both
+cases) and leaving `forceUpperCaseOut` untouched, so the emulator shows exactly
+what the loader wrote. It is the only guest with that exception in
+[`src/osboot.js`](../src/osboot.js).
+
+---
+
 ## (History) BSD 2.9 (rl0): input after `login:` was lost
 
 **Status:** resolved — not an emulator bug.
