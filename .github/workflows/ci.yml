@@ -8,6 +8,12 @@
 #             * e2e-snapshots           (front-panel/teletype screenshot set)
 #             * e2e-osboot              (real guest OS boots: Unix V5, RT-11,
 #                                        BSD 2.11, BASIC-11)
+#             * e2e-teletype            (Model 33 ASR console mechanics: paper
+#                                        render, punch, BREAK, CCU, and the
+#                                        Force PDP Output Uppercase fold)
+#             * e2e-teletype-tape       (ASR tape reader/punch: tape-to-tape
+#                                        copy, DC2/DC4, X-ON/X-OFF, HERE IS,
+#                                        keyboard layout, byte-exact .ptap)
 #           plus the headless full-machine shakeouts (no browser needed):
 #             * e2e-bsd-boot            (BSD 2.11 headless boot to login:)
 #             * e2e-bsd29-boot          (BSD 2.9 headless boot to a root shell)
@@ -52,7 +58,7 @@ jobs:
         run: npm test
 
   e2e:
-    name: E2E (quickboot / snapshots / osboot)
+    name: E2E (quickboot / snapshots / osboot / teletype)
     runs-on: ubuntu-latest
     needs: unit
     steps:
@@ -90,6 +96,12 @@ jobs:
 
       - name: e2e — guest OS boots (Unix V5, RT-11, BSD 2.11, BASIC-11)
         run: node tests/e2e-osboot.js
+
+      - name: e2e — Model 33 ASR teletype mechanics (paper, punch, CCU)
+        run: node tests/e2e-teletype.js
+
+      - name: e2e — Model 33 ASR paper tape (reader/punch, DC2/DC4, X-ON/X-OFF)
+        run: node tests/e2e-teletype-tape.js
 
       - name: e2e — BSD 2.11 headless boot (full-machine shakeout)
         run: node tests/e2e-bsd-boot.js
