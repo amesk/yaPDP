@@ -62,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   window resize: leaving zoom no longer clips the lower half of the cabinet, and
   entering zoom no longer draws the maximised screen at the old cabinet scale.
   (`src/pdp11-app.js`)
+- The VT52 tube is projected onto the artwork's Screen marker: the stylesheet's
+  px offsets include the Markers layer's own translate and agree with
+  `assets/vt52.svg`, and `tests/vt52-svg-backdrop.test.js` pins all four numbers
+  to the artwork, so a re-save in Inkscape cannot leave the canvas drifting off
+  the drawn glass. (`assets/vt52.svg`, `css/pdp11.css`,
+  `tests/vt52-svg-backdrop.test.js`)
 - Manual screenshots are regenerated for the new teletype artwork, written to
   both the repo source and the landing mirror. (`tools/screenshots-manual.js`)
 - `headless-term` batch runs keep the whole guest output and execute the first

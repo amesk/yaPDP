@@ -228,6 +228,67 @@ function run() {
       "the fit must measure the box's real top (the page centres its content)");
   }
 
+  // --- 8. Leaving zoom re-fits the cabinet at once -------------------------
+  {
+    // Unzooming changes the TERMINAL's own size, not the page's box, so the
+    // ResizeObserver in installVT52Scaling() (it watches the page) never fires.
+    // Without an explicit re-fit the cabinet came back at its natural 1074x830
+    // size, unscaled, and the page's overflow: hidden clipped its lower half
+    // until the next window resize. The fit is therefore addressed per page id
+    // through the registry installVT52Scaling() publishes.
+    assert.ok(/var VT52_FIT = \{\};/.test(app),
+      "installVT52Scaling must publish its per-page fit callbacks in VT52_FIT");
+    assert.ok(/VT52_FIT\[pageId\] = apply;/.test(app),
+      "installVT52Scaling must register each page's fit callback");
+    assert.ok(/function vt52Rescale\(rig\)/.test(app),
+      "the app must expose a vt52Rescale(rig) re-fit helper");
+    assert.ok(/window\.vt52Rescale = vt52Rescale;/.test(app),
+      "vt52Rescale must be published on window for the zoom module");
+    // The old hook was never defined anywhere — a silent no-op, which is how
+    // the stale (clipped) geometry survived. No CALL may come back.
+    assert.strictEqual(/window\.__vt52Rescale\s*\(/.test(app), false,
+      "the dead window.__vt52Rescale() call must be gone");
+
+    const unzoom = /function vt52Unzoom\(rig\)\s*\{([\s\S]*?)\n\}/.exec(app);
+    assert.ok(unzoom, "vt52Unzoom body not found");
+    assert.ok(/window\.vt52Rescale\(rig\)/.test(unzoom[1]),
+      "vt52Unzoom must re-fit the cabinet it just uncovered");
+
+    // ... and it must be the rig's OWN page: TTY 1 must never be fitted with
+    // the console page's callback.
+    const rescale = /function vt52Rescale\(rig\)\s*\{([\s\S]*?)\n\}/.exec(app);
+    assert.ok(rescale, "vt52Rescale body not found");
+    assert.ok(/rig\.closest\('\.page'\)/.test(rescale[1]),
+      "vt52Rescale must resolve the page that owns the rig");
+    assert.ok(/VT52_FIT\[page\.id\]/.test(rescale[1]),
+      "vt52Rescale must look the fit callback up by page id");
+  }
+
+  // --- 9. Entering zoom re-fits as well (the fit is not one-directional) ----
+  {
+    // The cabinet's scale and its reserved container height were computed for
+    // the NATURAL cabinet. Zoom replaces the box with a window-sized one but
+    // moves neither the page's box (so the ResizeObserver stays silent) nor the
+    // stale scale: the maximised tube was drawn at the old cabinet scale (69% on
+    // a 1400x800 window) and looked needlessly small until a window resize.
+    const zoomBody = /function vt52Zoom\(rig\)\s*\{([\s\S]*?)\n\}/.exec(app);
+    assert.ok(zoomBody, "vt52Zoom body not found");
+    assert.ok(/window\.vt52Rescale\(rig\)/.test(zoomBody[1]),
+      "vt52Zoom must re-fit after writing the zoomed geometry");
+
+    // ... and a re-fit may only measure the NATURAL size: the reservation left
+    // by the previous pass has to be cleared first, or statusPad reads it back
+    // as the natural content height and the reservation drifts.
+    const apply = /function apply\(\)\s*\{([\s\S]*?)\n    \}/.exec(app);
+    assert.ok(apply, "installVT52Scaling's apply() body not found");
+    const body = apply[1];
+    assert.ok(/container\.style\.height = '';/.test(body),
+      "apply() must clear the reserved height before measuring");
+    assert.ok(body.indexOf("container.style.height = ''") <
+      body.indexOf("container.offsetHeight"),
+      "the reserved height must be cleared BEFORE statusPad is measured");
+  }
+
   console.log("vt52-zoom: all tests passed");
 }
 

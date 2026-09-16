@@ -2118,6 +2118,14 @@ function vt52Zoom(rig) {
     tube.style.width = (u * VT52_SCREEN_W).toFixed(2) + 'px';
     tube.style.height = (u * VT52_SCREEN_H).toFixed(2) + 'px';
   }
+  // Hand the fit back to the scaler (see vt52Rescale below). The cabinet's
+  // transform: scale(s) and the container height it reserved were both computed
+  // for the NATURAL cabinet, and zoom moves neither the page's box (so the
+  // ResizeObserver in installVT52Scaling() stays silent) nor them: the box just
+  // written — already sized to the window — used to be multiplied by the old s,
+  // so the maximised screen came out needlessly small (69% on a 1400x800
+  // window) until something else happened to re-fit it.
+  if (typeof window.vt52Rescale === 'function') window.vt52Rescale(rig);
 }
 
 function vt52Unzoom(rig) {
@@ -2125,13 +2133,19 @@ function vt52Unzoom(rig) {
   rig.classList.remove('vt52-zoomed');
   // Drop the inline size so the artwork box rule applies again, hand the unit
   // back to the cabinet fit (syncVt52Unit re-derives it from the artwork) and
-  // let installVT52Scaling() re-fit the whole cabinet.
+  // re-fit the cabinet RIGHT HERE (see vt52Rescale below).
   rig.style.width = '';
   rig.style.height = '';
   var tube = rig.querySelector('.vt52-crt');
   if (tube) { tube.style.width = ''; tube.style.height = ''; }
   if (typeof window.vt52SyncUnit === 'function') window.vt52SyncUnit();
-  if (typeof window.__vt52Rescale === 'function') window.__vt52Rescale();
+  // Clearing the inline zoom size changes the TERMINAL's geometry, not the
+  // page's box, so the ResizeObserver installed by installVT52Scaling() (it
+  // watches the page) never fires: the cabinet came back at its natural
+  // 1074x830 size, unscaled, and the page's overflow: hidden clipped its lower
+  // half until the next window resize. The old call went to
+  // window.__vt52Rescale, which was never defined anywhere — a silent no-op.
+  if (typeof window.vt52Rescale === 'function') window.vt52Rescale(rig);
 }
 
 // ---- Proportional scaling of the VT52 cabinet ----
@@ -2152,6 +2166,13 @@ var VT52_GUTTER_SIDE = 18;
 var VT52_GUTTER_TOP = 62;    // 54px of controls + 8px of air
 var VT52_GUTTER_BOTTOM = 62;
 
+// The fit callback of each VT52 page, keyed by page id and published by
+// installVT52Scaling(). The zoom toggle changes a terminal's own size without
+// moving the page's box, so it cannot wait for that function's ResizeObserver
+// and must not install a second one (they would stack): it calls vt52Rescale()
+// instead.
+var VT52_FIT = {};
+
 function installVT52Scaling() {
   if (typeof ResizeObserver === 'undefined') return;
 
@@ -2163,8 +2184,14 @@ function installVT52Scaling() {
     if (!container || !terminal) return;
 
     function apply() {
-      // Clear the transform to measure natural (unscaled) geometry.
+      // Clear the transform AND the reserved height before measuring: the height
+      // written by the previous pass (natH*s + statusPad) would otherwise be
+      // read back as if it were the natural content height, so statusPad (and
+      // therefore the reservation) drifted whenever the terminal's own size
+      // changed — the zoom toggle is exactly that case. Same trap the LP11
+      // scaler documents below.
       terminal.style.transform = '';
+      container.style.height = '';
       var natW = terminal.offsetWidth;
       var natH = terminal.offsetHeight;
       if (!natW || !natH) return; // hidden page — skip until visible
@@ -2187,10 +2214,21 @@ function installVT52Scaling() {
       container.style.height = (natH * s + statusPad) + 'px';
     }
 
+    VT52_FIT[pageId] = apply;
     apply();
     var ro = new ResizeObserver(apply);
     ro.observe(page);
   });
+}
+
+// Re-run the cabinet fit for the page that owns a rig. Called by vt52Unzoom()
+// once the inline zoom geometry is gone: the cabinet is back at its natural
+// size and only the fit knows the scale that keeps it inside the page.
+function vt52Rescale(rig) {
+  if (!rig || typeof rig.closest !== 'function') return;
+  var page = rig.closest('.page');
+  var apply = page ? VT52_FIT[page.id] : null;
+  if (typeof apply === 'function') apply();
 }
 
 // ---- Proportional scaling of the LP11 printer cabinet ----
@@ -3444,6 +3482,7 @@ if (__appCfg && __appCfg.userTerminals >= 2) {
 installVT52Scaling();
 window.vt52Zoom = vt52Zoom;
 window.vt52Unzoom = vt52Unzoom;
+window.vt52Rescale = vt52Rescale;
 
 // Read the artwork's Screen marker and push it into the --vt52-* variables of
 // every .vt52-rig: assets/vt52.svg is the single source of truth for the tube

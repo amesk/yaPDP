@@ -1963,8 +1963,12 @@ body {
        672x504 bitmap and is scaled down with the cabinet. */
     --vt52-u: 3.779528;
     /* ---- Screen marker (x / y / w / h, SVG units) ------------------- */
-    --vt52-screen-x: 2.320500;
-    --vt52-screen-y: 25.766000;
+    /* Copied from the marker rect in assets/vt52.svg. The artwork is the source
+       of truth — the runtime parser overwrites these four the moment the fetch
+       lands — so the numbers here only have to keep a fetch-less build on the
+       very same tube. */
+    --vt52-screen-x: 1.7913332;
+    --vt52-screen-y: 24.707666;
     --vt52-screen-w: 112.852000;
     --vt52-screen-h: 84.639000;
     /* The artwork box: its own aspect (the cropped viewBox) at --vt52-u px per
@@ -2071,15 +2075,20 @@ body.reverse-video .vt52-layer-GlassInverted {
 
 .vt52-crt {
     /* Marker arithmetic done ONCE, in px: left/top/width/height are the Screen
-       marker (x/y/w/h) times --vt52-u (6.12987 px per SVG unit). Written as
+       marker (x/y/w/h) times --vt52-u (3.779528 px per SVG unit — the 96dpi
+       millimetre the artwork is authored in), plus the offset the Markers
+       layer's own translate() contributes: the marker rect sits INSIDE that
+       layer, so the layer shift is part of where the tube lands. Written as
        numbers for the same reason as .vt52-rig's box: a calc() over the marker
        variables resolves to 0 until the artwork fetch lands, and left/top would
        silently collapse to 0 (the tube then sat in the corner instead of the
-       glass). tests/vt52-svg-backdrop.test.js pins these numbers to the artwork
+       glass). Nothing rewrites them at runtime either, so a nudge of the marker
+       in Inkscape has to be carried over HERE as well:
+       tests/vt52-svg-backdrop.test.js pins these four numbers to the artwork
        and to --vt52-u, so they cannot drift apart. */
     position: absolute;
-    left: 154.2896px;
-    top: 194.4147px;
+    left: 152.2896px;
+    top: 190.4147px;
     /* The tube is sized by the SCREEN MARKER, not by the canvas bitmap: the
        artwork dictates where the glass is and how big it is, so the box is the
        marker at --vt52-u px per unit. The canvas keeps its native 672x504

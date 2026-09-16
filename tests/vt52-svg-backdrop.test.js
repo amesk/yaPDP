@@ -93,6 +93,39 @@ function rigVars(css) {
   return vars;
 }
 
+// The declarations of a TOP-LEVEL rule whose selector starts its own line. A
+// rule that merely CONTAINS the selector as a descendant (".vt52-zoomed
+// .vt52-crt" carries the same tail) must not be picked up by a naive search.
+function ruleBody(css, selector) {
+  let idx = -1;
+  for (let at = css.indexOf(selector + " {"); at !== -1; at = css.indexOf(selector + " {", at + 1)) {
+    const lineStart = css.lastIndexOf("\n", at) + 1;
+    if (css.slice(lineStart, at).trim() === "") idx = at; // selector starts the line
+  }
+  assert.ok(idx !== -1, "css/pdp11.css must define the " + selector + " rule");
+  const open = css.indexOf("{", idx);
+  let depth = 0;
+  for (let i = open; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}") {
+      depth--;
+      if (depth === 0) return css.slice(open + 1, i);
+    }
+  }
+  throw new Error("unbalanced braces in the " + selector + " rule");
+}
+
+// The Markers layer's own translate(). The Screen rect sits INSIDE that layer,
+// so the layer shift is part of where the tube lands: the stylesheet adds it to
+// the marker x/y by hand (the runtime parser reads the plain rect only, and the
+// rect must stay transform-free — see the "PLAIN rect" assertion).
+function markersTranslate(svg) {
+  const m = /inkscape:label="Markers"[\s\S]{0,300}?transform="translate\(([-0-9.eE]+)[, ]+([-0-9.eE]+)\)"/.exec(svg);
+  assert.ok(m, "the Markers layer must carry a translate(): the Screen rect is " +
+    "placed inside it and the tube's px offsets include that shift");
+  return { x: parseFloat(m[1]), y: parseFloat(m[2]) };
+}
+
 function run() {
   const svg = fs.readFileSync(SVG_PATH, "utf8");
   const css = fs.readFileSync(CSS_PATH, "utf8");
@@ -186,6 +219,39 @@ function run() {
       "--vt52-screen-w must match the Screen marker width");
     close(parseFloat(vars["--vt52-screen-h"]), attr(rect, "height"),
       "--vt52-screen-h must match the Screen marker height");
+  }
+
+  // --- ... and the TUBE actually follows those numbers ---------------------
+  // .vt52-crt is written in PRE-MULTIPLIED px, not as a calc() over the marker
+  // variables: a calc() resolves to 0 while the artwork is still being fetched,
+  // which once collapsed the tube into the corner. Nothing rewrites them at
+  // runtime either, so the stylesheet IS the tube's geometry — a nudge of the
+  // Screen marker in Inkscape must be carried over to these four numbers, or
+  // the canvas drifts off the drawn glass while every check stays green. The
+  // tolerance is the one the 4-decimal px literals deserve (0.01px).
+  {
+    const rect = screenRect(svg);
+    const layer = markersTranslate(svg);
+    const u = parseFloat(vars["--vt52-u"]);
+    assert.ok(Number.isFinite(u) && u > 0, "--vt52-u must be a positive px size");
+    // Comments stripped first: they mention left/top/width/height by name.
+    const body = ruleBody(css, ".vt52-crt").replace(/\/\*[\s\S]*?\*\//g, " ");
+    const px = (name) => {
+      const m = new RegExp("(?:^|;)\\s*" + name + "\\s*:\\s*([-0-9.eE]+)px").exec(body);
+      assert.ok(m, ".vt52-crt must carry a numeric " + name + " in px:\n" + body);
+      return parseFloat(m[1]);
+    };
+    const closePx = (actual, expected, message) =>
+      assert.ok(Math.abs(actual - expected) < 0.01,
+        message + " (expected " + expected + ", got " + actual + ")");
+    closePx(px("left"), (attr(rect, "x") + layer.x) * u,
+      ".vt52-crt left must be the Screen marker x (inside its layer) at --vt52-u");
+    closePx(px("top"), (attr(rect, "y") + layer.y) * u,
+      ".vt52-crt top must be the Screen marker y (inside its layer) at --vt52-u");
+    closePx(px("width"), attr(rect, "width") * u,
+      ".vt52-crt width must be the Screen marker width at --vt52-u");
+    closePx(px("height"), attr(rect, "height") * u,
+      ".vt52-crt height must be the Screen marker height at --vt52-u");
   }
 
   // --- The backdrop draws the artwork, and never steals a click ------------
