@@ -83,11 +83,25 @@ function run() {
 
         // Every scenario declares its hardware profile explicitly, with all
         // keys present (null = leave the user's current setting untouched).
+        // The console type is ALWAYS explicit — a null console would let two
+        // different consoles share one scenario key, which is exactly the
+        // ambiguity the explicit "teletype"/"vt52" values remove.
         OSBoot.BOOT_SCENARIOS.forEach((s) => {
             assert.ok(s.hardware, s.device + " should declare a hardware profile");
             assert.ok("console" in s.hardware, s.device + " hardware.console");
             assert.ok("printer" in s.hardware, s.device + " hardware.printer");
             assert.ok("vt11" in s.hardware, s.device + " hardware.vt11");
+            assert.ok("forceUpperCaseOut" in s.hardware,
+                s.device + " hardware.forceUpperCaseOut");
+            assert.ok(s.hardware.console === "teletype" || s.hardware.console === "vt52",
+                s.device + " must declare an explicit console type, got " +
+                JSON.stringify(s.hardware.console));
+            // A teletype console forces the printed glyph upper case (a real
+            // Model 33 ASR has no lower-case type); a VT52 prints both cases,
+            // so the flag is left untouched there.
+            assert.strictEqual(s.hardware.forceUpperCaseOut,
+                s.hardware.console === "teletype" ? true : null,
+                s.device + " force-upper must follow its console type");
         });
         assert.strictEqual(OSBoot.scenarioFor("rk0").hardware.console, "teletype",
             "Unix V5 should force a teletype console");
@@ -100,14 +114,23 @@ function run() {
         assert.strictEqual(rk1v.hardware.console, "vt52",
             "RT-11 VT52 variant should use a VT52 console");
         assert.strictEqual(rk1v.hardware.vt11, false);
+        // BSD 2.11 is the ONE guest that does not detect a teletype console
+        // (its loader prints lower case), so it keeps a VT52 console and the
+        // force-upper flag is left alone.
         assert.strictEqual(OSBoot.scenarioFor("rp1").hardware.console, "vt52",
             "BSD 2.11 should use a VT52 console");
-        assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.console, null,
-            "XXDP should not force a console");
+        assert.strictEqual(OSBoot.scenarioFor("rp1").hardware.forceUpperCaseOut, null,
+            "BSD 2.11 must not force upper-case output");
+        assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.console, "teletype",
+            "XXDP should declare a teletype console explicitly");
         assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.printer, null,
             "XXDP should not force a printer");
         assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.vt11, false,
             "non-Lunar-Lander scenarios should turn the VT11 off");
+        assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.forceUpperCaseOut, true,
+            "XXDP on a teletype console should force upper-case output");
+        assert.strictEqual(OSBoot.scenarioFor("rl0").hardware.forceUpperCaseOut, true,
+            "BSD 2.9 on a teletype console should force upper-case output");
 
         // Paper tapes: boot via "BOOT PR" (upper-case only, like the real ASR-33)
         // and select the tape in "#ptr".
@@ -238,6 +261,24 @@ function run() {
             { console: null, printer: null, vt11: null })),
             base, "null profile keys should leave the config unchanged");
 
+        // forceUpperCaseOut is a LIVE option: it is merged into the config but
+        // must never mark the layout as dirty (a reload would be pointless —
+        // the console printer reads the flag per printed character).
+        assert.deepStrictEqual(plain(QuickBoot.mergeHardware(base,
+            { console: "teletype", printer: true, vt11: true, forceUpperCaseOut: true })),
+            { consoleType: "teletype", printer: true, vt11: true,
+              forceUpperCaseOut: true, teletypeSpeed: "fast" },
+            "mergeHardware should carry the force-upper flag");
+        assert.deepStrictEqual(plain(QuickBoot.liveProfile(base,
+            { console: "teletype", printer: true, vt11: true, forceUpperCaseOut: true })),
+            { changed: true, forceUpperCaseOut: true },
+            "liveProfile should report the flag change without a layout reload");
+        assert.deepStrictEqual(plain(QuickBoot.liveProfile(
+            { forceUpperCaseOut: true },
+            { console: "vt52", forceUpperCaseOut: null })),
+            { changed: false, forceUpperCaseOut: true },
+            "a null profile flag must keep the user's value");
+
         assert.strictEqual(
             QuickBoot.hardwareDirty(base, { console: "teletype", printer: true, vt11: true }), true,
             "differing console/printer/vt11 should be dirty");
@@ -250,6 +291,11 @@ function run() {
         assert.strictEqual(
             QuickBoot.hardwareDirty(base, { console: "vt52", printer: false, vt11: true }), true,
             "a differing vt11 alone should be dirty");
+        assert.strictEqual(
+            QuickBoot.hardwareDirty(
+                { consoleType: "vt52", printer: true, vt11: false, forceUpperCaseOut: false },
+                { console: "vt52", printer: true, vt11: false, forceUpperCaseOut: true }),
+            false, "a differing force-upper flag alone must not be dirty");
 
         assert.strictEqual(QuickBoot.requirementText(
             { console: "teletype", printer: true, vt11: true }),

@@ -418,12 +418,12 @@ async function main() {
 
         // ---- 1. Tape input: guest executes a command off the tape -------
         await loadTape(page, tapeDir);
-        const before = await paperCount(page, "Free blocks");
+        const before = await paperCount(page, "FREE BLOCKS");
         await setReaderMode(page, "start");
         check("START mode reads the tape into the guest",
             await waitFor(async () =>
-                (await paperCount(page, "Free blocks")) > before, 60000),
-            "Free blocks: " + (await paperCount(page, "Free blocks")));
+                (await paperCount(page, "FREE BLOCKS")) > before, 60000),
+            "FREE BLOCKS: " + (await paperCount(page, "FREE BLOCKS")));
         check("tape fully consumed by the reader",
             await waitFor(async () => !await readerHasTape(page), 15000),
             "readerRows=" + (await readerRows(page)));
@@ -452,11 +452,11 @@ async function main() {
         await setTtyMode(page, "line");
         await loadTape(page, tapeDir);
         const rowsBefore3 = await tapeRows(page);
-        const before3 = await paperCount(page, "Free blocks");
+        const before3 = await paperCount(page, "FREE BLOCKS");
         await setReaderMode(page, "start");
         check("LINE copy delivers the tape to the guest",
             await waitFor(async () =>
-                (await paperCount(page, "Free blocks")) > before3, 60000));
+                (await paperCount(page, "FREE BLOCKS")) > before3, 60000));
         check("LINE copy punches the guest echo onto the tape",
             await waitFor(async () => (await tapeRows(page)) > rowsBefore3, 60000),
             "tapeRows: " + rowsBefore3 + " -> " + (await tapeRows(page)));

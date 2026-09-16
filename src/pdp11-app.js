@@ -261,6 +261,21 @@ function initG60Printer() {
           typeof window.__consoleRenderHook === 'function') {
         window.__consoleRenderHook(code);
       }
+    },
+    // Force PDP Output Uppercase (CONFIG, on by default): the Model 33 ASR
+    // print mechanism has no lower-case type, so the PRINTED glyph is folded
+    // to upper case — the punch above already recorded the raw byte, so a
+    // lower-case loader cannot sneak lower case onto the paper while the tape
+    // keeps the code the machine really sent. Config is read per character,
+    // so the CONFIG toggle applies immediately. Only the console teletype gets
+    // this: the LP11 line printer prints both cases, and a VT52 console never
+    // reaches this printer at all (iopage.js routes it to vt52Write).
+    foldGlyph: function (ch) {
+      var on = false;
+      if (typeof Config !== 'undefined' && Config.get()) {
+        on = !!Config.get().forceUpperCaseOut;
+      }
+      return String.fromCharCode(model33UpperOnly(ch.charCodeAt(0), on));
     }
   });
   g60Console = createG60Console(g60printer);
@@ -1643,6 +1658,7 @@ function initConfigForm() {
   var pwrEl = document.getElementById('config-printerWidth');
   var kcEl = document.getElementById('config-keyClick');
   var upperCaseEl = document.getElementById('config-upperCaseOnly');
+  var pdpUpperEl = document.getElementById('config-forceUpperCaseOut');
   var vt52RevEl = document.getElementById('config-vt52ReverseVideo');
   var crtEl = document.getElementById('config-crtEffects');
   var textModeEl = document.getElementById('config-vt52TextMode');
@@ -1672,6 +1688,7 @@ function initConfigForm() {
   if (pwrEl) pwrEl.value = String(cfg.printerWidth);
   if (kcEl) kcEl.checked = cfg.keyClick;
   if (upperCaseEl) upperCaseEl.checked = cfg.upperCaseOnly;
+  if (pdpUpperEl) pdpUpperEl.checked = cfg.forceUpperCaseOut;
   if (vt52RevEl) vt52RevEl.checked = cfg.vt52ReverseVideo;
   if (crtEl) crtEl.checked = cfg.crtEffects;
   if (textModeEl) textModeEl.checked = cfg.vt52TextMode;
@@ -1711,6 +1728,7 @@ function initConfigForm() {
       teletypeSpeed: teletypeSpeed,
       keyClick: (kcEl) ? kcEl.checked : cfg.keyClick,
       upperCaseOnly: (upperCaseEl) ? upperCaseEl.checked : cfg.upperCaseOnly,
+      forceUpperCaseOut: (pdpUpperEl) ? pdpUpperEl.checked : cfg.forceUpperCaseOut,
       vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
       crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
       vt52TextMode: (textModeEl) ? textModeEl.checked : cfg.vt52TextMode,
@@ -1755,6 +1773,7 @@ function initConfigForm() {
       form.teletypeSpeed !== current.teletypeSpeed ||
       form.keyClick !== current.keyClick ||
       form.upperCaseOnly !== current.upperCaseOnly ||
+      form.forceUpperCaseOut !== current.forceUpperCaseOut ||
       form.vt52ReverseVideo !== current.vt52ReverseVideo ||
       form.crtEffects !== current.crtEffects ||
       form.vt52TextMode !== current.vt52TextMode ||
@@ -1813,7 +1832,8 @@ function initConfigForm() {
     var ttyFields = [
       document.getElementById('config-field-printWidth'),
       document.getElementById('config-field-teletypeSpeed'),
-      document.getElementById('config-field-upperCaseOnly')
+      document.getElementById('config-field-upperCaseOnly'),
+      document.getElementById('config-field-forceUpperCaseOut')
     ];
     for (var k = 0; k < ttyFields.length; k++) {
       if (ttyFields[k]) setFieldDisabled(ttyFields[k], !teletype);
@@ -1904,6 +1924,16 @@ function initConfigForm() {
   if (kcEl) {
     kcEl.addEventListener('change', function () {
       if (typeof Config !== 'undefined') Config.set({ keyClick: this.checked });
+      updateDirtyUI();
+    });
+  }
+  // Force PDP Output Uppercase applies immediately (no reload, no Apply): the
+  // console printer reads Config.forceUpperCaseOut per printed character, so
+  // persisting the checkbox is all it takes (see the foldGlyph option in
+  // initG60Printer). Ignored on a VT52 console (the field is dimmed there).
+  if (pdpUpperEl) {
+    pdpUpperEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ forceUpperCaseOut: this.checked });
       updateDirtyUI();
     });
   }

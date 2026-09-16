@@ -400,6 +400,10 @@
                 <li><b>Upper Case Only.</b> The on-screen keycaps always send upper-case letters. The physical keyboard
                     folds <code>a</code>–<code>z</code> to <code>A</code>–<code>Z</code> only when the <b>Upper Case
                         Only</b> CONFIG option is enabled (off by default, so 2.11 BSD receives lower case).</li>
+                <li><b>Force PDP Output Uppercase.</b> A real Model 33 ASR print mechanism has no lower-case type, so
+                    machine output is printed in upper case (on by default) and a loader that writes lower case cannot
+                    put those letters on the paper. The punched tape still records the <em>raw</em> byte — reading such
+                    a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.</li>
                 <li><b>Paper printing.</b> Authentic nroff/man overstrike (<code>^H</code>) rendering: re-printing the
                     same glyph gives bold, underscores give underline, and striking a <em>different</em> glyph leaves
                     the real dark overstrike blot a hard-copy terminal makes.</li>
@@ -658,6 +662,9 @@
                             development pace.</li>
                         <li><b>Upper Case Only</b> — send letters from the physical keyboard in upper case (authentic
                             Model 33 ASR); off by default so lower-case (e.g. 2.11 BSD file names) passes through.</li>
+                        <li><b>Force PDP Output Uppercase</b> — print machine output in upper case (authentic Model 33
+                            ASR, which cannot print lower case); on by default. The paper tape keeps the raw code, and a
+                            VT52 console is not affected at all (it prints both cases).</li>
                     </ul>
                 </div>
             </div>
@@ -725,8 +732,9 @@
             <p>
                 <b>Structural changes</b> (console type, terminals, printer, VT11 display) are committed with
                 <b>Apply</b>, which restarts the machine so the emulated hardware matches the configuration. Print
-                widths, teletype speed, the Upper Case Only flag, key click, reverse video, CRT effects, VT52 text
-                mode, machine hum and the photo backdrop apply immediately. <b>Restore defaults</b> fills the form with
+                widths, teletype speed, the Upper Case Only and Force PDP Output Uppercase flags, key click, reverse
+                video, CRT effects, VT52 text mode, machine hum and the photo backdrop apply immediately.
+                <b>Restore defaults</b> fills the form with
                 factory values (committed by <b>Apply</b>); the four live BEHAVIOUR options — <b>Reboot
                     confirmation</b>, <b>Help Me! sticker</b>, <b>Machine power</b> and <b>Auto-boot</b> — are reset
                 to their factory values immediately, without waiting for Apply (the machine powers down, since the
