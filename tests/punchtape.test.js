@@ -160,6 +160,29 @@ function testMarkup() {
         pos[0] < pos[1] && pos[1] < pos[2] && pos[2] < pos[3],
       "punch buttons must be ordered REL/OFF/BSP/ON (2x2: REL OFF over BSP ON)");
   }
+  // Every button carries its legend as its OWN text (.asr-legend), exactly as
+  // the old round cap carried it, and the legend's side follows the row: the
+  // top row prints it ABOVE the button, the bottom row BELOW the plunger —
+  // which is what .asr-btn-bottom marks (see .asr-btn-bottom .asr-legend in
+  // css/g60printer.css).
+  {
+    const rows = [["punch-rel", false], ["punch-off", false],
+                  ["punch-bsp", true], ["punch-on", true]];
+    for (const [id, bottom] of rows) {
+      const tag = new RegExp('<button[^>]*id="' + id + '"[\\s\\S]*?</button>').exec(html);
+      assert.ok(tag, "pdp11.html must carry the button (#" + id + ")");
+      assert.ok(/class="asr-legend"/.test(tag[0]),
+        "#" + id + " must carry its legend inside the button (.asr-legend): " + tag[0]);
+      assert.ok(/class="asr-shaft"/.test(tag[0]),
+        "#" + id + " must carry its plunger inside the button (.asr-shaft): " + tag[0]);
+      assert.strictEqual(/class="asr-btn[^"]*\basr-btn-bottom\b/.test(tag[0]), bottom,
+        (bottom
+          ? "the bottom row (#" + id + ") must carry .asr-btn-bottom, so its " +
+            "legend is printed below the plunger"
+          : "the top row (#" + id + ") must NOT carry .asr-btn-bottom — its " +
+            "legend is printed above the button"));
+    }
+  }
   // Vertical four-detent reader lever on the TAPE READER — the authentic
   // control of the automatic (ASR) reader. The handle slides in a slot and the
   // labels are printed top to bottom as on the machine:
@@ -200,7 +223,7 @@ function testCss() {
     ".ccu-switch-pos",
     ".asr-punch-buttons",
     ".asr-btn",
-    ".asr-btn.active",
+    ".asr-btn.active .asr-shaft",
     ".asr-reader-switch",
     ".asr-switch-pos",
     ".asr-switch-slot",
@@ -219,16 +242,169 @@ function testCss() {
     "css/g60printer.css must NOT define the removed .tty-btn.active (LOCAL/LINE buttons are gone)");
 
   // The punch buttons never light up (no hover brightening), and the latched
-  // .active the JS toggles for REL/ON/OFF only presses the cap DOWN onto its
-  // dark base — it must not change the plastic or the legend colour.
+  // .active the JS toggles for REL/ON/OFF only retracts the plunger (a shorter
+  // shaft) into its boss — it must not change the plastic or the legend colour.
   assert.ok(css.indexOf(".asr-btn:hover") === -1,
     "css/g60printer.css must NOT define .asr-btn:hover (no hover highlight on the punch buttons)");
   {
-    const activeRule = extractBlock(css, ".asr-btn.active {", "");
-    assert.ok(/translate\(/.test(activeRule),
-      ".asr-btn.active must sink the cap (translate) so a latched button stays down:\n" + activeRule);
+    const activeRule = extractBlock(css, ".asr-btn.active .asr-shaft {", "");
+    assert.ok(/height\s*:/.test(activeRule),
+      ".asr-btn.active .asr-shaft must retract the plunger (a shorter shaft) so a latched button stays down:\n" + activeRule);
     assert.ok(activeRule.indexOf("background") === -1 && activeRule.indexOf("color:") === -1,
-      ".asr-btn.active must NOT light the button up (no background/color):\n" + activeRule);
+      ".asr-btn.active .asr-shaft must NOT light the button up (no background/color):\n" + activeRule);
+  }
+
+  // The buttons are PLUNGERS, not discs: the Ø28 panel boss is the button's OWN
+  // box (the former round button's footprint, which is also the hit area and the
+  // marker <-> CSS geometry the artwork tuned) with a Ø14 plunger (.asr-shaft)
+  // rising 20px PERPENDICULAR to the panel — up-left, the mirror of the keycap
+  // wall's into-the-panel 3px/6px — whose free end is closed by a FLAT OVAL that
+  // can be turned on its own (.asr-shaft::after, --asr-cap-turn), plus the legend
+  // printed on the panel above the top row or below the bottom row. The numbers
+  // live in the cluster's custom properties, so this test reads the GEOMETRY the
+  // drawing promises (the lean and the proportions) instead of repeating the px.
+  {
+    const cluster = extractBlock(css, ".asr-punch-buttons {", "");
+    const dia = /--asr-plunger-d\s*:\s*([\d.]+)px/.exec(cluster);
+    const len = /--asr-plunger-len\s*:\s*([\d.]+)px/.exec(cluster);
+    const tilt = /--asr-btn-tilt\s*:\s*(-?[\d.]+)deg/.exec(cluster);
+    assert.ok(dia && len && tilt,
+      "the cluster must declare the plunger's geometry (--asr-plunger-d, " +
+      "--asr-plunger-len, --asr-btn-tilt):\n" + cluster);
+    const diameter = parseFloat(dia[1]);
+    const length = parseFloat(len[1]);
+    const degrees = parseFloat(tilt[1]);
+    // The plunger stands PERPENDICULAR to the ASR panel. The drawing's oblique
+    // depth axis is the keycap wall's 1:2 into the panel (3px right / 6px down),
+    // so the perpendicular runs the same 1:2 the other way: up-left. A shaft
+    // whose own +y axis is rotated by `degrees` points along (-sin, cos) — for a
+    // tilt past 90deg that is up-left on the screen (CSS y grows downwards).
+    const rad = Math.abs(degrees) * Math.PI / 180;
+    const dirX = -Math.sin(rad);
+    const dirY = Math.cos(rad);
+    assert.ok(dirX < 0 && dirY < 0,
+      "the plunger must stick OUT of the panel, i.e. up-left (the mirror of the " +
+      "keycap wall), got (" + dirX.toFixed(3) + ", " + dirY.toFixed(3) + ")");
+    const rise = length * -dirY;   // how far the tip climbs above the boss
+    const lean = length * -dirX;   // ... and how far it travels left
+    const ratio = rise / diameter;
+    assert.ok(ratio > 1.2 && ratio <= 5,
+      "the plunger must stay a peg — taller than its own Ø, never the disc it " +
+      "used to be (Ø" + diameter + " -> " + rise.toFixed(1) + "px)");
+    assert.ok(diameter >= 8 && diameter <= 18,
+      "the plunger's Ø must stay clearly smaller than the boss's 28px, got " +
+      diameter + "px");
+    assert.ok(lean / rise > 0.25 && lean / rise < 0.55,
+      "the plunger must keep the panel's oblique lean — roughly the keycap " +
+      "wall's 1:2, mirrored up-left — got " + (lean / rise).toFixed(3) +
+      " (left per up)");
+
+    const button = extractBlock(css, ".asr-btn {", "");
+    const bossH = /height\s*:\s*([\d.]+)px\s*;/.exec(button);
+    assert.ok(/width\s*:\s*28px\s*;/.test(button) && bossH &&
+        parseFloat(bossH[1]) >= 24 && parseFloat(bossH[1]) < 28,
+      "the button's frame must stay the old cap's Ø28 footprint, flattened into " +
+      "a slight oval:\n" + button);
+    assert.ok(/border-radius\s*:\s*50%\s*;/.test(button) &&
+        /background\s*:\s*radial-gradient\(/.test(button),
+      "the boss must be the button's own disc (the cabinet's sand), so the hit " +
+      "area is the old round cap:\n" + button);
+
+    const shaft = extractBlock(css, ".asr-shaft {", "");
+    assert.ok(/width\s*:\s*var\(--asr-plunger-d\)\s*;/.test(shaft) &&
+        /height\s*:\s*var\(--asr-plunger-len\)\s*;/.test(shaft),
+      "the plunger must take its Ø and its length from the cluster's geometry:\n" + shaft);
+    assert.ok(/transform-origin\s*:\s*50%\s+0\s*;/.test(shaft),
+      "the plunger must pivot on its root — the boss's centre:\n" + shaft);
+    assert.ok(/transform\s*:\s*rotate\(var\(--asr-btn-tilt\)\)\s*;/.test(shaft),
+      "the plunger must lean by --asr-btn-tilt:\n" + shaft);
+    // The convex base, bulging DOWN out of the boss, so no flat cut shows there.
+    assert.ok(/--asr-base-ry\s*:\s*[\d.]+px\s*;/.test(cluster) &&
+        /radial-gradient\(50%\s+var\(--asr-base-ry\)\s+at\s+50%\s+0\s*,/.test(shaft),
+      "the base must be an ellipse clipped by the box's top edge, so it bulges " +
+      "down instead of showing a flat cut:\n" + shaft);
+
+    // The cap: the flat oval on the shaft's free end. Its extreme left and right
+    // points are exactly where the shaft's flat sides stop, so the oval closes
+    // the outline, and it can be turned on its own around its centre.
+    const cap = extractBlock(css, ".asr-shaft::after {", "");
+    assert.ok(/width\s*:\s*var\(--asr-plunger-d\)\s*;/.test(cap) &&
+        /height\s*:\s*calc\(var\(--asr-cap-ry\)\s*\*\s*2\)\s*;/.test(cap) &&
+        /border-radius\s*:\s*50%\s*;/.test(cap),
+      "the cap must be a one-Ø-wide OVAL, two cap-radii tall:\n" + cap);
+    assert.ok(/bottom\s*:\s*0\s*;/.test(cap) &&
+        /margin-bottom\s*:\s*calc\(var\(--asr-cap-ry\)\s*\*\s*-1\)\s*;/.test(cap),
+      "the cap's centre must land exactly on the shaft's free end:\n" + cap);
+    assert.ok(/--asr-cap-turn\s*:\s*-?[\d.]+deg\s*;/.test(cluster) &&
+        /transform\s*:\s*rotate\(var\(--asr-cap-turn\)\)\s*;/.test(cap),
+      "the cap's plane must be turnable on its own (--asr-cap-turn):\n" + cap);
+
+    // The legend's BASE rule is the one at a line start: the pressed state only
+    // mentions the plunger, but the legend rules may still follow it.
+    const legend = extractBlock(css, "\n.asr-legend {", "");
+    assert.ok(/position\s*:\s*absolute\s*;/.test(legend),
+      "the legend must sit on the panel, OUT of the button's box:\n" + legend);
+    assert.ok(/left\s*:\s*50%\s*;/.test(legend) && /translateX\(-50%\)/.test(legend),
+      "the legend must be centred on the boss:\n" + legend);
+    // The ink is the artist's to tune, so this only pins its CHARACTER: a light,
+    // neutral silk-screen grey that reads against the sand (a saturated or dark
+    // colour would change what the legends look like altogether).
+    const ink = /color\s*:\s*#([0-9a-f]{6})(?:[0-9a-f]{2})?\s*;/i.exec(legend);
+    assert.ok(ink, "the legend must state its silk-screen ink colour:\n" + legend);
+    const rgb = [0, 2, 4].map((i) => parseInt(ink[1].slice(i, i + 2), 16));
+    assert.ok(Math.min(rgb[0], rgb[1], rgb[2]) >= 180 &&
+        Math.max(rgb[0], rgb[1], rgb[2]) - Math.min(rgb[0], rgb[1], rgb[2]) <= 40,
+      "the legend must stay a light, neutral silk-screen ink, got #" + ink[1]);
+    const size = /font-size\s*:\s*([\d.]+)px\s*;/.exec(legend);
+    assert.ok(size && parseFloat(size[1]) >= 12 && parseFloat(size[1]) <= 20,
+      "the legend must stay legible but compact (12..20px), got " +
+      (size ? size[1] : "no font-size"));
+
+    const above = /bottom\s*:\s*calc\(100%\s*\+\s*([\d.]+)px\)\s*;/.exec(legend);
+    assert.ok(above,
+      "the top row's legend must be printed ABOVE the button:\n" + legend);
+    // The plunger leans out to the upper LEFT, so the legends HUG their buttons:
+    // the top one just above the boss's top edge, the bottom one just under it.
+    // Past 30px they would read as floating away from their own button.
+    assert.ok(parseFloat(above[1]) > 0 && parseFloat(above[1]) <= 30,
+      "the top legend must hug the button (0 < gap <= 30px above its box), got " +
+      above[1] + "px");
+
+    const below = extractBlock(css, "\n.asr-btn-bottom .asr-legend {", "");
+    const gap = /top\s*:\s*calc\(100%\s*\+\s*([\d.]+)px\)\s*;/.exec(below);
+    assert.ok(gap && /bottom\s*:\s*auto\s*;/.test(below),
+      "the bottom row's legend must be printed BELOW the assembly (and cancel " +
+      "the top row's bottom):\n" + below);
+    assert.ok(parseFloat(gap[1]) > 0 && parseFloat(gap[1]) <= 30,
+      "the bottom legend must hug the button (0 < gap <= 30px under its box), " +
+      "got " + gap[1] + "px");
+
+    // Press mechanics: ONLY the plunger's own body moves — its root sits on the
+    // boss's centre and stays exactly there, so the button's box (the boss), the
+    // cap's own turn and the printed legend are never transformed, and nothing
+    // but the shaft may carry a pressed style. The retraction is a SHORTER SHAFT:
+    // the box grows from its top edge, which IS the root the shaft pivots on, so
+    // the free end (with the cap riding on it) comes down and nothing below it
+    // moves for the viewer.
+    assert.ok(css.indexOf(".asr-btn.active {") === -1 &&
+        css.indexOf(".asr-btn.active::before") === -1 &&
+        css.indexOf(".asr-btn.active::after") === -1 &&
+        css.indexOf(".asr-btn.active .asr-legend") === -1,
+      "the boss and the legend must not move with the press: nothing but the " +
+      "shaft may carry a pressed style");
+    const pressed = extractBlock(css, ".asr-btn.active .asr-shaft {", "");
+    assert.ok(!/transform|translate/.test(pressed),
+      "the pressed state must move NOTHING but the plunger's own length (a " +
+      "transform here would carry the boss's frame with it):\n" + pressed);
+    assert.ok(/height\s*:\s*calc\(var\(--asr-plunger-len\)\s*-\s*var\(--asr-plunger-travel\)\)\s*;/
+        .test(pressed),
+      "a pressed plunger must retract into the boss by getting shorter:\n" + pressed);
+    const travel = /--asr-plunger-travel\s*:\s*([\d.]+)px/.exec(cluster);
+    assert.ok(travel,
+      "the cluster must state the plunger's travel into the boss:\n" + cluster);
+    assert.ok(parseFloat(travel[1]) > 0 && parseFloat(travel[1]) < rise / 2,
+      "the travel (" + travel[1] + ") must be a short push, well inside the " +
+      "plunger's " + rise.toFixed(1) + "px rise");
   }
 
   // The cabinet must be reader+punch only and let the tape hang past it.
