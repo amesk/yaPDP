@@ -467,19 +467,18 @@
     user-select: none;
     /* Cylindrical key with a FLAT circular top: the solid dark base shadow
        (0 4px 0) reads as the keycap's side wall, and the light hit at 35% 35%
-       gives the flat top its subtle dome. All caps are DARK plastic (like a
-       real Model 33) with light printed legends. */
-    background: radial-gradient(circle at 35% 35%, #6e6458 0%, #403830 100%);
+       gives the flat top its subtle dome. EVERY cap wears the SAME dark plastic
+       — on a real Model 33 no key is a shade of its own — with light printed
+       legends. */
+    background: radial-gradient(circle at 35% 35%, #786e61 0%, #4b433b 100%);
     border: none;
     box-shadow:
         0 4px 0 #241f1a,
         0 6px 10px rgba(0, 0, 0, 0.5);
 }
 
-/* Modifier keys are the same dark plastic, just a touch deeper. */
-#punchkeyboard .m33-key.mod {
-    background: radial-gradient(circle at 35% 35%, #4a423a 0%, #241f1a 100%);
-}
+/* (The .mod class stays for the LEGENDS only: every cap is the same plastic, so
+   it carries no shade of its own — see #punchkeyboard .m33-key above.) */
 
 /* Pressed state: the keycap sinks into the deck. The key moves down by the
    height of the side wall (4px) and the wall collapses, so the cap rests flat
@@ -588,7 +587,9 @@
     box-sizing: border-box;
     cursor: pointer;
     user-select: none;
-    background: radial-gradient(circle at 50% 30%, #6e6458 0%, #403830 100%);
+    /* The same plastic as the caps (see #punchkeyboard .m33-key): only the
+       highlight's position differs, because the bar is wide and low. */
+    background: radial-gradient(circle at 50% 30%, #786e61 0%, #4b433b 100%);
     border: none;
     box-shadow:
         0 4px 0 #241f1a,
