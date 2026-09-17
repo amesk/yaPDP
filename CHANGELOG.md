@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The Model 33 ASR TAPE PUNCH buttons are plungers, not discs.** Each button
+  is the Ø28 panel boss the old round cap was — a moulded bulge of the cabinet,
+  so it wears the cabinet's own sand and reads as a slightly flattened oval — with
+  a light Ø14 plunger rising 20px out of it, perpendicular to the panel, and its
+  free end closed by a flat oval cap that can be turned on its own. Each legend is
+  printed on the panel beside its own button (above the top row REL/OFF, below the
+  bottom row BSP/ON), and a press retracts the plunger alone: the boss and the
+  legend hold still. (`css/g60printer.css`, `pdp11.html`, `assets/Model-33-ASR.svg`)
+
 - **The Model 33 ASR CCU switch is a tall cylinder the operator grips by its
   sides.** The knob stands proud of the apron pad with its axis pointing at the
   operator and to the right; the pointer is a moulded lever at its base, its

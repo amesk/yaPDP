@@ -1176,10 +1176,10 @@
     --tty-apron-y: 299.60672;
     --tty-apron-w: 32.433464;
     --tty-apron-h: 17.285152;
-    --tty-pctrl-x: 48.322926;
-    --tty-pctrl-y: 124.42154;
-    --tty-pctrl-w: 41.215778;
-    --tty-pctrl-h: 22.454559;
+    --tty-pctrl-x: 44.528465;
+    --tty-pctrl-y: 128.25247;
+    --tty-pctrl-w: 41.191498;
+    --tty-pctrl-h: 28.907326;
     --tty-ptape-x: 33.821438;
     --tty-ptape-y: 183.21991;
     --tty-ptape-w: 27.412594;
@@ -1211,8 +1211,8 @@
        CCU apron 118x66, paper sheet 741px wide. */
     --tty-kbd-k: calc(var(--tty-u-num) * 0.36657);
     /* min(216.34595/576, 77.712708/212) — uniform fit, page-drawn caps */
-    --tty-pctrl-k: calc(var(--tty-u-num) * 0.13692);
-    /* min(41.215778/170, 22.454559/164) — the (now empty) TAPE PUNCH plate frame
+    --tty-pctrl-k: calc(var(--tty-u-num) * 0.17626);
+    /* min(41.191498/170, 28.907326/164) — the (now empty) TAPE PUNCH plate frame
        is contain-fitted onto the PuncherControl marker. */
     --tty-pctrl-btn-k: calc(var(--tty-u-num) * var(--tty-pctrl-w) / 106);
     /* The REL/OFF/BSP/ON cluster is a 106px-wide 2x2 grid: a UNIFORM, width-
@@ -1445,8 +1445,9 @@
    tape spilling from the slot never covers them. The DOM order REL/OFF/BSP/ON
    wraps into two rows — REL OFF on the top, BSP ON below — matching the
    historical machine. REL releases the tape; BSP backspaces the tape one
-   step; OFF/ON toggle the punch (OFF by default). On a real Model 33 ASR
-   these are round (circular) push-buttons.
+   step; OFF/ON toggle the punch (OFF by default). On a real Model 33 ASR each
+   button is a Ø28 panel boss with a narrow, tall plunger rising out of it (see
+   .asr-btn) and its legend silk-screened on the panel above or below it.
    The 2x2 block spans exactly the width of the tape-out slot below it
    (104px, same left offset): with justify-content: space-between the left
    column (REL/BSP) hugs the slot's LEFT edge and the right column (OFF/ON)
@@ -1473,6 +1474,34 @@
     justify-content: space-between;
     align-content: start;
     row-gap: 4px;
+    /* The plunger geometry, in this frame's px. Each button is the Ø28 panel
+       boss that replaced the former round button; the plunger is Ø14 and rises
+       20px — under two of its own diameters — PERPENDICULAR to the panel. That
+       panel is tilted (front-bottom up to back-top), so its perpendicular points
+       at the operator and UP, leaning up-left the way the keycap wall leans into
+       the panel (3px right / 6px down): 8px left and 20px up. 158.199deg is
+       180deg - atan(8/20); the length along that axis is
+       sqrt(8^2 + 20^2) = 21.54px. */
+    --asr-plunger-d: 14px;
+    --asr-plunger-len: 21.54px;
+    /* How far a press draws the plunger back into the boss: the same 1:2 slide
+       (2.3px right / 4.6px down), i.e. sqrt(2.3^2 + 4.6^2) = 5.1px along the
+       axis — half again the first stroke, so the plunge reads at a glance. */
+    --asr-plunger-travel: 5.1px;
+    /* The cap that closes the plunger's free end: a plain OVAL (a disc seen at
+       the panel's 1:2), so the flat sides of the cylinder end exactly on the
+       oval's extreme left/right points — 3px of half-height against the Ø14
+       upright, which is the 1:2 foreshortening of a disc at this lean.
+       --asr-base-ry is the half-height of the convex base the shaft leaves the
+       boss with: the box clips that ellipse's upper half, so the plastic bulges
+       DOWN towards the viewer instead of ending in a visible flat cut. */
+    --asr-cap-ry: 3px;
+    --asr-base-ry: 3.5px;
+    /* How far the cap's oval is turned further to the RIGHT than the shaft's own
+       cross-section, around its own centre: the head's plane does not sit square
+       on the plunger. */
+    --asr-cap-turn: 20deg;
+    --asr-btn-tilt: 158.199deg;
     /* top:38px keeps the 2x2 block's distance to the block BOTTOM (42px)
        the same as before the cabinet was made taller; the extra height now
        sits between the TAPE PUNCH label and the buttons. */
@@ -1480,46 +1509,149 @@
 }
 
 .asr-btn {
-    /* Same flat-top cylinder as the Model 33 keycaps (see #punchkeyboard
-       .m33-key): dark plastic, a solid side wall and a soft drop shadow. The
-       wall is 6px — the page keycaps use 4px — so the punch buttons sit a
-       touch higher on the panel. Unlike the key deck, the ASR block is tilted,
-       so its side wall stands to the RIGHT and BELOW the cap (3px/6px) instead
-       of straight down. Fixed width == height with 50% radius gives a true
-       circle; the 3-letter legends (ON/OFF/BSP/REL) are centred via flex. */
-    background: radial-gradient(circle at 35% 35%, #6e6458 0%, #403830 100%);
-    color: #e8e4da;
-    border: none;
+    /* The operator button of the historical machine: the Ø28 panel BOSS the
+       former round button was. It is a moulded bulge of the CABINET, so it wears
+       the cabinet's own sand (#b49a78) instead of the dark keycap plastic, with a
+       solid side wall in a darker sand and a soft drop shadow. The wall is 6px
+       (the page keycaps use 4px) and, because the ASR block is tilted, it stands
+       to the RIGHT and BELOW the boss (3px/6px) instead of straight down.
+       The element keeps the boss's Ø28 frame, so the hit area (and the marker <->
+       CSS geometry the artwork tuned) is exactly the old button's — and because
+       the boss IS the button's own box, it can never move: a press travels
+       through the plunger standing on it (.asr-shaft) alone. */
+    position: relative;
     width: 28px;
-    height: 28px;
+    /* Slightly flattened into an OVAL: the boss is drawn at the panel's own lean,
+       so the artist wants its base a touch wider than it is tall (the 50% radius
+       then makes it an ellipse). */
+    height: 26px;
     box-sizing: border-box;
-    border-radius: 50%;
     padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Courier Prime', arial, helvetica, sans-serif;
-    font-size: 13px;
-    font-weight: bold;
+    border: none;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #c4a984 0%, #b49a78 100%);
+    box-shadow:
+        3px 6px 0 #8c7256,
+        4px 8px 10px rgba(0, 0, 0, 0.45);
     cursor: pointer;
     user-select: none;
-    box-shadow:
-        3px 6px 0 #241f1a,
-        4px 8px 10px rgba(0, 0, 0, 0.5);
 }
 
-/* Pressed: the cap drops onto its dark base — it moves by the wall's offset
-   and the wall collapses, exactly like a Model 33 keycap (see .m33-key.down).
-   LATCHED (REL/ON/OFF — the .active class the JS toggles) keeps the cap in that
-   pressed position, so the button stays visibly down; BSP, which is momentary,
-   is only down while held (:active). No colour change either way: the buttons
-   never light up, they only sink. */
-.asr-btn:active,
-.asr-btn.active {
-    transform: translate(3px, 6px);
-    box-shadow:
-        0 0 0 #241f1a,
-        1px 2px 4px rgba(0, 0, 0, 0.5);
+/* The plunger: a Ø14 cylinder rooted in the boss's centre and standing
+   PERPENDICULAR to the panel, i.e. up-left the way the keycap wall leans into the
+   panel (its 3px/6px, mirrored), so its free end ends up 8px left and 20px above
+   the boss. It is a real element, not a pseudo-element, because the CAP riding on
+   its free end has to be able to turn on its own (see .asr-shaft::after). */
+.asr-shaft {
+    position: absolute;
+    left: 50%;
+    /* The root sits a hair BELOW the boss's centre, so the base reads a little
+       higher against the plunger (the artist's eye). */
+    top: calc(50% + 2px);
+    width: var(--asr-plunger-d);
+    height: var(--asr-plunger-len);
+    margin-left: calc(var(--asr-plunger-d) / -2);
+    /* The root is a DOWNWARD ARC, never a straight cut: the box's top corners are
+       rounded elliptically over its whole first cap-radius, so the plastic meets
+       the boss in an arc (the mirror of the cap's oval at the other end). */
+    border-radius: 50% 50% 0 0 / var(--asr-base-ry) var(--asr-base-ry) 0 0;
+    /* The pivot is the plunger's root, i.e. the boss's centre. */
+    transform-origin: 50% 0;
+    transform: rotate(var(--asr-btn-tilt));
+    /* LIGHT metal/plastic (unlike the dark keycap caps), top layer FIRST — the
+       base's arc must sit over the body, or the body's straight edge would cover
+       it:
+         1. the convex base the shaft leaves the boss with;
+         2. the shaft's body, lit from the left. */
+    background-image:
+        radial-gradient(50% var(--asr-base-ry) at 50% 0,
+            #d3ccc0 0%, #b4ac9e 70%, rgba(0, 0, 0, 0) 71%),
+        linear-gradient(90deg, #dad4ca 0%, #bcb5a8 50%, #97907f 100%);
+    background-repeat: no-repeat;
+    background-position: 50% 0, 50% 0;
+    background-size:
+        /* The base: only the ellipse's lower half is inside the box. */
+        100% calc(var(--asr-base-ry) * 2),
+        100% 100%;
+    /* Ambient occlusion only: a directional shadow would be rotated with the
+       plunger's own axis and fall on the wrong side of it. */
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.35);
+}
+
+/* The cap: the FLAT oval that closes the plunger's free end (the box's bottom
+   edge IS the free end, because the rotation carries the box's own +y up-left).
+   It is a child of the shaft, so it follows the shaft's lean AND its press — a
+   shorter shaft brings the cap down with it — while --asr-cap-turn turns the
+   plane itself further to the right around its own centre. Its extreme left and
+   right points land exactly where the shaft's flat sides stop, so the oval closes
+   the outline there and no flat cut ever shows on the plastic. */
+.asr-shaft::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: var(--asr-plunger-d);
+    height: calc(var(--asr-cap-ry) * 2);
+    margin-left: calc(var(--asr-plunger-d) / -2);
+    /* Its centre lands exactly on the free end. */
+    margin-bottom: calc(var(--asr-cap-ry) * -1);
+    border-radius: 50%;
+    transform: rotate(var(--asr-cap-turn));
+    background: radial-gradient(ellipse at 38% 30%,
+            #f2eee6 0%, #ded7ca 55%, #b8b0a2 100%);
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.25);
+}
+
+/* Pressed: ONLY the plunger's own body moves. Its root sits on the boss's centre
+   and stays exactly there — the button's box (the boss), the cap's own turn and
+   the printed legend are never transformed at all. The press SHORTENS the plunger
+   along its own axis, just as a Model 33 keycap's cap drops onto its base (see
+   .m33-key.down): the cap comes down towards the boss while everything below it
+   holds still for the viewer. LATCHED (REL/ON/OFF — the .active class the JS
+   toggles) keeps the plunger in that position, so the button stays visibly down;
+   BSP, which is momentary, is only down while held (:active). No colour change
+   either way: the buttons never light up, they only sink. */
+.asr-btn:active .asr-shaft,
+.asr-btn.active .asr-shaft {
+    /* The box grows from its top edge, which IS the root the shaft pivots on, so
+       shortening it retracts the free end — and the cap riding on it — and
+       nothing else. */
+    height: calc(var(--asr-plunger-len) - var(--asr-plunger-travel));
+}
+
+/* The legend silk-screened on the panel. On the historical machine the top row
+   (REL/OFF) carries its legend ABOVE the button and the bottom row (BSP/ON)
+   BELOW it. The legend lives INSIDE the button (so the accessible name is the
+   one the old round cap carried) but OUT of its box: an absolutely placed label
+   is never clipped by, or transformed with, the plunger. The default position is
+   the TOP row's — hugging the boss, because the plunger leans out to the upper
+   LEFT and so leaves that side of the button free. */
+.asr-legend {
+    position: absolute;
+    left: 50%;
+    /* Just above the boss's top edge — the tip of the (short) plunger leans out
+       to the upper LEFT, so it leaves this side of the button free. */
+    bottom: calc(100% + 12px);
+    transform: translateX(-50%);
+    /* Grey silk-screen ink: it reads against the sand of the panel without
+       glowing like pure white. */
+    color: #d6d3ceff;
+    /* The rest of the UI's face; the rig's machine-chrome block at the end of
+       this file switches the machine's own lettering to the pixel VT323, this
+       legend included. */
+    font-family: 'Courier Prime', arial, helvetica, sans-serif;
+    /* A third up on the sheet's 12px: legible without crowding the panel. */
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* Bottom row: the plunger rises UP out of the boss, so the lowest thing in the
+   assembly is the boss itself — the legend goes straight under it. */
+.asr-btn-bottom .asr-legend {
+    top: calc(100% + 8px);
+    bottom: auto;
 }
 
 /* Vertical four-position tape reader lever — the authentic control of the
@@ -2156,7 +2288,7 @@
 
 /* Teletype machine chrome keeps the pixel VT323 (narrow advance, tuned
    keycap/switch geometry); Courier Prime stays for the rest of the UI. */
-#asr-tape-unit .asr-btn,
+#asr-tape-unit .asr-legend,
 #asr-tape-unit .asr-switch-pos,
 #ccu-apron .ccu-switch-pos,
 #punchkeyboard .m33-key .m33-top,

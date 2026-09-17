@@ -24,15 +24,15 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="1.1149729"
-     inkscape:cx="856.07462"
-     inkscape:cy="358.30467"
+     inkscape:zoom="0.55748645"
+     inkscape:cx="661.00261"
+     inkscape:cy="320.18715"
      inkscape:window-width="1920"
      inkscape:window-height="1129"
      inkscape:window-x="1912"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer5"
+     inkscape:current-layer="layer4"
      showguides="false"
      showgrid="false" /><defs
      id="defs1"><linearGradient
@@ -416,9 +416,9 @@
        transform="matrix(0.66119535,0,0,0.50115753,-1.3937531,-13.121217)"><tspan
          x="-31.612957"
          y="802.71857"
-         id="tspan6"><tspan
+         id="tspan2"><tspan
            style="fill:#000000"
-           id="tspan5">T     E     L     E     T     Y     P     E</tspan></tspan></text><rect
+           id="tspan1">T     E     L     E     T     Y     P     E</tspan></tspan></text><rect
        style="fill:#bba17d;fill-opacity:1;stroke:none;stroke-width:0.264583"
        id="rect3"
        width="13.407463"
@@ -491,9 +491,9 @@
        transform="matrix(0.66119535,0,0,0.50115753,149.50208,-100.45133)"><tspan
          x="-31.612957"
          y="802.71857"
-         id="tspan8"><tspan
+         id="tspan4"><tspan
            style="fill:#000000"
-           id="tspan7">T     E     L     E     T     Y     P     E</tspan></tspan></text><path
+           id="tspan3">T     E     L     E     T     Y     P     E</tspan></tspan></text><path
        id="rect10"
        style="display:inline;fill:#c7b091;fill-opacity:1;stroke:#423c36;stroke-width:1.265;stroke-linejoin:bevel;stroke-dasharray:none"
        d="m 335.25764,22.820339 18.45763,0.671187 c 7.16436,0.813487 9.08137,9.918511 11.66433,18.318621 l 19.21025,93.769513 1.67796,31.21017 c -0.33811,3.03566 -0.52791,4.61785 -2.34915,5.36949 L 93.966108,173.1661 c -3.262657,-0.15165 -5.635438,0.82387 -6.406443,-5.08231 l 1.70928,-35.52251 17.121455,-94.70383 9.69516,-15.153478 20.8367,0.35895 1.86177,3.793978 -6.56046,87.78234 5.7096,2.2179 200.32661,-0.72463 c 2.27452,-0.73248 3.41642,-2.26199 3.42569,-5.34362 l -9.77021,-83.966944 c 0.19125,-2.172852 -1.21157,-4.010111 3.34238,-4.001607 z"
@@ -1074,7 +1074,7 @@
 
          Keyboard        x=127.64988  y=183.911    w=216.34595  h=77.712708
          Apron           x=545.05432  y=299.60672  w=32.433464  h=17.285152
-         PuncherControl  x=48.322926  y=124.42154  w=41.215778  h=22.454559
+         PuncherControl  x=44.528465  y=128.25247  w=41.191498  h=28.907326
          PuncherTape     x=33.821438  y=183.21991  w=27.412594  h=1.8400521
          ReaderControl   x=31.214016  y=237.60301  w=18.959791  h=35.107395
          ReaderTape      x=27.739735  y=215.27426  w=27.412594  h=1.8400521
@@ -1126,16 +1126,16 @@
    x="145.08318"
    y="97.534988"
    inkscape:label="Caret" /><rect
-   style="display:none;fill:#aa0000;stroke:#4b3d2e;stroke-width:0.186129"
+   style="display:none;fill:#aa0000;stroke:#4b3d2e;stroke-width:0.211124"
    id="PuncherControl"
-   width="41.215778"
-   height="22.454559"
-   x="48.322926"
-   y="124.42154"
+   width="41.191498"
+   height="28.907326"
+   x="44.528465"
+   y="128.25247"
    inkscape:label="PuncherControl"
-   transform="matrix(0.99996541,-0.00831691,-0.1626852,0.98667803,0,0)"
-   inkscape:transform-center-x="-1.0623448"
-   inkscape:transform-center-y="-0.046843147" /><rect
+   transform="matrix(0.99994199,-0.01077096,-0.1262928,0.99199301,0,0)"
+   inkscape:transform-center-x="-1.0616924"
+   inkscape:transform-center-y="-0.060626712" /><rect
    style="display:none;fill:#aa0000;stroke:#4b3d2e;stroke-width:0.224846"
    id="ReaderControl"
    width="18.959791"
