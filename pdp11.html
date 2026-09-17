@@ -138,34 +138,31 @@
         <!-- The DISPLAY: this is what the screen shows while the artwork (the
              cabinet) is on screen. Pressing the button hides the cabinet. -->
         <rect x="2.5" y="4" width="19" height="13" rx="1.8" fill="currentColor" opacity="0.12" />
-        <rect x="2.5" y="4" width="19" height="13" rx="1.8" fill="none" stroke="currentColor"
-          stroke-width="1.6" stroke-linejoin="round" />
+        <rect x="2.5" y="4" width="19" height="13" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linejoin="round" />
         <!-- text lines on the screen -->
-        <path d="M5.5 7.5h9M5.5 10h11M5.5 12.5h7" fill="none" stroke="currentColor"
-          stroke-width="1.2" stroke-linecap="round" opacity="0.75" />
+        <path d="M5.5 7.5h9M5.5 10h11M5.5 12.5h7" fill="none" stroke="currentColor" stroke-width="1.2"
+          stroke-linecap="round" opacity="0.75" />
         <!-- stand -->
-        <path d="M12 17v2.6" fill="none" stroke="currentColor" stroke-width="1.6"
-          stroke-linecap="round" />
-        <path d="M8.5 20h7" fill="none" stroke="currentColor" stroke-width="1.6"
-          stroke-linecap="round" />
+        <path d="M12 17v2.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <path d="M8.5 20h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
       </symbol>
       <symbol id="icon-zoom-exit" viewBox="0 0 24 24">
         <!-- The TERMINAL: the whole machine (screen over a keyboard), which is
              what zoom mode does NOT show. Pressing the button brings the
              cabinet back. -->
         <rect x="2.5" y="2.5" width="19" height="11" rx="1.6" fill="currentColor" opacity="0.12" />
-        <rect x="2.5" y="2.5" width="19" height="11" rx="1.6" fill="none" stroke="currentColor"
-          stroke-width="1.6" stroke-linejoin="round" />
-        <path d="M5.5 6h8M5.5 8.5h10" fill="none" stroke="currentColor" stroke-width="1.1"
-          stroke-linecap="round" opacity="0.75" />
+        <rect x="2.5" y="2.5" width="19" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"
+          stroke-linejoin="round" />
+        <path d="M5.5 6h8M5.5 8.5h10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"
+          opacity="0.75" />
         <!-- keyboard deck below the screen: a row of keys, then a space bar -->
         <rect x="2.5" y="15" width="19" height="6.5" rx="1.2" fill="currentColor" opacity="0.10" />
-        <rect x="2.5" y="15" width="19" height="6.5" rx="1.2" fill="none" stroke="currentColor"
-          stroke-width="1.4" stroke-linejoin="round" />
-        <path d="M5.5 17.6h1.6M8.4 17.6h1.6M11.3 17.6h1.6M14.2 17.6h1.6M17.1 17.6h1.4"
-          fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-        <path d="M8 19.8h8" fill="none" stroke="currentColor" stroke-width="1.2"
-          stroke-linecap="round" opacity="0.8" />
+        <rect x="2.5" y="15" width="19" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"
+          stroke-linejoin="round" />
+        <path d="M5.5 17.6h1.6M8.4 17.6h1.6M11.3 17.6h1.6M14.2 17.6h1.6M17.1 17.6h1.4" fill="none" stroke="currentColor"
+          stroke-width="1.2" stroke-linecap="round" />
+        <path d="M8 19.8h8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.8" />
       </symbol>
       <symbol id="icon-reboot" viewBox="0 0 24 24">
         <!-- circular restart arrow with arrowhead (machine reboot) -->
@@ -891,8 +888,18 @@
                     title="OFF — power off (teletype, punch and reader are disabled)">OFF</button>
                   <button type="button" class="ccu-switch-pos" data-tty-mode="local"
                     title="LOCAL — disconnected from the machine; keyboard prints locally">LOCAL</button>
+                  <!-- The rotating pointer (setTtyMode sets its angle). It hangs off
+                     the cylinder's BASE — its pivot is the footprint ring's centre,
+                     not the disc's — so it is the knob's sibling, and the nested
+                     grip/beak keep the lever's moulding screen-aligned while it
+                     swings around the ring. See .ccu-switch-lever in
+                     css/g60printer.css. -->
+                  <div class="ccu-switch-lever" id="ccu-switch-lever">
+                    <span class="ccu-switch-grip">
+                      <span class="ccu-switch-beak"></span>
+                    </span>
+                  </div>
                   <div class="ccu-switch-disc" id="ccu-switch-disc" title="Click the knob to cycle: LINE → OFF → LOCAL">
-                    <div class="ccu-switch-lever" id="ccu-switch-lever"></div>
                   </div>
                 </div>
               </div>
@@ -925,10 +932,10 @@
           <div class="vt52-rig">
             <div class="vt52-backdrop"></div>
             <div class="vt52-bezel"></div>
-          <div class="vt52-crt" id="vt52-crt">
-            <canvas id="vt52-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
-              autocapitalize="off" spellcheck="false"></canvas>
-          </div>
+            <div class="vt52-crt" id="vt52-crt">
+              <canvas id="vt52-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
+                autocapitalize="off" spellcheck="false"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -939,10 +946,10 @@
           <div class="vt52-rig">
             <div class="vt52-backdrop"></div>
             <div class="vt52-bezel"></div>
-          <div class="vt52-crt" id="vt52-console-crt">
-            <canvas id="vt52-console-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
-              autocapitalize="off" spellcheck="false"></canvas>
-          </div>
+            <div class="vt52-crt" id="vt52-console-crt">
+              <canvas id="vt52-console-screen" width="672" height="504" tabindex="0" autocomplete="off"
+                autocorrect="off" autocapitalize="off" spellcheck="false"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -953,10 +960,10 @@
           <div class="vt52-rig">
             <div class="vt52-backdrop"></div>
             <div class="vt52-bezel"></div>
-          <div class="vt52-crt" id="vt52-2-crt">
-            <canvas id="vt52-2-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
-              autocapitalize="off" spellcheck="false"></canvas>
-          </div>
+            <div class="vt52-crt" id="vt52-2-crt">
+              <canvas id="vt52-2-screen" width="672" height="504" tabindex="0" autocomplete="off" autocorrect="off"
+                autocapitalize="off" spellcheck="false"></canvas>
+            </div>
           </div>
         </div>
       </div>

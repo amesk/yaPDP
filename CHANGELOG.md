@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The Model 33 ASR CCU switch is a tall cylinder the operator grips by its
+  sides.** The knob stands proud of the apron pad with its axis pointing at the
+  operator and to the right; the pointer is a moulded lever at its base, its
+  root on the footprint ring's rim and its thickness cast towards the viewer.
+  The lever still sweeps LINE / OFF / LOCAL, its moulding stays screen-aligned
+  while it turns, and the end cap carries no outline, so it never reads bigger
+  than the cylinder it caps. (`css/g60printer.css`, `src/pdp11-app.js`,
+  `pdp11.html`)
+
 - **The quick-boot profiles state the console type explicitly, and teletype
   scenarios request the new force-upper output.** `src/osboot.js` no longer
   leaves the console to the operator for the RSTS, RSTS/E, RSX-11M and XXDP

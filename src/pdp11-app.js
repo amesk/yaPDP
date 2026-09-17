@@ -150,9 +150,17 @@ function setTtyMode(mode) {
   }
   // Turn the BEAK, not the whole knob: the disc keeps its moulded shading and
   // the fixed highlight on the apron (see .ccu-switch in css/g60printer.css)
-  // while the pointer sweeps to the active detent.
+  // while the pointer sweeps to the active detent. The angle is also published
+  // as a custom property: the grip inside the beak counter-rotates it, so the
+  // raised peg's side wall and cast shadow stay screen-aligned (a peg standing
+  // out of the knob must not spin its own moulding) — see .ccu-switch-grip and
+  // .ccu-switch-beak in css/g60printer.css.
   var beak = document.getElementById('ccu-switch-lever');
-  if (beak) beak.style.transform = 'rotate(' + ttyLeverAngle(mode) + 'deg)';
+  if (beak) {
+    var beakAngle = ttyLeverAngle(mode);
+    beak.style.transform = 'rotate(' + beakAngle + 'deg)';
+    beak.style.setProperty('--ccu-lever-angle', beakAngle + 'deg');
+  }
   // OFF cuts power to the whole unit: disengage the punch and stop the
   // reader from feeding. Returning to LINE/LOCAL restores the reader's feed
   // permission according to the reader-mode switch.
