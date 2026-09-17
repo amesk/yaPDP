@@ -820,14 +820,28 @@
                    artwork's PuncherControl marker (see css/g60printer.css). It stays
                    inside #asr-tape-unit so the ASR font stack still applies. -->
               <div id="asr-punch-buttons" class="asr-punch-buttons">
+                <!-- Each button is the Ø28 panel boss of the historical plunger
+                     (see .asr-btn in css/g60printer.css): the boss stays on the
+                     panel, the Ø14 plunger (.asr-shaft) rises OUT of it
+                     perpendicular to the panel — up-left, the mirror of the
+                     keycap wall's 3px/6px into the panel — and its free end is
+                     closed by a flat oval cap (.asr-shaft::after). The legend is
+                     silk-screened on the panel — ABOVE the button on the top row
+                     (REL, OFF) and BELOW it on the bottom row (BSP, ON), which
+                     carries .asr-btn-bottom for that. The legend stays the
+                     button's own text, so the accessible name is unchanged. -->
                 <button type="button" class="asr-btn" id="punch-rel"
-                  title="REL — release the tape for manual pull-out">REL</button>
+                  title="REL — release the tape for manual pull-out"><span class="asr-legend">REL</span><span
+                    class="asr-shaft"></span></button>
                 <button type="button" class="asr-btn" id="punch-off"
-                  title="Punch OFF — disable the punch (default)">OFF</button>
-                <button type="button" class="asr-btn" id="punch-bsp"
-                  title="BSP — backspace the tape one step (punches RUBOUT over the last byte)">BSP</button>
-                <button type="button" class="asr-btn" id="punch-on"
-                  title="Punch ON — duplicate all output onto the paper tape">ON</button>
+                  title="Punch OFF — disable the punch (default)"><span class="asr-legend">OFF</span><span
+                    class="asr-shaft"></span></button>
+                <button type="button" class="asr-btn asr-btn-bottom" id="punch-bsp"
+                  title="BSP — backspace the tape one step (punches RUBOUT over the last byte)"><span
+                    class="asr-legend">BSP</span><span class="asr-shaft"></span></button>
+                <button type="button" class="asr-btn asr-btn-bottom" id="punch-on"
+                  title="Punch ON — duplicate all output onto the paper tape"><span class="asr-legend">ON</span><span
+                    class="asr-shaft"></span></button>
               </div>
               <!-- The reader plate frame is EMPTY as well: the artwork draws the
                    plate, its TAPE READER lettering and the tape slot. -->
