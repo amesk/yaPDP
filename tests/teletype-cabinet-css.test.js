@@ -456,10 +456,17 @@ function run() {
   }
 
   // --- Flat-top cylindrical keycaps ----------------------------------------
+  // Every cap wears the SAME plastic, as on a real Model 33: the modifier keys
+  // must not carry a background (a shade) of their own.
+  {
+    assert.ok(css.indexOf("#punchkeyboard .m33-key.mod {") === -1,
+      "the modifier keys must NOT get a background rule of their own " +
+      "(all keycaps are one colour)");
+  }
   {
     const rule = extractRule(css, "#punchkeyboard .m33-key {");
-    assert.ok(/background\s*:\s*radial-gradient\(circle at 35%\s+35%,\s*#6e6458\s*0%,\s*#403830\s*100%\)\s*;/.test(rule),
-      "keycaps must use the brown radial gradient #6e6458→#403830:\n" + rule);
+    assert.ok(/background\s*:\s*radial-gradient\(circle at 35%\s+35%,\s*#786e61\s*0%,\s*#4b433b\s*100%\)\s*;/.test(rule),
+      "keycaps must use the uniform brown radial gradient #786e61→#4b433b:\n" + rule);
     assert.ok(/border\s*:\s*none\s*;/.test(rule),
       "keycaps must not draw a border (the side wall is the box-shadow):\n" + rule);
     assert.ok(/box-shadow\s*:\s*0\s+4px\s+0\s+#241f1a\s*,/.test(rule),
@@ -482,6 +489,16 @@ function run() {
     const rule = extractRule(css, "#punchkeyboard .m33-space {");
     assert.ok(/0\s+4px\s+0\s+#241f1a\s*,/.test(rule),
       "the space bar must have the same solid side wall (0 4px 0 #241f1a):\n" + rule);
+    // ... and the same PLASTIC: only the highlight's position differs, so the
+    // two gradients must share their colour pair (one colour for every key).
+    const key = extractRule(css, "#punchkeyboard .m33-key {");
+    const stops = (text) =>
+      (/radial-gradient\(circle at [^,]+,\s*(#[0-9a-f]{6})\s*0%,\s*(#[0-9a-f]{6})\s*100%\)/i
+        .exec(text) || ["", "", ""]).slice(1);
+    const keyStops = stops(key);
+    assert.ok(keyStops[0] && keyStops.join("→") === stops(rule).join("→"),
+      "the space bar must wear the keycaps' own colours (" + keyStops.join("→") +
+      "), got " + stops(rule).join("→") + ":\n" + rule);
   }
   {
     const rule = extractRule(css, "#punchkeyboard .m33-space.down {");
