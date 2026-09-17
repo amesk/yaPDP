@@ -195,6 +195,8 @@ function testCss() {
     ".ccu-switch",
     ".ccu-switch-disc",
     ".ccu-switch-lever",
+    ".ccu-switch-grip",
+    ".ccu-switch-beak",
     ".ccu-switch-pos",
     ".asr-punch-buttons",
     ".asr-btn",

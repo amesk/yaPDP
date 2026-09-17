@@ -354,28 +354,84 @@ function run() {
       "the apron pad must come from the artwork:\n" + rule);
   }
 
-  // --- CCU knob: a raised two-step cylinder with dark moulded legends -------
+  // --- CCU knob: a TALL leaning cylinder with a lever at its base -----------
   {
-    const base = extractRule(css, ".ccu-switch::before {");
-    assert.ok(/border-radius\s*:\s*50%\s*;/.test(base) &&
-      /width\s*:\s*44px\s*;/.test(base) &&
-      /inset\s+0\s+-3px\s+5px/.test(base),
-      "the knob must stand on a WIDE moulded base (raised, not recessed):\n" + base);
-    const cap = extractRule(css, ".ccu-switch-disc {");
-    assert.ok(/width\s*:\s*28px\s*;/.test(cap) &&
-      /inset\s+0\s+-1px\s+2px/.test(cap),
-      "the CAP on top must be smaller than the base, with a flat-shaded " +
-      "face:\n" + cap);
-    const beak = extractRule(css, ".ccu-switch-lever {");
-    assert.ok(/transform-origin\s*:\s*50%\s+22px\s*;/.test(beak),
-      "the BEAK must orbit the CAP centre (the cap keeps its shading):\n" + beak);
+    // The switch the operator grips by its sides: a 32px cylinder whose 52px
+    // capsule body is the face's circle plus the 20px wall.
+    const body = extractRule(css, ".ccu-switch::before {");
+    assert.ok(/width\s*:\s*32px\s*;/.test(body) && /height\s*:\s*52px\s*;/.test(body),
+      "the knob body must be a TALL cylinder (32px across, 52px tall = the " +
+      "32px face plus the 20px wall), not a flat disc:\n" + body);
+    assert.ok(/border-radius\s*:\s*16px\s*;/.test(body),
+      "the body must be a capsule, its far half being the footprint ring's " +
+      "back arc:\n" + body);
+    assert.ok(/transform-origin\s*:\s*50%\s+calc\(100%\s*-\s*16px\)\s*;/.test(body) &&
+      /transform\s*:\s*rotate\(-25deg\)\s*;/.test(body),
+      "the body must LEAN: the axis has to read as pointing at the operator " +
+      "AND to the right, so the body rotates about the face centre (its own " +
+      "lower circle):\n" + body);
+    assert.ok(/linear-gradient\(90deg\s*,/.test(body),
+      "the body's shading must run ACROSS the cylinder (side shading), which " +
+      "is what makes it read as a wall and not as a second disc:\n" + body);
+    assert.ok(/0\s+-4px\s+6px/.test(body),
+      "the knob's shadow on the pad must fall BEHIND the footprint (offset UP " +
+      "the page), so the cylinder stands on the pad instead of being painted " +
+      "on it:\n" + body);
+    const face = extractRule(css, ".ccu-switch-disc {");
+    assert.ok(/width\s*:\s*32px\s*;/.test(face) && /height\s*:\s*32px\s*;/.test(face),
+      "the face must be exactly the body's circle (one cylinder, not two " +
+      "stacked discs):\n" + face);
+    assert.ok(/bottom\s*:\s*1px\s*;/.test(face),
+      "the face (the end cap that looks at the operator) must sit at the " +
+      "knob's near end, with the wall leaning away behind it:\n" + face);
+    assert.ok(!/inset\s+0\s+1px\s+0\s+rgba\(255,\s*255,\s*255/.test(face),
+      "the face must NOT carry a hard 1px bright outline — it made the end cap " +
+      "read BIGGER than the cylinder it caps:\n" + face);
+    assert.ok(!/inset\s+0\s+0\s+0\s+1px/.test(face),
+      "the face must NOT carry an all-round dark ring either (the same rim by " +
+      "another name):\n" + face);
+    // The lever: three frames split the jobs — placement at the base ring and
+    // the pointer's angle (lever), the screen-aligned moulding and its solid
+    // wall (grip), and the clipped silhouette that marks the detent (beak).
+    const lever = extractRule(css, ".ccu-switch-lever {");
+    assert.ok(/bottom\s*:\s*51\.13px\s*;/.test(lever) &&
+      /transform-origin\s*:\s*50%\s+calc\(100%\s*\+\s*16px\)\s*;/.test(lever),
+      "the lever must hang off the BASE ring — its root on the 16px rim, its " +
+      "pivot the ring's centre — not stand on the end face:\n" + lever);
+    assert.ok(/left\s*:\s*calc\(50%\s*-\s*8\.45px\)\s*;/.test(lever),
+      "the lever's pivot must sit on the leaning cylinder's axis (the ring " +
+      "centre is offset from the block centre by the lean):\n" + lever);
+    const grip = extractRule(css, ".ccu-switch-grip {");
+    assert.ok(/transform\s*:\s*rotate\(calc\(-1\s*\*\s*var\(--ccu-lever-angle,\s*0deg\)\)\)\s*;/.test(grip),
+      "the grip must counter-rotate the pointer's angle, so its own frame " +
+      "stays screen-aligned (the lever's moulding must not spin):\n" + grip);
+    assert.ok(/drop-shadow\(0\s+3px\s+0\s+#1c1c1b\)/.test(grip),
+      "the grip must cast a SOLID side wall — a drop-shadow of the clipped " +
+      "silhouette, which box-shadow cannot follow:\n" + grip);
+    const beak = extractRule(css, ".ccu-switch-beak {");
+    assert.ok(/transform\s*:\s*rotate\(var\(--ccu-lever-angle,\s*0deg\)\)\s*;/.test(beak),
+      "the beak must rotate back into the pointer's frame, otherwise the " +
+      "tip would stay up whatever the detent:\n" + beak);
+    assert.ok(/clip-path\s*:\s*polygon\(/.test(beak),
+      "the beak keeps the pointed pointer silhouette:\n" + beak);
+    const offPos = extractRule(css, '.ccu-switch-pos[data-tty-mode="off"] {');
+    assert.ok(/top\s*:\s*-2px\s*;/.test(offPos),
+      "the OFF legend must clear the lever's sweep over the footprint " +
+      "ring:\n" + offPos);
     const pos = extractRule(css, ".ccu-switch-pos {");
     assert.ok(/color\s*:\s*#2f2a22\s*;/.test(pos) && /text-shadow\s*:/.test(pos),
       "the CCU legends must be DARK moulded lettering, as on the real " +
       "apron:\n" + pos);
     const app = fs.readFileSync(APP_PATH, "utf8");
     assert.ok(app.indexOf("document.getElementById('ccu-switch-lever')") !== -1,
-      "setTtyMode must rotate the beak, not the knob");
+      "setTtyMode must rotate the lever, not the knob");
+    assert.ok(app.indexOf("setProperty('--ccu-lever-angle'") !== -1,
+      "setTtyMode must publish the pointer's angle for the grip's " +
+      "counter-rotation");
+    const html = fs.readFileSync(HTML_PATH, "utf8");
+    assert.ok(html.indexOf('class="ccu-switch-grip"') !== -1 &&
+      html.indexOf('class="ccu-switch-beak"') !== -1,
+      "pdp11.html must nest the grip and the beak inside #ccu-switch-lever");
   }
 
   // --- Paper draws in front of the platen ----------------------------------
