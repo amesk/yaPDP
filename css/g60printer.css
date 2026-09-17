@@ -1489,14 +1489,15 @@
        (2.3px right / 4.6px down), i.e. sqrt(2.3^2 + 4.6^2) = 5.1px along the
        axis — half again the first stroke, so the plunge reads at a glance. */
     --asr-plunger-travel: 5.1px;
-    /* The cap that closes the plunger's free end: a plain OVAL (a disc seen at
-       the panel's 1:2), so the flat sides of the cylinder end exactly on the
-       oval's extreme left/right points — 3px of half-height against the Ø14
-       upright, which is the 1:2 foreshortening of a disc at this lean.
+    /* The cap that closes the plunger's free end: a plain OVAL, so the flat sides
+       of the cylinder end exactly on the oval's extreme left/right points — 4px
+       of half-height against the Ø14 upright. That is ROUNDER than the panel's
+       strict 1:2 foreshortening (which would give 3px): too flat a head makes the
+       whole button read as tipped backwards, so the cap keeps a fuller oval.
        --asr-base-ry is the half-height of the convex base the shaft leaves the
        boss with: the box clips that ellipse's upper half, so the plastic bulges
        DOWN towards the viewer instead of ending in a visible flat cut. */
-    --asr-cap-ry: 3px;
+    --asr-cap-ry: 4px;
     --asr-base-ry: 3.5px;
     /* How far the cap's oval is turned further to the RIGHT than the shaft's own
        cross-section, around its own centre: the head's plane does not sit square
