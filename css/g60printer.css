@@ -1895,12 +1895,14 @@
 
 /* ==================================================================
    Model 33 ASR Call Control Unit (CCU) — rotary LINE/OFF/LOCAL switch.
-   On a real Model 33 ASR the line switch is a round dark-plastic knob
-   with a protruding "beak" pointer, mounted on a small flat plastic
-   apron to the RIGHT of the keyboard, level with its lower edge. The
-   knob has three fixed detents: LINE (left), OFF (centre, power
-   fully off) and LOCAL (right). The apron sits in the lower-right
-   corner of the keyboard deck (#punchkeypane), clear of the keys.
+   On a real Model 33 ASR the line switch is a TALL dark-plastic
+   cylinder whose AXIS POINTS AT THE OPERATOR — the pad it sits on is
+   the front apron, so the knob's end face is what you see and the
+   operator grips the cylinder by its sides and turns it. A raised peg
+   rises out of that face as the pointer. The apron sits to the RIGHT
+   of the keyboard (#punchkeypane), level with its lower edge, and the
+   knob has three fixed detents: LINE (left), OFF (centre, power fully
+   off) and LOCAL (right).
    ================================================================== */
 #ccu-apron {
     /* CCU (LINE/OFF/LOCAL) knob and its three labels, contain-fitted onto the
@@ -1935,89 +1937,171 @@
     bottom: 0;
 }
 
-/* The real knob is a RAISED two-step cylinder: a wide moulded base standing
-   proud of the apron with a smaller, almost flat cap on top of it (the beak
-   then sits on that cap). The base lives on the non-rotating parent, so the
-   light never turns with the pointer. */
+/* The knob is a TALL cylinder and the body IS that cylinder's side: a capsule
+   whose far end is the footprint ring where the knob meets the pad. The wall
+   between that ring and the FACE (the disc below, the end cap that looks at the
+   operator) is what the operator's fingers close around. It lives on the
+   non-rotating parent, so the light never turns with the pointer. */
 .ccu-switch::before {
     content: "";
     position: absolute;
     left: 50%;
-    bottom: 2px;
-    width: 44px;
-    height: 44px;
-    margin-left: -22px;
-    border-radius: 50%;
-    /* Dark moulded plastic: lit along the top edge, deep shade under the
-       bottom lip, so the base reads as standing out of the apron. */
-    background: linear-gradient(180deg,
-            #8e8e8b 0%,
-            #646461 38%,
-            #3a3a38 72%,
-            #232322 100%);
+    bottom: 1px;
+    /* 32px across and 52px tall = the 32px face plus the 20px of wall the
+       operator's fingers close around. The pad is 118x66, so the knob keeps its
+       margin on every side, the OFF legend keeps its distance above the
+       footprint ring and the peg still has room to swing past it. */
+    width: 32px;
+    height: 52px;
+    margin-left: -16px;
+    /* A capsule: the near half vanishes under the face, the far half is the
+       footprint ring's back arc. */
+    border-radius: 16px;
+    /* The LEAN. The pad's own "down" runs down-LEFT in the artwork's oblique
+       projection, but the switch's axis — the way the knob points at the
+       operator — has to read as "at me and to the RIGHT". Rotating the body
+       about the face centre (its bottom circle, 16px above the box's lower
+       edge) swings the footprint ring up-LEFT and leaves the face, with the
+       pointer on it, exactly where it is. */
+    transform-origin: 50% calc(100% - 16px);
+    transform: rotate(-25deg);
+    /* Moulded wall: dark at both silhouettes with the lit band where the
+       cylinder turns towards the light — the shading runs ACROSS it, which is
+       what makes it read as a body and not as a second disc. */
+    background: linear-gradient(90deg,
+            #232322 0%,
+            #55554f 22%,
+            #8d8d88 45%,
+            #6d6d68 65%,
+            #2a2a29 100%);
     box-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 0.55),
-        inset 0 -3px 5px rgba(0, 0, 0, 0.65),
-        inset 0 0 0 1px rgba(0, 0, 0, 0.35),
-        0 4px 7px rgba(0, 0, 0, 0.65),
-        0 1px 2px rgba(0, 0, 0, 0.5);
+        /* The wall rolls away towards the far (upper) end... */
+        inset 0 4px 5px rgba(0, 0, 0, 0.5),
+        /* ...and meets the face in a soft shade at its near end. */
+        inset 0 -1px 2px rgba(0, 0, 0, 0.35),
+        /* The knob's shadow on the pad falls BEHIND the footprint, so the
+           cylinder reads as standing on the pad rather than painted on it. */
+        0 -4px 6px rgba(0, 0, 0, 0.45);
 }
 
-/* The smaller CAP on top of the base: nearly flat, just enough shading to read
-   as a step, and it never turns either — the BEAK orbits its centre. The cap
-   is smaller than the base, which is what makes the knob a two-step cylinder.
-   LINE = -60°, OFF = 0° (up), LOCAL = +60°. */
+/* The FACE: the knob's end cap — the part that looks at the operator. It is the
+   same 32px circle as the body, drawn at the NEAR (lower) end of it, which is
+   what puts the cylinder's axis on the viewer instead of down the page. It
+   never turns either: the shading the light is modelled on stays put while the
+   pointer sweeps. LINE = -60°, OFF = 0° (up), LOCAL = +60°. */
 .ccu-switch-disc {
     position: absolute;
     left: 50%;
-    /* The dark cap sits LOW on the base — centred on the moulded base (its
-       centre 26px up against the base centre at 24px), NOT lifted above the
-       turning axis: the knob then reads as a cylinder with a flat top rather
-       than a raised mushroom. */
-    bottom: 12px;
-    width: 28px;
-    height: 28px;
-    margin-left: -14px;
+    /* bottom 1px + the 32px face puts its box at 33..65 in the 66px block, so
+       its centre (y=49) is the body's lower-circle centre and sits 20px below
+       the body's top-circle centre (y=29): that 20px is the wall the operator's
+       fingers close around, and both the lean and the peg's pivot are measured
+       from this point. */
+    bottom: 1px;
+    width: 32px;
+    height: 32px;
+    margin-left: -16px;
     border-radius: 50%;
     cursor: pointer;
-    /* Almost flat top: a faint light catch at the top edge and a soft shade
-       towards the bottom edge — no radial dome, this is the flat face. */
+    /* Flat end cap — and deliberately NOT reading bigger than the cylinder it
+       caps. A hard bright 1px outline and an all-round ring of shadow are what
+       drew a rim standing proud of the body, so the face keeps only a soft
+       shade where it turns away from the light and a small lip towards the
+       viewer; its tone sits between the wall's lit band and its silhouettes, so
+       the WALL stays the widest reading of the knob. */
     background: linear-gradient(180deg,
-            #5a5854 0%,
-            #45433f 45%,
-            #2c2a27 100%);
+            #66665f 0%,
+            #4b4b47 45%,
+            #33332e 100%);
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.55),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.5),
-        inset 0 0 0 1px rgba(0, 0, 0, 0.3),
-        0 3px 5px rgba(0, 0, 0, 0.55);
+        inset 0 -3px 4px rgba(0, 0, 0, 0.4),
+        0 2px 3px rgba(0, 0, 0, 0.35);
     transform-origin: 50% 50%;
     z-index: 2;
 }
 
-/* Small triangular beak that sticks out of the gray ring. As a child of
-   the disc it rotates with the knob around the disc centre: its base
-   sits on the ring (bottom:100% = the knob's outer edge) and the tip
-   points outward. */
+/* The knob's POINTER: a lever hanging off the cylinder's BASE at its side — the
+   ring where the knob meets the pad — not a mark printed on its end face, and
+   not a peg standing on top of it. Its pivot is therefore the ring's centre,
+   which the lean's 20px axis puts 8.45px left and 18.13px above the face centre
+   (20 * sin 25° / 20 * cos 25°), and the lever's own root sits on the ring's rim
+   16px out from that pivot. Three nested frames build it, each with exactly one
+   job:
+
+     .ccu-switch-lever  — PLACEMENT: owns the lever's box at the ring's rim and
+                          carries the pointer's angle about the ring centre
+                          (setTtyMode);
+     .ccu-switch-grip   — takes that angle back OUT, so its own frame is
+                          screen-aligned: the solid side wall and the cast shadow
+                          it draws always fall DOWN the page — the lever points
+                          at the operator, so its thickness grows towards the
+                          viewer — instead of spinning with the lever;
+     .ccu-switch-beak   — puts the angle back, so the clipped silhouette still
+                          marks the active detent with its tip.
+
+   Turning the knob therefore carries the lever around the ring while the
+   moulding the light is modelled on never turns. */
 .ccu-switch-lever {
     position: absolute;
-    left: 50%;
-    bottom: 100%;
+    /* The ring's centre: 50% of the block minus the lean's 8.45px offset. */
+    left: calc(50% - 8.45px);
+    /* The lever's root on the rim: the ring's centre (y=30.87) less its 16px
+       radius, i.e. 14.87px above the block's lower edge. */
+    bottom: 51.13px;
     width: 10px;
-    height: 8px;
+    height: 5px;
     margin-left: -5px;
-    /* A raised moulded tab, not a flat sticker: bright top, shaded tip, plus
-       its own drop shadow onto the disc. */
-    background: linear-gradient(180deg, #f4f4f2 0%, #bcbcb9 55%, #7c7c79 100%);
-    clip-path: polygon(50% 0, 100% 100%, 0 100%);
-    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55));
-    /* The CAP stays put (its moulded shading must not spin): the BEAK orbits
-       the cap centre instead. The beak's own top sits 8px above the cap edge,
-       and the cap radius is 14px, so the centre is 8 + 14 = 22px below it. */
-    transform-origin: 50% 22px;
+    /* The pivot is the ring centre: 16px below the lever's root (the rim). */
+    transform-origin: 50% calc(100% + 16px);
     transition: transform 0.2s;
     pointer-events: none;
     z-index: 3;
+}
+
+/* Screen-aligned frame of the lever (see the note above): it owns the hardness
+   of the lever — the solid side wall and the soft shadow it casts. */
+.ccu-switch-grip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 50%;
+    transform: rotate(calc(-1 * var(--ccu-lever-angle, 0deg)));
+    /* drop-shadow() follows the CLIPPED outline (box-shadow cannot once the
+       shape is clipped), so the first, unblurred shadow is a solid copy of the
+       silhouette pushed down by the peg's height = its side wall; the second,
+       blurred one casts the peg onto the lid. */
+    filter:
+        drop-shadow(0 3px 0 #1c1c1b) drop-shadow(0 4px 2px rgba(0, 0, 0, 0.45));
+    /* Same duration and easing as the pointer: the two rotations cancel out on
+       every frame, so the peg cannot wobble while the knob is turning. */
+    transition: transform 0.2s;
+    pointer-events: none;
+}
+
+/* The lever itself: a pointed moulded tab — bright face towards the tip, shaded
+   sides, so it reads as the moulded lever end it is on the real knob. */
+.ccu-switch-beak {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Rotated back into the pointer's frame: without this the parent's
+       counter-rotation would leave the tip pointing up whatever the detent. */
+    transform: rotate(var(--ccu-lever-angle, 0deg));
+    transform-origin: 50% 50%;
+    background: linear-gradient(180deg,
+            #f7f7f5 0%,
+            #dcdcd9 45%,
+            #ababa8 100%);
+    clip-path: polygon(50% 0, 100% 62%, 100% 100%, 0 100%, 0 62%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 1px 0 0 rgba(255, 255, 255, 0.35),
+        inset -1px 0 0 rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
 }
 
 /* Position labels around the knob, drawn on the apron body. */
@@ -2040,10 +2124,12 @@
     cursor: pointer;
 }
 
-/* OFF sits above the knob, centred. */
+/* OFF sits above the knob, centred, and rides a couple of px over the pad's top
+   edge: the lever's tip sweeps up to the footprint ring's rim, so the legend
+   needs that bit of clearance to stay readable at the OFF detent. */
 .ccu-switch-pos[data-tty-mode="off"] {
     left: 50%;
-    top: 2px;
+    top: -2px;
     transform: translateX(-50%);
 }
 
