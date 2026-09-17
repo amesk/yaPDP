@@ -36,6 +36,7 @@
     "e2e:bsd": "wireit",
     "e2e:bsd29": "wireit",
     "e2e:os:legacy": "wireit",
+    "e2e:xxdp": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
     "voice": "node tools/voicer.js"
@@ -136,12 +137,30 @@
         "package.json"
       ]
     },
+    "e2e:xxdp": {
+      "command": "node tests/e2e-xxdp-ekbbf0.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-xxdp-ekbbf0.js",
+        "tests/xxdp-lib.js",
+        "tests/xxdp-panel.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
     "validate": {
       "dependencies": [
         "e2e:os",
         "e2e:os:legacy",
         "e2e:bsd",
-        "e2e:bsd29"
+        "e2e:bsd29",
+        "e2e:xxdp"
       ]
     }
   }
