@@ -11,6 +11,9 @@
 #           plus the headless full-machine shakeouts (no browser needed):
 #             * e2e-bsd-boot            (BSD 2.11 headless boot to login:)
 #             * e2e-bsd29-boot          (BSD 2.9 headless boot to a root shell)
+#             * e2e-xxdp-ekbbf0         (XXDP+ EKBBF0 field diagnostic: the real
+#                                        DEC 11/70 CPU check, driven through the
+#                                        operator console to a clean END PASS)
 #
 # E2E failure artifacts (screenshots + console tails) are uploaded so a red
 # run can be diagnosed without re-running locally.
@@ -93,6 +96,9 @@ jobs:
 
       - name: e2e — BSD 2.9 headless boot (full-machine shakeout)
         run: node tests/e2e-bsd29-boot.js
+
+      - name: e2e — XXDP+ EKBBF0 field diagnostic (11/70 CPU, headless)
+        run: node tests/e2e-xxdp-ekbbf0.js
 
       - name: Upload failure artifacts
         if: failure()
