@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The quick-boot wizard puts the teletype on LINE before it types.** Its steps
+  go straight into the machine's console input, but the machine's answers only
+  reach the teletype paper on LINE — with the CCU left in OFF or LOCAL a freshly
+  booted guest showed nothing at all, which read as a hung machine. The wizard
+  also stops a feeding reader tape (START, and AUTO where the guest's own X-ON
+  can start it), so its bytes cannot land in the middle of the boot.
+  (`src/quickboot.js`)
+
 - **The Model 33 ASR TAPE PUNCH buttons are plungers, not discs.** Each button
   is the Ø28 panel boss the old round cap was — a moulded bulge of the cabinet,
   so it wears the cabinet's own sand and reads as a slightly flattened oval — with

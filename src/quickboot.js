@@ -399,6 +399,30 @@ var QuickBoot = (function () {
         }
     }
 
+    // Put the operator's console controls into the state a boot needs. The
+    // wizard types its steps straight into the MACHINE (the DL11 receive
+    // queue), but everything the machine answers is printed only on LINE: with
+    // the CCU left in OFF or LOCAL the paper stays blank and a perfectly booted
+    // guest reads as a hung machine (g60ConsoleWrite ignores output off line).
+    // A tape feeding under its own power is the other interference — in START,
+    // and in AUTO where the guest's own X-ON can start it, the reader would
+    // inject bytes into the middle of the boot. Returns the actions taken, so
+    // the contract is testable without a DOM (see tests/quickboot-console.test.js).
+    function consoleWorkingState(state, api) {
+        var done = [];
+        if (!state || !api) return done;
+        if (state.ttyMode !== "line" && typeof api.setTtyMode === "function") {
+            api.setTtyMode("line");
+            done.push("line");
+        }
+        if ((state.readerMode === "start" || state.readerMode === "auto") &&
+            typeof api.setReaderMode === "function") {
+            api.setReaderMode("stop");
+            done.push("reader-stop");
+        }
+        return done;
+    }
+
     // Type the boot sequence for a scenario. `force` skips the hardware
     // profile check — used when resuming a pending boot after a reload.
     function launch(device, force) {
@@ -456,6 +480,16 @@ var QuickBoot = (function () {
         // Start "on a fresh page": clear teletype/LP11 paper and VT52 screens
         // before the reboot, so the boot banner lands on clean output.
         clearConsole();
+
+        // ... and with a console able to SHOW that output at all: the teletype
+        // on LINE, and no tape feeding bytes of its own while the steps are
+        // typed. Both are the operator's controls, so the knob visibly turns.
+        consoleWorkingState(
+            { ttyMode: window.ttyMode, readerMode: window.ttyReaderMode },
+            {
+                setTtyMode: (typeof setTtyMode === "function") ? setTtyMode : null,
+                setReaderMode: (typeof setReaderMode === "function") ? setReaderMode : null
+            });
 
         // Reboot the machine so the boot loader reaches the Boot> prompt.
         if (typeof boot === "function") boot();
