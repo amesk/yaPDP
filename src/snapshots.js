@@ -180,7 +180,11 @@ var SnapshotStore = (() => {
     // Structural config that defines the installed device set. Quick-booting
     // a different guest OS (quickboot.js) changes these fields, so a snapshot
     // must record them to bring the right devices back on restore.
-    var STRUCTURAL_CONFIG = ["consoleType", "userTerminals", "printer", "vt11"];
+    // userTerminalTypes is structural too: it decides which cabinet each user
+    // terminal is built as, so a snapshot taken with VT100 terminals must not be
+    // restored onto a machine whose terminals are DECscopes.
+    var STRUCTURAL_CONFIG = ["consoleType", "userTerminals", "userTerminalTypes",
+                             "printer", "vt11"];
 
     function captureConfig() {
         if (typeof Config === "undefined" || typeof Config.get !== "function") return null;
@@ -482,6 +486,24 @@ var SnapshotStore = (() => {
         });
     }
 
+    /**
+     * sameStructuralValue(a, b) — compare one structural config field.
+     * Arrays (userTerminalTypes) compare element by element; everything else
+     * compares by strict value. A snapshot saved before a field existed has it
+     * undefined and is skipped by the caller.
+     */
+    function sameStructuralValue(a, b) {
+        if (Array.isArray(a) || Array.isArray(b)) {
+            if (!Array.isArray(a) || !Array.isArray(b)) return false;
+            if (a.length !== b.length) return false;
+            for (var i = 0; i < a.length; i++) {
+                if (a[i] !== b[i]) return false;
+            }
+            return true;
+        }
+        return a === b;
+    }
+
     // Does the snapshot's hardware config differ from the current machine's?
     // If so the device set (console type, LP11, terminals, VT11) is wrong and
     // the page must reload with the snapshot's config before restoring.
@@ -491,7 +513,10 @@ var SnapshotStore = (() => {
         var cur = Config.get();
         for (var i = 0; i < STRUCTURAL_CONFIG.length; i++) {
             var k = STRUCTURAL_CONFIG[i];
-            if (snap.config[k] !== undefined && snap.config[k] !== cur[k]) return true;
+            if (snap.config[k] === undefined) continue;
+            // Scalar fields compare by value; userTerminalTypes is an array and
+            // would otherwise compare by reference and always report "different".
+            if (!sameStructuralValue(snap.config[k], cur[k])) return true;
         }
         return false;
     }

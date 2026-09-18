@@ -96,11 +96,16 @@ var OSBoot = (function () {
             hardware: { console: "teletype", printer: null, vt11: false,
                 forceUpperCaseOut: true } },
         // RT-11 — teletype console and an LP11 line printer.
+        // RT-11 v4.0 — an ANSI console. RT-11 V4.00 shipped in 1980, two years
+        // after the VT100, and the pair was the standard office combination by
+        // then; the loader and its utilities use cursor addressing the VT100
+        // provides and a DECscope cannot. forceUpperCaseOut is not applied: the
+        // VT100 prints both cases.
         { device: "rk1", label: "RT-11 v4.0", boot: "BOOT RK1",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: true, vt11: false,
-                forceUpperCaseOut: true } },
+            hardware: { console: "vt100", printer: true, vt11: false,
+                forceUpperCaseOut: null } },
         // RT-11 variant with a VT52 terminal as the operator console — same
         // rk1.dsk image, different console profile (url/bootDev reuse the
         // underlying device so mounting and the boot command stay correct).

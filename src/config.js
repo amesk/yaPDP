@@ -3,9 +3,14 @@
  *
  * Single source of truth for the configurable system parameters:
  *   - consoleType:   terminal attached to the operator console (tty0),
- *                    'teletype' (Model 33 ASR) or 'vt52' (DECscope).
- *   - userTerminals: number of additional user VT52 terminals (0-2).
+ *                    'teletype' (Model 33 ASR), 'vt52' (DECscope) or
+ *                    'vt100' (the 1978 ANSI terminal; supersets the VT52).
+ *   - userTerminals: number of additional user terminals (0-2).
  *                    When a terminal is added, a matching sidebar page is shown.
+ *   - userTerminalTypes: per-terminal dialect of the user terminals, in the
+ *                    same order as the sidebar pages (TT1, TT2): 'vt52' or
+ *                    'vt100'. Kept as an array like vt52Zoom, so each
+ *                    terminal keeps its own type between runs.
  *   - printer:       whether an LP11 line printer is present (own page, an
  *                    animated G60 printer without a keyboard).
  *   - vt11:          whether a VT11 vector-graphics display is present (own
@@ -71,8 +76,12 @@ var Config = (function () {
     var STORAGE_KEY = "yapdp.config.v1";
 
     var DEFAULTS = Object.freeze({
-        consoleType: "teletype", // 'teletype' | 'vt52'
+        consoleType: "teletype", // 'teletype' | 'vt52' | 'vt100'
         userTerminals: 0,        // 0 | 1 | 2
+        // Per-terminal dialect of the user terminals, in sidebar-page order
+        // (TT1, TT2). An array like vt52Zoom, so each terminal remembers its own
+        // type between runs; entries beyond userTerminals are simply unused.
+        userTerminalTypes: ["vt52", "vt52"],
         printer: false,          // boolean
         vt11: false,             // boolean (VT11 graphics display)
         printWidth: 72,          // 72 | 80 (console teletype, Model 33 ASR)
@@ -104,6 +113,24 @@ var Config = (function () {
         var out = [false, false, false];
         if (!Array.isArray(value)) return out;
         for (var i = 0; i < out.length; i++) out[i] = Boolean(value[i]);
+        return out;
+    }
+
+    // Terminal dialects a user terminal may be built as. 'vt52' is the
+    // historical DECscope; 'vt100' is the ANSI terminal (a superset of it).
+    var TERMINAL_TYPES = Object.freeze(["vt52", "vt100"]);
+
+    /**
+     * Normalize the per-terminal dialect array into two legal entries.
+     * Anything unrecognised falls back to the DECscope, so configs saved before
+     * the VT100 existed keep building VT52 user terminals.
+     */
+    function normalizeUserTerminalTypes(value) {
+        var out = ["vt52", "vt52"];
+        if (!Array.isArray(value)) return out;
+        for (var i = 0; i < out.length; i++) {
+            out[i] = TERMINAL_TYPES.indexOf(value[i]) !== -1 ? value[i] : out[i];
+        }
         return out;
     }
 
@@ -147,10 +174,16 @@ var Config = (function () {
     function validate(raw) {
         var o = (raw && typeof raw === "object") ? raw : {};
         return {
-            consoleType: o.consoleType === "vt52" ? "vt52" : DEFAULTS.consoleType,
+            // Any of the three legal terminals; anything else is the teletype.
+            consoleType: TERMINAL_TYPES.indexOf(o.consoleType) !== -1
+                ? o.consoleType
+                : DEFAULTS.consoleType,
             userTerminals: isOneOf(Number(o.userTerminals), [0, 1, 2])
                 ? Number(o.userTerminals)
                 : DEFAULTS.userTerminals,
+            // Per-terminal dialect choices (TT1, TT2); garbage falls back to the
+            // DECscope, so a config written before the VT100 existed still builds.
+            userTerminalTypes: normalizeUserTerminalTypes(o.userTerminalTypes),
             printer: Boolean(o.printer),
             vt11: Boolean(o.vt11),
             printWidth: normalizePrintWidth(o.printWidth, DEFAULTS.printWidth, PRINT_WIDTHS_TTY),

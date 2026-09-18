@@ -70,6 +70,8 @@ function run() {
         assert.deepStrictEqual(plain(C.DEFAULTS), {
             consoleType: "teletype",
             userTerminals: 0,
+            // Per-terminal dialect of the user terminals, in sidebar-page order.
+            userTerminalTypes: ["vt52", "vt52"],
             printer: false,
             vt11: false,
             printWidth: 72,
@@ -219,6 +221,7 @@ function run() {
         const cfg = {
             consoleType: "vt52",
             userTerminals: 2,
+            userTerminalTypes: ["vt100", "vt52"],
             printer: true,
             vt11: true,
             printWidth: 80,
