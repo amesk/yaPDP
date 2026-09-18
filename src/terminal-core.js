@@ -60,8 +60,21 @@
     // A real DECscope VT52 uses a white (P4) phosphor, not green: the text is
     // a light-grey / cold-white (#E0E0E0 / #F0F8FF) on a very dark grey-green
     // glass tube (the actual VT52 faceplate, not pure black).
-    const BG_COLOR    = "#141914";  // Dark grey-green CRT glass background
-    const FG_COLOR    = "#E0E0E0";  // Light-grey P4 phosphor writing
+    // CRT phosphors, keyed by name. The tube's two colours always come as a
+    // pair: the glass it is drawn on and the light it writes with.
+    //
+    //   p4  the white phosphor the DECscope shipped with and the tube the VT100
+    //       was introduced on (1978). The only one the VT52 ever had.
+    //   p1  the green phosphor that late-1970s and 1980s terminals are known
+    //       for. Muted rather than the bright green of period film, which is a
+    //       fiction: a real P1 sits close to this.
+    const PHOSPHORS = Object.freeze({
+        p4: Object.freeze({ fg: "#E0E0E0", bg: "#141914" }),
+        p1: Object.freeze({ fg: "#2BD62B", bg: "#0A1A0A" })
+    });
+
+    const BG_COLOR    = PHOSPHORS.p4.bg;  // kept for the default readers
+    const FG_COLOR    = PHOSPHORS.p4.fg;
 
     // Attribute bitmask flags (SGR)
     const ATTR_BOLD       = 1;
@@ -190,9 +203,11 @@
             var powerOn = powerOnState(this);
             if (powerOn) {
                 for (var pk in powerOn) {
-                    if (Object.prototype.hasOwnProperty.call(powerOn, pk)) {
-                        this.modes[pk] = powerOn[pk];
-                    }
+                    if (!Object.prototype.hasOwnProperty.call(powerOn, pk)) continue;
+                    // A phosphor is a palette, not a mode flag: route it through
+                    // the setter so the glyph colours follow it.
+                    if (pk === "phosphor") this.setPhosphor(powerOn[pk]);
+                    else this.modes[pk] = powerOn[pk];
                 }
             }
 
@@ -246,8 +261,9 @@
             // The historical DECscope reverse-video mode swaps them (black text
             // on white/grey) and is enabled via setReverseVideo().
             this.reverseVideo = false;
-            this.fgColor = FG_COLOR;
-            this.bgColor = BG_COLOR;
+            this.phosphor = "p4";
+            this.fgColor = PHOSPHORS.p4.fg;
+            this.bgColor = PHOSPHORS.p4.bg;
 
             // Sparse screen buffer:
             // Each row is an array of { c: charCode, a: attributes }.
@@ -318,9 +334,11 @@
             var powerOn = powerOnState(this);
             if (powerOn) {
                 for (var pk in powerOn) {
-                    if (Object.prototype.hasOwnProperty.call(powerOn, pk)) {
-                        this.modes[pk] = powerOn[pk];
-                    }
+                    if (!Object.prototype.hasOwnProperty.call(powerOn, pk)) continue;
+                    // A phosphor is a palette, not a mode flag: route it through
+                    // the setter so the glyph colours follow it.
+                    if (pk === "phosphor") this.setPhosphor(powerOn[pk]);
+                    else this.modes[pk] = powerOn[pk];
                 }
             }
 
@@ -463,6 +481,25 @@
             this.fgMode = fg;
         }
 
+        /**
+         * setPhosphor(name) — choose the CRT's phosphor by name.
+         *
+         * Only the VT100 takes this: the VT52 was never sold in another
+         * phosphor, and its dialect pins p4 (see src/vt52.js). Repaints the
+         * tube, since the glyphs and the glass are both painted by this object.
+         */
+        setPhosphor(name) {
+            if (!PHOSPHORS[name]) return;
+            this.phosphor = name;
+            const ph = PHOSPHORS[name];
+            this.fgColor = this.reverseVideo ? ph.bg : ph.fg;
+            this.bgColor = this.reverseVideo ? ph.fg : ph.bg;
+            if (this.allowCanvas) {
+                this.resetCanvasContext(this.canvas.ctx);
+                this.renderCanvas();
+            }
+        }
+
         // ---------------------------------------------------------------------------
         // Historical reverse-video mode (DECscope VT52)
         // ---------------------------------------------------------------------------
@@ -471,8 +508,9 @@
         // black. Enabled from the CONFIG page; repaints the canvas immediately.
         setReverseVideo(reverse) {
             this.reverseVideo = !!reverse;
-            this.fgColor = this.reverseVideo ? BG_COLOR : FG_COLOR;
-            this.bgColor = this.reverseVideo ? FG_COLOR : BG_COLOR;
+            const ph = PHOSPHORS[this.phosphor] || PHOSPHORS.p4;
+            this.fgColor = this.reverseVideo ? ph.bg : ph.fg;
+            this.bgColor = this.reverseVideo ? ph.fg : ph.bg;
 
             if (this.allowCanvas) {
                 this.resetCanvasContext(this.canvas.ctx);
@@ -1749,14 +1787,13 @@
         if (typeof document === 'undefined') return;
         var vars = vt52MarkerVars(svgText);
         if (!vars) return;
-        var rigs = document.querySelectorAll('.vt52-rig');
+        // Only the rigs that named NO artwork of their own take the DECscope's
+        // numbers. Testing "has it received its own yet" instead let the
+        // DECscope's earlier arrival stamp its marker on a VT100 rig, leaving
+        // the tube at the DECscope's offset — the same race as the artwork
+        // itself, and equally intermittent.
+        var rigs = document.querySelectorAll('.vt52-rig:not([data-artwork])');
         for (var i = 0; i < rigs.length; i++) {
-            // A rig that carries its own artwork keeps its own marker numbers;
-            // the shared svg only fills in the rigs that have none (the common
-            // case, where the whole page shows one terminal type).
-            if (rigs[i].dataset && rigs[i].dataset.artwork && rigs[i].__markerVars) {
-                continue;
-            }
             for (var name in vars) {
                 if (Object.prototype.hasOwnProperty.call(vars, name)) {
                     rigs[i].style.setProperty(name, vars[name]);
@@ -1928,17 +1965,30 @@
                 .then(function (response) { return response.text(); })
                 .then(function (text) {
                     ART_CACHE[url] = text;
-                    if (url === VT52_ART_URL) {
-                        inlineVt52Artwork(text);
-                        applyVt52MarkerVars(text);
+
+                    // Each rig gets exactly the artwork it named, and no file may
+                    // fill a rig that asked for a different one. The two fetches
+                    // run in parallel, so without this scoping the DECscope's
+                    // response overpainted a VT100 rig whenever it happened to
+                    // arrive second — a console that showed the right cabinet on
+                    // one load and the DECscope's on the next, at random.
+                    var wanted = document.querySelectorAll(
+                        '.vt52-rig[data-artwork]');
+                    for (var j = 0; j < wanted.length; j++) {
+                        if (wanted[j].dataset.artwork !== url) continue;
+                        inlineArtworkInto(wanted[j], text);
+                        applyMarkerVarsToRig(wanted[j], text);
                     }
-                    // Rigs that asked for this artwork get it, and their own
-                    // marker numbers, so two cabinets can differ in geometry.
-                    var hosts = document.querySelectorAll(
-                        '.vt52-rig[data-artwork="' + url + '"]');
-                    for (var j = 0; j < hosts.length; j++) {
-                        inlineArtworkInto(hosts[j], text);
-                        applyMarkerVarsToRig(hosts[j], text);
+
+                    // The DECscope is the default cabinet, so its file also
+                    // fills every rig that named no artwork of its own.
+                    if (url === VT52_ART_URL) {
+                        var defaults = document.querySelectorAll(
+                            '.vt52-rig:not([data-artwork])');
+                        for (var d = 0; d < defaults.length; d++) {
+                            inlineArtworkInto(defaults[d], text);
+                            applyMarkerVarsToRig(defaults[d], text);
+                        }
                     }
                 })
                 .catch(function () { /* keep the stylesheet fallback */ });
@@ -2027,7 +2077,7 @@
         DEFAULT_ROWS, DEFAULT_COLS, MAX_COLS_132, MAX_BUFFER, CRT_ASPECT,
         BS, TAB, LF, FF, CR, ESC, SO, SI, DEL,
         ASCII_PRINTABLE_MIN, ASCII_PRINTABLE_MAX, CSI_PRIVATE,
-        BG_COLOR, FG_COLOR,
+        BG_COLOR, FG_COLOR, PHOSPHORS,
         ATTR_BOLD, ATTR_UNDERSCORE, ATTR_BLINK, ATTR_REVERSE
     });
 

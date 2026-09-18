@@ -70,6 +70,9 @@ function run() {
         assert.deepStrictEqual(plain(C.DEFAULTS), {
             consoleType: "teletype",
             userTerminals: 0,
+            // The VT100's tube; the VT52 is not offered a choice (see the
+            // dialect's powerOnState, which pins p4).
+            vt100Phosphor: "p4",
             // Per-terminal dialect of the user terminals, in sidebar-page order.
             userTerminalTypes: ["vt52", "vt52"],
             printer: false,
@@ -230,6 +233,7 @@ function run() {
             upperCaseOnly: true,
             forceUpperCaseOut: true,
             keyClick: true,
+            vt100Phosphor: "p1",
             vt52ReverseVideo: true,
             vt52TextMode: true,
             vt52Zoom: [true, false, true],

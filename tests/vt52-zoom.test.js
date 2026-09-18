@@ -161,13 +161,41 @@ function run() {
 
     const outer = extractRule(css, ".vt52-zoomed");
     assert.ok(/gradient/.test(outer),
-      "the outer case must keep the moulded-plastic gradient");
+      "the DECscope case keeps its moulded-plastic gradient");
     assert.ok(/border-top-color\s*:\s*#ece6d8/.test(outer),
-      "the outer case must keep the light top catch");
+      "the DECscope case keeps the light top catch");
     assert.ok(/--vt52-case-wall\s*:/.test(outer) && /--vt52-bezel-wall\s*:/.test(outer),
       "both wall thicknesses must be published as variables");
 
-    const bezel = extractRule(css, ".vt52-zoomed .vt52-bezel");
+    // The VT100's own plastic. Zoom builds the case in CSS rather than from the
+    // artwork, so without these rules a maximised VT100 reads as a DECscope.
+    // extractRule matches the FIRST occurrence of the marker, and the DECscope
+    // rule `.vt52-zoomed {` is a prefix of this one — so slice the block
+    // ourselves, starting at the VT100 selector.
+    const vtIdx = css.indexOf(".vt52-rig[data-artwork].vt52-zoomed");
+    assert.ok(vtIdx !== -1, "the VT100 zoom case rule must exist");
+    const vtEnd = css.indexOf("\n}", vtIdx);
+    // Strip the comments before asserting: the rule's own note explains that a
+    // gradient was dropped, and that prose would satisfy a naive /gradient/ test.
+    const vt100Case = css.slice(vtIdx, vtEnd + 2).replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.ok(/#f3d383/.test(vt100Case),
+      "a rig showing the VT100 artwork must use the artist's hull colour");
+    assert.ok(/#d4ab4a/.test(vt100Case),
+      "and the artist's outline");
+    assert.ok(!/gradient/.test(vt100Case),
+      "flat too — the same glare applies");
+    const vtBezIdx = css.indexOf(".vt52-rig[data-artwork].vt52-zoomed .vt52-bezel");
+    assert.ok(vtBezIdx !== -1, "the VT100 bezel rule must exist");
+    const vt100Bezel = css.slice(vtBezIdx, css.indexOf("\n}", vtBezIdx) + 2)
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.ok(/background\s*:/.test(vt100Bezel),
+      "the VT100 bezel takes its own shade, not the DECscope's");
+
+    // The DECscope bezel: its own block, matched by the selector WITHOUT the
+    // data-artwork part (which would otherwise pick up the VT100 rule above).
+    const bezIdx = css.indexOf("\n.vt52-zoomed .vt52-bezel");
+    assert.ok(bezIdx !== -1, "the DECscope bezel rule must exist");
+    const bezel = css.slice(bezIdx, css.indexOf("\n}", bezIdx) + 2);
     assert.ok(/position\s*:\s*absolute/.test(bezel),
       "the bezel must be an absolute layer (not a flex child that steals space)");
     assert.ok(/inset\s+0\s+4px\s+12px/.test(bezel),

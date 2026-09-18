@@ -983,6 +983,15 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   var canvas = document.getElementById(canvasId);
   if (!canvas) return;
 
+  // Point the rig at its dialect's artwork before anything measures it. The
+  // page markup used to hard-code data-artwork on the console rig alone, so
+  // TT1/TT2 kept the DECscope backdrop whatever dialect they were built as.
+  // A DECscope rig names nothing: the vt52 file is the loader's default.
+  var rigEl = canvas.closest ? canvas.closest('.vt52-rig') : null;
+  if (rigEl && drv.artwork && kind !== 'vt52') {
+    rigEl.dataset.artwork = drv.artwork;
+  }
+
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
   var textMode = !!(cfg && cfg.vt52TextMode);
 
@@ -1033,6 +1042,34 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   // Allow the native context menu on this textarea only, so right-click paste
   // works; the page-wide block in contextmenu.js stays untouched elsewhere.
   textarea.addEventListener('contextmenu', function (e) { e.stopPropagation(); });
+
+  // Double click on the screen toggles zoom, exactly like the floating button
+  // (see Vt52Zoom.toggleUnit).
+  //
+  // Counted from click events rather than taken from 'dblclick': the tube is a
+  // canvas with user-select:none, and Chrome does not raise a dblclick over it
+  // (measured — two real clicks arrive, dblclick never does). Counting two
+  // clicks inside DBLCLICK_MS is the same gesture with no dependency on the
+  // browser's own double-click detection.
+  var DBLCLICK_MS = 400;
+  var lastClickAt = 0;
+  var onScreenClick = function (ev) {
+    if (typeof Vt52Zoom === 'undefined' || typeof Vt52Zoom.toggleUnit !== 'function') return;
+    // Never steal a click that landed on a control.
+    if (ev.target && ev.target.closest && ev.target.closest('button, a, input, select')) return;
+    var now = (typeof performance !== 'undefined' && performance.now)
+        ? performance.now() : Date.now();
+    if (now - lastClickAt <= DBLCLICK_MS) {
+      lastClickAt = 0;          // consume the pair so a third click starts over
+      ev.preventDefault();
+      Vt52Zoom.toggleUnit(unit);
+    } else {
+      lastClickAt = now;
+    }
+  };
+  var crtBox = canvas.parentElement;
+  if (crtBox) crtBox.addEventListener('click', onScreenClick);
+  textarea.addEventListener('click', onScreenClick);
 
   // Install keyboard handler for this page.
   installVT52Keyboard(unit, pageId);
@@ -1432,17 +1469,58 @@ function applyCRTEffects(enabled) {
 
 // Apply the configured reverse-video mode to every live VT52 terminal
 // (console + user terminals). Non-canvas terminals simply ignore it.
-function applyVT52ReverseVideo(enabled) {
-  // The canvas renderer swaps its own fg/bg (see setReverseVideo in
-  // src/vt52.js); the tube AROUND the canvas is styled from CSS, so the class
-  // tells the stylesheet to flip --vt52-bg/--vt52-fg with it. Without this the
-  // white reverse-video screen sat inside a dark CRT border.
-  document.body.classList.toggle('reverse-video', !!enabled);
+/**
+ * applyTerminalPhosphor(name) — light the VT100 tubes with the chosen phosphor.
+ *
+ * Only the VT100 takes the option: the VT52 was never offered another phosphor,
+ * and its dialect pins p4 through powerOnState(), so a value pushed here is
+ * ignored by a DECscope on its own. The stylesheet gets the same choice through
+ * a body attribute, because it paints the tube's surround and the textarea's
+ * text — the canvas paints the glyphs, and if only one side moved the picture
+ * would come apart.
+ */
+function applyTerminalPhosphor(name) {
+  var phosphor = (name === 'p1') ? 'p1' : 'p4';
+  // The phosphor is the VT100's alone. Every dialect shares ONE registry
+  // (window.yapdpCore.terminals), so vt100Get(u) happily returns a DECscope that
+  // happens to sit on that unit — iterating it lit the whole machine green and
+  // overrode the pin the VT52 dialect states in powerOnState(). Ask the terminal
+  // whether it takes a phosphor at all: the VT100 dialect says yes, the VT52
+  // does not implement it, so it is left on P4.
   for (var u = 0; u <= 2; u++) {
-    var t = (typeof window.vt52Get === 'function') ? window.vt52Get(u) : null;
-    if (t && typeof t.setReverseVideo === 'function') {
-      t.setReverseVideo(!!enabled);
-    }
+    var t = (typeof window.yapdpCore !== 'undefined' && window.yapdpCore.terminals)
+        ? window.yapdpCore.terminals.get(u) : null;
+    if (!t || !t.acceptsPhosphor) continue;
+    if (typeof t.setPhosphor === 'function') t.setPhosphor(phosphor);
+  }
+  document.body.setAttribute('data-phosphor', phosphor);
+}
+
+function applyVT52ReverseVideo(enabled) {
+  // The canvas renderer swaps its own fg/bg (see setReverseVideo in the engine);
+  // the tube AROUND the canvas is styled from CSS, so a class tells the
+  // stylesheet to flip --vt52-bg/--vt52-fg with it. Without that the white
+  // reverse-video screen sat inside a dark CRT border.
+  //
+  // Reverse video is the DECscope's OWN panel switch — the VT100 has no such
+  // control, only the SGR 7 attribute the software sends. So the class goes on
+  // each DECscope RIG rather than on <body> (a body class repainted every tube,
+  // VT100 included), and the walk asks each terminal whether it takes the switch
+  // at all: the terminals share one registry, so vt52Get(u) also returns a VT100
+  // sitting on that unit.
+  for (var u = 0; u <= 2; u++) {
+    var t = (typeof window.yapdpCore !== 'undefined' && window.yapdpCore.terminals)
+        ? window.yapdpCore.terminals.get(u) : null;
+    if (!t || !t.acceptsReverseVideo) continue;   // the VT100 has no such switch
+    if (typeof t.setReverseVideo === 'function') t.setReverseVideo(!!enabled);
+  }
+  // The tube's surround is styled from CSS, and the class has to sit on the
+  // DECscope's rig rather than on <body> — a body class repainted the VT100's
+  // tube too. Vt52Zoom owns that per-rig stamping, and re-applies it on every
+  // page change, because a rig on a hidden page is not reachable from here.
+  document.body.classList.toggle('vt52-reverse-video', !!enabled);
+  if (typeof Vt52Zoom !== 'undefined' && typeof Vt52Zoom.applyReverseVideo === 'function') {
+    Vt52Zoom.applyReverseVideo();
   }
 }
 
@@ -1693,6 +1771,7 @@ function initConfigForm() {
   if (!cfg) return;
 
   var radios = document.querySelectorAll('input[name="consoleType"]');
+  var phosphorRadios = document.querySelectorAll('input[name="vt100Phosphor"]');
   var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
   var userTerm = document.getElementById('config-userTerminals');
   // Per-terminal dialect selects, in sidebar-page order (TT1, TT2).
@@ -1728,6 +1807,7 @@ function initConfigForm() {
 
   // Populate the form from the persisted config.
   setRadioChecked(radios, cfg.consoleType);
+  setRadioChecked(phosphorRadios, cfg.vt100Phosphor);
   setRadioChecked(speedRadios, cfg.teletypeSpeed);
   if (userTerm) userTerm.value = String(cfg.userTerminals);
   userTermTypeEls.forEach(function (el, i) {
@@ -1785,6 +1865,13 @@ function initConfigForm() {
       forceUpperCaseOut: (pdpUpperEl) ? pdpUpperEl.checked : cfg.forceUpperCaseOut,
       vt52ReverseVideo: (vt52RevEl) ? vt52RevEl.checked : cfg.vt52ReverseVideo,
       crtEffects: (crtEl) ? crtEl.checked : cfg.crtEffects,
+      // Live like crtEffects: the radio saves on change, so read the persisted
+      // value. Reading the DOM here made a phosphor pick that was already in
+      // effect and already saved still count as an uncommitted edit — and the
+      // leave-page dialog fired on a setting that was plainly applied.
+      vt100Phosphor: (typeof Config !== 'undefined')
+          ? Config.get().vt100Phosphor
+          : cfg.vt100Phosphor,
       vt52TextMode: (textModeEl) ? textModeEl.checked : cfg.vt52TextMode,
       hum: (humEl) ? humEl.checked : cfg.hum,
       photoBackdrop: (pbEl) ? pbEl.checked : cfg.photoBackdrop,
@@ -1830,6 +1917,7 @@ function initConfigForm() {
     var current = Config.get();
     var form = readForm();
     return form.consoleType !== current.consoleType ||
+      form.vt100Phosphor !== current.vt100Phosphor ||
       form.userTerminals !== current.userTerminals ||
       !sameTypes(form.userTerminalTypes, current.userTerminalTypes) ||
       form.printer !== current.printer ||
@@ -1859,6 +1947,7 @@ function initConfigForm() {
       window.lp11G60Printer.setMaxCols(f.printerWidth);
     }
     applyVT52ReverseVideo(f.vt52ReverseVideo);
+    applyTerminalPhosphor(f.vt100Phosphor);
     applyVT52TextMode(f.vt52TextMode);
     applyCRTEffects(f.crtEffects);
     applyPhotoBackdrop(f.photoBackdrop);
@@ -1906,6 +1995,22 @@ function initConfigForm() {
     }
     var pwField = document.getElementById('config-field-printerWidth');
     if (pwField) setFieldDisabled(pwField, !(printerEl && printerEl.checked));
+
+    // The phosphor option belongs to the VT100 alone: the VT52 shipped only in
+    // P4 and its dialect pins it. Dim the radios unless the console — or one of
+    // the user terminals — is a VT100, mirroring how the teletype fields go dim
+    // for a graphical console.
+    var anyVt100 = false;
+    for (var r = 0; r < radios.length; r++) {
+      if (radios[r].checked && radios[r].value === 'vt100') anyVt100 = true;
+    }
+    if (!anyVt100 && userTermTypeEls) {
+      for (var t100 = 0; t100 < userTermTypeEls.length; t100++) {
+        if (userTermTypeEls[t100] && userTermTypeEls[t100].value === 'vt100') anyVt100 = true;
+      }
+    }
+    var phField = document.getElementById('config-field-vt100Phosphor');
+    if (phField) setFieldDisabled(phField, !anyVt100);
   }
 
   // Apply: persist the whole form in one Config.set() call, then reload only
@@ -1945,6 +2050,17 @@ function initConfigForm() {
     userTerm.addEventListener('change', markStructural);
     userTermTypeEls.forEach(function (el) {
       if (el) el.addEventListener('change', markStructural);
+    });
+    phosphorRadios.forEach(function (el) {
+      if (el) el.addEventListener('change', function () {
+        if (!this.checked) return;
+        // Applied AND persisted at once: the tube is already repainted, so a
+        // form that still differed from the saved config would raise the
+        // leave-page dialog for a setting that is plainly in effect.
+        applyTerminalPhosphor(this.value);
+        if (typeof Config !== 'undefined') Config.set({ vt100Phosphor: this.value });
+        updateDirtyUI();
+      });
     });
   }
   if (printerEl) {
@@ -3623,6 +3739,10 @@ installTtyArtLayer();
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);
+
+// Light the VT100 tubes with the configured phosphor (the VT52 ignores it and
+// stays p4 — see applyTerminalPhosphor).
+applyTerminalPhosphor(__appCfg && __appCfg.vt100Phosphor);
 
 // Apply the configured VT52 text mode to the live terminals (idempotent with
 // the mode chosen inside initVT52Page, but also covers late-created ones).

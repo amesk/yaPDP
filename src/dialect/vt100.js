@@ -58,7 +58,31 @@
          * hardcopy textarea instead of the CRT. The operator saw a cabinet with
          * a blank screen.
          */
+        /**
+         * acceptsPhosphor — this terminal takes a tube choice from CONFIG.
+         *
+         * The VT52 does not set this, so the host's applyTerminalPhosphor()
+         * leaves a DECscope on P4. The flag exists because every dialect shares
+         * ONE terminal registry, so "reachable" no longer implies "is a VT100":
+         * iterating the registry lit DECscopes green.
+         */
+        acceptsPhosphor = true;
+
+        /**
+         * acceptsReverseVideo — NO, unlike the base dialect it inherits from.
+         *
+         * The VT52 had a reverse-video control on the machine, so its dialect
+         * opts in. The VT100 has no such switch — only the SGR 7 attribute the
+         * software sends — so it must explicitly opt out. Without this it
+         * inherited the base's opt-in and the DECscope's CONFIG switch repainted
+         * the VT100's tube as well.
+         */
+        acceptsReverseVideo = false;
+
         powerOnState() {
+            // No phosphor here: the VT100 takes it as an option (Config), and
+            // that choice is applied by the host after construction. Only the
+            // VT52, which had no such option, pins a phosphor of its own.
             return { screen: true, dialect: true, ansi: true };
         }
 

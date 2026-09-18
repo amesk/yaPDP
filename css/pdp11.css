@@ -2038,17 +2038,39 @@ body {
    unit; 1.6667 keeps the old 672x504 footprint until JS re-derives it from the
    artwork (applyVt52MarkerVars below). */
 /* The tube's own colours, published as variables so the REVERSE VIDEO mode can
-   swap them without touching the JS renderer: body.reverse-video flips them
+   swap them without touching the JS renderer: a .reverse-video class on the
+   DECscope's rig flips them
    (see applyVT52ReverseVideo in src/pdp11-app.js). #141914 / #e0e0e0 mirror
    BG_COLOR / FG_COLOR in src/vt52.js — keep the two pairs in step. */
+/* The phosphor in play. p4 is the white tube the DECscope shipped with and the
+   VT100 was introduced on; p1 is the green that 1980s terminals are known for.
+   The VT100 takes this as an option and the VT52 does not (it was never offered
+   in another phosphor), which is why the attribute is set per terminal rather
+   than globally — see applyTerminalPhosphor in src/pdp11-app.js. */
 body {
     --vt52-bg: #141914;
     --vt52-fg: #e0e0e0;
 }
 
-body.reverse-video {
+/* Green is for the VT100's tube only. The DECscope is not offered a phosphor
+   (its dialect pins p4), so scoping the choice to the rig that carries the
+   VT100 artwork keeps a DECscope white without the JS having to fight CSS. */
+.vt52-rig[data-artwork] {
+    --vt52-bg: #0a1a0a;
+    --vt52-fg: #2bd62b;
+}
+
+/* Reverse video swaps the LIVE pair, so it has to restate both phosphors:
+   a single rule would snap a green tube back to white the moment it flipped. */
+.vt52-rig.reverse-video:not([data-artwork]) {
     --vt52-bg: #e0e0e0;
     --vt52-fg: #141914;
+}
+
+/* Reverse video on a green tube: the live pair swapped, same as the white one. */
+.vt52-rig[data-artwork].reverse-video {
+    --vt52-bg: #2bd62b;
+    --vt52-fg: #0a1a0a;
 }
 
 /* The glass plate itself is part of the artwork, so it cannot be recoloured
@@ -2065,11 +2087,11 @@ body.reverse-video {
     display: none;
 }
 
-body.reverse-video .vt52-layer-Glass {
+.vt52-rig.reverse-video:not([data-artwork]) .vt52-layer-Glass {
     display: none;
 }
 
-body.reverse-video .vt52-layer-GlassInverted {
+.vt52-rig.reverse-video:not([data-artwork]) .vt52-layer-GlassInverted {
     display: inline;
 }
 
@@ -2113,7 +2135,13 @@ body.reverse-video .vt52-layer-GlassInverted {
    for the DECscope: (marker + Markers-layer translate) * 3.779528, the 96dpi
    millimetre the artwork is authored in. Kept scoped to the console rig so TT1
    and TT2, which still show the DECscope cabinet, are unaffected. */
-.vt52-rig[data-artwork] .vt52-crt {
+/* Zoom builds its OWN case from --vt52-case-wall / --vt52-bezel-wall and pins
+   the tube at --vt52-tube-left/top, hiding the artwork. These marker numbers
+   describe where the painted glass sits INSIDE the artwork, so they only apply
+   while the artwork is on screen: without :not(.vt52-zoomed) this rule outranks
+   `.vt52-zoomed .vt52-crt` (a class plus an attribute beats two classes) and the
+   maximised tube landed at the marker's offset inside a box sized by zoom. */
+.vt52-rig[data-artwork]:not(.vt52-zoomed) .vt52-crt {
     left: 168.21px;
     top: 94.98px;
     width: 475.08px;
@@ -2161,6 +2189,34 @@ body.reverse-video .vt52-layer-GlassInverted {
         inset 0 0 30px rgba(0, 0, 0, 0.16),
         0 1px 0 rgba(255, 255, 255, 0.45),
         0 26px 44px rgba(0, 0, 0, 0.5);
+}
+
+/* --- The VT100's plastic, for the rig that shows the VT100 artwork ---
+   Zoom builds its own case out of CSS rather than the artwork, so without this
+   a maximised VT100 wore the DECscope's off-white moulding and read as the
+   wrong machine. The palette is the one the artist drew the hull with:
+   #e5dfc8 for the lit upper faces, #f3d383 for the body, #d4ab4a for the
+   outline — the same three-role build the DECscope case uses. */
+.vt52-rig[data-artwork].vt52-zoomed {
+    /* The artist's own hull colour (#f3d383), FLAT. What grated before was not
+       the colour but the delivery: a three-stop gradient banded and the radial
+       highlight turned into a hotspot once the case filled the screen. A single
+       tone cannot do either, so the colour is kept as drawn and only the
+       shading is dropped. The outline is the artist's (#d4ab4a) too. */
+    border: 1px solid #d4ab4a;
+    border-top-color: #f7dfa8;
+    background: #f3d383;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 0 24px rgba(0, 0, 0, 0.10),
+        0 24px 40px rgba(0, 0, 0, 0.45);
+}
+
+.vt52-rig[data-artwork].vt52-zoomed .vt52-bezel {
+    /* A shade deeper than the case, so the recessed frame separates without a
+       gradient doing the work. */
+    background: #ecc46a;
+    border: 1px solid #d4ab4a;
 }
 
 /* --- 2. inner bezel: recessed, with the shadow the tube sits in ---

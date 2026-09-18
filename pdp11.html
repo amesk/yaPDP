@@ -1197,6 +1197,19 @@
               </div>
             </div>
 
+            <!-- The VT100's tube. The VT52 gets no such choice: it was never
+                 offered in another phosphor (see Config.vt100Phosphor). -->
+            <div class="config-field" id="config-field-vt100Phosphor">
+              <span class="config-label">VT100 phosphor</span>
+              <div class="config-control config-radios">
+                <label><input type="radio" name="vt100Phosphor" value="p4"> P4 white — the tube the VT100 shipped
+                  with</label>
+                <label><input type="radio" name="vt100Phosphor" value="p1"> P1 green — the 1980s tube</label>
+                <span class="config-hint">Only a VT100 takes this: the VT52 was never sold in another
+                  phosphor and stays white. Applied immediately.</span>
+              </div>
+            </div>
+
             <div class="config-field">
               <span class="config-label">VT52 reverse video</span>
               <div class="config-control">

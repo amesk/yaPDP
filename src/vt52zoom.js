@@ -98,11 +98,63 @@ var Vt52Zoom = (function () {
     function toggle() {
         var unit = activeUnit();
         if (unit < 0) return Promise.resolve(false);
+        return toggleUnit(unit);
+    }
+
+    /**
+     * toggleUnit(unit) — flip one terminal's zoom, whatever page is on screen.
+     *
+     * The button acts on the terminal you are looking at, so it goes through
+     * activeUnit(); a double click on a screen names its own terminal instead
+     * and must not be redirected to whichever page happens to be active.
+     */
+    function toggleUnit(unit) {
+        if (typeof unit !== "number" || unit < 0) return Promise.resolve(false);
         var next = !isZoomed(unit);
         setZoomed(unit, next);
-        applyActive();
+        // Apply to the rig of that unit if it is on screen — a rig on a hidden
+        // page is laid out at zero size, so zooming it there would measure
+        // nothing; applyActive() on the next page change picks it up instead.
+        var rig = rigForUnit(unit);
+        if (rig) {
+            if (next && typeof window.vt52Zoom === "function") window.vt52Zoom(rig);
+            else if (!next && typeof window.vt52Unzoom === "function") window.vt52Unzoom(rig);
+        }
         updateUI();
         return Promise.resolve(next);
+    }
+
+    /** The rig element belonging to a terminal unit, or null if not on screen. */
+    function rigForUnit(unit) {
+        if (typeof document === "undefined") return null;
+        var pageId = null;
+        for (var id in PAGE_UNIT) {
+            if (PAGE_UNIT[id] === unit) pageId = id;
+        }
+        if (!pageId) return null;
+        var page = document.getElementById(pageId);
+        if (!page || !page.classList.contains("active")) return null;
+        return page.querySelector(".vt52-rig");
+    }
+
+    /**
+     * applyReverseVideo() — stamp the DECscope's reverse-video class on the rigs
+     * that should carry it.
+     *
+     * The class is per rig, not on <body>: a body class repainted every tube,
+     * VT100 included, and the VT100 has no reverse-video switch of its own. A rig
+     * on a hidden page cannot be measured or found when the operator flips the
+     * switch, so this runs again whenever the visible page changes.
+     */
+    function applyReverseVideo() {
+        if (typeof document === "undefined") return;
+        var on = document.body.classList.contains("vt52-reverse-video");
+        var rigs = document.querySelectorAll(".vt52-rig");
+        for (var i = 0; i < rigs.length; i++) {
+            // Only the DECscope's rigs take the switch.
+            if (rigs[i].dataset && rigs[i].dataset.artwork) continue;
+            rigs[i].classList.toggle("reverse-video", on);
+        }
     }
 
     function init() {
@@ -118,6 +170,7 @@ var Vt52Zoom = (function () {
         // re-reads the active terminal whenever navigation happens.
         document.addEventListener("yapdp:pagechange", function () {
             applyActive();
+            applyReverseVideo();
             updateUI();
         });
 
@@ -133,6 +186,9 @@ var Vt52Zoom = (function () {
         applyActive: applyActive,
         updateUI: updateUI,
         toggle: toggle,
+        toggleUnit: toggleUnit,
+        applyReverseVideo: applyReverseVideo,
+        rigForUnit: rigForUnit,
         init: init
     };
 })();
