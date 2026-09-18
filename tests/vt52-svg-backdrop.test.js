@@ -25,7 +25,9 @@ const assert = require("assert");
 
 const SVG_PATH = path.join(__dirname, "..", "assets", "vt52.svg");
 const CSS_PATH = path.join(__dirname, "..", "css", "pdp11.css");
-const JS_PATH = path.join(__dirname, "..", "src", "vt52.js");
+// The artwork projection (inlineVt52Artwork + the marker parser) lives in the
+// terminal engine; the VT52 dialect module no longer carries it.
+const JS_PATH = path.join(__dirname, "..", "src", "terminal-core.js");
 
 // The canvas the marker must fit (see the <canvas> width/height in pdp11.html).
 const CANVAS_W = 672;
