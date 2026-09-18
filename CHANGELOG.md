@@ -35,6 +35,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also stops a feeding reader tape (START, and AUTO where the guest's own X-ON
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
+- **The VT100 cabinet artwork is now a real vector drawing.** `assets/vt100.svg`
+  replaces the placeholder derived from the DECscope: it is authored from scratch
+  (Hull, keyboard layers, Keycaps, DEC logo) at 160 KB instead of carrying an
+  800x623 raster underlay, so the stylesheet can reach inside it — the same
+  property the DECscope artwork has, and the reason the glass can be recoloured
+  at all. Its `Markers`/`Screen` guide layer is hidden exactly as the DECscope's
+  is (`display:none` on the layer AND on the rect, because a rect's own
+  `display:inline` outranks its parent's `none`), and the glass is the console
+  background colour (`#141914`, matching `BG_COLOR` in `src/terminal-core.js`).
+  Its Screen marker keeps the DECscope's 112.852x84.639 tube at 4:3.
+
+  The artwork is larger on screen than the DECscope, by choice: both rigs are
+  1074x830 CSS px, so the smaller viewBox (255.12x192.49 against 284.23x219.66)
+  scales the cabinet up. That was deliberate — the tube reads bigger.
+
+  The tube box cannot be derived at runtime (nothing rewrites `left/top`), so
+  `css/pdp11.css` carries the four numbers for whichever artwork a rig names
+  through `data-artwork`, measured against the rendered marker rather than
+  parsed out of the SVG: the artwork nests its marker inside transformed groups,
+  and a transform chain contributes scale as well as offset. Parsing the
+  translate alone left the canvas 45x42 px short and 16x11 px off.
+  (`assets/vt100.svg`, `css/pdp11.css`)
 
 - **The engine no longer knows which terminal it is driving.** The engine's four
   points of contact with its dialect are now explicit hooks: `attrMask()` (which

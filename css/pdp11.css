@@ -2105,6 +2105,21 @@ body.reverse-video .vt52-layer-GlassInverted {
     background: var(--vt52-bg);
     cursor: text;
 }
+/* The operator console may carry the VT100 artwork (data-artwork on its rig),
+   whose Screen marker sits at a different place inside its own viewBox: its
+   Markers layer is translated to y=2.018 where the DECscope's is y=25.673, so
+   the tube would otherwise sit ~107px below the drawn glass. These four numbers
+   are that artwork's marker arithmetic done once, exactly as the base rule's are
+   for the DECscope: (marker + Markers-layer translate) * 3.779528, the 96dpi
+   millimetre the artwork is authored in. Kept scoped to the console rig so TT1
+   and TT2, which still show the DECscope cabinet, are unaffected. */
+.vt52-rig[data-artwork] .vt52-crt {
+    left: 168.21px;
+    top: 94.98px;
+    width: 475.08px;
+    height: 364.95px;
+}
+
 
 /* ===== Zoomed tube (cabinet hidden) =====================================
    Zoom reproduces the ORIGINAL three-layer cabinet the page had before the
