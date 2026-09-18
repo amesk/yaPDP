@@ -1192,19 +1192,20 @@
     --tty-rctrl-w: 18.959791;
     --tty-rctrl-h: 35.107395;
     --tty-rtape-x: 27.739735;
-    --tty-rtape-y: 215.27426;
+    --tty-rtape-y: 213.68678;
     --tty-rtape-w: 27.412594;
     --tty-rtape-h: 1.8400521;
-    --tty-paper-x: 144.93832;
-    --tty-paper-y: 89.086563;
+    --tty-paper-x: 146.36212;
+    --tty-paper-y: 69.627945;
     --tty-paper-w: 182.78258;
     --tty-paper-h: 8.1296091;
-    --tty-caret-x: 145.08318;
-    --tty-caret-y: 97.534988;
+    --tty-caret-x: 146.03238;
+    --tty-caret-y: 78.550972;
     --tty-caret-w: 182.72144;
     --tty-caret-h: 13.763669;
-    /* The print line is the Caret band's BOTTOM edge (caret y + h). */
-    --tty-caret-line-y: 111.298657;
+    /* The print line is the Caret band's BOTTOM edge (caret y + h):
+       78.550972 + 13.763669. */
+    --tty-caret-line-y: 92.314641;
 
     /* ---- Contain factors ------------------------------------------
        k = --tty-u-num * min(markerW / nativeW, markerH / nativeH) against the
