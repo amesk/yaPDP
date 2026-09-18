@@ -117,6 +117,30 @@
             this.modes.dialect = flag;
         }
 
+        /**
+         * powerOnState() — the DECscope's tube is not a choice.
+         *
+         * The VT52 was never offered in another phosphor: P4 white is the tube it
+         * shipped with, the same way its LA36 hardcopy mode is not an option.
+         * A phosphor picked for some other terminal must therefore not follow
+         * the operator here, so the dialect states p4 as part of its power-on
+         * condition (the engine re-applies it on every reset).
+         */
+        powerOnState() {
+            return { phosphor: "p4" };
+        }
+
+        /**
+         * acceptsReverseVideo — the DECscope's own panel switch.
+         *
+         * The VT52 had a reverse-video control on the machine; the VT100 has no
+         * such switch, only the SGR 7 attribute that software sends. The host
+         * reads this flag before applying the CONFIG option, because every
+         * dialect shares one terminal registry and vt52Get(u) would otherwise
+         * hand it a VT100 to flip.
+         */
+        acceptsReverseVideo = true;
+
         /** The engine asks the INSTANCE, so each terminal keeps its own mode. */
         attrMask()    { return this.modes.ansi ? -1 : ~(ATTR_BOLD | ATTR_UNDERSCORE); }
         cursorIsBlock() { return !!this.modes.ansi; }

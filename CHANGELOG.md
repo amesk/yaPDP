@@ -26,6 +26,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   current state. (`src/vt52zoom.js`, `src/config.js`, `css/pdp11.css`,
   `pdp11.html`)
 
+- **A phosphor choice for the VT100's tube: P4 white or P1 green.** The white
+  phosphor is the one the VT100 was introduced on in 1978 and the only tube the
+  DECscope ever shipped with; green is what late-1970s and 1980s terminals are
+  known for, and the project's green is muted rather than the bright shade of
+  period film. The option belongs to the VT100 alone — the VT52 pins P4 through
+  its dialect's power-on state, because it was never sold in another phosphor —
+  which is exactly what the dialect seam is for: the engine stores the palette
+  and the dialect decides whether it may change. The choice is applied and saved
+  the moment the radio moves, so it needs neither Apply nor a reload.
+  (`src/config.js`, `src/terminal-core.js`, `src/vt52.js`, `src/dialect/vt100.js`,
+  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`)
+
+- **Double click on a terminal screen toggles zoom**, the same action as the
+  floating button. Counted from two `click`s inside 400 ms rather than taken from
+  `dblclick`: the tube is a canvas with `user-select: none` and Chrome does not
+  raise a `dblclick` over it (measured — both clicks arrive, the composite event
+  never does). The gesture names its own terminal, so a double click on TT1 does
+  not zoom the console. (`src/pdp11-app.js`, `src/vt52zoom.js`)
+
 ### Changed
 
 - **The quick-boot wizard puts the teletype on LINE before it types.** Its steps
@@ -35,6 +54,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also stops a feeding reader tape (START, and AUTO where the guest's own X-ON
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
+- **A terminal's capabilities are now stated by the terminal.** The two dialects
+  share one registry, so "reachable through `vt52Get()`" stopped meaning "is a
+  VT52" — and the CONFIG switches for phosphor and reverse video leaked onto
+  whichever terminal happened to sit on the unit. Each dialect now declares what
+  it accepts (`acceptsPhosphor`, `acceptsReverseVideo`) and the host asks instead
+  of assuming. The VT100, being a superset of the VT52, must opt OUT explicitly
+  of capabilities it lacks — inheritance hands it the base's opt-ins otherwise.
+
+- **Reverse video is the DECscope's switch, and now stays on the DECscope.** The
+  flip was a class on `<body>`, so it repainted every tube including the VT100's;
+  it now sits on the DECscope rigs only (`.vt52-rig.reverse-video:not([data-artwork])`).
+  The VT100 has no such control — only the SGR 7 attribute software sends.
+  (`css/pdp11.css`, `src/pdp11-app.js`, `src/vt52.js`, `src/dialect/vt100.js`)
+
+- **A user terminal takes the cabinet its dialect names.** The console page
+  hard-coded `data-artwork` in the markup and TT1/TT2 had none, so a VT100 user
+  terminal kept the DECscope backdrop whatever it was built as. `initVT52Page`
+  now stamps the artwork from the same dialect table that carries the initializer
+  and the getter. (`src/pdp11-app.js`)
+
+- **The artwork fetches no longer race**, and each rig takes only the file it
+  asked for. Both files were fetched in parallel and the DECscope's response
+  filled *every* backdrop, so a VT100 console showed the DECscope cabinet
+  whenever `vt52.svg` happened to land second — intermittent, load by load. The
+  marker numbers had the same fault, keyed on "has it received its own yet"
+  rather than on what the rig named. (`src/terminal-core.js`)
+
+- **Zoom's tube position and the VT100's maximal case.**
+  The marker numbers (where the painted glass sits inside the artwork) outranked
+  `.vt52-zoomed .vt52-crt` on selector weight — a class plus an attribute beats
+  two classes — so a maximised VT100 planted the tube at the marker's offset
+  inside a box built for zoom; the rule is scoped to `:not(.vt52-zoomed)`. And
+  zoom builds its case in CSS rather than from the artwork, so a maximised VT100
+  wore the DECscope's off-white moulding: it now uses the artist's own hull
+  colour, flat — the same saturated sand that reads well on a cabinet glared
+  across a whole screen, and it was the three-stop gradient and the radial
+  highlight that did it, not the colour. (`css/pdp11.css`)
+
 - **The VT100 cabinet artwork is now a real vector drawing.** `assets/vt100.svg`
   replaces the placeholder derived from the DECscope: it is authored from scratch
   (Hull, keyboard layers, Keycaps, DEC logo) at 160 KB instead of carrying an
@@ -57,6 +114,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and a transform chain contributes scale as well as offset. Parsing the
   translate alone left the canvas 45x42 px short and 16x11 px off.
   (`assets/vt100.svg`, `css/pdp11.css`)
+
+- **The maximised VT100 is drawn in its own plastic, and the tube lands in its
+  frame again.** Two separate faults, both from the artwork arriving after the
+  zoom was written for the DECscope. The tube's marker numbers (where the painted
+  glass sits inside the artwork) outranked `.vt52-zoomed .vt52-crt` on selector
+  weight — a class plus an attribute beats two classes — so a maximised VT100
+  planted the tube at the marker's offset inside a box sized for zoom; the rule
+  is now scoped to `:not(.vt52-zoomed)`. And zoom builds its case in CSS rather
+  than from the artwork, so the VT100 wore the DECscope's off-white moulding:
+  it now uses the artist's own hull colour, flat. Flat matters — the same
+  saturated sand that reads well on a cabinet glared across a whole screen, and
+  it was the three-stop gradient and the radial highlight that did it, not the
+  colour, which is kept exactly as drawn. (`css/pdp11.css`)
 
 - **The engine no longer knows which terminal it is driving.** The engine's four
   points of contact with its dialect are now explicit hooks: `attrMask()` (which

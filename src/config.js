@@ -35,6 +35,11 @@
  *                    sends the raw lower case to the machine. On by default
  *                    (authentic). Ignored entirely on a VT52 console, which
  *                    does lower case. Applied live, no reboot.
+ *   - vt100Phosphor: the VT100 tube's phosphor, 'p4' (white — the phosphor the
+ *                    VT100 was introduced on in 1978) or 'p1' (green — the tube
+ *                    1980s terminals are known for). The VT52 is NOT offered a
+ *                    choice: it was never sold in another phosphor, and its
+ *                    dialect pins p4.
  *   - keyClick:      audible key-click feedback for VT52 terminals.
  *                    (Absent on the original VT52, introduced with the VT100.)
  *   - hum:           ambient PDP-11 power-supply hum + fan noise while the
@@ -91,6 +96,11 @@ var Config = (function () {
         // boolean (print PDP output upper case; the punch keeps the raw code)
         forceUpperCaseOut: true,
         keyClick: false,         // boolean (VT52 key click)
+        // The VT100's tube: 'p4' (white — the phosphor the VT100 was introduced
+        // on in 1978) or 'p1' (green — what 1980s terminals are known for).
+        // The VT52 has no such option: it was never offered in another phosphor,
+        // and its dialect pins p4 (see the dialect's powerOnState).
+        vt100Phosphor: "p4",
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
         vt52TextMode: false,     // boolean (VT52 plain <textarea> instead of canvas)
         // Zoomed VT52 tube, PER TERMINAL: [console TT0, TTY1, TTY2]. In zoom mode
@@ -198,6 +208,8 @@ var Config = (function () {
                 ? DEFAULTS.forceUpperCaseOut
                 : Boolean(o.forceUpperCaseOut),
             keyClick: Boolean(o.keyClick),
+            // Only the two phosphors the project draws; anything else is p4.
+            vt100Phosphor: o.vt100Phosphor === "p1" ? "p1" : DEFAULTS.vt100Phosphor,
             vt52ReverseVideo: Boolean(o.vt52ReverseVideo),
             // Absent key falls back to the default (keeps the authentic canvas
             // CRT for old configs saved before the option existed).
