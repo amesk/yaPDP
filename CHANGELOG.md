@@ -36,6 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
 
+- **The engine no longer knows which terminal it is driving.** The engine's four
+  points of contact with its dialect are now explicit hooks: `attrMask()` (which
+  attributes the tube can draw), `cursorIsBlock()` (cursor shape),
+  `graphicsChar()` (character-set translation) and `translateKey()` (the bytes a
+  keystroke transmits). `src/terminal-core.js` contains no reference to the
+  VT52/VT100 mode flag at all — it stores it as the neutral `modes.dialect` and
+  hands it to the dialect — so a new terminal is a new dialect file, not a patch
+  to the engine. Instances with no registered dialect fall back to plain DEC
+  defaults instead of failing. (`src/terminal-core.js`, `src/vt52.js`)
+
 - **The terminal engine is now separate from the VT52 dialect.** The 2 724-line
   `src/vt52.js` split into `src/terminal-core.js` (the dialect-independent engine:
   screen buffer, cursor physics, scroll regions, destructive operations, SGR,
