@@ -101,9 +101,20 @@
             return bytes || null;
         }
 
-        /** Per-instance switch, called from DECANM (CSI ? 2), ESC < and reset. */
+        /**
+         * Per-instance switch, called from DECANM (CSI ? 2), ESC < and reset.
+         *
+         * modes.ansi is this dialect's own public name for the flag (callers and
+         * tests use it). modes.dialect is the NEUTRAL field the engine stores and
+         * hands back — the engine never reads modes.ansi. Both must move
+         * together: a reset that updates only one of them leaves the terminal
+         * half-configured, which showed up as a VT100 console that received
+         * nothing (its output was routed as if it were a teletype).
+         */
         _setAnsiMode(on) {
-            this.modes.ansi = !!on;
+            var flag = !!on;
+            this.modes.ansi = flag;
+            this.modes.dialect = flag;
         }
 
         /** The engine asks the INSTANCE, so each terminal keeps its own mode. */
@@ -905,6 +916,11 @@
         }
     }
 
+    // Publish the class so a superset dialect (src/dialect/vt100.js, which
+    // extends this one) can reach it.
+    window.yapdpDialects = window.yapdpDialects || {};
+    window.yapdpDialects.VT52 = Terminal;
+
     // The engine reaches this dialect's static tables through this binding.
     window.yapdpCore.registerDialect(Terminal);
 
@@ -913,8 +929,17 @@
     // -------------------------------------------------------------------------
     // Multiple terminal instances may exist (e.g., DL11 multiplexing). Each
     // instance is keyed by a "unit" number and stored here.
+    //
+    // SHARED with every other dialect (it lives on window.yapdpCore.terminals).
+    // Each dialect has its own writer — vt52Write() for a VT52, vt100Write() for
+    // a VT100 — but the console routing in browser-machine.js/iopage.js calls
+    // the VT52 one for BOTH, because the two share the console page and unit.
+    // With a private map the VT100 was registered where vt100Get() could find it
+    // but vt52Write() could not, so the guest's output vanished silently
+    // (`if (!term) return`). One registry fixes both the routing and the
+    // snapshot/restore path.
     // =========================================================================
-    const VT = new Map();
+    const VT = window.yapdpCore.terminals;
 
     // ============================================================================
     // Public API

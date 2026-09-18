@@ -93,7 +93,9 @@ function run() {
             assert.ok("vt11" in s.hardware, s.device + " hardware.vt11");
             assert.ok("forceUpperCaseOut" in s.hardware,
                 s.device + " hardware.forceUpperCaseOut");
-            assert.ok(s.hardware.console === "teletype" || s.hardware.console === "vt52",
+            assert.ok(s.hardware.console === "teletype" ||
+                      s.hardware.console === "vt52" ||
+                      s.hardware.console === "vt100",
                 s.device + " must declare an explicit console type, got " +
                 JSON.stringify(s.hardware.console));
             // A teletype console forces the printed glyph upper case (a real

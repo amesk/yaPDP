@@ -957,7 +957,7 @@
     <div class="page" id="page-vt52-console">
       <div class="vt52-container">
         <div class="vt52-terminal">
-          <div class="vt52-rig">
+          <div class="vt52-rig" data-artwork="assets/vt100.svg">
             <div class="vt52-backdrop"></div>
             <div class="vt52-bezel"></div>
             <div class="vt52-crt" id="vt52-console-crt">
@@ -1069,6 +1069,7 @@
               <div class="config-control config-radios">
                 <label><input type="radio" name="consoleType" value="teletype"> Teletype (Model 33 ASR)</label>
                 <label><input type="radio" name="consoleType" value="vt52"> VT52 (TT0:)</label>
+                <label><input type="radio" name="consoleType" value="vt100"> VT100 (TT0:)</label>
               </div>
             </div>
 
@@ -1130,6 +1131,27 @@
                   <option value="2">2</option>
                 </select>
                 <span class="config-hint">Each terminal gets its own sidebar page.</span>
+              </div>
+            </div>
+
+            <!-- Per-terminal dialect, in sidebar-page order (TT1, TT2). The
+                 entries beyond the number above are simply unused; they are kept
+                 so raising the count does not lose a previous choice. -->
+            <div class="config-field">
+              <span class="config-label">Terminal types</span>
+              <div class="config-control config-radios">
+                <label>TT1:
+                  <select id="config-userTerminalType0">
+                    <option value="vt52">VT52</option>
+                    <option value="vt100">VT100</option>
+                  </select>
+                </label>
+                <label>TT2:
+                  <select id="config-userTerminalType1">
+                    <option value="vt52">VT52</option>
+                    <option value="vt100">VT100</option>
+                  </select>
+                </label>
               </div>
             </div>
 
@@ -1895,6 +1917,8 @@ Hello world
   <!-- The terminal engine must load before any terminal dialect that extends it. -->
   <script src='src/terminal-core.js'></script>
   <script src='src/vt52.js'></script>
+  <!-- The VT100 dialect extends the VT52 dialect, so it must load last. -->
+  <script src='src/dialect/vt100.js'></script>
   <script src='src/pdp11.js'></script>
   <script src='src/fpp.js'></script>
   <script src='src/pasteutil.js'></script>
