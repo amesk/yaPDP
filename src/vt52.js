@@ -36,6 +36,96 @@
     class Terminal extends Core {
 
         // =====================================================================
+        // Engine hooks
+        // ---------------------------------------------------------------------
+        // The engine (src/terminal-core.js) never inspects this dialect's own
+        // state: it asks. These four are the whole contract — which attributes
+        // the tube can draw, what the cursor looks like, how a graphic-mode
+        // character is translated, and what a keystroke transmits.
+        // =====================================================================
+
+        static attrMask() {
+            // A DECscope VT52 (no DECANM) has no SGR emphasis: bold and
+            // underline are VT100-only. In VT52 mode they must never reach the
+            // tube, however they landed in the cell (overstrike or SGR).
+            // Instance flavour (see the instance hook below); the static form
+            // exists so a caller holding only the class still gets a sane answer.
+            return ~(ATTR_BOLD | ATTR_UNDERSCORE);
+        }
+
+        static cursorIsBlock() {
+            // VT52 draws an underline cursor; the instance hook below overrides
+            // this for ANSI mode.
+            return false;
+        }
+
+        static graphicsChar(machine, ch) {
+            // VT52: G0 graphics mode only (the instance hook below handles ANSI).
+            if (machine.graphics.vt52) {
+                return this.VT52_GRAPHICS_MAP[ch] || ch;
+            }
+            return ch;
+        }
+
+        /** The keymap pair for a mode flag. */
+        static keyMap(ansi) {
+            return ansi
+                ? { noKeypad: this.VT100_KEYMAP.noKeypad, keyMap: this.VT100_KEYMAP.keyMap }
+                : { noKeypad: this.VT52_KEYMAP.noKeypad, keyMap: this.VT52_KEYMAP.keyMap };
+        }
+
+        /**
+         * translateKey(ev, modes, ESC) — the bytes a keystroke transmits, or
+         * null when the engine should fall back to printable/Ctrl handling.
+         */
+        static translateKey(ev, modes, ESC) {
+            const map = this.keyMap(!!modes.ansi);
+
+            // Prefer keypad mapping unless keypad mode is disabled
+            let bytes =
+                (!modes.keypad && map.noKeypad[ev.code]) ||
+                map.keyMap[ev.code];
+
+            // DECCKM (CSI ? 1 h): application cursor keys — the arrow keys
+            // transmit SS3 (ESC O A..D) instead of CSI (ESC [ A..D).
+            if (modes.ansi && modes.appCursor) {
+                const appArrows = {
+                    ArrowUp:    [ESC, 79, 65], // ESC O A
+                    ArrowDown:  [ESC, 79, 66], // ESC O B
+                    ArrowRight: [ESC, 79, 67], // ESC O C
+                    ArrowLeft:  [ESC, 79, 68]  // ESC O D
+                };
+                if (appArrows[ev.code]) bytes = appArrows[ev.code];
+            }
+
+            return bytes || null;
+        }
+
+        /** Per-instance switch, called from DECANM (CSI ? 2), ESC < and reset. */
+        _setAnsiMode(on) {
+            this.modes.ansi = !!on;
+        }
+
+        /** The engine asks the INSTANCE, so each terminal keeps its own mode. */
+        attrMask()    { return this.modes.ansi ? -1 : ~(ATTR_BOLD | ATTR_UNDERSCORE); }
+        cursorIsBlock() { return !!this.modes.ansi; }
+        graphicsChar(ch) {
+            if (this.modes.ansi) {
+                if (this.graphics.enabled[this.graphics.activeSet]) {
+                    return Terminal.VT100_GRAPHICS_MAP[ch] || ch;
+                }
+                return ch;
+            }
+            if (this.graphics.vt52) {
+                return Terminal.VT52_GRAPHICS_MAP[ch] || ch;
+            }
+            return ch;
+        }
+        translateKey(ev, modes, ESC) {
+            return Terminal.translateKey.call(Terminal, ev, modes, ESC);
+        }
+
+        // =====================================================================
         // Static Keymaps and Graphics Tables
         // ---------------------------------------------------------------------
         // These tables define:
@@ -320,7 +410,7 @@
                     // ANSI mode, i.e. modes.ansi = !action.
                     // ---------------------------------------------------------------
                     case "?2":
-                        this.modes.ansi = !action;
+                        this._setAnsiMode(!action);
                         break;
 
                     // ---------------------------------------------------------------
@@ -565,7 +655,7 @@
                 // ---------------------------------------------------------------
                 // ESC < — Enter ANSI (VT100) mode
                 // ---------------------------------------------------------------
-                case '<': this.modes.ansi = true; break;
+                case '<': this._setAnsiMode(true); break;
 
                 // ---------------------------------------------------------------
                 // ESC ( c / ESC ) c — G0/G1 character set selection

@@ -75,6 +75,32 @@
     // Multiple terminal instances may exist (e.g., DL11 multiplexing). Each
     // instance is keyed by a “unit” number and stored here.
     // =========================================================================
+    // Dialect hooks. The engine never inspects the dialect's own state (its
+    // VT52/VT100 mode flag, its keymaps, its graphics tables): it asks the
+    // dialect. A dialect that predates the seam — or one loaded without calling
+    // registerDialect() — falls back to the plain DEC default, so the engine is
+    // always safe to run on its own.
+    function attrMask(machine) {
+        const inst = machine && machine.attrMask;
+        if (typeof inst === "function") return inst.call(machine);
+        const fn = Dialect && Dialect.attrMask;
+        return (typeof fn === "function") ? fn.call(Dialect) : -1;   // -1 = draw every attribute
+    }
+
+    function cursorIsBlock(machine) {
+        const inst = machine && machine.cursorIsBlock;
+        if (typeof inst === "function") return !!inst.call(machine);
+        const fn = Dialect && Dialect.cursorIsBlock;
+        return (typeof fn === "function") ? !!fn.call(Dialect) : true;  // DEC default: block
+    }
+
+    function graphicsChar(machine, ch) {
+        const inst = machine && machine.graphicsChar;
+        if (typeof inst === "function") return inst.call(machine, ch);
+        const fn = Dialect && Dialect.graphicsChar;
+        return (typeof fn === "function") ? fn.call(Dialect, machine, ch) : ch;
+    }
+
     // The dialect class currently bound to this engine (see registerDialect).
     // The VT52/VT100 static tables live on the dialect, so the inherited
     // methods reach them through this reference rather than a bare class name.
@@ -133,7 +159,7 @@
             // Mode flags
             this.modes = {
                 screen: false,   // false = hardcopy mode
-                ansi:   false,   // VT100/ANSI mode vs VT52 mode
+                dialect: false,  // the dialect's own mode flag (VT52 vs VT100)
                 origin: false,   // DECOM (origin mode)
                 insert: false,   // IRM (insert/replace mode, CSI 4 h/l)
                 wrap: true,      // DECAWM (auto-wrap at the right margin)
@@ -246,7 +272,7 @@
         // Reset terminal to power‑on state
         // ============================================================================
         reset() {
-            this.modes    = { screen: false, ansi: false, origin: false, insert: false,
+            this.modes    = { screen: false, dialect: false, origin: false, insert: false,
                               wrap: true, appCursor: false, cursorVisible: true, keypad: false };
             this.graphics = { vt52: false, activeSet: 0, enabled: [false, false], sgr: 0 };
             this.margin   = { top: 0, bottom: this.rows };
@@ -533,13 +559,11 @@
             const x = this.cellX(col);
             const y = this.cellY(row);
 
-            // VT52 (DECscope) has no SGR emphasis: bold and underline are
-            // VT100-only attributes (DECANM / modes.ansi). In VT52 mode they
-            // must never be drawn, no matter how they reached the cell
-            // (overstrike or SGR), so mask them out before rendering.
-            if (!this.modes.ansi) {
-                attr &= ~(ATTR_BOLD | ATTR_UNDERSCORE);
-            }
+            // The dialect decides which attributes its hardware can actually
+            // draw: a DECscope VT52 has no SGR emphasis, so bold and underline
+            // must never reach the tube no matter how they landed in the cell
+            // (overstrike or SGR). See Dialect.attrMask.
+            attr &= attrMask(this);
 
             // Glyphs are drawn at the computed baseline so their visual centre
             // lines up with the cell centre (and the block cursor) for any font.
@@ -667,9 +691,11 @@
             if (this.canvas.blinkCycle) {
                 // Cursor ON
                 this.setForeground(true);
-                if (this.modes.ansi) { // VT100 / VT52
+                if (cursorIsBlock(this)) {
+                    // VT100-style full block cursor
                     ctx.fillRect(x, y, this.canvas.charWidth, h);
                 } else {
+                    // VT52-style underline cursor
                     ctx.fillRect(x, y + h - this.underlineHeight, this.canvas.charWidth, this.underlineHeight);
                 }
                 this.canvas.lastCursor = { row, col };
@@ -1054,17 +1080,9 @@
 
         addChar(ch) {
             // ------------------------------------------------------------------------
-            // Character set translation (VT52 or VT100 graphics)
+            // Character set translation (the dialect owns the tables)
             // ------------------------------------------------------------------------
-            if (this.modes.ansi) {
-                // VT100: G0/G1 DEC Special Graphics
-                if (this.graphics.enabled[this.graphics.activeSet]) {
-                    ch = Dialect.VT100_GRAPHICS_MAP[ch] || ch;
-                }
-            } else if (this.graphics.vt52) {
-                // VT52 graphics mode
-                ch = Dialect.VT52_GRAPHICS_MAP[ch] || ch;
-            }
+            ch = graphicsChar(this, ch);
 
             // ------------------------------------------------------------------------
             // Screen Mode (textarea or canvas)
@@ -1438,7 +1456,7 @@
                     `DEBUG escape: ${this.parser.buffer.join(', ')} ` +
                     `(row=${this.cursorRow}, col=${this.cursorCol}) ` +
                     `[margin=${this.margin.top}:${this.margin.bottom}] ` +
-                    `modes=${this.modes.screen}/${this.modes.ansi}/${this.modes.origin}/${this.modes.keypad} ` +
+                    `modes=${this.modes.screen}/${this.modes.origin}/${this.modes.insert}/${this.modes.wrap} ` +
                     `bufferLines=${this.screen.length}`
                 );
             }
@@ -1460,7 +1478,7 @@
         // delivered to the emulator’s receiveRoutine callback.
         //
         // Keyboard mapping:
-        //   • VT52 or VT100 keymaps depending on modes.ansi
+        //   • the dialect's keymap (see Dialect.translateKey)
         //   • Application keypad mode (DECKPAM / DECKPNM)
         //   • Ctrl‑key combinations (Ctrl+A → 0x01, etc.)
         //   • Printable ASCII
@@ -1468,24 +1486,16 @@
         // Paste events are handled elsewhere!
         // ============================================================================
         handleKey(ev) {
-            const map = this.modes.ansi ? Dialect.VT100_KEYMAP : Dialect.VT52_KEYMAP;
-
-            // Prefer keypad mapping unless keypad mode is disabled
-            let bytes =
-                (!this.modes.keypad && map.noKeypad[ev.code]) ||
-                map.keyMap[ev.code];
-
-            // DECCKM (CSI ? 1 h): application cursor keys — the arrow keys
-            // transmit SS3 (ESC O A..D) instead of CSI (ESC [ A..D).
-            if (this.modes.ansi && this.modes.appCursor) {
-                const appArrows = {
-                    ArrowUp:    [ESC, 79, 65], // ESC O A
-                    ArrowDown:  [ESC, 79, 66], // ESC O B
-                    ArrowRight: [ESC, 79, 67], // ESC O C
-                    ArrowLeft:  [ESC, 79, 68]  // ESC O D
-                };
-                if (appArrows[ev.code]) bytes = appArrows[ev.code];
-            }
+            // The dialect owns the keymap (its own tables, its own view of the
+            // application-cursor-key mode). The engine only consumes the result.
+            // Prefer an instance-level hook (a dialect may override per terminal),
+            // then the bound dialect class, then the engine owns the fallback.
+            const translate = (typeof this.translateKey === "function")
+                ? this.translateKey.bind(this)
+                : (Dialect && typeof Dialect.translateKey === "function"
+                    ? Dialect.translateKey.bind(Dialect)
+                    : null);
+            let bytes = translate ? translate(ev, this.modes, ESC) : null;
 
             // Printable characters or Ctrl+key combinations
             if (!bytes && ev.key.length === 1) {
@@ -1590,7 +1600,7 @@
 
             // Modes (only known keys — never trust a foreign snapshot).
             if (state.modes && typeof state.modes === "object") {
-                ["screen", "ansi", "origin", "insert", "wrap",
+                ["screen", "dialect", "origin", "insert", "wrap",
                  "appCursor", "cursorVisible", "keypad"].forEach(k => {
                     if (typeof state.modes[k] === "boolean") {
                         this.modes[k] = state.modes[k];
