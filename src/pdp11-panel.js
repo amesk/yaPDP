@@ -678,7 +678,10 @@ function examineDeposit(data) {
         // Power the machine on and start the default bootstrap: doReboot(true)
         // powers on via resetPanelControls and then boots with forceBoot.
         var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-        var consolePage = (cfg && cfg.consoleType === 'vt52') ? 'vt52-console' : 'teletype';
+        // VT52 and VT100 share the graphical console page.
+        var consoleType = cfg && cfg.consoleType;
+        var consolePage = (consoleType === 'vt52' || consoleType === 'vt100')
+            ? 'vt52-console' : 'teletype';
         powerOffOverlay.classList.remove('visible');
         doReboot(true);
         switchPage(consolePage);
@@ -710,7 +713,10 @@ function examineDeposit(data) {
         return;
       }
       var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-      var consolePage = (cfg && cfg.consoleType === 'vt52') ? 'vt52-console' : 'teletype';
+      // VT52 and VT100 share the graphical console page.
+      var consoleType = cfg && cfg.consoleType;
+      var consolePage = (consoleType === 'vt52' || consoleType === 'vt100')
+          ? 'vt52-console' : 'teletype';
       // Bootstrap now! always starts the default bootstrap (unlike the generic
       // REBOOT button, which does so only when the auto-boot option is set).
       doReboot(true);

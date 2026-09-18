@@ -949,7 +949,37 @@ function loadVT52Font() {
 }
 
 // ---- Initialize a VT52 terminal on the given page ----
-function initVT52Page(unit, pageId, canvasId, textareaId) {
+/**
+ * initTerminalPage(unit, pageId, canvasId, textareaId, dialect)
+ *
+ * Build one operator terminal page. The DIALECT ('vt52' | 'vt100') decides
+ * which cabinet artwork and which emulator class the terminal gets; every
+ * other step (textarea backing store, canvas CRT, paste routing, keyboard,
+ * webfont re-measure, zoom) is identical, so there is a single path rather
+ * than one copy per terminal type.
+ *
+ * Dialect tables kept here: the terminal's initializers, the cabinet
+ * artwork to fetch, and the CSS rig class whose marker the engine publishes.
+ */
+var TERMINAL_DIALECTS = {
+  vt52: {
+    initialize: function () { return window.vt52Initialize; },
+    get: function () { return window.vt52Get; },
+    artwork: 'assets/vt52.svg',
+    rigClass: 'vt52-rig'
+  },
+  vt100: {
+    initialize: function () { return window.vt100Initialize; },
+    get: function () { return window.vt100Get; },
+    artwork: 'assets/vt100.svg',
+    rigClass: 'vt52-rig'
+  }
+};
+
+function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
+  var kind = TERMINAL_DIALECTS[dialect] ? dialect : 'vt52';
+  var drv = TERMINAL_DIALECTS[kind];
+
   var canvas = document.getElementById(canvasId);
   if (!canvas) return;
 
@@ -978,7 +1008,9 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
 
   // Initialize the VT52 terminal. In text mode the screen buffer is rendered
   // through the visible textarea; in canvas mode through the CRT canvas.
-  window.vt52Initialize(unit, function (unit, bytes) {
+  var initialize = drv.initialize();
+  if (typeof initialize !== 'function') return;
+  initialize(unit, function (unit, bytes) {
     bridgeSendToUnit(unit, bytes);
   }, textarea, canvas, {
     allowCanvas: !textMode,
@@ -1008,7 +1040,7 @@ function initVT52Page(unit, pageId, canvasId, textareaId) {
   // Force terminal into screen mode with the right element visible immediately.
   // Without this, the terminal starts in hardcopy mode (output to the textarea)
   // and only switches to screen mode upon receiving an escape sequence.
-  var term = window.vt52Get(unit);
+  var term = (drv.get() || function () { })(unit);
   if (term) {
     // Keep a reference to the terminal's built-in key handler: text mode wraps
     // it for native-clipboard behaviour, canvas mode silences it (the global
@@ -1374,8 +1406,11 @@ function setNavVisible(page, visible) {
 function applyVisibility() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
   if (!cfg) return;
+  // Both graphical terminals share the vt52-console page (a VT100 is a VT52
+  // superset, and that page holds the cabinet + canvas either dialect uses).
   setNavVisible('teletype', cfg.consoleType === 'teletype');
-  setNavVisible('vt52-console', cfg.consoleType === 'vt52');
+  setNavVisible('vt52-console',
+    cfg.consoleType === 'vt52' || cfg.consoleType === 'vt100');
   setNavVisible('vt52', cfg.userTerminals >= 1);
   setNavVisible('vt52-2', cfg.userTerminals >= 2);
   setNavVisible('printer', cfg.printer);
@@ -1660,6 +1695,11 @@ function initConfigForm() {
   var radios = document.querySelectorAll('input[name="consoleType"]');
   var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
   var userTerm = document.getElementById('config-userTerminals');
+  // Per-terminal dialect selects, in sidebar-page order (TT1, TT2).
+  var userTermTypeEls = [
+    document.getElementById('config-userTerminalType0'),
+    document.getElementById('config-userTerminalType1')
+  ];
   var printerEl = document.getElementById('config-printer');
   var vt11El = document.getElementById('config-vt11');
   var pwEl = document.getElementById('config-printWidth');
@@ -1690,6 +1730,9 @@ function initConfigForm() {
   setRadioChecked(radios, cfg.consoleType);
   setRadioChecked(speedRadios, cfg.teletypeSpeed);
   if (userTerm) userTerm.value = String(cfg.userTerminals);
+  userTermTypeEls.forEach(function (el, i) {
+    if (el) el.value = (cfg.userTerminalTypes && cfg.userTerminalTypes[i]) || 'vt52';
+  });
   if (printerEl) printerEl.checked = cfg.printer;
   if (vt11El) vt11El.checked = cfg.vt11;
   if (pwEl) pwEl.value = String(cfg.printWidth);
@@ -1729,6 +1772,9 @@ function initConfigForm() {
     return {
       consoleType: consoleType,
       userTerminals: (userTerm) ? Number(userTerm.value) : cfg.userTerminals,
+      userTerminalTypes: userTermTypeEls.map(function (el, i) {
+        return (el && el.value) || (cfg.userTerminalTypes && cfg.userTerminalTypes[i]) || 'vt52';
+      }),
       printer: (printerEl) ? printerEl.checked : cfg.printer,
       vt11: (vt11El) ? vt11El.checked : cfg.vt11,
       printWidth: (pwEl) ? Number(pwEl.value) : cfg.printWidth,
@@ -1765,6 +1811,17 @@ function initConfigForm() {
     };
   }
 
+  // Element-wise compare for the per-terminal dialect array (a plain !== would
+  // compare by reference and always report "dirty").
+  function sameTypes(a, b) {
+    a = a || []; b = b || [];
+    if (a.length !== b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return false;
+    }
+    return true;
+  }
+
   // The form is dirty when its values differ from the persisted config. Live
   // settings update Config immediately, so only uncommitted structural edits
   // (and a pending Restore-defaults) surface as a difference.
@@ -1774,6 +1831,7 @@ function initConfigForm() {
     var form = readForm();
     return form.consoleType !== current.consoleType ||
       form.userTerminals !== current.userTerminals ||
+      !sameTypes(form.userTerminalTypes, current.userTerminalTypes) ||
       form.printer !== current.printer ||
       form.vt11 !== current.vt11 ||
       form.printWidth !== current.printWidth ||
@@ -1859,6 +1917,7 @@ function initConfigForm() {
     var structuralChanged =
       form.consoleType !== before.consoleType ||
       form.userTerminals !== before.userTerminals ||
+      !sameTypes(form.userTerminalTypes, before.userTerminalTypes) ||
       form.printer !== before.printer ||
       form.vt11 !== before.vt11;
     // Persist the complete form (validated) and refresh the in-memory snapshot.
@@ -1884,6 +1943,9 @@ function initConfigForm() {
   }
   if (userTerm) {
     userTerm.addEventListener('change', markStructural);
+    userTermTypeEls.forEach(function (el) {
+      if (el) el.addEventListener('change', markStructural);
+    });
   }
   if (printerEl) {
     printerEl.addEventListener('change', function () {
@@ -3504,16 +3566,21 @@ if (window.paperTape && typeof window.paperTape.init === 'function') {
 // Wire the LOCAL/LINE, Tear tape/paper and Save tape operator controls.
 initTtyControls();
 
-// Console terminal: teletype (already initialized above) or VT52 on tty0.
-if (__appCfg && __appCfg.consoleType === 'vt52') {
-  initVT52Page(0, 'page-vt52-console', 'vt52-console-screen', 'console_vt52_textarea');
+// Console terminal: the teletype is already initialized above; a VT52 or a
+// VT100 console takes over tty0 (each has its own cabinet artwork).
+if (__appCfg && (__appCfg.consoleType === 'vt52' || __appCfg.consoleType === 'vt100')) {
+  initVT52Page(0, 'page-vt52-console', 'vt52-console-screen',
+    'console_vt52_textarea', __appCfg.consoleType);
 }
-// User terminals: one page per configured terminal (TT1 / TT2).
+// User terminals: one page per configured terminal (TT1 / TT2). Each has its
+// own dialect from userTerminalTypes, in the same order as the pages.
 if (__appCfg && __appCfg.userTerminals >= 1) {
-  initVT52Page(1, 'page-vt52', 'vt52-screen', 'tty1_textarea');
+  initVT52Page(1, 'page-vt52', 'vt52-screen', 'tty1_textarea',
+    (__appCfg.userTerminalTypes || [])[0] || 'vt52');
 }
 if (__appCfg && __appCfg.userTerminals >= 2) {
-  initVT52Page(2, 'page-vt52-2', 'vt52-2-screen', 'tty2_textarea');
+  initVT52Page(2, 'page-vt52-2', 'vt52-2-screen', 'tty2_textarea',
+    (__appCfg.userTerminalTypes || [])[1] || 'vt52');
 }
 
 // Fit the VT52 cabinets to the available window size (proportional scaling).
@@ -3579,6 +3646,17 @@ initConfigTabs();
 // boot command on the console.
 if (typeof panel !== 'undefined') panel.powerSwitch = -1;
 applyMachinePower(__appCfg && __appCfg.powerOn, false);
+
+// A machine that comes up powered on shows its operator console, not the Panel:
+// that is where the operator is about to work, and switchPage() is what gives
+// the terminal canvas its keyboard focus. A machine left off stays on the Panel,
+// where the POWER lock lives. The console page is the teletype, the VT52 or the
+// VT100 depending on the configured console type — all three go through the
+// same consolePageFor mapping QuickBoot uses.
+if (__appCfg && __appCfg.powerOn && typeof QuickBoot !== 'undefined' &&
+    typeof QuickBoot.consolePageFor === 'function') {
+  switchPage(QuickBoot.consolePageFor(__appCfg));
+}
 
 // Keep the Panel nav status indicators (power lamp + run-state icon) in sync
 // with the CPU run state even for transitions that originate inside the CPU

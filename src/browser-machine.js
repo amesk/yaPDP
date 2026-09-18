@@ -102,7 +102,9 @@
     // ------------------------------------------------------------------
     function consoleOutput(unit, cfg, ch) {
         if (unit === 0) {
-            if (cfg && cfg.consoleType === 'vt52') {
+            // Both graphical consoles take the byte through their own writer;
+            // a teletype prints it on the Model 33 paper instead.
+            if (cfg && (cfg.consoleType === 'vt52' || cfg.consoleType === 'vt100')) {
                 vt52Write(0, ch);
             } else if (typeof g60ConsoleWrite !== 'undefined') {
                 g60ConsoleWrite(ch);

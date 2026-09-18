@@ -114,6 +114,12 @@ function run() {
       "teletype console -> teletype button");
     assert.strictEqual(NavActivity.pageForConsole("vt52"), "vt52-console",
       "vt52 console -> vt52-console button");
+    // A VT100 is a VT52 superset and shares the graphical console page: the
+    // cabinet + canvas are the same, only the artwork and the dialect differ.
+    // Without this the VT100 console fell through to the teletype button (and
+    // the guest's output was routed to the teletype paper).
+    assert.strictEqual(NavActivity.pageForConsole("vt100"), "vt52-console",
+      "vt100 console -> vt52-console button");
     assert.strictEqual(NavActivity.pageForConsole(undefined), "teletype",
       "missing console type -> teletype button");
     assert.strictEqual(NavActivity.pageForConsole(null), "teletype",

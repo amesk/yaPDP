@@ -82,7 +82,10 @@ var QuickBoot = (function () {
 
     // Which console page hosts the operator console for the given config.
     function consolePageFor(cfg) {
-        return (cfg && cfg.consoleType === "vt52") ? "vt52-console" : "teletype";
+        var t = cfg && cfg.consoleType;
+        // Both graphical terminals share the vt52-console page; the teletype has
+        // its own.
+        return (t === "vt52" || t === "vt100") ? "vt52-console" : "teletype";
     }
 
     // Delay between typed steps; the authentic 110-baud teletype is slow, so
@@ -154,7 +157,8 @@ var QuickBoot = (function () {
     function requirementText(profile, cfg) {
         var merged = mergeHardware(cfg, profile);
         var parts = [];
-        if (merged.consoleType === "vt52") parts.push("VT52 console");
+        if (merged.consoleType === "vt100") parts.push("VT100 console");
+        else if (merged.consoleType === "vt52") parts.push("VT52 console");
         else parts.push("teletype console");
         parts.push(merged.printer ? "LP11 printer" : "no printer");
         // Only positive requirements are shown — "no VT11" would be printed
