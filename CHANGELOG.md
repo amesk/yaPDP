@@ -36,6 +36,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
 
+- **The terminal engine is now separate from the VT52 dialect.** The 2 724-line
+  `src/vt52.js` split into `src/terminal-core.js` (the dialect-independent engine:
+  screen buffer, cursor physics, scroll regions, destructive operations, SGR,
+  character output and overstrike handling, the three rendering paths, artwork
+  projection) and `src/vt52.js` (the VT52/VT100-compatibility dialect: escape
+  grammar, DECMODE, DECSTBM, static keymaps and graphics tables). Behaviour is
+  unchanged — the public surface (`vt52Initialize` and friends) is identical, so
+  nothing else had to move — and the engine is now reusable by further terminal
+  dialects (a native VT100 is the next one). `src/terminal-core.js` must load
+  before any dialect that extends it. (`src/terminal-core.js`, `src/vt52.js`,
+  `pdp11.html`, `tests/vt52.test.js`, `tests/vt52-svg-backdrop.test.js`)
+
 - **The Model 33 ASR TAPE PUNCH buttons are plungers, not discs.** Each button
   is the Ø28 panel boss the old round cap was — a moulded bulge of the cabinet,
   so it wears the cabinet's own sand and reads as a slightly flattened oval — with

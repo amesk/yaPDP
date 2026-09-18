@@ -23,7 +23,17 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
+// The terminal is split into an engine (src/terminal-core.js) and a dialect
+// (src/vt52.js). The page loads the engine first (see pdp11.html), so the test
+// harness mirrors that order: engine, then dialect.
+const CORE_PATH = path.join(__dirname, "..", "src", "terminal-core.js");
 const SOURCE_PATH = path.join(__dirname, "..", "src", "vt52.js");
+
+/** Load the engine and the dialect into a VM sandbox, in page order. */
+function loadTerminal(sandbox) {
+    vm.runInContext(fs.readFileSync(CORE_PATH, "utf8"), sandbox);
+    vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+}
 
 // Attribute bitmask flags (must mirror src/vt52.js constants).
 const ATTR_BOLD = 1;
@@ -40,7 +50,7 @@ const ESC = "\x1b";
 function makeTerminal() {
     const sandbox = { console, window: {} };
     vm.createContext(sandbox);
-    vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+    loadTerminal(sandbox);
 
     const textArea = {
         value: "",
@@ -78,7 +88,7 @@ function makeTerminal() {
 function makeCapturingTerminal() {
     const sandbox = { console, window: {} };
     vm.createContext(sandbox);
-    vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+    loadTerminal(sandbox);
 
     const textArea = {
         value: "", tabIndex: 0, style: {},
@@ -253,7 +263,7 @@ function run() {
     {
         const sandbox = { console, window: {} };
         vm.createContext(sandbox);
-        vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+        loadTerminal(sandbox);
 
         const textArea = {
             value: "", tabIndex: 0, style: {},
@@ -282,7 +292,7 @@ function run() {
     {
         const sandbox = { console, window: {} };
         vm.createContext(sandbox);
-        vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+        loadTerminal(sandbox);
 
         const textArea = {
             value: "", tabIndex: 0, style: {},
@@ -719,7 +729,7 @@ function run() {
     {
         const sandbox = { console, window: {} };
         vm.createContext(sandbox);
-        vm.runInContext(fs.readFileSync(SOURCE_PATH, "utf8"), sandbox);
+        loadTerminal(sandbox);
 
         const textArea = { value: "", tabIndex: 0, style: {}, setSelectionRange() {}, addEventListener() {}, focus() {}, scrollTop: 0, scrollHeight: 0 };
         sandbox.window.vt52Initialize(0, () => {}, textArea, null, {});

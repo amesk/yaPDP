@@ -1892,6 +1892,8 @@ Hello world
   <script src='src/config.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
   <script src='src/bootcode.js'></script>
+  <!-- The terminal engine must load before any terminal dialect that extends it. -->
+  <script src='src/terminal-core.js'></script>
   <script src='src/vt52.js'></script>
   <script src='src/pdp11.js'></script>
   <script src='src/fpp.js'></script>
