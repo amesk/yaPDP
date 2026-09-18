@@ -63,8 +63,9 @@ const GUESTS = [
     { device: "rk0",   name: "Unix V5",
         cfg: { consoleType: "teletype", printer: false, vt11: false },
         readyWhen: "#", readyAfter: "login:", timeout: 120000 },
+    // RT-11 boots on an ANSI console (the OSBoot scenario asks for vt100).
     { device: "rk1",   name: "RT-11",
-        cfg: { consoleType: "teletype", printer: true, vt11: false },
+        cfg: { consoleType: "vt100", printer: true, vt11: false },
         stable: 2500, prompt: ".", timeout: 120000 },
     { device: "rk2",   name: "RSTS V06C-03",
         cfg: { consoleType: "teletype", printer: true, vt11: false },

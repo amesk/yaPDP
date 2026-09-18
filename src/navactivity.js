@@ -23,10 +23,11 @@ var NavActivity = (function () {
     // page -> auto-off timer handle, so continuous output keeps re-arming it.
     var timers = {};
 
-    // Pure mapping: a DL11 console unit (tty0) is either a teletype or a
-    // VT52 DECscope, and the sidebar has one button per variant.
+    // Pure mapping: a DL11 console unit (tty0) is a teletype, a VT52 DECscope
+    // or a VT100; the two graphical terminals share one sidebar button.
     function pageForConsole(consoleType) {
-        return consoleType === "vt52" ? "vt52-console" : "teletype";
+        return (consoleType === "vt52" || consoleType === "vt100")
+            ? "vt52-console" : "teletype";
     }
 
     // Pure mapping: user DL11 units 1 and 2 map to their sidebar pages.

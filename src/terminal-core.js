@@ -101,11 +101,27 @@
         return (typeof fn === "function") ? fn.call(Dialect, machine, ch) : ch;
     }
 
+    /**
+     * powerOnState(machine) — let the dialect state its power-on condition.
+     * The engine rebuilds `modes` wholesale in the constructor and in reset(),
+     * so a dialect that needs a non-default start (a VT100 is CRT-only: it is
+     * always in screen mode and always ANSI) states it here instead of trying to
+     * patch the flags afterwards. Returns null when the dialect has no opinion.
+     */
+    function powerOnState(machine) {
+        const inst = machine && machine.powerOnState;
+        if (typeof inst === "function") return inst.call(machine);
+        const fn = Dialect && Dialect.powerOnState;
+        return (typeof fn === "function") ? fn.call(Dialect, machine) : null;
+    }
+
     // The dialect class currently bound to this engine (see registerDialect).
     // The VT52/VT100 static tables live on the dialect, so the inherited
     // methods reach them through this reference rather than a bare class name.
     let Dialect = null;
 
+    // Shared by every dialect: one unit -> terminal map, so snapshot/restore
+    // sees all terminals whatever dialect each one was built as.
     const VT = new Map();
 
     // =========================================================================
@@ -167,6 +183,18 @@
                 cursorVisible: true, // DECTCEM (cursor on/off)
                 keypad: false    // Application keypad mode
             };
+
+            // The dialect may want a non-default power-on condition (a VT100
+            // starts in screen mode with ANSI on). Applied here as well as in
+            // reset(), because the constructor does not call reset().
+            var powerOn = powerOnState(this);
+            if (powerOn) {
+                for (var pk in powerOn) {
+                    if (Object.prototype.hasOwnProperty.call(powerOn, pk)) {
+                        this.modes[pk] = powerOn[pk];
+                    }
+                }
+            }
 
             // Character set + SGR attributes
             this.graphics = {
@@ -284,6 +312,17 @@
             this.wrapPending = false;
 
             this.parser = { buffer: [], state: 0 };
+
+            // A dialect with a non-default power-on condition re-states it here
+            // (see powerOnState); the VT52 has none and keeps the DEC default.
+            var powerOn = powerOnState(this);
+            if (powerOn) {
+                for (var pk in powerOn) {
+                    if (Object.prototype.hasOwnProperty.call(powerOn, pk)) {
+                        this.modes[pk] = powerOn[pk];
+                    }
+                }
+            }
 
             this.clearScreen();
 
@@ -1668,7 +1707,10 @@
     // css/pdp11.css are only the fallback for builds where the artwork cannot be
     // fetched (strict file:// origin). Same contract as the Model 33 artwork
     // (see TTY_MARKER_VARS in src/pdp11-app.js).
+    // Cabinet artwork, per dialect. A rig opts in with data-artwork (the
+    // default keeps assets/vt52.svg, so existing markup needs no change).
     var VT52_ART_URL = 'assets/vt52.svg';
+    var ART_CACHE = {};   // url -> svg text, so N rigs fetch once
 
     // Pure: SVG text -> { '--vt52-screen-x': '4.418643', ... } (the Screen
     // marker's x/y/w/h plus the viewBox). Returns null when there is no marker
@@ -1709,10 +1751,29 @@
         if (!vars) return;
         var rigs = document.querySelectorAll('.vt52-rig');
         for (var i = 0; i < rigs.length; i++) {
+            // A rig that carries its own artwork keeps its own marker numbers;
+            // the shared svg only fills in the rigs that have none (the common
+            // case, where the whole page shows one terminal type).
+            if (rigs[i].dataset && rigs[i].dataset.artwork && rigs[i].__markerVars) {
+                continue;
+            }
             for (var name in vars) {
                 if (Object.prototype.hasOwnProperty.call(vars, name)) {
                     rigs[i].style.setProperty(name, vars[name]);
                 }
+            }
+        }
+        syncVt52Unit();
+    }
+
+    /** Publish one svg's marker numbers on ONE rig (used by per-dialect rigs). */
+    function applyMarkerVarsToRig(rig, svgText) {
+        var vars = vt52MarkerVars(svgText);
+        if (!vars) return;
+        rig.__markerVars = vars;
+        for (var name in vars) {
+            if (Object.prototype.hasOwnProperty.call(vars, name)) {
+                rig.style.setProperty(name, vars[name]);
             }
         }
         syncVt52Unit();
@@ -1754,8 +1815,22 @@
     // exactly matching the old background-size: 100% 100%, so the drawing still
     // fills the box and the marker arithmetic is unchanged.
     function inlineVt52Artwork(svgText) {
+        if (typeof document === 'undefined') return;
+        inlineArtworkInto(null, svgText);
+    }
+
+    /**
+     * inlineArtworkInto(rig, svgText) — inline one artwork.
+     *   rig = null  : every .vt52-backdrop in the document (the default, and
+     *                 what the single-terminal-type page has always done).
+     *   rig         : that rig's own .vt52-backdrop only, so a page can show two
+     *                 cabinets drawn from two different files.
+     */
+    function inlineArtworkInto(rig, svgText) {
         if (typeof document === 'undefined' || typeof DOMParser === 'undefined') return;
-        var hosts = document.querySelectorAll('.vt52-backdrop');
+        var hosts = rig
+            ? rig.querySelectorAll('.vt52-backdrop')
+            : document.querySelectorAll('.vt52-backdrop');
         if (!hosts.length) return;
         var parsed = new DOMParser().parseFromString(String(svgText), 'image/svg+xml');
         var root = parsed && parsed.documentElement;
@@ -1835,13 +1910,39 @@
     // layout and the backdrop keeps its (empty) box.
     function loadVt52Artwork() {
         if (typeof fetch !== 'function') return;
-        fetch(VT52_ART_URL)
-            .then(function (response) { return response.text(); })
-            .then(function (text) {
-                inlineVt52Artwork(text);
-                applyVt52MarkerVars(text);
-            })
-            .catch(function () { /* keep the stylesheet fallback */ });
+
+        // Which artworks does the document actually show? A rig opts in with
+        // data-artwork="assets/vt100.svg"; anything else is the DECscope, so an
+        // unchanged page keeps fetching exactly one file.
+        var urls = [VT52_ART_URL];
+        if (typeof document !== 'undefined') {
+            var wanted = document.querySelectorAll('.vt52-rig[data-artwork]');
+            for (var i = 0; i < wanted.length; i++) {
+                var url = wanted[i].dataset.artwork;
+                if (url && urls.indexOf(url) === -1) urls.push(url);
+            }
+        }
+
+        urls.forEach(function (url) {
+            fetch(url)
+                .then(function (response) { return response.text(); })
+                .then(function (text) {
+                    ART_CACHE[url] = text;
+                    if (url === VT52_ART_URL) {
+                        inlineVt52Artwork(text);
+                        applyVt52MarkerVars(text);
+                    }
+                    // Rigs that asked for this artwork get it, and their own
+                    // marker numbers, so two cabinets can differ in geometry.
+                    var hosts = document.querySelectorAll(
+                        '.vt52-rig[data-artwork="' + url + '"]');
+                    for (var j = 0; j < hosts.length; j++) {
+                        inlineArtworkInto(hosts[j], text);
+                        applyMarkerVarsToRig(hosts[j], text);
+                    }
+                })
+                .catch(function () { /* keep the stylesheet fallback */ });
+        });
     }
 
     // ============================================================================
@@ -1917,6 +2018,7 @@
     // all hang their exports off window.yapdpCore).
     window.yapdpCore = window.yapdpCore || {};
     window.yapdpCore.Core = Core;
+    window.yapdpCore.terminals = VT;
     window.yapdpCore.registerDialect = registerDialect;
     // The dialect modules run in their own IIFE scope, so the control-character
     // and attribute constants they share with the engine travel with it.

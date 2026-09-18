@@ -1312,7 +1312,10 @@ function dl11(vt52Unit, deviceVector) {
                             // user terminals (1+) always use VT52.
                             if (unit === 0) {
                                 var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-                                if (cfg && cfg.consoleType === 'vt52') {
+                                // Both graphical consoles take the byte through
+                                // their own writer; a teletype prints it instead.
+                                if (cfg && (cfg.consoleType === 'vt52' ||
+                                            cfg.consoleType === 'vt100')) {
                                     vt52Write(0, xbuf);
                                 } else if (typeof g60ConsoleWrite !== 'undefined') {
                                     g60ConsoleWrite(xbuf);
