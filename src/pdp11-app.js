@@ -3276,13 +3276,15 @@ var TTY_ART_LAYERS = [
   { host: 'tty-foreground', label: 'Foreground' }
 ];
 
-// The machine itself is the #tty-backdrop background image, i.e. BEHIND every
-// control, so a layer that must cover the keys or the hanging tapes cannot be
-// part of it. The page therefore inlines the SAME artwork — fetched once —
-// stripped down to those layers (plus <defs>, where the artwork's gradients
-// live) into their host elements, which the stylesheet stacks over the
-// controls. The rest of the drawing is not copied: the backdrop already
-// paints it.
+// The machine itself is the #tty-backdrop artwork, i.e. BEHIND every control,
+// so a layer that must cover the keys or the hanging tapes cannot be part of
+// it. The page therefore inlines the SAME artwork — fetched once — stripped
+// down to those layers (plus <defs>, where the artwork's gradients live) into
+// their host elements, which the stylesheet stacks over the controls.
+//
+// The backdrop is the CSS background in css/g60printer.css (stretched to the
+// rig box, so it follows --tty-scale with no help), and the fetched copy is
+// the one whose layers get inlined here.
 function installTtyLayer(svgText, hostId, id) {
   var node = document.getElementById(hostId);
   if (!node || typeof DOMParser === 'undefined') return;
@@ -3330,8 +3332,8 @@ function installTtyForeground(svgText) {
 // them (the rig scale, the paper ceiling and the two hanging tapes).
 function installTtyArtLayer() {
   var rig = document.getElementById('teletype-rig');
-  if (!rig || typeof fetch !== 'function') return;
-  fetch(TTY_ART_URL)
+  if (!rig || typeof fetch !== 'function') return Promise.resolve(null);
+  return fetch(TTY_ART_URL)
     .then(function (res) { return res && res.ok ? res.text() : null; })
     .then(function (text) {
       var vars = ttyMarkerVars(text);
@@ -3864,7 +3866,9 @@ window.vt52Rescale = vt52Rescale;
 // geometry (the numbers in css/pdp11.css are only the fallback). The loader
 // re-derives --vt52-u from the laid-out box, and syncVt52Unit keeps it in step
 // when the window changes size.
-window.vt52LoadArtwork();
+var __vt52ArtworkPromise = (typeof window.vt52LoadArtwork === 'function')
+    ? window.vt52LoadArtwork()
+    : null;
 if (window.Vt52Zoom && typeof window.Vt52Zoom.init === 'function') window.Vt52Zoom.init();
 window.addEventListener('resize', function () {
   if (typeof window.vt52SyncUnit === 'function') window.vt52SyncUnit();
@@ -3889,7 +3893,16 @@ installTeletypeScaling();
 // Read the artwork's marker rects and push them into the rig variables: the SVG
 // is the single source of truth for the overlay geometry (the numbers in
 // css/g60printer.css are only the fallback for fetch-less builds).
-installTtyArtLayer();
+var __ttyArtworkPromise = installTtyArtLayer();
+
+// Lift the startup overlay only once BOTH artwork passes have really been
+// applied (markers published, front layers inlined), the first-screen webfonts
+// are in and the build manifest has answered. issue #77
+if (typeof LoadingGate !== 'undefined') {
+  LoadingGate.start({
+    artwork: Promise.all([__ttyArtworkPromise, __vt52ArtworkPromise])
+  });
+}
 
 // Apply the configured VT52 reverse-video mode to the live terminals.
 applyVT52ReverseVideo(__appCfg && __appCfg.vt52ReverseVideo);

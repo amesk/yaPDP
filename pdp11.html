@@ -7,6 +7,74 @@
   <meta name="description" content="yaPDP — Yet Another PDP-11/70 Emulator">
   <meta name="keywords" content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator">
   <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+  <!-- Startup loading gate (issue #77). INLINE and before the stylesheets on
+       purpose: it must be painted by the first frame, otherwise the CSS
+       fallback artwork shows through and the machine still "assembles itself"
+       on a slow link. LoadingGate (src/loading-gate.js) lifts it. -->
+  <style>
+    html.yapdp-booting #yapdp-loading { display: flex; }
+    #yapdp-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 18px;
+      background: #16120e;
+      color: #e0d8c8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      opacity: 1;
+      transition: opacity 0.35s ease;
+      pointer-events: all;
+    }
+    #yapdp-loading.yapdp-loading-done { opacity: 0; pointer-events: none; }
+    #yapdp-loading .yapdp-loading-mark {
+      font-size: 22px;
+      letter-spacing: 0.22em;
+      color: #c8a860;
+    }
+    #yapdp-loading .yapdp-loading-spin {
+      width: 34px;
+      height: 34px;
+      border: 3px solid rgba(200, 168, 96, 0.25);
+      border-top-color: #c8a860;
+      border-radius: 50%;
+      animation: yapdp-spin 0.9s linear infinite;
+    }
+    @keyframes yapdp-spin { to { transform: rotate(360deg); } }
+    #yapdp-loading .yapdp-loading-stage { color: #e0d8c8; opacity: 0.85; }
+    #yapdp-loading .yapdp-loading-hint {
+      color: #8d8271;
+      font-size: 12px;
+      max-width: 34em;
+      text-align: center;
+      line-height: 1.5;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #yapdp-loading .yapdp-loading-spin { animation: none; }
+    }
+  </style>
+  <script>
+    /* Set the booting class synchronously, before any stylesheet or script is
+       fetched: this is what stops the first paint from showing the fallback
+       panel. A repeat visit from cache lifts the gate almost immediately, so
+       the overlay is a blink at most. */
+    document.documentElement.className += " yapdp-booting";
+    /* Absolute backstop, inline so it survives a script that never loads:
+       an overlay that cannot leave is worse than the flash it hides. */
+    setTimeout(function () {
+      if (window.LoadingGate && window.LoadingGate.isDone()) return;
+      var html = document.documentElement;
+      html.classList.remove("yapdp-booting");
+      var el = document.getElementById("yapdp-loading");
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      window.__yapdpGateFailsafe = true;
+    }, 20000);
+  </script>
   <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
 
   <!-- Google60 Printer styles -->
@@ -15,6 +83,14 @@
 </head>
 
 <body>
+  <div id="yapdp-loading" role="status" aria-live="polite" aria-busy="true">
+    <div class="yapdp-loading-mark">yaPDP</div>
+    <div class="yapdp-loading-spin" aria-hidden="true"></div>
+    <div class="yapdp-loading-stage" data-stage="artwork">Drawing the machines&#8230;</div>
+    <!-- Slow links are slow, not broken (#77): say so while media arrives. -->
+    <div class="yapdp-loading-hint">Disk and tape images keep loading in the
+      background &#8212; a slow link only makes the machine read them slower.</div>
+  </div>
   <!-- Hidden SVG sprite: sidebar terminal (CRT display) icon -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
@@ -1979,6 +2055,7 @@ Hello world
   <script src='src/quickboot.js'></script>
   <script src='src/punchtape.js'></script>
   <script src='src/reader.js'></script>
+  <script src='src/loading-gate.js'></script>
   <script src='src/pdp11-app.js'></script>
   <script src='src/snapshots.js'></script>
 </body>
