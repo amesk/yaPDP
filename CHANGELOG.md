@@ -58,6 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dims when no VT52 is installed, mirroring the two VT100 fields.
   (`pdp11-app.js`, `pdp11.html`)
 
+### Added
+
+- **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,
+  `npm run e2e:vt100`). The guest-boot suite already boots RT-11 on a VT100
+  console, but it watches the GENERATED output — it would pass just as happily if
+  the VT100 never drew a cabinet, or drew the DECscope's. This one asserts the
+  terminal the way an operator sees it, on a machine holding a VT100 console plus
+  a DECscope on tty1 and a VT100 on tty2, so every check compares the two
+  dialects rather than trusting one: the rig's dialect and artwork, the canvas
+  filling the tube, the phosphor reaching the VT100 and NOT the DECscope, reverse
+  video flipping the DECscope and NOT the VT100, the key click belonging to the
+  VT100 alone, zoom by button and by double click (including the marker-offset
+  regression), and the terminal types surviving validation and driving what the
+  machine actually builds. It runs in `validate` next to the other e2e suites.
+
 ### Changed
 
 - **The quick-boot wizard puts the teletype on LINE before it types.** Its steps

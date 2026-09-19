@@ -37,6 +37,7 @@
     "e2e:bsd29": "wireit",
     "e2e:os:legacy": "wireit",
     "e2e:xxdp": "wireit",
+    "e2e:vt100": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
     "voice": "node tools/voicer.js"
@@ -160,7 +161,23 @@
         "e2e:os:legacy",
         "e2e:bsd",
         "e2e:bsd29",
-        "e2e:xxdp"
+        "e2e:xxdp",
+        "e2e:vt100"
+      ]
+    },
+    "e2e:vt100": {
+      "command": "node tests/e2e-vt100.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-vt100.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
       ]
     }
   }
