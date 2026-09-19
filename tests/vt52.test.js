@@ -254,6 +254,46 @@ function run() {
         assert.strictEqual(cell(term, 3).c, 69, "letter 'E' stays the visible glyph");
     }
 
+    // ---- Cursor movement repaints at once, not on the blink tick -------
+    // Cursor moves used to call render(false), which draws nothing in canvas
+    // mode, so the drawn cursor lagged up to 500 ms behind (the blink interval)
+    // while the character was already erased. The cursor must repaint itself.
+    {
+        const { term } = makeCanvasTerminal();
+        term.modes.screen = true;
+        term.screen = [[]];
+        term.cursorRow = 0;
+        term.cursorCol = 0;
+
+        // drawCursor is what puts the block on the glass; count its calls.
+        // renderCanvas() would need a full 2D context; what we assert is the
+        // CURSOR repaint, so keep the screen stub and count drawCursor calls.
+        term.renderCanvas = function () { /* not the subject */ };
+        const draws = [];
+        const realDrawCursor = term.drawCursor.bind(term);
+        term.drawCursor = function () { draws.push(this.cursorCol); return realDrawCursor(); };
+
+        for (let i = 0; i < 5; i++) {
+            term.addChar(100);            // 'd' x5
+        }
+        assert.strictEqual(term.cursorCol, 5, "five characters advance the cursor");
+
+        draws.length = 0;
+        term.backSpace();
+        assert.deepStrictEqual(draws, [4],
+            "backspace repaints the cursor immediately, at the new column");
+
+        draws.length = 0;
+        term.carriageReturn();
+        assert.deepStrictEqual(draws, [0],
+            "carriage return repaints the cursor immediately, at column 0");
+
+        draws.length = 0;
+        term.tab();
+        assert.deepStrictEqual(draws, [8],
+            "tab repaints the cursor immediately, at the next 8-column stop");
+    }
+
     // ---- Normal typing never marks emphasis -------------------------
     {
         const { term, write } = makeTerminal();
