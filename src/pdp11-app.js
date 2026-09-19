@@ -2044,13 +2044,28 @@ function initConfigForm() {
     // P4 and its dialect pins it. Dim the radios unless the console — or one of
     // the user terminals — is a VT100, mirroring how the teletype fields go dim
     // for a graphical console.
+    // How many user terminals does this configuration actually have? A select
+    // for an absent terminal keeps whatever it last held, and reading it made a
+    // stale TT2=VT100 claim a VT100 that is not installed.
+    var termCount = (userTerm) ? Number(userTerm.value) : 0;
+    function presentTypes() {
+      var out = [];
+      if (!userTermTypeEls) return out;
+      for (var p = 0; p < userTermTypeEls.length; p++) {
+        if (p >= termCount) break;          // beyond the count: not installed
+        if (userTermTypeEls[p]) out.push(userTermTypeEls[p].value);
+      }
+      return out;
+    }
+
     var anyVt100 = false;
     for (var r = 0; r < radios.length; r++) {
       if (radios[r].checked && radios[r].value === 'vt100') anyVt100 = true;
     }
-    if (!anyVt100 && userTermTypeEls) {
-      for (var t100 = 0; t100 < userTermTypeEls.length; t100++) {
-        if (userTermTypeEls[t100] && userTermTypeEls[t100].value === 'vt100') anyVt100 = true;
+    if (!anyVt100) {
+      var types100 = presentTypes();
+      for (var t100 = 0; t100 < types100.length; t100++) {
+        if (types100[t100] === 'vt100') anyVt100 = true;
       }
     }
     var phField = document.getElementById('config-field-vt100Phosphor');
@@ -2060,6 +2075,21 @@ function initConfigForm() {
     // no VT100 anywhere cannot use it.
     var kcField = document.getElementById('config-field-keyClick');
     if (kcField) setFieldDisabled(kcField, !anyVt100);
+
+    // And the mirror image for the DECscope's own switch: reverse video is the
+    // VT52's, so it dims when the machine holds no VT52 at all.
+    var anyVt52 = false;
+    for (var r52 = 0; r52 < radios.length; r52++) {
+      if (radios[r52].checked && radios[r52].value === 'vt52') anyVt52 = true;
+    }
+    if (!anyVt52) {
+      var types52 = presentTypes();     // installed terminals only, as above
+      for (var t52 = 0; t52 < types52.length; t52++) {
+        if (types52[t52] === 'vt52') anyVt52 = true;
+      }
+    }
+    var rvField = document.getElementById('config-field-vt52ReverseVideo');
+    if (rvField) setFieldDisabled(rvField, !anyVt52);
   }
 
   // Apply: persist the whole form in one Config.set() call, then reload only
@@ -2096,9 +2126,16 @@ function initConfigForm() {
     });
   }
   if (userTerm) {
-    userTerm.addEventListener('change', markStructural);
+    // These two decide which dialect each terminal is, which is exactly what the
+    // capability fields (phosphor, key click, reverse video) depend on. Marking
+    // the form dirty alone left them stale until a page reload.
+    function markStructuralAndVisibility() {
+      markStructural();
+      updateEquipmentVisibility();
+    }
+    userTerm.addEventListener('change', markStructuralAndVisibility);
     userTermTypeEls.forEach(function (el) {
-      if (el) el.addEventListener('change', markStructural);
+      if (el) el.addEventListener('change', markStructuralAndVisibility);
     });
     phosphorRadios.forEach(function (el) {
       if (el) el.addEventListener('change', function () {

@@ -45,6 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never does). The gesture names its own terminal, so a double click on TT1 does
   not zoom the console. (`src/pdp11-app.js`, `src/vt52zoom.js`)
 
+### Fixed
+
+- **The CONFIG fields that depend on a terminal's dialect now follow the form,
+  and count only the terminals that exist.** Two faults in the same pass:
+  the terminal-type selects and the terminal-count select only re-marked the form
+  dirty, so switching TT1 between VT52 and VT100 left the phosphor, key-click and
+  reverse-video fields stale until a page reload; and the check read every type
+  select, so a value left in the select for a terminal that is NOT installed
+  (TT2 while the count is 1) claimed a VT100 the machine does not have. The
+  reverse-video field also had no id, so it could not be dimmed at all — it now
+  dims when no VT52 is installed, mirroring the two VT100 fields.
+  (`pdp11-app.js`, `pdp11.html`)
+
 ### Changed
 
 - **The quick-boot wizard puts the teletype on LINE before it types.** Its steps
