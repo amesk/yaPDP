@@ -102,15 +102,18 @@ async function wizardDevices(page) {
       }, { timeout: 10000 });
 
       const devices = await wizardDevices(page);
-      // rk1vt52 shares rk1.dsk, so it is listed too (see the dedicated check
-      // below); rp1 (BSD 2.11) is not shipped and must be hidden.
+      // The three RT-11 variants share rk1.dsk (teletype, VT100 and VT52
+      // consoles), so all three are listed; rp1 (BSD 2.11) is not shipped and
+      // must be hidden.
       check("reduced manifest: wizard lists only shipped + paper tapes",
         JSON.stringify(devices) ===
         JSON.stringify(["basic", "ed11", "lander", "odt11", "rk0", "rk1",
-          "rk1vt52"]),
+          "rk1tty", "rk1vt52"]),
         JSON.stringify(devices));
       check("reduced manifest: rp1 (BSD 2.11) hidden",
         devices.indexOf("rp1") === -1, "rp1 present");
+      check("reduced manifest: rk1tty kept via shared rk1.dsk",
+        devices.indexOf("rk1tty") !== -1, "rk1tty missing");
       check("reduced manifest: rk1vt52 kept via shared rk1.dsk",
         devices.indexOf("rk1vt52") !== -1, "rk1vt52 missing");
       await page.close();
