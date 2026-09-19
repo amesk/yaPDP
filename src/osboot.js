@@ -115,6 +115,17 @@ var OSBoot = (function () {
             upperCase: true,
             hardware: { console: "vt52", printer: true, vt11: false,
                 forceUpperCaseOut: null } },
+        // RT-11 with the Model 33 ASR teletype console — the combination RT-11
+        // v4.0 was also shipped with in 1980, and the one the ASR mechanics are
+        // exercised on end-to-end (tests/e2e-teletype.js). Same rk1.dsk image
+        // and boot command as the other two variants (url/bootDev reuse the
+        // underlying device). A teletype has no lower-case type, so the output
+        // is forced to upper case.
+        { device: "rk1tty", label: "RT-11 v4.0 (teletype console)", boot: "BOOT RK1",
+            bootDev: "rk1", url: "rk1.dsk", steps: [], autoLogin: false,
+            upperCase: true,
+            hardware: { console: "teletype", printer: true, vt11: false,
+                forceUpperCaseOut: true } },
         // RSTS — LP11 line printer; historically a Model 33 ASR teletype
         // console. At the "Option:" prompt "START" begins timesharing (an
         // empty CR is rejected; the historic ^J answer starts it, but the

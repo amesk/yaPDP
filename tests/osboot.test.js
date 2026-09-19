@@ -163,11 +163,12 @@ function run() {
             ["basic", "ed11", "lander", "odt11", "rk0", "rp1"],
             "mounted images + all paper tapes should survive the filter");
 
-        // Both RT-11 variants share the same rk1.dsk image.
+        // All three RT-11 variants share the same rk1.dsk image (teletype,
+        // VT100 and VT52 consoles).
         const rt = OSBoot.filterMounted(["rk1.dsk"]);
         assert.deepStrictEqual(plain(rt.map((s) => s.device).sort()),
-            ["basic", "ed11", "lander", "odt11", "rk1", "rk1vt52"],
-            "RT-11 teletype and VT52 variants should share rk1.dsk");
+            ["basic", "ed11", "lander", "odt11", "rk1", "rk1tty", "rk1vt52"],
+            "RT-11 teletype, VT100 and VT52 variants should share rk1.dsk");
     }
 
     // ---- filterAvailable (build manifest + mounted, union) -----------
@@ -196,11 +197,11 @@ function run() {
             ["basic", "ed11", "lander", "odt11"],
             "empty manifest + empty mounted should keep only paper tapes");
 
-        // A manifest with the shared rk1.dsk keeps both RT-11 variants.
+        // A manifest with the shared rk1.dsk keeps all three RT-11 variants.
         const shared = OSBoot.filterAvailable(["rk1.dsk"], []);
         assert.deepStrictEqual(plain(shared.map((s) => s.device).sort()),
-            ["basic", "ed11", "lander", "odt11", "rk1", "rk1vt52"],
-            "manifest should keep both RT-11 variants for the shared rk1.dsk");
+            ["basic", "ed11", "lander", "odt11", "rk1", "rk1tty", "rk1vt52"],
+            "manifest should keep al three RT-11 variants for the shared rk1.dsk");
 
         // filterMounted stays a special case of filterAvailable.
         assert.deepStrictEqual(

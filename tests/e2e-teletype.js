@@ -41,11 +41,20 @@ const ROOT = path.join(__dirname, "..");
 const PORT = 1170;
 const BASE = `http://127.0.0.1:${PORT}`;
 
+// Must EXACTLY match the scenario's hardware profile, or the quick-boot
+// wizard treats the config as dirty and RELOADS the page (see
+// hardwareDirty()/launch() in src/quickboot.js) — which destroys the puppeteer
+// execution context mid-assertion. The scenario is rk1tty: RT-11 v4.0 on the
+// Model 33 ASR teletype (src/osboot.js). The plain "rk1" scenario became an
+// ANSI/VT100 console in #75, so this suite — which asserts ASR MECHANICS
+// (paper, punch, CCU, force-upper) on the teletype page — keeps the teletype
+// console it was written for. printer mirrors rk1's LP11; the other RT-11
+// variants share the same rk1.dsk image and BOOT RK1 command.
 const CFG = {
     consoleType: "teletype",
     userTerminals: 0,
-    printer: true,           // must EXACTLY match the rk1 (RT-11) wizard
-    vt11: false,             // scenario hardware block or the wizard reloads
+    printer: true,           // rk1 requires the LP11
+    vt11: false,             // rk1 requires no VT11
     teletypeSpeed: "fast",   // ~30ms/char instead of authentic ~100ms
     powerOn: true,
     autoBoot: false          // the wizard issues the boot itself
@@ -112,10 +121,16 @@ async function openPage(browser) {
     await page.waitForFunction(() => typeof window.switchPage === "function",
         { timeout: 30000 });
 
-    // Capture generated output (same hook the wizard watches) and count
-    // ACTUALLY RENDERED characters (fired by g60printer.onChar after the
-    // character appears on the paper — unlike the generation hook, which
-    // fires ahead of the paced render).
+    await installHooks(page);
+
+    return page;
+}
+
+// Capture generated output (same hook the wizard watches) and count ACTUALLY
+// RENDERED characters (fired by g60printer.onChar after the character appears
+// on the paper — unlike the generation hook, which fires ahead of the paced
+// render). Split out of openPage() so a wizard reload can re-install it.
+async function installHooks(page) {
     await page.evaluate(() => {
         if (window.__osHooksInstalled) return;
         window.__osHooksInstalled = true;
@@ -135,11 +150,18 @@ async function openPage(browser) {
             window.__osRenderCount++;
         };
     });
-
-    return page;
 }
 
 // Click the magic-wand button, then the scenario option — the real user path.
+//
+// The wizard RELOADS the page when the scenario's hardware profile differs
+// from the current config (hardwareDirty() -> window.location.reload() in
+// src/quickboot.js). CFG above keeps them in step so that should not happen,
+// but a reload must never take the harness down with it: the execution
+// context dies, the injected output/render hooks are gone, and the run ends
+// with "Execution context was destroyed". Watch for a navigation across the
+// click and, if one happens, wait for the reloaded page and re-install the
+// hooks before returning.
 async function launchDevice(page, device) {
     await page.evaluate(() => {
         const btn = document.getElementById("quick-boot-btn");
@@ -153,6 +175,35 @@ async function launchDevice(page, device) {
         return false;
     }, device);
     if (!clicked) throw new Error(`quick-boot option not found for ${device}`);
+
+    // The click may have queued an intentional wizard reload. Give it a
+    // moment, then wait for the page (and its hooks) to settle.
+    await sleep(600);
+    if (await navigated(page)) {
+        await waitForHooks(page);
+    }
+}
+
+// True when an evaluate() fails because the page navigated under us. Puppeteer
+// reports this as "Execution context was destroyed" (or "Target closed" while
+// a reload swaps the frame), which is exactly the signal we want to catch.
+async function navigated(page) {
+    try {
+        await page.evaluate(() => 1);
+        return false;
+    } catch (err) {
+        const msg = String((err && err.message) || err);
+        return msg.indexOf("Execution context was destroyed") !== -1 ||
+            msg.indexOf("Target closed") !== -1;
+    }
+}
+
+// Wait for a (re)loaded page and re-install the output/render hooks the whole
+// suite asserts against. Mirrors the hook block in openPage().
+async function waitForHooks(page) {
+    await page.waitForFunction(() => typeof window.switchPage === "function",
+        { timeout: 30000 });
+    await installHooks(page);
 }
 
 async function outputContains(page, needle) {
@@ -292,7 +343,7 @@ async function main() {
         const page = await openPage(browser);
 
         // ---- 1. Boot prints on the paper --------------------------------
-        await launchDevice(page, "rk1");
+        await launchDevice(page, "rk1tty");
         if (!await waitStable(page, 2500, 120000)) {
             throw new Error("RT-11 did not reach its prompt (output: " +
                 JSON.stringify(await outputTail(page, 200)) + ")");
