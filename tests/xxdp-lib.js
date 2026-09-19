@@ -80,9 +80,15 @@ async function bootXxdp() {
   });
   const ev = mach.evalIn;
 
-  assert.ok(await waitFor(mach, "ENTER DATE", 15000), "XXDP+ date prompt");
+  if (!await waitFor(mach, "ENTER DATE", 45000)) {
+    dumpConsole("date", mach.getOut());
+    assert.fail("XXDP+ date prompt never appeared within 45000ms");
+  }
   sendLine(ev, "09-SEP-78");
-  assert.ok(await waitFor(mach, "THIS IS XXDP+", 15000), "XXDP+ monitor up");
+  if (!await waitFor(mach, "THIS IS XXDP+", 45000)) {
+    dumpConsole("monitor", mach.getOut());
+    assert.fail("XXDP+ monitor never came up within 45000ms");
+  }
 
   return { mach, ev, panel: require("./xxdp-panel.js").createPanel(ev) };
 }
@@ -96,12 +102,25 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
   resolveTimeout = 15000, startNeedle, startTimeout }) {
   sendLine(ev, command);
   if (resolveNeedle) {
-    assert.ok(await waitFor(mach, resolveNeedle, resolveTimeout),
-      resolveNeedle + " recognised");
+    // Name the PHASE when this fails. The old message was
+    // "<needle> recognised", which reads like a success and sent a whole
+    // investigation down the wrong path: the run had actually TIMED OUT waiting
+    // for the loader to print the name.
+    if (!await waitFor(mach, resolveNeedle, resolveTimeout)) {
+      console.error("diagnostic name was never resolved");
+      dumpConsole("resolve", mach.getOut());
+      assert.fail(resolveNeedle + " was not resolved within " + resolveTimeout +
+        "ms — the loader never printed it (a slow runner needs a longer budget, " +
+        "see the per-test timeouts)");
+    }
     sendLine(ev, ""); // acknowledge the resolved name
   }
-  assert.ok(await waitFor(mach, startNeedle, startTimeout),
-    startNeedle + " (diagnostic started)");
+  if (!await waitFor(mach, startNeedle, startTimeout)) {
+    console.error("diagnostic never started");
+    dumpConsole("start", mach.getOut());
+    assert.fail(startNeedle + " never appeared within " + startTimeout +
+      "ms — the diagnostic did not start");
+  }
 }
 
 /**
