@@ -84,18 +84,25 @@ const GUESTS = [
         // Known emulator bug: Ctrl-D from single-user panics the kernel
         // ('panic: trap' during multi-user init). Coverage target here is
         // the kernel booting to the single-user "#" prompt; no login: check.
-        cfg: { consoleType: "teletype", printer: false, vt11: false },
+        cfg: { consoleType: "vt100", printer: false, vt11: false },
         readyWhen: "#", timeout: 120000 },
     // BSD 2.11 runs on a VT100 console now (1980-81, two years after the VT100).
     { device: "rp1",   name: "BSD 2.11",
         cfg: { consoleType: "vt100", printer: true, vt11: false },
         readyWhen: "#", readyAfter: "login:", timeout: 180000 },
+    // RSTS/E v9.6 moved to a VT100 console (1982, four years after the VT100).
     { device: "rp2",   name: "RSTS/E v9.6",
-        cfg: { consoleType: "teletype", printer: true, vt11: false },
+        cfg: { consoleType: "vt100", printer: true, vt11: false },
         readyWhen: "Today's date?", timeout: 120000 },
+    // RSX-11M v4.6 moved to a VT100 console (1979, after the VT100).
     { device: "rp3",   name: "RSX-11M v4.6",
-        cfg: { consoleType: "vt52", printer: true, vt11: false },
+        cfg: { consoleType: "vt100", printer: true, vt11: false },
         readyWhen: "PLEASE ENTER TIME AND DATE", timeout: 120000 },
+    // RSTS/E v10.1 had no entry here at all until now, so its scenario could be
+    // changed and the suite would still report 10/10 without testing anything.
+    { device: "rp4",   name: "RSTS/E v10.1",
+        cfg: { consoleType: "vt100", printer: true, vt11: false },
+        readyWhen: "Today's date?", timeout: 120000 },
     { device: "basic", name: "BASIC-11",
         cfg: { consoleType: "teletype", printer: false, vt11: false },
         readyWhen: "*O ", timeout: 90000 },
