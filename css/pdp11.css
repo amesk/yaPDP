@@ -2055,20 +2055,20 @@ body {
 /* Green is for the VT100's tube only. The DECscope is not offered a phosphor
    (its dialect pins p4), so scoping the choice to the rig that carries the
    VT100 artwork keeps a DECscope white without the JS having to fight CSS. */
-.vt52-rig[data-artwork] {
+.vt52-rig[data-dialect="vt100"] {
     --vt52-bg: #0a1a0a;
     --vt52-fg: #2bd62b;
 }
 
 /* Reverse video swaps the LIVE pair, so it has to restate both phosphors:
    a single rule would snap a green tube back to white the moment it flipped. */
-.vt52-rig.reverse-video:not([data-artwork]) {
+.vt52-rig.reverse-video:not([data-dialect="vt100"]) {
     --vt52-bg: #e0e0e0;
     --vt52-fg: #141914;
 }
 
 /* Reverse video on a green tube: the live pair swapped, same as the white one. */
-.vt52-rig[data-artwork].reverse-video {
+.vt52-rig[data-dialect="vt100"].reverse-video {
     --vt52-bg: #2bd62b;
     --vt52-fg: #0a1a0a;
 }
@@ -2087,11 +2087,11 @@ body {
     display: none;
 }
 
-.vt52-rig.reverse-video:not([data-artwork]) .vt52-layer-Glass {
+.vt52-rig.reverse-video:not([data-dialect="vt100"]) .vt52-layer-Glass {
     display: none;
 }
 
-.vt52-rig.reverse-video:not([data-artwork]) .vt52-layer-GlassInverted {
+.vt52-rig.reverse-video:not([data-dialect="vt100"]) .vt52-layer-GlassInverted {
     display: inline;
 }
 
@@ -2127,21 +2127,21 @@ body {
     background: var(--vt52-bg);
     cursor: text;
 }
-/* The operator console may carry the VT100 artwork (data-artwork on its rig),
-   whose Screen marker sits at a different place inside its own viewBox: its
-   Markers layer is translated to y=2.018 where the DECscope's is y=25.673, so
-   the tube would otherwise sit ~107px below the drawn glass. These four numbers
-   are that artwork's marker arithmetic done once, exactly as the base rule's are
-   for the DECscope: (marker + Markers-layer translate) * 3.779528, the 96dpi
-   millimetre the artwork is authored in. Kept scoped to the console rig so TT1
-   and TT2, which still show the DECscope cabinet, are unaffected. */
+/* A rig whose dialect is vt100 carries the VT100 artwork, whose Screen marker
+   sits at a different place inside its own viewBox: its Markers layer is
+   translated to y=2.018 where the DECscope's is y=25.673, so the tube would
+   otherwise sit ~107px below the drawn glass. These four numbers are that
+   artwork's marker arithmetic done once, exactly as the base rule's are for the
+   DECscope: (marker + Markers-layer translate) * 3.779528, the 96dpi millimetre
+   the artwork is authored in. Scoped to the vt100 dialect rigs, so a DECscope on
+   any page is unaffected. */
 /* Zoom builds its OWN case from --vt52-case-wall / --vt52-bezel-wall and pins
    the tube at --vt52-tube-left/top, hiding the artwork. These marker numbers
    describe where the painted glass sits INSIDE the artwork, so they only apply
    while the artwork is on screen: without :not(.vt52-zoomed) this rule outranks
    `.vt52-zoomed .vt52-crt` (a class plus an attribute beats two classes) and the
    maximised tube landed at the marker's offset inside a box sized by zoom. */
-.vt52-rig[data-artwork]:not(.vt52-zoomed) .vt52-crt {
+.vt52-rig[data-dialect="vt100"]:not(.vt52-zoomed) .vt52-crt {
     left: 168.21px;
     top: 94.98px;
     width: 475.08px;
@@ -2197,7 +2197,7 @@ body {
    wrong machine. The palette is the one the artist drew the hull with:
    #e5dfc8 for the lit upper faces, #f3d383 for the body, #d4ab4a for the
    outline — the same three-role build the DECscope case uses. */
-.vt52-rig[data-artwork].vt52-zoomed {
+.vt52-rig[data-dialect="vt100"].vt52-zoomed {
     /* The artist's own hull colour (#f3d383), FLAT. What grated before was not
        the colour but the delivery: a three-stop gradient banded and the radial
        highlight turned into a hotspot once the case filled the screen. A single
@@ -2212,7 +2212,7 @@ body {
         0 24px 40px rgba(0, 0, 0, 0.45);
 }
 
-.vt52-rig[data-artwork].vt52-zoomed .vt52-bezel {
+.vt52-rig[data-dialect="vt100"].vt52-zoomed .vt52-bezel {
     /* A shade deeper than the case, so the recessed frame separates without a
        gradient doing the work. */
     background: #ecc46a;

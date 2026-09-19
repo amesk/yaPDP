@@ -54,6 +54,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also stops a feeding reader tape (START, and AUTO where the guest's own X-ON
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
+- **A rig states its dialect once, and everything follows from it.** The cabinet
+  file, the phosphor, the reverse-video switch, the key click and the zoom tube
+  numbers each used to work out "which terminal is this" on their own — from a
+  getter, a CSS class, a markup attribute or a proxy for one — and eight separate
+  bugs this session came out of those copies disagreeing. A rig now carries
+  `data-dialect="vt52|vt100"`, stamped by `initVT52Page` from the same table that
+  names its initializer and artwork, and the stylesheet, the artwork loader and
+  the marker rules all read that instead of a proxy. `data-artwork` disappears
+  from the CSS entirely. (`pdp11.html`, `src/pdp11-app.js`, `src/terminal-core.js`,
+  `css/pdp11.css`)
+
+- **The key click belongs to the VT100.** It was offered to the DECscope as
+  period flavour, but the DECscope's keyboard was mechanical and had no such
+  setting — the VT100 is the terminal with a key-click option. The hook now
+  receives the unit that was typed on and asks that terminal whether it takes a
+  click at all: a DECscope stays silent even with the option on. The CONFIG field
+  reads "VT100 key click" and dims when no VT100 is installed, like the phosphor
+  field. (`src/config.js`, `src/pdp11-app.js`, `src/terminal-core.js`,
+  `src/vt52.js`, `src/dialect/vt100.js`, `pdp11.html`)
+
 - **A terminal's capabilities are now stated by the terminal.** The two dialects
   share one registry, so "reachable through `vt52Get()`" stopped meaning "is a
   VT52" — and the CONFIG switches for phosphor and reverse video leaked onto

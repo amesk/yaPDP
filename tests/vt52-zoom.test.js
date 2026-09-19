@@ -172,7 +172,7 @@ function run() {
     // extractRule matches the FIRST occurrence of the marker, and the DECscope
     // rule `.vt52-zoomed {` is a prefix of this one — so slice the block
     // ourselves, starting at the VT100 selector.
-    const vtIdx = css.indexOf(".vt52-rig[data-artwork].vt52-zoomed");
+    const vtIdx = css.indexOf(".vt52-rig[data-dialect=\"vt100\"].vt52-zoomed");
     assert.ok(vtIdx !== -1, "the VT100 zoom case rule must exist");
     const vtEnd = css.indexOf("\n}", vtIdx);
     // Strip the comments before asserting: the rule's own note explains that a
@@ -184,7 +184,7 @@ function run() {
       "and the artist's outline");
     assert.ok(!/gradient/.test(vt100Case),
       "flat too — the same glare applies");
-    const vtBezIdx = css.indexOf(".vt52-rig[data-artwork].vt52-zoomed .vt52-bezel");
+    const vtBezIdx = css.indexOf(".vt52-rig[data-dialect=\"vt100\"].vt52-zoomed .vt52-bezel");
     assert.ok(vtBezIdx !== -1, "the VT100 bezel rule must exist");
     const vt100Bezel = css.slice(vtBezIdx, css.indexOf("\n}", vtBezIdx) + 2)
         .replace(/\/\*[\s\S]*?\*\//g, "");

@@ -859,7 +859,7 @@ function installVT52Keyboard(unit, pageId) {
     // unit-aware; the legacy window surface is ?bridge=1-gated).
     function sendToUnit(bytes) {
       // Optional audible key click (VT100-style feedback)
-      if (typeof window.playKeyClick === 'function') window.playKeyClick();
+      if (typeof window.playKeyClick === 'function') window.playKeyClick(unit);
       bridgeSendToUnit(unit, bytes);
     }
 
@@ -976,6 +976,26 @@ var TERMINAL_DIALECTS = {
   }
 };
 
+/**
+ * rigDialect(rig) — which terminal a rig shows, from the rig itself.
+ *
+ * The rig states it once as data-dialect (stamped by initVT52Page from the table
+ * above); everything else is derived from that. Before this the identity was
+ * spread over data-artwork, three accepts* flags on the terminal objects and a
+ * [data-artwork] selector in the stylesheet, and four separate leaks came out of
+ * one of those copies disagreeing with another.
+ *
+ * A rig with no attribute predates the change: it is a DECscope.
+ */
+function rigDialect(rig) {
+  return (rig && rig.dataset && rig.dataset.dialect) || 'vt52';
+}
+
+/** True when a rig shows the VT100 (the dialect that owns the artwork rig). */
+function rigIsVt100(rig) {
+  return rigDialect(rig) === 'vt100';
+}
+
 function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   var kind = TERMINAL_DIALECTS[dialect] ? dialect : 'vt52';
   var drv = TERMINAL_DIALECTS[kind];
@@ -983,13 +1003,18 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   var canvas = document.getElementById(canvasId);
   if (!canvas) return;
 
-  // Point the rig at its dialect's artwork before anything measures it. The
-  // page markup used to hard-code data-artwork on the console rig alone, so
-  // TT1/TT2 kept the DECscope backdrop whatever dialect they were built as.
-  // A DECscope rig names nothing: the vt52 file is the loader's default.
+  // State the rig's dialect ONCE, then derive everything from it. The page
+  // markup used to hard-code data-artwork on the console rig alone, so TT1/TT2
+  // kept the DECscope backdrop whatever dialect they were built as — and the
+  // stylesheet, the phosphor, the reverse-video switch and the key click each
+  // decided "which terminal is this" on their own. One attribute now answers it
+  // for all of them.
   var rigEl = canvas.closest ? canvas.closest('.vt52-rig') : null;
-  if (rigEl && drv.artwork && kind !== 'vt52') {
-    rigEl.dataset.artwork = drv.artwork;
+  if (rigEl) {
+    rigEl.dataset.dialect = kind;
+    // The artwork URL follows from the dialect, read back by the loader.
+    if (kind === 'vt52') delete rigEl.dataset.artwork;
+    else rigEl.dataset.artwork = drv.artwork;
   }
 
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
@@ -1143,16 +1168,31 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
 }
 
 // ==================================================================
-// Optional audible key click for VT52 terminals (VT100-style feedback).
-// Synthesized with Web Audio (no binary asset needed). The CONFIG
-// "keyClick" setting is checked live on every keystroke.
+// Optional audible key click, for the VT100 only.
+//
+// The click is the VT100's own setting; the DECscope's keyboard was mechanical,
+// and the click this project used to offer the VT52 was period flavour rather
+// than emulation. The unit therefore travels with the call (see handleKey in
+// terminal-core.js and installVT52Keyboard here) and the hook asks that terminal
+// whether it takes a click at all — the dialects share one registry, so the unit
+// is the only reliable way to know who is typing.
+//
+// Synthesized with Web Audio (no binary asset needed). The CONFIG "keyClick"
+// setting is checked live on every keystroke.
 // ==================================================================
 (function installKeyClick() {
   var audioCtx = null;
-  window.playKeyClick = function () {
+  window.playKeyClick = function (unit) {
     var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
     // The global "mute" flag silences every sound source, including this one.
     if (!cfg || !cfg.keyClick || cfg.mute) return;
+    // Ask the terminal that received the keystroke. Absent unit (an older caller
+    // that has not been updated) means "no click" rather than a click on a
+    // DECscope: silence is the safe default now that the click is not universal.
+    var t = (typeof unit === 'number' &&
+             typeof window.yapdpCore !== 'undefined' && window.yapdpCore.terminals)
+        ? window.yapdpCore.terminals.get(unit) : null;
+    if (!t || !t.acceptsKeyClick) return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
@@ -1514,6 +1554,10 @@ function applyVT52ReverseVideo(enabled) {
     if (!t || !t.acceptsReverseVideo) continue;   // the VT100 has no such switch
     if (typeof t.setReverseVideo === 'function') t.setReverseVideo(!!enabled);
   }
+  // The class goes on the DECscope rigs; the selector keys off data-dialect, so
+  // the CSS no longer has to infer the terminal from which artwork it named.
+  // The class goes on the DECscope rigs; the selector keys off data-dialect, so
+  // the CSS no longer has to infer the terminal from which artwork it named.
   // The tube's surround is styled from CSS, and the class has to sit on the
   // DECscope's rig rather than on <body> — a body class repainted the VT100's
   // tube too. Vt52Zoom owns that per-rig stamping, and re-applies it on every
@@ -2011,6 +2055,11 @@ function initConfigForm() {
     }
     var phField = document.getElementById('config-field-vt100Phosphor');
     if (phField) setFieldDisabled(phField, !anyVt100);
+
+    // Same rule for the key click: it is the VT100's setting, and a machine with
+    // no VT100 anywhere cannot use it.
+    var kcField = document.getElementById('config-field-keyClick');
+    if (kcField) setFieldDisabled(kcField, !anyVt100);
   }
 
   // Apply: persist the whole form in one Config.set() call, then reload only
