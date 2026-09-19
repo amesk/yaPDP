@@ -40,7 +40,11 @@ async function run() {
   await xxdp.runToVerdict({
     mach, ev, panel,
     endPass: /END PASS\s+\#\s*\d+\s+TOTAL ERRORS SINCE LAST REPORT\s+0/i,
-    error: /\bERROR\b|MISMATCH|(^|\n)(FAIL|HALT)/i,
+    // Verdict-shaped: only a report line carrying a NON-ZERO error count is a
+    // failure. A bare /\bERROR\b/i also matched the harmless loader text while
+    // the diagnostic resolved its name ("EKBBF0.BIC recognised" sits next to an
+    // ERROR word in the listing), which failed healthy runs on CI.
+    error: /TOTAL ERRORS SINCE LAST REPORT\s+[1-9]|MISMATCH|(^|\n)(FAIL|HALT)/i,
     timeoutMs: 120000,
     drive: async ({ out, outLen }) => {
       if (!switch7Set && out.indexOf("CHANGE SWITCH 7") !== -1) {

@@ -20,9 +20,32 @@
  */
 
 const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
 const { bootHeadless } = require("../tools/headless-machine.js");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Where a failed run leaves its console tail. Without this a red XXDP step in
+// CI carries one line of text and nothing else (no artifact is uploaded), so a
+// flake and a real regression look identical from the outside. Same directory
+// the other e2e suites write to, so the CI artifact step picks it up.
+const ARTIFACTS = path.join(__dirname, "artifacts");
+
+// Dump the console tail (and a bounded head) so a failure can be diagnosed
+// after the fact. Best effort: an unwritable directory must not mask the
+// original failure.
+function dumpConsole(label, text) {
+  try {
+    fs.mkdirSync(ARTIFACTS, { recursive: true });
+    const file = path.join(ARTIFACTS, "xxdp-" + label + ".log");
+    fs.writeFileSync(file, text);
+    console.error("  artifact: " + file);
+  } catch (err) { /* best effort */ }
+  const tail = text.slice(-1500);
+  console.error("  console tail:\n" +
+    tail.split("\n").map((l) => "    | " + l).join("\n"));
+}
 
 // Poll `needle` in the machine console output until it appears or the budget
 // runs out. Returns true when found.
@@ -87,6 +110,13 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
  * cfg:
  *   endPass   RegExp matched against the whole console output (a clean pass).
  *   error     RegExp for failure text (optional; tail-matched defence).
+ *             Keep it specific: it is tested against the last 1200 characters,
+ *             so a bare /\bERROR\b/i matches the harmless banner text a
+ *             diagnostic prints while RESOLVING its name (e.g. "EKBBF0.BIC
+ *             recognised" appears next to an "ERROR" word in the loader's
+ *             listing) and fails a healthy run. Prefer a verdict-shaped
+ *             pattern such as /TOTAL ERRORS SINCE LAST REPORT\s+[1-9]/i,
+ *             which only matches a real reported error count in a report line.
  *   timeoutMs overall budget for the verdict wait.
  *   drive(ctx) optional per-test interaction callback. Called on each poll;
  *             ctx = { mach, ev, panel, out, outLen }. Return true when it performed
@@ -102,7 +132,8 @@ async function runToVerdict({ mach, ev, panel, endPass, error, timeoutMs, drive 
 
     if (error && error.test(out.slice(-1200))) {
       mach.halt();
-      console.error("diagnostic reported an error; tail:\n" + out.slice(-600));
+      console.error("diagnostic reported an error");
+      dumpConsole("error", out);
       assert.fail("diagnostic ended with an error");
     }
     if (endPass.test(out)) {
@@ -117,8 +148,8 @@ async function runToVerdict({ mach, ev, panel, endPass, error, timeoutMs, drive 
     await sleep(250);
   }
   mach.halt();
-  console.error("diagnostic did not reach END PASS in time; tail:\n" +
-    mach.getOut().slice(-800));
+  console.error("diagnostic did not reach END PASS in time");
+  dumpConsole("timeout", mach.getOut());
   assert.fail("timed out waiting for END PASS");
 }
 

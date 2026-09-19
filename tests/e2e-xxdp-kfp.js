@@ -40,7 +40,10 @@ async function run() {
   await xxdp.runToVerdict({
     mach, ev, panel,
     endPass: /END PASS\s+\#\s*\d+/i,
-    error: /\bERROR\b|MISMATCH|CPU.*FAIL|HALT/i,
+    // Verdict-shaped, same reason as ekbbf0: a bare /\bERROR\b/i also matches
+    // the loader's harmless listing text while the diagnostic resolves its
+    // name, failing a healthy run. Only a real error count is a failure.
+    error: /TOTAL ERRORS SINCE LAST REPORT\s+[1-9]|MISMATCH|CPU.*FAIL|HALT/i,
     timeoutMs: 90000,
   });
 
