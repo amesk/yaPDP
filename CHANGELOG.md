@@ -67,6 +67,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also stops a feeding reader tape (START, and AUTO where the guest's own X-ON
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
+- **The Equipment tab is driven by selects, and a terminal's number is derived
+  from its type rather than set beside it.** The console terminal and the
+  teletype speed became drop-downs like the rest of the form, the speed options
+  are named by their rate (10 chars/sec — authentic, 33 — accelerated) with the
+  authentic one spelled out in the hint, and the separate user-terminal COUNT is
+  gone: TT1 and TT2 each name themselves (`None | VT52 | VT100`) and the number
+  of terminals is read off them. A count and a list can disagree, and did — a
+  value left in TT2's select while the count said 1 claimed a terminal the
+  machine did not have. TT1 must be filled before TT2, so a terminal numbered 2
+  with none numbered 1 is now impossible by construction. The CRT-effects copy
+  no longer claims VT52: the effect covers every terminal screen.
+  (`pdp11.html`, `src/pdp11-app.js`)
+
 - **A rig states its dialect once, and everything follows from it.** The cabinet
   file, the phosphor, the reverse-video switch, the key click and the zoom tube
   numbers each used to work out "which terminal is this" on their own — from a
