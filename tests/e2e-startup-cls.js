@@ -62,7 +62,12 @@ const CFG = {
     printer: false,
     vt11: false,
     teletypeSpeed: "fast",
-    powerOn: false,
+    // Power ON: the console page is shown on load, so the rig is VISIBLE and
+    // installTeletypeScaling() can size it. With the machine off the page stays
+    // on the Panel (display:none) and the scaler correctly skips a hidden page
+    // (offsetWidth 0) — --tty-scale is then never set, and asserting it there
+    // would demand a scale the page is not supposed to have.
+    powerOn: true,
     autoBoot: false
 };
 
