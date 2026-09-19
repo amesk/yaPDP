@@ -107,8 +107,15 @@ function run() {
         refs.add(ref);
       }
     }
-    assert.ok(refs.has("assets/Model-33-ASR.svg"),
-      "css/g60printer.css must still paint the cabinet from assets/Model-33-ASR.svg");
+    // The artwork is NOT named in a stylesheet any more: a CSS url() and the
+    // runtime fetch that paints it are separate cache entries, so naming it here
+    // downloaded the same 74 KB twice per cold load (see #77). The bundle must
+    // still SHIP the file — the page fetches it at runtime — and that is the
+    // TTY_ART_URL check above; a stylesheet reference would only re-add the
+    // second download.
+    assert.ok(!refs.has("assets/Model-33-ASR.svg"),
+      "css/g60printer.css must not name the artwork: a stylesheet URL is a " +
+      "second download alongside the fetch that paints it (see #77)");
     for (const ref of refs) {
       assert.ok(fs.existsSync(path.join(ROOT, ref)),
         "a stylesheet references a missing asset: " + ref);

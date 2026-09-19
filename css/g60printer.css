@@ -1275,14 +1275,24 @@
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    /* The artwork is stretched to the rig box. It stays a CSS background (and
-       not an inlined <svg>): a background is painted into the box by the
-       engine itself, so it follows --tty-scale and the layout with no help,
-       while an inlined <svg> had to be sized and stretched by hand and showed
-       the machine at its NATURAL size, outside the rig (regression, see #77).
-       The double download is avoided on the fetch side instead: see
-       TTY_ART_FETCH_OPTS in src/pdp11-app.js. */
-    background: url('../assets/Model-33-ASR.svg') center center / 100% 100% no-repeat;
+    /* The artwork is stretched to the rig box, and it stays a CSS BACKGROUND —
+       never an inlined <svg>: a background is painted into the box by the engine
+       itself, so it follows --tty-scale and the layout with no help, while a
+       replaced element had to be sized and stretched by hand and showed the
+       machine at its NATURAL size, outside the rig (regression, see #77).
+       NO FILE IS NAMED HERE, on purpose. Naming one made the browser download
+       the artwork twice per cold load: a CSS background and a fetch are separate
+       cache entries, so the stylesheet's copy and the marker pass's copy were
+       two 74 KB requests even though the URL was identical. paintTtyBackdrop()
+       in src/pdp11-app.js instead paints the bytes that fetch already has, as a
+       blob URL, into this same box — one request, and still a CSS background,
+       so it is still stretched by the engine and still follows --tty-scale.
+       A no-script page shows no machine; it also shows no panel, no console and
+       no way to press anything, so an artwork fallback there would decorate a
+       page that cannot work anyway. */
+    background-position: center center;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
 }
 
 /* The coordinate space of the controls — same box as the backdrop. It must NOT

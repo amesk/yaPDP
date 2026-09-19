@@ -79,12 +79,24 @@ function run() {
   const css = fs.readFileSync(CSS_PATH, "utf8");
 
   // --- The artwork backs the teletype page ---------------------------------
+  // The backdrop is a BOX the artwork is painted into, not a stylesheet
+  // `background-image: url(...)`: naming the file here made the browser fetch it
+  // twice per cold load (a CSS background and a fetch are separate cache
+  // entries), so the bytes come from the one fetch and are painted as a blob
+  // URL by paintTtyBackdrop(). What this rule must still guarantee is that the
+  // box is stretched to the rig (so the artwork follows --tty-scale) and inert
+  // to the mouse.
   {
     const rule = extractRule(css, "#tty-backdrop {");
-    assert.ok(/background\s*:\s*url\('\.\.\/assets\/Model-33-ASR\.svg'\)/.test(rule),
-      "the backdrop must load assets/Model-33-ASR.svg:\n" + rule);
+    assert.ok(/background-size\s*:\s*100%\s+100%\s*;/.test(rule),
+      "the backdrop must stretch the artwork to its box (background-size: 100% 100%):\n" + rule);
+    assert.ok(/background-position\s*:\s*center\s+center\s*;/.test(rule),
+      "the backdrop must centre the artwork:\n" + rule);
     assert.ok(/pointer-events\s*:\s*none\s*;/.test(rule),
       "the backdrop must be inert to the mouse (pointer-events: none):\n" + rule);
+    assert.ok(!/url\(/.test(rule),
+      "the backdrop must NOT name a file: a CSS url() is a second download " +
+      "alongside the fetch that paints it (see #77):\n" + rule);
   }
 
   // --- The artwork's front-most layers paint over the live controls ---------
