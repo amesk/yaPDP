@@ -75,8 +75,13 @@ function run() {
         const rp1 = OSBoot.scenarioFor("rp1");
         assert.deepStrictEqual(plain(rp1.steps),
             [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
-                { send: "root", waitFor: "login:" }],
-            "BSD 2.11 should press Enter at the boot prompt and wait for login");
+                { send: "root", waitFor: "login:" },
+                // The image's erase key is DEL while the keyboard sends ^H, so the
+                // login teaches stty the erase character; and the image carries
+                // TERM=vt52, so the scenario names the terminal it was given.
+                { send: 'stty erase "^H"' },
+                { send: "TERM=vt100" }],
+            "BSD 2.11 should press Enter at the boot prompt, log in, then set the erase key and TERM");
 
         assert.strictEqual(OSBoot.scenarioFor("nope"), undefined,
             "unknown device should resolve to undefined");
@@ -116,11 +121,12 @@ function run() {
         assert.strictEqual(rk1v.hardware.console, "vt52",
             "RT-11 VT52 variant should use a VT52 console");
         assert.strictEqual(rk1v.hardware.vt11, false);
-        // BSD 2.11 is the ONE guest that does not detect a teletype console
-        // (its loader prints lower case), so it keeps a VT52 console and the
-        // force-upper flag is left alone.
-        assert.strictEqual(OSBoot.scenarioFor("rp1").hardware.console, "vt52",
-            "BSD 2.11 should use a VT52 console");
+        // BSD 2.11 is 1980-81, so it runs on a VT100 (1978). It is the ONE
+        // guest that does not detect a teletype console (its loader prints lower
+        // case), which is why it never ran on one — not a reason to give it a
+        // VT52 now that the VT100 exists.
+        assert.strictEqual(OSBoot.scenarioFor("rp1").hardware.console, "vt100",
+            "BSD 2.11 should use a VT100 console");
         assert.strictEqual(OSBoot.scenarioFor("rp1").hardware.forceUpperCaseOut, null,
             "BSD 2.11 must not force upper-case output");
         assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.console, "teletype",

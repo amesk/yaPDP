@@ -86,8 +86,9 @@ const GUESTS = [
         // the kernel booting to the single-user "#" prompt; no login: check.
         cfg: { consoleType: "teletype", printer: false, vt11: false },
         readyWhen: "#", timeout: 120000 },
+    // BSD 2.11 runs on a VT100 console now (1980-81, two years after the VT100).
     { device: "rp1",   name: "BSD 2.11",
-        cfg: { consoleType: "vt52", printer: true, vt11: false },
+        cfg: { consoleType: "vt100", printer: true, vt11: false },
         readyWhen: "#", readyAfter: "login:", timeout: 180000 },
     { device: "rp2",   name: "RSTS/E v9.6",
         cfg: { consoleType: "teletype", printer: true, vt11: false },

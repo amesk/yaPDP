@@ -185,18 +185,28 @@ var OSBoot = (function () {
             autoLogin: true,
             hardware: { console: "teletype", printer: null, vt11: false,
                 forceUpperCaseOut: true } },
-        // BSD 2.11 — the ONE guest that does not detect a teletype console:
-        // its loader prints lower case, so the scenario keeps a VT52 console
-        // and leaves forceUpperCaseOut untouched. The loader prints a lot
-        // before "login:" and waits at a "Press <CR> to boot, or any other key
-        // to abort:" countdown; an Enter sent as soon as that prompt appears
-        // skips the countdown and starts the kernel, then the login waits for
-        // the prompt instead of firing on a fixed timer.
+        // BSD 2.11 — 1980-81, so it runs on a VT100 (1978), not a DECscope. It
+        // is the ONE guest that does not detect a teletype console (its loader
+        // prints lower case), which is why it never ran on one; that is not a
+        // reason to give it a VT52 now that the VT100 exists.
+        //
+        // The image carries TERM=vt52, so the scenario tells the system which
+        // terminal it actually has — without it, nroff never emits underline
+        // (the VT52 termcap has no us/ul) and the man pages lose their
+        // emphasis. The image's erase key is DEL (^?), while the keyboard sends
+        // ^H, so stty is re-taught the erase character too.
+        //
+        // The loader prints a lot before "login:" and waits at a "Press <CR> to
+        // boot, or any other key to abort:" countdown; an Enter sent as soon as
+        // that prompt appears skips the countdown and starts the kernel, then the
+        // login waits for the prompt instead of firing on a fixed timer.
         { device: "rp1", label: "BSD 2.11", boot: "boot rp1",
             steps: [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
-                { send: "root", waitFor: "login:" }],
+                { send: "root", waitFor: "login:" },
+                { send: "stty erase \"^H\"" },
+                { send: "TERM=vt100" }],
             autoLogin: true,
-            hardware: { console: "vt52", printer: true, vt11: false,
+            hardware: { console: "vt100", printer: true, vt11: false,
                 forceUpperCaseOut: null } },
         // RSTS/E v9.6 — LP11 line printer; historically a teletype console.
         { device: "rp2", label: "RSTS/E v9.6", boot: "BOOT RP2",
