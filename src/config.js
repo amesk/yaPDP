@@ -40,8 +40,11 @@
  *                    1980s terminals are known for). The VT52 is NOT offered a
  *                    choice: it was never sold in another phosphor, and its
  *                    dialect pins p4.
- *   - keyClick:      audible key-click feedback for VT52 terminals.
- *                    (Absent on the original VT52, introduced with the VT100.)
+ *   - keyClick:      audible key-click feedback for VT100 terminals. The
+ *                    DECscope's keyboard was mechanical and had no such
+ *                    setting; the click this project used to offer the VT52
+ *                    was period flavour, and is retired now that the VT100 is
+ *                    here.
  *   - hum:           ambient PDP-11 power-supply hum + fan noise while the
  *                    machine is powered on. Synthesized on a dedicated Web
  *                    Audio context so it never clashes with the teletype/
@@ -95,7 +98,7 @@ var Config = (function () {
         upperCaseOnly: false,    // boolean (physical keyboard upper-case only)
         // boolean (print PDP output upper case; the punch keeps the raw code)
         forceUpperCaseOut: true,
-        keyClick: false,         // boolean (VT52 key click)
+        keyClick: false,         // boolean (VT100 key click)
         // The VT100's tube: 'p4' (white — the phosphor the VT100 was introduced
         // on in 1978) or 'p1' (green — what 1980s terminals are known for).
         // The VT52 has no such option: it was never offered in another phosphor,

@@ -957,7 +957,7 @@
     <div class="page" id="page-vt52-console">
       <div class="vt52-container">
         <div class="vt52-terminal">
-          <div class="vt52-rig" data-artwork="assets/vt100.svg">
+          <div class="vt52-rig" data-dialect="vt100">
             <div class="vt52-backdrop"></div>
             <div class="vt52-bezel"></div>
             <div class="vt52-crt" id="vt52-console-crt">
@@ -1188,10 +1188,10 @@
 
         <div class="config-tab-panel" id="config-panel-visual" role="tabpanel" aria-labelledby="config-tab-visual">
           <div class="config-form">
-            <div class="config-field">
-              <span class="config-label">VT52 key click</span>
+            <div class="config-field" id="config-field-keyClick">
+              <span class="config-label">VT100 key click</span>
               <div class="config-control">
-                <label><input type="checkbox" id="config-keyClick"> Audible key click on VT52 terminals (historically
+                <label><input type="checkbox" id="config-keyClick"> Audible key click on VT100 terminals (historically
                   VT100+ only)</label>
                 <span class="config-hint">Applied immediately.</span>
               </div>

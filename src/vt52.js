@@ -141,6 +141,15 @@
          */
         acceptsReverseVideo = true;
 
+        /**
+         * acceptsKeyClick — the DECscope has no such setting.
+         *
+         * Its keyboard is mechanical, and the click this project used to offer
+         * it was decoration rather than emulation. Stated explicitly so the
+         * superset that DOES take the click carries the opt-in, not the base.
+         */
+        acceptsKeyClick = false;
+
         /** The engine asks the INSTANCE, so each terminal keeps its own mode. */
         attrMask()    { return this.modes.ansi ? -1 : ~(ATTR_BOLD | ATTR_UNDERSCORE); }
         cursorIsBlock() { return !!this.modes.ansi; }

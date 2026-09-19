@@ -79,6 +79,15 @@
          */
         acceptsReverseVideo = false;
 
+        /**
+         * acceptsKeyClick — yes, unlike the base dialect.
+         *
+         * The VT100 is the terminal with a key-click setting; the DECscope's
+         * keyboard was mechanical. The click used to be offered to the VT52 as
+         * period flavour, and that is what this flag retires.
+         */
+        acceptsKeyClick = true;
+
         powerOnState() {
             // No phosphor here: the VT100 takes it as an option (Config), and
             // that choice is applied by the host after construction. Only the

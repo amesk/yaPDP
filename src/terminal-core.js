@@ -1588,12 +1588,14 @@
 
             // Any result is sent to the emulator receive routine
             if (bytes) {
-                // Optional audible key click (VT100-style feedback). The hook
-                // is installed by pdp11-app.js and honours the CONFIG
-                // "keyClick" setting; it is optional so this module stays
-                // decoupled from the application configuration.
+                // Optional audible key click. The hook is installed by
+                // pdp11-app.js and owns the CONFIG setting AND the question of
+                // whether THIS terminal has a click at all — the VT100 does and
+                // the DECscope does not — so the unit travels with the call. It
+                // stays optional, which keeps this module decoupled from the
+                // application's configuration.
                 if (typeof window.playKeyClick === "function") {
-                    window.playKeyClick();
+                    window.playKeyClick(this.unit);
                 }
                 this.receiveRoutine(this.unit, bytes);
                 ev.preventDefault();
@@ -1745,8 +1747,9 @@
     // css/pdp11.css are only the fallback for builds where the artwork cannot be
     // fetched (strict file:// origin). Same contract as the Model 33 artwork
     // (see TTY_MARKER_VARS in src/pdp11-app.js).
-    // Cabinet artwork, per dialect. A rig opts in with data-artwork (the
-    // default keeps assets/vt52.svg, so existing markup needs no change).
+    // Cabinet artwork, per dialect. A rig states its dialect with data-dialect
+    // and names its file with data-artwork (stamped together by initVT52Page);
+    // the DECscope is the default, so assets/vt52.svg needs no attribute at all.
     var VT52_ART_URL = 'assets/vt52.svg';
     var ART_CACHE = {};   // url -> svg text, so N rigs fetch once
 
@@ -1787,12 +1790,12 @@
         if (typeof document === 'undefined') return;
         var vars = vt52MarkerVars(svgText);
         if (!vars) return;
-        // Only the rigs that named NO artwork of their own take the DECscope's
-        // numbers. Testing "has it received its own yet" instead let the
-        // DECscope's earlier arrival stamp its marker on a VT100 rig, leaving
-        // the tube at the DECscope's offset — the same race as the artwork
-        // itself, and equally intermittent.
-        var rigs = document.querySelectorAll('.vt52-rig:not([data-artwork])');
+        // Only DECscope rigs take the DECscope's numbers. Testing "has it
+        // received its own yet" instead let the DECscope's earlier arrival stamp
+        // its marker on a VT100 rig, leaving the tube at the DECscope's offset —
+        // the same race as the artwork itself, and equally intermittent.
+        var rigs = document.querySelectorAll(
+            '.vt52-rig:not([data-dialect="vt100"])');
         for (var i = 0; i < rigs.length; i++) {
             for (var name in vars) {
                 if (Object.prototype.hasOwnProperty.call(vars, name)) {
@@ -1948,9 +1951,9 @@
     function loadVt52Artwork() {
         if (typeof fetch !== 'function') return;
 
-        // Which artworks does the document actually show? A rig opts in with
-        // data-artwork="assets/vt100.svg"; anything else is the DECscope, so an
-        // unchanged page keeps fetching exactly one file.
+        // Which artworks does the document actually show? Each rig states its
+        // dialect and names its file; the DECscope is the default, so a page that
+        // shows only DECscopes keeps fetching exactly one file.
         var urls = [VT52_ART_URL];
         if (typeof document !== 'undefined') {
             var wanted = document.querySelectorAll('.vt52-rig[data-artwork]');
@@ -1981,10 +1984,10 @@
                     }
 
                     // The DECscope is the default cabinet, so its file also
-                    // fills every rig that named no artwork of its own.
+                    // fills the rigs that state the DECscope dialect.
                     if (url === VT52_ART_URL) {
                         var defaults = document.querySelectorAll(
-                            '.vt52-rig:not([data-artwork])');
+                            '.vt52-rig:not([data-dialect="vt100"])');
                         for (var d = 0; d < defaults.length; d++) {
                             inlineArtworkInto(defaults[d], text);
                             applyMarkerVarsToRig(defaults[d], text);
