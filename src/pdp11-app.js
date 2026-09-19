@@ -3328,6 +3328,37 @@ function installTtyForeground(svgText) {
   }
 }
 
+// Paint the fetched artwork as the backdrop's CSS background.
+//
+// The stylesheet used to name the file in `background-image` AND the marker
+// pass fetched it, so the browser downloaded the same 74 KB twice (a CSS
+// background and a fetch are separate cache entries). Keeping the CSS copy
+// would mean two downloads; inlining an <svg> instead broke the stretch,
+// because a replaced element does not follow --tty-scale (see #77).
+//
+// So: keep exactly ONE network request (the fetch below) and hand the CSS the
+// bytes it already has, as a blob URL. The background stays a CSS background —
+// stretched into the box by the engine, following the rig scale with no help —
+// and the second download is gone.
+function paintTtyBackdrop(text) {
+  var node = document.getElementById('tty-backdrop');
+  if (!node || typeof Blob === 'undefined' || typeof URL === 'undefined' ||
+      typeof URL.createObjectURL !== 'function') {
+    return false;
+  }
+  try {
+    var blob = new Blob([text], { type: 'image/svg+xml' });
+    var url = URL.createObjectURL(blob);
+    node.style.background = 'url("' + url + '") center center / 100% 100% no-repeat';
+    // The blob must outlive the paint, but not the page: releasing it earlier
+    // would blank the backdrop. Keep the handle for tests/diagnostics.
+    node.dataset.artworkBlob = url;
+    return true;
+  } catch (err) {
+    return false; // stylesheet fallback (or the plain URL) stays in charge
+  }
+}
+
 // Fetch the artwork, apply the markers and re-derive everything that depends on
 // them (the rig scale, the paper ceiling and the two hanging tapes).
 function installTtyArtLayer() {
@@ -3339,6 +3370,10 @@ function installTtyArtLayer() {
       var vars = ttyMarkerVars(text);
       if (!vars) return;
       ttyArtText = text; // kept for later re-projections (sheet factor)
+      // One request painted twice: the backdrop takes these very bytes as a CSS
+      // background (see paintTtyBackdrop), so the browser never fetches the
+      // artwork a second time for the stylesheet.
+      paintTtyBackdrop(text);
       for (var name in vars) {
         if (Object.prototype.hasOwnProperty.call(vars, name)) {
           rig.style.setProperty(name, vars[name]);
