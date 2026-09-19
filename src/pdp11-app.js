@@ -1814,15 +1814,38 @@ function initConfigForm() {
   var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
   if (!cfg) return;
 
-  var radios = document.querySelectorAll('input[name="consoleType"]');
+  var consoleSelect = document.getElementById('config-consoleType');
+  // The console type used to be a radio group. Callers below iterate `radios`
+  // looking for the checked entry; keep that shape by projecting the select onto
+  // a one-element list, so nothing else in this function has to change.
+  var radios = consoleSelect ? [consoleSelect] : [];
+  function radioValue() {
+    return consoleSelect ? consoleSelect.value : 'teletype';
+  }
   var phosphorRadios = document.querySelectorAll('input[name="vt100Phosphor"]');
-  var speedRadios = document.querySelectorAll('input[name="teletypeSpeed"]');
-  var userTerm = document.getElementById('config-userTerminals');
-  // Per-terminal dialect selects, in sidebar-page order (TT1, TT2).
+  var speedSelect = document.getElementById('config-teletypeSpeed');
+  // Same projection for the teletype speed.
+  var speedRadios = speedSelect ? [speedSelect] : [];
+  function speedValue() {
+    return speedSelect ? speedSelect.value : 'authentic';
+  }
+  // One select per user terminal, each naming the terminal or None. The COUNT is
+  // derived from these two rather than set beside them: a count and a list can
+  // disagree, and did.
   var userTermTypeEls = [
     document.getElementById('config-userTerminalType0'),
     document.getElementById('config-userTerminalType1')
   ];
+  function selectedTypes() {
+    return userTermTypeEls.map(function (el) {
+      var v = el ? el.value : 'none';
+      return (v === 'vt52' || v === 'vt100') ? v : 'none';
+    });
+  }
+  /** The number of installed user terminals, derived from the two selects. */
+  function derivedCount() {
+    return selectedTypes().filter(function (v) { return v !== 'none'; }).length;
+  }
   var printerEl = document.getElementById('config-printer');
   var vt11El = document.getElementById('config-vt11');
   var pwEl = document.getElementById('config-printWidth');
@@ -1853,9 +1876,19 @@ function initConfigForm() {
   setRadioChecked(radios, cfg.consoleType);
   setRadioChecked(phosphorRadios, cfg.vt100Phosphor);
   setRadioChecked(speedRadios, cfg.teletypeSpeed);
-  if (userTerm) userTerm.value = String(cfg.userTerminals);
+  // The count is no longer a control of its own: TT1 and TT2 each name
+  // themselves, and "None" is an empty slot. Close any gap so the installed
+  // terminals are always TT1, then TT2 — a TT2 with no TT1 would be a terminal
+  // numbered 2 and no terminal numbered 1.
+  var storedTypes = (cfg.userTerminalTypes && cfg.userTerminalTypes.length)
+      ? cfg.userTerminalTypes.slice() : ['vt52', 'vt52'];
+  var wanted = Number(cfg.userTerminals) || 0;
+  var shown = [];
+  for (var ti = 0; ti < 2; ti++) {
+    shown.push(ti < wanted ? (storedTypes[ti] || 'vt52') : 'none');
+  }
   userTermTypeEls.forEach(function (el, i) {
-    if (el) el.value = (cfg.userTerminalTypes && cfg.userTerminalTypes[i]) || 'vt52';
+    if (el) el.value = shown[i];
   });
   if (printerEl) printerEl.checked = cfg.printer;
   if (vt11El) vt11El.checked = cfg.vt11;
@@ -1885,20 +1918,19 @@ function initConfigForm() {
   // Read every control into a full config-shaped object. The values come from
   // the fixed option lists, so they always survive Config.validate() unchanged.
   function readForm() {
-    var consoleType = 'teletype';
-    for (var i = 0; i < radios.length; i++) {
-      if (radios[i].checked) consoleType = radios[i].value;
-    }
-    var teletypeSpeed = 'authentic';
-    for (var j = 0; j < speedRadios.length; j++) {
-      if (speedRadios[j].checked) teletypeSpeed = speedRadios[j].value;
-    }
+    var consoleType = radioValue();
+    var teletypeSpeed = speedValue();
     return {
       consoleType: consoleType,
-      userTerminals: (userTerm) ? Number(userTerm.value) : cfg.userTerminals,
-      userTerminalTypes: userTermTypeEls.map(function (el, i) {
-        return (el && el.value) || (cfg.userTerminalTypes && cfg.userTerminalTypes[i]) || 'vt52';
-      }),
+      // Derived: the number of slots that name a terminal. The form has no
+      // separate count any more, so the two can no longer disagree.
+      userTerminals: derivedCount(),
+      // Keep the stored array two entries wide, with 'vt52' as the filler for a
+      // slot the operator has not filled yet: the shape is the snapshot format's.
+      userTerminalTypes: (function () {
+        var t = selectedTypes();
+        return [t[0] === 'none' ? 'vt52' : t[0], t[1] === 'none' ? 'vt52' : t[1]];
+      })(),
       printer: (printerEl) ? printerEl.checked : cfg.printer,
       vt11: (vt11El) ? vt11El.checked : cfg.vt11,
       printWidth: (pwEl) ? Number(pwEl.value) : cfg.printWidth,
@@ -2024,10 +2056,7 @@ function initConfigForm() {
   }
 
   function updateEquipmentVisibility() {
-    var teletype = false;
-    for (var i = 0; i < radios.length; i++) {
-      if (radios[i].checked && radios[i].value === 'teletype') teletype = true;
-    }
+    var teletype = (radioValue() === 'teletype');
     var ttyFields = [
       document.getElementById('config-field-printWidth'),
       document.getElementById('config-field-teletypeSpeed'),
@@ -2047,7 +2076,7 @@ function initConfigForm() {
     // How many user terminals does this configuration actually have? A select
     // for an absent terminal keeps whatever it last held, and reading it made a
     // stale TT2=VT100 claim a VT100 that is not installed.
-    var termCount = (userTerm) ? Number(userTerm.value) : 0;
+    var termCount = derivedCount();
     function presentTypes() {
       var out = [];
       if (!userTermTypeEls) return out;
@@ -2058,10 +2087,7 @@ function initConfigForm() {
       return out;
     }
 
-    var anyVt100 = false;
-    for (var r = 0; r < radios.length; r++) {
-      if (radios[r].checked && radios[r].value === 'vt100') anyVt100 = true;
-    }
+    var anyVt100 = (radioValue() === 'vt100');
     if (!anyVt100) {
       var types100 = presentTypes();
       for (var t100 = 0; t100 < types100.length; t100++) {
@@ -2078,10 +2104,7 @@ function initConfigForm() {
 
     // And the mirror image for the DECscope's own switch: reverse video is the
     // VT52's, so it dims when the machine holds no VT52 at all.
-    var anyVt52 = false;
-    for (var r52 = 0; r52 < radios.length; r52++) {
-      if (radios[r52].checked && radios[r52].value === 'vt52') anyVt52 = true;
-    }
+    var anyVt52 = (radioValue() === 'vt52');
     if (!anyVt52) {
       var types52 = presentTypes();     // installed terminals only, as above
       for (var t52 = 0; t52 < types52.length; t52++) {
@@ -2119,36 +2142,54 @@ function initConfigForm() {
 
   for (var i = 0; i < radios.length; i++) {
     radios[i].addEventListener('change', function () {
-      if (this.checked) {
-        markStructural();
-        updateEquipmentVisibility();
-      }
-    });
-  }
-  if (userTerm) {
-    // These two decide which dialect each terminal is, which is exactly what the
-    // capability fields (phosphor, key click, reverse video) depend on. Marking
-    // the form dirty alone left them stale until a page reload.
-    function markStructuralAndVisibility() {
+      // The console type is a select now (no .checked), and it rewires tty0, so
+      // it stays a structural change: dirty the form and recompute the fields
+      // that depend on which terminal the console is.
       markStructural();
       updateEquipmentVisibility();
-    }
-    userTerm.addEventListener('change', markStructuralAndVisibility);
-    userTermTypeEls.forEach(function (el) {
-      if (el) el.addEventListener('change', markStructuralAndVisibility);
-    });
-    phosphorRadios.forEach(function (el) {
-      if (el) el.addEventListener('change', function () {
-        if (!this.checked) return;
-        // Applied AND persisted at once: the tube is already repainted, so a
-        // form that still differed from the saved config would raise the
-        // leave-page dialog for a setting that is plainly in effect.
-        applyTerminalPhosphor(this.value);
-        if (typeof Config !== 'undefined') Config.set({ vt100Phosphor: this.value });
-        updateDirtyUI();
-      });
     });
   }
+  // The type selects ARE the user terminals now: each names one or says None, and
+  // the count is derived from them. They decide which dialect each terminal is,
+  // which is what the capability fields depend on — so they recompute visibility,
+  // not just the dirty flag (marking dirty alone left the fields stale until a
+  // page reload). TT1 must be filled before TT2: a TT2 with no TT1 would be a
+  // terminal numbered 2 and none numbered 1.
+  function markStructuralAndVisibility() {
+    markStructural();
+    updateEquipmentVisibility();
+  }
+  function enforceTerminalOrder(changedIndex) {
+    // Clearing TT1 clears TT2 with it; filling TT2 fills TT1 if it was empty.
+    if (changedIndex === 0 && userTermTypeEls[0] && userTermTypeEls[0].value === 'none') {
+      if (userTermTypeEls[1]) userTermTypeEls[1].value = 'none';
+    }
+    if (changedIndex === 1 && userTermTypeEls[1] && userTermTypeEls[1].value !== 'none') {
+      if (userTermTypeEls[0] && userTermTypeEls[0].value === 'none') {
+        userTermTypeEls[0].value = 'vt52';
+      }
+    }
+  }
+  userTermTypeEls.forEach(function (el, idx) {
+    if (!el) return;
+    el.addEventListener('change', function () {
+      enforceTerminalOrder(idx);
+      markStructuralAndVisibility();
+    });
+  });
+
+  // The phosphor radios are live: they repaint and save at once, so a form that
+  // still differed from the saved config would raise the leave-page dialog for a
+  // setting that is plainly in effect.
+  phosphorRadios.forEach(function (el) {
+    if (el) el.addEventListener('change', function () {
+      if (!this.checked) return;
+      applyTerminalPhosphor(this.value);
+      if (typeof Config !== 'undefined') Config.set({ vt100Phosphor: this.value });
+      updateDirtyUI();
+    });
+  });
+
   if (printerEl) {
     printerEl.addEventListener('change', function () {
       markStructural();
@@ -2163,7 +2204,8 @@ function initConfigForm() {
   // existing console printer's char pacing.
   for (var j = 0; j < speedRadios.length; j++) {
     speedRadios[j].addEventListener('change', function () {
-      if (!this.checked) return;
+      // A select has no .checked, so there is nothing to guard on — the change
+      // event fires only for a real pick.
       if (typeof Config !== 'undefined') Config.set({ teletypeSpeed: this.value });
       if (g60printer && g60printer.setCharPrintDelay) {
         g60printer.setCharPrintDelay(teletypeDelay(this.value));
@@ -2300,7 +2342,14 @@ function initConfigForm() {
       var d = Config.DEFAULTS;
       setRadioChecked(radios, d.consoleType);
       setRadioChecked(speedRadios, d.teletypeSpeed);
-      if (userTerm) userTerm.value = String(d.userTerminals);
+      // Defaults restore: the count became the two type selects, so write into
+      // them rather than into a control that no longer exists.
+      var dTypes = (d.userTerminalTypes && d.userTerminalTypes.length)
+          ? d.userTerminalTypes.slice() : ['vt52', 'vt52'];
+      var dCount = Number(d.userTerminals) || 0;
+      userTermTypeEls.forEach(function (el, i) {
+        if (el) el.value = (i < dCount) ? (dTypes[i] || 'vt52') : 'none';
+      });
       if (printerEl) printerEl.checked = d.printer;
       if (vt11El) vt11El.checked = d.vt11;
       if (pwEl) pwEl.value = String(d.printWidth);

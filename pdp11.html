@@ -1066,10 +1066,14 @@
           <div class="config-form">
             <div class="config-field">
               <span class="config-label">Console terminal</span>
-              <div class="config-control config-radios">
-                <label><input type="radio" name="consoleType" value="teletype"> Teletype (Model 33 ASR)</label>
-                <label><input type="radio" name="consoleType" value="vt52"> VT52 (TT0:)</label>
-                <label><input type="radio" name="consoleType" value="vt100"> VT100 (TT0:)</label>
+              <div class="config-control">
+                <select id="config-consoleType">
+                  <option value="teletype">Teletype (Model 33 ASR)</option>
+                  <option value="vt52">VT52 (TT0:)</option>
+                  <option value="vt100">VT100 (TT0:)</option>
+                </select>
+                <span class="config-hint">The machine's operator console. Switching it rewires tty0,
+                  so the page reloads on Apply.</span>
               </div>
             </div>
 
@@ -1090,12 +1094,14 @@
 
             <div class="config-field" id="config-field-teletypeSpeed">
               <span class="config-label">Teletype speed</span>
-              <div class="config-control config-radios">
-                <label><input type="radio" name="teletypeSpeed" value="authentic"> Authentic (10 chars/sec — Model 33
-                  ASR at 110 baud)</label>
-                <label><input type="radio" name="teletypeSpeed" value="fast"> Fast (33 chars/sec)</label>
-                <span class="config-hint">Authentic is the real Model 33 ASR speed —
-                  booting 2.11 BSD prints for a very long time. Applied immediately.</span>
+              <div class="config-control">
+                <select id="config-teletypeSpeed">
+                  <option value="authentic">10 chars/sec — authentic (110 baud)</option>
+                  <option value="fast">33 chars/sec — accelerated</option>
+                </select>
+                <span class="config-hint">A real Model 33 ASR runs at 110 baud, about 10 characters
+                  per second: that is the authentic pace, and booting 2.11 BSD at it prints for a very
+                  long time. 33 chars/sec is an accelerated mode for working. Applied immediately.</span>
               </div>
             </div>
 
@@ -1122,36 +1128,30 @@
               </div>
             </div>
 
+            <!-- One select per user terminal, each naming the terminal it is.
+                 None means the slot is empty, so the number of terminals is
+                 DERIVED from these two rather than set beside them — a count and
+                 a list can disagree, and did: a value left in TT2's select while
+                 the count said 1 claimed a terminal the machine did not have. -->
             <div class="config-field">
               <span class="config-label">User terminals</span>
-              <div class="config-control">
-                <select id="config-userTerminals">
-                  <option value="0">0</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                </select>
-                <span class="config-hint">Each terminal gets its own sidebar page.</span>
-              </div>
-            </div>
-
-            <!-- Per-terminal dialect, in sidebar-page order (TT1, TT2). The
-                 entries beyond the number above are simply unused; they are kept
-                 so raising the count does not lose a previous choice. -->
-            <div class="config-field">
-              <span class="config-label">Terminal types</span>
               <div class="config-control config-radios">
-                <label>TT1:
+                <label>TT1: (tty1)
                   <select id="config-userTerminalType0">
+                    <option value="none">None</option>
                     <option value="vt52">VT52</option>
                     <option value="vt100">VT100</option>
                   </select>
                 </label>
-                <label>TT2:
+                <label>TT2: (tty2)
                   <select id="config-userTerminalType1">
+                    <option value="none">None</option>
                     <option value="vt52">VT52</option>
                     <option value="vt100">VT100</option>
                   </select>
                 </label>
+                <span class="config-hint">The console above is tty0; these are the extra
+                  terminals, each on its own sidebar page. TT2 needs TT1.</span>
               </div>
             </div>
 
@@ -1224,9 +1224,8 @@
             <div class="config-field">
               <span class="config-label">CRT effects</span>
               <div class="config-control">
-                <label><input type="checkbox" id="config-crtEffects"> Flicker, phosphor shimmer and raster-roll glitches
-                  on
-                  VT52 terminals</label>
+                <label><input type="checkbox" id="config-crtEffects"> Flicker, phosphor shimmer and raster-roll
+                  glitches on the terminal screens</label>
                 <span class="config-hint">Pure CSS CRT simulation: brightness flicker, scanline shimmer and a
                   vertical-hold roll band. Applied immediately.</span>
               </div>
