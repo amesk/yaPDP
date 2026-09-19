@@ -47,6 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The cursor no longer lags half a second behind the text.** Moving the cursor
+  called `render(false)`, which in canvas mode repaints nothing at all — the
+  drawn cursor stayed where it was until the next 500 ms blink tick, while the
+  character it had moved past was already erased. Which delay you saw depended on
+  the tick's phase, so it looked intermittent: one backspace seemed instant and
+  the next waited. Cursor movement now repaints the cursor itself (backspace,
+  carriage return and tab), through a shared `repaintCursor()`.
+  (`src/terminal-core.js`)
+
 - **The CONFIG fields that depend on a terminal's dialect now follow the form,
   and count only the terminals that exist.** Two faults in the same pass:
   the terminal-type selects and the terminal-count select only re-marked the form

@@ -433,6 +433,60 @@ async function main() {
         check("tty2 is built as the VT100 the types asked for",
             byUnit[2] && byUnit[2].acceptsPhosphor === true);
 
+        // ---- 9. cursor movement repaints at once, in the VT100's shape ----
+        // The shared engine test covers backSpace/CR/tab calling repaintCursor.
+        // What is VT100-specific is the CURSOR SHAPE: cursorIsBlock() returns
+        // true in ANSI mode (a full block) and false for a DECscope (underline).
+        // A repaint that erased with the wrong shape would only show here.
+        await showPage(page, PAGES.console);
+        const cursor = await page.evaluate((id) => {
+            const rig = document.querySelector("#" + id + " .vt52-rig");
+            const t = window.vt100Get(0);
+
+            // Count drawCursor() itself rather than the canvas fills: fills depend
+            // on the blink PHASE (a hidden cursor redraws the cell instead of
+            // painting the block), so a "no fills" reading would say nothing about
+            // whether the move repainted. drawCursor is the guarantee.
+            const calls = [];
+            const orig = t.drawCursor.bind(t);
+            t.drawCursor = function () { calls.push(this.cursorCol); return orig(); };
+
+            // backSpace() does nothing at column 0, so park the cursor first —
+            // otherwise this measures the guard rather than the repaint.
+            t.modes.screen = true;
+            if (!t.screen.length) t.screen = [[]];
+            t.cursorRow = Math.max(0, t.screen.length - 1);
+            t.cursorCol = 5;
+            t.render(true);
+
+            calls.length = 0;
+            t.backSpace();
+            const afterBS = calls.slice();
+            calls.length = 0;
+            t.carriageReturn();
+            const afterCR = calls.slice();
+            calls.length = 0;
+            t.tab();
+            const afterTab = calls.slice();
+
+            t.drawCursor = orig;
+            return {
+                isBlock: t.cursorIsBlock ? !!t.cursorIsBlock() : null,
+                blockHeight: t.fontHeight,
+                underlineHeight: t.underlineHeight,
+                backspace: afterBS,
+                carriageReturn: afterCR,
+                tab: afterTab
+            };
+        }, PAGES.console);
+        check("the VT100 draws a block cursor (not an underline)",
+            cursor.isBlock === true && cursor.blockHeight > cursor.underlineHeight,
+            JSON.stringify({ isBlock: cursor.isBlock, block: cursor.blockHeight, underline: cursor.underlineHeight }));
+        check("a cursor move repaints on the spot (no blink wait)",
+            cursor.backspace.length > 0 && cursor.carriageReturn.length > 0 &&
+            cursor.tab.length > 0,
+            JSON.stringify(cursor));
+
         // ---- page errors ---------------------------------------------------
         check("no page errors", pageErrors.length === 0, pageErrors.slice(0, 3).join(" | "));
         if (pageErrors.length) await artifact(page, "errors");

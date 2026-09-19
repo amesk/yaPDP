@@ -788,6 +788,21 @@
             }
         }
 
+        /**
+         * repaintCursor() — redraw the cursor NOW, without waiting for the blink.
+         *
+         * Moving the cursor used to call render(false), which in canvas mode
+         * repaints nothing at all: the drawn cursor stayed where it was until the
+         * next 500 ms blink tick. The guest's buffer and the screen therefore
+         * disagreed for up to half a second after every cursor move, and whether
+         * you noticed depended on the tick's phase. Cursor movement repaints the
+         * cursor.
+         */
+        repaintCursor() {
+            if (!this.allowCanvas || !this.modes.screen) return;
+            this.drawCursor();
+        }
+
         // ---------------------------------------------------------------------------
         // Blink timer: redraw blinking cells + cursor
         // ---------------------------------------------------------------------------
@@ -1337,7 +1352,9 @@
                 // shows up when the next character arrives, so remember the key.
                 this.overHang++;
                 this.overHangFromBS = true;
-                this.render(false);
+                // Repaint the cursor here: render(false) is a no-op on the canvas,
+                // and deferring to the blink left it up to 500 ms behind.
+                this.repaintCursor();
             }
         }
 
@@ -1349,6 +1366,7 @@
 
             if (this.modes.screen) {
                 this.moveCursor(this.cursorRow, this.cursorCol + spaces);
+                this.repaintCursor();
             } else {
                 this.textArea.value += " ".repeat(spaces);
                 this.cursorCol += spaces;
@@ -1397,6 +1415,7 @@
                 // with the number of columns that will be overstruck.
                 const n = this.cursorCol;
                 this.moveCursor(this.cursorRow, 0);
+                this.repaintCursor();
                 this.overHang = n;
                 // A CR overstrike: nroff puts a second run of text on the same
                 // line, so a space in it is positional, not an eraser.
