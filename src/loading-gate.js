@@ -199,6 +199,10 @@ var LoadingGate = (function () {
 })();
 
 if (typeof window !== "undefined") window.LoadingGate = LoadingGate;
+// When the gate module came alive. The e2e CLS suite times the GATE from here
+// rather than from the navigation: on a throttled link the navigation alone
+// takes minutes and says nothing about how long the overlay was up.
+if (typeof window !== "undefined") window.__yapdpGateStartedAt = Date.now();
 // The e2e suite reads this: `done` flips exactly when the overlay is lifted.
 if (typeof window !== "undefined") {
     window.__yapdpGate = window.__yapdpGate || {};

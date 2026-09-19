@@ -103,6 +103,9 @@ jobs:
       - name: e2e — Model 33 ASR paper tape (reader/punch, DC2/DC4, X-ON/X-OFF)
         run: node tests/e2e-teletype-tape.js
 
+      - name: e2e — startup layout shift on a throttled link (loading gate)
+        run: node tests/e2e-startup-cls.js
+
       - name: e2e — BSD 2.11 headless boot (full-machine shakeout)
         run: node tests/e2e-bsd-boot.js
 
