@@ -1890,6 +1890,7 @@ function initConfigForm() {
   userTermTypeEls.forEach(function (el, i) {
     if (el) el.value = shown[i];
   });
+  updateTerminalOrder();
   if (printerEl) printerEl.checked = cfg.printer;
   if (vt11El) vt11El.checked = cfg.vt11;
   if (pwEl) pwEl.value = String(cfg.printWidth);
@@ -2159,21 +2160,25 @@ function initConfigForm() {
     markStructural();
     updateEquipmentVisibility();
   }
-  function enforceTerminalOrder(changedIndex) {
-    // Clearing TT1 clears TT2 with it; filling TT2 fills TT1 if it was empty.
-    if (changedIndex === 0 && userTermTypeEls[0] && userTermTypeEls[0].value === 'none') {
-      if (userTermTypeEls[1]) userTermTypeEls[1].value = 'none';
-    }
-    if (changedIndex === 1 && userTermTypeEls[1] && userTermTypeEls[1].value !== 'none') {
-      if (userTermTypeEls[0] && userTermTypeEls[0].value === 'none') {
-        userTermTypeEls[0].value = 'vt52';
-      }
-    }
+  /**
+   * updateTerminalOrder() — TT2 cannot be chosen until TT1 is.
+   *
+   * The slots are numbered: tty1 then tty2. Filling the second while the first
+   * is empty would describe a terminal numbered 2 with no terminal numbered 1.
+   * This DISABLES the second select rather than filling the first behind the
+   * operator's back — a control that cannot be used is easier to understand than
+   * one that changes a field they did not touch.
+   */
+  function updateTerminalOrder() {
+    var tt1Filled = userTermTypeEls[0] && userTermTypeEls[0].value !== 'none';
+    if (!userTermTypeEls[1]) return;
+    if (!tt1Filled) userTermTypeEls[1].value = 'none';
+    userTermTypeEls[1].disabled = !tt1Filled;
   }
-  userTermTypeEls.forEach(function (el, idx) {
+  userTermTypeEls.forEach(function (el) {
     if (!el) return;
     el.addEventListener('change', function () {
-      enforceTerminalOrder(idx);
+      updateTerminalOrder();
       markStructuralAndVisibility();
     });
   });
@@ -2350,6 +2355,7 @@ function initConfigForm() {
       userTermTypeEls.forEach(function (el, i) {
         if (el) el.value = (i < dCount) ? (dTypes[i] || 'vt52') : 'none';
       });
+      updateTerminalOrder();
       if (printerEl) printerEl.checked = d.printer;
       if (vt11El) vt11El.checked = d.vt11;
       if (pwEl) pwEl.value = String(d.printWidth);

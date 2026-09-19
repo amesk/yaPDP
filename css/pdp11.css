@@ -2898,6 +2898,39 @@ body.crt-effects .vt52-crt::after {
     gap: 6px;
 }
 
+/* Two narrow selects that belong together (TT1 / TT2). The radios row is built
+   for wide labelled options and leaves a large gap between them, which reads as
+   two unrelated fields rather than one pair. */
+.config-terminal-pair {
+    /* The two selects sit in a row; the hint below them spans the full width on
+       its own line. inline-flex put the hint IN the row and squeezed it against
+       the selects — it read as one long line instead of a note. */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+}
+
+.config-terminal-pair label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* The hint is a sibling of the labels inside this control, so it has to claim
+   the whole line (and thus wrap under the pair) rather than sit beside them. */
+.config-terminal-pair .config-hint {
+    flex: 1 0 100%;
+    margin-top: 2px;
+}
+
+/* A select for a slot that cannot be filled yet: the same dimming the rest of
+   the form uses for inapplicable controls. */
+.config-terminal-pair select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 .config-control input[type="radio"],
 .config-control input[type="checkbox"] {
     accent-color: #c8a860;
