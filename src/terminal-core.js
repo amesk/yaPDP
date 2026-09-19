@@ -239,6 +239,10 @@
             // Hardcopy overhang:
             // Number of characters after the cursor in the textarea (bumped by CR/BS)
             this.overHang = 0;
+            // Which key armed the overstrike: a space behaves differently after
+            // backspace (crt-mode erase) than after carriage return (nroff draws
+            // two runs on one line and the space is positional).
+            this.overHangFromBS = false;
 
             // Font metrics (may be overridden via fontSize / fontFamily options)
             // fontFamily is a full CSS font stack; 'monospace' is the built-in
@@ -324,6 +328,7 @@
             this.cursorRow = 0;
             this.cursorCol = 0;
             this.overHang  = 0;
+            this.overHangFromBS = false;
             this.savedCursor = { row: 0, col: 0, sgr: 0 };
             this.wrapPending = false;
 
@@ -831,6 +836,7 @@
             this.cursorCol = 0;
             this.graphics.sgr = 0;
             this.overHang = 0;
+            this.overHangFromBS = false;
             this.render(true); // force full redraw
         }
 
@@ -931,6 +937,7 @@
             // run (started by BS/CR) and a pending auto-wrap. Only
             // carriageReturn re-arms the overstrike afterwards.
             this.overHang = 0;
+            this.overHangFromBS = false;
             this.wrapPending = false;
 
             if (this.modes.origin) {
@@ -1211,13 +1218,26 @@
                 } else {
                     const cell = this.screen[row][col];
                     if (this.overHang > 0) {
-                        // Overstrike after BS/CR: nroff/man renders bold as
-                        // "X\bX" (or "X\rX") and underline as "_\bX". A space
-                        // only moves the carriage; the existing glyph is kept
-                        // so the canvas can show the emphasis.
+                        // Overstrike after BS or CR. Two senders share this path
+                        // and they mean different things by a space:
+                        //
+                        //   nroff (armed by CR) — two runs of text on one line,
+                        //                        so the space is positional and
+                        //                        the glyph underneath stays.
+                        //   crt mode (armed by BS) — "\b \b" is how a guest
+                        //                        erases: the guest has already
+                        //                        dropped the character from its
+                        //                        buffer, so the space must clear
+                        //                        the cell or the screen disagrees
+                        //                        with the machine.
                         const prevC = cell.c;
                         if (ch === 32) {
-                            // Space overstrike: pure carriage motion.
+                            if (this.overHangFromBS) {
+                                // crt-mode erase: clear the cell the space lands on.
+                                cell.c = 32;
+                                cell.a = 0;
+                            }
+                            // Otherwise: pure carriage motion, glyph kept.
                         } else if (ch === prevC && ch !== 95) {
                             // Same glyph overstruck → bold.
                             cell.a |= ATTR_BOLD;
@@ -1242,7 +1262,12 @@
 
                 // Consume one pending overstrike position (the column was
                 // written, whether the cell existed or was freshly appended).
-                if (this.overHang > 0) this.overHang--;
+                // The run keeps its key until it is exhausted, so a multi-cell
+                // "\b\b \b\b" erases every cell it covers.
+                if (this.overHang > 0) {
+                    this.overHang--;
+                    if (this.overHang === 0) this.overHangFromBS = false;
+                }
 
                 // Cursor advance. With DECAWM (auto-wrap) on, a character on
                 // the last column arms a pending wrap so the next printable
@@ -1306,9 +1331,12 @@
         backSpace() {
             if (this.cursorCol > 0) {
                 this.cursorCol--;
-                // Both hardcopy and screen mode: backspace marks the position
-                // for an overstrike (nroff/man bold/underline).
+                // Backspace arms an overstrike for overstrike text (nroff/man
+                // bold/underline) AND is how a crt-mode guest erases: it follows
+                // the space with another backspace. Which of the two this is
+                // shows up when the next character arrives, so remember the key.
                 this.overHang++;
+                this.overHangFromBS = true;
                 this.render(false);
             }
         }
@@ -1370,6 +1398,9 @@
                 const n = this.cursorCol;
                 this.moveCursor(this.cursorRow, 0);
                 this.overHang = n;
+                // A CR overstrike: nroff puts a second run of text on the same
+                // line, so a space in it is positional, not an eraser.
+                this.overHangFromBS = false;
             } else {
                 // Hardcopy mode: trim buffer if too large
                 if (this.textArea.value.length > MAX_BUFFER) {
@@ -1646,6 +1677,7 @@
                 savedCursor: Object.assign({}, this.savedCursor),
                 wrapPending: this.wrapPending,
                 overHang: this.overHang,
+                overHangFromBS: this.overHangFromBS,
                 reverseVideo: this.reverseVideo,
                 rows: this.rows,
                 cols: this.cols
@@ -1719,6 +1751,7 @@
 
             if (typeof state.wrapPending === "boolean") this.wrapPending = state.wrapPending;
             if (typeof state.overHang === "number") this.overHang = state.overHang;
+            if (typeof state.overHangFromBS === "boolean") this.overHangFromBS = state.overHangFromBS;
             if (typeof state.reverseVideo === "boolean") this.reverseVideo = state.reverseVideo;
             if (typeof state.rows === "number") this.rows = state.rows;
             if (typeof state.cols === "number") this.cols = state.cols;

@@ -192,6 +192,56 @@ function run() {
         assert.strictEqual(cell(term, 1).a, 0, "different glyph is a plain overwrite");
     }
 
+    // ---- A space after BACKSPACE erases the cell (crt-mode erase) ----
+    // A guest in crt mode erases a character by sending "\b \b": the guest has
+    // already dropped it from its buffer, and the space is what takes it off the
+    // glass. The two senders share this path, so the terminal tells them apart by
+    // WHICH key armed the overstrike: CR means nroff's positional space, BS means
+    // an erase.
+    {
+        const { term, write } = makeTerminal();
+        write("zzzzz");
+        assert.strictEqual(cell(term, 4).c, 122, "five z's are on the row");
+        // Five erase pairs, exactly as a crt-mode guest sends them.
+        write((BS + " " + BS).repeat(5));
+        for (let col = 0; col < 5; col++) {
+            assert.strictEqual(cell(term, col).c, 32,
+                "column " + col + " should be erased by the space");
+            assert.strictEqual(cell(term, col).a, 0,
+                "an erased cell carries no attributes");
+        }
+        assert.strictEqual(term.cursorCol, 0, "the cursor returns to column 0");
+        write("h");
+        assert.strictEqual(cell(term, 0).c, 104, "the next character lands in the cleared cell");
+    }
+
+    // ---- A single backspace does not erase on its own ----------------
+    // BS is also the overstrike operator (nroff writes "X\bX" for bold), so one
+    // backspace followed by a glyph must keep the emphasis path intact.
+    {
+        const { term, write } = makeTerminal();
+        write("N" + BS + "N");
+        assert.strictEqual(cell(term, 0).c, 78, "bold overstrike still keeps the glyph");
+        assert.strictEqual(cell(term, 0).a, ATTR_BOLD, "and still marks it bold");
+    }
+
+    // ---- CR then space stays positional even after a backspace --------
+    // The rule lives per overstrike run, and a fully consumed BS run must not
+    // leave the terminal thinking the NEXT CR overstrike is an erase: on a
+    // screen-mode line, CR re-arms the overstrike with the column count, and a
+    // following space is positional there. What was overwritten is what counts.
+    {
+        const { term, write } = makeTerminal();
+        write("AB" + BS + "X");            // BS run, consumed by 'X' -> "AX"
+        write(CR + " C");                   // CR run: space is positional, no erase
+        assert.strictEqual(cell(term, 0).c, 65,
+            "a space in a later CR run does not erase the glyph at column 0");
+        assert.strictEqual(cell(term, 1).c, 67,
+            "nor the one at column 1; the CR run writes its own 'C' at column 1");
+        assert.strictEqual(cell(term, 2).c, 32,
+            "past the CR run's span the cell is blank, not a stale glyph");
+    }
+
     // ---- Underline via underscore over letters: "NAME\r_____" -------
     {
         const { term, write } = makeTerminal();
