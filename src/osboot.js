@@ -174,17 +174,19 @@ var OSBoot = (function () {
             upperCase: true,
             hardware: { console: "teletype", printer: null, vt11: false,
                 forceUpperCaseOut: true } },
-        // ULTRIX-11 — historically a teletype console. The kernel boots into
-        // single-user ("#") on its own. NOTE: Ctrl-D from here panics the
-        // kernel ('panic: trap' during multi-user init, pc=136250) — an
-        // emulator bug, not a scenario bug; until fixed, the scenario stops
-        // at the single-user prompt (autoLogin below sends "root" into the
-        // shell, which the e2e test tolerates).
+        // ULTRIX-11 V3.1 — 1984, so a VT100 (1978); six years separate them and
+        // a teletype console would be the anachronism. The kernel boots into
+        // single-user ("#") on its own. NOTE: Ctrl-D from here panics the kernel
+        // ('panic: trap' during multi-user init, pc=136250) — an emulator bug,
+        // not a scenario bug; until fixed, the scenario stops at the single-user
+        // prompt (autoLogin below sends "root" into the shell, which the e2e test
+        // tolerates). A CRT prints both cases, so force-upper (a Model 33
+        // property) is left alone.
         { device: "rp0", label: "ULTRIX-11 V3.1", boot: "boot rp0",
             steps: [{ ctrlD: true }, { send: "root", waitFor: "login:" }],
             autoLogin: true,
-            hardware: { console: "teletype", printer: null, vt11: false,
-                forceUpperCaseOut: true } },
+            hardware: { console: "vt100", printer: null, vt11: false,
+                forceUpperCaseOut: null } },
         // BSD 2.11 — 1980-81, so it runs on a VT100 (1978), not a DECscope. It
         // is the ONE guest that does not detect a teletype console (its loader
         // prints lower case), which is why it never ran on one; that is not a
@@ -208,26 +210,30 @@ var OSBoot = (function () {
             autoLogin: true,
             hardware: { console: "vt100", printer: true, vt11: false,
                 forceUpperCaseOut: null } },
-        // RSTS/E v9.6 — LP11 line printer; historically a teletype console.
+        // RSTS/E v9.6 — 1982, so a VT100 (1978) and not a teletype; LP11 line
+        // printer. A CRT prints both cases, so the force-upper flag, which
+        // exists because a Model 33 has no lower-case type, is left alone.
         { device: "rp2", label: "RSTS/E v9.6", boot: "BOOT RP2",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: true, vt11: false,
-                forceUpperCaseOut: true } },
-        // RSX-11M v4.6 — LP11 line printer; VT52 console. The disk image
-        // autostarts (MCR runs the startup and stops at the date/time
-        // prompt), so no typed steps are needed.
+            hardware: { console: "vt100", printer: true, vt11: false,
+                forceUpperCaseOut: null } },
+        // RSX-11M v4.6 — 1979, so a VT100 (1978) rather than a DECscope; LP11
+        // line printer. The disk image autostarts (MCR runs the startup and
+        // stops at the date/time prompt), so no typed steps are needed.
         { device: "rp3", label: "RSX-11M v4.6", boot: "BOOT RP3",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "vt52", printer: true, vt11: false,
+            hardware: { console: "vt100", printer: true, vt11: false,
                 forceUpperCaseOut: null } },
-        // RSTS/E v10.1 — LP11 line printer; historically a teletype console.
+        // RSTS/E v10.1 — 1984, so a VT100 (1978) and not a teletype; LP11 line
+        // printer. As with v9.6, the force-upper flag belongs to a Model 33 and
+        // is left alone on a CRT.
         { device: "rp4", label: "RSTS/E v10.1", boot: "BOOT RP4",
             steps: [], autoLogin: false,
             upperCase: true,
-            hardware: { console: "teletype", printer: true, vt11: false,
-                forceUpperCaseOut: true } }
+            hardware: { console: "vt100", printer: true, vt11: false,
+                forceUpperCaseOut: null } }
     ];
 
     // Logical media URL for a device (tape vs disk), matching onboarding.js.
