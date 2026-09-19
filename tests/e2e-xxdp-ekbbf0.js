@@ -24,8 +24,12 @@ async function run() {
   await xxdp.launchDiagnostic({
     mach, ev,
     command: "R EKBB??",
-    resolveNeedle: "EKBBF0.BIC", resolveTimeout: 12000,
-    startNeedle: "CEKBBF0 11/70", startTimeout: 25000,
+    // The loader has to load the diagnostic off the disk and print its name.
+    // On a CI runner that takes far longer than on a workstation (the failing
+    // run spent ~8 minutes in this step), so the budget is generous on purpose:
+    // a slow runner is not a broken emulator.
+    resolveNeedle: "EKBBF0.BIC", resolveTimeout: 90000,
+    startNeedle: "CEKBBF0 11/70", startTimeout: 120000,
   });
 
   // Drive the operator-console interaction to a clean END PASS: the diag
