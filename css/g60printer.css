@@ -1275,6 +1275,13 @@
     inset: 0;
     z-index: 0;
     pointer-events: none;
+    /* The artwork is stretched to the rig box. It stays a CSS background (and
+       not an inlined <svg>): a background is painted into the box by the
+       engine itself, so it follows --tty-scale and the layout with no help,
+       while an inlined <svg> had to be sized and stretched by hand and showed
+       the machine at its NATURAL size, outside the rig (regression, see #77).
+       The double download is avoided on the fetch side instead: see
+       TTY_ART_FETCH_OPTS in src/pdp11-app.js. */
     background: url('../assets/Model-33-ASR.svg') center center / 100% 100% no-repeat;
 }
 

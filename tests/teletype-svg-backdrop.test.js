@@ -170,6 +170,25 @@ function containRatio(value, name) {
   return parseFloat(m[1]);
 }
 
+// The </g> that closes the <g> opening at `start`, counting nesting. Used by
+// the leanness guard below to slice one group out of the artwork.
+function findGroupEnd(text, start) {
+  let depth = 0;
+  const re = /<(\/?)g\b[^>]*?(\/?)>/g;
+  re.lastIndex = start;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m[2] === "/") continue;      // self-closing <g/>
+    if (m[1] === "/") {
+      depth--;
+      if (depth === 0) return re.lastIndex;
+    } else {
+      depth++;
+    }
+  }
+  return text.length;   // malformed: take the rest, the guard still fails loudly
+}
+
 function run() {
   const svg = fs.readFileSync(SVG_PATH, "utf8");
   const css = fs.readFileSync(CSS_PATH, "utf8");
@@ -508,6 +527,48 @@ function run() {
     console.log("note: css/g60printer.css fallbacks differ from the artwork " +
       "(alignment mode only — paste these before switching the layer off):");
     for (const note of fallbackNotes) console.log(note);
+  }
+
+
+  // ---- The artwork must stay lean (issue #71 / #77) ------------------
+  // The Model 33 file once carried TWO background layers: `Background`
+  // (display:none — an obsolete pixel trace, 12 paths, 1.95 MB of the file's
+  // 2.02 MB) and the hand-drawn `New background` that is actually painted.
+  // Removing the dead one took the file from 2,022,820 to 74,996 bytes, and
+  // it has since been lost/regressed twice — both times spotted by a human,
+  // never by a test. This pins it: a hidden layer may not carry geometry.
+  {
+    const svgText = fs.readFileSync(SVG_PATH, "utf8");
+    const bytes = Buffer.byteLength(svgText);
+
+    // 1. A generous ceiling: the drawing is ~75 KB, so anything near the old
+    //    2 MB means a dead layer came back from an Inkscape re-save.
+    assert.ok(bytes < 400000,
+      "assets/Model-33-ASR.svg must stay lean — got " + bytes +
+      " bytes; a hidden layer (the dead Background trace) probably came back " +
+      "(see #71/#77: removing it took the file to ~75 KB)");
+
+    // 2. No display:none group may hold drawing geometry. The Markers layer is
+    //    legitimately hidden and legitimately holds rects (that is its whole
+    //    job: it is the coordinate source the page reads), so it is exempt by
+    //    NAME, not by size.
+    const groups = svgText.match(/<g\b[^>]*>/g) || [];
+    let offset = 0;
+    for (const open of groups) {
+      const at = svgText.indexOf(open, offset);
+      offset = at + open.length;
+      if (!/display:\s*none/.test(open)) continue;
+      const label = (/inkscape:label="([^"]*)"/.exec(open) || [])[1] || "";
+      if (label === "Markers") continue; // the marker layer is meant to be hidden
+      // Measure this group's own span and look for path geometry inside it.
+      const depthStart = at;
+      const end = findGroupEnd(svgText, depthStart);
+      const body = svgText.slice(depthStart, end);
+      const paths = (body.match(/<path\b[^>]*\bd="/g) || []).length;
+      assert.strictEqual(paths, 0,
+        'hidden layer "' + label + '" carries ' + paths + ' path(s) — the page ' +
+        "never paints it, so it is dead weight (see #71/#77)");
+    }
   }
 
   console.log("teletype-svg-backdrop: all tests passed");
