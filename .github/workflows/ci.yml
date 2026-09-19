@@ -20,6 +20,10 @@
 #             * e2e-xxdp-ekbbf0         (XXDP+ EKBBF0 field diagnostic: the real
 #                                        DEC 11/70 CPU check, driven through the
 #                                        operator console to a clean END PASS)
+#             * e2e-startup-cls         (the loading gate on a throttled cold
+#                                        visit: the artwork swap must not move
+#                                        anything — strict CLS 0.01, CWV 0.1 —
+#                                        and a warm visit must not flash)
 #
 # E2E failure artifacts (screenshots + console tails) are uploaded so a red
 # run can be diagnosed without re-running locally.
