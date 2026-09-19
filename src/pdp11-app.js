@@ -1866,9 +1866,22 @@ function initConfigForm() {
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
 
+  // Write one value into a control list. The console type, the teletype speed
+  // and the VT100 phosphor used to be radio groups, so this writes `.checked`
+  // — but the first two are <select> elements now (#75), and a <select> has no
+  // `.checked`: the assignment was silently ignored, the form kept whatever
+  // the markup had chosen, and CONFIG then disagreed with the config it was
+  // meant to show (and Apply could push that wrong value back, dropping the
+  // user terminals). Route by control type instead of assuming radios.
   function setRadioChecked(list, value) {
     for (var i = 0; i < list.length; i++) {
-      list[i].checked = (list[i].value === value);
+      var el = list[i];
+      if (!el) continue;
+      if (el.tagName === 'SELECT') {
+        el.value = value;
+      } else {
+        el.checked = (el.value === value);
+      }
     }
   }
 
