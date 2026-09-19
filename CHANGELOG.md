@@ -67,6 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also stops a feeding reader tape (START, and AUTO where the guest's own X-ON
   can start it), so its bytes cannot land in the middle of the boot.
   (`src/quickboot.js`)
+- **The second user terminal is filled after the first, not around it.** TT2's
+  select is disabled while TT1 says None, and clearing TT1 clears TT2 with it.
+  The earlier behaviour filled TT1 behind the operator's back when TT2 was
+  chosen, which worked but asked them to trust a field they had not touched; a
+  slot that cannot be used says the same thing without the surprise. The two
+  selects also sit as one pair now, with the hint on its own line beneath them.
+  (`pdp11.html`, `css/pdp11.css`, `src/pdp11-app.js`)
+
 - **The Equipment tab is driven by selects, and a terminal's number is derived
   from its type rather than set beside it.** The console terminal and the
   teletype speed became drop-downs like the rest of the form, the speed options
