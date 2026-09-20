@@ -39,8 +39,11 @@ function dumpConsole(label, text) {
   try {
     fs.mkdirSync(ARTIFACTS, { recursive: true });
     const file = path.join(ARTIFACTS, "xxdp-" + label + ".log");
+    // The WHOLE console, not a tail: a previous artifact carried 381 bytes —
+    // enough to see the command arrive mangled ("RRRR...EEEE..."), not enough
+    // to see what led up to it, which is the part that explains why.
     fs.writeFileSync(file, text);
-    console.error("  artifact: " + file);
+    console.error("  artifact: " + file + " (" + text.length + " bytes)");
   } catch (err) { /* best effort */ }
   const tail = text.slice(-1500);
   console.error("  console tail:\n" +
@@ -81,6 +84,19 @@ function sendLine(evalIn, text) {
   const bytes = Array.from((text + "\r")).map((c) => c.charCodeAt(0) & 0x7f);
   evalIn("window.dlReceiveQueue(0, " + JSON.stringify(bytes) + ")");
 }
+// Feed a line ONE byte at a time, with a pause — the way an operator types and
+// the way the other harnesses do it (typeOnKeyboard sleeps ~120 ms per key).
+// A CI run once showed the guest receive a command with every character
+// repeated many times ("RRRR...EEEE...KKKK..." -> "? INVALID COMMAND"): that is
+// what a burst into a device which is not draining yet looks like.
+async function typeLineSlowly(evalIn, text, perByteMs = 35) {
+  for (const ch of text) {
+    evalIn("window.dlReceiveQueue(0, [" + (ch.charCodeAt(0) & 0x7f) + "])");
+    await sleep(perByteMs);
+  }
+  evalIn("window.dlReceiveQueue(0, [13])");
+}
+
 function sendChar(evalIn, ch) {
   evalIn("window.dlReceiveQueue(0, [" + (ch.charCodeAt(0) & 0x7f) + "])");
 }
@@ -119,20 +135,45 @@ async function bootXxdp() {
  */
 async function launchDiagnostic({ mach, ev, command, resolveNeedle,
   resolveTimeout = 15000, startNeedle, startTimeout }) {
-  sendLine(ev, command);
+  // Type the command out instead of pushing the whole line in one call, and
+  // RETRY it when the name does not come back. A CI run showed the guest
+  // receive the command with every character repeated many times and answer
+  // "? INVALID COMMAND": a burst that landed while the monitor was not yet
+  // draining its input. After such a rejection the guest sits at its prompt, so
+  // sending the line again is harmless — a lost race becomes a slower but
+  // successful launch instead of a red step.
+  const ATTEMPTS = 3;
+  let attemptsUsed = 0;
   if (resolveNeedle) {
     // Name the PHASE when this fails. The old message was
     // "<needle> recognised", which reads like a success and sent a whole
     // investigation down the wrong path: the run had actually TIMED OUT waiting
     // for the loader to print the name.
-    if (!await waitFor(mach, resolveNeedle, resolveTimeout, "launch:resolve")) {
-      console.error("diagnostic name was never resolved");
-      dumpConsole("resolve", mach.getOut());
-      assert.fail(resolveNeedle + " was not resolved within " + resolveTimeout +
-        "ms — the loader never printed it (a slow runner needs a longer budget, " +
-        "see the per-test timeouts)");
+    let resolved = false;
+    for (let attempt = 1; attempt <= ATTEMPTS && !resolved; attempt++) {
+      attemptsUsed = attempt;
+      await typeLineSlowly(ev, command);
+      resolved = await waitFor(mach, resolveNeedle, resolveTimeout,
+        "launch:resolve" + (attempt > 1 ? " (attempt " + attempt + ")" : ""));
+      if (!resolved) {
+        console.error("  attempt " + attempt + " of " + ATTEMPTS +
+          " did not resolve " + JSON.stringify(resolveNeedle));
+        ev("window.dlReceiveQueue(0, [3])"); // ^C: drop the rejected line
+        await sleep(500);
+      }
     }
-    sendLine(ev, ""); // acknowledge the resolved name
+    if (!resolved) {
+      dumpConsole("resolve", mach.getOut());
+      assert.fail(resolveNeedle + " was not resolved in " + ATTEMPTS +
+        " attempts of " + resolveTimeout + "ms each — the loader never printed it");
+    }
+    if (attemptsUsed > 1) {
+      console.log("  resolved on attempt " + attemptsUsed + " of " + ATTEMPTS +
+        " — the first send did not reach the monitor");
+    }
+    await typeLineSlowly(ev, ""); // acknowledge the resolved name
+  } else {
+    await typeLineSlowly(ev, command);
   }
   if (!await waitFor(mach, startNeedle, startTimeout, "launch:start")) {
     console.error("diagnostic never started");
@@ -204,6 +245,7 @@ function phaseReport() {
 }
 
 module.exports = {
-  bootXxdp, launchDiagnostic, runToVerdict, waitFor, sendLine, sendChar, sleep,
+  bootXxdp, launchDiagnostic, runToVerdict, waitFor, sendLine, typeLineSlowly,
+  sendChar, sleep,
   phaseReport,
 };
