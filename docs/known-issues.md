@@ -81,11 +81,11 @@ Or the e2e scenario: `node /tmp/ctrld-probe.js rp0` (prototype script).
 
 ---
 
-## BSD 2.11 (rp1) is booted with a VT52 console, not a teletype
+## BSD 2.11 (rp1) runs on a video terminal, not a teletype
 
 **Status:** accepted limitation, not a bug.
 
-The quick-boot scenario for BSD 2.11 declares `console: "vt52"` even though the
+The quick-boot scenario for BSD 2.11 declares `console: "vt100"` even though the
 guest historically ran on a Model 33 ASR. Unlike Unix V5 and the other DEC
 guests, the 2.11 BSD loader does not detect a teletype console: it prints lower
 case, which a real Model 33 ASR cannot print. Booting it on the emulated
@@ -94,10 +94,12 @@ by **Force PDP Output Uppercase** (`Config.forceUpperCaseOut`), while the guest
 still believes it is writing lower case — the console output and the guest's own
 idea of it drift apart.
 
-The scenario sidesteps this by keeping the VT52 console (which prints both
+The scenario sidesteps this by keeping a video terminal (which prints both
 cases) and leaving `forceUpperCaseOut` untouched, so the emulator shows exactly
 what the loader wrote. It is the only guest with that exception in
-[`src/osboot.js`](../src/osboot.js).
+[`src/osboot.js`](../src/osboot.js); the console is a VT100 because 2.11 BSD is
+a 1981 system and the VT100 (1978) is the terminal of that period, like the rest
+of the 1980s guests in the same table.
 
 ---
 

@@ -316,6 +316,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scripted command: the first guest line waits for the guest's prompt, and
   pending output is flushed before the tool exits. (`tools/headless-term.js`)
 
+### Added
+
+- **A startup loading gate holds the first frame.** The overlay is inline in
+  `pdp11.html`, so the very first painted frame already covers the page, and it
+  is lifted only when the Model 33 artwork markers, the terminal artwork markers,
+  the first-screen webfonts and `media/manifest.json` are ready: before this the
+  CSS fallback artwork painted first and the real art, the fonts and the manifest
+  replaced it piece by piece, so a slow link showed two different machines in a
+  row. Sounds, the machine-room photo, alternative panels and the disk/tape
+  images keep loading behind the gate — none of them is needed for the first
+  screen. Every source is best-effort (a failure resolves its slot instead of
+  hanging) and a 15 s ceiling lifts the gate regardless. (`src/loading-gate.js`,
+  `pdp11.html`, `src/pdp11-app.js`, `css/g60printer.css`)
+
+### Changed
+
+- **The Model 33 artwork is 96% lighter and is fetched once.** `assets/Model-33-ASR.svg`
+  went from 2.0 MB to 75 KB, and the teletype rig downloads the file it names
+  instead of asking for it twice, so the console page reaches its real look
+  sooner on a slow link. (`assets/Model-33-ASR.svg`, `src/pdp11-app.js`,
+  `css/g60printer.css`)
+
+- The user-manual and guest-OS screenshots are regenerated for the VT100, the
+  retuned Equipment tab and the lighter teletype artwork, written to both the
+  repo source and the landing mirror. (`tools/screenshots-manual.js`,
+  `tools/screenshots-os.js`)
+
 ## [0.2.0] - 2026-09-10
 
 ### Added
