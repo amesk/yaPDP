@@ -315,6 +315,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `headless-term` batch runs keep the whole guest output and execute the first
   scripted command: the first guest line waits for the guest's prompt, and
   pending output is flushed before the tool exits. (`tools/headless-term.js`)
+- **The last `Boot>` references are gone: the prompt is `@`.** The monitor has
+  printed `@` since the bootstrap was rebuilt, yet the first-run hint, the
+  quick-start steps (landing, emulator and manual), the two console screenshot
+  captions and every transcript in `docs/ExampleBoots.md` still sent the
+  operator looking for `Boot>`. (`src/onboarding.js`, `pdp11.html`,
+  `index.html`, `manual.html`, `docs/ExampleBoots.md`, `src/osboot.js`,
+  `src/quickboot.js`, `src/pdp11-panel.js`, `tools/screenshots-manual.js`)
 
 ### Added
 

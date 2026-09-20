@@ -64,7 +64,7 @@ const CFG_TTY = {
     vt11: true,
     teletypeSpeed: "fast", // accelerate the console echo for the boot banner
     powerOn: true,         // machine powered on at startup
-    autoBoot: true         // start the default bootstrap -> prints "Boot>"
+    autoBoot: true         // start the default bootstrap -> prints the "@" prompt
 };
 // Run B: DECscope VT52 as the operator console.
 const CFG_VT52 = Object.assign({}, CFG_TTY, { consoleType: "vt52" });

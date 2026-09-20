@@ -13,7 +13,7 @@
  *      load time, so a layout change needs a reload (same as CONFIG Apply).
  *      After the reload the wizard resumes the boot automatically.
  *   2. Switch to the operator console page (teletype or VT52 console).
- *   3. Reboot the machine (boot()) so the loader prints Boot>.
+ *   3. Reboot the machine (boot()) so the loader prints the @ prompt.
  *   4. Type `boot <dev>`, then each follow-up step (kernel name, Ctrl-D,
  *      login/password) with a delay that respects the configured teletype
  *      speed.
@@ -325,7 +325,7 @@ var QuickBoot = (function () {
     var WAIT_TIMEOUT_MS = 45000;
     var WAIT_POLL_MS = 200;
 
-    // First step (boot) needs extra time for the Boot> prompt to appear.
+    // First step (boot) needs extra time for the @ prompt to appear.
     function delayFor(index, base) {
         return (index === 0) ? base * 2 : base;
     }
@@ -495,7 +495,7 @@ var QuickBoot = (function () {
                 setReaderMode: (typeof setReaderMode === "function") ? setReaderMode : null
             });
 
-        // Reboot the machine so the boot loader reaches the Boot> prompt.
+        // Reboot the machine so the boot loader reaches the @ prompt.
         if (typeof boot === "function") boot();
 
         // Forget any old console output so waitFor cannot match stale text.

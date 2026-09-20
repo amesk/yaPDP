@@ -90,7 +90,7 @@ var Onboarding = (function () {
         }
     }
 
-    // Devices whose boot loader prompts with a symbol other than `Boot>`.
+    // Devices whose boot loader prompts with a symbol other than `@`.
     // Keyed by device (not by image url) and used only as a UI hint for the
     // quick-start overlay — the authoritative sequence stays in the Info page.
     var PROMPT_HINT = {
@@ -229,7 +229,7 @@ var Onboarding = (function () {
                     '<li>Power the machine on: on the <b>Panel</b> page turn the <b>POWER LOCK</b> ' +
                         'switch to <b>POWER</b> — it starts powered off.</li>' +
                     '<li>Boot it — enter bootstrap or press <b>Bootstrap now!</b> under the panel and type one of the ' +
-                        'commands below at the <code>Boot></code> prompt on the <b>Console</b> page ' +
+                        'commands below at the <code>@</code> prompt on the <b>Console</b> page ' +
                         '(the hand-written sticker on the Panel shows the bootstrap words):</li>' +
                 '</ol>' +
                 '<ul class="modal-boots" id="modal-boots"></ul>' +
