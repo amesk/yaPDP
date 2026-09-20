@@ -26,6 +26,7 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 | **Model 33 ASR Teletype** | The operator console: a fully animated, authentic Model 33 ASR — faithful keyboard with the historical special keys, paper printing with true nroff/man overstrike, carriage jamming at the margin, and an 8-track paper-tape reader/punch unit with the real START/STOP/FREE/AUTO switch and CCU. |
 | **Authentic LP11 Line Printer** | Beige/grey cabinet, fanfold paper, ON LINE lamp, ~300 lines/min, DONE handshake and sticky ERROR latching; **Print** to a real printer or **Save .txt**. |
 | **VT52 Terminal** | A DECscope VT52 on canvas with authentic P4 phosphor, optional reverse video, CRT simulation and a text mode with native clipboard. |
+| **VT100 Terminal** | The terminal the 1980s guests ran on: canvas tube with a P4 white or P1 green phosphor, VT100 key click, reverse video driven by the software's own SGR attributes, and the ANSI dialect built on the DECscope the VT100 supersedes. |
 | **VT11 Display** | Optional vector-graphics display processor on its own green-phosphor CRT page — Lunar Lander included. |
 | **Quick boot (magic wand)** | One click boots any guest OS: applies the right machine profile, types `boot <dev>` and the login, prompt-aware. |
 | **16 Guest Operating Systems** | Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
@@ -47,7 +48,7 @@ step-by-step user manual with live screenshots.
 
 [`manual.html`](manual.html) is a step-by-step user guide in the same DEC style
 as the landing page: quick boot (magic wand), the front panel, the Model 33 ASR
-operator console, VT52 terminals, the LP11 line printer, storage, configuration
+operator console, VT52 and VT100 terminals, the LP11 line printer, storage, configuration
 and every guest OS boot command. Its page illustrations are live screenshots of
 the emulator, regenerated with `npm run screenshots:manual`
 ([`tools/screenshots-manual.js`](tools/screenshots-manual.js)).
@@ -100,7 +101,7 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 4. Try `ls`, `ps -aux`, `df` — or compile a C program with `cc`.
 
 A detailed walkthrough of every page (Panel, Console, TTY, Printer, Display,
-Storage, Config, Info, REBOOT/STATE buttons, fullscreen, VT52 zoom, mute) and the classic
+Storage, Config, Info, REBOOT/STATE buttons, fullscreen, terminal zoom, mute) and the classic
 panel tricks (light chaser, bootloader restart) is in
 [`docs/FEATURES.md`](docs/FEATURES.md).
 

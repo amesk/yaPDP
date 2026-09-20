@@ -646,9 +646,11 @@
                     <h3>Equipment</h3>
                     <ul>
                         <li><b>Console terminal</b> — the <a href="#console">operator console</a> (tty0): a Model 33
-                            ASR teletype or a DECscope VT52.</li>
-                        <li><b>User terminals</b> — 0–2 extra <a href="#user-terminals">VT52 terminals (TTY 1 /
-                                TTY 2)</a>, each with its own sidebar page.</li>
+                            ASR teletype, a DECscope VT52 or a DEC VT100.</li>
+                        <li><b>User terminals</b> — the two <a href="#user-terminals">user terminals (TTY 1 /
+                                TTY 2)</a>, each <code>None | VT52 | VT100</code> and each with its own sidebar page;
+                            the number of terminals is read off the two selects, and TT2 can only be filled once
+                            TT1 is.</li>
                         <li><b>Line printer (LP11)</b> — install the animated LP11 line printer on its own
                             <a href="#printer">Printer page</a>.
                         </li>
@@ -675,10 +677,14 @@
                 <div class="config-item-text">
                     <h3>Look & sound</h3>
                     <ul>
-                        <li><b>VT52 key click</b> — audible key-click feedback on VT52 terminals (historically VT100+
-                            only).</li>
+                        <li><b>VT100 key click</b> — audible key-click feedback on VT100 terminals; the DECscope
+                            keyboard was mechanical and has no click to make, so the field dims when no VT100 is
+                            installed.</li>
+                        <li><b>VT100 phosphor</b> — the VT100 tube: P4 white (the phosphor it was introduced on) or P1
+                            green. The DECscope is pinned to P4 — it was never sold with another.</li>
                         <li><b>VT52 reverse video</b> — the historical DECscope reverse-video mode: black text on
-                            white.</li>
+                            white. It is the DECscope’s own switch; a VT100 shows inverse text only when the software
+                            asks for it with the SGR 7 attribute.</li>
                         <li><b>CRT effects</b> — pure-CSS CRT simulation: brightness flicker, phosphor shimmer and a
                             vertical-hold roll band.</li>
                         <li><b>Machine hum</b> — ambient power-supply hum and fan noise while the machine is on.</li>

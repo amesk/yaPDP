@@ -46,10 +46,12 @@ contract, the bridge and the write-back storage split.
 | [`src/fpp.js`](../src/fpp.js) | Floating‑Point Processor (FP11) emulation |
 | [`src/iopage.js`](../src/iopage.js) | Legacy monolithic I/O page — devices + I/O plumbing inline; used only with `?core=0` |
 | [`src/pdp11-panel.js`](../src/pdp11-panel.js) | Front panel rendering and switch interaction |
-| [`src/pdp11-app.js`](../src/pdp11-app.js) | Application glue — boots the emulator, wires the configured teletype/VT52 console, user terminals, printer and the CONFIG page |
+| [`src/pdp11-app.js`](../src/pdp11-app.js) | Application glue — boots the emulator, wires the configured teletype/VT52/VT100 console, user terminals, printer and the CONFIG page |
 | [`src/config.js`](../src/config.js) | User configuration (CONFIG page) — validated, persisted in localStorage |
 | [`src/hum.js`](../src/hum.js) | Ambient PDP-11 power-supply hum + fan noise — synthesized on a dedicated Web Audio context, follows power/run state |
-| [`src/vt52.js`](../src/vt52.js) | DECscope VT52 terminal emulation (canvas‑based); renders nroff/man overstrike as bold/underline only in ANSI/VT100 mode — a historical VT52 draws no SGR emphasis |
+| [`src/terminal-core.js`](../src/terminal-core.js) | Terminal engine shared by both video terminals — the canvas, the character grid, the DL11 byte path, artwork loading and the marker geometry. A terminal's *dialect* (VT52 or VT100) sits on top of it and decides what that terminal accepts |
+| [`src/vt52.js`](../src/vt52.js) | DECscope VT52 dialect (canvas‑based); renders nroff/man overstrike as bold/underline only in ANSI mode — a historical VT52 draws no SGR emphasis, and its phosphor is pinned to P4 |
+| [`src/dialect/vt100.js`](../src/dialect/vt100.js) | VT100 dialect, built on the DECscope class the hardware superseded: ANSI from power-on, the DEC private modes, DECKPAM/DECKPNM, DECANM (VT52 compatibility mode), a device-attribute answer of "VT100 with AVO" — plus the phosphor choice and the key click, which belong to it alone |
 | [`src/g60printer.js`](../src/g60printer.js) | Google60-style teletype printer (Model 33 ASR / LP11) |
 | [`src/punchtape.js`](../src/punchtape.js) | Visual ASR paper-tape punch — punches an 8-track row per console byte, scrolls the tape window |
 | [`src/vt11.js`](../src/vt11.js) | Vector graphics VT11 display |
@@ -60,10 +62,11 @@ contract, the bridge and the write-back storage split.
 | [`src/osboot.js`](../src/osboot.js) | Guest OS boot scenarios for the quick-boot wizard — hand-curated `boot` commands and auto-login steps per device |
 | [`src/quickboot.js`](../src/quickboot.js) | Quick-boot magic-wand button — floating in the top-right corner (every page except Info), OS picker dialog, reboot + typed boot/login sequence via the console input queue |
 | [`src/fullscreen.js`](../src/fullscreen.js) | Floating fullscreen toggle — browser Fullscreen API in the web build, native window fullscreen in the Tauri app |
-| [`src/vt52zoom.js`](../src/vt52zoom.js) | Floating VT52 zoom toggle — hides the cabinet and grows the tube to the largest 4:3 box that clears the corner controls. The state is per terminal (console / TT1 / TT2) and persisted through Config |
+| [`src/vt52zoom.js`](../src/vt52zoom.js) | Floating zoom toggle — hides the cabinet and grows the tube (of whichever video terminal sits on the rig, DECscope or VT100) to the largest 4:3 box that clears the corner controls. The state is per terminal (console / TT1 / TT2) and persisted through Config; a double click on a tube is the same gesture |
 | [`src/pasteutil.js`](../src/pasteutil.js) | Shared clipboard paste helper — CR/LF normalization + 7-bit byte mapping + DL11 receive-queue routing, used by every terminal paste path |
 | [`src/navactivity.js`](../src/navactivity.js) | Sidebar activity lamps — `pulse()` lights a blinking green LED in the top-right corner of the matching sidebar button while the PDP-11 writes output to a console / terminal (auto-off 0.5s after the output stops); `set()` drives the Printer lamp from the LP11 busy ticker so it blinks for the whole print job |
 | [`src/panel-led.js`](../src/panel-led.js) | Panel nav-button status indicators — polls the machine power + CPU run state; the green power lamp lights while powered on, and a pause/play glyph in the button's top-left corner shows whether the CPU is halted or running (hidden while the machine is off) |
+| [`src/loading-gate.js`](../src/loading-gate.js) | Startup loading gate (issue #77) — decides when the inline first-paint overlay may be lifted. It waits for the Model 33 artwork markers, the terminal artwork markers, the first-screen webfonts and `media/manifest.json`, keeps sounds/the room photo/the images themselves loading behind it, and a 15 s ceiling lifts it regardless |
 | [`css/pdp11.css`](../css/pdp11.css) | Front panel and application styles |
 | [`css/landing.css`](../css/landing.css) | Landing-page (index.html) styles |
 | [`css/g60printer.css`](../css/g60printer.css) | Teletype printer styles — including the "SVG art layer" block: the `--tty-*` marker variables, the backdrop and the marker-anchored overlay rules |
@@ -97,7 +100,7 @@ Disk (`.dsk`), tape (`.tap`), and paper tape (`.ptap`) images live in the [`medi
 
 - [Machine layer deep-dive](machine-layer.md) — the refactored core stack: device contract, bridge, storage split, adding a device
 - [Building the desktop app](BUILDING.md) — toolchain, artifacts, npm scripts
-- [Feature deep-dive](FEATURES.md) — the Model 33 ASR teletype, LP11, VT52, quick boot and the UI pages in detail
+- [Feature deep-dive](FEATURES.md) — the Model 33 ASR teletype, LP11, VT52 and VT100, the startup gate, quick boot and the UI pages in detail
 - [Known issues](known-issues.md) — open emulator bugs (e.g. ULTRIX‑11 multi-user panic)
 - [Example boot sessions](ExampleBoots.md) — full boot logs for every guest OS
 - [User manual](../manual.html) — step-by-step guide with live screenshots

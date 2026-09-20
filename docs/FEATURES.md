@@ -2,7 +2,8 @@
 
 The README gives the two-minute tour. This document is the full walkthrough of
 every feature: the Model 33 ASR teletype, the LP11 line printer, the VT52 and
-VT11 terminals, the quick-boot wizard and the UI pages.
+VT100 terminals, the VT11 display, the startup gate, the quick-boot wizard and
+the UI pages.
 
 ## Feature overview
 
@@ -12,10 +13,12 @@ VT11 terminals, the quick-boot wizard and the UI pages.
 | **Model 33 ASR Teletype** | A fully animated teletype drawn as an authentic Model 33 ASR — see [below](#model-33-asr-teletype). |
 | **Authentic LP11 Line Printer** | A faithful recreation of the DEC line printer that stood beside real PDP‑11s — beige/grey cabinet, fanfold paper, ON LINE lamp and TOP OF FORM / PAPER FEED controls, printing at a near‑authentic ~300 lines/min. The accumulated job can be handed to your real printer via the system dialog (**Print**) or exported as a **.txt** file — hardcopy, just as it left the machine room. |
 | **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. See [below](#vt52-terminal). |
+| **VT100 Terminal** | The terminal the 1980s guests actually ran on: canvas tube with a P4 white or P1 green phosphor (the DECscope pins P4), the VT100 key click, reverse video only when the software asks for it with SGR 7, and the ANSI dialect built on the DECscope the hardware superseded. See [below](#vt100-terminal). |
 | **VT11 Display** | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. |
 | **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
 | **Paper Tape Reader** | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape. |
+| **Startup gate** | A first-paint overlay holds the page until the artwork, the fonts and the media manifest are ready, so the machine no longer assembles itself on screen on a slow link. See [below](#startup-gate). |
 
 ## Model 33 ASR Teletype
 
@@ -156,6 +159,50 @@ renders the terminal as a plain text field instead of the canvas, enabling
 native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click
 paste) for fast source-code entry — at the cost of the SGR emphasis rendering.
 
+## VT100 Terminal
+
+The terminal DEC introduced in 1978 — and the one the guests of the 1980s
+actually ran on, which is why the picker gives RT‑11 v4.0, ULTRIX‑11, BSD 2.11,
+RSTS/E 9.6/10.1 and RSX‑11M v4.6 a VT100 console (see `src/osboot.js`).
+
+The VT100 is a superset of the DECscope, exactly as the hardware was, and the
+emulator is built the same way: one terminal core carries the canvas, the
+character grid and everything the two terminals share, and the VT100 dialect
+sits on top of the DECscope dialect and overrides only what genuinely differs —
+ANSI from power-on (no hardcopy mode and no lazy entry into the screen), the DEC
+private modes, DECKPAM/DECKPNM in place of the VT52 keypad codes, `ESC E` as NEL
+rather than clear-screen, and a device-attribute answer of "VT100 with AVO".
+`CSI ? 2 h` (DECANM) drops it into VT52 compatibility mode — real VT100
+behaviour, and the reason the ANSI grammar is inherited rather than
+reimplemented.
+
+Its cabinet is its own drawing ([`assets/vt100.svg`](../assets/vt100.svg),
+authored from scratch rather than derived from the DECscope) and its tube is
+recolourable from the stylesheet. Two options belong to it alone: the
+**phosphor** (P4 white, the tube the VT100 was introduced on, or P1 green) and
+the **key click**. The DECscope pins its white phosphor through its dialect — it
+was never sold with another — and its keyboard was mechanical, so it has no
+click to make. Reverse video is the DECscope's switch only; a VT100 shows
+inverse text when a program asks for it with the SGR 7 attribute.
+
+## Startup gate
+
+Opening the emulator on a slow link used to assemble the machine on screen: the
+CSS fallback artwork painted first, then the SVG art arrived and the layers
+jumped, the webfonts swapped under the labels, and the media manifest landed
+late. The operator saw two different machines in a row.
+
+A single **loading gate** now holds an inline overlay over the page until the
+first screen is really ready: the Model 33 artwork marker pass, the terminal
+artwork marker pass, the first-screen webfonts and `media/manifest.json`. The
+overlay names what it is waiting for ("Drawing the machines…", "Loading
+typefaces…", "Reading the media…") instead of showing a percentage. What is
+*not* boot-critical — sounds, the machine-room photo, alternative panels and the
+disk/tape images themselves (2–20 MB) — keeps downloading behind the gate, so a
+slow link stays slow but no longer looks broken. Every source is best-effort and
+a 15 s ceiling lifts the gate regardless, because an overlay that never leaves
+would be worse than the flash it hides.
+
 ## Quick boot (magic wand)
 
 A magic-wand button in the top-right corner of the window (visible on every
@@ -187,10 +234,13 @@ timeout fallback), so slow boots with lots of output (e.g. 2.11 BSD) still
 reach the login prompt reliably.
 
 Each OS also declares the machine profile it wants (`hardware` in
-`src/osboot.js`): e.g. Unix V5 / BSD / RT-11 / ULTRIX force a teletype
-console, and RT-11 / RSX / RSTS enable the LP11 line printer. If the current
-configuration differs, the wizard applies the profile (like the CONFIG Apply
-button), reloads, and resumes the boot automatically.
+`src/osboot.js`): Unix V5, BSD 2.9 and the paper-tape guests force a Model 33
+teletype console, the 1980s guests (RT‑11 v4.0, ULTRIX‑11, BSD 2.11, RSTS/E
+9.6/10.1, RSX‑11M v4.6) a VT100, and RT‑11 is also available with a DECscope
+console (`rk1vt52`) and with a teletype (`rk1tty`) — the image is the same, the
+operator's desk is not. RT‑11 / RSX / RSTS enable the LP11 line printer. If the
+current configuration differs, the wizard applies the profile (like the CONFIG
+Apply button), reloads, and resumes the boot automatically.
 
 Paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander) live in the same picker:
 the wizard selects the tape in the Storage `#ptr` select and boots it via
@@ -210,9 +260,9 @@ interrupted" dialog takes over).
 
 Use the sidebar to switch between:
 - **Panel** — the front panel with switches and LEDs
-- **Console** — the operator console: a Model 33 ASR teletype (when the console terminal is a teletype)
-- **Console** — the operator console: a DECscope VT52 (when the console terminal is a VT52)
-- **TTY 1 / TTY 2** — user VT52 terminals, shown only when configured
+- **Console** — the operator console: a Model 33 ASR teletype, a DECscope VT52
+  or a DEC VT100, whichever the console terminal is configured as
+- **TTY 1 / TTY 2** — user terminals (DECscope or VT100), shown only when configured
 - **Printer** — the LP11 line printer page, shown only when configured
 - **Display** — the VT11 vector-graphics CRT page, shown only when configured
 - **Storage** — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export)
@@ -226,21 +276,26 @@ system chrome — the address bar in the browser, the OS window frame and the
 taskbar in the Tauri desktop app — while leaving the emulator UI untouched.
 Press it again (or Esc) to return.
 
-Next to it sits the floating **VT52 zoom** button. It hides the cabinet and
+Next to it sits the floating **zoom** button (double-clicking a tube does the
+same thing). It hides the cabinet and
 grows the tube to the largest 4:3 box the window allows, clearing the floating
 corner controls, so the screen can be read from across the room. The state is
 **per terminal** — the console (TT0), TTY 1 and TTY 2 each remember their own —
 and is persisted between sessions. The button's icon mirrors what is on screen:
 a display while the cabinet (the artwork) is shown, the whole terminal (screen
-over a keyboard) in zoom mode. It is disabled on pages with no VT52 terminal.
+over a keyboard) in zoom mode. It is disabled on pages with no video terminal.
 
-The **Config** page controls the console terminal type (teletype or VT52), the
-number of user terminals (0–2), the presence of the LP11
+The **Config** page controls the console terminal type (a Model 33 ASR teletype,
+a DECscope VT52 or a DEC VT100), the two user terminals (TTY 1 / TTY 2, each of
+them `None | VT52 | VT100` — the number of terminals is read off them, and TT2
+can only be filled once TT1 is), the presence of the LP11
 line printer and the
 VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
-most 80 columns), the printer print width (72/80/100/132), optional VT100-style
-key-click sound for VT52 terminals, the historical VT52 reverse-video mode
-(black text on white), a pure-CSS CRT simulation (brightness flicker, scanline
+most 80 columns), the printer print width (72/80/100/132), the VT100 key-click
+sound, the historical VT52 reverse-video mode
+(black text on white, the DECscope's own switch — a VT100 has no such control),
+the VT100 tube's phosphor (P4 white or P1 green), a pure-CSS CRT simulation
+(brightness flicker, scanline
 shimmer and a vertical-hold roll band), an optional VT52 **text mode** (plain
 text field with native Windows Clipboard — Ctrl+C/Ctrl+V/right-click paste — for
 fast source-code entry), the ambient PDP-11 power-supply hum and fan noise while
@@ -249,10 +304,12 @@ The LP11 line printer defaults to the authentic 132-column width.
 The form is split into four tabs — **Equipment** (console terminal, user
 terminals, LP11 printer, VT11 display, print widths, teletype speed, the
 Upper Case Only keyboard flag and the Force PDP Output Uppercase teletype flag),
-**Look & sound** (key click, reverse video, CRT effects, machine hum, photo
+**Look & sound** (the VT100 phosphor and key click, the DECscope reverse video,
+CRT effects, machine hum, photo
 backdrop), **Behaviour** (reboot confirmation) and **Development** (VT52 text
 mode) — with the **Apply** and **Restore defaults** actions in a bar below the
-tabs.
+tabs. Fields that belong to a terminal which is not installed are dimmed, so an
+unavailable option never looks like an active one.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
 hardware matches the configuration; print widths, the teletype speed, the Upper
