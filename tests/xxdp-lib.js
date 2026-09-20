@@ -49,12 +49,31 @@ function dumpConsole(label, text) {
 
 // Poll `needle` in the machine console output until it appears or the budget
 // runs out. Returns true when found.
+//
+// The elapsed time is REPORTED, not just compared against the budget. A test
+// that only says "passed" hides how close it came: the XXDP launch phases were
+// green locally (a workstation resolves the .BIC name in ~2.5 s) and red on a
+// CI runner, and there was no number to tell whether the runner was genuinely
+// slower or the failure had another cause. Now every wait prints its own
+// millisecond count, so a CI log carries the measurement.
 async function waitFor(mach, needle, timeoutMs, phase) {
-  const deadline = Date.now() + timeoutMs;
+  const startedAt = Date.now();
+  const deadline = startedAt + timeoutMs;
   while (Date.now() < deadline) {
-    if (mach.getOut().indexOf(needle) !== -1) return true;
+    if (mach.getOut().indexOf(needle) !== -1) {
+      const elapsed = Date.now() - startedAt;
+      phases.push({ name: phase || needle, ms: elapsed, ok: true });
+      console.log("  wait " + String(elapsed).padStart(7) + " ms  " +
+        (phase ? phase + ": " : "") + JSON.stringify(needle));
+      return true;
+    }
     await sleep(150);
   }
+  const elapsed = Date.now() - startedAt;
+  phases.push({ name: phase || needle, ms: elapsed, ok: false, budget: timeoutMs });
+  console.error("  wait " + String(elapsed).padStart(7) + " ms  " +
+    (phase ? phase + ": " : "") + JSON.stringify(needle) + "  TIMED OUT (budget " +
+    timeoutMs + " ms)");
   return false;
 }
 
@@ -80,12 +99,12 @@ async function bootXxdp() {
   });
   const ev = mach.evalIn;
 
-  if (!await waitFor(mach, "ENTER DATE", 45000)) {
+  if (!await waitFor(mach, "ENTER DATE", 45000, "boot:date")) {
     dumpConsole("date", mach.getOut());
     assert.fail("XXDP+ date prompt never appeared within 45000ms");
   }
   sendLine(ev, "09-SEP-78");
-  if (!await waitFor(mach, "THIS IS XXDP+", 45000)) {
+  if (!await waitFor(mach, "THIS IS XXDP+", 45000, "boot:monitor")) {
     dumpConsole("monitor", mach.getOut());
     assert.fail("XXDP+ monitor never came up within 45000ms");
   }
@@ -106,7 +125,7 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
     // "<needle> recognised", which reads like a success and sent a whole
     // investigation down the wrong path: the run had actually TIMED OUT waiting
     // for the loader to print the name.
-    if (!await waitFor(mach, resolveNeedle, resolveTimeout)) {
+    if (!await waitFor(mach, resolveNeedle, resolveTimeout, "launch:resolve")) {
       console.error("diagnostic name was never resolved");
       dumpConsole("resolve", mach.getOut());
       assert.fail(resolveNeedle + " was not resolved within " + resolveTimeout +
@@ -115,7 +134,7 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
     }
     sendLine(ev, ""); // acknowledge the resolved name
   }
-  if (!await waitFor(mach, startNeedle, startTimeout)) {
+  if (!await waitFor(mach, startNeedle, startTimeout, "launch:start")) {
     console.error("diagnostic never started");
     dumpConsole("start", mach.getOut());
     assert.fail(startNeedle + " never appeared within " + startTimeout +
@@ -172,6 +191,19 @@ async function runToVerdict({ mach, ev, panel, endPass, error, timeoutMs, drive 
   assert.fail("timed out waiting for END PASS");
 }
 
+// Every wait that has completed, in order — the suite prints this as a table so
+// one CI run answers "how long did each phase really take" without a re-run.
+const phases = [];
+function phaseReport() {
+  if (!phases.length) return "";
+  const width = Math.max.apply(null, phases.map((p) => p.name.length));
+  const rows = phases.map((p) =>
+    "  " + p.name.padEnd(width) + "  " + String(p.ms).padStart(8) + " ms" +
+    (p.ok ? "" : "   <-- TIMED OUT (budget " + p.budget + " ms)"));
+  return "\nXXDP phase timings:\n" + rows.join("\n") + "\n";
+}
+
 module.exports = {
   bootXxdp, launchDiagnostic, runToVerdict, waitFor, sendLine, sendChar, sleep,
+  phaseReport,
 };
