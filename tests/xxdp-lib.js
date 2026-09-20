@@ -99,14 +99,14 @@ async function bootXxdp() {
   });
   const ev = mach.evalIn;
 
-  if (!await waitFor(mach, "ENTER DATE", 45000, "boot:date")) {
+  if (!await waitFor(mach, "ENTER DATE", 15000, "boot:date")) {
     dumpConsole("date", mach.getOut());
-    assert.fail("XXDP+ date prompt never appeared within 45000ms");
+    assert.fail("XXDP+ date prompt never appeared within 15000ms");
   }
   sendLine(ev, "09-SEP-78");
-  if (!await waitFor(mach, "THIS IS XXDP+", 45000, "boot:monitor")) {
+  if (!await waitFor(mach, "THIS IS XXDP+", 15000, "boot:monitor")) {
     dumpConsole("monitor", mach.getOut());
-    assert.fail("XXDP+ monitor never came up within 45000ms");
+    assert.fail("XXDP+ monitor never came up within 15000ms");
   }
 
   return { mach, ev, panel: require("./xxdp-panel.js").createPanel(ev) };
