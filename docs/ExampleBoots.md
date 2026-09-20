@@ -4,7 +4,7 @@
 ## Example boot of Unix V5
 
 ```
-Boot> boot rk0
+@boot rk0
 @unix
 
 login: root
@@ -119,7 +119,7 @@ PI is approximately 0.3141592653580503d+01
 ##Example boot of RT11 v4.0
 
 ```
-Boot> boot rk1
+@boot rk1
 RT-11SJ  V04.00C
 
 .D 56=5015
@@ -203,7 +203,7 @@ ERRORS DETECTED:  0
 ## Example boot of RSTS V06C-03
 
 ```
-Boot> boot rk2
+@boot rk2
 
 RSTS V06C-03 Vixen (DK2)
 
@@ -357,7 +357,7 @@ Good morning
 ## Example boot of XXDP
 
 ```
-Boot> boot rk3
+@boot rk3
 
 CHMDKB1 XXDP+ DK MONITOR
 BOOTED VIA UNIT 3
@@ -399,7 +399,7 @@ AAAAAAAAAAAAAAAAAAAAA
 ## Example boot of RSTS 4B-17
 
 ```
-Boot> boot tm0
+@boot tm0
 
 ROLLIN V07
 
@@ -507,7 +507,7 @@ GOOD MORNING
 ## Example boot of BSD 2.9
 
 ```
-Boot> boot rl0
+@boot rl0
 :boot
 
 70Boot
@@ -605,7 +605,7 @@ drwxrwxrwx 2 root     superuse      48 Feb 18 18:16 usr
 ## Example boot of RSX 11M v3.2
 
 ```
-Boot> boot rl1
+@boot rl1
 
   RSX-11M V3.2 BL26   1912K  MAPPED
 >RED DL1:=SY:
@@ -667,7 +667,7 @@ HAVE A GOOD AFTERNOON
 ## Example boot of RSTS/E v7.0
 
 ```
-Boot> boot rl2
+@boot rl2
 
 RSTS V7.0-07 Vixen (DL2)
 
@@ -801,7 +801,7 @@ Good morning
 ## Example boot of XXDP
 
 ```
-Boot> boot rl3
+@boot rl3
 
 CHMDLD0 XXDP+ DL MONITOR
 BOOTED VIA UNIT 3
@@ -872,7 +872,7 @@ END PASS #     1  TOTAL ERRORS SINCE LAST REPORT      0
 ## Example boot of ULTRIX-11 System V3.1
 
 ```
-Boot> boot rp0
+@boot rp0
 
 Sizing Memory...
 
@@ -1004,7 +1004,7 @@ $ sysgen
 ## Example boot of BSD 2.11
 
 ```
-Boot> boot rp1
+@boot rp1
 
 70Boot from xp(0,1,0) at 0176700
 Press <CR> to boot, or any other key to abort: 0
@@ -1186,7 +1186,7 @@ halting
 ## Example boot of RSTS V9.6
 
 ```
-Boot> boot rp2
+@boot rp2
 
 RSTS V9.6-11 RSTS   (DB2) INIT V9.6-11
 
@@ -1375,7 +1375,7 @@ Good morning
 ```
 PAUL NANKERVIS - PAULNANK@HOTMAIL.COM
 
-Boot> boot rp3
+@boot rp3
 
 
   RSX-11M V4.6 BL56   1912.K MAPPED

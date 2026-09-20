@@ -10,7 +10,7 @@
  *   device    — logical key (rk0, rp1, tm0 ...; a mnemonic for paper tapes:
  *               basic, odt11, ed11, lander)
  *   label     — human-readable name
- *   boot      — the first command typed at the Boot> prompt
+ *   boot      — the first command typed at the @ prompt
  *   paperTape — (paper tapes only) the value of the Storage "#ptr" select,
  *               selected and rewound before booting
  *   page      — (optional) sidebar page to switch to after booting, e.g.

@@ -502,7 +502,7 @@ function examineDeposit(data) {
   function doReboot(forceBoot) {
     if (g60Console) g60Console.writeChar(10);
     // Stop any runaway teletype output backlog before restarting the CPU,
-    // so the Boot> prompt is immediately visible and usable.
+    // so the @ prompt is immediately visible and usable.
     flushG60Console();
     resetPanelControls();
     // The default bootstrap is started only when the operator explicitly asks

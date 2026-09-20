@@ -12,7 +12,10 @@
        fallback artwork shows through and the machine still "assembles itself"
        on a slow link. LoadingGate (src/loading-gate.js) lifts it. -->
   <style>
-    html.yapdp-booting #yapdp-loading { display: flex; }
+    html.yapdp-booting #yapdp-loading {
+      display: flex;
+    }
+
     #yapdp-loading {
       position: fixed;
       inset: 0;
@@ -31,12 +34,18 @@
       transition: opacity 0.35s ease;
       pointer-events: all;
     }
-    #yapdp-loading.yapdp-loading-done { opacity: 0; pointer-events: none; }
+
+    #yapdp-loading.yapdp-loading-done {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     #yapdp-loading .yapdp-loading-mark {
       font-size: 22px;
       letter-spacing: 0.22em;
       color: #c8a860;
     }
+
     #yapdp-loading .yapdp-loading-spin {
       width: 34px;
       height: 34px;
@@ -45,8 +54,18 @@
       border-radius: 50%;
       animation: yapdp-spin 0.9s linear infinite;
     }
-    @keyframes yapdp-spin { to { transform: rotate(360deg); } }
-    #yapdp-loading .yapdp-loading-stage { color: #e0d8c8; opacity: 0.85; }
+
+    @keyframes yapdp-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    #yapdp-loading .yapdp-loading-stage {
+      color: #e0d8c8;
+      opacity: 0.85;
+    }
+
     #yapdp-loading .yapdp-loading-hint {
       color: #8d8271;
       font-size: 12px;
@@ -54,8 +73,11 @@
       text-align: center;
       line-height: 1.5;
     }
+
     @media (prefers-reduced-motion: reduce) {
-      #yapdp-loading .yapdp-loading-spin { animation: none; }
+      #yapdp-loading .yapdp-loading-spin {
+        animation: none;
+      }
     }
   </style>
   <script>
@@ -1719,7 +1741,7 @@
 
       <ol>
         <li>Open the PDP‑11/70 emulator.</li>
-        <li>At the <code>Boot></code> prompt, type <code>boot rp1</code> and press ENTER.</li>
+        <li>At the <code>@</code> prompt, type <code>boot rp1</code> and press ENTER.</li>
         <li>BSD 2.11 will autoboot into multiuser mode. Login as <code>root</code> (no password).</li>
         <li>Try <code>ls</code>, <code>ps -aux</code>, <code>df</code> — or compile a C program with <code>cc</code>.
         </li>
@@ -1763,7 +1785,7 @@ HALT, 120000, LOAD ADDRESS, ENABLE, START
 
       <p>
         The emulator ships with ready-to-boot disk and tape images. Just type <code>boot <device></code>
-        at the <code>Boot></code> prompt.
+        at the <code>@</code> prompt.
       </p>
 
       <table id="guest-os-table" style="margin-left:25px; padding:3px;">

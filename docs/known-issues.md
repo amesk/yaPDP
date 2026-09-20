@@ -111,3 +111,20 @@ BSD 2.9 getty clears its input buffer (TIOCFLUSH) on startup: a login typed
 immediately after `login:` is lost. The fix is a pause in the wizard
 scenario: `{ send: "root", waitFor: "login:", wait: 3000 }`
 (quickboot supports `wait` since commit 7dd3aa2).
+
+---
+
+## `media/bootcode.ptap` is the pre-rebuild bootstrap
+
+**Status:** known, cosmetic — the built-in bootstrap is the one that matters.
+
+`media/bootcode.ptap` is the bootstrap on paper tape, for the reader path, and
+it has not been repunched since the 2026-08-29 rebuild: it still carries the
+historic loader, banner and `Boot>` prompt, while every other way into the
+machine prints `@`. Nothing in the emulator loads it by itself — it sits in the
+Storage paper-tape list and in the desktop bundle.
+
+Replacing it means punching the current module (`node tools/headless-term.js`
+builds it from `macro-asm/boot.mac` through RT-11SJ and DEC MACRO inside the
+emulator, as `tools/rebuild-bootcode.js` does for `src/bootcode.js`) and
+copying the punch export over the file.
