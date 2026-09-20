@@ -69,6 +69,7 @@ const ORDER = [
     "nav-led-css.test.js",
     "nav-tooltip.test.js",
     "panel-led.test.js",
+    "screenshots-os-config.test.js",
 ];
 
 function allTestFiles() {

@@ -101,7 +101,7 @@ const OS_SHOTS = [
     { device: "rk1",    file: "rt11.png",         width: WIDTH, height: HEIGHT,
         readyWhen: null, stable: 2500, extra: [], settle: 1500 },
     // RT-11 on a DECscope VT52 operator console — same rk1 image, different
-    // look, so the carousel shows both console types.
+    // look, so the carousel shows every console type the emulator has.
     { device: "rk1vt52", file: "rt11-vt52.png",   width: WIDTH, height: HEIGHT,
         readyWhen: null, stable: 2500, extra: [], settle: 1500 },
     // XXDP+ diagnostics: answer the date prompt with 09-SEP-78, then wait
@@ -121,10 +121,16 @@ const OS_SHOTS = [
 // OSBoot scenario so the wizard's hardwareDirty() check passes and no reload
 // is triggered mid-run. Shared keys (fast teletype, powered on, no autoboot)
 // are merged in captureOS().
+//
+// A stale entry is not a cosmetic problem: the wizard then applies the real
+// profile and reloads the page, which destroys the Puppeteer execution
+// context and the console hooks (installConsoleHooks() installs them per
+// document), so the shot dies with "Execution context was destroyed".
+// tests/screenshots-os-config.test.js pins this table to src/osboot.js.
 const OS_CFG = {
     rk0:    { consoleType: "teletype", printer: false, vt11: false },
-    rp1:    { consoleType: "vt52",     printer: true,  vt11: false },
-    rk1:    { consoleType: "teletype", printer: true,  vt11: false },
+    rp1:    { consoleType: "vt100",    printer: true,  vt11: false },
+    rk1:    { consoleType: "vt100",    printer: true,  vt11: false },
     rk1vt52: { consoleType: "vt52",    printer: true,  vt11: false },
     rk3:    { consoleType: "teletype", printer: false, vt11: false },
     basic:  { consoleType: "teletype", printer: false, vt11: false },
@@ -493,6 +499,14 @@ async function captureLander(browser, shot) {
                 }
             } catch (err) {
                 console.error(`  FAILED ${shot.file}: ${err.message}`);
+                // The usual cause is a stale OS_CFG seed: the wizard then
+                // applies the real profile, reloads, and takes the page (and
+                // the console hooks) out from under us.
+                if (/execution context|navigation/i.test(String(err.message))) {
+                    console.error(`    hint: check OS_CFG['${shot.device}'] — ` +
+                        "it must mirror the scenario's hardware block in " +
+                        "src/osboot.js (see tests/screenshots-os-config.test.js)");
+                }
             }
         }
 
