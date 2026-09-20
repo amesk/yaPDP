@@ -31,9 +31,11 @@ async function run() {
   await xxdp.launchDiagnostic({
     mach, ev,
     command: "R KFPAD0",
-    // Same reasoning as EKBBF0: a CI runner is not a real-time machine.
-    resolveNeedle: "KFPAD0.BIC", resolveTimeout: 90000,
-    startNeedle: "CKFPAD0", startTimeout: 120000,
+    // Same reasoning as EKBBF0: the budgets are sized from the measured
+    // timings (self-paced diagnostic, banner in tens of seconds at most), not
+    // from a guess about how slow a runner might be.
+    resolveNeedle: "KFPAD0.BIC", resolveTimeout: 15000,
+    startNeedle: "CKFPAD0", startTimeout: 40000,
   });
 
   // KFPAD0 is self-paced — it loops passes by itself, no panel interaction.
