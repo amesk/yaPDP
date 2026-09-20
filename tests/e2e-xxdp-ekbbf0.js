@@ -68,6 +68,7 @@ async function run() {
     },
   });
 
+  console.log(xxdp.phaseReport());
   console.log("PASS e2e-xxdp-ekbbf0: EKBBF0 (11/70 CPU) clean END PASS (" +
     charsFed + " char(s) fed)");
 }

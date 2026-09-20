@@ -48,6 +48,7 @@ async function run() {
     timeoutMs: 90000,
   });
 
+  console.log(xxdp.phaseReport());
   console.log("PASS e2e-xxdp-kfp: KFPAD0 (FP11-F floating-point) clean END PASS");
 }
 
