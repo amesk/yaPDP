@@ -42,6 +42,7 @@
     "e2e:os:legacy": "wireit",
     "e2e:xxdp": "wireit",
     "e2e:vt100": "wireit",
+    "e2e:mobile": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
     "voice": "node tools/voicer.js"
@@ -166,7 +167,8 @@
         "e2e:bsd",
         "e2e:bsd29",
         "e2e:xxdp",
-        "e2e:vt100"
+        "e2e:vt100",
+        "e2e:mobile"
       ]
     },
     "e2e:vt100": {
@@ -177,6 +179,21 @@
       "files": [
         "src/**",
         "tests/e2e-vt100.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "e2e:mobile": {
+      "command": "node tests/e2e-mobile-input.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-mobile-input.js",
         "tools/**",
         "css/**",
         "*.html",

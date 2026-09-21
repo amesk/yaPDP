@@ -1028,6 +1028,33 @@ function rigIsVt100(rig) {
   return rigDialect(rig) === 'vt100';
 }
 
+/**
+ * installCanvasMobileKeyboard(unit, canvas) — give a canvas-mode terminal the
+ * on-screen keyboard a touch device does not have.
+ *
+ * The bridge is an invisible textarea that never covers the CRT: tapping the
+ * tube focuses it, and a real tap is what raises the system keyboard. The typed
+ * bytes take the same route as a physical keystroke (bridgeSendToUnit), so the
+ * CRT view is unchanged.
+ *
+ * Called from BOTH paths that put a terminal into canvas mode — initVT52Page()
+ * and applyVT52TextMode(false). The pair matters because the CONFIG switch is
+ * applied live: a terminal started in TEXT mode never runs initVT52Page's canvas
+ * branch, so without this it reached canvas mode with no bridge at all and
+ * tapping the tube raised no keyboard. Idempotent — the bridge is parked on the
+ * canvas element, so a repeated call (every Apply) adds no second listener.
+ */
+function installCanvasMobileKeyboard(unit, canvas) {
+  if (typeof MobileInput === 'undefined' || !MobileInput.isCoarse()) return;
+  if (!canvas || canvas.__yapdpMobileBridge) return;
+  var bridge = MobileInput.create({
+    onBytes: function (bytes) { bridgeSendToUnit(unit, bytes); }
+  });
+  var tapTarget = canvas.parentElement || canvas;
+  tapTarget.addEventListener('click', function () { bridge.focus(); });
+  canvas.__yapdpMobileBridge = bridge;
+}
+
 function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   var kind = TERMINAL_DIALECTS[dialect] ? dialect : 'vt52';
   var drv = TERMINAL_DIALECTS[kind];
@@ -1179,18 +1206,11 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
       // typing into the focused textarea reaches the emulator.
       term.handleKey = function () { };
 
-      // Touch devices have no physical keyboard: bridge the system on-screen
-      // keyboard into this terminal. The bridge is an invisible textarea that
-      // never covers the CRT; tapping the tube focuses it, which asks the
-      // browser for the keyboard. Typed bytes take the same route as the
-      // physical keyboard (bridgeSendToUnit), so the CRT view is unchanged.
-      if (typeof MobileInput !== 'undefined' && MobileInput.isCoarse()) {
-        var mobileBridge = MobileInput.create({
-          onBytes: function (bytes) { bridgeSendToUnit(unit, bytes); }
-        });
-        var tapTarget = crtBox || canvas;
-        if (tapTarget) tapTarget.addEventListener('click', function () { mobileBridge.focus(); });
-      }
+      // Touch devices have no physical keyboard: tapping the tube raises the
+      // system keyboard through the shared bridge (see
+      // installCanvasMobileKeyboard — applyVT52TextMode(false) installs the
+      // same one when the CONFIG switch turns text mode off).
+      installCanvasMobileKeyboard(unit, canvas);
     }
   }
 
@@ -1705,6 +1725,11 @@ function applyVT52TextMode(enabled) {
       // sending (mirrors initVT52Page's canvas branch).
       t.handleKey = function () { };
       if (typeof canvas.focus === 'function') canvas.focus();
+      // The tube is interactive again: a touch device needs the on-screen
+      // keyboard bridge here too, because a terminal that STARTED in text mode
+      // never ran initVT52Page's canvas branch. No-op for every other terminal
+      // (and for a desktop) — see the guard inside the helper.
+      installCanvasMobileKeyboard(u, canvas);
     }
     // Redraw the whole screen in the newly active rendering path.
     if (typeof t.render === 'function') t.render(true);

@@ -103,6 +103,18 @@ function run() {
         app.lastIndexOf("installMobileKeyboard"),
         "installMobileKeyboard must be both defined and called");
 
+    // The canvas-mode bridge lives in ONE helper and is installed from BOTH
+    // paths into canvas mode. The CONFIG "VT52 text mode" switch is applied
+    // live, so a terminal that STARTED in text mode reaches the canvas without
+    // ever running initVT52Page's canvas branch — it used to arrive with no
+    // on-screen keyboard at all, and tapping the tube raised nothing.
+    assert.ok(app.indexOf("function installCanvasMobileKeyboard(") !== -1,
+        "pdp11-app.js must install the canvas keyboard bridge from one helper");
+    const canvasBridgeRefs = app.split("installCanvasMobileKeyboard(").length - 1;
+    assert.ok(canvasBridgeRefs >= 3,
+        "the canvas keyboard bridge must be installed from both initVT52Page " +
+        "and applyVT52TextMode (found " + canvasBridgeRefs + " references)");
+
     // ---- The bridge module exists --------------------------------------
     assert.ok(fs.existsSync(MOBILE_INPUT), "src/mobile-input.js must exist");
 
