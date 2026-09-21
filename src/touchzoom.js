@@ -117,6 +117,12 @@ var TouchZoom = (function () {
     var PINNED_SELECTOR = "#teletype-controls, .lp11-console, " +
         ".printer-actions, .panel-actions";
     var PIN_LAYER_CLASS = "touch-pin";
+    // Set on <body> while the visible machine page HAS controls. The stylesheet
+    // docks the strip at the very top for it and moves the round floating buttons
+    // (Reboot/State, Quick Boot) BELOW the strip — the page's own controls read
+    // first, the application's chrome second. A page with nothing to put in the
+    // strip (a VT52 tube) never gets the class, so its controls stay at the top.
+    var CONTROLS_CLASS = "touch-controls";
 
     function inverseTransform(scale, pan) {
         var s = (typeof scale === "number" && isFinite(scale) && scale > 0) ? scale : 1;
@@ -214,6 +220,15 @@ var TouchZoom = (function () {
         if (!page) return;
         var layer = page.__touchPinLayer;
         if (layer) layer.style.transform = "";
+    }
+
+    // Does the visible page carry controls in its pin layer? Decides the layout
+    // flag above; the app already announces page changes, so no page coupling.
+    function updateControlsFlag() {
+        if (!doc || !doc.body) return;
+        var active = doc.querySelector(".page.active");
+        var layer = active ? active.__touchPinLayer : null;
+        doc.body.classList.toggle(CONTROLS_CLASS, !!(layer && layer.children.length));
     }
 
     // Back to 1:1. Called when the operator leaves the page and by the tests.
@@ -378,12 +393,17 @@ var TouchZoom = (function () {
             if (pages[i].querySelector(MACHINE_SELECTOR)) pinLayer(pages[i]);
         }
         watchPageSwitches();
+        // The round buttons follow the strip: recomputed on every page change.
+        d.addEventListener("yapdp:pagechange", function () { updateControlsFlag(); });
+        updateControlsFlag();
         return true;
     }
 
     return {
         MAX_SCALE: MAX_SCALE,
         PINNED_SELECTOR: PINNED_SELECTOR,
+        CONTROLS_CLASS: CONTROLS_CLASS,
+        updateControlsFlag: updateControlsFlag,
         install: install,
         reset: reset,
         inverseTransform: inverseTransform,

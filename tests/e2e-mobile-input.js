@@ -697,7 +697,9 @@ async function main() {
 
         // The operator controls of the machine are NOT part of the picture: they
         // live in the pin layer, whose inverse transform keeps them at their own
-        // size and place, and they are docked clear of the floating buttons.
+        // size and place. On a touch device they are the FIRST row — the machine's
+        // own controls above the application's round chrome — so the round buttons
+        // are pushed below the strip.
         const readRects = () => page.evaluate(() => {
             const rect = (sel) => {
                 const el = document.querySelector(sel);
@@ -711,7 +713,8 @@ async function main() {
                 controls: rect("#teletype-controls"),
                 inLayer: !!(controls && controls.closest(".touch-pin")),
                 reboot: rect("#reboot-btn"),
-                quick: rect("#quick-boot-btn")
+                quick: rect("#quick-boot-btn"),
+                flagged: document.body.classList.contains("touch-controls")
             };
         });
         await showPage(page, "page-teletype");
@@ -738,15 +741,18 @@ async function main() {
         const overlaps = (a, b) => !!a && !!b &&
             a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
         const visible = (r) => !!r && r.w > 0 && r.h > 0;
-        check("the control strip clears the floating buttons above it",
-            visible(rectsAfter.controls) && visible(rectsBefore.quick) &&
-            !overlaps(rectsAfter.controls, rectsBefore.quick) &&
-            !overlaps(rectsAfter.controls, rectsBefore.reboot),
-            JSON.stringify({
-                controls: rectsAfter.controls,
-                quick: rectsBefore.quick,
-                reboot: rectsBefore.reboot
-            }));
+        const pinGeom = {
+            controls: rectsAfter.controls,
+            quick: rectsBefore.quick,
+            reboot: rectsBefore.reboot
+        };
+        check("the machine's controls are the top row, the round buttons the next one",
+            rectsBefore.flagged === true &&
+            visible(pinGeom.controls) && visible(pinGeom.reboot) && visible(pinGeom.quick) &&
+            pinGeom.controls.y < pinGeom.reboot.y && pinGeom.controls.y < pinGeom.quick.y &&
+            !overlaps(pinGeom.controls, pinGeom.reboot) &&
+            !overlaps(pinGeom.controls, pinGeom.quick),
+            JSON.stringify(pinGeom));
 
         // Leaving the machine page must not leave a zoomed page behind.
         await showPage(page, "page-config");
@@ -755,7 +761,18 @@ async function main() {
         check("leaving the machine page resets the view", afterLeave === "",
             JSON.stringify(afterLeave));
 
+        // A page whose machine has no controls of its own (a VT52 tube) must not
+        // leave the round buttons pushed down for a strip that is not there.
+        await showPage(page, CONSOLE.page);
+        const onTube = await readRects();
+        check("a page without machine controls keeps the round buttons at the top",
+            onTube.flagged === false && visible(onTube.reboot) && onTube.reboot.y < 20,
+            JSON.stringify(onTube));
+
         // A form page is the browser's business: the module must stay out of it.
+        // (The page is set here rather than inherited from the check above, so the
+        // block stands on its own.)
+        await showPage(page, "page-config");
         await touch.send("Input.dispatchTouchEvent",
             { type: "touchStart", touchPoints: twoFingers(30) });
         await sleep(80);

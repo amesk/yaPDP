@@ -74,9 +74,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   — the Model 33's button row, the printer's console and Print/Save row, the
   front panel's action buttons — are not part of the picture: they are moved into
   a layer that carries the inverse of the zoom, so they keep their own size and
-  place while the machine grows behind them, and they dock as one strip under the
-  floating buttons (Reboot/State left, Quick Boot right) instead of colliding
-  with them. The page declares a **mobile
+  place while the machine grows behind them. On a touch device they dock as the
+  FIRST row, at the very top, with the round floating buttons (Reboot/State left,
+  Quick Boot right) moved below them — the machine's own controls read first, the
+  application's chrome second — and a page whose machine has no controls of its
+  own keeps the round buttons at the top rather than leaving an empty strip. The
+  page declares a **mobile
   viewport** (`width=device-width`, with pinch-zoom left enabled): without it a
   phone laid the emulator out at the browser's ~980 px desktop fallback, where
   the media block below never matched and the page could not be zoomed. Below
