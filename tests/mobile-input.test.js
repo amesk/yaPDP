@@ -95,6 +95,14 @@ function run() {
     assert.strictEqual(typeof M.translateKeydown, "function", "translateKeydown must be exported");
     assert.strictEqual(typeof M.translateInputData, "function", "translateInputData must be exported");
     assert.strictEqual(typeof M.create, "function", "create must be exported");
+    assert.strictEqual(typeof M.controlCode, "function", "controlCode must be exported");
+    assert.strictEqual(typeof M.applyCtrlLatch, "function", "applyCtrlLatch must be exported");
+    assert.strictEqual(typeof M.setCtrlLatch, "function", "setCtrlLatch must be exported");
+    assert.strictEqual(typeof M.onLatchChange, "function", "onLatchChange must be exported");
+    assert.strictEqual(typeof M.registerTarget, "function", "registerTarget must be exported");
+    assert.strictEqual(typeof M.findTarget, "function", "findTarget must be exported");
+    assert.strictEqual(typeof M.sendToActive, "function", "sendToActive must be exported");
+    assert.strictEqual(typeof M.focusActive, "function", "focusActive must be exported");
 
     // ---- isCoarse: coarse pointer, touch points, neither ----------------
     {
@@ -156,6 +164,79 @@ function run() {
             "a null event is ignored");
     }
 
+    // ---- controlCode / applyCtrlLatch: the Ctrl latch --------------------
+    // An on-screen keyboard never sets ctrlKey, so the bar latches CTRL instead
+    // and the byte arithmetic must be the one a hardware Ctrl+key performs.
+    {
+        assert.strictEqual(M.controlCode("c"), 3, "Ctrl+C -> 0x03");
+        assert.strictEqual(M.controlCode("C"), 3, "case does not matter");
+        assert.strictEqual(M.controlCode("["), 27, "Ctrl+[ -> ESC");
+        assert.strictEqual(M.controlCode(" "), 0, "Ctrl+Space -> NUL");
+        assert.strictEqual(M.controlCode("4"), 20, "Ctrl+4 -> 0x14 (X-OFF is ^S, ^4 is FS)");
+        assert.strictEqual(M.controlCode("~"), 30, "the top of the printable range");
+        assert.strictEqual(M.controlCode("ab"), null, "a whole word has no control code");
+        assert.strictEqual(M.controlCode(""), null, "an empty payload has none");
+        assert.strictEqual(M.controlCode("\u00e9"), null, "a non-ASCII character has none");
+        assert.strictEqual(M.controlCode(null), null, "null has none");
+
+        assert.deepStrictEqual(plain(M.applyCtrlLatch("c", true)), { bytes: [3], latch: false },
+            "a latched character becomes its control code and clears the latch");
+        assert.deepStrictEqual(plain(M.applyCtrlLatch("ab", true)), { bytes: [97, 98], latch: true },
+            "a payload without a control code passes through and keeps the latch");
+        assert.deepStrictEqual(plain(M.applyCtrlLatch("c", false)), { bytes: [99], latch: false },
+            "without the latch a character is itself");
+        assert.deepStrictEqual(plain(M.applyCtrlLatch("\r", true)), { bytes: [13], latch: true },
+            "Enter is not a latched character (the bar sends CR itself)");
+    }
+
+    // ---- the latch announces its state (the bar lights CTRL) -------------
+    {
+        const seen = [];
+        M.onLatchChange(function (on) { seen.push(on); });
+        M.setCtrlLatch(true);
+        M.setCtrlLatch(true);           // no change: no second notification
+        assert.strictEqual(M.isCtrlLatched(), true, "the latch is on");
+        M.setCtrlLatch(false);
+        assert.strictEqual(M.isCtrlLatched(), false, "the latch is off again");
+        assert.deepStrictEqual(plain(seen), [true, false],
+            "only a real change is announced");
+    }
+
+    // ---- the input target registry (what the special-key bar types into) --
+    {
+        const sentA = [];
+        const sentB = [];
+        const a = M.registerTarget({
+            id: "vt52:0", pageId: "page-vt52-console", unit: 0,
+            send: function (bytes) { sentA.push(bytes.slice()); }
+        });
+        const b = M.registerTarget({
+            id: "tty0", pageId: "page-teletype", unit: 0,
+            send: function (bytes) { sentB.push(bytes.slice()); }
+        });
+
+        assert.strictEqual(M.findTarget("page-teletype"), b,
+            "a page resolves to its own target");
+        assert.strictEqual(M.findTarget("page-config"), null,
+            "a page without a terminal has no target");
+        assert.strictEqual(M.sendToActive([13]), false,
+            "there is nothing to send to before a terminal is active");
+
+        M.setActive(a);
+        assert.strictEqual(M.getActiveTarget(), a, "the active target is kept");
+        assert.strictEqual(M.sendToActive([13]), true, "the bytes are delivered");
+        assert.deepStrictEqual(plain(sentA), [[13]], "…to the active terminal");
+        assert.deepStrictEqual(plain(sentB), [], "…and to no one else");
+
+        a.destroy();
+        assert.strictEqual(M.findTarget("page-vt52-console"), null,
+            "a destroyed target is unregistered");
+        assert.strictEqual(M.getActiveTarget(), null,
+            "a destroyed target stops being active");
+        assert.deepStrictEqual(plain(M.findTarget("page-teletype") === b), true,
+            "the other target is untouched");
+    }
+
     // ---- create: harmless no-op without a DOM ---------------------------
     {
         const noop = M.create({ onBytes: function () { } });
@@ -203,6 +284,18 @@ function run() {
         el.dispatch("input", { inputType: "insertText", data: "a" });
         assert.deepStrictEqual(plain(sent[sent.length - 1]), [97],
             "insertText 'a' -> 0x61");
+
+        // With the latch on (the bar's CTRL key), one typed character is sent as
+        // its control code — and the latch clears with it.
+        Md.setCtrlLatch(true);
+        el.dispatch("input", { inputType: "insertText", data: "c" });
+        assert.deepStrictEqual(plain(sent[sent.length - 1]), [3],
+            "a latched 'c' reaches the terminal as 0x03");
+        assert.strictEqual(Md.isCtrlLatched(), false,
+            "the character consumed the latch");
+        el.dispatch("input", { inputType: "insertText", data: "c" });
+        assert.deepStrictEqual(plain(sent[sent.length - 1]), [99],
+            "the next 'c' is an ordinary letter again");
 
         bridge.destroy();
     }

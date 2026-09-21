@@ -28,6 +28,7 @@ const PDP11_CSS = path.join(__dirname, "..", "css", "pdp11.css");
 const PDP11_HTML = path.join(__dirname, "..", "pdp11.html");
 const PDP11_APP = path.join(__dirname, "..", "src", "pdp11-app.js");
 const MOBILE_INPUT = path.join(__dirname, "..", "src", "mobile-input.js");
+const MOBILE_KEYS = path.join(__dirname, "..", "src", "mobile-keys.js");
 
 // Extract the body of an at-rule by brace balancing, so nested rules cannot
 // corrupt the extraction.
@@ -115,8 +116,49 @@ function run() {
         "the canvas keyboard bridge must be installed from both initVT52Page " +
         "and applyVT52TextMode (found " + canvasBridgeRefs + " references)");
 
-    // ---- The bridge module exists --------------------------------------
+    // ---- The special-key bar (src/mobile-keys.js) -----------------------
+    // Enter is an IME action on a phone and Ctrl+letter is unreachable, so the
+    // keys a PDP-11 operator needs most are real buttons on the strip.
+    {
+        const keys = fs.readFileSync(MOBILE_KEYS, "utf8");
+        const inputAt = html.indexOf("src='src/mobile-input.js'");
+        const keysAt = html.indexOf("src='src/mobile-keys.js'");
+        assert.ok(keysAt !== -1, "pdp11.html must load src/mobile-keys.js");
+        assert.ok(inputAt !== -1 && inputAt < keysAt,
+            "mobile-keys.js must load after mobile-input.js (it uses the registry)");
+        assert.ok(keysAt < html.indexOf("src='src/pdp11-app.js'"),
+            "mobile-keys.js must load before pdp11-app.js (the app installs the bar)");
+
+        // The bytes a phone cannot otherwise produce: CR, ESC, TAB, BS, RUBOUT
+        // and the control codes the guests ask for.
+        ["[13]", "[27]", "[9]", "[8]", "[127]", "[3]", "[4]", "[26]"].forEach(function (b) {
+            assert.ok(keys.indexOf(b) !== -1, "the bar must offer the key byte " + b);
+        });
+        assert.ok(keys.indexOf("MobileInput.setCtrlLatch") !== -1,
+            "CTRL must latch through MobileInput");
+        assert.ok(keys.indexOf("MobileInput.findTarget") !== -1,
+            "the bar must route its keys to the terminal on screen");
+        assert.ok(keys.indexOf("MobileInput.isCoarse()") !== -1,
+            "the bar must exist only on a touch device");
+
+        // The app builds it and registers a target per page, so ONE bar serves
+        // every terminal — console, user terminal, text or canvas mode, teletype.
+        assert.ok(app.indexOf("MobileKeys.install()") !== -1,
+            "pdp11-app.js must install the special-key bar");
+        assert.ok(app.indexOf("MobileInput.registerTarget(") !== -1,
+            "pdp11-app.js must register the terminals as input targets");
+
+        // CSS: the strip is off by default, docked through the body class, and
+        // it moves the navigation bar and the floating controls out of its way.
+        assert.ok(css.indexOf("body.mobile-keys-on .mobile-keys") !== -1,
+            "css/pdp11.css must dock the bar through body.mobile-keys-on");
+        assert.ok(/body\.mobile-keys-on\s+\.app-sidebar\s*\{[^}]*margin-bottom/.test(css),
+            "the navigation bar must be lifted by the strip's height");
+    }
+
+    // ---- The modules exist ---------------------------------------------
     assert.ok(fs.existsSync(MOBILE_INPUT), "src/mobile-input.js must exist");
+    assert.ok(fs.existsSync(MOBILE_KEYS), "src/mobile-keys.js must exist");
 
     console.log("mobile-css.test.js: all tests passed");
 }

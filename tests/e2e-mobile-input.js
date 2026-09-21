@@ -104,13 +104,20 @@ async function ensureServer() {
     throw new Error(`Static server did not start on port ${PORT}`);
 }
 
-async function openPage(browser, cfg) {
+// opts.touch === false opens a plain desktop page (the control for everything
+// the mobile layer must NOT do there); opts.viewport overrides the window size
+// (the phone geometry check).
+async function openPage(browser, cfg, opts) {
     const page = await browser.newPage();
+    const touch = !opts || opts.touch !== false;
     // Touch emulation is exactly what the app detects: MobileInput.isCoarse()
     // answers true from the emulated maxTouchPoints (or pointer: coarse). The
     // viewport stays desktop-sized so the tube is laid out as in the other e2e
     // suites — the responsive layout has its own test (tests/mobile-css.test.js).
-    await page.setViewport({ width: 1400, height: 900, hasTouch: true });
+    const size = (opts && opts.viewport) || { width: 1400, height: 900 };
+    await page.setViewport({
+        width: size.width, height: size.height, hasTouch: touch
+    });
     page.on("pageerror", (e) => pageErrors.push(String(e)));
 
     await page.evaluateOnNewDocument((seed) => {
@@ -174,6 +181,22 @@ async function tapTube(page, spec) {
         state = await readTerminal(page, spec);
     }
     return { point: point, focused: state.bridgeFocused };
+}
+
+// One key of the special-key bar, pressed the way an operator presses it: a
+// real tap, or a real click on a page opened without touch emulation.
+async function clickKey(page, keyId, touch) {
+    const point = await page.evaluate((id) => {
+        const b = document.querySelector('.mobile-key[data-key="' + id + '"]');
+        if (!b) return null;
+        const q = b.getBoundingClientRect();
+        return { x: Math.round(q.x + q.width / 2), y: Math.round(q.y + q.height / 2) };
+    }, keyId);
+    if (!point) return false;
+    if (touch) await page.touchscreen.tap(point.x, point.y);
+    else await page.mouse.click(point.x, point.y);
+    await sleep(250);
+    return true;
 }
 
 // Count what the emulator actually received, per unit, by wrapping the internal
@@ -299,7 +322,82 @@ async function main() {
             flattenForUnit(allBytes, 0).length === 0,
             JSON.stringify(allBytes));
 
-        // ---- 5. re-applying must not multiply the bridges -------------------
+        // ---- 5. the special-key bar -----------------------------------------
+        // Enter and Ctrl+letter are the two things a phone's own keyboard cannot
+        // deliver (an IME action, and a modifier the OS keyboard never sets), so
+        // the bar sends them itself — through the same DL11 path a physical key
+        // takes, and to the terminal whose page is on screen.
+        await showPage(page, CONSOLE.page);
+        const bar = await page.evaluate(() => {
+            const el = document.getElementById("mobile-keys");
+            if (!el) return null;
+            return {
+                keys: Array.prototype.map.call(el.querySelectorAll(".mobile-key"),
+                    (b) => b.getAttribute("data-key")),
+                pageTarget: !!MobileInput.findTarget("page-vt52-console")
+            };
+        });
+        check("the special-key bar is built on a touch device",
+            !!bar && bar.keys.length > 0, JSON.stringify(bar));
+        check("it offers CR, ESC, TAB, BS, RUBOUT and the control codes",
+            !!bar && ["cr", "esc", "tab", "bs", "rub", "ctrl", "c", "d", "z", "s", "q"]
+                .every((id) => bar.keys.indexOf(id) !== -1),
+            bar && JSON.stringify(bar.keys));
+        check("the terminal on screen is registered as the bar's target",
+            !!bar && bar.pageTarget === true, JSON.stringify(bar));
+
+        // The ↵ key, tapped: the CR an IME action used to swallow.
+        await installByteSpy(page);
+        await page.evaluate(() => { window.__kbBytes = []; });
+        const tappedCr = await clickKey(page, "cr", true);
+        const crBytes = await page.evaluate(() => window.__kbBytes);
+        check("the bar's ↵ sends CR to the console's DL11 unit",
+            tappedCr === true && JSON.stringify(flattenForUnit(crBytes, 0)) === "[13]",
+            JSON.stringify(crBytes));
+
+        // ^C on a key of its own, with no keyboard involved at all.
+        await page.evaluate(() => { window.__kbBytes = []; });
+        await clickKey(page, "c");
+        const cBytes = await page.evaluate(() => window.__kbBytes);
+        check("the bar's ^C sends 0x03",
+            JSON.stringify(flattenForUnit(cBytes, 0)) === "[3]",
+            JSON.stringify(cBytes));
+
+        // The CTRL latch: tap CTRL, then type one character on the SYSTEM
+        // keyboard, and that character is sent as its control code.
+        await page.evaluate(() => { window.__kbBytes = []; });
+        await clickKey(page, "ctrl");
+        const latched = await page.evaluate(() => {
+            const btn = document.querySelector('.mobile-key[data-key="ctrl"]');
+            return {
+                latched: MobileInput.isCtrlLatched(),
+                lit: !!btn && btn.classList.contains("active")
+            };
+        });
+        check("CTRL latches and its key lights up",
+            latched.latched === true && latched.lit === true, JSON.stringify(latched));
+        await page.keyboard.type("c");
+        await sleep(300);
+        const afterLatch = await page.evaluate(() => ({
+            bytes: window.__kbBytes,
+            stillLatched: MobileInput.isCtrlLatched()
+        }));
+        check("a latched 'c' is sent as 0x03 and the latch clears",
+            JSON.stringify(flattenForUnit(afterLatch.bytes, 0)) === "[3]" &&
+            afterLatch.stillLatched === false,
+            JSON.stringify(afterLatch));
+
+        // The bar must not take the keyboard away from the terminal.
+        const focusAfterKeys = await page.evaluate(() => {
+            const el = document.activeElement;
+            return el ? { cls: el.className, tag: el.tagName } : null;
+        });
+        check("the bar keeps the keyboard on the terminal",
+            !!focusAfterKeys && focusAfterKeys.tag === "TEXTAREA" &&
+            focusAfterKeys.cls === "mobile-input",
+            JSON.stringify(focusAfterKeys));
+
+        // ---- 6. re-applying must not multiply the bridges -------------------
         const repeats = await page.evaluate((spec) => {
             const count = () => document.querySelectorAll("textarea.mobile-input").length;
             const canvas = document.getElementById(spec.canvas);
@@ -317,7 +415,7 @@ async function main() {
             repeats.before === repeats.after && repeats.sameElement === true,
             JSON.stringify(repeats));
 
-        // ---- 6. control: canvas from the first moment -----------------------
+        // ---- 7. control: canvas from the first moment -----------------------
         const control = await openPage(browser, CFG_CANVAS);
         await showPage(control, CONSOLE.page);
         const controlState = await readTerminal(control, CONSOLE);
@@ -328,6 +426,58 @@ async function main() {
         check("and its tube focuses the bridge on the first tap",
             !!(controlTap && controlTap.focused), JSON.stringify(controlTap && controlTap.focused));
         await control.close();
+
+        // ---- 8. control: a desktop gets none of this ------------------------
+        const desktop = await openPage(browser, CFG_CANVAS, { touch: false });
+        await showPage(desktop, CONSOLE.page);
+        const desktopState = await desktop.evaluate(() => ({
+            coarse: MobileInput.isCoarse(),
+            bar: !!document.getElementById("mobile-keys"),
+            bridges: document.querySelectorAll("textarea.mobile-input").length,
+            bodyClass: document.body.classList.contains("mobile-keys-on")
+        }));
+        check("a fine-pointer device is not treated as touch",
+            desktopState.coarse === false, JSON.stringify(desktopState));
+        check("a desktop gets no special-key bar and no invisible bridge",
+            desktopState.bar === false && desktopState.bridges === 0 &&
+            desktopState.bodyClass === false,
+            JSON.stringify(desktopState));
+        await desktop.close();
+
+        // ---- 9. control: the phone geometry --------------------------------
+        // The strip is part of the bottom stack, so it must sit BELOW the
+        // navigation bar and the floating controls at 390x844 — the one thing a
+        // desktop-sized viewport cannot show.
+        const phone = await openPage(browser, CFG_CANVAS,
+            { viewport: { width: 390, height: 844 } });
+        await showPage(phone, CONSOLE.page);
+        const geom = await phone.evaluate(() => {
+            const bar = document.getElementById("mobile-keys");
+            const sidebar = document.querySelector(".app-sidebar");
+            const zoom = document.getElementById("zoom-btn");
+            const b = bar.getBoundingClientRect();
+            const s = sidebar.getBoundingClientRect();
+            const z = zoom ? zoom.getBoundingClientRect() : null;
+            return {
+                barDisplay: getComputedStyle(bar).display,
+                barHeight: Math.round(b.height),
+                barGapToBottom: Math.round(window.innerHeight - b.bottom),
+                sidebarGap: Math.round(b.top - s.bottom),
+                sidebarRow: getComputedStyle(sidebar).flexDirection,
+                zoomGap: z ? Math.round(b.top - z.bottom) : null
+            };
+        });
+        check("on a phone the strip is docked at the very bottom edge",
+            geom.barDisplay === "flex" && geom.barGapToBottom === 0 && geom.barHeight > 20,
+            JSON.stringify(geom));
+        check("the navigation bar stays above the strip",
+            geom.sidebarRow === "row" && geom.sidebarGap >= 0, JSON.stringify(geom));
+        check("and the floating controls clear it too",
+            geom.zoomGap === null || geom.zoomGap >= 0, JSON.stringify(geom));
+        await phone.screenshot({
+            path: path.join(ARTIFACTS, "e2e-mobile-keys-phone.png"), type: "png"
+        }).catch(() => { });
+        await phone.close();
 
         // ---- page errors ----------------------------------------------------
         check("no page errors", pageErrors.length === 0, pageErrors.slice(0, 3).join(" | "));

@@ -32,7 +32,7 @@ This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It
 | **16 Guest Operating Systems** | Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
 | **Paper Tape Reader** | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape. |
-| **Phones & Tablets** | Touch devices get an on-screen keyboard for every terminal (VT52/VT100 and the Model 33), a compact bottom navigation bar, and Storage/Config tabs that wrap to fit the screen. |
+| **Phones & Tablets** | Touch devices get an on-screen keyboard for every terminal (VT52/VT100 and the Model 33) plus a special-key bar — Enter, ESC, TAB, RUBOUT and the control codes (^C, ^D, ^Z, ^S, ^Q) with a latching CTRL — a compact bottom navigation bar, and Storage/Config tabs that wrap to fit the screen. |
 
 The full walkthrough of every feature lives in
 [`docs/FEATURES.md`](docs/FEATURES.md).

@@ -50,11 +50,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   VT100 tube or the Model 33's printer paper focuses an invisible textarea that
   raises the system keyboard, and the typed bytes reach the machine through the
   same paths as a physical keyboard — the Model 33's CTRL/SHIFT/REPT/BREAK/HERE
-  IS keys stay on its drawn keyboard. Below 768 px the navigation sidebar
-  becomes a compact bar along the bottom edge, the floating controls move clear
-  of it, and the CONFIG/Storage tabs wrap instead of running off the screen. The
-  emulator's state and timing loops are untouched. (`src/mobile-input.js`,
-  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
+  IS keys stay on its drawn keyboard. A **special-key bar** covers what an
+  on-screen keyboard will not give up: CR (its Enter arrives as an IME action, if
+  at all), ESC, TAB, BS, RUBOUT and the control codes ^C/^D/^Z/^S/^Q, with a
+  latching CTRL that sends the next character as its control code (Ctrl+C =
+  0x03, exactly the hardware arithmetic). The bar docks under the navigation bar
+  and types into the terminal whose page is on screen — canvas or text mode, or
+  the Model 33. Below 768 px the navigation sidebar becomes a compact bar along
+  the bottom edge, the floating controls move clear of it, and the
+  CONFIG/Storage tabs wrap instead of running off the screen. The emulator's
+  state and timing loops are untouched. (`src/mobile-input.js`,
+  `src/mobile-keys.js`, `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
   `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)
 
 ### Fixed

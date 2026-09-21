@@ -3189,6 +3189,65 @@ body.no-photo-bg #page-instructions.active {
    the page takes the full width above it (order: 1), and the floating controls
    are pulled clear of the bar. Only presentation changes here — the emulator
    state and timing loops are untouched. */
+
+/* Special-key bar for touch devices (src/mobile-keys.js): the keys the system
+   on-screen keyboard either hides behind an IME action (Enter) or cannot ask for
+   at all (Ctrl+letter, ESC, RUBOUT). The element is only built on a coarse
+   pointer, and body.mobile-keys-on is what moves the rest of the bottom stack
+   out of its way — a narrow desktop window therefore keeps the old layout. */
+.mobile-keys {
+    display: none;
+}
+
+body.mobile-keys-on .mobile-keys {
+    display: flex;
+    position: fixed;
+    /* Clear of the 78px navigation rail; the phone layout spans the full width
+       (see the media query below, which also lifts the rail clear of the bar). */
+    left: 78px;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    /* the floating controls' layer */
+    gap: 4px;
+    padding: 4px 6px;
+    overflow-x: auto;
+    background: linear-gradient(180deg, #2a2722 0%, #1a1815 100%);
+    border-top: 2px solid #4a453a;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.5);
+}
+
+body.mobile-keys-on .mobile-key {
+    flex: 0 0 auto;
+    min-width: 44px;
+    /* a comfortable thumb target */
+    height: 38px;
+    padding: 0 8px;
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    border: 1px solid #5a554a;
+    border-radius: 4px;
+    color: #b8b0a0;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* The latched CTRL key stays lit, so the operator can see that the next
+   character will be sent as a control code. */
+body.mobile-keys-on .mobile-key:active,
+body.mobile-keys-on .mobile-key.active {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    border-color: #c8a860;
+    color: #f0e6c8;
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
 @media (max-width: 768px) {
     .app-layout {
         flex-direction: column;
@@ -3255,6 +3314,26 @@ body.no-photo-bg #page-instructions.active {
     .zoom-btn {
         bottom: 66px;
         right: 56px;
+    }
+
+    /* The special-key bar docks BELOW the navigation bar, so everything
+       bottom-anchored is lifted by its height: 2px border + 4px + 38px key +
+       4px padding = 48px. */
+    body.mobile-keys-on .mobile-keys {
+        left: 0;
+    }
+
+    body.mobile-keys-on .app-sidebar {
+        margin-bottom: 48px;
+    }
+
+    body.mobile-keys-on .mute-btn {
+        bottom: 114px;
+    }
+
+    body.mobile-keys-on .fullscreen-btn,
+    body.mobile-keys-on .zoom-btn {
+        bottom: 114px;
     }
 
     .console-reboot {
