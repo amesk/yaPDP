@@ -64,6 +64,26 @@ var TouchZoom = (function () {
         return clampScale(startScale * (distance / startDistance), max);
     }
 
+    // Where the page has to sit so that the point BETWEEN THE FINGERS stays under
+    // them. With screen = pan + scale * local, the machine point that was under
+    // the starting centroid is local = (centroid0 - pan0) / scale0, and keeping it
+    // under the moving centroid means pan = centroid - scale * local. Growing from
+    // the page's corner instead (the first version) threw the point the operator
+    // was looking at out of view, and he had to zoom back out and pan to find it.
+    function pinchPan(pan0, scale0, centroid0, centroid, scale) {
+        var s0 = (typeof scale0 === "number" && isFinite(scale0) && scale0 > 0) ? scale0 : 1;
+        var p0 = pan0 || {};
+        var c0 = centroid0 || {};
+        var c = centroid || {};
+        var localX = ((isFinite(c0.x) ? c0.x : 0) - (isFinite(p0.x) ? p0.x : 0)) / s0;
+        var localY = ((isFinite(c0.y) ? c0.y : 0) - (isFinite(p0.y) ? p0.y : 0)) / s0;
+        var s = (typeof scale === "number" && isFinite(scale) && scale > 0) ? scale : 1;
+        return {
+            x: (isFinite(c.x) ? c.x : 0) - s * localX,
+            y: (isFinite(c.y) ? c.y : 0) - s * localY
+        };
+    }
+
     // One axis of the pan. The page is scaled about its own top-left corner, so
     // its box grows to size*scale; the pan may only slide inside that box, never
     // past an edge (no empty margin can be dragged into view).
@@ -254,11 +274,10 @@ var TouchZoom = (function () {
         if (gesture.mode === "pinch" && touches.length >= 2) {
             scale = pinchScale(gesture.startScale, gesture.startDistance,
                 touchDistance(touches), MAX_SCALE);
-            var centroid = touchCentroid(touches);
-            pan = {
-                x: gesture.startPan.x + (centroid.x - gesture.startCentroid.x),
-                y: gesture.startPan.y + (centroid.y - gesture.startCentroid.y)
-            };
+            // Anchored on the fingers: the machine point that was between them
+            // stays between them, so a two-finger drag pans and zooms at once.
+            pan = pinchPan(gesture.startPan, gesture.startScale, gesture.startCentroid,
+                touchCentroid(touches), scale);
         } else if (gesture.mode === "pan" && touches.length === 1 && isZoomed(scale)) {
             pan = {
                 x: gesture.startPan.x + (touches[0].clientX - gesture.startCentroid.x),
@@ -371,6 +390,7 @@ var TouchZoom = (function () {
         clampScale: clampScale,
         isZoomed: isZoomed,
         pinchScale: pinchScale,
+        pinchPan: pinchPan,
         clampAxis: clampAxis,
         clampPan: clampPan,
         touchDistance: touchDistance,

@@ -64,7 +64,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **Two fingers zoom and pan the machine pages** (the front panel,
   the Model 33 rig, the VT52/VT100 cabinets, the LP11 and the VT11), which is the
   emulator's own gesture and therefore also works where the browser has no page
-  zoom at all — a home-screen app or a desktop WebView; where the browser does
+  zoom at all — a home-screen app or a desktop WebView. The zoom is anchored
+  BETWEEN THE FINGERS (the detail under them stays under them, so pinching and
+  dragging happen in one movement) rather than growing out of the page's corner;
+  where the browser does
   zoom the page (a tab, the landing page's iframe) the module sees the visual
   viewport move and steps aside, leaving that behaviour alone. The view returns
   to 1:1 when the operator leaves the page. The operator CONTROLS of those pages

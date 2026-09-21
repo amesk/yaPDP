@@ -51,9 +51,9 @@ function touches(a, b) {
 function run() {
     const T = loadModule();
     assert.ok(T, "module should expose TouchZoom");
-    for (const fn of ["install", "reset", "clampScale", "pinchScale", "clampAxis",
-                      "clampPan", "touchDistance", "touchCentroid", "state",
-                      "inverseTransform"]) {
+    for (const fn of ["install", "reset", "clampScale", "pinchScale", "pinchPan",
+                      "clampAxis", "clampPan", "touchDistance", "touchCentroid",
+                      "state", "inverseTransform"]) {
         assert.strictEqual(typeof T[fn], "function", fn + " must be exported");
     }
     assert.strictEqual(T.MAX_SCALE, 4, "the zoom ceiling is part of the contract");
@@ -111,6 +111,40 @@ function run() {
             "a degenerate start distance keeps the scale");
         assert.strictEqual(T.pinchScale(2, 100, NaN), 2,
             "a broken distance keeps the scale");
+    }
+
+    // ---- pinchPan: the zoom is anchored between the fingers ---------------
+    // The fault this covers: growing about the page's corner threw the point the
+    // operator was looking at out of view, so he had to zoom back out and pan to
+    // find it again.
+    {
+        // 1:1 at the corner, pinch open at (100,100): the page has to move so that
+        // the same machine point stays under that spot.
+        assert.deepStrictEqual(plain(T.pinchPan({ x: 0, y: 0 }, 1, { x: 100, y: 100 },
+            { x: 100, y: 100 }, 2)), { x: -100, y: -100 },
+            "a doubled scale at (100,100) puts the origin at -100");
+
+        // The invariant itself: local = (centroid - pan) / scale must not change.
+        const local = (pan, scale, c) => [(c.x - pan.x) / scale, (c.y - pan.y) / scale];
+        const before = local({ x: -50, y: -50 }, 2, { x: 100, y: 100 });
+        const after = local(T.pinchPan({ x: -50, y: -50 }, 2, { x: 100, y: 100 },
+            { x: 100, y: 100 }, 3), 3, { x: 100, y: 100 });
+        assert.deepStrictEqual(plain(after), plain(before),
+            "the machine point under the fingers does not move");
+
+        // A two-finger DRAG (the centroid moves, the spread does not) pans the
+        // page by exactly the distance the fingers travelled.
+        assert.deepStrictEqual(plain(T.pinchPan({ x: 0, y: 0 }, 1, { x: 100, y: 100 },
+            { x: 150, y: 120 }, 1)), { x: 50, y: 20 },
+            "a drag of (+50,+20) moves the page by (+50,+20)");
+
+        // Broken input must not produce a NaN transform.
+        assert.deepStrictEqual(plain(T.pinchPan(null, 0, null, null, 0)),
+            { x: 0, y: 0 }, "nothing sane in, nothing moves");
+        const guarded = plain(T.pinchPan({ x: 0, y: 0 }, 1, { x: 100, y: 100 },
+            { x: 100, y: 100 }, NaN));
+        assert.ok(isFinite(guarded.x) && isFinite(guarded.y),
+            "a broken scale still yields a finite pan");
     }
 
     // ---- pan clamping: the picture may never leave its own box ------------
