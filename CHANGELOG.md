@@ -50,7 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   VT100 tube or the Model 33's printer paper focuses an invisible textarea that
   raises the system keyboard, and the typed bytes reach the machine through the
   same paths as a physical keyboard — the Model 33's CTRL/SHIFT/REPT/BREAK/HERE
-  IS keys stay on its drawn keyboard. A **special-key bar** covers what an
+  IS keys stay on its drawn keyboard. Typing is delivered keystroke by keystroke,
+  including while an Android keyboard composes the word it is about to commit. A
+  **special-key bar** covers what an
   on-screen keyboard will not give up: CR (its Enter arrives as an IME action, if
   at all), ESC, TAB, BS, RUBOUT and the control codes ^C/^D/^Z/^S/^Q, with a
   latching CTRL that sends the next character as its control code (Ctrl+C =

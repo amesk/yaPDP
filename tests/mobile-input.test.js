@@ -164,6 +164,32 @@ function run() {
             "a null event is ignored");
     }
 
+    // ---- composing (IME) input ------------------------------------------
+    // An Android keyboard composes the word in the backing store and commits it
+    // as a whole, so the composed text has to be delivered keystroke by
+    // keystroke — held back, typing was invisible until Enter.
+    {
+        assert.strictEqual(M.isPlainAscii("dir"), true, "plain ASCII is typeable");
+        assert.strictEqual(M.isPlainAscii(""), false, "an empty payload is not");
+        assert.strictEqual(M.isPlainAscii("\u4f60"), false, "a CJK character is not");
+        assert.strictEqual(M.isPlainAscii(null), false, "null is not");
+
+        assert.strictEqual(M.composingDelta("", "d"), "d", "the first character of a composition");
+        assert.strictEqual(M.composingDelta("d", "di"), "i", "the appended character");
+        assert.strictEqual(M.composingDelta("di", "di"), "", "nothing new to send");
+        assert.strictEqual(M.composingDelta("teh", "the"), "",
+            "a rewrite (autocorrect) appends nothing");
+
+        assert.strictEqual(M.pendingComposition("di", ""), "di",
+            "an undelivered composition is sent whole at the commit");
+        assert.strictEqual(M.pendingComposition("di", "d"), "i",
+            "the commit owes only the tail");
+        assert.strictEqual(M.pendingComposition("di", "di"), "",
+            "nothing is sent twice");
+        assert.strictEqual(M.pendingComposition("the", "teh"), "",
+            "a rewritten composition is not duplicated into the operator's line");
+    }
+
     // ---- controlCode / applyCtrlLatch: the Ctrl latch --------------------
     // An on-screen keyboard never sets ctrlKey, so the bar latches CTRL instead
     // and the byte arithmetic must be the one a hardware Ctrl+key performs.
@@ -296,6 +322,46 @@ function run() {
         el.dispatch("input", { inputType: "insertText", data: "c" });
         assert.deepStrictEqual(plain(sent[sent.length - 1]), [99],
             "the next 'c' is an ordinary letter again");
+
+        bridge.destroy();
+    }
+
+    // ---- create: an IME composition is typed through keystroke by keystroke --
+    {
+        const doc = fakeDoc();
+        const sent = [];
+        const bridge = M.create({
+            onBytes: function (bytes) { sent.push(bytes.slice()); },
+            document: doc
+        });
+        const el = doc._el;
+
+        el.dispatch("compositionstart", {});
+        el.value = "d";
+        el.dispatch("input", { isComposing: true, inputType: "insertCompositionText", data: "d" });
+        assert.deepStrictEqual(plain(sent), [[100]],
+            "the first composed character goes out as it is typed");
+
+        el.value = "di";
+        el.dispatch("input", { isComposing: true, inputType: "insertCompositionText", data: "di" });
+        assert.deepStrictEqual(plain(sent), [[100], [105]],
+            "…and so does the next one");
+
+        el.dispatch("compositionend", { data: "di" });
+        assert.deepStrictEqual(plain(sent), [[100], [105]],
+            "the commit sends nothing a second time");
+        assert.strictEqual(el.value, "", "the commit clears the backing store");
+
+        // A non-ASCII composition (a romanised CJK result) waits for the commit:
+        // its characters are not what the operator means.
+        el.dispatch("compositionstart", {});
+        el.value = "\u4f60";
+        el.dispatch("input", { isComposing: true, inputType: "insertCompositionText", data: "\u4f60" });
+        assert.deepStrictEqual(plain(sent), [[100], [105]],
+            "a non-ASCII composition is held back");
+        el.dispatch("compositionend", { data: "\u4f60" });
+        assert.deepStrictEqual(plain(sent[sent.length - 1]), [0x60],
+            "the committed character is sent, masked to 7 bits");
 
         bridge.destroy();
     }

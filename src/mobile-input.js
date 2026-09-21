@@ -20,6 +20,12 @@
  * (Enter, Backspace, Tab, Escape) still come through `keydown` with a proper
  * key name and are handled there.
  *
+ * That keyboard also COMPOSES: the word being typed lives in the backing store
+ * and is committed as a whole at compositionend. The composed characters are
+ * sent as they arrive (see the composing section below), because holding them
+ * back until the commit makes typing invisible on the tube and hands the machine
+ * a whole line at once.
+ *
  * That same IME route is why the OPERATOR keys cannot depend on the system
  * keyboard at all: with enterkeyhint="send" Enter becomes an IME action some
  * keyboards report with no keydown and no input at all, and Ctrl+letter is
@@ -105,6 +111,47 @@ var MobileInput = (function () {
             bytes.push(ch & 0x7F);
         }
         return bytes;
+    }
+
+    // --- Composing (IME) input ----------------------------------------
+    // A virtual keyboard composes a word before committing it, so the text the
+    // operator is typing is not in an `input` event's `data` — it is in the
+    // backing store, and `input` fires with isComposing true. What has already
+    // been delivered is remembered (composedSent), and the difference between it
+    // and the composing text is the new keystroke. Two helpers, so the DOM-free
+    // module can be tested without a composition.
+    //
+    // Only plain ASCII is delivered while composing: a CJK composition builds
+    // its text out of a romanisation ("ni" -> 你), and those letters are not
+    // what the operator means. The committed string is sent at compositionend.
+    function isPlainAscii(text) {
+        if (typeof text !== "string" || !text.length) return false;
+        for (var i = 0; i < text.length; i++) {
+            var c = text.charCodeAt(i);
+            if (c < 0x20 || c > 0x7E) return false;
+        }
+        return true;
+    }
+
+    // The characters appended to a composition since the last delivery. A
+    // rewrite (the IME replacing what it had composed) appends nothing.
+    function composingDelta(previous, next) {
+        previous = (typeof previous === "string") ? previous : "";
+        next = (typeof next === "string") ? next : "";
+        if (!next) return "";
+        if (next.indexOf(previous) === 0) return next.slice(previous.length);
+        return "";
+    }
+
+    // What the commit still owes the machine: the tail the composing path did
+    // not deliver (the result of a romanised composition, for instance). A
+    // rewrite yields nothing — the earlier text is already in the machine, and
+    // sending a replacement would only duplicate it in the operator's line.
+    function pendingComposition(text, sent) {
+        text = (typeof text === "string") ? text : "";
+        sent = (typeof sent === "string") ? sent : "";
+        if (!sent) return text;
+        return text.indexOf(sent) === 0 ? text.slice(sent.length) : "";
     }
 
     // --- The Ctrl latch -----------------------------------------------
@@ -257,10 +304,13 @@ var MobileInput = (function () {
             "caret-color:transparent", "z-index:-1"
         ].join(";");
 
-        // True between compositionstart and compositionend. Mid-composition
-        // input events carry partial text, so they are held back and only the
-        // final string is sent once.
+        // True between compositionstart and compositionend, together with the
+        // part of the composition already delivered (see sendComposing). An IME
+        // composes the word in the backing store and commits it as a whole, so
+        // the composed text is delivered keystroke by keystroke rather than held
+        // back — holding it back is what made typing invisible.
         var composing = false;
+        var composedSent = "";
 
         // Enter reaches us through three different paths depending on the
         // on-screen keyboard: keydown (key === "Enter"), and beforeinput/input
@@ -293,20 +343,34 @@ var MobileInput = (function () {
             return type === "insertLineBreak" || type === "insertParagraph";
         }
 
+        // One input event from inside a composition: deliver the appended
+        // characters one at a time, exactly like plain keystrokes. The backing
+        // store is left alone — the IME still owns it until the commit.
+        function sendComposing() {
+            var delta = composingDelta(composedSent, ta.value);
+            if (!delta || !isPlainAscii(delta)) return;
+            composedSent += delta;
+            send(bytesFor(delta));
+        }
+
         // beforeinput fires ahead of the DOM change, so Enter handled here can
         // be cancelled before a newline ever lands in the backing store. Some
         // IMEs (notably Android at enterkeyhint="send") report the action only
         // this way, with no keydown at all.
         function onBeforeInput(e) {
-            if (composing) return;
             var type = (e && e.inputType) || "";
             if (!isLineBreak(type)) return;
+            // The action key commits the composition and starts a new line in one
+            // press: the CR belongs to the machine even though a composition was
+            // open, and the composed text itself has already been delivered
+            // character by character.
             if (typeof e.preventDefault === "function") e.preventDefault();
             sendEnter();
         }
 
         function onInput(e) {
-            if (composing || (e && e.isComposing)) return;
+            if (e && e.isComposing) { sendComposing(); return; }
+            if (composing) return;
             var type = (e && e.inputType) || "";
             // Enter as a line break: send CR whether or not the event carries
             // text — some keyboards report this with an empty `data`.
@@ -349,15 +413,22 @@ var MobileInput = (function () {
             send(bytes);
         }
 
-        function onCompositionStart() { composing = true; }
+        function onCompositionStart() {
+            composing = true;
+            composedSent = "";
+        }
+
         function onCompositionEnd(e) {
             composing = false;
             var data = (e && typeof e.data === "string" && e.data.length)
                 ? e.data
                 : ta.value;
-            var bytes = bytesFor(data);
+            // Only what the composing path has not delivered: its plain-ASCII
+            // part went out keystroke by keystroke.
+            var pending = pendingComposition(data, composedSent);
+            composedSent = "";
             ta.value = "";
-            send(bytes);
+            send(bytesFor(pending));
         }
 
         // The keyboard is up on THIS terminal: the bar's keys must land here.
@@ -395,6 +466,9 @@ var MobileInput = (function () {
         translateInputData: translateInputData,
         controlCode: controlCode,
         applyCtrlLatch: applyCtrlLatch,
+        isPlainAscii: isPlainAscii,
+        composingDelta: composingDelta,
+        pendingComposition: pendingComposition,
         setCtrlLatch: setCtrlLatch,
         isCtrlLatched: isCtrlLatched,
         onLatchChange: onLatchChange,
