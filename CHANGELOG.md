@@ -45,6 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never does). The gesture names its own terminal, so a double click on TT1 does
   not zoom the console. (`src/pdp11-app.js`, `src/vt52zoom.js`)
 
+- **The emulator now works on phones and tablets.** A touch device has no
+  physical keyboard, so every terminal gains an on-screen one: tapping a VT52/
+  VT100 tube or the Model 33's printer paper focuses an invisible textarea that
+  raises the system keyboard, and the typed bytes reach the machine through the
+  same paths as a physical keyboard — the Model 33's CTRL/SHIFT/REPT/BREAK/HERE
+  IS keys stay on its drawn keyboard. Below 768 px the navigation sidebar
+  becomes a compact bar along the bottom edge, the floating controls move clear
+  of it, and the CONFIG/Storage tabs wrap instead of running off the screen. The
+  emulator's state and timing loops are untouched. (`src/mobile-input.js`,
+  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`)
+
 ### Fixed
 
 - **The cursor no longer lags half a second behind the text.** Moving the cursor
