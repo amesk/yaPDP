@@ -51,8 +51,32 @@ var MobileKeys = (function () {
         { id: "q", label: "^Q", bytes: [17], title: "Control-Q \u2014 X-ON (0x11)" }
     ];
 
+    // The pages the bar belongs to. It exists for the terminals that have NO
+    // keyboard of their own drawn on the glass — the VT52 and the VT100. The
+    // Model 33 ASR carries a full set of keycaps (CTRL/SHIFT/REPT/BREAK/HERE IS
+    // on the punch keyboard, the rest on the printed one), and the Panel, Printer
+    // and Config pages have nothing to type into, so there the bar stays hidden.
+    var TERMINAL_PAGES = ["vt52-console", "vt52", "vt52-2"];
+
     var bar = null;
     var doc = null;
+
+    function showsOn(page) {
+        return TERMINAL_PAGES.indexOf(String(page)) !== -1;
+    }
+
+    function currentPage(d) {
+        var active = (d || doc).querySelector(".page.active");
+        if (!active || !active.id) return "";
+        return active.id.replace(/^page-/, "");
+    }
+
+    // The app announces every page change (yapdp:pagechange, see switchPage in
+    // src/pdp11-panel.js); the bar only follows it, so no page coupling here.
+    function setPage(page) {
+        if (!bar) return;
+        bar.classList.toggle("hidden", !showsOn(page));
+    }
 
     // The terminal the bar types into: the one on screen, falling back to the
     // one whose keyboard was raised last. Page first, because switching from a
@@ -138,6 +162,11 @@ var MobileKeys = (function () {
 
         MobileInput.onLatchChange(renderLatch);
         renderLatch(MobileInput.isCtrlLatched());
+        // Hidden until the active page says it belongs there.
+        setPage(currentPage(d));
+        d.addEventListener("yapdp:pagechange", function (ev) {
+            setPage(ev && ev.detail ? ev.detail.page : "");
+        });
         return bar;
     }
 
@@ -150,7 +179,10 @@ var MobileKeys = (function () {
 
     return {
         KEYS: KEYS,
+        TERMINAL_PAGES: TERMINAL_PAGES,
         install: install,
+        setPage: setPage,
+        showsOn: showsOn,
         destroy: destroy,
         press: press,
         resolveTarget: resolveTarget,
