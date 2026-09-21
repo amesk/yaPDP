@@ -137,13 +137,51 @@ var MobileInput = (function () {
         // final string is sent once.
         var composing = false;
 
+        // Enter reaches us through three different paths depending on the
+        // on-screen keyboard: keydown (key === "Enter"), and beforeinput/input
+        // with inputType "insertLineBreak" or "insertParagraph". A single press
+        // may fire more than one of them, so CR goes through sendEnter(), which
+        // collapses such a burst into one carriage return.
+        var ENTER_DEDUPE_MS = 60;
+        var lastEnterAt = 0;
+
         function send(bytes) {
             if (bytes && bytes.length) onBytes(bytes);
+        }
+
+        function sendEnter() {
+            var now = Date.now();
+            if (now - lastEnterAt < ENTER_DEDUPE_MS) return;
+            lastEnterAt = now;
+            ta.value = "";
+            send([13]);
+        }
+
+        function isLineBreak(type) {
+            return type === "insertLineBreak" || type === "insertParagraph";
+        }
+
+        // beforeinput fires ahead of the DOM change, so Enter handled here can
+        // be cancelled before a newline ever lands in the backing store. Some
+        // IMEs (notably Android at enterkeyhint="send") report the action only
+        // this way, with no keydown at all.
+        function onBeforeInput(e) {
+            if (composing) return;
+            var type = (e && e.inputType) || "";
+            if (!isLineBreak(type)) return;
+            if (typeof e.preventDefault === "function") e.preventDefault();
+            sendEnter();
         }
 
         function onInput(e) {
             if (composing || (e && e.isComposing)) return;
             var type = (e && e.inputType) || "";
+            // Enter as a line break: send CR whether or not the event carries
+            // text — some keyboards report this with an empty `data`.
+            if (isLineBreak(type)) {
+                sendEnter();
+                return;
+            }
             // Only character insertions. Deletions (Backspace) arrive via
             // keydown; the textarea stays empty, so there is nothing to delete
             // and no delete input to misread.
@@ -151,7 +189,11 @@ var MobileInput = (function () {
                 ta.value = "";
                 return;
             }
-            var data = (e && typeof e.data === "string") ? e.data : ta.value;
+            // Prefer the event's own data, but never treat an empty string as
+            // the payload: fall back to the (just changed) backing store.
+            var data = (e && typeof e.data === "string" && e.data.length)
+                ? e.data
+                : ta.value;
             var bytes = translateInputData(data);
             // Keep the backing store empty: the next keystroke is then a clean
             // single-character insert and native undo/autocorrect never
@@ -165,18 +207,28 @@ var MobileInput = (function () {
             var bytes = translateKeydown(e);
             if (!bytes) return;
             if (typeof e.preventDefault === "function") e.preventDefault();
+            // Enter may also arrive as an input insertLineBreak afterwards; the
+            // dedupe in sendEnter() keeps that from sending a second CR.
+            if (bytes.length === 1 && bytes[0] === 13) {
+                sendEnter();
+                return;
+            }
+            ta.value = "";
             send(bytes);
         }
 
         function onCompositionStart() { composing = true; }
         function onCompositionEnd(e) {
             composing = false;
-            var data = (e && typeof e.data === "string") ? e.data : ta.value;
+            var data = (e && typeof e.data === "string" && e.data.length)
+                ? e.data
+                : ta.value;
             var bytes = translateInputData(data);
             ta.value = "";
             send(bytes);
         }
 
+        ta.addEventListener("beforeinput", onBeforeInput);
         ta.addEventListener("input", onInput);
         ta.addEventListener("keydown", onKeydown);
         ta.addEventListener("compositionstart", onCompositionStart);
@@ -188,6 +240,7 @@ var MobileInput = (function () {
             focus: function () { try { ta.focus(); } catch (err) { /* ignore */ } },
             blur: function () { try { ta.blur(); } catch (err) { /* ignore */ } },
             destroy: function () {
+                ta.removeEventListener("beforeinput", onBeforeInput);
                 ta.removeEventListener("input", onInput);
                 ta.removeEventListener("keydown", onKeydown);
                 ta.removeEventListener("compositionstart", onCompositionStart);
