@@ -73,9 +73,43 @@ var MobileKeys = (function () {
 
     // The app announces every page change (yapdp:pagechange, see switchPage in
     // src/pdp11-panel.js); the bar only follows it, so no page coupling here.
+    //
+    // The <body> flag says the same thing to the stylesheet, because the bottom
+    // stack is laid out from it: with the bar gone the navigation bar drops to
+    // the bottom edge and the floating buttons above it follow (see the
+    // --bottom-stack rules in css/pdp11.css).
     function setPage(page) {
         if (!bar) return;
-        bar.classList.toggle("hidden", !showsOn(page));
+        var off = !showsOn(page);
+        bar.classList.toggle("hidden", off);
+        if (doc && doc.body) doc.body.classList.toggle("mobile-keys-off", off);
+        publishMetrics();
+    }
+
+    // The bottom stack (the navigation bar plus this bar) and the window edge are
+    // MEASURED here and published as variables, because the flow layout and a
+    // FIXED element do not always agree on where the bottom of the window is: a
+    // phone's 100vh is the LARGE viewport (URL bar hidden) while a fixed element
+    // anchors to the CURRENT one. In a 390x844 emulation the column stopped at 844
+    // while innerHeight was 870 — a 26px dead band under the navigation bar, with
+    // the round floating buttons half-way onto it. The stylesheet lays the column
+    // and the buttons out from these numbers, so there is one source of truth.
+    function publishMetrics() {
+        if (!doc || !doc.body) return;
+        var viewport = (typeof window !== "undefined" && window.innerHeight) || 0;
+        if (!viewport) return;
+        doc.body.style.setProperty("--app-h", Math.round(viewport) + "px");
+        var tops = [];
+        [doc.querySelector(".app-sidebar"), bar].forEach(function (el) {
+            if (!el) return;
+            var cs = (typeof getComputedStyle === "function") ? getComputedStyle(el) : null;
+            if (cs && cs.display === "none") return;
+            tops.push(el.getBoundingClientRect().top);
+        });
+        if (!tops.length) return;
+        var stackTop = Math.min.apply(null, tops);
+        doc.body.style.setProperty("--bottom-stack-h",
+            Math.max(0, Math.round(viewport - stackTop)) + "px");
     }
 
     // The terminal the bar types into: the one on screen, falling back to the
@@ -162,18 +196,32 @@ var MobileKeys = (function () {
 
         MobileInput.onLatchChange(renderLatch);
         renderLatch(MobileInput.isCtrlLatched());
-        // Hidden until the active page says it belongs there.
+        // Hidden until the active page says it belongs there (setPage also
+        // publishes the measurements).
         setPage(currentPage(d));
         d.addEventListener("yapdp:pagechange", function (ev) {
             setPage(ev && ev.detail ? ev.detail.page : "");
         });
+        // The measurements are of laid-out boxes: re-take them whenever the window
+        // (or the visual viewport, which a phone moves under the URL bar) changes.
+        var win = d.defaultView;
+        if (win && typeof win.addEventListener === "function") {
+            win.addEventListener("resize", publishMetrics);
+            win.addEventListener("orientationchange", publishMetrics);
+            if (win.visualViewport && typeof win.visualViewport.addEventListener === "function") {
+                win.visualViewport.addEventListener("resize", publishMetrics);
+            }
+        }
         return bar;
     }
 
     function destroy() {
         if (!bar) return;
         if (bar.parentNode) bar.parentNode.removeChild(bar);
-        if (doc && doc.body) doc.body.classList.remove("mobile-keys-on");
+        if (doc && doc.body) {
+            doc.body.classList.remove("mobile-keys-on");
+            doc.body.classList.remove("mobile-keys-off");
+        }
         bar = null;
     }
 
@@ -183,6 +231,7 @@ var MobileKeys = (function () {
         install: install,
         setPage: setPage,
         showsOn: showsOn,
+        publishMetrics: publishMetrics,
         destroy: destroy,
         press: press,
         resolveTarget: resolveTarget,
