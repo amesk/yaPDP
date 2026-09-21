@@ -183,6 +183,25 @@ function run() {
         assert.ok(/publishMetrics/.test(keys),
             "the module must publish those measurements");
 
+        // …and the stack rules must live OUTSIDE the narrow-screen media query.
+        // The bar follows the POINTER, the layout follows the WIDTH: a phone in
+        // landscape is 844px wide, so it keeps the bar but leaves the media
+        // query, and the buttons fall back to their desktop offsets — right
+        // inside the bar's band (measured on a 844x390 emulation).
+        const wide = css.slice(0, css.indexOf("@media (max-width: 768px)"));
+        assert.ok(wide.length > 0, "css/pdp11.css must keep a narrow-screen media query");
+        assert.ok(/body\.mobile-keys-on\s+\.mute-btn[\s\S]*?bottom:\s*calc\(var\(--bottom-stack-h\)/
+            .test(wide),
+            "the floating buttons must be lifted at EVERY width, not only on a narrow screen");
+        assert.ok(/body\.mobile-keys-on\s*\{[^}]*--bottom-stack-h/.test(wide),
+            "the bar's own height must be the fallback stack at every width");
+
+        // The measurement must not take the landscape navigation rail (a
+        // full-height column whose top is 0) for a bottom bar: that would report
+        // a stack as tall as the window and push the buttons off the screen.
+        assert.ok(/top\s*<\s*viewport\s*\*/.test(keys),
+            "mobile-keys.js must count only what sits in the bottom half");
+
         // The app builds it and registers a target per page, so ONE bar serves
         // every terminal — console, user terminal, text or canvas mode, teletype.
         assert.ok(app.indexOf("MobileKeys.install()") !== -1,

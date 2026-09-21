@@ -82,13 +82,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page declares a **mobile
   viewport** (`width=device-width`, with pinch-zoom left enabled): without it a
   phone laid the emulator out at the browser's ~980 px desktop fallback, where
-  the media block below never matched and the page could not be zoomed. Below
-  768 px the navigation sidebar becomes a compact bar along the bottom edge, the
-  floating controls are lifted clear of it by its MEASURED height — the navigation
-  bar, the special-key bar and the window height are measured rather than assumed,
-  because a phone's `100vh` and the visual viewport a fixed element anchors to are
-  not the same edge — and the CONFIG/Storage tabs wrap instead of running off the
-  screen. The emulator's state and timing loops are untouched.
+  the media block below never matched and the page could not be zoomed. The
+  layout is driven by the POINTER, not by the width: the bar belongs to a coarse
+  pointer, so it is there in landscape too (844 px wide, where the width-based
+  block no longer applies) and everything anchored to the bottom edge is lifted
+  by the MEASURED stack height at every width. The navigation bar, the
+  special-key bar and the window height are measured rather than assumed, because
+  a phone's `100vh` and the visual viewport a fixed element anchors to are not the
+  same edge, and the measurement counts only what sits in the bottom half — in
+  landscape the navigation is a rail down the left edge, which is not a bottom
+  bar. Below 768 px the navigation sidebar becomes a compact bar along the bottom
+  edge and the CONFIG/Storage tabs wrap instead of running off the screen. The
+  emulator's state and timing loops are untouched.
   (`src/mobile-input.js`, `src/mobile-keys.js`, `src/touchzoom.js`,
   `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
   `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)

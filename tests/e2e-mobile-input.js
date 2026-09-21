@@ -678,6 +678,36 @@ async function main() {
         await phoneFrame.screenshot({
             path: path.join(ARTIFACTS, "e2e-mobile-keys-phone-frame.png"), type: "png"
         }).catch(() => { });
+
+        // The same stack with the phone turned SIDEWAYS. Landscape is 844px wide,
+        // so the narrow-screen media query above stops applying — but the bar
+        // follows the POINTER and stays. Two things used to go wrong here: the
+        // round buttons fell back to their desktop offsets and landed inside the
+        // bar's band, and the measured stack counted the landscape rail (top 0)
+        // as a bottom bar, which would have pushed them off the screen entirely.
+        await showPage(phoneFrame, CONSOLE.page);
+        await phoneFrame.setViewport({ width: 844, height: 390, hasTouch: true, isMobile: true });
+        await sleep(800);
+        const landscape = await bottomStack();
+        const landscapeVar = await phoneFrame.evaluate(() => ({
+            stack: getComputedStyle(document.body).getPropertyValue("--bottom-stack-h").trim(),
+            sidebarColumn: getComputedStyle(document.querySelector(".app-sidebar")).flexDirection
+        }));
+        check("in landscape the key bar is still there (it follows the pointer, not the width)",
+            !!landscape.keys && landscape.keys.hidden !== true, JSON.stringify(landscape));
+        check("and the navigation goes back to a left rail",
+            landscapeVar.sidebarColumn === "column", JSON.stringify(landscapeVar));
+        check("the measured stack is the key bar, not the landscape rail",
+            parseInt(landscapeVar.stack, 10) >= 20 && parseInt(landscapeVar.stack, 10) <= 90,
+            `${landscapeVar.stack} (otherwise the buttons leave the screen)`);
+        check("so the round buttons clear the key bar in landscape too",
+            landscape.buttons.length > 0 &&
+            landscape.buttons.every((b) => b.bottom <= landscape.keys.top - 6),
+            JSON.stringify({ keys: landscape.keys, buttons: landscape.buttons }));
+
+        await phoneFrame.screenshot({
+            path: path.join(ARTIFACTS, "e2e-mobile-keys-landscape.png"), type: "png"
+        }).catch(() => { });
         await phoneFrame.close();
 
         // ---- 11. two-finger zoom & pan (a standalone context) ---------------
