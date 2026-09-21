@@ -70,6 +70,7 @@ const ORDER = [
     "nav-tooltip.test.js",
     "panel-led.test.js",
     "screenshots-os-config.test.js",
+    "tape-archive.test.js",
 ];
 
 function allTestFiles() {
