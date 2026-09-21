@@ -835,13 +835,26 @@ var g60Keyboard = (function () {
   // keyboard, since an on-screen keyboard cannot latch them.
   function installMobileKeyboard() {
     if (typeof MobileInput === 'undefined' || !MobileInput.isCoarse()) return;
-    var bridge = MobileInput.create({
-      onBytes: function (bytes) {
-        var fold = upperOnly();
-        for (var i = 0; i < bytes.length; i++) {
-          sendDL([model33UpperOnly(bytes[i], fold)]);
-        }
+    // Every byte from the system keyboard or from the special-key bar takes the
+    // same path as a physical keystroke, honouring Upper-Case-Only.
+    function typeBytes(bytes) {
+      var fold = upperOnly();
+      for (var i = 0; i < bytes.length; i++) {
+        sendDL([model33UpperOnly(bytes[i], fold)]);
       }
+    }
+    // The target the special-key bar types into while the teletype page is on
+    // screen (src/mobile-keys.js).
+    var paperTarget = MobileInput.registerTarget({
+      id: 'tty0',
+      pageId: 'page-teletype',
+      unit: 0,
+      send: typeBytes,
+      focus: function () { bridge.focus(); }
+    });
+    var bridge = MobileInput.create({
+      onBytes: typeBytes,
+      onActivate: function () { MobileInput.setActive(paperTarget); }
     });
     var paper = document.getElementById('g60printer') || document.getElementById('punchkeypane');
     if (paper) {
@@ -1028,9 +1041,14 @@ function rigIsVt100(rig) {
   return rigDialect(rig) === 'vt100';
 }
 
+// unit -> the page that terminal lives on, filled by initVT52Page(). The live
+// CONFIG switch walks the TERMINALS (units) and the special-key bar routes its
+// keys by PAGE, so the mapping cannot belong to either of them.
+var VT52_PAGE_BY_UNIT = {};
+
 /**
- * installCanvasMobileKeyboard(unit, canvas) — give a canvas-mode terminal the
- * on-screen keyboard a touch device does not have.
+ * installCanvasMobileKeyboard(unit, canvas, pageId) — give a canvas-mode
+ * terminal the on-screen keyboard a touch device does not have.
  *
  * The bridge is an invisible textarea that never covers the CRT: tapping the
  * tube focuses it, and a real tap is what raises the system keyboard. The typed
@@ -1044,11 +1062,18 @@ function rigIsVt100(rig) {
  * tapping the tube raised no keyboard. Idempotent — the bridge is parked on the
  * canvas element, so a repeated call (every Apply) adds no second listener.
  */
-function installCanvasMobileKeyboard(unit, canvas) {
+function installCanvasMobileKeyboard(unit, canvas, pageId) {
   if (typeof MobileInput === 'undefined' || !MobileInput.isCoarse()) return;
   if (!canvas || canvas.__yapdpMobileBridge) return;
   var bridge = MobileInput.create({
-    onBytes: function (bytes) { bridgeSendToUnit(unit, bytes); }
+    onBytes: function (bytes) { bridgeSendToUnit(unit, bytes); },
+    // The keyboard is now up on THIS terminal, so the special-key bar
+    // (src/mobile-keys.js) must type into it rather than into whatever was
+    // focused last.
+    onActivate: function () {
+      var target = MobileInput.findTarget(pageId);
+      if (target) MobileInput.setActive(target);
+    }
   });
   var tapTarget = canvas.parentElement || canvas;
   tapTarget.addEventListener('click', function () { bridge.focus(); });
@@ -1061,6 +1086,10 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
 
   var canvas = document.getElementById(canvasId);
   if (!canvas) return;
+
+  // Remember which page this terminal is on: the special-key bar routes its keys
+  // by page, and applyVT52TextMode() walks units without knowing the pages.
+  VT52_PAGE_BY_UNIT[unit] = pageId;
 
   // State the rig's dialect ONCE, then derive everything from it. The page
   // markup used to hard-code data-artwork on the console rig alone, so TT1/TT2
@@ -1094,6 +1123,26 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   textarea.setAttribute('spellcheck', 'false');
   textarea.style.display = textMode ? 'block' : 'none';
   (crt || document.body).appendChild(textarea);
+
+  // Input target for the special-key bar (src/mobile-keys.js): one per page,
+  // whichever rendering path this terminal is in. In text mode the visible
+  // textarea holds the keyboard, in canvas mode the invisible bridge does —
+  // focus() picks the live one, and the bytes take the physical path either way.
+  var pageTarget = (typeof MobileInput !== 'undefined') ? MobileInput.registerTarget({
+    id: 'vt52:' + unit,
+    pageId: pageId,
+    unit: unit,
+    send: function (bytes) { bridgeSendToUnit(unit, bytes); },
+    focus: function () {
+      var t = (typeof window.vt52Get === 'function') ? window.vt52Get(unit) : null;
+      if (t && !t.allowCanvas) { textarea.focus(); return; }
+      var b = canvas.__yapdpMobileBridge;
+      if (b) b.focus();
+    }
+  }) : null;
+  textarea.addEventListener('focus', function () {
+    if (pageTarget) MobileInput.setActive(pageTarget);
+  });
 
   // The cabinet is the artwork (assets/vt52.svg in .vt52-backdrop): the page
   // no longer builds a CSS shell around the tube, so .vt52-crt sits inside
@@ -1210,7 +1259,7 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
       // system keyboard through the shared bridge (see
       // installCanvasMobileKeyboard — applyVT52TextMode(false) installs the
       // same one when the CONFIG switch turns text mode off).
-      installCanvasMobileKeyboard(unit, canvas);
+      installCanvasMobileKeyboard(unit, canvas, pageId);
     }
   }
 
@@ -1729,7 +1778,7 @@ function applyVT52TextMode(enabled) {
       // keyboard bridge here too, because a terminal that STARTED in text mode
       // never ran initVT52Page's canvas branch. No-op for every other terminal
       // (and for a desktop) — see the guard inside the helper.
-      installCanvasMobileKeyboard(u, canvas);
+      installCanvasMobileKeyboard(u, canvas, VT52_PAGE_BY_UNIT[u]);
     }
     // Redraw the whole screen in the newly active rendering path.
     if (typeof t.render === 'function') t.render(true);
@@ -4019,6 +4068,12 @@ applyTerminalPhosphor(__appCfg && __appCfg.vt100Phosphor);
 // Apply the configured VT52 text mode to the live terminals (idempotent with
 // the mode chosen inside initVT52Page, but also covers late-created ones).
 applyVT52TextMode(__appCfg && __appCfg.vt52TextMode);
+
+// The touch devices' special-key bar: Enter (which the system keyboard reports
+// as an IME action, if at all), ESC, TAB, RUBOUT and the control codes a guest
+// like RT-11 asks for. Built only on a coarse pointer (see src/mobile-keys.js);
+// its keys are routed to the terminal whose page is on screen.
+if (typeof MobileKeys !== 'undefined') MobileKeys.install();
 
 // Apply the configured CRT-effects mode (pure-CSS flicker/roll simulation).
 applyCRTEffects(__appCfg && __appCfg.crtEffects);

@@ -20,11 +20,23 @@
  * (Enter, Backspace, Tab, Escape) still come through `keydown` with a proper
  * key name and are handled there.
  *
+ * That same IME route is why the OPERATOR keys cannot depend on the system
+ * keyboard at all: with enterkeyhint="send" Enter becomes an IME action some
+ * keyboards report with no keydown and no input at all, and Ctrl+letter is
+ * unreachable — an on-screen keyboard never sets ctrlKey. The special-key bar
+ * (src/mobile-keys.js) therefore sends those bytes itself, and this module
+ * gives it the two pieces it needs:
+ *   • the Ctrl LATCH — press CTRL, then one character on the system keyboard,
+ *     and that character is sent as its control code (Ctrl+C = 0x03), which is
+ *     exactly what a hardware Ctrl+key does;
+ *   • the input TARGET registry — which terminal (console or user terminal,
+ *     canvas or text mode, or the Model 33 teletype) the bar is typing into.
+ *
  * The byte-translation helpers are DOM-free and take their inputs explicitly,
  * so they can be unit-tested in Node (see tests/mobile-input.test.js),
  * mirroring src/pasteutil.js.
  *
- * Must be loaded before pdp11-app.js.
+ * Must be loaded before mobile-keys.js and pdp11-app.js.
  */
 "use strict";
 
@@ -64,7 +76,8 @@ var MobileInput = (function () {
 
         // Ctrl+letter -> control code (Ctrl+A -> 0x01, ...). Rarely reachable
         // from an on-screen keyboard, but a hardware keyboard attached to a
-        // tablet uses this same bridge.
+        // tablet uses this same bridge. The on-screen route is the Ctrl latch
+        // (setCtrlLatch), which needs no ctrlKey at all.
         if (ev.ctrlKey && !ev.altKey && !ev.metaKey && key.length === 1) {
             var c = key.toUpperCase().charCodeAt(0) - 64;
             if (c >= 1 && c <= 31) return [c];
@@ -94,8 +107,118 @@ var MobileInput = (function () {
         return bytes;
     }
 
+    // --- The Ctrl latch -----------------------------------------------
+    // A hardware terminal sends Ctrl+C as 0x03 because Ctrl clears the top
+    // three bits of the key's ASCII value; the same arithmetic is what the
+    // latch applies, so every key behaves as it does on a real keyboard
+    // (Ctrl+[ = ESC, Ctrl+Space = NUL, Ctrl+S = X-OFF). Returns null when the
+    // payload is not ONE printable ASCII character: an empty payload, a pasted
+    // sentence or an IME result has no control code, and the latch stays on.
+    function controlCode(data) {
+        if (typeof data !== "string" || data.length !== 1) return null;
+        var ch = data.charCodeAt(0);
+        if (ch < 0x20 || ch > 0x7E) return null;
+        return ch & 0x1F;
+    }
+
+    // One typing event through the latch. Returns the bytes to send and the
+    // latch's state afterwards — the latch is consumed only by a character it
+    // actually translated, so a stray key does not drop it silently.
+    function applyCtrlLatch(data, latched) {
+        if (latched) {
+            var code = controlCode(data);
+            if (code !== null) return { bytes: [code], latch: false };
+        }
+        return { bytes: translateInputData(data), latch: !!latched };
+    }
+
+    var ctrlLatched = false;
+    var latchListeners = [];
+
+    // Latch on/off. The bar (src/mobile-keys.js) lights its CTRL key, and the
+    // bar must un-light it the moment a character consumes it.
+    function setCtrlLatch(on) {
+        on = !!on;
+        if (on === ctrlLatched) return ctrlLatched;
+        ctrlLatched = on;
+        for (var i = 0; i < latchListeners.length; i++) {
+            try { latchListeners[i](ctrlLatched); } catch (err) { /* ignore */ }
+        }
+        return ctrlLatched;
+    }
+
+    function isCtrlLatched() {
+        return ctrlLatched;
+    }
+
+    function onLatchChange(fn) {
+        if (typeof fn === "function") latchListeners.push(fn);
+    }
+
+    // --- Input targets ------------------------------------------------
+    // Every terminal that accepts on-screen input registers here with the page
+    // it lives on: the VT52 pages (canvas bridge and text-mode textarea share
+    // one target) and the Model 33 teletype. The bar asks which terminal is on
+    // screen, so the same strip of keys serves every one of them.
+    var targets = [];
+    var activeTarget = null;
+
+    // opts: { id, pageId, unit, send(bytes), focus() }. Returns the target,
+    // whose destroy() unregisters it.
+    function registerTarget(opts) {
+        opts = opts || {};
+        var target = {
+            id: opts.id || null,
+            pageId: opts.pageId || null,
+            unit: (typeof opts.unit === "number") ? opts.unit : null,
+            send: (typeof opts.send === "function") ? opts.send : function () { },
+            focus: (typeof opts.focus === "function") ? opts.focus : function () { }
+        };
+        target.destroy = function () {
+            var i = targets.indexOf(target);
+            if (i >= 0) targets.splice(i, 1);
+            if (activeTarget === target) activeTarget = null;
+        };
+        targets.push(target);
+        return target;
+    }
+
+    function setActive(target) {
+        activeTarget = target || null;
+    }
+
+    function getActiveTarget() {
+        return activeTarget;
+    }
+
+    // The target registered for a page — what the bar routes to while that page
+    // is the visible one, so switching pages does not send the console's keys
+    // to a user terminal.
+    function findTarget(pageId) {
+        if (!pageId) return null;
+        for (var i = 0; i < targets.length; i++) {
+            if (targets[i].pageId === pageId) return targets[i];
+        }
+        return null;
+    }
+
+    function sendToActive(bytes) {
+        if (!activeTarget || !bytes || !bytes.length) return false;
+        activeTarget.send(bytes);
+        return true;
+    }
+
+    // Put the keyboard back on the terminal that is being typed into. The bar
+    // calls this after every key: a browser that moved the focus to the button
+    // would otherwise close the system keyboard and eat the next character.
+    function focusActive() {
+        if (!activeTarget) return;
+        try { activeTarget.focus(); } catch (err) { /* ignore */ }
+    }
+
     // --- The invisible backing textarea -------------------------------
-    // opts: { onBytes: function (bytes) {}, document: <Document> }
+    // opts: { onBytes: function (bytes) {}, document: <Document>,
+    //         onActivate: function () {} }
     // Returns { element, focus(), blur(), destroy() }. A missing DOM yields a
     // harmless no-op object, so callers never need to guard.
     function create(opts) {
@@ -118,6 +241,8 @@ var MobileInput = (function () {
         ta.setAttribute("spellcheck", "false");
         ta.setAttribute("inputmode", "text");
         // The Enter key shows a "send"-style action on the on-screen keyboard.
+        // Some keyboards deliver that action as an IME event with no keydown —
+        // the special-key bar's own ↵ key is the reliable route (mobile-keys.js).
         ta.setAttribute("enterkeyhint", "send");
         ta.setAttribute("aria-hidden", "true");
         ta.tabIndex = -1;
@@ -157,6 +282,13 @@ var MobileInput = (function () {
             send([13]);
         }
 
+        // One typed character, through the Ctrl latch when it is on.
+        function bytesFor(data) {
+            var res = applyCtrlLatch(data, ctrlLatched);
+            if (res.latch !== ctrlLatched) setCtrlLatch(res.latch);
+            return res.bytes;
+        }
+
         function isLineBreak(type) {
             return type === "insertLineBreak" || type === "insertParagraph";
         }
@@ -194,7 +326,7 @@ var MobileInput = (function () {
             var data = (e && typeof e.data === "string" && e.data.length)
                 ? e.data
                 : ta.value;
-            var bytes = translateInputData(data);
+            var bytes = bytesFor(data);
             // Keep the backing store empty: the next keystroke is then a clean
             // single-character insert and native undo/autocorrect never
             // accumulates state.
@@ -223,9 +355,14 @@ var MobileInput = (function () {
             var data = (e && typeof e.data === "string" && e.data.length)
                 ? e.data
                 : ta.value;
-            var bytes = translateInputData(data);
+            var bytes = bytesFor(data);
             ta.value = "";
             send(bytes);
+        }
+
+        // The keyboard is up on THIS terminal: the bar's keys must land here.
+        function onFocus() {
+            if (typeof opts.onActivate === "function") opts.onActivate();
         }
 
         ta.addEventListener("beforeinput", onBeforeInput);
@@ -233,6 +370,7 @@ var MobileInput = (function () {
         ta.addEventListener("keydown", onKeydown);
         ta.addEventListener("compositionstart", onCompositionStart);
         ta.addEventListener("compositionend", onCompositionEnd);
+        ta.addEventListener("focus", onFocus);
         doc.body.appendChild(ta);
 
         return {
@@ -245,6 +383,7 @@ var MobileInput = (function () {
                 ta.removeEventListener("keydown", onKeydown);
                 ta.removeEventListener("compositionstart", onCompositionStart);
                 ta.removeEventListener("compositionend", onCompositionEnd);
+                ta.removeEventListener("focus", onFocus);
                 if (ta.parentNode) ta.parentNode.removeChild(ta);
             }
         };
@@ -254,6 +393,17 @@ var MobileInput = (function () {
         isCoarse: isCoarse,
         translateKeydown: translateKeydown,
         translateInputData: translateInputData,
+        controlCode: controlCode,
+        applyCtrlLatch: applyCtrlLatch,
+        setCtrlLatch: setCtrlLatch,
+        isCtrlLatched: isCtrlLatched,
+        onLatchChange: onLatchChange,
+        registerTarget: registerTarget,
+        setActive: setActive,
+        getActiveTarget: getActiveTarget,
+        findTarget: findTarget,
+        sendToActive: sendToActive,
+        focusActive: focusActive,
         create: create
     };
 })();
