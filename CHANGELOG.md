@@ -54,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   becomes a compact bar along the bottom edge, the floating controls move clear
   of it, and the CONFIG/Storage tabs wrap instead of running off the screen. The
   emulator's state and timing loops are untouched. (`src/mobile-input.js`,
-  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`)
+  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
+  `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)
 
 ### Fixed
 
