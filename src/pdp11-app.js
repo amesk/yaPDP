@@ -4075,6 +4075,13 @@ applyVT52TextMode(__appCfg && __appCfg.vt52TextMode);
 // its keys are routed to the terminal whose page is on screen.
 if (typeof MobileKeys !== 'undefined') MobileKeys.install();
 
+// Two-finger zoom/pan for the machine pages. A standalone context — an iOS
+// home-screen web app, a desktop WebView — has no page zoom of its own, so the
+// emulator takes that gesture over; where the browser does zoom (a tab, the
+// landing page's iframe) the module notices and steps aside, leaving the
+// behaviour the browser already gives. Coarse pointers only (src/touchzoom.js).
+if (typeof TouchZoom !== 'undefined') TouchZoom.install();
+
 // Apply the configured CRT-effects mode (pure-CSS flicker/roll simulation).
 applyCRTEffects(__appCfg && __appCfg.crtEffects);
 

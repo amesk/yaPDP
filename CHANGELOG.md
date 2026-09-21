@@ -58,14 +58,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   latching CTRL that sends the next character as its control code (Ctrl+C =
   0x03, exactly the hardware arithmetic). The bar docks under the navigation bar
   and types into the terminal whose page is on screen — canvas or text mode, or
-  the Model 33. The page declares a **mobile viewport** (`width=device-width`,
-  with pinch-zoom left enabled): without it a phone laid the emulator out at the
-  browser's ~980 px desktop fallback, where the media block below never matched
-  and the page could not be zoomed. Below 768 px the navigation sidebar becomes
-  a compact bar along the bottom edge, the floating controls move clear of it,
-  and the CONFIG/Storage tabs wrap instead of running off the screen. The
-  emulator's state and timing loops are untouched. (`src/mobile-input.js`,
-  `src/mobile-keys.js`, `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
+  the Model 33. **Two fingers zoom and pan the machine pages** (the front panel,
+  the Model 33 rig, the VT52/VT100 cabinets, the LP11 and the VT11), which is the
+  emulator's own gesture and therefore also works where the browser has no page
+  zoom at all — a home-screen app or a desktop WebView; where the browser does
+  zoom the page (a tab, the landing page's iframe) the module sees the visual
+  viewport move and steps aside, leaving that behaviour alone. The view returns
+  to 1:1 when the operator leaves the page. The page declares a **mobile
+  viewport** (`width=device-width`, with pinch-zoom left enabled): without it a
+  phone laid the emulator out at the browser's ~980 px desktop fallback, where
+  the media block below never matched and the page could not be zoomed. Below
+  768 px the navigation sidebar becomes a compact bar along the bottom edge, the
+  floating controls move clear of it, and the CONFIG/Storage tabs wrap instead of
+  running off the screen. The emulator's state and timing loops are untouched.
+  (`src/mobile-input.js`, `src/mobile-keys.js`, `src/touchzoom.js`,
+  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
   `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)
 
 ### Fixed

@@ -1732,6 +1732,14 @@ body {
     align-items: center;
 }
 
+/* Touch zoom & pan (src/touchzoom.js). The module keeps the pan inside the
+   page's own box, so the class only has to stop the opened picture from
+   spilling over the navigation bar or painting scrollbars of its own. */
+.page.touch-zoomed {
+    overflow: hidden;
+    will-change: transform;
+}
+
 /* Instructions page — uses block layout + max-width for readability */
 #page-instructions.active {
     display: block;

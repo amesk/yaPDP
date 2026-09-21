@@ -491,13 +491,14 @@ async function main() {
             coarse: MobileInput.isCoarse(),
             bar: !!document.getElementById("mobile-keys"),
             bridges: document.querySelectorAll("textarea.mobile-input").length,
-            bodyClass: document.body.classList.contains("mobile-keys-on")
+            bodyClass: document.body.classList.contains("mobile-keys-on"),
+            gestures: document.body.classList.contains("touch-gestures")
         }));
         check("a fine-pointer device is not treated as touch",
             desktopState.coarse === false, JSON.stringify(desktopState));
-        check("a desktop gets no special-key bar and no invisible bridge",
+        check("a desktop gets no special-key bar, no invisible bridge and no touch gestures",
             desktopState.bar === false && desktopState.bridges === 0 &&
-            desktopState.bodyClass === false,
+            desktopState.bodyClass === false && desktopState.gestures === false,
             JSON.stringify(desktopState));
         await desktop.close();
 
@@ -583,6 +584,80 @@ async function main() {
             path: path.join(ARTIFACTS, "e2e-mobile-keys-phone-frame.png"), type: "png"
         }).catch(() => { });
         await phoneFrame.close();
+
+        // ---- 11. two-finger zoom & pan (a standalone context) ---------------
+        // A standalone web app — an iOS home-screen app, a desktop WebView — has
+        // no page zoom of its own, so the emulator takes the gesture over: the
+        // module scales and pans the ACTIVE MACHINE PAGE. Raw touch events are
+        // dispatched here, the path a real finger takes (a synthesised pinch does
+        // nothing in this build, measured in section 10). The already-open touch
+        // page is reused: one more browser page per check is a minute of nobody's
+        // time, and the gesture maths does not depend on the window size.
+        await showPage(page, CONSOLE.page);
+        const touch = await page.createCDPSession();
+        const twoFingers = (spread, dy) => ([
+            { x: 195 - spread, y: 400 + (dy || 0), id: 1, radiusX: 6, radiusY: 6, force: 1 },
+            { x: 195 + spread, y: 400 + (dy || 0), id: 2, radiusX: 6, radiusY: 6, force: 1 }
+        ]);
+        const activePageStyle = () => page.evaluate(() => {
+            const p = document.querySelector(".page.active");
+            return p ? (p.style.transform || "") : "(no page)";
+        });
+        const scaleOf = (style) => {
+            const m = /scale\(([\d.]+)\)/.exec(style);
+            return m ? parseFloat(m[1]) : 1;
+        };
+
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchStart", touchPoints: twoFingers(30) });
+        await sleep(80);
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchMove", touchPoints: twoFingers(60) });
+        await sleep(150);
+        const zoomedStyle = await activePageStyle();
+        check("two fingers zoom the machine page (standalone gestures)",
+            scaleOf(zoomedStyle) > 1.5, zoomedStyle);
+
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchMove", touchPoints: twoFingers(60, -80) });
+        await sleep(150);
+        const pannedStyle = await activePageStyle();
+        check("and dragging the same two fingers pans the picture",
+            pannedStyle !== zoomedStyle && /translate\(/.test(pannedStyle), pannedStyle);
+
+        await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await sleep(80);
+        check("the picture stays zoomed after the fingers lift",
+            (await activePageStyle()) === pannedStyle);
+
+        // Leaving the machine page must not leave a zoomed page behind.
+        await showPage(page, "page-config");
+        const afterLeave = await page.evaluate(() =>
+            document.getElementById("page-vt52-console").style.transform || "");
+        check("leaving the machine page resets the view", afterLeave === "",
+            JSON.stringify(afterLeave));
+
+        // A form page is the browser's business: the module must stay out of it.
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchStart", touchPoints: twoFingers(30) });
+        await sleep(80);
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchMove", touchPoints: twoFingers(70) });
+        await sleep(150);
+        const configStyle = await activePageStyle();
+        await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        check("a form page (CONFIG) is left to the browser",
+            configStyle === "", JSON.stringify(configStyle));
+
+        const layer = await page.evaluate(() => ({
+            installed: document.body.classList.contains("touch-gestures"),
+            api: typeof TouchZoom !== "undefined" &&
+                typeof TouchZoom.install === "function"
+        }));
+        check("and the gesture layer is installed on a touch device",
+            layer.installed === true && layer.api === true, JSON.stringify(layer));
+
+        await touch.detach();
 
         // ---- page errors ----------------------------------------------------
         check("no page errors", pageErrors.length === 0, pageErrors.slice(0, 3).join(" | "));
