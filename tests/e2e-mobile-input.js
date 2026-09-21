@@ -397,6 +397,39 @@ async function main() {
             focusAfterKeys.cls === "mobile-input",
             JSON.stringify(focusAfterKeys));
 
+        // ---- 5b. typing while the IME composes ------------------------------
+        // Android keyboards (GBoard) compose the word before committing it: the
+        // characters live in the backing store, `input` fires with
+        // isComposing=true, and only the commit carries the final string. Held
+        // back until that commit, the machine saw NOTHING while the operator
+        // typed — the line appeared in one burst when Enter committed the
+        // composition, and that very Enter was the IME action, so the command
+        // still needed a second one. Simulated here through CDP's IME API, which
+        // is the same event sequence a real keyboard produces.
+        await page.evaluate(() => { window.__kbBytes = []; });
+        await page.evaluate((spec) => {
+            const canvas = document.getElementById(spec.canvas);
+            if (canvas && canvas.__yapdpMobileBridge) canvas.__yapdpMobileBridge.focus();
+        }, CONSOLE);
+        const cdp = await page.createCDPSession();
+        await cdp.send("Input.imeSetComposition",
+            { text: "d", selectionStart: 1, selectionEnd: 1 });
+        await sleep(200);
+        await cdp.send("Input.imeSetComposition",
+            { text: "di", selectionStart: 2, selectionEnd: 2 });
+        await sleep(200);
+        const composingBytes = await page.evaluate(() => window.__kbBytes);
+        await cdp.send("Input.insertText", { text: "di" });
+        await sleep(250);
+        const committedBytes = await page.evaluate(() => window.__kbBytes);
+        await cdp.detach();
+        check("characters typed while the IME composes reach the machine as they are typed",
+            JSON.stringify(flattenForUnit(composingBytes, 0)) === "[100,105]",
+            JSON.stringify(composingBytes));
+        check("and the commit does not send them a second time",
+            JSON.stringify(flattenForUnit(committedBytes, 0)) === "[100,105]",
+            JSON.stringify(committedBytes));
+
         // ---- 6. re-applying must not multiply the bridges -------------------
         const repeats = await page.evaluate((spec) => {
             const count = () => document.querySelectorAll("textarea.mobile-input").length;
