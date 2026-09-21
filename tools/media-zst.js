@@ -14,11 +14,14 @@
  * (`unpack` is accepted as a name for `decompress`, so the script and the CLI agree).
  *
  * No external compressor is needed: Node 22.15+/23+ ships zstd in zlib (the
- * dev box runs 24). Nothing is written that cannot be read back: every frame
- * this tool produces is decoded again with the very same fzstd build the
- * emulator loads, byte for byte, and a container that is not a zstd frame
- * (a gzip file named .zst, say) is refused up front — the guest would load
- * garbage, and that failure surfaces much later than here.
+ * dev box runs 24). Node 20 — the floor of the CI matrix — does not, so there
+ * the tool falls back to a legal zstd frame made of raw blocks: it buys no
+ * size at all, but it is a frame the emulator reads, and the tool says so
+ * rather than failing. Nothing is written that cannot be read back either way:
+ * every frame is decoded again with the very same fzstd build the emulator
+ * loads, byte for byte, and a container that is not a zstd frame (a gzip file
+ * named .zst, say) is refused up front — the guest would load garbage, and
+ * that failure surfaces much later than here.
  *
  * The file name is part of the contract: src/dragdrop.js and DataLoader strip
  * the trailing `.zst`, so the compressed file keeps the whole original name
@@ -89,17 +92,43 @@ function decompressBytes(zst) {
     return Buffer.from(out);
 }
 
+// Does this Node compress zstd itself? (zlib gained it in 22.15/23.)
+function hasZstd() {
+    return typeof zlib.zstdCompressSync === "function";
+}
+
+// A zstd frame written entirely of raw (uncompressed) blocks — what the tool
+// falls back to where zlib has no zstd. The frame is ordinary: magic, a frame
+// header without a checksum or content size, a 256 KB window descriptor, then
+// 128 KB blocks whose three-byte header carries "last" and "raw". fzstd and
+// every other decoder read it; only the compression is missing.
+const RAW_BLOCK_MAX = 131072;
+
+function rawFrame(bytes) {
+    const parts = [ZSTD_MAGIC, Buffer.from([0x00, 0x40])];
+    if (!bytes.length) {
+        parts.push(Buffer.from([0x01, 0x00, 0x00]));   // last, raw, empty
+        return Buffer.concat(parts);
+    }
+    for (let at = 0; at < bytes.length; at += RAW_BLOCK_MAX) {
+        const size = Math.min(RAW_BLOCK_MAX, bytes.length - at);
+        const last = (at + size >= bytes.length) ? 1 : 0;
+        const header = Buffer.alloc(3);
+        header.writeUIntLE((size << 3) | last, 0, 3);
+        parts.push(header, Buffer.from(bytes.subarray(at, at + size)));
+    }
+    return Buffer.concat(parts);
+}
+
 // Compress, then prove the result: the frame must be a zstd frame and must
 // decode back to the input through fzstd before it is allowed to disk.
 function compressBytes(bytes, level) {
-    if (typeof zlib.zstdCompressSync !== "function") {
-        throw new Error("this Node has no zstd support (zlib.zstdCompressSync) " +
-            "— Node 22.15+/23+ is required");
-    }
     const lvl = (typeof level === "number") ? level : DEFAULT_LEVEL;
-    const frame = zlib.zstdCompressSync(bytes, {
-        params: { [zlib.constants.ZSTD_c_compressionLevel]: lvl }
-    });
+    const frame = hasZstd()
+        ? zlib.zstdCompressSync(bytes, {
+            params: { [zlib.constants.ZSTD_c_compressionLevel]: lvl }
+        })
+        : rawFrame(bytes);
     if (!isZstdFrame(frame)) {
         throw new Error("the compressor returned a non-zstd frame");
     }
@@ -160,6 +189,10 @@ function compressOne(file, opts) {
     const bytes = fs.readFileSync(file);
     const frame = compressBytes(bytes, opts.level);
     fs.writeFileSync(target, frame);
+    if (!hasZstd()) {
+        console.log("  note  this Node has no zstd in zlib (22.15+ has it): " +
+            "the frame is valid but uncompressed");
+    }
     const ratio = bytes.length ? Math.round(100 - (frame.length * 100) / bytes.length) : 0;
     console.log("  write " + target + "  " + kb(bytes.length) + " -> " +
         kb(frame.length) + "  (-" + ratio + "%, level " + opts.level + ")");
@@ -237,6 +270,9 @@ if (require.main === module) {
 module.exports = {
     ZSTD_MAGIC: ZSTD_MAGIC,
     DEFAULT_LEVEL: DEFAULT_LEVEL,
+    RAW_BLOCK_MAX: RAW_BLOCK_MAX,
+    hasZstd: hasZstd,
+    rawFrame: rawFrame,
     isZstdFrame: isZstdFrame,
     zstName: zstName,
     rawName: rawName,

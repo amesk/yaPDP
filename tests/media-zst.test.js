@@ -71,12 +71,18 @@ function run() {
         assert.strictEqual(MediaZst.isZstdFrame(undefined), false);
     }
 
-    // ---- round trip: Node compresses, fzstd decodes --------------------
+    // ---- round trip: the tool compresses, fzstd decodes ----------------
     {
         const raw = sampleBytes();
         const frame = MediaZst.compressBytes(raw, 19);
         assert.ok(MediaZst.isZstdFrame(frame), "output must be a zstd frame");
-        assert.ok(frame.length < raw.length, "the sample should actually shrink");
+        if (MediaZst.hasZstd()) {
+            assert.ok(frame.length < raw.length, "the sample should actually shrink");
+        } else {
+            // Node 20 has no zstd in zlib: the frame is legal but raw, and the
+            // tool must say so instead of pretending the file got smaller.
+            assert.ok(frame.length >= raw.length, "a raw frame cannot shrink");
+        }
         assert.ok(MediaZst.decompressBytes(frame).equals(raw),
             "fzstd must return exactly what went in");
         // The default level is the repo's own: 19.
@@ -84,6 +90,23 @@ function run() {
         assert.ok(MediaZst.compressBytes(raw).equals(
             MediaZst.compressBytes(raw, MediaZst.DEFAULT_LEVEL)),
             "an omitted level must mean the default level");
+    }
+
+    // ---- the raw-block fallback: legal on any Node, and chunked --------
+    {
+        assert.strictEqual(MediaZst.hasZstd(),
+            typeof zlib.zstdCompressSync === "function",
+            "hasZstd must report what zlib really offers");
+
+        const big = Buffer.alloc(MediaZst.RAW_BLOCK_MAX * 2 + 17);
+        for (let i = 0; i < big.length; i++) big[i] = (i * 31) & 0xff;
+        const frame = MediaZst.rawFrame(big);
+        assert.ok(MediaZst.isZstdFrame(frame), "a raw frame is still a zstd frame");
+        assert.ok(MediaZst.decompressBytes(frame).equals(big),
+            "fzstd must read raw blocks back across the chunk boundary");
+        assert.strictEqual(
+            MediaZst.decompressBytes(MediaZst.rawFrame(Buffer.alloc(0))).length, 0,
+            "an empty input still yields a decodable frame");
     }
 
     // ---- a real committed image survives the same path -----------------
