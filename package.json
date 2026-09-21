@@ -32,6 +32,8 @@
     "clean": "node tools/build-desktop.js --clean",
     "version:sync": "node tools/sync-version.js",
     "manifest": "wireit",
+    "tape:pack": "node tools/tape-archive.js pack",
+    "tape:unpack": "node tools/tape-archive.js unpack",
     "e2e:os": "wireit",
     "e2e:bsd": "wireit",
     "e2e:bsd29": "wireit",
