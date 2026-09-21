@@ -1740,6 +1740,66 @@ body {
     will-change: transform;
 }
 
+/* The operator controls of a machine page — the Model 33's button row, the
+   printer's console and Print/Save row, the front panel's action buttons — are
+   moved into this layer by src/touchzoom.js, and the LAYER carries the inverse of
+   the page's zoom. That is what keeps them at their own size and place while the
+   picture grows behind them. Created only where the gesture layer is installed
+   (body.touch-gestures = a coarse pointer), and transparent to taps: only the
+   controls inside it are interactive. */
+.touch-pin {
+    display: none;
+}
+
+body.touch-gestures .page {
+    /* The containing block for the layer, so it covers exactly the page. */
+    position: relative;
+}
+
+body.touch-gestures .touch-pin {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+    pointer-events: none;
+    /* Above the machine, below the floating controls (z-index 1000). */
+    z-index: 20;
+}
+
+body.touch-gestures .touch-pin>* {
+    pointer-events: auto;
+}
+
+/* On a touch device the controls dock as one strip UNDER the top floating
+   buttons — Reboot and State sit at the left, Quick Boot at the right, all
+   inside the first ~50px — so nothing overlaps, and a page with more buttons
+   than fit scrolls sideways instead of stacking over the machine. */
+body.touch-gestures .touch-pin>#teletype-controls,
+body.touch-gestures .touch-pin>.lp11-console,
+body.touch-gestures .touch-pin>.printer-actions,
+body.touch-gestures .touch-pin>.panel-actions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 56px;
+    bottom: auto;
+    margin: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 4px 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    background: rgba(26, 24, 21, 0.9);
+    border-top: 1px solid #4a453a;
+    border-bottom: 1px solid #4a453a;
+}
+
 /* Instructions page — uses block layout + max-width for readability */
 #page-instructions.active {
     display: block;

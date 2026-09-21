@@ -86,6 +86,25 @@ var TouchZoom = (function () {
         };
     }
 
+    // --- the pinned control blocks (DOM-free decision) ----------------
+    // A machine page carries its own operator controls: the Model 33's row of
+    // buttons, the printer's console and its Print/Save row, the front panel's
+    // action buttons. They are CONTROLS, not part of the picture, so they must
+    // not slide or grow with the zoom. The module moves them into a layer of
+    // their own (see pinLayer) and gives THAT layer the inverse of the page's
+    // transform: the layer sits at the page's origin, so scale(1/s) followed by
+    // translate(-pan) cancels translate(pan) scale(s) exactly.
+    var PINNED_SELECTOR = "#teletype-controls, .lp11-console, " +
+        ".printer-actions, .panel-actions";
+    var PIN_LAYER_CLASS = "touch-pin";
+
+    function inverseTransform(scale, pan) {
+        var s = (typeof scale === "number" && isFinite(scale) && scale > 0) ? scale : 1;
+        var x = (pan && isFinite(pan.x)) ? pan.x : 0;
+        var y = (pan && isFinite(pan.y)) ? pan.y : 0;
+        return "scale(" + (1 / s) + ") translate(" + (-x) + "px, " + (-y) + "px)";
+    }
+
     // --- gesture helpers (DOM-free decisions) -------------------------
     function touchDistance(touches) {
         if (!touches || touches.length < 2) return 0;
@@ -124,14 +143,38 @@ var TouchZoom = (function () {
         return active.querySelector(MACHINE_SELECTOR) ? active : null;
     }
 
+    // The layer the operator controls live in, created on first use inside a
+    // machine page and filled once. The controls are MOVED into it (their ids and
+    // wiring are position-independent — the app looks them up by id), so they are
+    // no longer scaled by the page transform but by the layer's inverse of it.
+    function pinLayer(p) {
+        if (!p || !doc || !doc.createElement) return null;
+        if (p.__touchPinLayer && p.__touchPinLayer.parentNode === p) {
+            return p.__touchPinLayer;
+        }
+        var layer = doc.createElement("div");
+        layer.className = PIN_LAYER_CLASS;
+        // Appended LAST so the controls paint above the machine; the stylesheet
+        // keeps the layer itself transparent to taps (only its children take them).
+        p.appendChild(layer);
+        p.__touchPinLayer = layer;
+        var blocks = p.querySelectorAll(PINNED_SELECTOR);
+        for (var i = 0; i < blocks.length; i++) layer.appendChild(blocks[i]);
+        return layer;
+    }
+
     function apply() {
         if (!page) return;
         if (!isZoomed(scale) && pan.x === 0 && pan.y === 0) {
+            clearPinned();
             page.style.transform = "";
             page.style.transformOrigin = "";
             page.classList.remove("touch-zoomed");
             return;
         }
+        // The controls first: they were laid out while the page was at 1:1, so
+        // the layer has to cancel the transform that is about to be applied.
+        applyPinned();
         // transform-origin is the top-left corner: the pan arithmetic above is
         // written for that, and it keeps the visible corner still while pinching.
         page.style.transformOrigin = "0 0";
@@ -140,9 +183,23 @@ var TouchZoom = (function () {
         page.classList.add("touch-zoomed");
     }
 
+    function applyPinned() {
+        var layer = pinLayer(page);
+        if (!layer) return;
+        layer.style.transformOrigin = "0 0";
+        layer.style.transform = inverseTransform(scale, pan);
+    }
+
+    function clearPinned() {
+        if (!page) return;
+        var layer = page.__touchPinLayer;
+        if (layer) layer.style.transform = "";
+    }
+
     // Back to 1:1. Called when the operator leaves the page and by the tests.
     function reset() {
         if (page) {
+            clearPinned();
             page.style.transform = "";
             page.style.transformOrigin = "";
             page.classList.remove("touch-zoomed");
@@ -265,10 +322,12 @@ var TouchZoom = (function () {
         if (!page) return;
         if (doc && doc.querySelector(".page.active") === page) return;   // it came back
         var stale = page;
+        var layer = stale.__touchPinLayer;
         page = null;
         scale = 1;
         pan = { x: 0, y: 0 };
         gesture = null;
+        if (layer) layer.style.transform = "";
         stale.style.transform = "";
         stale.style.transformOrigin = "";
         stale.classList.remove("touch-zoomed");
@@ -292,14 +351,23 @@ var TouchZoom = (function () {
         d.addEventListener("touchcancel", onTouchEnd, { capture: true, passive: true });
         d.body.classList.add("touch-gestures");
         installed = true;
+        // Dock every machine page's operator controls straight away: on a touch
+        // device they belong in the strip from the first frame, not only once the
+        // operator happens to pinch. (pinLayer is idempotent.)
+        var pages = d.querySelectorAll(".page");
+        for (var i = 0; i < pages.length; i++) {
+            if (pages[i].querySelector(MACHINE_SELECTOR)) pinLayer(pages[i]);
+        }
         watchPageSwitches();
         return true;
     }
 
     return {
         MAX_SCALE: MAX_SCALE,
+        PINNED_SELECTOR: PINNED_SELECTOR,
         install: install,
         reset: reset,
+        inverseTransform: inverseTransform,
         clampScale: clampScale,
         isZoomed: isZoomed,
         pinchScale: pinchScale,

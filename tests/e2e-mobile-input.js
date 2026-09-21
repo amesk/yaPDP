@@ -630,6 +630,59 @@ async function main() {
         check("the picture stays zoomed after the fingers lift",
             (await activePageStyle()) === pannedStyle);
 
+        // The operator controls of the machine are NOT part of the picture: they
+        // live in the pin layer, whose inverse transform keeps them at their own
+        // size and place, and they are docked clear of the floating buttons.
+        const readRects = () => page.evaluate(() => {
+            const rect = (sel) => {
+                const el = document.querySelector(sel);
+                if (!el) return null;
+                const q = el.getBoundingClientRect();
+                return { x: Math.round(q.x), y: Math.round(q.y),
+                         w: Math.round(q.width), h: Math.round(q.height) };
+            };
+            const controls = document.querySelector("#teletype-controls");
+            return {
+                controls: rect("#teletype-controls"),
+                inLayer: !!(controls && controls.closest(".touch-pin")),
+                reboot: rect("#reboot-btn"),
+                quick: rect("#quick-boot-btn")
+            };
+        });
+        await showPage(page, "page-teletype");
+        const rectsBefore = await readRects();
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchStart", touchPoints: twoFingers(30) });
+        await sleep(80);
+        await touch.send("Input.dispatchTouchEvent",
+            { type: "touchMove", touchPoints: twoFingers(60) });
+        await sleep(150);
+        const rectsAfter = await readRects();
+        await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+        check("the teletype's operator controls were moved into the pin layer",
+            rectsBefore.inLayer === true, JSON.stringify(rectsBefore.controls));
+        check("and they keep their place and size while the machine zooms",
+            !!rectsBefore.controls && !!rectsAfter.controls &&
+            rectsBefore.controls.x === rectsAfter.controls.x &&
+            rectsBefore.controls.y === rectsAfter.controls.y &&
+            rectsBefore.controls.w === rectsAfter.controls.w &&
+            rectsBefore.controls.h === rectsAfter.controls.h,
+            JSON.stringify({ before: rectsBefore.controls, after: rectsAfter.controls }));
+
+        const overlaps = (a, b) => !!a && !!b &&
+            a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+        const visible = (r) => !!r && r.w > 0 && r.h > 0;
+        check("the control strip clears the floating buttons above it",
+            visible(rectsAfter.controls) && visible(rectsBefore.quick) &&
+            !overlaps(rectsAfter.controls, rectsBefore.quick) &&
+            !overlaps(rectsAfter.controls, rectsBefore.reboot),
+            JSON.stringify({
+                controls: rectsAfter.controls,
+                quick: rectsBefore.quick,
+                reboot: rectsBefore.reboot
+            }));
+
         // Leaving the machine page must not leave a zoomed page behind.
         await showPage(page, "page-config");
         const afterLeave = await page.evaluate(() =>

@@ -52,10 +52,36 @@ function run() {
     const T = loadModule();
     assert.ok(T, "module should expose TouchZoom");
     for (const fn of ["install", "reset", "clampScale", "pinchScale", "clampAxis",
-                      "clampPan", "touchDistance", "touchCentroid", "state"]) {
+                      "clampPan", "touchDistance", "touchCentroid", "state",
+                      "inverseTransform"]) {
         assert.strictEqual(typeof T[fn], "function", fn + " must be exported");
     }
     assert.strictEqual(T.MAX_SCALE, 4, "the zoom ceiling is part of the contract");
+    assert.ok(typeof T.PINNED_SELECTOR === "string", "the pinned blocks are named");
+
+    // ---- the pinned control blocks ---------------------------------------
+    // The operator controls must not grow or slide with the picture: their layer
+    // carries the INVERSE of the page transform, which is a pure calculation and
+    // therefore testable without a DOM.
+    {
+        for (const sel of ["#teletype-controls", ".lp11-console",
+                           ".printer-actions", ".panel-actions"]) {
+            assert.ok(T.PINNED_SELECTOR.indexOf(sel) !== -1,
+                "the control block " + sel + " must be pinned");
+        }
+        assert.strictEqual(T.inverseTransform(1, { x: 0, y: 0 }),
+            "scale(1) translate(0px, 0px)", "1:1 is the identity");
+        assert.strictEqual(T.inverseTransform(2, { x: -30, y: -40 }),
+            "scale(0.5) translate(30px, 40px)",
+            "the inverse cancels the page's scale and pan");
+        assert.strictEqual(T.inverseTransform(4, { x: 0, y: 0 }),
+            "scale(0.25) translate(0px, 0px)", "a 4x zoom is undone by 1/4");
+        assert.strictEqual(T.inverseTransform(0, null),
+            "scale(1) translate(0px, 0px)", "a broken scale falls back to 1:1");
+        assert.strictEqual(T.inverseTransform(NaN, { x: NaN, y: 5 }),
+            "scale(1) translate(0px, -5px)",
+            "a broken scale falls back to 1:1, the axis that is fine is kept");
+    }
 
     // ---- clampScale: never below 1:1, never above the ceiling ------------
     {

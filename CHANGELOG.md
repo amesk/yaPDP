@@ -64,7 +64,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   zoom at all — a home-screen app or a desktop WebView; where the browser does
   zoom the page (a tab, the landing page's iframe) the module sees the visual
   viewport move and steps aside, leaving that behaviour alone. The view returns
-  to 1:1 when the operator leaves the page. The page declares a **mobile
+  to 1:1 when the operator leaves the page. The operator CONTROLS of those pages
+  — the Model 33's button row, the printer's console and Print/Save row, the
+  front panel's action buttons — are not part of the picture: they are moved into
+  a layer that carries the inverse of the zoom, so they keep their own size and
+  place while the machine grows behind them, and they dock as one strip under the
+  floating buttons (Reboot/State left, Quick Boot right) instead of colliding
+  with them. The page declares a **mobile
   viewport** (`width=device-width`, with pinch-zoom left enabled): without it a
   phone laid the emulator out at the browser's ~980 px desktop fallback, where
   the media block below never matched and the page could not be zoomed. Below
