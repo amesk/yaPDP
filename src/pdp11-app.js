@@ -693,18 +693,18 @@ var g60Keyboard = (function () {
     }
   }
 
+  // Does the operator want the historical Upper-Case-Only behaviour
+  // (Config.upperCaseOnly)? Off by default so lower case passes through
+  // (2.11 BSD file names, etc.). Shared by the physical and mobile keyboards.
+  function upperOnly() {
+    if (typeof Config !== 'undefined' && Config.get()) {
+      return !!Config.get().upperCaseOnly;
+    }
+    return false;
+  }
+
   // Physical keyboard handlers
   function installPhysicalKeyboard() {
-    // Does the operator want the historical Upper-Case-Only behaviour for
-    // the PHYSICAL keyboard (Config.upperCaseOnly)? Off by default so
-    // lower case passes through (2.11 BSD file names, etc.).
-    function upperOnly() {
-      if (typeof Config !== 'undefined' && Config.get()) {
-        return !!Config.get().upperCaseOnly;
-      }
-      return false;
-    }
-
     document.addEventListener('keydown', function (e) {
       if (/^(input|textarea)$/i.test(e.target.tagName)) return;
 
@@ -826,8 +826,40 @@ var g60Keyboard = (function () {
     bridgeSendToUnit(0, bytes);
   }
 
+  // Touch devices have no physical keyboard: bridge the system on-screen
+  // keyboard into the teletype. Tapping the printer paper (not the drawn
+  // keycaps) focuses the invisible textarea, which asks the browser for the
+  // keyboard; typed characters go through the same sendDL() path as the
+  // physical keyboard, honouring the Upper-Case-Only setting. The Model 33
+  // control keys (CTRL/SHIFT/REPT/BREAK/HERE IS) stay on the on-screen punch
+  // keyboard, since an on-screen keyboard cannot latch them.
+  function installMobileKeyboard() {
+    if (typeof MobileInput === 'undefined' || !MobileInput.isCoarse()) return;
+    var bridge = MobileInput.create({
+      onBytes: function (bytes) {
+        var fold = upperOnly();
+        for (var i = 0; i < bytes.length; i++) {
+          sendDL([model33UpperOnly(bytes[i], fold)]);
+        }
+      }
+    });
+    var paper = document.getElementById('g60printer') || document.getElementById('punchkeypane');
+    if (paper) {
+      paper.addEventListener('click', function (ev) {
+        // Never steal a tap aimed at a drawn key or a real control.
+        if (ev.target && ev.target.closest &&
+            ev.target.closest('.m33-key,.m33-space,button,input,select,a')) return;
+        bridge.focus();
+      });
+    }
+  }
+
   return {
-    init: function () { buildKeyboard(); installPhysicalKeyboard(); }
+    init: function () {
+      buildKeyboard();
+      installPhysicalKeyboard();
+      installMobileKeyboard();
+    }
   };
 })();
 
@@ -1146,6 +1178,19 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
       // keyboard input instead. In text mode the built-in handler is kept so
       // typing into the focused textarea reaches the emulator.
       term.handleKey = function () { };
+
+      // Touch devices have no physical keyboard: bridge the system on-screen
+      // keyboard into this terminal. The bridge is an invisible textarea that
+      // never covers the CRT; tapping the tube focuses it, which asks the
+      // browser for the keyboard. Typed bytes take the same route as the
+      // physical keyboard (bridgeSendToUnit), so the CRT view is unchanged.
+      if (typeof MobileInput !== 'undefined' && MobileInput.isCoarse()) {
+        var mobileBridge = MobileInput.create({
+          onBytes: function (bytes) { bridgeSendToUnit(unit, bytes); }
+        });
+        var tapTarget = crtBox || canvas;
+        if (tapTarget) tapTarget.addEventListener('click', function () { mobileBridge.focus(); });
+      }
     }
   }
 

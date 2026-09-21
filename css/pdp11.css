@@ -30,6 +30,7 @@
     font-style: normal;
     font-display: swap;
 }
+
 @font-face {
     font-family: 'Courier Prime';
     src: url('../assets/fonts/courierprime/CourierPrime-Bold.ttf') format('truetype');
@@ -90,7 +91,10 @@
    default — the UA stylesheet gives them Arial. Make them follow the chrome
    font; elements with an explicit family (the console textarea's VT52, the
    LP11 paper) keep theirs. */
-button, select, input, textarea {
+button,
+select,
+input,
+textarea {
     font-family: inherit;
 }
 
@@ -2010,6 +2014,7 @@ body {
     flex: none;
     line-height: 0;
 }
+
 /* ===== DECscope VT52 cabinet detail styles ===== */
 /* Vent grille: a row of short vertical slots on the top panel, drawn with a
    repeating gradient so no per-slot DOM is needed. */
@@ -2127,6 +2132,7 @@ body {
     background: var(--vt52-bg);
     cursor: text;
 }
+
 /* A rig whose dialect is vt100 carries the VT100 artwork, whose Screen marker
    sits at a different place inside its own viewBox: its Markers layer is
    translated to y=2.018 where the DECscope's is y=25.673, so the tube would
@@ -2482,6 +2488,7 @@ body.crt-effects .vt52-crt::after {
         opacity: 0.85;
     }
 }
+
 /* ===== VT11 Display page — vector-graphics CRT ===== */
 /* The VT11 canvas (1024x768) is created lazily by src/vt11.js inside the
    #vt11 container; this wraps it in a matching DEC bezel + scanlines. */
@@ -2994,7 +3001,7 @@ body.crt-effects .vt52-crt::after {
 
 /* A hint that directly follows an action button needs a real gap — 4px made
    "Restore defaults" look glued to its "Fills the form with…" hint. */
-.config-control button + .config-hint {
+.config-control button+.config-hint {
     margin-top: 8px;
 }
 
@@ -3159,6 +3166,7 @@ body.no-photo-bg #page-instructions.active {
 .lp11-key {
     font-family: 'VT323', arial, helvetica, sans-serif;
 }
+
 .lp11-dec-letter {
     font-family: 'Michroma', arial, helvetica, sans-serif;
 }
@@ -3171,4 +3179,126 @@ body.no-photo-bg #page-instructions.active {
 #page-panel .frame .decLetter,
 #page-panel .frame .decName {
     font-family: 'Michroma', arial, helvetica, sans-serif;
+}
+
+/* ===== Mobile / touch adaptation =====
+   The emulator UI is a full-height flex row: a 78px navigation sidebar on the
+   left and the active page filling the rest. On phones that layout steals too
+   much width and its fixed controls collide with the page. Below 768px the
+   sidebar becomes a compact horizontal bar pinned to the bottom (order: 2),
+   the page takes the full width above it (order: 1), and the floating controls
+   are pulled clear of the bar. Only presentation changes here — the emulator
+   state and timing loops are untouched. */
+@media (max-width: 768px) {
+    .app-layout {
+        flex-direction: column;
+    }
+
+    /* Navigation: a horizontal, scrollable bar along the bottom edge. */
+    .app-sidebar {
+        order: 2;
+        width: 100%;
+        min-width: 0;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 4px;
+        padding: 4px 6px;
+        overflow-x: auto;
+        border-right: none;
+        border-top: 2px solid #4a453a;
+        box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .app-sidebar .nav-btn {
+        width: 58px;
+        min-width: 58px;
+        height: 54px;
+        margin: 0;
+        padding: 4px 2px;
+        font-size: 9px;
+    }
+
+    .app-sidebar .nav-btn .nav-icon {
+        margin-bottom: 2px;
+    }
+
+    .app-sidebar .nav-btn .nav-icon-svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    /* The version marker would only add height to the compact bar. */
+    .app-sidebar .sidebar-version {
+        display: none;
+    }
+
+    /* The active page fills the area above the bar. min-height:0 lets it
+       shrink so its own overflow-y:auto pages keep scrolling. */
+    .page {
+        order: 1;
+        min-height: 0;
+    }
+
+    /* Floating controls: the bottom-anchored ones move above the navigation
+       bar; the top-anchored ones clear the (now absent) left sidebar. */
+    .mute-btn {
+        bottom: 66px;
+        left: 8px;
+    }
+
+    .fullscreen-btn {
+        bottom: 66px;
+        right: 8px;
+    }
+
+    .zoom-btn {
+        bottom: 66px;
+        right: 56px;
+    }
+
+    .console-reboot {
+        top: 8px;
+        left: 8px;
+    }
+
+    .console-state {
+        top: 8px;
+        left: 56px;
+    }
+
+    .quick-boot-btn {
+        top: 8px;
+        right: 8px;
+    }
+
+    /* Config / Storage forms: tighten the slab and stack the label above its
+       control, so a long label does not squeeze the value on a narrow screen. */
+    #page-config.active,
+    #page-storage.active,
+    #page-instructions.active {
+        padding: 12px 12px 24px 12px;
+    }
+
+    /* Tabs: wrap instead of running off the right edge, so every tab stays
+       visible and tappable. */
+    .config-tab-bar {
+        flex-wrap: wrap;
+    }
+
+    .config-tab {
+        flex: 1 1 auto;
+        padding: 7px 10px;
+        font-size: 12px;
+    }
+
+    .config-field {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .config-label {
+        flex: 0 0 auto;
+    }
 }
