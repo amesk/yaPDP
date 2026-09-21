@@ -116,6 +116,20 @@ function run() {
         "the canvas keyboard bridge must be installed from both initVT52Page " +
         "and applyVT52TextMode (found " + canvasBridgeRefs + " references)");
 
+    // ---- The phone frame (viewport meta) --------------------------------
+    // Without it a phone lays the emulator out at the ~980px desktop width, so
+    // the mobile block above never matches AND the page cannot be pinched — the
+    // gesture is locked to the fit-to-width scale (measured in
+    // tests/e2e-mobile-input.js, section 10).
+    {
+        const meta = /<meta\s+name=["']viewport["']\s+content=["']([^"']+)["']/i.exec(html);
+        assert.ok(meta, "pdp11.html must declare a <meta name=\"viewport\">");
+        assert.ok(/width=device-width/.test(meta[1]),
+            "the viewport must follow the device width");
+        assert.ok(!/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\.0)?\b/.test(meta[1]),
+            "the viewport must not forbid pinch-zoom");
+    }
+
     // ---- The special-key bar (src/mobile-keys.js) -----------------------
     // Enter is an IME action on a phone and Ctrl+letter is unreachable, so the
     // keys a PDP-11 operator needs most are real buttons on the strip.

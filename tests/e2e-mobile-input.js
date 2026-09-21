@@ -26,10 +26,17 @@
  *      the browser for the keyboard;
  *   4. what the keyboard types reaches the right DL11 unit (console = 0,
  *      TT1 = 1) as the same 7-bit bytes a physical key produces;
- *   5. re-applying the switch does not install a second bridge (every CONFIG
+ *   5. typing that an IME COMPOSES is delivered keystroke by keystroke, and the
+ *      commit does not send it twice (simulated through CDP's IME API);
+ *   6. the special-key bar: built on a touch device only, its ↵ and ^C keys send
+ *      the right bytes, CTRL latches and clears, and it keeps the keyboard on
+ *      the terminal it types into;
+ *   7. re-applying the switch does not install a second bridge (every CONFIG
  *      Apply re-runs applyVT52TextMode);
- *   6. control: a terminal STARTED in canvas mode has its bridge from the first
- *      moment, with no switch touched.
+ *   8. controls: a terminal STARTED in canvas mode has its bridge at once; a
+ *      fine-pointer desktop gets no bar and no bridge; and on a phone frame the
+ *      page declares a mobile viewport, lays out at the device width, applies
+ *      the mobile stylesheet and ACCEPTS a zoom (a phone can pinch it).
  *
  * Run with:  node tests/e2e-mobile-input.js
  * (needs puppeteer; starts the dev server itself if :1170 is not serving)
@@ -106,7 +113,9 @@ async function ensureServer() {
 
 // opts.touch === false opens a plain desktop page (the control for everything
 // the mobile layer must NOT do there); opts.viewport overrides the window size
-// (the phone geometry check).
+// (the phone geometry check); opts.mobile makes Chromium a MOBILE device, which
+// is where a missing <meta name="viewport"> shows: the layout viewport then
+// falls back to ~980px and the phone layout never matches.
 async function openPage(browser, cfg, opts) {
     const page = await browser.newPage();
     const touch = !opts || opts.touch !== false;
@@ -116,7 +125,8 @@ async function openPage(browser, cfg, opts) {
     // suites — the responsive layout has its own test (tests/mobile-css.test.js).
     const size = (opts && opts.viewport) || { width: 1400, height: 900 };
     await page.setViewport({
-        width: size.width, height: size.height, hasTouch: touch
+        width: size.width, height: size.height, hasTouch: touch,
+        isMobile: !!(opts && opts.mobile)
     });
     page.on("pageerror", (e) => pageErrors.push(String(e)));
 
@@ -181,6 +191,20 @@ async function tapTube(page, spec) {
         state = await readTerminal(page, spec);
     }
     return { point: point, focused: state.bridgeFocused };
+}
+
+// How big a page scale a page ACCEPTS. A synthetic pinch gesture cannot be
+// measured in this headless build — the control page in section 10 does not zoom
+// to one either — so the zoom POLICY is measured the way the browser exposes it:
+// a page that allows zoom takes the scale, one that forbids it clamps to 1.
+async function pageScaleAfter(page, factor) {
+    const client = await page.createCDPSession();
+    await client.send("Emulation.setPageScaleFactor", { pageScaleFactor: factor });
+    await sleep(200);
+    const scale = await page.evaluate(() =>
+        window.visualViewport ? window.visualViewport.scale : -1);
+    await client.detach();
+    return scale;
 }
 
 // One key of the special-key bar, pressed the way an operator presses it: a
@@ -511,6 +535,54 @@ async function main() {
             path: path.join(ARTIFACTS, "e2e-mobile-keys-phone.png"), type: "png"
         }).catch(() => { });
         await phone.close();
+
+        // ---- 10. the phone frame: the viewport meta and the zoom it allows ----
+        // The page carried NO <meta name="viewport"> at all, so a real phone laid
+        // it out at the ~980px desktop width: the mobile block never matched and
+        // the browser treated the page as a non-zoomable desktop fallback.
+        // Chromium is told to be a mobile device here (isMobile), which is what
+        // exposes it.
+        const phoneFrame = await openPage(browser, CFG_CANVAS,
+            { viewport: { width: 390, height: 844 }, mobile: true });
+        const frame = await phoneFrame.evaluate(() => {
+            const meta = document.querySelector('meta[name="viewport"]');
+            const content = meta ? meta.getAttribute("content") : null;
+            const sidebar = document.querySelector(".app-sidebar");
+            return {
+                meta: content,
+                layoutWidth: window.innerWidth,
+                sidebarRow: getComputedStyle(sidebar).flexDirection,
+                scale: window.visualViewport ? window.visualViewport.scale : 1
+            };
+        });
+        check("the emulator page declares a mobile viewport",
+            !!frame.meta && /width=device-width/.test(frame.meta), JSON.stringify(frame));
+        check("so a phone lays the page out at the device width, not at 980px",
+            frame.layoutWidth <= 430, JSON.stringify(frame));
+        check("and the mobile stylesheet really applies there",
+            frame.sidebarRow === "row", JSON.stringify(frame));
+        check("nothing forbids pinch-zoom (no user-scalable=no)",
+            !frame.meta || !/user-scalable\s*=\s*no|maximum-scale\s*=\s*1(\.0)?\b/.test(frame.meta),
+            JSON.stringify(frame));
+
+        const emulatorScale = await pageScaleAfter(phoneFrame, 1.5);
+        check("and the page really accepts a zoom (a phone can pinch it)",
+            Math.abs(emulatorScale - 1.5) < 0.01, `scale ${emulatorScale}`);
+
+        // The control that keeps the check above honest: the same command on a
+        // page whose viewport forbids zoom is clamped to 1.
+        const locked = await browser.newPage();
+        await locked.setViewport({ width: 390, height: 844, hasTouch: true, isMobile: true });
+        await locked.setContent('<meta name="viewport" content="width=device-width, ' +
+            'initial-scale=1, user-scalable=no"><body>locked</body>');
+        const lockedScale = await pageScaleAfter(locked, 1.5);
+        check("a viewport that forbids zoom is clamped (so the check means something)",
+            Math.abs(lockedScale - 1) < 0.01, `scale ${lockedScale}`);
+        await locked.close();
+        await phoneFrame.screenshot({
+            path: path.join(ARTIFACTS, "e2e-mobile-keys-phone-frame.png"), type: "png"
+        }).catch(() => { });
+        await phoneFrame.close();
 
         // ---- page errors ----------------------------------------------------
         check("no page errors", pageErrors.length === 0, pageErrors.slice(0, 3).join(" | "));
