@@ -3267,6 +3267,15 @@ body.no-photo-bg #page-instructions.active {
     display: none;
 }
 
+/* Off its pages (the Model 33, the Panel, the Printer, the Config pages) the bar
+   is hidden. The rule has to carry body.mobile-keys-on as well: that is what the
+   display: flex below is keyed on, so a plain `.hidden` would lose the cascade to
+   it and the bar stayed on screen (measured — this is why the class alone is not
+   enough). */
+body.mobile-keys-on .mobile-keys.hidden {
+    display: none;
+}
+
 body.mobile-keys-on .mobile-keys {
     display: flex;
     position: fixed;

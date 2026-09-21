@@ -163,6 +163,11 @@ function run() {
             "the bar must follow the page changes the app announces");
         assert.ok(keys.indexOf("classList.toggle(\"hidden\"") !== -1,
             "the bar must hide itself off its pages");
+        // …and the class has to WIN the cascade: the docking rule is keyed on
+        // body.mobile-keys-on, so a bare `.hidden` would lose to it and the bar
+        // would stay on screen (that is exactly what happened once).
+        assert.ok(/body\.mobile-keys-on\s+\.mobile-keys\.hidden\s*\{[^}]*display:\s*none/
+            .test(css), "css/pdp11.css must really hide the bar through .hidden");
 
         // The app builds it and registers a target per page, so ONE bar serves
         // every terminal — console, user terminal, text or canvas mode, teletype.
