@@ -1756,6 +1756,20 @@ body.touch-gestures .page {
     position: relative;
 }
 
+body.touch-gestures {
+    /* The strip's height, published once: the floating buttons below it are
+       placed with it (see the rule further down). Zero while the visible machine
+       has no controls of its own, so they sit at the very top. */
+    --touch-strip-h: 0px;
+}
+
+/* The visible machine page HAS controls: the strip is there and the round
+   floating buttons move below it. Set by src/touchzoom.js on every page change
+   (see CONTROLS_CLASS). */
+body.touch-gestures.touch-controls {
+    --touch-strip-h: 46px;
+}
+
 body.touch-gestures .touch-pin {
     display: block;
     position: absolute;
@@ -1773,10 +1787,11 @@ body.touch-gestures .touch-pin>* {
     pointer-events: auto;
 }
 
-/* On a touch device the controls dock as one strip UNDER the top floating
-   buttons — Reboot and State sit at the left, Quick Boot at the right, all
-   inside the first ~50px — so nothing overlaps, and a page with more buttons
-   than fit scrolls sideways instead of stacking over the machine. */
+/* On a touch device the controls dock as ONE STRIP AT THE VERY TOP, and the
+   round floating buttons (Reboot/State at the left, Quick Boot at the right)
+   move below it. The page's own controls read first because they belong to the
+   machine on screen; the application's chrome is the second row. A page with
+   more buttons than fit scrolls sideways instead of stacking over the machine. */
 body.touch-gestures .touch-pin>#teletype-controls,
 body.touch-gestures .touch-pin>.lp11-console,
 body.touch-gestures .touch-pin>.printer-actions,
@@ -1784,8 +1799,10 @@ body.touch-gestures .touch-pin>.panel-actions {
     position: absolute;
     left: 0;
     right: 0;
-    top: 56px;
+    top: 0;
     bottom: auto;
+    box-sizing: border-box;
+    height: var(--touch-strip-h);
     margin: 0;
     display: flex;
     flex-wrap: nowrap;
@@ -1796,8 +1813,13 @@ body.touch-gestures .touch-pin>.panel-actions {
     overflow-x: auto;
     overscroll-behavior-x: contain;
     background: rgba(26, 24, 21, 0.9);
-    border-top: 1px solid #4a453a;
     border-bottom: 1px solid #4a453a;
+}
+
+/* The round buttons follow the strip down, and only while it is there. */
+body.touch-gestures.touch-controls .console-reboot,
+body.touch-gestures.touch-controls .quick-boot-btn {
+    top: calc(var(--touch-strip-h) + 8px);
 }
 
 /* Instructions page — uses block layout + max-width for readability */

@@ -58,6 +58,10 @@ function run() {
     }
     assert.strictEqual(T.MAX_SCALE, 4, "the zoom ceiling is part of the contract");
     assert.ok(typeof T.PINNED_SELECTOR === "string", "the pinned blocks are named");
+    assert.strictEqual(T.CONTROLS_CLASS, "touch-controls",
+        "the layout flag that docks the strip is named once");
+    assert.strictEqual(typeof T.updateControlsFlag, "function",
+        "the flag is recomputed on page changes");
 
     // ---- the pinned control blocks ---------------------------------------
     // The operator controls must not grow or slide with the picture: their layer
@@ -203,6 +207,12 @@ function run() {
             "pdp11-app.js must install the gesture layer");
         assert.ok(/\.page\.touch-zoomed\s*\{[^}]*overflow:\s*hidden/.test(css),
             "css/pdp11.css must keep a zoomed page from spilling");
+        // The controls dock as the FIRST row and the round floating buttons move
+        // below the strip — but only while a page actually has those controls.
+        assert.ok(/body\.touch-gestures\.touch-controls\s+\.console-reboot[\s\S]{0,160}?top:\s*calc\(var\(--touch-strip-h\)/
+            .test(css), "the round buttons must follow the control strip down");
+        assert.ok(/body\.touch-gestures\s*\{[^}]*--touch-strip-h:\s*0px/.test(css),
+            "…and stay at the top where there is no strip");
     }
 
     console.log("touchzoom.test.js: all tests passed");
