@@ -826,52 +826,19 @@ var g60Keyboard = (function () {
     bridgeSendToUnit(0, bytes);
   }
 
-  // Touch devices have no physical keyboard: bridge the system on-screen
-  // keyboard into the teletype. Tapping the printer paper (not the drawn
-  // keycaps) focuses the invisible textarea, which asks the browser for the
-  // keyboard; typed characters go through the same sendDL() path as the
-  // physical keyboard, honouring the Upper-Case-Only setting. The Model 33
-  // control keys (CTRL/SHIFT/REPT/BREAK/HERE IS) stay on the on-screen punch
-  // keyboard, since an on-screen keyboard cannot latch them.
-  function installMobileKeyboard() {
-    if (typeof MobileInput === 'undefined' || !MobileInput.isCoarse()) return;
-    // Every byte from the system keyboard or from the special-key bar takes the
-    // same path as a physical keystroke, honouring Upper-Case-Only.
-    function typeBytes(bytes) {
-      var fold = upperOnly();
-      for (var i = 0; i < bytes.length; i++) {
-        sendDL([model33UpperOnly(bytes[i], fold)]);
-      }
-    }
-    // The target the special-key bar types into while the teletype page is on
-    // screen (src/mobile-keys.js).
-    var paperTarget = MobileInput.registerTarget({
-      id: 'tty0',
-      pageId: 'page-teletype',
-      unit: 0,
-      send: typeBytes,
-      focus: function () { bridge.focus(); }
-    });
-    var bridge = MobileInput.create({
-      onBytes: typeBytes,
-      onActivate: function () { MobileInput.setActive(paperTarget); }
-    });
-    var paper = document.getElementById('g60printer') || document.getElementById('punchkeypane');
-    if (paper) {
-      paper.addEventListener('click', function (ev) {
-        // Never steal a tap aimed at a drawn key or a real control.
-        if (ev.target && ev.target.closest &&
-            ev.target.closest('.m33-key,.m33-space,button,input,select,a')) return;
-        bridge.focus();
-      });
-    }
-  }
+  // The Model 33 ASR needs NO bridge to the system keyboard, on any device: the
+  // machine has its own keys drawn on the glass — the printed keycaps plus the
+  // punch keyboard's CTRL/SHIFT/REPT/BREAK/HERE IS — and those are what an
+  // operator presses. A phone's own keyboard cannot latch SHIFT or CTRL anyway,
+  // so it could only ever type half of what the teletype offers; the VT52/VT100
+  // terminals, which have no drawn keys, get the invisible-textarea bridge
+  // instead (see installCanvasMobileKeyboard) together with the special-key bar
+  // (src/mobile-keys.js, shown on those pages only).
 
   return {
     init: function () {
       buildKeyboard();
       installPhysicalKeyboard();
-      installMobileKeyboard();
     }
   };
 })();

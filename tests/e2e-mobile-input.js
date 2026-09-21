@@ -454,6 +454,42 @@ async function main() {
             JSON.stringify(flattenForUnit(committedBytes, 0)) === "[100,105]",
             JSON.stringify(committedBytes));
 
+        // ---- 5c. the bar belongs to the VT52/VT100 pages ---------------------
+        // The Model 33 draws its own keycaps (CTRL/SHIFT/REPT/BREAK/HERE IS live
+        // on the punch keyboard), so it needs neither the bar nor the system
+        // keyboard; the Panel/Printer/Config pages have nothing to type into.
+        await showPage(page, "page-teletype");
+        const barAway = await page.evaluate(() => {
+            const bar = document.getElementById("mobile-keys");
+            return { exists: !!bar, hidden: !!bar && bar.classList.contains("hidden") };
+        });
+        check("the special-key bar hides itself on the Model 33 page",
+            barAway.exists === true && barAway.hidden === true, JSON.stringify(barAway));
+
+        const paperPoint = await page.evaluate(() => {
+            const paper = document.getElementById("g60printer") ||
+                document.getElementById("punchkeypane");
+            if (!paper) return null;
+            const q = paper.getBoundingClientRect();
+            return { x: Math.round(q.x + q.width / 2), y: Math.round(q.y + 24) };
+        });
+        if (paperPoint) await page.touchscreen.tap(paperPoint.x, paperPoint.y);
+        await sleep(300);
+        const teletypeFocus = await page.evaluate(() => {
+            const el = document.activeElement;
+            return el ? (el.className || el.tagName) : "(none)";
+        });
+        check("a tap on the Model 33 paper raises no system keyboard",
+            teletypeFocus.indexOf("mobile-input") === -1, JSON.stringify(teletypeFocus));
+
+        await showPage(page, CONSOLE.page);
+        const barBack = await page.evaluate(() => {
+            const bar = document.getElementById("mobile-keys");
+            return { hidden: !!bar && bar.classList.contains("hidden") };
+        });
+        check("and the bar is back on the VT52/VT100 pages",
+            barBack.hidden === false, JSON.stringify(barBack));
+
         // ---- 6. re-applying must not multiply the bridges -------------------
         const repeats = await page.evaluate((spec) => {
             const count = () => document.querySelectorAll("textarea.mobile-input").length;

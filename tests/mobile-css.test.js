@@ -98,11 +98,11 @@ function run() {
         "pdp11-app.js must detect a coarse pointer before bridging");
     assert.ok(app.indexOf("MobileInput.create(") !== -1,
         "pdp11-app.js must create a MobileInput bridge");
-    assert.ok(app.indexOf("installMobileKeyboard") !== -1,
-        "the teletype must install a mobile keyboard bridge");
-    assert.ok(app.indexOf("installMobileKeyboard") !==
-        app.lastIndexOf("installMobileKeyboard"),
-        "installMobileKeyboard must be both defined and called");
+    // The Model 33 keeps its own drawn keycaps: it must NOT bridge the system
+    // keyboard any more — the drawn keys are what an operator presses, and a
+    // phone's keyboard cannot latch SHIFT/CTRL in any case.
+    assert.ok(app.indexOf("installMobileKeyboard") === -1,
+        "the teletype must not bridge the system keyboard");
 
     // The canvas-mode bridge lives in ONE helper and is installed from BOTH
     // paths into canvas mode. The CONFIG "VT52 text mode" switch is applied
@@ -154,6 +154,15 @@ function run() {
             "the bar must route its keys to the terminal on screen");
         assert.ok(keys.indexOf("MobileInput.isCoarse()") !== -1,
             "the bar must exist only on a touch device");
+
+        // …and only on the terminals that have no keyboard of their own: the
+        // VT52/VT100 pages. The bar follows the page changes the app announces.
+        assert.ok(/TERMINAL_PAGES\s*=\s*\[[^\]]*"vt52-console"[^\]]*"vt52-2"[^\]]*\]/
+            .test(keys), "mobile-keys.js must name the pages the bar belongs to");
+        assert.ok(keys.indexOf("yapdp:pagechange") !== -1,
+            "the bar must follow the page changes the app announces");
+        assert.ok(keys.indexOf("classList.toggle(\"hidden\"") !== -1,
+            "the bar must hide itself off its pages");
 
         // The app builds it and registers a target per page, so ONE bar serves
         // every terminal — console, user terminal, text or canvas mode, teletype.
