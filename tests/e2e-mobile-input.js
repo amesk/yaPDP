@@ -459,12 +459,22 @@ async function main() {
         // on the punch keyboard), so it needs neither the bar nor the system
         // keyboard; the Panel/Printer/Config pages have nothing to type into.
         await showPage(page, "page-teletype");
-        const barAway = await page.evaluate(() => {
+        // The check reads the RENDERED result, not the class: the first version
+        // asserted only that the class was set, and the bar stayed on screen
+        // because the `display: flex` rule out-specified the `hidden` state.
+        const readBar = () => page.evaluate(() => {
             const bar = document.getElementById("mobile-keys");
-            return { exists: !!bar, hidden: !!bar && bar.classList.contains("hidden") };
+            return {
+                exists: !!bar,
+                cls: !!bar && bar.classList.contains("hidden"),
+                display: bar ? getComputedStyle(bar).display : "(no bar)",
+                height: bar ? Math.round(bar.getBoundingClientRect().height) : -1
+            };
         });
-        check("the special-key bar hides itself on the Model 33 page",
-            barAway.exists === true && barAway.hidden === true, JSON.stringify(barAway));
+        const barAway = await readBar();
+        check("the special-key bar really leaves the Model 33 page",
+            barAway.exists === true && barAway.display === "none" && barAway.height === 0,
+            JSON.stringify(barAway));
 
         const paperPoint = await page.evaluate(() => {
             const paper = document.getElementById("g60printer") ||
@@ -482,13 +492,18 @@ async function main() {
         check("a tap on the Model 33 paper raises no system keyboard",
             teletypeFocus.indexOf("mobile-input") === -1, JSON.stringify(teletypeFocus));
 
+        // The front panel has nothing to type into either — the page the operator
+        // noticed the bar on.
+        await showPage(page, "page-panel");
+        const barOnPanel = await readBar();
+        check("and it is gone from the Panel page too",
+            barOnPanel.display === "none" && barOnPanel.height === 0,
+            JSON.stringify(barOnPanel));
+
         await showPage(page, CONSOLE.page);
-        const barBack = await page.evaluate(() => {
-            const bar = document.getElementById("mobile-keys");
-            return { hidden: !!bar && bar.classList.contains("hidden") };
-        });
-        check("and the bar is back on the VT52/VT100 pages",
-            barBack.hidden === false, JSON.stringify(barBack));
+        const barBack = await readBar();
+        check("while it is really back on the VT52/VT100 pages",
+            barBack.display === "flex" && barBack.height > 20, JSON.stringify(barBack));
 
         // ---- 6. re-applying must not multiply the bridges -------------------
         const repeats = await page.evaluate((spec) => {
