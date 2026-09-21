@@ -169,6 +169,20 @@ function run() {
         assert.ok(/body\.mobile-keys-on\s+\.mobile-keys\.hidden\s*\{[^}]*display:\s*none/
             .test(css), "css/pdp11.css must really hide the bar through .hidden");
 
+        // The bottom stack is laid out from MEASURED numbers (--app-h, the real
+        // window height, and --bottom-stack-h, the real height of the navigation
+        // bar plus this bar), because the flow column and a fixed element do not
+        // always agree on where the bottom edge is. Hard-coded per-button offsets
+        // are what put the round buttons on the navigation bar.
+        assert.ok(/\.app-layout\s*\{[^}]*height:\s*var\(--app-h/.test(css),
+            "the column must use the measured window height");
+        assert.ok(/bottom:\s*calc\(var\(--bottom-stack-h\)/.test(css),
+            "the floating buttons must be lifted by the measured stack height");
+        assert.ok(/mobile-keys-off[^}]*\{[^}]*--bottom-stack-h/.test(css),
+            "with the bar hidden the stack is the navigation bar alone");
+        assert.ok(/publishMetrics/.test(keys),
+            "the module must publish those measurements");
+
         // The app builds it and registers a target per page, so ONE bar serves
         // every terminal — console, user terminal, text or canvas mode, teletype.
         assert.ok(app.indexOf("MobileKeys.install()") !== -1,

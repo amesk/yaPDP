@@ -631,6 +631,50 @@ async function main() {
         check("a viewport that forbids zoom is clamped (so the check means something)",
             Math.abs(lockedScale - 1) < 0.01, `scale ${lockedScale}`);
         await locked.close();
+
+        // ---- the bottom stack is one piece ----------------------------------
+        // The navigation bar must SIT on the special-key bar (no dead band), and
+        // the round floating buttons must clear the navigation bar. This is where
+        // the two definitions of "the bottom of the window" (the flow column's
+        // 100vh vs the current visual viewport a fixed element anchors to) used to
+        // disagree by 26px, dropping the buttons half-way onto the bar.
+        const bottomStack = () => phoneFrame.evaluate(() => {
+            const box = (sel) => {
+                const el = document.querySelector(sel);
+                if (!el) return null;
+                if (getComputedStyle(el).display === "none") return { hidden: true };
+                const q = el.getBoundingClientRect();
+                return { top: Math.round(q.top), bottom: Math.round(q.bottom) };
+            };
+            return {
+                vh: window.innerHeight,
+                nav: box(".app-sidebar"),
+                keys: box("#mobile-keys"),
+                buttons: [box("#mute-btn"), box("#fullscreen-btn"), box("#zoom-btn")]
+                    .filter((b) => b && !b.hidden)
+            };
+        });
+        const clearOfNav = (s) => s.buttons.length > 0 &&
+            s.buttons.every((b) => b.bottom <= s.nav.top - 6);
+
+        const withBar = await bottomStack();
+        check("on a phone the navigation bar sits on the key bar with no dead band",
+            Math.abs(withBar.nav.bottom - withBar.keys.top) <= 2,
+            JSON.stringify({ nav: withBar.nav, keys: withBar.keys }));
+        check("and the round buttons clear the navigation bar",
+            clearOfNav(withBar),
+            JSON.stringify({ nav: withBar.nav, buttons: withBar.buttons }));
+
+        await showPage(phoneFrame, "page-panel");
+        const withoutBar = await bottomStack();
+        check("with the bar off its pages the navigation bar reaches the bottom edge",
+            withoutBar.keys.hidden === true &&
+            Math.abs(withoutBar.nav.bottom - withoutBar.vh) <= 2,
+            JSON.stringify({ nav: withoutBar.nav, vh: withoutBar.vh }));
+        check("and the round buttons clear it there too",
+            clearOfNav(withoutBar),
+            JSON.stringify({ nav: withoutBar.nav, buttons: withoutBar.buttons }));
+
         await phoneFrame.screenshot({
             path: path.join(ARTIFACTS, "e2e-mobile-keys-phone-frame.png"), type: "png"
         }).catch(() => { });

@@ -1520,7 +1520,19 @@ body {
 
 .app-layout {
     display: flex;
-    height: 100vh;
+    /* The column is as tall as the window really is right now. On a phone 100vh
+       is the LARGE viewport (URL bar hidden) while a fixed element anchors to the
+       CURRENT one — measured in a 390x844 emulation the column stopped at 844
+       against an innerHeight of 870, which left a 26px dead band under the
+       navigation bar. src/mobile-keys.js publishes the measured height (--app-h)
+       on a touch device; the CSS units are the fallback where it does not. */
+    height: var(--app-h, 100vh);
+}
+
+@supports (height: 100dvh) {
+    .app-layout {
+        height: var(--app-h, 100dvh);
+    }
 }
 
 .app-sidebar {
@@ -3415,9 +3427,23 @@ body.mobile-keys-on .mobile-key.active {
         right: 56px;
     }
 
-    /* The special-key bar docks BELOW the navigation bar, so everything
-       bottom-anchored is lifted by its height: 2px border + 4px + 38px key +
-       4px padding = 48px. */
+    /* The special-key bar docks BELOW the navigation bar, so the round floating
+       buttons above the stack are lifted by its height. That height is MEASURED
+       (--bottom-stack-h, published by src/mobile-keys.js) rather than assumed:
+       the navigation bar and the bar under it are the only things that define it,
+       and hard-coded per-button numbers are exactly what let the buttons land on
+       the navigation bar. The values below are the fallback before the module has
+       measured anything. */
+    body.mobile-keys-on {
+        --bottom-stack-h: 112px;
+    }
+
+    /* Off its pages the bar is not there: the stack is the navigation bar alone,
+       and the dead band under it goes away with it. */
+    body.mobile-keys-on.mobile-keys-off {
+        --bottom-stack-h: 64px;
+    }
+
     body.mobile-keys-on .mobile-keys {
         left: 0;
     }
@@ -3426,13 +3452,14 @@ body.mobile-keys-on .mobile-key.active {
         margin-bottom: 48px;
     }
 
-    body.mobile-keys-on .mute-btn {
-        bottom: 114px;
+    body.mobile-keys-on.mobile-keys-off .app-sidebar {
+        margin-bottom: 0;
     }
 
+    body.mobile-keys-on .mute-btn,
     body.mobile-keys-on .fullscreen-btn,
     body.mobile-keys-on .zoom-btn {
-        bottom: 114px;
+        bottom: calc(var(--bottom-stack-h) + 10px);
     }
 
     .console-reboot {
