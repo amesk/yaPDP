@@ -2766,21 +2766,57 @@ function installLP11Scaling() {
 // css/pdp11.css), slid under the navigation sidebar. This mirrors
 // installLP11Scaling: when the panel page cannot fit the panel plus its
 // sticker, scale the whole .frame (the sticker is a child of .frame, so it
-// scales along) via transform: scale. The frame stays centred, so the sticker
-// needs symmetric room on both sides: the available width must fit
-// natW + 2 * extent. The extent is measured live from the note's rotated
-// bounding box (getBoundingClientRect already includes the -3deg tilt), so
-// the fit always reserves exactly what the note actually needs. A 40px page
-// margin keeps the note M/2 = 20px clear of the page edge — past the
-// sidebar's box-shadow — whenever scaling is active.
-function panelFitScale(availW, availH, natW, natH, stickerExtent) {
+// scales along) via transform: scale.
+//
+// The note must never be paid for with panel size. Beside the panel it costs
+// its own width on BOTH sides, because the frame stays centred — and on a
+// narrow window that reserve is exactly what used to shrink the cabinet. So
+// when the note does not fit beside the panel it moves ABOVE or BELOW it,
+// whichever side of the cabinet has more room to spare (panelStickerSide),
+// where it costs height instead of width. Either way the room it occupies is
+// reserved on both sides of the centred frame (the formula below is
+// symmetric), which is also what keeps the note inside the page: #page-panel
+// is overflow:hidden.
+//
+// The extent is measured live from the note's rotated bounding box
+// (getBoundingClientRect already includes the -3deg tilt), so the fit always
+// reserves exactly what the note actually needs. A 40px page margin keeps the
+// note M/2 = 20px clear of the page edge — past the sidebar's box-shadow —
+// whenever scaling is active.
+function panelFitScale(availW, availH, natW, natH, stickerExtent, stickerVExtent) {
   if (!natW || !natH) return 1;
   var s = Math.min(1, (availW > 0) ? availW / (natW + 2 * stickerExtent) : 1);
-  if (availH > 0 && natH > availH) {
-    s = Math.min(s, availH / natH);
+  // The note stands beside the panel (stickerExtent wide, reserved twice) or
+  // above/below it (stickerVExtent tall, reserved twice as well, because the
+  // frame is centred on both axes). Only the axis the note occupies changes
+  // the footprint; with no note at all the footprint is the panel itself.
+  var footprintH = natH + 2 * ((stickerVExtent > 0) ? stickerVExtent : 0);
+  if (availH > 0 && footprintH > availH) {
+    s = Math.min(s, availH / footprintH);
   }
   if (s < 0.1) s = 0.1; // never collapse below readability
   return s;
+}
+
+// Which side of the cabinet the note takes: "left" (beside the panel, the
+// default), "above" or "below". BESIDE the panel the note costs width on both
+// sides of the centred frame — the room the cabinet would pay for by shrinking
+// — so as soon as it does not fit there it moves above or below, where the
+// roomier of the two sides wins. The inputs are CSS pixels: `side`, `above`
+// and `below` are the free room the page has around the panel, while
+// `needSide` and `needHeight` are what the note's own box asks for. An
+// unmeasurable note (needHeight 0) stays beside the panel.
+function panelStickerSide(room) {
+  if (!room) return "left";
+  var px = function (value) {
+    var n = Number(value);
+    return isFinite(n) ? n : 0;
+  };
+  var needSide = px(room.needSide);
+  var needHeight = px(room.needHeight);
+  if (needHeight <= 0) return "left";        // nothing measured yet
+  if (px(room.side) >= needSide) return "left"; // fits beside the panel
+  return (px(room.above) >= px(room.below)) ? "above" : "below";
 }
 
 function installPanelScaling() {
@@ -2790,22 +2826,40 @@ function installPanelScaling() {
   var frame = page.querySelector('.frame');
   if (!frame) return;
   var sticker = page.querySelector('.panel-sticker');
-  // Fallback for the note's left protrusion when it cannot be measured (a
-  // visible note whose layout has not flushed yet): 260px wide note + 8px gap
-  // to the panel edge (see css/pdp11.css .panel-sticker).
+  // Fallback for the note's WIDTH when it cannot be measured (a visible note
+  // whose layout has not flushed yet): 260px wide note + 8px gap to the panel
+  // edge (see css/pdp11.css .panel-sticker). Its height stays 0, which keeps
+  // the note beside the panel until the note itself is measurable.
   var fallbackExtent = 268;
+  // The gaps the stylesheet leaves between the panel and the note: 2 units to
+  // the side and 2 units above/below (--unitWidth = 4px, --unitHeight = 5px).
+  var GAP_SIDE = 8;
+  var GAP_VERTICAL = 10;
 
-  // Measure how far the note's real bounding box reaches to the LEFT of the
-  // frame. getBoundingClientRect already includes the -3deg rotation, so the
-  // swinging top-left corner is accounted for regardless of the note's actual
-  // height or font rendering. Returns 0 while the note is hidden (nothing to
-  // reserve for).
-  function measureExtent() {
-    if (!sticker || sticker.classList.contains('hidden')) return 0;
-    var fr = frame.getBoundingClientRect();
+  // The note's own bounding box — its -3deg tilt and the gap to the panel edge
+  // included — plus what each placement asks for. Measured from the note
+  // ITSELF, never from where it currently sits: a decision fed by the current
+  // protrusion would flip between the placements, because beside the panel the
+  // protrusion is ~280px while above or below it is 0. Returns null while the
+  // note is hidden or not rendered yet.
+  function measureNote() {
+    if (!sticker || sticker.classList.contains('hidden')) return null;
     var sr = sticker.getBoundingClientRect();
-    if (!sr.width || !sr.height) return 0; // not rendered yet
-    return Math.max(0, fr.left - sr.left);
+    if (!sr.width || !sr.height) return null; // not rendered yet
+    var fr = frame.getBoundingClientRect();
+    return {
+      extent: Math.max(0, fr.left - sr.left),
+      needSide: sr.width + GAP_SIDE,
+      needHeight: sr.height + GAP_VERTICAL
+    };
+  }
+
+  // Above or below the cabinet the note is a different animal: see the
+  // .sticker-above / .sticker-below rules in css/pdp11.css.
+  function setSide(side) {
+    if (!sticker) return;
+    sticker.classList.toggle('sticker-above', side === 'above');
+    sticker.classList.toggle('sticker-below', side === 'below');
   }
 
   function apply() {
@@ -2817,15 +2871,42 @@ function installPanelScaling() {
     var natH = frame.offsetHeight;
     if (!natW || !natH) return; // hidden page - skip until visible
 
-    var extent = measureExtent();
-    if (extent === 0 && sticker && !sticker.classList.contains('hidden')) {
-      extent = fallbackExtent; // visible note, layout not flushed yet
-    }
     // 40px horizontal margin keeps the note's bounding box M/2 = 20px clear of
     // the page edge (and past the sidebar's box-shadow) whenever scaling is
     // active; the same 40px vertical margin mirrors it on the other axis.
-    var s = panelFitScale(page.clientWidth - 40, page.clientHeight - 40,
-                          natW, natH, extent);
+    var availW = page.clientWidth - 40;
+    var availH = page.clientHeight - 40;
+
+    var note = measureNote();
+    if (!note && sticker && !sticker.classList.contains('hidden')) {
+      note = { extent: fallbackExtent, needSide: fallbackExtent, needHeight: 0 };
+    }
+
+    var side = 'left';
+    if (note) {
+      var fr = frame.getBoundingClientRect();
+      var pr = page.getBoundingClientRect();
+      // The machine's own controls are pinned to the top of the page on a
+      // touch device (--touch-strip-h, see css/pdp11.css), on top of it: that
+      // band is not free room for the note.
+      var strip = 0;
+      try {
+        strip = parseFloat(getComputedStyle(document.body)
+          .getPropertyValue('--touch-strip-h')) || 0;
+      } catch (e) { strip = 0; }
+      side = panelStickerSide({
+        side: (availW - natW) / 2,
+        above: fr.top - pr.top - 20 - strip,
+        below: pr.bottom - fr.bottom - 20,
+        needSide: note.needSide,
+        needHeight: note.needHeight
+      });
+      setSide(side);
+    }
+
+    var extentH = (side === 'left' && note) ? note.extent : 0;
+    var extentV = (side !== 'left' && note) ? note.needHeight : 0;
+    var s = panelFitScale(availW, availH, natW, natH, extentH, extentV);
     // 'center center' pivots around the flex-centred layout box, so the
     // shrunk panel (and its sticker) stay visually centred in the page.
     frame.style.transformOrigin = 'center center';

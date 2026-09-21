@@ -708,7 +708,100 @@ async function main() {
         await phoneFrame.screenshot({
             path: path.join(ARTIFACTS, "e2e-mobile-keys-landscape.png"), type: "png"
         }).catch(() => { });
+
+        // ---- the Help Me! note never costs the panel its size ----------------
+        // The note is ~260px wide and its reserve is symmetric (the cabinet is
+        // centred), so showing it on a narrow window used to shrink the panel
+        // itself — the operator losing machine size to a decorative note. It
+        // now moves above or below the cabinet instead, so the panel keeps
+        // exactly the width it has with the note hidden.
+        await phoneFrame.setViewport({ width: 390, height: 844, hasTouch: true, isMobile: true });
+        await showPage(phoneFrame, "page-panel");
+        const panelGeom = () => phoneFrame.evaluate(() => {
+            const frame = document.querySelector('#page-panel .frame');
+            const sticker = document.querySelector('.panel-sticker');
+            const box = (el) => {
+                const q = el.getBoundingClientRect();
+                return {
+                    top: Math.round(q.top), bottom: Math.round(q.bottom),
+                    left: Math.round(q.left), right: Math.round(q.right),
+                    w: Math.round(q.width), h: Math.round(q.height)
+                };
+            };
+            return {
+                page: box(document.getElementById('page-panel')),
+                frame: box(frame),
+                shown: !sticker.classList.contains('hidden'),
+                placement: sticker.classList.contains('sticker-above') ? 'above'
+                    : sticker.classList.contains('sticker-below') ? 'below' : 'left',
+                sticker: sticker.classList.contains('hidden') ? null : box(sticker),
+                transform: frame.style.transform || '(none)'
+            };
+        });
+        const panelHidden = await panelGeom();
+        await phoneFrame.evaluate(() => {
+            const btn = document.getElementById('panel-sticker-btn');
+            if (btn) btn.click();
+        });
+        await sleep(700);
+        const panelShown = await panelGeom();
+        check("the Help Me! button really shows the note (the live path)",
+            panelHidden.shown === false && panelShown.shown === true,
+            JSON.stringify({ hidden: panelHidden.shown, shown: panelShown.shown }));
+        check("on a phone the note leaves the cabinet's side for above or below it",
+            panelShown.placement === "above" || panelShown.placement === "below",
+            panelShown.placement);
+        check("and it takes its place beside the cabinet, not on it",
+            !!panelShown.sticker &&
+            (panelShown.sticker.bottom <= panelShown.frame.top + 1 ||
+                panelShown.sticker.top >= panelShown.frame.bottom - 1),
+            JSON.stringify({ sticker: panelShown.sticker, frame: panelShown.frame }));
+        check("so the panel keeps the width it has with the note hidden",
+            Math.abs(panelShown.frame.w - panelHidden.frame.w) <= 2,
+            `note shown ${panelShown.frame.w}px, note hidden ${panelHidden.frame.w}px`);
+        check("and the note stays inside the page (never clipped)",
+            !!panelShown.sticker &&
+            panelShown.sticker.top >= panelShown.page.top - 1 &&
+            panelShown.sticker.bottom <= panelShown.page.bottom + 1,
+            JSON.stringify({ sticker: panelShown.sticker, page: panelShown.page }));
+
+        await phoneFrame.screenshot({
+            path: path.join(ARTIFACTS, "e2e-panel-sticker-phone.png"), type: "png"
+        }).catch(() => { });
         await phoneFrame.close();
+
+        // The control: with room to spare the note stays where it has always
+        // been — beside the cabinet, full size, no scaling. Without this the
+        // check above would pass just as well if the note had simply left the
+        // side everywhere.
+        await showPage(page, "page-panel");
+        await page.setViewport({ width: 1920, height: 1080, hasTouch: true, isMobile: false });
+        await page.evaluate(() => {
+            const sticker = document.querySelector('.panel-sticker');
+            const btn = document.getElementById('panel-sticker-btn');
+            if (btn && sticker.classList.contains('hidden')) btn.click();
+        });
+        await sleep(700);
+        const widePanel = await page.evaluate(() => {
+            const frame = document.querySelector('#page-panel .frame');
+            const sticker = document.querySelector('.panel-sticker');
+            const f = frame.getBoundingClientRect();
+            const s = sticker.getBoundingClientRect();
+            return {
+                shown: !sticker.classList.contains('hidden'),
+                placement: sticker.classList.contains('sticker-above') ? 'above'
+                    : sticker.classList.contains('sticker-below') ? 'below' : 'left',
+                gap: Math.round(f.left - s.right),
+                transform: frame.style.transform || '(none)'
+            };
+        });
+        check("a window with room keeps the note beside the cabinet, as before",
+            widePanel.shown && widePanel.placement === "left" && widePanel.gap > 0,
+            JSON.stringify(widePanel));
+        check("and there the panel keeps its full size",
+            widePanel.transform === "(none)", widePanel.transform);
+        await page.setViewport({ width: 1400, height: 900, hasTouch: true, isMobile: false });
+        await sleep(200);
 
         // ---- 11. two-finger zoom & pan (a standalone context) ---------------
         // A standalone web app — an iOS home-screen app, a desktop WebView — has

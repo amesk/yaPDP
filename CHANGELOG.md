@@ -98,6 +98,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
   `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)
 
+### Changed
+
+- **The operator's hand-written "Help Me!" sticky note no longer costs the front
+  panel any size.** The note is taped beside the cabinet, and because the
+  cabinet is centred it reserved its own width on BOTH sides — so on a narrow
+  window, or at a high UI zoom, showing the note shrank the whole panel. When it
+  does not fit beside the cabinet it now moves above or below it instead,
+  whichever side has more room (the band the machine's own pinned controls
+  occupy on a touch device is not counted as free room), where it costs height
+  only and never width. The note keeps its tilt and its gap to the cabinet, is
+  centred on it, and stays inside the page rather than being clipped.
+  (`panelStickerSide()` / `panelFitScale()` in `src/pdp11-app.js`,
+  `.panel-sticker.sticker-above` / `.sticker-below` in `css/pdp11.css`; covered
+  by `tests/panel-scaling.test.js` and `tests/e2e-mobile-input.js`, which
+  measures that the panel keeps the same width with the note shown as with it
+  hidden on a phone, and keeps its full size on a wide window)
+
 ### Fixed
 
 - **The cursor no longer lags half a second behind the text.** Moving the cursor
