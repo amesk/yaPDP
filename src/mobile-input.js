@@ -121,9 +121,12 @@ var MobileInput = (function () {
     // and the composing text is the new keystroke. Two helpers, so the DOM-free
     // module can be tested without a composition.
     //
-    // Only plain ASCII is delivered while composing: a CJK composition builds
-    // its text out of a romanisation ("ni" -> 你), and those letters are not
-    // what the operator means. The committed string is sent at compositionend.
+    // Only plain ASCII goes out WHILE composing; everything else waits for the
+    // commit, which then sends whatever the composing path did not deliver. The
+    // keyboard this bridge is built for types Latin text (as a Model 33's does),
+    // so the corner the rule excludes is a CJK composition: it builds its text
+    // out of a romanisation ("ni" -> 你), and what reaches the machine is those
+    // letters — the character itself has no 7-bit representation to send.
     function isPlainAscii(text) {
         if (typeof text !== "string" || !text.length) return false;
         for (var i = 0; i < text.length; i++) {
