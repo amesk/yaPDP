@@ -3359,6 +3359,33 @@ body.mobile-keys-on .mobile-key.active {
     box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
+/* The bar is docked to the bottom edge while it is shown, so the round floating
+   buttons must be lifted clear of it — at ANY width, not only on a narrow
+   screen. The bar follows the POINTER (a coarse one) while the layout below
+   follows the WIDTH, and a phone turned to landscape is 844px wide: it keeps
+   the bar, the media query stops applying, and the buttons fall back to their
+   desktop offsets — which drop them right into the bar's band (measured). The
+   two rules that key the stack on body.mobile-keys-on therefore live outside
+   the media query; the media query only narrows the fallback numbers further.
+   --bottom-stack-h is MEASURED and published by src/mobile-keys.js; the values
+   here cover the first frame, before the module has measured anything (48px is
+   what the bar itself is tall). */
+body.mobile-keys-on {
+    --bottom-stack-h: 48px;
+}
+
+/* Off its pages the bar is not there: the stack is the navigation bar alone,
+   which docks at the bottom edge itself — nothing to clear. */
+body.mobile-keys-on.mobile-keys-off {
+    --bottom-stack-h: 0px;
+}
+
+body.mobile-keys-on .mute-btn,
+body.mobile-keys-on .fullscreen-btn,
+body.mobile-keys-on .zoom-btn {
+    bottom: calc(var(--bottom-stack-h) + 10px);
+}
+
 @media (max-width: 768px) {
     .app-layout {
         flex-direction: column;
@@ -3427,13 +3454,9 @@ body.mobile-keys-on .mobile-key.active {
         right: 56px;
     }
 
-    /* The special-key bar docks BELOW the navigation bar, so the round floating
-       buttons above the stack are lifted by its height. That height is MEASURED
-       (--bottom-stack-h, published by src/mobile-keys.js) rather than assumed:
-       the navigation bar and the bar under it are the only things that define it,
-       and hard-coded per-button numbers are exactly what let the buttons land on
-       the navigation bar. The values below are the fallback before the module has
-       measured anything. */
+    /* On a NARROW screen the bar docks below the navigation bar, so BOTH of them
+       are docked along the bottom edge: the fallbacks below say so before
+       src/mobile-keys.js has measured the real stack. */
     body.mobile-keys-on {
         --bottom-stack-h: 112px;
     }
@@ -3454,12 +3477,6 @@ body.mobile-keys-on .mobile-key.active {
 
     body.mobile-keys-on.mobile-keys-off .app-sidebar {
         margin-bottom: 0;
-    }
-
-    body.mobile-keys-on .mute-btn,
-    body.mobile-keys-on .fullscreen-btn,
-    body.mobile-keys-on .zoom-btn {
-        bottom: calc(var(--bottom-stack-h) + 10px);
     }
 
     .console-reboot {

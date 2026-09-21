@@ -104,10 +104,17 @@ var MobileKeys = (function () {
             if (!el) return;
             var cs = (typeof getComputedStyle === "function") ? getComputedStyle(el) : null;
             if (cs && cs.display === "none") return;
-            tops.push(el.getBoundingClientRect().top);
+            var top = el.getBoundingClientRect().top;
+            // Only what lives in the BOTTOM half is part of the bottom stack. In
+            // LANDSCAPE the navigation goes back to a rail down the left edge,
+            // whose top is 0: counting it would report a stack as tall as the
+            // whole window and push the round buttons off the screen (measured).
+            if (top < viewport * 0.5) return;
+            tops.push(top);
         });
-        if (!tops.length) return;
-        var stackTop = Math.min.apply(null, tops);
+        // Nothing in the bottom half (landscape, off the bar's pages): the stack
+        // is empty, so the buttons may sit on the window edge.
+        var stackTop = tops.length ? Math.min.apply(null, tops) : viewport;
         doc.body.style.setProperty("--bottom-stack-h",
             Math.max(0, Math.round(viewport - stackTop)) + "px");
     }
