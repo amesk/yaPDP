@@ -654,6 +654,20 @@ async function main() {
         check("two fingers zoom the machine page (standalone gestures)",
             scaleOf(zoomedStyle) > 1.5, zoomedStyle);
 
+        // The zoom is anchored BETWEEN THE FINGERS: the machine point under the
+        // centroid (195,400 here — the fingers spread about it) must still be
+        // under it. Growing about the page's corner instead throws that point out
+        // of view, and the operator has to re-pan after every pinch.
+        const zoomState = await page.evaluate(() => TouchZoom.state());
+        const localX = (195 - zoomState.pan.x) / zoomState.scale;
+        const localY = (400 - zoomState.pan.y) / zoomState.scale;
+        check("and it is anchored between the fingers, not at the corner",
+            Math.abs(localX - 195) < 8 && Math.abs(localY - 400) < 8,
+            JSON.stringify({
+                scale: zoomState.scale, pan: zoomState.pan,
+                local: [Math.round(localX), Math.round(localY)]
+            }));
+
         await touch.send("Input.dispatchTouchEvent",
             { type: "touchMove", touchPoints: twoFingers(60, -80) });
         await sleep(150);
