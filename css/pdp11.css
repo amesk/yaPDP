@@ -683,7 +683,9 @@ textarea {
    .frame (right:100% = just outside the frame's left edge), so it stays put
    regardless of how the page is centred. The note tilts like a real stuck-on
    Post-it; the text is handwritten (system cursive) — only the machine-code
-   listing stays monospaced so the address columns line up. */
+   listing stays monospaced so the address columns line up. This is the
+   DEFAULT placement; the two variants below move the note above or below the
+   cabinet when it would otherwise squeeze the panel. */
 .panel-sticker {
     position: absolute;
     right: calc(100% + var(--unitWidth) * 2);
@@ -706,6 +708,30 @@ textarea {
     pointer-events: auto;
     user-select: none;
     z-index: 5;
+}
+
+/* Placement variants, chosen by src/pdp11-app.js (panelStickerSide): when the
+   note does NOT fit beside the panel, it goes above the cabinet or below it —
+   the side with more room wins. Beside the panel the note costs the cabinet
+   its own width on BOTH sides (the frame is centred), and the operator must
+   never lose panel size to a decorative note; above or below it costs height
+   only. The note is centred on the cabinet and keeps the same tilt and the
+   same gap to the panel edge as the side placement. */
+.panel-sticker.sticker-above,
+.panel-sticker.sticker-below {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) rotate(-3deg);
+}
+
+.panel-sticker.sticker-above {
+    top: auto;
+    bottom: calc(100% + var(--unitHeight) * 2);
+}
+
+.panel-sticker.sticker-below {
+    top: calc(100% + var(--unitHeight) * 2);
+    bottom: auto;
 }
 
 /* Folded-in corner flap: a dark triangle tucked into the bottom-right corner
