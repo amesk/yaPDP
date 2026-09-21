@@ -14,6 +14,18 @@ File names for disk and tape images start with two character names matching the 
 
 The emulator main page lists what PDP 11 operating system is loaded on each of the available media files.
 
+## Compressing an image
+
+The .zst files are zstd frames, and the emulator unpacks them with fzstd (assets/vendor/fzstd.js), so a .zst has to be a real zstd frame and not gzip or something else with a .zst name. No external compressor is needed - Node 22.15+/23+ ships zstd in zlib, and tools/media-zst.js decodes every frame it writes back with the same fzstd build the browser loads before it lands on disk. A Node without zstd (the CI matrix still runs 20) gets a valid but uncompressed frame instead of an error, and the tool says so:
+
+```
+npm run media:compress -- media/ra0.tap        -> media/ra0.tap.zst
+npm run media:unpack   -- media/ra0.tap.zst    -> media/ra0.tap
+node tools/media-zst.js check media/ra0.tap.zst     decode and report, writes nothing
+```
+
+The compressed file keeps the whole original name (ra0.tap becomes ra0.tap.zst), because the loaders strip only the trailing .zst. An existing file is never replaced without --force. After adding or replacing an image, run `npm run manifest` so the quick-boot picker and the Info page see it.
+
 ## Building a magnetic tape
 
 A magnetic tape can be built out of ordinary files and read back, in either of the two archive layouts a PDP-11 Unix guest expects:
