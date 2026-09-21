@@ -71,6 +71,7 @@ const ORDER = [
     "panel-led.test.js",
     "screenshots-os-config.test.js",
     "tape-archive.test.js",
+    "media-zst.test.js",
 ];
 
 function allTestFiles() {

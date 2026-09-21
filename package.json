@@ -34,6 +34,8 @@
     "manifest": "wireit",
     "tape:pack": "node tools/tape-archive.js pack",
     "tape:unpack": "node tools/tape-archive.js unpack",
+    "media:compress": "node tools/media-zst.js compress",
+    "media:unpack": "node tools/media-zst.js decompress",
     "e2e:os": "wireit",
     "e2e:bsd": "wireit",
     "e2e:bsd29": "wireit",
