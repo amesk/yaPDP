@@ -186,6 +186,8 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run screenshots:os` | Boot each guest OS through the quick-boot wizard and capture a screenshot into `assets/images/os/` for the landing-page carousel (Unix V5 on the Model 33 teletype, 2.11 BSD and RT-11 v4.0 on a VT100, RT-11 on a DECscope, DEC BASIC, Lunar Lander, XXDP+). The machine profile seeded per shot must mirror the scenario's `hardware` block or the wizard reloads the page mid-capture — [`tests/screenshots-os-config.test.js`](../tests/screenshots-os-config.test.js) pins that |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
 | `npm run manifest` | Regenerate `media/manifest.json` from `media/` (run after adding/removing images; the committed manifest feeds the quick-boot picker and the drift test) |
+| `npm run tape:pack` | Write a magnetic tape image the TM11 can mount — `npm run tape:pack -- out.tap a.c b.c [--format tp\|tar]`. The payload is a Unix V5 `tp` directory (twelve files, names up to 32 chars) or a v7 `tar` stream; the container is SIMH framing with one 512-byte record per block and a tape mark at the end ([`tools/tape-archive.js`](../tools/tape-archive.js)) |
+| `npm run tape:unpack` | Extract the files from such a tape — `npm run tape:unpack -- out.tap [--dir DIR]`; the payload format is detected from the tape itself (the tar checksum decides, `--format` overrides), `node tools/tape-archive.js list out.tap` prints the contents, and `--force` replaces existing files |
 | `npm run version:sync` | Push the `package.json` version into `src/version.js` (UI marker), both `src-tauri/tauri.conf.*.json` (installer version) and `src-tauri/Cargo.toml` — the single step after bumping the version |
 
 ```bash
