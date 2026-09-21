@@ -23,9 +23,12 @@ const assert = require("assert");
 
 const SOURCE_PATH = path.join(__dirname, "..", "src", "mobile-input.js");
 
-function loadModule() {
+function loadModule(nowFn) {
     const code = fs.readFileSync(SOURCE_PATH, "utf8");
     const sandbox = { console };
+    // The module only calls Date.now(). Injecting a controllable clock lets a
+    // test drive the Enter dedupe window deterministically.
+    if (nowFn) sandbox.Date = { now: nowFn };
     vm.createContext(sandbox);
     vm.runInContext(code, sandbox);
     // `var MobileInput = ...` at top level becomes a property of the sandbox.
@@ -37,6 +40,44 @@ function loadModule() {
 // plain main-realm values that compare reliably.
 function plain(value) {
     return JSON.parse(JSON.stringify(value));
+}
+
+// A minimal fake document/element pair: enough for create() to build and wire
+// its invisible textarea, plus a dispatch() to fire the input/beforeinput/
+// keydown events an on-screen keyboard would raise.
+function fakeDoc() {
+    const el = {
+        className: "",
+        style: {},
+        value: "",
+        tabIndex: 0,
+        parentNode: null,
+        _listeners: {},
+        setAttribute: function () { },
+        focus: function () { },
+        blur: function () { },
+        addEventListener: function (type, fn) {
+            (this._listeners[type] = this._listeners[type] || []).push(fn);
+        },
+        removeEventListener: function (type, fn) {
+            const arr = this._listeners[type];
+            if (!arr) return;
+            const i = arr.indexOf(fn);
+            if (i >= 0) arr.splice(i, 1);
+        },
+        dispatch: function (type, ev) {
+            const arr = this._listeners[type] || [];
+            for (let i = 0; i < arr.length; i++) arr[i](ev);
+        }
+    };
+    return {
+        _el: el,
+        createElement: function () { return el; },
+        body: {
+            appendChild: function (child) { child.parentNode = this; },
+            removeChild: function (child) { child.parentNode = null; }
+        }
+    };
 }
 
 // A fake window with the two signals isCoarse() looks at.
@@ -123,6 +164,47 @@ function run() {
         noop.focus();
         noop.blur();
         noop.destroy();
+    }
+
+    // ---- create: Enter via input/beforeinput, with dedupe ---------------
+    {
+        let clock = 1000;
+        const Md = loadModule(function () { return clock; });
+        const doc = fakeDoc();
+        const sent = [];
+        const bridge = Md.create({
+            onBytes: function (bytes) { sent.push(bytes.slice()); },
+            document: doc
+        });
+        assert.ok(bridge.element, "create wires a textarea when a DOM is provided");
+        const el = doc._el;
+
+        // Enter as a line break with an EMPTY data string must still send CR:
+        // this is the case that silently did nothing before.
+        el.dispatch("input", { inputType: "insertLineBreak", data: "" });
+        assert.deepStrictEqual(plain(sent), [[13]],
+            "insertLineBreak with empty data -> CR");
+
+        // The same press reported again (or a null-data variant) within the
+        // dedupe window must NOT send a second CR.
+        clock = 1010;
+        el.dispatch("input", { inputType: "insertLineBreak", data: null });
+        assert.deepStrictEqual(plain(sent), [[13]],
+            "a burst of Enter events collapses to one CR");
+
+        // A later Enter (past the window) sends a fresh CR, including the
+        // beforeinput path used by IMEs that never emit keydown.
+        clock = 1100;
+        el.dispatch("beforeinput", { inputType: "insertParagraph", preventDefault: function () { } });
+        assert.deepStrictEqual(plain(sent), [[13], [13]],
+            "insertParagraph via beforeinput -> a new CR");
+
+        // Ordinary typing is unaffected.
+        el.dispatch("input", { inputType: "insertText", data: "a" });
+        assert.deepStrictEqual(plain(sent[sent.length - 1]), [97],
+            "insertText 'a' -> 0x61");
+
+        bridge.destroy();
     }
 
     console.log("mobile-input.test.js: all tests passed");
