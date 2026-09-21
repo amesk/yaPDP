@@ -58,10 +58,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   latching CTRL that sends the next character as its control code (Ctrl+C =
   0x03, exactly the hardware arithmetic). The bar docks under the navigation bar
   and types into the terminal whose page is on screen — canvas or text mode, or
-  the Model 33. Below 768 px the navigation sidebar becomes a compact bar along
-  the bottom edge, the floating controls move clear of it, and the
-  CONFIG/Storage tabs wrap instead of running off the screen. The emulator's
-  state and timing loops are untouched. (`src/mobile-input.js`,
+  the Model 33. The page declares a **mobile viewport** (`width=device-width`,
+  with pinch-zoom left enabled): without it a phone laid the emulator out at the
+  browser's ~980 px desktop fallback, where the media block below never matched
+  and the page could not be zoomed. Below 768 px the navigation sidebar becomes
+  a compact bar along the bottom edge, the floating controls move clear of it,
+  and the CONFIG/Storage tabs wrap instead of running off the screen. The
+  emulator's state and timing loops are untouched. (`src/mobile-input.js`,
   `src/mobile-keys.js`, `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
   `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)
 

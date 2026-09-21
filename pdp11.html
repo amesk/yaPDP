@@ -3,6 +3,11 @@
 
 <head>
   <meta charset="UTF-8">
+  <!-- A phone without this lays the page out at the ~980px desktop width: the
+       @media (max-width: 768px) mobile block below never matches, and the page
+       cannot be pinched — the gesture is locked to the fit-to-width scale. No
+       user-scalable=no here on purpose: the emulator is meant to be zoomed. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>yaPDP — PDP-11/70 Emulator</title>
   <meta name="description" content="yaPDP — Yet Another PDP-11/70 Emulator">
   <meta name="keywords" content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator">
