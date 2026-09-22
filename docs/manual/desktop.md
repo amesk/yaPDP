@@ -1,9 +1,9 @@
-## The Desktop App
+## Настольное приложение
 
-Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64
-with Tauri. Two installer variants are available:
+<!-- translated: needs review -->
+Предпочитаете нативное приложение? Тот же эмулятор упакован как офлайн-приложение для Windows x64 на Tauri. Доступны два варианта установщика:
 
-| Variant | Ships | Notes |
+| Вариант | Что содержит | Примечания |
 |---|---|---|
-| Minimal | rk0 (Unix V5), rk1 (RT‑11), bootcode + the demo paper tapes (BASIC‑11, ODT‑11, ED‑11, Lunar Lander) | ≈19 MB on Windows. The download is the application itself — artwork and audio — while the bundled images add about 1 MB. All other images are dragged & dropped at runtime. |
-| Full | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | ≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps. |
+| Minimal | rk0 (Unix V5), rk1 (RT‑11), bootcode и демонстрационные перфоленты (BASIC‑11, ODT‑11, ED‑11, Lunar Lander) | Примерно 19 МБ в Windows. Загружаемый файл — это само приложение, вместе с графикой и звуком, а встроенные образы добавляют около 1 МБ. Все остальные образы перетаскиваются в окно во время работы. |
+| Full | все образы — диски RK/RL/RP/RA, ленты TM, все перфоленты | Примерно 103 МБ в Windows, зато все 16 гостевых ОС загружаются офлайн без единого лишнего шага. |
