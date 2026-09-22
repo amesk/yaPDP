@@ -1047,7 +1047,13 @@ textarea {
    of the window, below the floating round buttons (magic wand / REBOOT), so
    it stays visible without covering the middle of the console output. Above
    the content but below the modal overlays, so it never covers the OS picker
-   dialog. */
+   dialog.
+
+   The toast carries a whole SENTENCE, not a label: centred and un-wrapped it
+   is wider than a phone, so both of its ends fell off the screen (measured on
+   a 390px viewport). It now wraps inside the window — the box may never be
+   wider than the window minus a margin, and the words break rather than run
+   off. The narrow-screen block below drops it to a size that still reads. */
 .quickboot-balloon {
     position: fixed;
     left: 50%;
@@ -1055,6 +1061,8 @@ textarea {
     transform: translateX(-50%);
     z-index: 50000;
     display: none;
+    max-width: calc(100% - 16px);
+    box-sizing: border-box;
     padding: 16px 28px;
     border: 2px solid #d84a3f;
     border-radius: 10px;
@@ -1063,7 +1071,10 @@ textarea {
     font-size: 20px;
     font-weight: bold;
     letter-spacing: 0.5px;
-    white-space: nowrap;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+    text-align: center;
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7);
 }
 
@@ -3548,5 +3559,13 @@ body.mobile-keys-on .zoom-btn {
 
     .config-label {
         flex: 0 0 auto;
+    }
+
+    /* The autoload warning (see .quickboot-balloon further up) is a sentence:
+       on a phone it drops to a size that still reads at arm's length and wraps
+       over two lines instead of running off both edges. */
+    .quickboot-balloon {
+        padding: 10px 14px;
+        font-size: 15px;
     }
 }

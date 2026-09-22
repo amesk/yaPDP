@@ -137,6 +137,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dims when no VT52 is installed, mirroring the two VT100 fields.
   (`pdp11-app.js`, `pdp11.html`)
 
+- **The quick-boot "Autoloading in progress" warning fits the screen it is
+  shown on.** It is a sentence, not a label, and it was pinned to the middle of
+  the window on one un-wrapped line: on a phone both of its ends fell off the
+  display. It now wraps inside the window — never wider than the window minus a
+  margin — and drops to a smaller size on a narrow screen. (`css/pdp11.css`;
+  the wording and the box it is measured with are pinned by
+  `tests/mobile-css.test.js` and `tests/e2e-mobile-input.js`)
+
 ### Added
 
 - **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,
