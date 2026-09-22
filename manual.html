@@ -586,7 +586,9 @@
             <h2 id="storage">Storage (paper tape, disk & tape images)</h2>
 
             <p>The Storage page manages every kind of storage media. It has two tabs — <b>Images</b> and
-                <b>Paper Tapes</b> — because the two workflows are completely different.
+                <b>Paper Tapes</b> — because the two workflows are completely different. An image is a whole device
+                mounted into the machine and remembered between sessions; a paper tape is a stream of bytes that the
+                reader walks through from the first frame to the end.
             </p>
 
             <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab"></p>
@@ -596,19 +598,81 @@
             <p><b>Images tab:</b></p>
 
             <ul>
-                <li><b>Drag & drop drop zone.</b> Drop any disk/tape image here — <code>.dsk</code>,
-                    <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are
-                    supported. While the Storage page is active you can also drop a file anywhere over the window —
-                    a full-window drop target appears.
+                <li><b>Drop image.</b> Drop a disk or tape image here — <code>.dsk</code>, <code>.tap</code>,
+                    <code>.ptap</code> and their <code>.zst</code>-compressed forms are supported. While the Storage
+                    page is active you can also drop a file anywhere over the window: a full-window drop target
+                    appears. A <code>.zst</code> file is a zstd frame and the browser unwraps it on the fly, so a
+                    downloaded image needs no unpacking first.
                 </li>
-                <li><b>Mounted images / Unmount list.</b> Shows currently mounted images and lets you unmount them.
-                    Mounted images persist in browser storage (IndexedDB) and are re-mounted automatically on the
-                    next launch — changes to disk contents survive across sessions.</li>
+                <li><b>The file name is the device name.</b> An image is mounted under the device URL taken from the
+                    file itself: <code>RP1.DSK.ZST</code> becomes <code>rp1.dsk</code>, which is why the guest boots
+                    it with <code>boot rp1</code>. Rename the file to the unit you want to use — the table below maps
+                    every device to its drive, its controller and its boot command.</li>
+                <li><b>Mounted images / Unmount.</b> Lists the images mounted in this browser and lets you unmount
+                    one again. The counter next to it counts the images <em>you</em> mounted (dropped or imported),
+                    not the ones the desktop build carries inside itself. Mounted images live in browser storage
+                    (IndexedDB) and are re-mounted automatically on the next launch.</li>
                 <li><b>Export disk.</b> Downloads a mounted disk image to your machine.</li>
                 <li><b>Persistent disk changes.</b> Guest-OS writes are saved to browser storage and overlaid on the
-                    base image on the next launch; reset discards the saved changes, returning the image to its
-                    pristine state.</li>
+                    base image on the next launch, so files an operating system created are still there tomorrow.
+                    Only the blocks the guest actually wrote are kept — the base image is fetched again on every
+                    launch — and a saved block always wins over the pristine one. They are written out periodically
+                    and when you leave the page, and they belong to one image:
+                    <b>Reset image</b> discards them for the selected disk, <b>Reset all</b> for every disk, which
+                    returns the media to its factory state.
+                </li>
             </ul>
+
+            <p><b>Which file is which device:</b></p>
+
+            <table style="margin-left:0; padding:3px;">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Drive</th>
+                        <th>Controller</th>
+                        <th>Boot it with</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="disk">rk0 … rk5</td>
+                        <td>RK05 disk cartridge</td>
+                        <td>RK11</td>
+                        <td><code>boot rkN</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">rl0 … rl3</td>
+                        <td>RL01 / RL02 cartridge</td>
+                        <td>RL11</td>
+                        <td><code>boot rlN</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">rp0 … rp4</td>
+                        <td>RP04 / RP06 disk pack</td>
+                        <td>RP11</td>
+                        <td><code>boot rpN</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">ra0 … ra2</td>
+                        <td>RA80 / RA81 (MSCP)</td>
+                        <td>UDA50</td>
+                        <td><code>boot raN</code></td>
+                    </tr>
+                    <tr>
+                        <td class="disk">tm0 … tm2</td>
+                        <td>9-track magnetic tape</td>
+                        <td>TM11</td>
+                        <td><code>boot tmN</code> (RSTS restores with ROLLIN)</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">*.ptap</td>
+                        <td>Paper tape reader / punch</td>
+                        <td>PTR11</td>
+                        <td><code>boot pr</code></td>
+                    </tr>
+                </tbody>
+            </table>
 
             <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab">
             </p>
@@ -618,15 +682,20 @@
             <p><b>Paper Tapes tab:</b></p>
 
             <ul>
-                <li><b>Paper tape reader.</b> A file selector for the <code>#ptr</code> device. Load BASIC‑11,
-                    ODT‑11, ED‑11, or <a href="#vt11">Lunar Lander</a> from simulated paper tape — then boot with
-                    <code>BOOT PR</code>. Dropped <code>.ptap</code> files appear here too.
-                </li>
+                <li><b>Paper tape reader file.</b> A selector for the reader (<code>#ptr</code>) holding the tapes
+                    this build ships — BASIC‑11 V007A, ODT‑11X‑V004A, ED‑11‑V004B, <a href="#vt11">Lunar
+                        Lander</a> and the bootstrap loader — plus any <code>.ptap</code> you dropped. Load one and
+                    boot it with <code>BOOT PR</code>.</li>
+                <li><b>Rewind tape and the tape state.</b> The indicator beside the button says whether a tape is
+                    loaded and how far the reader has moved through it; <b>Rewind tape</b> puts it back to the first
+                    frame, which is what a guest does when it restarts a read.</li>
                 <li><b>Drop paper tape.</b> A small drop zone accepting <code>.ptap</code> and
                     <code>.ptap.zst</code> — dropped tapes are added to the reader file selector.
                 </li>
-                <li><b>Export paper tape.</b> Downloads the punched paper tape (<code>.ptap</code>) from the punch
-                    buffer, or clears the buffer.</li>
+                <li><b>Export paper tape.</b> The punch buffer is filled by the bytes the console echoes, and the
+                    counter shows how much is on the tape. <b>Download</b> saves it as a <code>.ptap</code>;
+                    <b>Clear</b> empties the buffer for the next tape.
+                </li>
             </ul>
 
             <blockquote>
