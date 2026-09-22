@@ -29,6 +29,13 @@
       align-items: center;
       justify-content: center;
       flex-direction: column;
+      /* The overlay spans the whole window and its lines are centred, so on a
+         phone — narrower than the hint's own measure — the text ran into both
+         edges (measured on a 390px viewport). The padding is the gutter;
+         border-box keeps the overlay itself at exactly the window's size
+         instead of growing by the padding. */
+      box-sizing: border-box;
+      padding: 24px 18px;
       gap: 18px;
       background: #16120e;
       color: #e0d8c8;
@@ -74,6 +81,11 @@
     #yapdp-loading .yapdp-loading-hint {
       color: #8d8271;
       font-size: 12px;
+      /* `width: 100%` caps the box at the overlay's CONTENT box (the window
+         minus the gutter), which a narrow phone needs; 34em keeps it a
+         comfortable measure on a wide one. Without the first, a centred
+         flex item wider than its container overflows both sides. */
+      width: 100%;
       max-width: 34em;
       text-align: center;
       line-height: 1.5;
