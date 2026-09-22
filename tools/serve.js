@@ -8,7 +8,7 @@
  * src/iopage.js fetches media slices with HTTP Range requests, so this server
  * implements byte-range responses (206 / 416) in addition to plain GET/HEAD.
  *
- * Usage: node tools/serve.js [--port 1170] [--dir <root>]
+ * Usage: node tools/serve.js [--port 1170] [--dir <root>] [--index <file>]
  */
 "use strict";
 
@@ -20,6 +20,10 @@ const path = require("path");
 
 let port = 1170;
 let root = path.resolve(__dirname, "..");
+// Document served at "/": the emulator page by default (npm run serve), or the
+// assembled landing SPA when the site preview passes --index index.html. The
+// emulator then stays reachable at /pdp11.html either way.
+let index = "pdp11.html";
 
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
@@ -32,8 +36,12 @@ for (let i = 0; i < args.length; i++) {
         root = path.resolve(args[++i]);
     } else if (a.startsWith("--dir=")) {
         root = path.resolve(a.slice("--dir=".length));
+    } else if (a === "--index") {
+        index = args[++i];
+    } else if (a.startsWith("--index=")) {
+        index = a.slice("--index=".length);
     } else if (a === "-h" || a === "--help") {
-        console.log("Usage: node tools/serve.js [--port 1170] [--dir <root>]");
+        console.log("Usage: node tools/serve.js [--port 1170] [--dir <root>] [--index pdp11.html]");
         process.exit(0);
     } else {
         console.error(`Unknown argument: ${a}`);
@@ -150,9 +158,10 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // Map "/" to the main emulator page.
+    // Map "/" to the configured root document (the emulator page by default,
+    // the assembled SPA when the preview passes --index index.html).
     if (urlPath === "/") {
-        urlPath = "/pdp11.html";
+        urlPath = "/" + index.replace(/^\/+/, "");
     }
 
     const filePath = path.join(root, path.normalize(urlPath));
@@ -189,6 +198,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`yaPDP emulator server: http://localhost:${port}/pdp11.html`);
+    console.log(`yaPDP server: http://localhost:${port}/${index.replace(/^\/+/, "")}`);
     console.log(`Serving: ${root}`);
 });

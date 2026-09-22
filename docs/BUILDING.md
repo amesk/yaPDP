@@ -198,6 +198,8 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run e2e:vt100` | Put a VT100 console, a DECscope on TTY 1 and a VT100 on TTY 2 on one machine and assert the terminals as the operator sees them — rig dialect and artwork, the phosphor reaching the VT100 and not the DECscope, reverse video the other way round, the key click, zoom by button and by double click, and the terminal types surviving validation ([`tests/e2e-vt100.js`](../tests/e2e-vt100.js)) |
 | `npm run e2e:mobile` | Drive the on-screen keyboard bridge on an emulated touch device (the CONFIG → DEVELOPMENT "VT52 text mode" switch is applied live): a terminal started in text mode, the switch turned off, then a tap on the tube must focus that terminal's invisible textarea — what raises the system keyboard — and the typed bytes must reach the right DL11 unit. Guards the regression where the canvas came back without the bridge, so the keyboard never came up again ([`tests/e2e-mobile-input.js`](../tests/e2e-mobile-input.js)) |
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
+| `npm run site:preview` | Build the React landing, assemble the full site (`site/`) and serve it on <http://localhost:3000> — SPA at `/`, emulator at `/pdp11.html` |
+| `npm run site:build` | Build the landing + assemble `site/` only (no server); `npm run site:serve` re-serves an already built `site/` on port 3000 |
 | `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see the [User manual](../README.md#user-manual) section in the README) |
 | `npm run screenshots:os` | Boot each guest OS through the quick-boot wizard and capture a screenshot into `assets/images/os/` for the landing-page carousel (Unix V5 on the Model 33 teletype, 2.11 BSD and RT-11 v4.0 on a VT100, RT-11 on a DECscope, DEC BASIC, Lunar Lander, XXDP+). The machine profile seeded per shot must mirror the scenario's `hardware` block or the wizard reloads the page mid-capture — [`tests/screenshots-os-config.test.js`](../tests/screenshots-os-config.test.js) pins that |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
@@ -218,6 +220,28 @@ npm run stage -- --variant full
 # Serve the browser version for development
 npm run serve
 ```
+
+### Local full-site preview (landing + emulator)
+
+`npm run site:preview` reproduces exactly what GitHub Pages serves: the
+repository root with the React landing build overlaid, so the SPA and the
+emulator share one origin. It builds the landing, assembles the site into
+`site/` ([`tools/site-preview.js`](../tools/site-preview.js)) and serves it on
+<http://localhost:3000> ([`tools/serve.js`](../tools/serve.js) with
+`--index index.html`), where `/` is the landing and `/pdp11.html` is the
+emulator with HTTP Range media loading.
+
+```bash
+# Once: the landing has its own dependencies (separate from the repo root)
+npm --prefix landing install
+
+# Build the landing + assemble the full site + serve it on port 3000
+npm run site:preview
+```
+
+There is no HMR — the landing is a production build, so re-run
+`npm run site:build` after editing `landing/`. `site:serve` re-serves an
+already built `site/` without rebuilding.
 
 `tools/build-desktop.js` (invoked by the `stage`/`desktop*` scripts) copies the matching
 `src-tauri/tauri.conf.<variant>.json` over `src-tauri/tauri.conf.json` (gitignored) so
