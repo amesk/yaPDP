@@ -1,22 +1,20 @@
-## User Terminals (TTY 1 / TTY 2)
+## Пользовательские терминалы (TTY 1 / TTY 2)
 
-Up to two user video terminals (shown only when configured on the CONFIG
-page) let guest OSes
-that prefer video terminals run side by side. Each is a **DECscope VT52** or a **DEC VT100**,
-chosen independently (`None | VT52 | VT100`), and each is drawn in the cabinet of the
-terminal you picked — the DECscope's slanted monoblock (an off-white moulded-plastic cabinet with a vent
-grille, a recessed screen in a deep bezel and a plain side panel with a raised ridge) or the VT100's own
-enclosure. Input comes from the physical keyboard, as on the original machines.
+<!-- translated: needs review -->
+До двух пользовательских видеотерминалов (показываются только если настроены на странице CONFIG) позволяют гостевым ОС, предпочитающим видеотерминалы, работать рядом. Каждый — это **DECscope VT52** или **DEC VT100**, выбирается независимо (`None | VT52 | VT100`), и каждый нарисован в корпусе выбранного терминала: либо наклонный моноблок DECscope (корпус из формованного пластика цвета слоновой кости с вентиляционной решёткой, утопленный экран в глубокой рамке и гладкая боковая панель с выступающим гребнем), либо собственный корпус VT100. Ввод идёт с физической клавиатуры, как на оригинальных машинах.
 
-![A user VT52 terminal](assets/images/manual/terminal-vt52.png)
+<!-- translated: needs review -->
+![Пользовательский терминал VT52](assets/images/manual/terminal-vt52.png)
 
-A user VT52 terminal (TTY 1) running an interactive session.
+Пользовательский терминал VT52 (TTY 1) с интерактивной сессией.
 
-![A user VT100 terminal](assets/images/manual/terminal-vt100.png)
+<!-- translated: needs review -->
+![Пользовательский терминал VT100](assets/images/manual/terminal-vt100.png)
 
-A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.
+Пользовательский терминал VT100 (TTY 2) — та же страница, то же поведение, собственный корпус.
 
-- Font. Text is rendered in the authentic fritzm/vt52 bitmap display font ( monospace is the fallback until the webfont loads).
-- Clear screen. Clear screen (ESC E) and form feed ( ^L ) both wipe the display and home the cursor, so clear and multi-page nroff/man output start each page from the top row.
-- CRT simulation (optional). A pure-CSS effect adds brightness flicker, scanline shimmer and a vertical-hold roll band.
-- Text mode (optional). Renders the terminal as a plain text field instead of the canvas, enabling native text selection and Windows Clipboard ( Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering.
+<!-- translated: needs review -->
+- **Font.** Текст выводится аутентичным растровым шрифтом дисплея fritzm/vt52 (`monospace` используется как запасной, пока веб-шрифт не загрузился).
+- **Clear screen.** Очистка экрана (ESC E) и form feed (`^L`) стирают дисплей и возвращают курсор в начало, поэтому вывод clear и многостраничного nroff/man начинает каждую страницу с верхней строки.
+- **CRT simulation (опционально).** Чисто CSS-эффект добавляет мерцание яркости, дрожание строк развёртки и полосу вертикального срыва.
+- **Text mode (опционально).** Выводит терминал как обычное текстовое поле вместо canvas, включая нативное выделение текста и Windows Clipboard (`Ctrl+C` / `Ctrl+V` / вставка правой кнопкой) для быстрого ввода исходного кода — ценой отказа от отрисовки выделения SGR.

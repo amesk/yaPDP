@@ -1,36 +1,36 @@
-## Buttons, Shortcuts & Indicators
+## Кнопки, сочетания клавиш и индикаторы
 
-### Switching pages
+### Переключение страниц
 
-Use the sidebar to switch between:
+<!-- translated: needs review -->
+Боковая панель переключает между страницами:
 
-- Panel — the front panel with switches and LEDs.
-- Console — the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.
-- TTY 1 / TTY 2 — user video terminals (VT52 or VT100), shown only when configured.
-- Printer — the LP11 line printer page, shown only when configured.
-- Display — the VT11 vector-graphics CRT page, shown only when configured.
-- Storage — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).
-- Config — configure the emulated peripherals (persisted between sessions).
-- Info — detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).
+<!-- translated: needs review -->
+- **Panel** — пультовая панель с тумблерами и светодиодами.
+- **Console** — консоль оператора: телетайп Model 33 ASR либо DECscope VT52 / DEC VT100, когда консольный терминал — видеотерминал.
+- **TTY 1 / TTY 2** — пользовательские видеотерминалы (VT52 или VT100), показываются только если настроены.
+- **Printer** — страница построчного принтера LP11, показывается только если настроен.
+- **Display** — страница векторного CRT VT11, показывается только если настроен.
+- **Storage** — носители в двух вкладках: Images (зона перетаскивания, смонтированные образы) и Paper Tapes (читатель, экспорт перфоратора).
+- **Config** — настройка эмулируемых периферийных устройств (сохраняется между сессиями).
+- **Info** — подробные инструкции, справочник по ОС и блок About (версия, сайт, автор и лицензия; маркер версии внизу боковой панели открывает эту страницу).
 
-### Floating controls
+### Плавающие элементы управления
 
-| Control | Where | What it does |
+| Элемент | Где | Что делает |
 |---|---|---|
-| ![Magic wand button](assets/images/manual/btn-magicwand.png) Magic wand | Top-right corner (every page except Info) | Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See Quick Start . |
-| ![REBOOT button](assets/images/manual/btn-reboot.png) REBOOT | Top-left corner, just right of the sidebar (Panel, Console and TTY pages) | Round button with a restart icon. Restarts the machine; when Auto-boot is enabled it also boots the built-in default loader. By default a confirmation dialog asks first, with a "Don't show this warning anymore" option. The dialog also carries an Auto-boot shortcut: tick Start the default bootstrap automatically after reboot to run the default loader after this reboot — it is the CONFIG Auto-boot option itself, persists, and stays in sync with the CONFIG page checkbox. Without Auto-boot the machine halts after the reboot. The confirmation dialog is shown below. |
-| ![STATE button](assets/images/manual/btn-state.png) STATE | Top-left corner, right of REBOOT (Panel, Console and TTY pages) | Machine-state dialog — saves and restores the whole emulated machine (CPU, memory, devices, paper, terminal screens). See Machine State . |
-| ![Mute button](assets/images/manual/btn-mute.png) Mute | Bottom-left corner, just right of the sidebar | Round button that toggles all sounds at once — hum, teletype/LP11, paper feed/tear, key clicks and the bell. State is persisted with the rest of the configuration. |
-| ![Fullscreen button](assets/images/manual/btn-fullscreen.png) Fullscreen | Bottom-right corner of the window | Floating button that hides the browser/system chrome (address bar, OS window frame, taskbar) while leaving the emulator UI untouched. Press again or Esc to return. |
+| ![Кнопка magic wand](assets/images/manual/btn-magicwand.png) Magic wand | Правый верхний угол (все страницы, кроме Info) | Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. Быстрый старт. |
+| ![Кнопка REBOOT](assets/images/manual/btn-reboot.png) REBOOT | Левый верхний угол, сразу справа от боковой панели (страницы Panel, Console и TTY) | Круглая кнопка со значком рестарта. Перезапускает машину; когда включён Auto-boot, заодно загружает встроенный загрузчик по умолчанию. По умолчанию сначала спрашивается подтверждение, с опцией «Don't show this warning anymore». В диалоге есть и ярлык Auto-boot: поставьте галочку Start the default bootstrap automatically after reboot, чтобы после этой перезагрузки запустился загрузчик по умолчанию — это та же опция CONFIG Auto-boot, она сохраняется и синхронизирована с галочкой на странице CONFIG. Без Auto-boot машина после перезагрузки останавливается. Диалог подтверждения показан ниже. |
+| ![Кнопка STATE](assets/images/manual/btn-state.png) STATE | Левый верхний угол, справа от REBOOT (страницы Panel, Console и TTY) | Диалог состояния машины — сохраняет и восстанавливает всю эмулируемую машину (процессор, память, устройства, бумагу, экраны терминалов). См. Состояние машины. |
+| ![Кнопка Mute](assets/images/manual/btn-mute.png) Mute | Левый нижний угол, сразу справа от боковой панели | Круглая кнопка, выключающая все звуки разом — гул, телетайп/LP11, подача и отрыв бумаги, щелчки клавиш и звонок. Состояние сохраняется вместе с остальной конфигурацией. |
+| ![Кнопка Fullscreen](assets/images/manual/btn-fullscreen.png) Fullscreen | Правый нижний угол окна | Плавающая кнопка, скрывающая интерфейс браузера и системы (адресную строку, рамку окна ОС, панель задач), не трогая интерфейс эмулятора. Нажмите ещё раз или Esc, чтобы вернуться. |
 
-![Reboot confirmation dialog](assets/images/manual/dialog-reboot.png)
+<!-- translated: needs review -->
+![Диалог подтверждения перезагрузки](assets/images/manual/dialog-reboot.png)
 
-The REBOOT button asks for confirmation by default: the dialog carries the
-Auto-boot shortcut (**Start the default bootstrap automatically after reboot**) and the
-"Don't show this warning anymore" option.
+Кнопка REBOOT по умолчанию запрашивает подтверждение: в диалоге есть ярлык Auto-boot (**Start the default bootstrap automatically after reboot**) и опция «Don't show this warning anymore».
 
-### Sidebar activity lamps
+### Индикаторы активности на боковой панели
 
-Each output sidebar button has a small blinking green LED in its top-right corner: it pulses while the
-PDP‑11 writes output to that console/terminal (and blinks for the whole print job on the Printer
-button), then switches off about half a second after the output stops.
+<!-- translated: needs review -->
+У каждой кнопки вывода в боковой панели есть маленький мигающий зелёный светодиод в правом верхнем углу: он пульсирует, пока PDP‑11 пишет вывод в эту консоль/терминал (а на кнопке Printer мигает всё время задания печати), и гаснет примерно через полсекунды после прекращения вывода.

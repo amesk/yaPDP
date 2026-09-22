@@ -1,15 +1,17 @@
-## The Front Panel (Panel page)
+## Пультовая панель (страница Panel)
 
-Every switch, LED, and rotary knob of a real PDP‑11/70 is faithfully recreated. The Panel page is where
-you toggle in a bootstrap loader the way DEC engineers did in the 1970s.
+<!-- translated: needs review -->
+Каждый тумблер, светодиод и поворотный переключатель настоящего PDP‑11/70 воспроизведены точно. Страница Panel — это то место, где вы вводите загрузчик тумблерами так же, как инженеры DEC в 1970-х.
 
-![The PDP-11/70 front panel](assets/images/manual/panel.png)
+<!-- translated: needs review -->
+![Пультовая панель PDP-11/70](assets/images/manual/panel.png)
 
-The PDP‑11/70 front panel, powered on.
+Пультовая панель PDP‑11/70, питание включено.
 
-### Front panel switch sequences
+### Последовательности переключения тумблеров
 
-A simple light chaser — toggle this in to see the address and data LEDs dance:
+<!-- translated: needs review -->
+Простой «бегущий огонь» — введите это, чтобы увидеть, как пляшут светодиоды адреса и данных:
 
 `Switch sequence: HALT, 001000, LOAD ADDRESS
 012700, DEPOSIT
@@ -19,16 +21,18 @@ A simple light chaser — toggle this in to see the address and data LEDs dance:
 000775, DEPOSIT
 001000, LOAD ADDRESS, ENABLE, START`
 
-Restart the bootloader:
+<!-- translated: needs review -->
+Перезапуск загрузчика:
 
 `HALT, 120000, LOAD ADDRESS, ENABLE, START`
 
-The **Bootstrap now!** button refuses to start the machine while it is powered off:
+<!-- translated: needs review -->
+Кнопка **Bootstrap now!** отказывается запускать машину, пока питание выключено:
 
-![Bootstrap now! power-off guard](assets/images/manual/dialog-poweroff.png)
+<!-- translated: needs review -->
+![Bootstrap now! — защита при выключенном питании](assets/images/manual/dialog-poweroff.png)
 
-Bootstrap now! requires the machine to be powered on first.
+Bootstrap now! требует, чтобы машина была сначала включена.
 
-The dialog also offers a shortcut to the CONFIG **Auto-boot** option: tick the checkbox to start
-the default bootstrap automatically on every future power-on, without visiting the Config page. The
-choice persists and stays in sync with the CONFIG page checkbox.
+<!-- translated: needs review -->
+В том же диалоге есть ярлык к опции CONFIG **Auto-boot**: поставьте галочку, чтобы при каждом последующем включении питания автоматически выполнялась загрузка по умолчанию, не заходя на страницу Config. Выбор сохраняется и синхронизирован с галочкой на странице CONFIG.
