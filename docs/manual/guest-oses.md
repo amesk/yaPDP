@@ -1,25 +1,25 @@
-## Гостевые операционные системы
+## Guest Operating Systems
 
-<!-- translated: needs review -->
-Эмулятор поставляется с готовыми к загрузке образами дисков и лент. Просто наберите `boot` на приглашении `@` — или выберите нужный волшебной палочкой.
+The emulator ships with ready-to-boot disk and tape images. Just type `boot`
+at the `@` prompt — or pick one with the magic wand.
+In a build with a reduced image set (e.g. the **Minimal** desktop variant), rows whose
+image is not shipped are dimmed and marked *image not in this build* — the table shows
+exactly what can boot here.
 
-<!-- translated: needs review -->
-В сборке с урезанным набором образов (например, настольный вариант **Minimal**) строки, чей образ не поставляется, затемнены и помечены *image not in this build* — таблица показывает ровно то, что здесь можно загрузить.
-
-| Disk | Operating System | How to Boot |
-|---|---|---|
-| RK0 | Unix V5 | unix → войти как root |
-| RK1 | RT‑11 v4.0 | загружается сразу в монитор RT-11 |
-| RK2 | RSTS V06C‑03 | мастер вводит START на приглашение Option: |
-| RK3 | XXDP (diagnostics) | полевая диагностическая система DEC |
-| RK4 | RT‑11 3B Distribution | дистрибутив базовой версии RT-11 |
-| TM0 | RSTS 4B‑17 (tape) | следуйте процедуре восстановления ROLLIN |
-| RL0 | BSD 2.9 | rl(0,0)rlunix → CTRL/D → логин root |
-| RL1 | RSX‑11M v3.2 | автостарт; введите дату по запросу |
-| RL2 | RSTS/E v7.0 | мастер вводит START на приглашение Option: |
-| RL3 | XXDP (extended) | расширенная библиотека тестов XXDP |
-| RP0 | ULTRIX‑11 V3.1 | загружается в однопользовательский режим (multi-user — известный баг эмулятора) |
-| RP1 | BSD 2.11 | автозагрузка в многопользовательский режим, логин root (без пароля) |
-| RP2 | RSTS/E v9.6 | загружается до запроса даты; далее 11,70 / PDP |
-| RP3 | RSX‑11M v4.6 | автостарт; введите дату и время по запросу |
-| RP4 | RSTS/E v10.1 | загружается до запроса даты; далее 11,70 / PDP |
+| Disk | Operating System | Boot Command | What Happens | Credentials |
+|---|---|---|---|---|
+| RK0 | Unix V5 | boot rk0 | unix → login as root | root |
+| RK1 | RT-11 v4.0 | boot rk1 | boots immediately to monitor prompt |  |
+| RK2 | RSTS V06C-03 | boot rk2 | wizard answers START at the Option: prompt |  |
+| RK3 | XXDP (diagnostics) | boot rk3 | DEC field diagnostic operating system |  |
+| RK4 | RT-11 3B Distribution | boot rk4 | RT-11 distribution baseline |  |
+| TM0 | RSTS 4B-17 (tape) | boot tm0 | follow ROLLIN restore procedure |  |
+| RL0 | BSD 2.9 | boot rl0 | rl(0,0)rlunix → CTRL/D → login root | root |
+| RL1 | RSX-11M v3.2 | boot rl1 | autostarts; enter the date when asked |  |
+| RL2 | RSTS/E v7.0 | boot rl2 | wizard answers START at the Option: prompt |  |
+| RL3 | XXDP (extended) | boot rl3 | extended diagnostics library |  |
+| RP0 | ULTRIX-11 V3.1 | boot rp0 | boots to a single-user shell (multi-user is a known emulator bug) |  |
+| RP1 | BSD 2.11 | boot rp1 | autoboots to multiuser, login root (no password) | root (no password) |
+| RP2 | RSTS/E v9.6 | boot rp2 | boots to the date prompt; then 11,70 / PDP | 11,70 (PDP) |
+| RP3 | RSX-11M v4.6 | boot rp3 | autostarts; enter date/time when asked |  |
+| RP4 | RSTS/E v10.1 | boot rp4 | boots to the date prompt; then 11,70 / PDP | 11,70 (PDP) |
