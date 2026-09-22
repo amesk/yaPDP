@@ -1,0 +1,35 @@
+# The manual's section list, in reading order.
+#
+# The ORDER here is the source of truth for the numbering: the generator
+# numbers sections 1..N positionally, so a number can never drift out of step
+# with the position (the bug this replaces: "Machine State" carried number 13
+# while sitting eighth in the list).
+#
+# `ru` is the Russian title, taken from the landing's existing translation.
+sections:
+  - id: quick-start
+    ru: Быстрый старт
+  - id: front-panel
+    ru: Пультовая панель (страница Panel)
+  - id: console
+    ru: Консоль оператора
+  - id: user-terminals
+    ru: Пользовательские терминалы (TTY 1 / TTY 2)
+  - id: printer
+    ru: Построчный принтер LP11 (страница Printer)
+  - id: vt11
+    ru: Векторный дисплей VT11 (страница Display)
+  - id: storage
+    ru: Хранилище (перфолента, образы дисков и лент)
+  - id: machine-state
+    ru: Состояние машины (кнопка STATE)
+  - id: config
+    ru: Конфигурация (страница Config)
+  - id: guest-oses
+    ru: Гостевые операционные системы
+  - id: controls
+    ru: Кнопки, сочетания клавиш и индикаторы
+  - id: troubleshooting
+    ru: Устранение неполадок
+  - id: desktop
+    ru: Настольное приложение

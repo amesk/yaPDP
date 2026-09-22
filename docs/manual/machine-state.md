@@ -1,17 +1,20 @@
-## Состояние машины (кнопка STATE)
+## Machine State (STATE button)
 
-<!-- translated: needs review -->
-Круглая кнопка **STATE** (левый верхний угол, справа от REBOOT) открывает диалог состояния машины — это полное сохранение и восстановление эмулируемого PDP‑11, а не только процессора: регистры, память, каждое устройство ввода-вывода (консоль, терминалы, принтер, диски, лента и перфоратор/читатель перфоленты), бумага в телетайпе и LP11, содержимое экранов видеотерминалов (и VT52, и VT100) и даже картинка на векторном дисплее VT11. По сути это файл сохранения всей машины.
+The round **STATE** button (top-left corner, right of REBOOT) opens the
+machine-state dialog — a
+full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device
+(console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype
+and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display
+picture are all captured. Think of it as a save file of the whole machine.
 
-<!-- translated: needs review -->
-![Диалог состояния машины](assets/images/manual/dialog-state.png)
+![The machine-state dialog](assets/images/manual/dialog-state.png)
 
-Диалог состояния машины с одним только что сохранённым состоянием.
+The machine-state dialog with one freshly saved state.
 
-<!-- translated: needs review -->
-- **Save state** — сохраняет машину ровно в том виде, в котором она сейчас, под автоматически созданным именем (дата и время). Аппаратная конфигурация входит в состояние: при восстановлении заново применяются тип консоли, пользовательские терминалы, принтер и дисплей VT11, а машина перезапускается им в соответствие.
-- **Load** — восстанавливает выбранное состояние и перезапускает машину; сначала запрашивается подтверждение. Состояния, сохранённые более старыми версиями эмулятора, продолжают работать.
-- **Rename / Delete** — упорядочить список или удалить состояния; счётчик рядом со списком показывает, сколько состояний сохранено.
+- Save state — captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring it re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.
+- Load — restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working.
+- Rename / Delete — organise the list or remove states; the counter next to the list shows how many states you have.
 
-<!-- translated: needs review -->
-Кнопка STATE повторяет логику REBOOT и доступна на страницах **Panel**, **Console** (телетайп, VT52 или VT100) и **TTY**. Состояния хранятся в IndexedDB браузера и переживают перезагрузки и сессии.
+The STATE button mirrors REBOOT and is available on the **Panel**, **Console** (teletype, VT52 or
+VT100) and **TTY** pages. States are stored in the browser's IndexedDB and survive reloads and
+sessions.

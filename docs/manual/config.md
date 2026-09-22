@@ -1,62 +1,64 @@
-## Конфигурация (страница Config)
+## Configuration (Config page)
 
-<!-- translated: needs review -->
-Страница Config управляет эмулируемыми периферийными устройствами, и её настройки сохраняются между сессиями. Форма разделена на четыре вкладки, действия **Apply** и **Restore defaults** находятся на панели под вкладками:
+The Config page controls the emulated peripherals and is persisted between sessions. The form is split
+into four tabs, with the **Apply** and **Restore defaults** actions in a bar below the tabs:
 
-![CONFIG — вкладка Equipment](assets/images/manual/config-equipment.png)
+![CONFIG - Equipment tab](assets/images/manual/config-equipment.png)
 
-### Оборудование
+### Equipment
 
-<!-- translated: needs review -->
-- **Console terminal** — консоль оператора (tty0): телетайп Model 33 ASR, DECscope VT52 или DEC VT100.
-- **User terminals** — два пользовательских терминала (TTY 1 / TTY 2), каждый `None | VT52 | VT100` и у каждого своя страница в боковой панели; число терминалов выводится из двух селектов, а TT2 можно заполнить только после TT1.
-- **Line printer (LP11)** — установить анимированный построчный принтер LP11 на отдельной странице Printer.
-- **VT11 graphics display** — установить терминал векторной графики DEC VT11 на отдельной странице Display.
-- **Teletype print width** — 72 или 80 колонок для консоли Model 33 ASR (телетайп — машина не более чем на 80 колонок).
-- **Printer width** — 72/80/100/132 колонки для страницы принтера LP11.
-- **Teletype speed** — authentic (настоящий Model 33 ASR на 110 бод, ~10 знаков/с) или fast — ускоренный темп для разработки.
-- **Upper Case Only** — отправлять буквы с физической клавиатуры в верхнем регистре (аутентичный Model 33 ASR); по умолчанию выключено, чтобы проходил нижний регистр (например, имена файлов в 2.11 BSD).
-- **Force PDP Output Uppercase** — печатать вывод машины в верхнем регистре (аутентичный Model 33 ASR, который не умеет печатать строчные); по умолчанию включено. Перфолента сохраняет исходный код, а видеотерминал (VT52 или VT100) не затрагивается вовсе — оба печатают оба регистра.
+- Console terminal — the operator console (tty0): a Model 33 ASR teletype, a DECscope VT52 or a DEC VT100.
+- User terminals — the two user terminals (TTY 1 / TTY 2) , each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.
+- Line printer (LP11) — install the animated LP11 line printer on its own Printer page .
+- VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own Display page .
+- Teletype print width — 72 or 80 columns for the Model 33 ASR console (a teletype is at most an 80-column machine).
+- Printer width — 72/80/100/132 columns for the LP11 printer page.
+- Teletype speed — authentic (real 110-baud Model 33 ASR, ~10 chars/sec) or fast development pace.
+- Upper Case Only — send letters from the physical keyboard in upper case (authentic Model 33 ASR); off by default so lower-case (e.g. 2.11 BSD file names) passes through.
+- Force PDP Output Uppercase — print machine output in upper case (authentic Model 33 ASR, which cannot print lower case); on by default. The paper tape keeps the raw code, and a video terminal (VT52 or VT100) is not affected at all — both print lower case.
 
-![CONFIG — вкладка Look & sound](assets/images/manual/config-visual.png)
+![CONFIG - Look & sound tab](assets/images/manual/config-visual.png)
 
-### Вид и звук
+### Look & sound
 
-<!-- translated: needs review -->
-- **VT100 key click** — звуковая отдача нажатия клавиш на терминалах VT100; клавиатура DECscope была механической и щёлкать ей нечем, поэтому поле гаснет, когда VT100 не установлен.
-- **VT100 phosphor** — трубка VT100: P4 белый (люминофор, с которым он выпускался) или P1 зелёный. DECscope жёстко привязан к P4 — с другим он никогда не продавался.
-- **VT52 reverse video** — исторический режим обратного видео DECscope: чёрный текст на белом. Это собственный переключатель DECscope; VT100 показывает инверсный текст только когда программа просит об этом атрибутом SGR 7.
-- **CRT effects** — чисто CSS-имитация CRT: мерцание яркости, дрожание люминофора и полоса вертикального срыва.
-- **Machine hum** — фоновый гул блока питания и шум вентилятора, пока машина включена.
-- **Photo backdrop** — показывать фотографию машинного зала PDP-11 за страницами.
+- VT100 key click — audible key-click feedback on VT100 terminals; the DECscope keyboard was mechanical and has no click to make, so the field dims when no VT100 is installed.
+- VT100 phosphor — the VT100 tube: P4 white (the phosphor it was introduced on) or P1 green. The DECscope is pinned to P4 — it was never sold with another.
+- VT52 reverse video — the historical DECscope reverse-video mode: black text on white. It is the DECscope’s own switch; a VT100 shows inverse text only when the software asks for it with the SGR 7 attribute.
+- CRT effects — pure-CSS CRT simulation: brightness flicker, phosphor shimmer and a vertical-hold roll band.
+- Machine hum — ambient power-supply hum and fan noise while the machine is on.
+- Photo backdrop — show the PDP-11 machine-room photo behind the pages.
 
-![CONFIG — вкладка Behaviour](assets/images/manual/config-behaviour.png)
+![CONFIG - Behaviour tab](assets/images/manual/config-behaviour.png)
 
-### Поведение
+### Behaviour
 
-<!-- translated: needs review -->
-- **Reboot confirmation** — спрашивать перед перезагрузкой машины; опцию «Don't show this warning anymore» можно вернуть здесь в любой момент.
-- **Help Me! sticker** — показывать рукописную памятку оператора о загрузчике на странице Panel.
-- **Machine power** — машина включена; выключение обесточивает PDP-11 (POWER LOCK в положении off).
-- **Auto-boot** — автоматически запускать загрузку по умолчанию при включении или перезагрузке машины. В диалоге подтверждения перезагрузки есть ярлык к этой опции (её галочка «Start the default bootstrap automatically after reboot»).
-- **First-run hint** — повторить приветственный оверлей первого запуска с подсказками по быстрому запуску при следующем входе.
+- Reboot confirmation — ask before rebooting the machine; the "Don't show this warning anymore" option can be restored here at any time.
+- Help Me! sticker — show the operator's hand-written bootstrap sticky note on the Panel page.
+- Machine power — the machine is powered on; switching it off powers down the PDP-11 (POWER LOCK in the off position).
+- Auto-boot — start the default bootstrap automatically when the machine is powered on or rebooted. The reboot confirmation dialog offers a shortcut to this option (its "Start the default bootstrap automatically after reboot" checkbox).
+- First-run hint — replay the first-run welcome overlay with quick-start boot suggestions on the next launch.
 
-![CONFIG — вкладка Development](assets/images/manual/config-development.png)
+![CONFIG - Development tab](assets/images/manual/config-development.png)
 
-### Разработка
+### Development
 
-<!-- translated: needs review -->
-- **Plain text input instead of the canvas CRT** — выводить терминал как текстовое поле вместо canvas CRT, что даёт нативное выделение текста и Windows Clipboard (Ctrl+C / Ctrl+V / вставка правой кнопкой) для быстрого ввода исходного кода; при этом теряются атрибуты SGR (жирный/подчёркивание/инверсия). Действует на страницу, поэтому так выводятся и VT52, и VT100.
+- Plain text input instead of the canvas CRT — render the terminal as a text field instead of the canvas CRT, giving native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry; loses SGR attributes (bold/underline/reverse). It acts on the page, so a VT52 and a VT100 terminal are both rendered this way.
 
-<!-- translated: needs review -->
-Уход со страницы Config с неприменёнными изменениями запрашивает подтверждение, так что ничего не теряется молча:
+Leaving the Config page with uncommitted changes asks for confirmation, so nothing is lost silently:
 
-![Предупреждение о неприменённой конфигурации](assets/images/manual/dialog-config-leave.png)
+![Unapplied configuration warning](assets/images/manual/dialog-config-leave.png)
 
-Эмулятор предупреждает перед уходом со страницы Config с неприменёнными изменениями.
+The emulator warns before leaving Config with uncommitted changes.
 
-<!-- translated: needs review -->
-**Структурные изменения** (тип консоли, терминалы, принтер, дисплей VT11) применяются кнопкой **Apply**, которая перезапускает машину, чтобы эмулируемое оборудование совпало с конфигурацией. Ширина печати, скорость телетайпа, флаги Upper Case Only и Force PDP Output Uppercase, щелчок клавиш, обратное видео, эффекты CRT, текстовый режим VT52, гул машины и фотография-фон применяются сразу. **Restore defaults** заполняет форму заводскими значениями (применяются кнопкой **Apply**); четыре «живые» опции BEHAVIOUR — **Reboot confirmation**, **Help Me! sticker**, **Machine power** и **Auto-boot** — сбрасываются к заводским сразу, не дожидаясь Apply (машина при этом выключается, так как заводское состояние — off).
+**Structural changes** (console type, terminals, printer, VT11 display) are committed with
+**Apply**, which restarts the machine so the emulated hardware matches the configuration. Print
+widths, teletype speed, the Upper Case Only and Force PDP Output Uppercase flags, key click, reverse
+video, CRT effects, VT52 text mode, machine hum and the photo backdrop apply immediately.
+**Restore defaults** fills the form with
+factory values (committed by **Apply**); the four live BEHAVIOUR options — **Reboot
+confirmation**, **Help Me! sticker**, **Machine power** and **Auto-boot** — are reset
+to their factory values immediately, without waiting for Apply (the machine powers down, since the
+factory state is off).
 
-<!-- translated: needs review -->
-Гул синтезируется через Web Audio на отдельном звуковом канале, поэтому он никогда не перебивает звуки телетайпа/принтера или щелчок клавиш VT100.
+The hum is synthesized with Web Audio on its own audio channel, so it never cuts off the
+teletype/printer or the VT100 key-click sounds.

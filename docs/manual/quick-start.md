@@ -1,39 +1,44 @@
-## Быстрый старт
+## Quick Start
 
-<!-- translated: needs review -->
-При самом первом запуске эмулятор встречает вас короткой подсказкой, которая сразу объясняет, что делать: какую страницу открыть, какие гостевые ОС смонтированы и какими командами они загружаются. Кнопка **Quick boot** рядом с **Got it** открывает мастер напрямую, так что новичок одним нажатием видит работающую гостевую ОС:
+On your very first launch the emulator greets you with a short onboarding hint that explains what to do
+right away — which page to open, the mounted guest OSes and their boot commands. A **Quick boot**
+button next to **Got it** opens the wizard directly, so a first-time user can see a guest OS running
+in one click:
 
-<!-- translated: needs review -->
-![Подсказка первого запуска](assets/images/manual/dialog-onboarding.png)
+![First-run onboarding hint](assets/images/manual/dialog-onboarding.png)
 
-Подсказка первого запуска.
+The first-run onboarding hint.
 
-### Волшебная палочка
+### The magic wand
 
-<!-- translated: needs review -->
-**Спешите?** Используйте кнопку **magic wand** в правом верхнем углу окна. Она остаётся на всех страницах, кроме **Info**. Одно нажатие делает всё:
+**In a hurry?** Use the **magic wand** button in the top-right corner of the window. It stays on
+every page except **Info**. One click does everything:
 
-<!-- translated: needs review -->
-- Открывает список всех гостевых операционных систем (и перфолент), образы которых есть в этой сборке — список фильтруется по манифесту сборки (`media/manifest.json`) плюс всё, что вы добавили перетаскиванием. Перфоленты остаются в списке всегда.
-- Выбирает одну, переключается на консоль оператора и перезагружает машину.
-- Вводит команду загрузки — и логин тоже, там где учётные данные известны (например Unix V5: `boot rk0` → `unix` → `login root`).
+- Opens a picker listing every guest operating system (and the paper tapes ) whose image this build ships — the picker is filtered by the build manifest ( media/manifest.json ), plus any images you have imported by drag & drop . Paper tapes always stay listed.
+- Chooses one, switches to the operator console , and reboots the machine.
+- Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root ).
 
-<!-- translated: needs review -->
-![Список быстрого запуска](assets/images/manual/dialog-quickboot.png)
+![Quick boot picker](assets/images/manual/dialog-quickboot.png)
 
-Список быстрого запуска показывает каждую гостевую ОС и перфоленту.
+The quick-boot picker lists every guest OS and paper tape.
 
-<!-- translated: needs review -->
-Мастер учитывает приглашения: он следит за выводом консоли и вводит логин только тогда, когда гость действительно напечатал `login:`, поэтому медленные загрузки с большим объёмом вывода (например 2.11 BSD) всё равно надёжно доходят до приглашения. Каждый гость также объявляет нужный ему профиль машины — например RT‑11/RSX/RSTS включают построчный принтер LP11, а Unix V5/BSD требуют консоль-телетайп, — так что мастер при необходимости перенастраивает машину и автоматически продолжает загрузку. Каждый запуск из мастера начинается с чистой страницы (свежая бумага и очищенные экраны), а всплывающее уведомление предупреждает: *«Autoloading in progress — don't touch the teletype/keyboard»*, пока вводится последовательность.
+The wizard is prompt-aware: it watches the console output and types the login only when the guest
+actually prints `login:`, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
+prompt reliably. Each guest also declares the machine profile it wants — e.g. RT-11/RSX/RSTS enable the
+LP11 line printer, and Unix V5/BSD force a teletype console — so the wizard
+reconfigures the machine if
+needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and
+clear screens), and a toast warns
+*"Autoloading in progress — don't touch the teletype/keyboard"* while the sequence is being
+typed.
 
-<!-- translated: needs review -->
-![Уведомление об автозагрузке](assets/images/manual/dialog-autoload.png)
+![Autoloading in progress toast](assets/images/manual/dialog-autoload.png)
 
-Пока мастер вводит последовательность загрузки, уведомление просит не трогать телетайп и клавиатуру.
+While the wizard types the boot sequence, a toast asks you not to touch the
+teletype/keyboard.
 
-### Классический способ
+### The classic way
 
-<!-- translated: needs review -->
-- На приглашении `@` наберите `boot rp1` и нажмите ENTER.
-- BSD 2.11 автоматически загрузится в многопользовательский режим. Войдите как `root` (без пароля).
-- Попробуйте `ls`, `ps -aux`, `df` — или скомпилируйте программу на C командой `cc`.
+- At the @ prompt, type boot rp1 and press ENTER.
+- BSD 2.11 will autoboot into multiuser mode. Login as root (no password).
+- Try ls , ps -aux , df — or compile a C program with cc .

@@ -35,3 +35,7 @@ tests/artifacts/
 landing/node_modules/
 landing/dist/
 site/
+
+# Generated manual output (generator dry-run targets)
+manual.html.generated
+landing/src/data/manualData.ts.generated
