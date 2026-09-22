@@ -81,7 +81,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     'user-terminals': ['tty', 'terminal', 'terminals', 'users', 'vt100', 'ansi'],
     'printer': ['lp11', 'print', 'paper feed'],
     'vt11': ['display', 'vector', 'graphics', 'lander', 'crv'],
-    'storage': ['disk', 'tape', 'ptap', 'image', 'dsk', 'mount', 'reader', 'punch', 'drop'],
+    'storage': ['disk', 'tape', 'ptap', 'image', 'dsk', 'mount', 'unmount', 'reader', 'punch', 'drop', 'zst', 'zstd', 'export', 'write-back', 'indexeddb', 'rk', 'rl', 'rp', 'ra', 'tm'],
     'machine-state': ['save', 'load', 'snapshot', 'state', 'restore'],
     'config': ['settings', 'options', 'equipment', 'tabs', 'speed', 'sound'],
     'guest-oses': ['os', 'operating system', 'boot rk', 'boot rp', 'boot rl', 'unix', 'rt-11', 'rsx', 'rsts', 'bsd', 'xxdp', 'basic'],
@@ -973,40 +973,151 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The page has two tabs — Images and Paper Tapes — because the two workflows are completely different. An image is a whole device mounted into the machine and remembered between sessions; a paper tape is a stream of bytes the reader walks through from the first frame to the end.'
+            : 'Страница состоит из двух вкладок — «Образы» и «Перфоленты» — потому что это два совершенно разных сценария. Образ — это целое устройство, подключённое к машине и запоминаемое между сеансами; перфолента — поток байтов, который считыватель проходит от первого кадра до конца.'}
+        </p>
+
+        <div className="space-y-3 text-xs">
           <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
-            <HardDrive className="w-4 h-4 text-[#c8a860] mb-1.5" />
+            <Download className="w-4 h-4 text-[#c8a860] mb-1.5" />
             <strong className="text-[#f0e6c8] block mb-1">
-              {lang === 'en' ? 'Paper Tape Reader' : 'Считыватель перфоленты'}
+              {lang === 'en' ? 'Drop image' : 'Перетаскивание образа'}
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'File selector for the #ptr device. Boot with "boot pr" for BASIC-11 or Lunar Lander.'
-                : 'Выбор файла для устройства #ptr. Загрузка через "boot pr" для BASIC-11 или Lunar Lander.'}
+                ? 'Drop a .dsk, .tap or .ptap image — plain or .zst-compressed — on the drop zone, or anywhere over the window while this page is open. A .zst file is a zstd frame and the browser unwraps it on the fly, so a downloaded image needs no unpacking first.'
+                : 'Перетащите образ .dsk, .tap или .ptap — обычный или сжатый в .zst — на зону или в любое место окна, пока открыта эта страница. Файл .zst — это кадр zstd, браузер распаковывает его на лету, так что распаковывать образ заранее не нужно.'}
             </p>
           </div>
 
           <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
-            <Download className="w-4 h-4 text-[#c8a860] mb-1.5" />
+            <HardDrive className="w-4 h-4 text-[#c8a860] mb-1.5" />
             <strong className="text-[#f0e6c8] block mb-1">
-              {lang === 'en' ? 'Drag & Drop Zone' : 'Зона Drag & Drop'}
+              {lang === 'en' ? 'The file name is the device name' : 'Имя файла — это имя устройства'}
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'Drop any .dsk, .tap, .ptap and .zst compressed disk images directly into the browser.'
-                : 'Перетаскивайте образы .dsk, .tap, .ptap и сжатые .zst прямо в окно браузера.'}
+                ? 'An image is mounted under the device URL taken from the file itself: RP1.DSK.ZST becomes rp1.dsk, which is why the guest boots it with "boot rp1". Rename the file to the unit you want to use — the table below maps every device to its drive, controller and boot command.'
+                : 'Образ подключается под именем устройства, взятым из самого файла: RP1.DSK.ZST становится rp1.dsk — именно поэтому гость загружает его командой «boot rp1». Назовите файл по нужному устройству; таблица ниже сопоставляет устройства, накопители, контроллеры и команды загрузки.'}
+            </p>
+          </div>
+
+          <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
+            <HardDrive className="w-4 h-4 text-[#c8a860] mb-1.5" />
+            <strong className="text-[#f0e6c8] block mb-1">
+              {lang === 'en' ? 'Mounted images / Unmount' : 'Подключённые образы / отключение'}
+            </strong>
+            <p className="text-[#c8b890]">
+              {lang === 'en'
+                ? 'Lists the images mounted in this browser and lets you unmount one again. The counter counts the images YOU mounted (dropped or imported), not the ones the desktop build carries inside itself. Mounted images live in browser storage (IndexedDB) and are re-mounted on the next launch.'
+                : 'Список образов, подключённых в этом браузере, с возможностью отключить любой из них. Счётчик считает только ВАШИ образы (перетащенные или импортированные), а не те, что вшиты в настольную сборку. Подключённые образы хранятся в IndexedDB и подключаются снова при следующем запуске.'}
             </p>
           </div>
 
           <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
             <Sliders className="w-4 h-4 text-[#c8a860] mb-1.5" />
             <strong className="text-[#f0e6c8] block mb-1">
-              {lang === 'en' ? 'IndexedDB Persistence' : 'Постоянное сохранение'}
+              {lang === 'en' ? 'Persistent disk changes' : 'Постоянные изменения диска'}
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'Disk modifications persist in browser storage across sessions and reloads.'
-                : 'Изменения на виртуальных дисках сохраняются в IndexedDB между перезагрузками.'}
+                ? 'Guest-OS writes are saved to browser storage and overlaid on the base image on the next launch, so files an operating system created are still there tomorrow. Only the blocks the guest actually wrote are kept — the base image is fetched again on every launch — and a saved block always wins over the pristine one. They are written out periodically and when you leave the page, and they belong to one image: Reset image discards them for the selected disk, Reset all for every disk, returning the media to its factory state.'
+                : 'Записи гостевой ОС сохраняются в хранилище браузера и накладываются на базовый образ при следующем запуске, поэтому созданные файлы остаются на месте и завтра. Хранятся только реально записанные блоки — базовый образ каждый раз загружается заново — и сохранённый блок всегда важнее исходного. Изменения записываются периодически и при уходе со страницы, и принадлежат одному образу: «Reset image» стирает их для выбранного диска, «Reset all» — для всех, возвращая носители к заводскому состоянию.'}
+            </p>
+          </div>
+
+          <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
+            <Download className="w-4 h-4 text-[#c8a860] mb-1.5" />
+            <strong className="text-[#f0e6c8] block mb-1">
+              {lang === 'en' ? 'Export disk' : 'Выгрузка диска'}
+            </strong>
+            <p className="text-[#c8b890]">
+              {lang === 'en'
+                ? 'Downloads a mounted disk image to your machine.'
+                : 'Скачивает подключённый образ диска на ваш компьютер.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-[#4a453a] bg-[#12100d]">
+          <table className="w-full text-left text-xs text-[#d4c4a0] border-collapse">
+            <thead>
+              <tr className="border-b border-[#3a3528] bg-[#1c1914] text-[#f0e6c8] font-mono">
+                <th className="py-2 px-3">{lang === 'en' ? 'IMAGE' : 'ОБРАЗ'}</th>
+                <th className="py-2 px-3">{lang === 'en' ? 'DRIVE' : 'НАКОПИТЕЛЬ'}</th>
+                <th className="py-2 px-3">{lang === 'en' ? 'CONTROLLER' : 'КОНТРОЛЛЕР'}</th>
+                <th className="py-2 px-3">{lang === 'en' ? 'BOOT IT WITH' : 'ЗАГРУЗКА'}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#2a261f]">
+              {[
+                { image: 'rk0 … rk5', driveEn: 'RK05 disk cartridge', driveRu: 'Картридж RK05', ctrl: 'RK11', boot: 'boot rkN' },
+                { image: 'rl0 … rl3', driveEn: 'RL01 / RL02 cartridge', driveRu: 'Картридж RL01 / RL02', ctrl: 'RL11', boot: 'boot rlN' },
+                { image: 'rp0 … rp4', driveEn: 'RP04 / RP06 disk pack', driveRu: 'Пакет дисков RP04 / RP06', ctrl: 'RP11', boot: 'boot rpN' },
+                { image: 'ra0 … ra2', driveEn: 'RA80 / RA81 (MSCP)', driveRu: 'RA80 / RA81 (MSCP)', ctrl: 'UDA50', boot: 'boot raN' },
+                { image: 'tm0 … tm2', driveEn: '9-track magnetic tape', driveRu: 'Магнитная лента 9 дорожек', ctrl: 'TM11', boot: 'boot tmN' },
+                { image: '*.ptap', driveEn: 'Paper tape reader / punch', driveRu: 'Считыватель и перфоратор перфоленты', ctrl: 'PTR11', boot: 'boot pr' },
+              ].map((row) => (
+                <tr key={row.image} className="hover:bg-[#191611]">
+                  <td className="py-2 px-3 font-mono text-[#e8d080]">{row.image}</td>
+                  <td className="py-2 px-3 text-[#f0e6c8]">{lang === 'en' ? row.driveEn : row.driveRu}</td>
+                  <td className="py-2 px-3 font-mono">{row.ctrl}</td>
+                  <td className="py-2 px-3 font-mono text-[#c8b890]">{row.boot}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+          <img
+            src="assets/images/manual/storage-tapes.png"
+            alt="The Storage page — Paper Tapes tab"
+            className="w-full h-auto rounded cursor-pointer"
+            onClick={() =>
+              openImage('assets/images/manual/storage-tapes.png', 'The Storage page, Paper Tapes tab')
+            }
+          />
+          <p className="mt-1.5 text-center text-xs text-[#8a7650] italic">
+            {lang === 'en'
+              ? 'The Paper Tapes tab: the reader file selector, a .ptap drop zone and the punch-tape export.'
+              : 'Вкладка «Перфоленты»: выбор файла для считывателя, зона для .ptap и выгрузка перфорированной ленты.'}
+          </p>
+        </div>
+
+        <div className="space-y-3 text-xs">
+          <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
+            <strong className="text-[#f0e6c8] block mb-1">
+              {lang === 'en' ? 'Paper tape reader file' : 'Файл для считывателя перфоленты'}
+            </strong>
+            <p className="text-[#c8b890]">
+              {lang === 'en'
+                ? 'A selector for the reader (#ptr) holding the tapes this build ships — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, Lunar Lander and the bootstrap loader — plus any .ptap you dropped. Load one and boot it with "BOOT PR".'
+                : 'Селектор считывателя (#ptr) со всеми лентами сборки — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, Lunar Lander и загрузчик — плюс любые перетащенные .ptap. Выберите ленту и загружайте командой «BOOT PR».'}
+            </p>
+          </div>
+
+          <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
+            <strong className="text-[#f0e6c8] block mb-1">
+              {lang === 'en' ? 'Rewind tape and the tape state' : 'Перемотка и состояние ленты'}
+            </strong>
+            <p className="text-[#c8b890]">
+              {lang === 'en'
+                ? 'The indicator beside the button says whether a tape is loaded and how far the reader has moved through it; Rewind tape puts it back to the first frame, which is what a guest does when it restarts a read. Dropped tapes are added to the selector.'
+                : 'Индикатор рядом с кнопкой показывает, заряжена ли лента и как далеко продвинулся считыватель; «Rewind tape» возвращает её к первому кадру — так поступает и гость, перезапуская чтение. Перетащенные ленты добавляются в селектор.'}
+            </p>
+          </div>
+
+          <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
+            <strong className="text-[#f0e6c8] block mb-1">
+              {lang === 'en' ? 'Export paper tape' : 'Выгрузка перфоленты'}
+            </strong>
+            <p className="text-[#c8b890]">
+              {lang === 'en'
+                ? 'The punch buffer is filled by the bytes the console echoes, and the counter shows how much is on the tape: Download saves it as a .ptap, Clear empties the buffer for the next tape. The reader and the punch are the console teletype\u2019s own devices, which is why the paper it prints and the tape it punches are two views of one stream.'
+                : 'Буфер перфоратора наполняется байтами, которые эхо-печатает консоль, а счётчик показывает объём ленты: «Download» сохраняет её как .ptap, «Clear» очищает буфер под следующую ленту. Считыватель и перфоратор — устройства самой консоли, поэтому напечатанный текст и пробитая лента это два представления одного потока.'}
             </p>
           </div>
         </div>
