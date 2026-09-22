@@ -29,6 +29,7 @@ const PDP11_HTML = path.join(__dirname, "..", "pdp11.html");
 const PDP11_APP = path.join(__dirname, "..", "src", "pdp11-app.js");
 const MOBILE_INPUT = path.join(__dirname, "..", "src", "mobile-input.js");
 const MOBILE_KEYS = path.join(__dirname, "..", "src", "mobile-keys.js");
+const QUICKBOOT = path.join(__dirname, "..", "src", "quickboot.js");
 
 // Extract the body of an at-rule by brace balancing, so nested rules cannot
 // corrupt the extraction.
@@ -92,6 +93,26 @@ function run() {
     // The bottom-anchored floating controls clear the bar.
     assert.ok(/\.config-tab\s*\{/.test(media),
         "the mobile block must restyle .config-tab");
+
+    // The QuickBoot autoload warning is a whole sentence pinned to the middle
+    // of the window: un-wrapped it is wider than a phone and both of its ends
+    // fall off the screen. It has to wrap, may never be wider than the window,
+    // and drops to a readable size on a narrow one. The class and the wording
+    // are pinned to src/quickboot.js, because tests/e2e-mobile-input.js
+    // measures a box built with exactly those two.
+    {
+        const quickboot = fs.readFileSync(QUICKBOOT, "utf8");
+        assert.ok(quickboot.indexOf('balloon.className = "quickboot-balloon"') !== -1,
+            "src/quickboot.js must build the warning with the .quickboot-balloon class");
+        assert.ok(quickboot.indexOf("Autoloading in progress") !== -1,
+            "src/quickboot.js must keep the autoload warning wording");
+        assert.ok(/\.quickboot-balloon\s*\{[^}]*max-width:/.test(css),
+            "the warning must never be wider than the window");
+        assert.ok(/\.quickboot-balloon\s*\{[^}]*white-space:\s*normal/.test(css),
+            "the warning must be allowed to wrap");
+        assert.ok(/\.quickboot-balloon\s*\{[^}]*font-size:\s*15px/.test(media),
+            "on a phone the warning must drop to a size that fits two lines");
+    }
 
     // ---- The app wires the bridge --------------------------------------
     assert.ok(app.indexOf("MobileInput.isCoarse()") !== -1,
