@@ -145,6 +145,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the wording and the box it is measured with are pinned by
   `tests/mobile-css.test.js` and `tests/e2e-mobile-input.js`)
 
+- **The startup loading gate keeps a gutter on a phone.** The overlay covers the
+  whole window and centres its lines, and its hint is measured in `em`: on a
+  phone the text ran into both edges of the display. The overlay carries a
+  padding now — with `box-sizing: border-box`, so the overlay itself still
+  covers exactly the window — and the hint is capped by the window rather than
+  by its measure alone. (`pdp11.html`; the rule is pinned by
+  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
+  `tests/e2e-mobile-input.js`)
+
 ### Added
 
 - **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,

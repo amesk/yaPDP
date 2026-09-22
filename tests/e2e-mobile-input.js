@@ -805,6 +805,61 @@ async function main() {
         }).catch(() => { });
         await phoneFrame.close();
 
+        // ---- the startup loading gate on a phone ----------------------------
+        // The gate is a full-window overlay that centres its lines, so on a
+        // phone — narrower than the hint's own measure — the text ran into both
+        // edges. It has a gutter now. Its own page is opened with the build
+        // manifest held back, because the gate waits for it: on a fast local
+        // server the overlay would otherwise be gone before it could be
+        // measured (and the gate's own 15s ceiling means the hold is harmless).
+        const gatePage = await browser.newPage();
+        await gatePage.setViewport({ width: 390, height: 844, hasTouch: true, isMobile: true });
+        await gatePage.setRequestInterception(true);
+        gatePage.on("request", (req) => {
+            if (req.url().indexOf("manifest.json") !== -1) {
+                setTimeout(() => { req.continue().catch(() => { }); }, 4000);
+                return;
+            }
+            req.continue().catch(() => { });
+        });
+        await gatePage.goto(`${BASE}/pdp11.html`, {
+            waitUntil: "domcontentloaded", timeout: 90000
+        });
+        const gateGeom = await gatePage.evaluate(() => {
+            const overlay = document.getElementById("yapdp-loading");
+            if (!overlay) return { missing: true };
+            const box = (el) => {
+                const q = el.getBoundingClientRect();
+                return {
+                    left: Math.round(q.left), right: Math.round(q.right),
+                    top: Math.round(q.top), bottom: Math.round(q.bottom)
+                };
+            };
+            const hint = overlay.querySelector(".yapdp-loading-hint");
+            return {
+                display: getComputedStyle(overlay).display,
+                vw: window.innerWidth, vh: window.innerHeight,
+                overlay: box(overlay),
+                hint: hint ? box(hint) : null
+            };
+        });
+        check("the loading gate is up on a phone while the page arrives",
+            gateGeom.missing !== true && gateGeom.display === "flex",
+            JSON.stringify(gateGeom));
+        check("so its overlay covers the window exactly",
+            !!gateGeom.overlay &&
+            gateGeom.overlay.left === 0 && gateGeom.overlay.right === gateGeom.vw &&
+            gateGeom.overlay.top === 0 && gateGeom.overlay.bottom === gateGeom.vh,
+            JSON.stringify({ overlay: gateGeom.overlay, vw: gateGeom.vw, vh: gateGeom.vh }));
+        check("and its text keeps a gutter from the window edges",
+            !!gateGeom.hint &&
+            gateGeom.hint.left >= 8 && gateGeom.hint.right <= gateGeom.vw - 8,
+            JSON.stringify({ hint: gateGeom.hint, vw: gateGeom.vw }));
+        await gatePage.screenshot({
+            path: path.join(ARTIFACTS, "e2e-loading-gate-phone.png"), type: "png"
+        }).catch(() => { });
+        await gatePage.close();
+
         // The control: with room to spare the note stays where it has always
         // been — beside the cabinet, full size, no scaling. Without this the
         // check above would pass just as well if the note had simply left the

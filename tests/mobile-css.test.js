@@ -114,6 +114,28 @@ function run() {
             "on a phone the warning must drop to a size that fits two lines");
     }
 
+    // The startup loading gate (inline in pdp11.html) is a full-window overlay
+    // that centres its lines: on a phone, narrower than the hint's own measure,
+    // the text ran into both edges. The overlay therefore needs a gutter — and
+    // has to stay exactly the window's size — while the hint must be capped by
+    // the window rather than by its em measure alone.
+    // (tests/e2e-mobile-input.js measures the resulting box on 390x844.)
+    {
+        const gate = html.slice(html.indexOf("<style>"), html.indexOf("</style>"));
+        assert.ok(gate.length > 0,
+            "pdp11.html must keep the loading gate's inline styles");
+        const overlay = /(^|\n)\s*#yapdp-loading\s*\{([^}]*)\}/.exec(gate);
+        assert.ok(overlay, "the gate overlay must have a rule of its own");
+        assert.ok(/padding:\s*[1-9]/.test(overlay[2]),
+            "the gate texts need a gutter from the window edges");
+        assert.ok(/box-sizing:\s*border-box/.test(overlay[2]),
+            "the overlay must not grow past the window by its own padding");
+        const hint = /(^|\n)\s*#yapdp-loading\s+\.yapdp-loading-hint\s*\{([^}]*)\}/.exec(gate);
+        assert.ok(hint, "the gate hint must have a rule of its own");
+        assert.ok(/width:\s*100%/.test(hint[2]),
+            "the gate hint must be capped by the window, not only by its em measure");
+    }
+
     // ---- The app wires the bridge --------------------------------------
     assert.ok(app.indexOf("MobileInput.isCoarse()") !== -1,
         "pdp11-app.js must detect a coarse pointer before bridging");
