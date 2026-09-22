@@ -77,8 +77,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
   const SECTION_KEYWORDS: Record<string, string[]> = {
     'quick-start': ['boot', 'wizard', 'magic wand', 'root', 'login', 'get started', 'launch'],
     'front-panel': ['switches', 'toggle', 'power', 'lock', 'panel', 'lights', 'odt'],
-    'console': ['teletype', 'asr', 'keyboard', 'paper', 'vt52 console', 'type'],
-    'user-terminals': ['tty', 'terminal', 'users'],
+    'console': ['teletype', 'asr', 'keyboard', 'paper', 'vt52 console', 'vt100 console', 'vt100', 'ansi', 'decscope', 'type'],
+    'user-terminals': ['tty', 'terminal', 'terminals', 'users', 'vt100', 'ansi'],
     'printer': ['lp11', 'print', 'paper feed'],
     'vt11': ['display', 'vector', 'graphics', 'lander', 'crv'],
     'storage': ['disk', 'tape', 'ptap', 'image', 'dsk', 'mount', 'reader', 'punch', 'drop'],
@@ -626,17 +626,19 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           {lang === 'en' ? (
             <>
               The operator console is what the PDP‑11 uses as its <code className="text-[#e8d080]">TT0:</code>{' '}
-              — the machine's primary typewriter interface. Depending on the CONFIG page, it is either a{' '}
-              <strong className="text-[#f0e6c8]">Model 33 ASR teletype</strong> or a{' '}
-              <strong className="text-[#f0e6c8]">DECscope VT52</strong>.
+              — the machine's primary typewriter interface. Depending on the CONFIG page it is a{' '}
+              <strong className="text-[#f0e6c8]">Model 33 ASR teletype</strong> or one of the two video
+              terminals: a <strong className="text-[#f0e6c8]">DECscope VT52</strong> or a{' '}
+              <strong className="text-[#f0e6c8]">DEC VT100</strong>.
             </>
           ) : (
             <>
               Консоль оператора используется PDP-11 как устройство{' '}
               <code className="text-[#e8d080]">TT0:</code> — основная печатная машинка системы. В
-              зависимости от настроек на странице CONFIG, консолью является либо{' '}
-              <strong className="text-[#f0e6c8]">телетайп Model 33 ASR</strong>, либо{' '}
-              <strong className="text-[#f0e6c8]">видеотерминал DECscope VT52</strong>.
+              зависимости от настроек на странице CONFIG, консолью является{' '}
+              <strong className="text-[#f0e6c8]">телетайп Model 33 ASR</strong> либо один из двух
+              видеотерминалов: <strong className="text-[#f0e6c8]">DECscope VT52</strong> или{' '}
+              <strong className="text-[#f0e6c8]">DEC VT100</strong>.
             </>
           )}
         </p>
@@ -736,6 +738,70 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             />
           </div>
         </div>
+
+        {/* VT100 as console */}
+        <div id="vt100-console" className="pt-3 space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080]">
+            {lang === 'en' ? 'VT100 as the console' : 'VT100 в качестве консоли'}
+          </h3>
+
+          <p className="text-sm text-[#c8b890]">
+            {lang === 'en'
+              ? 'Set the console terminal to VT100 and the operator console becomes a DEC VT100 — the ANSI terminal that succeeded the DECscope, drawn in its OWN cabinet. Everything that is not the tube itself is shared with the VT52: the page layout, the zoom button and double-click zoom, the STATE/REBOOT placement and the keyboard.'
+              : 'Если выбрать VT100, консолью оператора становится DEC VT100 — ANSI-терминал, пришедший на смену DECscope, в собственном корпусе. Всё, кроме самого кинескопа, общее с VT52: раскладка страницы, кнопка масштаба и двойной щелчок, размещение STATE/REBOOT и клавиатура.'}
+          </p>
+
+          <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+            <img
+              src="assets/images/manual/console-vt100.png"
+              alt="A DEC VT100 as the operator console"
+              className="w-full h-auto rounded cursor-pointer"
+              onClick={() =>
+                openImage('assets/images/manual/console-vt100.png', 'A DEC VT100 as the operator console')
+              }
+            />
+            <p className="mt-1.5 text-center text-xs text-[#8a7650] italic">
+              {lang === 'en'
+                ? 'A DEC VT100 as the operator console, showing the @ prompt.'
+                : 'Консоль оператора DEC VT100 со строкой приглашения @.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div className="rounded border border-[#3a3528] bg-[#13110d] p-3 space-y-1">
+              <span className="font-bold text-[#f0e6c8] block mb-1">
+                {lang === 'en' ? 'A superset of the VT52' : 'Надмножество VT52'}
+              </span>
+              <p className="text-[#c8b890] leading-relaxed">
+                {lang === 'en'
+                  ? 'Everything the DECscope understands still works, and the terminal adds the ANSI grammar (CSI sequences, DEC private modes, scrolling regions, G0/G1 character sets) from power-on: a VT100 is a CRT-only machine and has no hardcopy mode to enter first.'
+                  : 'Всё, что понимал DECscope, продолжает работать, а сверху терминал говорит на ANSI (CSI-последовательности, DEC private modes, области прокрутки, наборы G0/G1) сразу после включения: VT100 работает только на экран и режима hardcopy у него нет.'}
+              </p>
+            </div>
+
+            <div className="rounded border border-[#3a3528] bg-[#13110d] p-3 space-y-1">
+              <span className="font-bold text-[#f0e6c8] block mb-1">
+                {lang === 'en' ? 'Refused, not faked' : 'Отказ, а не подделка'}
+              </span>
+              <p className="text-[#c8b890] leading-relaxed">
+                {lang === 'en'
+                  ? 'Sequences the hardware never had are refused rather than simulated: ESC Y direct addressing, ESC F/G graphics on/off, the VT52 keypad modes and the VT52 identification reply. Asked who it is (CSI c), the VT100 answers "VT100 with AVO", and CSI ? 2 h (DECANM) drops it into VT52 compatibility mode.'
+                  : 'Последовательности, которых у железа не было, отвергаются, а не имитируются: прямое позиционирование ESC Y, включение/выключение графики ESC F/G, режимы клавиатуры VT52 и ответ VT52 на идентификацию. На запрос CSI c терминал отвечает «VT100 with AVO», а CSI ? 2 h (DECANM) переводит его в режим совместимости с VT52.'}
+              </p>
+            </div>
+
+            <div className="rounded border border-[#3a3528] bg-[#13110d] p-3 space-y-1">
+              <span className="font-bold text-[#f0e6c8] block mb-1">
+                {lang === 'en' ? 'Its own CONFIG options' : 'Свои опции в CONFIG'}
+              </span>
+              <p className="text-[#c8b890] leading-relaxed">
+                {lang === 'en'
+                  ? 'The tube phosphor (P4 white — the phosphor it was introduced on — or P1 green) and the key click belong to the VT100 alone: the DECscope is pinned to white and its keyboard was mechanical, with no click to make. The VT52 reverse-video switch never touches a VT100, where inverse text comes from the SGR 7 attribute instead.'
+                  : 'Люминофор кинескопа (белый P4 — с ним терминал и выпускался — или зелёный P1) и щелчок клавиш принадлежат только VT100: у DECscope люминофор всегда белый, а клавиатура механическая и щёлкать ей нечем. Переключатель инверсного видео VT52 на VT100 не влияет — инверсию там даёт атрибут SGR 7.'}
+              </p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* SECTION 4: USER TERMINALS */}
@@ -749,8 +815,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
-            ? 'Up to two user VT52 terminals (configured on the CONFIG page) allow multiuser guest operating systems like 2.11 BSD, Ultrix and RSTS/E to run simultaneous interactive sessions side by side. Each is drawn as an authentic slanted DECscope monoblock cabinet with vent grille, recessed screen bezel, and physical keyboard input.'
-            : 'До двух пользовательских терминалов VT52 (настраиваются на странице CONFIG) позволяют многопользовательским ОС (2.11 BSD, Ultrix, RSTS/E) запускать параллельные сеансы работы. Терминал отрисован в виде моноблочного корпуса DECscope со скошенной панелью, вентиляционной решеткой и углубленным экраном.'}
+            ? 'Up to two user video terminals (configured on the CONFIG page) allow multiuser guest operating systems like 2.11 BSD, Ultrix and RSTS/E to run simultaneous interactive sessions side by side. Each is a DECscope VT52 or a DEC VT100, chosen independently (None | VT52 | VT100), and each is drawn in the cabinet of the terminal you picked — the DECscope slanted monoblock with its vent grille and recessed bezel, or the VT100 enclosure. Input comes from the physical keyboard, as on the originals.'
+            : 'До двух пользовательских видеотерминалов (настраиваются на странице CONFIG) позволяют многопользовательским ОС (2.11 BSD, Ultrix, RSTS/E) запускать параллельные сеансы работы. Каждый из них — DECscope VT52 или DEC VT100, выбирается независимо (None | VT52 | VT100) и рисуется в корпусе выбранного терминала: скошенный моноблок DECscope с вентиляционной решеткой и углубленным экраном либо собственный корпус VT100. Ввод идёт с физической клавиатуры, как на оригиналах.'}
         </p>
 
         <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
@@ -762,6 +828,22 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               openImage('assets/images/manual/terminal-vt52.png', 'A user VT52 terminal (TTY 1)')
             }
           />
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+          <img
+            src="assets/images/manual/terminal-vt100.png"
+            alt="A user VT100 terminal"
+            className="w-full h-auto rounded cursor-pointer"
+            onClick={() =>
+              openImage('assets/images/manual/terminal-vt100.png', 'A user VT100 terminal (TTY 2)')
+            }
+          />
+          <p className="mt-1.5 text-center text-xs text-[#8a7650] italic">
+            {lang === 'en'
+              ? 'A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.'
+              : 'Пользовательский терминал VT100 (TTY 2) — та же страница и то же поведение, но собственный корпус.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -781,8 +863,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'Optionally render terminal as standard text input for fast Ctrl+C / Ctrl+V clipboard pasting.'
-                : 'Возможность включения текстового режима для легкого копирования и вставки исходного кода (Ctrl+C / Ctrl+V).'}
+                ? 'Optionally render the terminal as standard text input for fast Ctrl+C / Ctrl+V clipboard pasting. It acts on the page, so a VT52 and a VT100 terminal are both rendered this way.'
+                : 'Возможность включения текстового режима для легкого копирования и вставки исходного кода (Ctrl+C / Ctrl+V). Режим действует на страницу, поэтому так отображаются и терминалы VT52, и терминалы VT100.'}
             </p>
           </div>
         </div>
@@ -979,8 +1061,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
-            ? 'The STATE button mirrors REBOOT and is available on the Panel, Console (teletype or VT52) and TTY pages. States are stored in the browser IndexedDB and survive reloads and sessions.'
-            : 'Кнопка STATE зеркалит REBOOT и доступна на страницах Panel, Console (телетайп или VT52) и TTY. Состояния хранятся в IndexedDB браузера и переживают перезагрузки и сеансы.'}
+            ? 'The STATE button mirrors REBOOT and is available on the Panel, Console (teletype, VT52 or VT100) and TTY pages. States are stored in the browser IndexedDB and survive reloads and sessions.'
+            : 'Кнопка STATE зеркалит REBOOT и доступна на страницах Panel, Console (телетайп, VT52 или VT100) и TTY. Состояния хранятся в IndexedDB браузера и переживают перезагрузки и сеансы.'}
         </p>
       </section>
 
@@ -1007,8 +1089,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 key={tab.id}
                 onClick={() => setActiveConfigTab(tab.id)}
                 className={`px-3 py-1.5 text-xs font-bold rounded transition-all cursor-pointer ${activeConfigTab === tab.id
-                    ? 'bg-[#c8a860] text-black shadow-sm'
-                    : 'bg-[#1e1a14] text-[#d4c4a0] hover:text-[#f0e6c8] border border-[#3a3528]'
+                  ? 'bg-[#c8a860] text-black shadow-sm'
+                  : 'bg-[#1e1a14] text-[#d4c4a0] hover:text-[#f0e6c8] border border-[#3a3528]'
                   }`}
               >
                 {lang === 'en' ? tab.titleEn : tab.titleRu}
@@ -1292,11 +1374,15 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             <tbody className="divide-y divide-[#2a261f]">
               <tr className="hover:bg-[#191611]">
                 <td className="py-2.5 px-3 font-mono font-bold text-[#e8d080]">Minimal</td>
-                <td className="py-2.5 px-3 text-[#f0e6c8]">rk0, rk1, bootcode</td>
+                <td className="py-2.5 px-3 text-[#f0e6c8]">
+                  {lang === 'en'
+                    ? 'rk0 (Unix V5), rk1 (RT-11), bootcode + the demo paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander)'
+                    : 'rk0 (Unix V5), rk1 (RT-11), bootcode + демонстрационные перфоленты (BASIC-11, ODT-11, ED-11, Lunar Lander)'}
+                </td>
                 <td className="py-2.5 px-3 text-[#bfae90]">
                   {lang === 'en'
-                    ? 'Small download. Boots Unix V5 and RT-11 out of the box; every other image is added by drag & drop at runtime.'
-                    : 'Компактный установщик. Запускает Unix V5 и RT-11 из коробки; остальные образы добавляются перетаскиванием.'}
+                    ? '≈19 MB on Windows. Boots Unix V5, RT-11 and the paper tapes out of the box; every other image is added by drag & drop at runtime.'
+                    : '≈19 МБ в Windows. Из коробки запускаются Unix V5, RT-11 и перфоленты; остальные образы добавляются перетаскиванием.'}
                 </td>
               </tr>
               <tr className="hover:bg-[#191611]">
@@ -1308,8 +1394,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 </td>
                 <td className="py-2.5 px-3 text-[#bfae90]">
                   {lang === 'en'
-                    ? 'Every guest system in this manual boots completely offline — nothing to download, no setup.'
-                    : 'Все гостевые системы из этого руководства запускаются в оффлайне — ничего не нужно скачивать или настраивать.'}
+                    ? '≈103 MB on Windows, but every guest system in this manual boots completely offline — nothing to download, no setup.'
+                    : '≈103 МБ в Windows, но все гостевые системы из этого руководства запускаются в оффлайне — ничего не нужно скачивать или настраивать.'}
                 </td>
               </tr>
             </tbody>

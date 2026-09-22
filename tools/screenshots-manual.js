@@ -68,6 +68,15 @@ const CFG_TTY = {
 };
 // Run B: DECscope VT52 as the operator console.
 const CFG_VT52 = Object.assign({}, CFG_TTY, { consoleType: "vt52" });
+// Run D: the OTHER video terminal — a DEC VT100 console, with the second user
+// terminal a VT100 as well (the first one stays a DECscope, so the two
+// cabinets can be compared side by side in the manual). The VT100 keeps its
+// default white P4 tube: the green P1 is a CONFIG option, not the shipped
+// phosphor, and the manual illustrates it with the Look & sound tab instead.
+const CFG_VT100 = Object.assign({}, CFG_TTY, {
+    consoleType: "vt100",
+    userTerminalTypes: ["vt52", "vt100"]
+});
 // Run C: Lunar Lander profile — teletype console, VT11 display on, no printer.
 // autoboot is off because the quick-boot wizard reboots the machine itself.
 const CFG_LANDER = Object.assign({}, CFG_TTY, {
@@ -187,6 +196,14 @@ const SHOTS_TTY = [
 
 const SHOTS_VT52 = [
     { page: "vt52-console", file: "console-vt52.png",        wait: 1800 }
+];
+
+// The VT100 run: the same two pages, drawn in the VT100's own cabinet. The
+// page ids still say "vt52" — they predate the second dialect — but the rig
+// states data-dialect="vt100" and the engine swaps the artwork with it.
+const SHOTS_VT100 = [
+    { page: "vt52-console", file: "console-vt100.png",       wait: 1800 },
+    { page: "vt52-2",       file: "terminal-vt100.png",      wait: 2000, prep: (p) => vt52Text(p, 2, SAMPLE_TTY2) }
 ];
 
 // Floating UI buttons captured as crisp close-ups (deviceScaleFactor 2), so
@@ -628,11 +645,15 @@ async function captureVt11Lander(browser) {
 
         const shotsTTY = SHOTS_TTY.filter((s) => wants(s.file));
         const shotsVT52 = SHOTS_VT52.filter((s) => wants(s.file));
+        const shotsVT100 = SHOTS_VT100.filter((s) => wants(s.file));
         if (shotsTTY.length) {
             await captureScenario(browser, CFG_TTY, shotsTTY, "teletype console");
         }
         if (shotsVT52.length) {
             await captureScenario(browser, CFG_VT52, shotsVT52, "VT52 console");
+        }
+        if (shotsVT100.length) {
+            await captureScenario(browser, CFG_VT100, shotsVT100, "VT100 console");
         }
         if (BUTTON_SHOTS.some((b) => wants(b.file))) {
             await captureButtons(browser, wants);

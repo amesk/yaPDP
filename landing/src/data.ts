@@ -72,8 +72,8 @@ export const FEATURES_EN: FeatureItem[] = [
   },
   {
     id: 'vt52',
-    title: 'VT52 Terminal',
-    description: 'A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video terminals.',
+    title: 'VT52 / VT100 Terminals',
+    description: 'Video terminals rendered on canvas, for guest OSes that prefer them: a DECscope VT52 or a DEC VT100 (ANSI), chosen per terminal — console TT0, TTY 1 and TTY 2 — each drawn in its own cabinet.',
   },
   {
     id: 'vt11',
@@ -115,8 +115,8 @@ export const FEATURES_RU: FeatureItem[] = [
   },
   {
     id: 'vt52',
-    title: 'Терминал VT52',
-    description: 'Дисплейный терминал DECscope VT52 (TT1:) на базе Canvas для операционных систем, ориентированных на видеотерминалы.',
+    title: 'Терминалы VT52 / VT100',
+    description: 'Видеотерминалы на базе Canvas для операционных систем, предпочитающих терминалы: DECscope VT52 или DEC VT100 (ANSI) — выбираются отдельно для консоли TT0, TTY 1 и TTY 2, каждый в собственном корпусе.',
   },
   {
     id: 'vt11',
@@ -201,13 +201,13 @@ export const DOWNLOAD_VARIANTS: DownloadVariantItem[] = [
   {
     id: 'minimal',
     variant: 'Minimal',
-    ships: 'rk0, rk1, bootcode',
-    notes: 'Small download (~3 MB). All other images are dragged & dropped at runtime.',
+    ships: 'rk0 (Unix V5), rk1 (RT-11), bootcode + the demo paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander)',
+    notes: '≈19 MB on Windows. Boots Unix V5, RT-11 and the paper tapes out of the box; every other image is added by drag & drop at runtime.',
   },
   {
     id: 'full',
     variant: 'Full',
     ships: 'every image — RK/RL/RP/RA disks, TM tapes, all paper tapes',
-    notes: 'Larger download, but all 16 guest OSes boot offline with zero extra steps.',
+    notes: '≈103 MB on Windows, but every guest system in this manual boots offline — nothing to download, no setup.',
   },
 ];

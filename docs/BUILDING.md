@@ -8,31 +8,42 @@ root with any static server (`npm run serve` for a local one on port 1170).
 ## Desktop App (Tauri)
 
 The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/).
-It runs fully offline. Two installer variants are published, so users can pick between a tiny
+It runs fully offline. Two installer variants are published, so users can pick between a small
 download and a fully-offline bundle with every disk/tape image:
 
 | Variant | Ships | Notes |
 |---------|-------|-------|
-| **Minimal** | `rk0`, `rk1`, `bootcode` | Small download (~3 MB). All other images are **dragged & dropped** at runtime. |
-| **Full** | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | Larger download, but all 16 guest OSes boot offline with zero extra steps. |
+| **Minimal** | `rk0` (Unix V5), `rk1` (RT‑11), `bootcode` and the demo paper tapes (BASIC‑11, ODT‑11, ED‑11, Lunar Lander) | ≈19 MB on Windows. Unix V5, RT‑11 and the paper tapes boot offline; all other images are **dragged & dropped** at runtime. |
+| **Full** | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | ≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps. |
+
+The download is the application itself — artwork, audio and fonts, ≈26 MB
+uncompressed — rather than the disk images: the Minimal media set adds about 1 MB.
 
 ### Artifacts (Windows x64)
 
-| Artifact | Size |
+| Artifact | Size (0.2.0 build) |
 |----------|------|
-| `yaPDP-Minimal_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP-Minimal.exe` | ~3.2 MB / ~4.3 MB / ~6.2 MB |
-| `yaPDP-Full_0.1.0_x64-setup.exe` (NSIS) / `.msi` (WiX) / `yaPDP-Full.exe` | ~84 MB / ~85 MB / ~6.2 MB |
+| `yaPDP-Minimal_0.2.0_x64-setup.exe` (NSIS) | 19.0 MB |
+| `yaPDP-Minimal_0.2.0_x64_en-US.msi` (WiX) | 20.3 MB |
+| `yaPDP-Full_0.2.0_x64-setup.exe` (NSIS) | 103.4 MB |
+| `yaPDP-Full_0.2.0_x64_en-US.msi` (WiX) | 104.4 MB |
+
+Measured from `npm run desktop:minimal` / `npm run desktop:full` on Windows. The
+app executable itself (`yapdp.exe`, the portable target) is ≈21 MB: the frontend
+is embedded in it, while the bundled images are installed **beside** it (the
+`media/` resource directory), so its size is the same for both variants.
 
 ### Artifacts (Linux x64)
 
 Built on Linux (no cross-compilation — see below). `.deb` for Debian/Ubuntu
 family, `.rpm` for Fedora/RHEL/openSUSE, `.AppImage` is a self-contained
-download-and-run format (no installation):
+download-and-run format (no installation).
 
-| Artifact | Size |
-|----------|------|
-| `yaPDP-Minimal_0.1.0_amd64.deb` / `.rpm` / `.AppImage` | ~13.5 MB / ~13.5 MB / ~88 MB |
-| `yaPDP-Full_0.1.0_amd64.deb` / `.rpm` / `.AppImage` | ~97.5 MB / ~97.5 MB / ~172 MB |
+They are packaged from the same payload as the Windows artifacts above. The
+`.AppImage` is much the largest of the three, because it carries the WebKitGTK
+runtime with it. Sizes are platform- and toolchain-dependent, so record the
+ones a release actually produces (see [`RELEASING.md`](RELEASING.md)) rather
+than quoting a number from another machine.
 
 ### Bundled images
 
@@ -43,11 +54,15 @@ The **Minimal** build bundles:
 | `rk0.dsk` | Unix V5 | `boot rk0` → `unix` → login `root` |
 | `rk1.dsk` | RT‑11 v4.0 | `BOOT RK1` |
 | `bootcode.ptap` | Bootstrap loader | loaded via Paper Tape reader |
+| `DEC-11-AJPB-PB.ptap` | BASIC‑11 V007A | `BOOT PR` |
+| `DEC-11-O2PA-PB.ptap` | ODT‑11X‑V004A | `BOOT PR` |
+| `ED-11-V004B-8K.ptap` | ED‑11 V004B | `BOOT PR` |
+| `lander.ptap` | Lunar Lander | `BOOT PR` (the quick-boot wizard enables the VT11 display) |
 
-The **Full** build additionally bundles all `rk2`–`rk5`, `rl0`–`rl3`, `rp0`–`rp4`, `ra0`–`ra2`,
-`tm0`–`tm2` and the remaining paper tapes (`DEC-11-AJPB-PB`, `DEC-11-O2PA-PB`, `ED-11-V004B-8K`,
-`lander`) — see the [guest OS table](../README.md#guest-operating-systems) in the README for how
-to boot each one.
+The **Full** build adds every remaining image — `rk2`–`rk5`, `rl0`–`rl3`,
+`rp0`–`rp4`, `ra0`–`ra2` and `tm0`–`tm2` — see the
+[guest OS table](../README.md#guest-operating-systems) in the README for how to
+boot each one.
 
 In either build, any image not shipped can be loaded at runtime by **dragging the file** onto the
 drop zone in the control bar — `.dsk`, `.tap`, `.ptap` and their `.zst`-compressed forms are
@@ -57,7 +72,7 @@ supported. Mounted images persist in IndexedDB and are re-mounted automatically 
 
 ```mermaid
 flowchart LR
-    A[DataLoader] --> B[Bundled resources<br/>rk0 / rk1 / bootcode]
+    A[DataLoader] --> B[Bundled resources<br/>rk0 / rk1 / bootcode /<br/>demo paper tapes]
     A --> C[Drag & Drop<br/>local files]
     A --> D[HTTP fetch<br/>browser hosting]
     B --> E[fzstd decompress]

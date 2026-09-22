@@ -40,6 +40,7 @@ export default function App() {
         '#console',
         '#teletype',
         '#vt52-console',
+        '#vt100-console',
         '#user-terminals',
         '#printer',
         '#vt11',
