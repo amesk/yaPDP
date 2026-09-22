@@ -165,6 +165,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/mobile-css.test.js` and measured on a 390x844 viewport by
   `tests/e2e-mobile-input.js`)
 
+- **The landing page shows the emulator's favicon.** `landing/index.html` asked
+  for `favicon.ico`, but the landing is a separate Vite project whose static root
+  is `landing/public` — and the file lived only in the repository root, so the
+  SPA answered a 404 and, away from the assembled site, the tab had no icon. The
+  landing now serves and emits the repository's single `favicon.ico` from its
+  Vite config (`landing/vite.config.ts`) rather than keeping a second copy that
+  could drift from the emulator's.
+
 ### Added
 
 - **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,
