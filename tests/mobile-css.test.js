@@ -137,6 +137,55 @@ function run() {
             "the gate hint must be capped by the window, not only by its em measure");
     }
 
+    // ---- Modal dialogs must fit a phone ---------------------------------
+    // The shared .modal-box (Machine state, Quick boot, reboot, image-load
+    // error, …) is capped by the window on both axes and scrolls when it
+    // overflows; on a narrow screen its action row wraps instead of running off
+    // the right edge. Every dialog reuses these classes, so one rule covers all.
+    assert.ok(/\.modal-box\s*\{[^}]*max-width:\s*min\(/.test(css),
+        ".modal-box must be capped by the window width");
+    assert.ok(/\.modal-box\s*\{[^}]*max-height:\s*calc\(100vh/.test(css) &&
+        /\.modal-box\s*\{[^}]*overflow-y:\s*auto/.test(css),
+        ".modal-box must be capped by the window height and scroll");
+    assert.ok(/overflow-y:\s*auto/.test(extractAtRule(media, ".modal-overlay {")),
+        "the mobile overlay must scroll when the box overflows");
+    assert.ok(/flex-wrap:\s*wrap/.test(extractAtRule(media, ".modal-actions {")),
+        ".modal-actions must wrap on a phone");
+
+    // ---- Info page: the wide OS tables ----------------------------------
+    // The guest-OS / feature tables are wider than a phone, and the page keeps
+    // overflow-x: hidden, so the right edge was clipped with no way to scroll.
+    // On a phone each table scrolls inside its own box instead.
+    const infoTable = extractAtRule(media, "#page-instructions.active table {");
+    assert.ok(/display:\s*block/.test(infoTable) &&
+        /overflow-x:\s*auto/.test(infoTable) && /max-width:\s*100%/.test(infoTable),
+        "the info tables must become self-scrolling blocks on a phone");
+    assert.ok(/#page-instructions\.active td,\s*#page-instructions\.active th\s*\{[^}]*overflow-wrap:\s*break-word/
+        .test(media),
+        "long boot commands / URLs must wrap inside the info tables");
+
+    // The page column must not size itself to its content. `margin: 0 auto`
+    // (desktop centring) cancels the flex stretch of the page column, and the
+    // wide panel GIF set its width to ~654px on a 390px phone — 264px of
+    // clipped overflow with no scroll. It has to be pinned to the container.
+    assert.ok(/#page-instructions\.active\s*\{[^}]*margin:\s*0\s*;[^}]*max-width:\s*100%/
+        .test(media),
+        "the info page must be pinned to the container width on a phone");
+
+    // The panel GIF's wrapper must not contribute its natural width to the
+    // page's min-content size (overflow: hidden drops that contribution), and
+    // the page itself must be allowed to shrink below its content.
+    assert.ok(/#page-instructions\.active \.info-panel-frame\s*\{[^}]*overflow:\s*hidden/
+        .test(css),
+        "the panel GIF wrapper must clip its intrinsic width");
+    assert.ok(/#page-instructions\.active\s*\{[^}]*min-width:\s*0/.test(css),
+        "the info page must be allowed to shrink below its content");
+
+    // The 100%-wide bottom bar must count its padding inside that 100%, or it
+    // pushes the whole page 12px wider than the window.
+    assert.ok(/box-sizing:\s*border-box/.test(extractAtRule(media, ".app-sidebar {")),
+        "the mobile navigation bar must keep its padding inside 100%");
+
     // ---- The app wires the bridge --------------------------------------
     assert.ok(app.indexOf("MobileInput.isCoarse()") !== -1,
         "pdp11-app.js must detect a coarse pointer before bridging");

@@ -128,6 +128,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the
+  rest) fit a phone screen.** The shared dialog box is capped by the window on
+  both axes and scrolls when it overflows, and the action row wraps on a narrow
+  screen instead of running off the right edge. One rule covers every dialog,
+  because they all reuse the same `.modal-*` classes. (`css/pdp11.css`; pinned by
+  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
+  `tests/e2e-mobile-input.js`)
+
+- **The Info page fits a phone screen.** `margin: 0 auto` — meant to centre the
+  slab on a wide window — cancelled the page column's flex stretch, so the page
+  sized itself to its content (the animated panel GIF and the guest-OS tables)
+  and stood ~264px wider than a 390px screen; the right edge was clipped with no
+  way to scroll. The page is now pinned to the container width, the panel image
+  scales down, and the OS / feature tables scroll inside their own box. The
+  bottom navigation bar also counts its padding inside its own width instead of
+  widening the page by 12px. (`css/pdp11.css`; pinned by
+  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
+  `tests/e2e-mobile-input.js`)
+
 - **The cursor no longer lags half a second behind the text.** Moving the cursor
   called `render(false)`, which in canvas mode repaints nothing at all — the
   drawn cursor stayed where it was until the next 500 ms blink tick, while the
