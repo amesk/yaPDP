@@ -66,6 +66,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     subsections: [
       { id: 'teletype', titleEn: 'Model 33 ASR teletype', titleRu: 'Телетайп Model 33 ASR' },
       { id: 'vt52-console', titleEn: 'VT52 as the console', titleRu: 'VT52 в качестве консоли' },
+      { id: 'vt100-console', titleEn: 'VT100 as the console', titleRu: 'VT100 в качестве консоли' },
     ],
   },
   {
@@ -331,10 +332,10 @@ export const CONFIG_TABS_DATA: ConfigTabEntry[] = [
     titleRu: 'Разработка',
     image: 'assets/images/manual/config-development.png',
     itemsEn: [
-      { label: 'VT52 text mode', desc: 'Render VT52 terminals as a plain text field instead of the canvas CRT, giving native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry; loses SGR attributes (bold/underline/reverse).' },
+      { label: 'Plain text input instead of the canvas CRT', desc: 'Render the terminal as a text field instead of the canvas CRT, giving native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry; loses SGR attributes (bold/underline/reverse). It acts on the page, so a VT52 and a VT100 terminal are both rendered this way.' },
     ],
     itemsRu: [
-      { label: 'Текстовый режим VT52', desc: 'Отображать терминалы VT52 в виде стандартного текстового поля вместо Canvas, что позволяет копировать и вставлять исходный код через системный буфер обмена (Ctrl+C / Ctrl+V).' },
+      { label: 'Plain text input instead of the canvas CRT', desc: 'Обычное текстовое поле вместо Canvas CRT: нативное выделение текста и системный буфер обмена (Ctrl+C / Ctrl+V / вставка правой кнопкой) для быстрого ввода исходного кода; теряются атрибуты SGR (жирный/подчёркивание/инверсия). Режим действует на страницу, поэтому так отображаются и терминалы VT52, и терминалы VT100.' },
     ],
   },
 ];
@@ -351,8 +352,8 @@ export const FLOATING_CONTROLS_DATA: FloatingControlEntry[] = [
   },
   {
     image: 'assets/images/manual/btn-reboot.png',
-    nameEn: 'REBOOT',
-    nameRu: 'ПЕРЕЗАГРУЗКА',
+    nameEn: 'Reboot',
+    nameRu: 'Перезагрузка',
     whereEn: 'Top-left corner, just right of the sidebar',
     whereRu: 'Верхний левый угол, справа от боковой панели',
     descEn: 'Round button with restart icon. Restarts the machine; when Auto-boot is enabled it also boots the built-in default loader. Asks for confirmation by default.',
@@ -382,7 +383,7 @@ export const FLOATING_CONTROLS_DATA: FloatingControlEntry[] = [
     nameRu: 'Масштаб терминала',
     whereEn: 'Bottom-right corner, left of the fullscreen button',
     whereRu: 'Нижний правый угол, слева от кнопки полного экрана',
-    descEn: 'Floating button that hides the VT52 cabinet and grows the tube to the largest 4:3 box the window allows, clearing the floating corner controls. The state is per terminal (console TT0, TTY 1, TTY 2) and is remembered between sessions. The icon mirrors what is on screen — a display while the cabinet is shown, the whole terminal in zoom mode — and the button is available only on pages with a VT52 terminal.',
-    descRu: 'Кнопка скрывает корпус VT52 и увеличивает экран до максимального размера 4:3, который позволяет окно, не задевая угловые кнопки. Состояние — индивидуальное для каждого терминала (консоль TT0, TTY 1, TTY 2) и запоминается между сессиями. Иконка отражает текущий вид: дисплей, пока показан корпус, и сам терминал в режиме увеличения. Кнопка доступна только на страницах с терминалом VT52.',
+    descEn: 'Floating button that hides the terminal cabinet and grows the tube to the largest 4:3 box the window allows, clearing the floating corner controls. It works on either video terminal — a DECscope VT52 or a DEC VT100. The state is per terminal (console TT0, TTY 1, TTY 2) and is remembered between sessions. The icon mirrors what is on screen — a display while the cabinet is shown, the whole terminal in zoom mode — and the button is available only on the pages that show a video terminal.',
+    descRu: 'Кнопка скрывает корпус терминала и увеличивает экран до максимального размера 4:3, который позволяет окно, не задевая угловые кнопки. Работает с любым видеотерминалом — DECscope VT52 или DEC VT100. Состояние — индивидуальное для каждого терминала (консоль TT0, TTY 1, TTY 2) и запоминается между сессиями. Иконка отражает текущий вид: дисплей, пока показан корпус, и сам терминал в режиме увеличения. Кнопка доступна только на страницах, где показан видеотерминал.',
   },
 ];

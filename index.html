@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <title>yaPDP — Yet Another PDP‑11/70 Emulator</title>
     <meta name="description"
-        content="yaPDP — Yet Another PDP‑11/70 Emulator. An authentic front panel, a Model 33 ASR teletype operator console, VT52 terminals, an LP11 line printer and 16 vintage guest operating systems — right in your browser.">
+        content="yaPDP — Yet Another PDP‑11/70 Emulator. An authentic front panel, a Model 33 ASR teletype operator console, VT52 and VT100 video terminals, an LP11 line printer and 16 vintage guest operating systems — right in your browser.">
     <meta name="keywords"
-        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,RT-11,RSX-11M,RSTS,BSD,Unix">
+        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix">
     <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 
     <!-- Same stylesheet as the emulator, so this page shares the exact
@@ -604,9 +604,10 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="disk">VT52 Terminal</td>
-                        <td>A DECscope VT52 terminal (TT1:) rendered on canvas, for guest OSes that prefer video
-                            terminals.</td>
+                        <td class="disk">VT52 / VT100 Terminals</td>
+                        <td>Video terminals rendered on canvas, for guest OSes that prefer them: a DECscope VT52 or a
+                            DEC VT100 (ANSI). The console (TT0:) and each user terminal (TT1:/TT2:) pick their own, and
+                            each is drawn in the cabinet of the terminal you chose.</td>
                     </tr>
                     <tr>
                         <td class="disk">VT11 Display</td>
@@ -855,13 +856,15 @@
                 <tbody>
                     <tr>
                         <td class="disk">Minimal</td>
-                        <td>rk0, rk1, bootcode</td>
-                        <td>Small download (~3 MB). All other images are dragged & dropped at runtime.</td>
+                        <td>rk0 (Unix V5), rk1 (RT‑11), bootcode + the demo paper tapes (BASIC‑11, ODT‑11, ED‑11, Lunar
+                            Lander)</td>
+                        <td>≈19 MB on Windows. The download is the application itself — artwork and audio — while the
+                            bundled images add about 1 MB. All other images are dragged & dropped at runtime.</td>
                     </tr>
                     <tr>
                         <td class="disk">Full</td>
                         <td>every image — RK/RL/RP/RA disks, TM tapes, all paper tapes</td>
-                        <td>Larger download, but all 16 guest OSes boot offline with zero extra steps.</td>
+                        <td>≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps.</td>
                     </tr>
                 </tbody>
             </table>

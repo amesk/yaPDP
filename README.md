@@ -63,11 +63,14 @@ see [`docs/BUILDING.md`](docs/BUILDING.md).
 ## Desktop App (Tauri)
 
 The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/),
-running fully offline. Two installer variants are published: **Minimal** (~3 MB,
-`rk0`/`rk1`/`bootcode` bundled, everything else drag & dropped at runtime) and
-**Full** (every disk/tape image, all 16 guest OSes boot offline). Installers for
-Windows x64 (MSI/NSIS/portable) and Linux x64 (deb/rpm/AppImage). Toolchain
-installation and build commands: [`docs/BUILDING.md`](docs/BUILDING.md). The
+running fully offline. Two installer variants are published: **Minimal** (≈19 MB on
+Windows) ships `rk0` (Unix V5), `rk1` (RT‑11) and `bootcode` together with the demo
+paper tapes — BASIC‑11, ODT‑11, ED‑11 and Lunar Lander — and everything else is
+drag & dropped at runtime; **Full** (≈103 MB) carries every disk and tape image, so
+all 16 guest OSes boot offline. Most of that download is the application itself
+(artwork, audio and fonts), not the images: the Minimal media set adds about 1 MB.
+Installers for Windows x64 (MSI/NSIS/portable) and Linux x64 (deb/rpm/AppImage).
+Toolchain installation and build commands: [`docs/BUILDING.md`](docs/BUILDING.md). The
 step-by-step release procedure: [`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Guest Operating Systems

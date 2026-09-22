@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <title>yaPDP — User Manual</title>
     <meta name="description"
-        content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 terminals, LP11 line printer, storage, configuration and guest operating systems.">
+        content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 and VT100 video terminals, LP11 line printer, storage, configuration and guest operating systems.">
     <meta name="keywords"
-        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
+        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
     <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 
     <!-- Same stylesheet as the emulator, so the manual shares the exact
@@ -377,8 +377,8 @@
 
             <p>
                 The operator console is what the PDP‑11 uses as its <code>TT0:</code> — the machine's own typewriter.
-                Depending on the <a href="#config">CONFIG page</a>, it is either a <b>Model 33 ASR teletype</b> or a
-                <b>DECscope VT52</b>.
+                Depending on the <a href="#config">CONFIG page</a>, it is a <b>Model 33 ASR teletype</b> or one of the
+                two video terminals: a <b>DECscope VT52</b> (see below) or a <b>DEC VT100</b>.
             </p>
 
             <h3>Model 33 ASR teletype</h3>
@@ -452,7 +452,7 @@
                     onto the output tape — the classic ASR trick for copying tapes (reader in, fresh tape out).</li>
             </ul>
 
-            <h3>VT52 as the console</h3>
+            <h3 id="vt52-console">VT52 as the console</h3>
 
             <p>
                 When the console terminal is set to a VT52, the operator console becomes a DECscope with its authentic
@@ -464,21 +464,57 @@
                     alt="A DECscope VT52 as the operator console"></p>
             <p class="shot-caption">A DECscope VT52 as the operator console, showing the @ prompt.</p>
 
+            <h3 id="vt100-console">VT100 as the console</h3>
+
+            <p>
+                Set the console terminal to <b>VT100</b> and the console becomes a <b>DEC VT100</b> — the ANSI terminal
+                that succeeded the DECscope. It is drawn in its own cabinet, at its own proportions (the artwork is the
+                terminal's, not a restyled DECscope), and it shares everything that is not the tube itself: the page
+                layout, the zoom button and double-click zoom, the STATE/REBOOT placement and the keyboard handling.
+            </p>
+
+            <p><img class="shot" src="assets/images/manual/console-vt100.png" alt="A DEC VT100 as the operator console">
+            </p>
+            <p class="shot-caption">A DEC VT100 as the operator console, showing the @ prompt.</p>
+
+            <p>
+                A VT100 is a <b>superset of the VT52</b>, exactly as the hardware was: the DECscope sequences still work
+                and the terminal adds the ANSI grammar (CSI sequences, DEC private modes, scrolling regions, G0/G1
+                character sets), which it speaks from power-on — a VT100 is a CRT-only machine and has no hardcopy mode
+                to enter first. What never existed on the hardware is refused rather than faked: <code>ESC Y</code>
+                direct addressing, <code>ESC F</code>/<code>ESC G</code> graphics on/off, the VT52 keypad modes and the
+                VT52 identification reply. Asked who it is (<code>CSI c</code>) the VT100 answers
+                <code>VT100 with AVO</code>, and <code>CSI ? 2 h</code> (DECANM) drops it into VT52 compatibility mode,
+                as the real machine did.
+            </p>
+
+            <p>
+                Two <a href="#config">CONFIG</a> options belong to this terminal alone: the <b>tube phosphor</b> — P4
+                white, the phosphor the VT100 was introduced on, or P1 green — and the <b>key click</b> (the DECscope's
+                keyboard was mechanical and has no click to make). The <b>VT52 reverse video</b> switch is the
+                DECscope's own and never touches a VT100: there, inverse text comes from the SGR 7 attribute the
+                software sends.
+            </p>
+
             <hr>
 
             <h2 id="user-terminals">User Terminals (TTY 1 / TTY 2)</h2>
 
             <p>
-                Up to two user <b>VT52</b> terminals (shown only when configured on the <a href="#config">CONFIG
+                Up to two user video terminals (shown only when configured on the <a href="#config">CONFIG
                     page</a>) let guest OSes
-                that prefer video terminals run side by side. Each is drawn as an authentic slanted DECscope monoblock:
-                an off-white moulded-plastic cabinet with a vent grille, a recessed screen in a deep bezel, and a plain
-                plastic side panel with a raised ridge. Input comes from the physical keyboard, as on the original
-                DECscope.
+                that prefer video terminals run side by side. Each is a <b>DECscope VT52</b> or a <b>DEC VT100</b>,
+                chosen independently (<code>None | VT52 | VT100</code>), and each is drawn in the cabinet of the
+                terminal you picked — the DECscope's slanted monoblock (an off-white moulded-plastic cabinet with a vent
+                grille, a recessed screen in a deep bezel and a plain side panel with a raised ridge) or the VT100's own
+                enclosure. Input comes from the physical keyboard, as on the original machines.
             </p>
 
             <p><img class="shot" src="assets/images/manual/terminal-vt52.png" alt="A user VT52 terminal"></p>
             <p class="shot-caption">A user VT52 terminal (TTY 1) running an interactive session.</p>
+
+            <p><img class="shot" src="assets/images/manual/terminal-vt100.png" alt="A user VT100 terminal"></p>
+            <p class="shot-caption">A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.</p>
 
             <ul>
                 <li><b>Font.</b> Text is rendered in the authentic <code>fritzm/vt52</code> bitmap display font
@@ -607,8 +643,8 @@
                 machine-state dialog — a
                 full save/restore of the emulated PDP‑11, not just the CPU: registers, memory, every I/O device
                 (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype
-                and LP11, the VT52 screen contents and even the VT11 vector-display picture are all captured. Think of
-                it as a save file of the whole machine.
+                and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display
+                picture are all captured. Think of it as a save file of the whole machine.
             </p>
 
             <p><img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog"></p>
@@ -625,8 +661,8 @@
             </ul>
 
             <p>
-                The STATE button mirrors REBOOT and is available on the <b>Panel</b>, <b>Console</b> (teletype or
-                VT52) and <b>TTY</b> pages. States are stored in the browser's IndexedDB and survive reloads and
+                The STATE button mirrors REBOOT and is available on the <b>Panel</b>, <b>Console</b> (teletype, VT52 or
+                VT100) and <b>TTY</b> pages. States are stored in the browser's IndexedDB and survive reloads and
                 sessions.
             </p>
 
@@ -666,7 +702,7 @@
                             Model 33 ASR); off by default so lower-case (e.g. 2.11 BSD file names) passes through.</li>
                         <li><b>Force PDP Output Uppercase</b> — print machine output in upper case (authentic Model 33
                             ASR, which cannot print lower case); on by default. The paper tape keeps the raw code, and a
-                            VT52 console is not affected at all (it prints both cases).</li>
+                            video terminal (VT52 or VT100) is not affected at all — both print lower case.</li>
                     </ul>
                 </div>
             </div>
@@ -720,9 +756,11 @@
                 <div class="config-item-text">
                     <h3>Development</h3>
                     <ul>
-                        <li><b>VT52 text mode</b> — render VT52 terminals as a plain text field instead of the canvas
-                            CRT, giving native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click
-                            paste) for fast source-code entry; loses SGR attributes (bold/underline/reverse).</li>
+                        <li><b>Plain text input instead of the canvas CRT</b> — render the terminal as a text field
+                            instead of the canvas CRT, giving native text selection and Windows Clipboard (Ctrl+C /
+                            Ctrl+V / right-click paste) for fast source-code entry; loses SGR attributes
+                            (bold/underline/reverse). It acts on the page, so a VT52 and a VT100 terminal are both
+                            rendered this way.</li>
                     </ul>
                 </div>
             </div>
@@ -749,7 +787,7 @@
 
             <p>
                 The hum is synthesized with Web Audio on its own audio channel, so it never cuts off the
-                teletype/printer or the VT52 key-click sounds.
+                teletype/printer or the VT100 key-click sounds.
             </p>
 
             <hr>
@@ -860,10 +898,10 @@
 
             <ul>
                 <li><a href="#front-panel"><b>Panel</b></a> — the front panel with switches and LEDs.</li>
-                <li><a href="#console"><b>Console</b></a> — the operator console: a Model 33 ASR teletype (or a
-                    DECscope VT52, when the console terminal is a VT52).</li>
-                <li><a href="#user-terminals"><b>TTY 1 / TTY 2</b></a> — user VT52 terminals, shown only when
-                    configured.</li>
+                <li><a href="#console"><b>Console</b></a> — the operator console: a Model 33 ASR teletype, or a
+                    DECscope VT52 / DEC VT100 when the console terminal is a video terminal.</li>
+                <li><a href="#user-terminals"><b>TTY 1 / TTY 2</b></a> — user video terminals (VT52 or VT100), shown
+                    only when configured.</li>
                 <li><a href="#printer"><b>Printer</b></a> — the LP11 line printer page, shown only when configured.
                 </li>
                 <li><a href="#vt11"><b>Display</b></a> — the VT11 vector-graphics CRT page, shown only when
@@ -1002,13 +1040,15 @@
                 <tbody>
                     <tr>
                         <td class="disk">Minimal</td>
-                        <td>rk0, rk1, bootcode</td>
-                        <td>Small download (~3 MB). All other images are dragged & dropped at runtime.</td>
+                        <td>rk0 (Unix V5), rk1 (RT‑11), bootcode + the demo paper tapes (BASIC‑11, ODT‑11, ED‑11,
+                            Lunar Lander)</td>
+                        <td>≈19 MB on Windows. The download is the application itself — artwork and audio — while the
+                            bundled images add about 1 MB. All other images are dragged & dropped at runtime.</td>
                     </tr>
                     <tr>
                         <td class="disk">Full</td>
                         <td>every image — RK/RL/RP/RA disks, TM tapes, all paper tapes</td>
-                        <td>Larger download, but all 16 guest OSes boot offline with zero extra steps.</td>
+                        <td>≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps.</td>
                     </tr>
                 </tbody>
             </table>

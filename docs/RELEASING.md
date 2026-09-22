@@ -102,8 +102,12 @@ On **Linux** (deb / rpm / AppImage):
 - [ ] `npm run desktop:minimal`
 - [ ] `npm run desktop:full`
 
-Sanity-check the installer names and sizes (Minimal ~3 MB Windows / ~13 MB
-Linux; Full ~84–172 MB — see `docs/BUILDING.md`).
+Sanity-check the installer names and sizes against the tables in
+`docs/BUILDING.md` (0.2.0 Windows build: Minimal 19.0 MB NSIS / 20.3 MB MSI,
+Full 103.4 MB / 104.4 MB). Re-measure and update those tables whenever the
+bundled payload changes — the download is dominated by the application itself
+(artwork, audio and fonts), not by the images. On Linux, record what the build
+actually produced: the `.AppImage` also carries the WebKitGTK runtime.
 
 ### 6. Publish
 
