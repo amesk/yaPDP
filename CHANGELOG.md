@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **On a phone the operator command rows keep their frequent actions at one tap
+  and fold the rest into a "More…" menu.** Every command strip the touch layout
+  docks is measured, and only a row that really cannot fit the screen folds its
+  rare commands: the Model 33 keeps Tear tape / Tear paper and folds Save tape /
+  Load tape / Remove tape; the LP11 console keeps ON LINE and folds TOP OF FORM /
+  PAPER FEED; the printer keeps Print and folds Save .txt / Tear paper; the front
+  panel keeps Bootstrap now! and folds Help Me!. A desktop and a wide tablet are
+  untouched. This replaces the sideways-scrolling strip, whose commands past the
+  edge had no affordance. (`src/action-overflow.js`, `src/touchzoom.js`,
+  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`)
+
 - A **Force PDP Output Uppercase** CONFIG option (Equipment tab, on by default)
   prints the console teletype's output in upper case: a real Model 33 ASR has no
   lower-case type, so a loader that writes lower case cannot put those letters on

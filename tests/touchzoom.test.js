@@ -69,7 +69,8 @@ function run() {
     // therefore testable without a DOM.
     {
         for (const sel of ["#teletype-controls", ".lp11-console",
-                           ".printer-actions", ".panel-actions"]) {
+                           ".printer-actions", ".panel-actions",
+                           ".action-more-menu"]) {
             assert.ok(T.PINNED_SELECTOR.indexOf(sel) !== -1,
                 "the control block " + sel + " must be pinned");
         }

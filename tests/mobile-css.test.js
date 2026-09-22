@@ -30,6 +30,7 @@ const PDP11_APP = path.join(__dirname, "..", "src", "pdp11-app.js");
 const MOBILE_INPUT = path.join(__dirname, "..", "src", "mobile-input.js");
 const MOBILE_KEYS = path.join(__dirname, "..", "src", "mobile-keys.js");
 const QUICKBOOT = path.join(__dirname, "..", "src", "quickboot.js");
+const ACTION_OVERFLOW = path.join(__dirname, "..", "src", "action-overflow.js");
 
 // Extract the body of an at-rule by brace balancing, so nested rules cannot
 // corrupt the extraction.
@@ -260,9 +261,63 @@ function run() {
             "the navigation bar must be lifted by the strip's height");
     }
 
+    // ---- The command-strip "More…" overflow (src/action-overflow.js) -----
+    // Every operator command row the touch layout docks as a strip folds its
+    // RARE commands into a "More…" menu when a phone cannot hold the row — not
+    // only the Model 33's. Guards the script order, the markup hook on every
+    // strip, the app installing it, and the CSS the module's classes rely on.
+    {
+        const overflow = fs.readFileSync(ACTION_OVERFLOW, "utf8");
+        const at = html.indexOf("src='src/action-overflow.js'");
+        const inputAt = html.indexOf("src='src/mobile-input.js'");
+        const appAt = html.indexOf("src='src/pdp11-app.js'");
+        assert.ok(at !== -1, "pdp11.html must load src/action-overflow.js");
+        assert.ok(inputAt !== -1 && at > inputAt,
+            "action-overflow.js must load after mobile-input.js (uses isCoarse)");
+        assert.ok(appAt !== -1 && at < appAt,
+            "action-overflow.js must load before pdp11-app.js (the app installs it)");
+
+        // EVERY docked command strip is covered, not only the teletype's.
+        for (const sel of ["#teletype-controls", ".lp11-console",
+                           ".printer-actions", ".panel-actions"]) {
+            assert.ok(overflow.indexOf(sel) !== -1,
+                "action-overflow.js must watch the strip " + sel);
+        }
+        // …and the markup marks the rare commands on each of the four strips
+        // (2 + 2 + 2 + 1 secondary commands).
+        assert.ok(/class="[^"]*\baction-secondary\b/.test(html),
+            "the rare commands must be marked .action-secondary in pdp11.html");
+        const secondaryCount = (html.match(/action-secondary/g) || []).length;
+        assert.ok(secondaryCount >= 4,
+            "each strip must mark its rare commands .action-secondary (found " +
+            secondaryCount + ")");
+        assert.ok(overflow.indexOf('"action-secondary"') !== -1,
+            "the module must know the .action-secondary hook");
+        assert.ok(overflow.indexOf("MobileInput.isCoarse()") !== -1,
+            "the module must exist only on a touch device");
+        assert.ok(overflow.indexOf("yapdp:pagechange") !== -1,
+            "the module must re-measure when the visible page changes");
+        assert.ok(overflow.indexOf("scrollWidth") !== -1 && overflow.indexOf("clientWidth") !== -1,
+            "the module must decide by MEASURING the strip, not by a guess");
+
+        assert.ok(app.indexOf("ActionOverflow.install()") !== -1,
+            "pdp11-app.js must install the overflow module");
+
+        // The CSS the module's classes rely on.
+        assert.ok(/button\.action-more-hidden\s*\{[^}]*display:\s*none/.test(css),
+            "css/pdp11.css must hide the More button while a strip is expanded");
+        assert.ok(/\.action-more-menu\s*\{[^}]*display:\s*none/.test(css),
+            "the menu must be hidden by default");
+        assert.ok(/\.action-more-menu\.action-more-open\s*\{[\s\S]*?display:\s*flex/.test(css),
+            "the open menu must lay its commands out in a column");
+        assert.ok(/flex:\s*0\s+0\s+auto/.test(css),
+            "the strip commands must keep their natural size for the measurement");
+    }
+
     // ---- The modules exist ---------------------------------------------
     assert.ok(fs.existsSync(MOBILE_INPUT), "src/mobile-input.js must exist");
     assert.ok(fs.existsSync(MOBILE_KEYS), "src/mobile-keys.js must exist");
+    assert.ok(fs.existsSync(ACTION_OVERFLOW), "src/action-overflow.js must exist");
 
     console.log("mobile-css.test.js: all tests passed");
 }

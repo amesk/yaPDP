@@ -137,8 +137,16 @@ function loadReaderModule() {
     "pdp11.html has the Load tape button");
   assert.ok(html.includes('id="tty-remove-tape"'),
     "pdp11.html has the Remove tape from reader button");
-  assert.ok(html.includes('class="tty-btn hidden" id="tty-remove-tape"'),
-    "Remove tape from reader starts hidden");
+  {
+    // The button also wears the generic .action-secondary hook now (a narrow
+    // phone folds it into "More…" — src/action-overflow.js), so match the tag
+    // itself rather than a fixed class list; the point is that it STARTS hidden
+    // and is toggled by setReaderMode().
+    const removeBtn = /<button[^>]*id="tty-remove-tape"[^>]*>/.exec(html);
+    assert.ok(removeBtn, "Remove tape from reader starts hidden");
+    assert.ok(/\bhidden\b/.test(removeBtn[0]),
+      "Remove tape from reader starts hidden");
+  }
   assert.ok(html.includes('id="tty-tape-file" accept=".ptap,.ptap.zst,.txt"'),
     "file input accepts .ptap, .ptap.zst and .txt");
   assert.ok(html.includes("src='src/reader.js'"),

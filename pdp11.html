@@ -885,7 +885,10 @@
         </div>
       </div>
       <div class="panel-actions">
-        <button type="button" id="panel-sticker-btn" class="panel-action-btn"
+        <!-- "Bootstrap now!" is the action an operator reaches for constantly;
+             the Help Me! sticky-note toggle is rare and wears
+             .action-secondary, so a narrow phone folds it into "More…". -->
+        <button type="button" id="panel-sticker-btn" class="panel-action-btn action-secondary"
           title="Show or hide the operator's bootstrap sticky note" aria-pressed="false">Help Me!</button>
         <button type="button" id="panel-boot-btn" class="panel-action-btn"
           title="Reboot the machine and switch to the operator console">Bootstrap now!</button>
@@ -1037,17 +1040,23 @@
         </div>
       </div>
       <!-- Model 33 ASR operator controls: tape/paper tear and tape save.
-           Wired up by initTtyControls() in pdp11-app.js. -->
+           Wired up by initTtyControls() in pdp11-app.js.
+           The commands marked .action-secondary are the RARE ones: on a narrow
+           touch screen they are moved into the strip's "More…" menu (built by
+           src/action-overflow.js), while Tear tape / Tear paper keep their
+           one-tap place. On a desktop, and on a touch screen wide enough for
+           the whole row, nothing moves and every command keeps its place. -->
       <div id="teletype-controls">
         <button type="button" class="tty-btn" id="tty-tear-tape"
           title="Tear the punched tape off (rewind the tape)">Tear tape</button>
         <button type="button" class="tty-btn" id="tty-tear-paper"
           title="Tear the printed paper off (clear the paper)">Tear paper</button>
-        <button type="button" class="tty-btn" id="tty-save-tape" title="Download the punched tape as a .ptap file">Save
+        <button type="button" class="tty-btn action-secondary" id="tty-save-tape"
+          title="Download the punched tape as a .ptap file">Save
           tape</button>
-        <button type="button" class="tty-btn" id="tty-load-tape"
+        <button type="button" class="tty-btn action-secondary" id="tty-load-tape"
           title="Load a paper tape into the reader (.ptap, .ptap.zst or .txt)">Load tape</button>
-        <button type="button" class="tty-btn hidden" id="tty-remove-tape"
+        <button type="button" class="tty-btn action-secondary hidden" id="tty-remove-tape"
           title="STOP or FREE — pull the tape out of the reader">Remove tape</button>
       </div>
       <input type="file" id="tty-tape-file" accept=".ptap,.ptap.zst,.txt" style="display:none">
@@ -1133,16 +1142,24 @@
           <button type="button" class="lp11-key lp11-key-online" id="lp11-online-key"
             onclick="window.lp11OnLine && window.lp11OnLine()"><span class="lp11-led lp11-led-online"
               id="lp11-online-led"></span>ON LINE</button>
-          <button type="button" class="lp11-key" onclick="window.lp11TopOfForm && window.lp11TopOfForm()">TOP OF
+          <!-- ON LINE is the key an operator works with constantly; the form
+               and paper-feed keys are occasional and fold into "More…" on a
+               narrow phone (see src/action-overflow.js). -->
+          <button type="button" class="lp11-key action-secondary"
+            onclick="window.lp11TopOfForm && window.lp11TopOfForm()">TOP OF
             FORM</button>
-          <button type="button" class="lp11-key" onclick="window.lp11PaperFeed && window.lp11PaperFeed()">PAPER
+          <button type="button" class="lp11-key action-secondary"
+            onclick="window.lp11PaperFeed && window.lp11PaperFeed()">PAPER
             FEED</button>
         </div>
       </div>
       <p class="printer-actions">
+        <!-- Print is the frequent action; saving the paper and tearing it off
+             are end-of-session and fold into "More…" on a narrow phone. -->
         <button type="button" onclick="window.lp11Print && window.lp11Print()">Print</button>
-        <button type="button" onclick="window.lp11Save && window.lp11Save()">Save .txt</button>
-        <button type="button" onclick="window.lp11TearPaper && window.lp11TearPaper()">Tear paper</button>
+        <button type="button" class="action-secondary" onclick="window.lp11Save && window.lp11Save()">Save .txt</button>
+        <button type="button" class="action-secondary" onclick="window.lp11TearPaper && window.lp11TearPaper()">Tear
+          paper</button>
       </p>
     </div>
     <div class="page" id="page-vt11">
@@ -2098,6 +2115,11 @@ Hello world
   <script src='src/mobile-input.js'></script>
   <script src='src/mobile-keys.js'></script>
   <script src='src/touchzoom.js'></script>
+  <!-- The command strips' "More…" overflow — any operator command row that a
+       phone cannot hold in one line (the Model 33, the LP11 console, the printer
+       and the front panel). Built only on a coarse pointer and installed by
+       src/pdp11-app.js, so it must load before it. -->
+  <script src='src/action-overflow.js'></script>
   <script src='src/pdp11-app.js'></script>
   <script src='src/snapshots.js'></script>
 </body>
