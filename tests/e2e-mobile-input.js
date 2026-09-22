@@ -632,6 +632,74 @@ async function main() {
             Math.abs(lockedScale - 1) < 0.01, `scale ${lockedScale}`);
         await locked.close();
 
+        // ---- the Machine-state dialog and the Info page fit the frame --------
+        // A dialog taller or wider than the window used to spill past the phone
+        // edges; the Info page sized itself to its content (the wide panel GIF
+        // and OS tables) instead of the window, so its right edge was clipped
+        // with no way to scroll. Both must stay inside the LAYOUT viewport
+        // (documentElement.clientWidth) and scroll themselves. That viewport is
+        // measured rather than innerWidth: on mobile innerWidth grows to the
+        // content width, which would hide the very overflow this checks, and it
+        // is unaffected by the page zoom an earlier section leaves behind.
+        await showPage(phoneFrame, "page-panel");
+        await phoneFrame.evaluate(() => {
+            const btn = document.getElementById("state-btn");
+            if (btn) btn.click();
+        });
+        await sleep(300);
+        const modalGeom = await phoneFrame.evaluate(() => {
+            const box = document.querySelector("#snap-manager-overlay .modal-box");
+            if (!box) return null;
+            const q = box.getBoundingClientRect();
+            const root = document.documentElement;
+            return {
+                left: Math.round(q.left), right: Math.round(q.right),
+                top: Math.round(q.top), bottom: Math.round(q.bottom),
+                vw: root.clientWidth, vh: root.clientHeight,
+                scrollW: box.scrollWidth, clientW: box.clientWidth
+            };
+        });
+        check("the Machine-state dialog fits the phone frame",
+            modalGeom !== null && modalGeom.left >= 0 && modalGeom.right <= modalGeom.vw &&
+            modalGeom.top >= 0 && modalGeom.bottom <= modalGeom.vh,
+            JSON.stringify(modalGeom));
+        check("and its action row does not overflow horizontally",
+            modalGeom !== null && modalGeom.scrollW <= modalGeom.clientW + 1,
+            JSON.stringify(modalGeom));
+
+        await showPage(phoneFrame, "page-instructions");
+        const infoGeom = await phoneFrame.evaluate(() => {
+            const root = document.documentElement;
+            const vw = root.clientWidth;
+            const pageEl = document.getElementById("page-instructions");
+            const tables = Array.from(pageEl.querySelectorAll("table"));
+            return {
+                vw,
+                pageWidth: Math.round(pageEl.getBoundingClientRect().width),
+                docScrollW: Math.round(root.scrollWidth),
+                count: tables.length,
+                fits: tables.map((t) => ({
+                    right: Math.round(t.getBoundingClientRect().right),
+                    overflowX: getComputedStyle(t).overflowX
+                }))
+            };
+        });
+        check("the Info page is no wider than the phone screen",
+            infoGeom.pageWidth <= infoGeom.vw && infoGeom.docScrollW <= infoGeom.vw,
+            JSON.stringify(infoGeom));
+        check("the Info tables stay inside the frame and scroll themselves",
+            infoGeom.count > 0 && infoGeom.fits.every(
+                (t) => t.right <= infoGeom.vw && t.overflowX === "auto"),
+            JSON.stringify(infoGeom));
+
+        // Put the frame back the way the next block expects it: the dialog
+        // closed and the console page shown, so the key bar is there to measure.
+        await phoneFrame.evaluate(() => {
+            const ov = document.getElementById("snap-manager-overlay");
+            if (ov) ov.classList.remove("visible");
+        });
+        await showPage(phoneFrame, CONSOLE.page);
+
         // ---- the bottom stack is one piece ----------------------------------
         // The navigation bar must SIT on the special-key bar (no dead band), and
         // the round floating buttons must clear the navigation bar. This is where
