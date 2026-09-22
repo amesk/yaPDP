@@ -114,8 +114,11 @@ var TouchZoom = (function () {
     // their own (see pinLayer) and gives THAT layer the inverse of the page's
     // transform: the layer sits at the page's origin, so scale(1/s) followed by
     // translate(-pan) cancels translate(pan) scale(s) exactly.
+    // .action-more-menu is the overflow menu src/action-overflow.js builds as a
+    // SIBLING of each strip; naming it here keeps it in the layer if a strip's
+    // menu ever exists before the pins are taken.
     var PINNED_SELECTOR = "#teletype-controls, .lp11-console, " +
-        ".printer-actions, .panel-actions";
+        ".printer-actions, .panel-actions, .action-more-menu";
     var PIN_LAYER_CLASS = "touch-pin";
     // Set on <body> while the visible machine page HAS controls. The stylesheet
     // docks the strip at the very top for it and moves the round floating buttons

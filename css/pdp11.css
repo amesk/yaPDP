@@ -1865,6 +1865,18 @@ body.touch-gestures .touch-pin>.panel-actions {
     border-bottom: 1px solid #4a453a;
 }
 
+/* The commands must keep their NATURAL size inside the strip: a button allowed
+   to shrink would swallow the overflow instead of reporting it, and the "More…"
+   measurement in src/action-overflow.js (scrollWidth vs clientWidth) would never
+   see a row that does not fit. The same `flex: 0 0 auto` the special-key bar
+   uses. */
+body.touch-gestures .touch-pin>#teletype-controls>*,
+body.touch-gestures .touch-pin>.lp11-console>*,
+body.touch-gestures .touch-pin>.printer-actions>*,
+body.touch-gestures .touch-pin>.panel-actions>* {
+    flex: 0 0 auto;
+}
+
 /* The round buttons follow the strip down, and only while it is there. */
 body.touch-gestures.touch-controls .console-reboot,
 body.touch-gestures.touch-controls .quick-boot-btn {
@@ -3421,6 +3433,46 @@ body.mobile-keys-on .mute-btn,
 body.mobile-keys-on .fullscreen-btn,
 body.mobile-keys-on .zoom-btn {
     bottom: calc(var(--bottom-stack-h) + 10px);
+}
+
+/* ===== Command-strip "More…" overflow (src/action-overflow.js) =====
+   Any operator command row a phone cannot hold in one line folds its
+   .action-secondary commands into this menu instead of scrolling sideways (see
+   the flex: 0 0 auto rule on the strips above). The button and the menu are
+   BUILT by the module, which installs only on a coarse pointer, so a desktop
+   never sees either of them. */
+button.action-more-hidden {
+    /* Beats .lp11-key / .panel-action-btn, which set a display of their own and
+       would otherwise show the button while the strip is expanded. */
+    display: none;
+}
+
+.action-more-menu {
+    display: none;
+}
+
+.action-more-menu.action-more-open {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: absolute;
+    /* Hang just below the docked strip, aligned to its right edge, where
+       "More…" sits. --touch-strip-h is published by the strip rules above; the
+       fallback is the strip's own height. */
+    top: var(--touch-strip-h, 46px);
+    right: 6px;
+    padding: 6px;
+    z-index: 30;
+    background: linear-gradient(180deg, #2a2722 0%, #1a1815 100%);
+    border: 1px solid #4a453a;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* One command per row, full width, with none of the buttons' row margins. */
+.action-more-menu>* {
+    width: 100%;
+    margin: 0;
 }
 
 @media (max-width: 768px) {

@@ -4130,6 +4130,14 @@ if (typeof MobileKeys !== 'undefined') MobileKeys.install();
 // behaviour the browser already gives. Coarse pointers only (src/touchzoom.js).
 if (typeof TouchZoom !== 'undefined') TouchZoom.install();
 
+// The "More…" overflow for the operator command strips (the Model 33, the LP11
+// console, the printer and the front panel): a strip a phone cannot hold in one
+// line folds its .action-secondary commands into a menu instead of scrolling
+// sideways. Installed only on a coarse pointer and AFTER TouchZoom, so the
+// menus are built inside the pinned layers the strips were just moved into
+// (src/action-overflow.js).
+if (typeof ActionOverflow !== 'undefined') ActionOverflow.install();
+
 // Apply the configured CRT-effects mode (pure-CSS flicker/roll simulation).
 applyCRTEffects(__appCfg && __appCfg.crtEffects);
 
