@@ -43,7 +43,6 @@ teletype/keyboard.{.shot-caption}
 2. BSD 2.11 will autoboot into multiuser mode. Login as `root` (no password).
 3. Try `ls`, `ps -aux`, `df` — or compile a C program with `cc`.
 
-<!-- translated: needs review -->
 The boot command is upper case in the manual (`BOOT RK1`) because that is what
 works on every console: a Model 33 ASR teletype has no lower-case type at all, so
 a lower-case command can never reach the machine from it. On a video terminal

@@ -1,13 +1,18 @@
 <!DOCTYPE html>
+<!-- The chrome of this page — language, title, meta tags and the hero — is
+     tokenised rather than translated in place: the same head serves manual.html
+     (English) and manual_ru.html (Russian), and tools/build-manual.js fills each
+     token with the string of the page being written. A second copy of this file
+     would duplicate the ~200 lines of page-local CSS below and the two copies
+     would drift — the very failure a single manual source exists to prevent.
+     Everything that is NOT a token is shared markup and CSS. -->
 <html lang='en'>
 
 <head>
     <meta charset="UTF-8">
     <title>yaPDP — User Manual</title>
-    <meta name="description"
-        content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 and VT100 video terminals, LP11 line printer, storage, configuration and guest operating systems.">
-    <meta name="keywords"
-        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
+    <meta name="description" content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 and VT100 video terminals, LP11 line printer, storage, configuration and guest operating systems.">
+    <meta name="keywords" content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
     <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 
     <!-- Same stylesheet as the emulator, so the manual shares the exact
@@ -237,13 +242,13 @@
             <div class="hero">
                 <h1>yaPDP — User Manual</h1>
                 <p class="tagline">Welcome to the machine. This guide walks you through every page of the emulator —
-                    from the very first boot to the deepest configuration options — so you can spend your time in the
-                    machine room, not in the documentation.</p>
-                <p class="zero-setup">Everything below applies to both the browser version and the Tauri desktop app.
-                </p>
+                    from the very first boot to the deepest configuration options — so you can spend your time in
+                    the machine room, not in the documentation.</p>
+                <p class="zero-setup">Everything below applies to both the browser version and the Tauri desktop app.</p>
                 <div class="panel-actions-landing">
                     <a class="btn-primary" href="pdp11.html">Launch Online!</a>
                     <a class="btn-secondary" href="index.html">Back to the Home Page</a>
+                    <a class="btn-secondary" href="manual_ru.html">Русская версия</a>
                 </div>
             </div>
 
@@ -829,7 +834,7 @@
 
             <h2 id="desktop">The Desktop App</h2>
 
-            <p>Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64 with Tauri. Two installer variants are available:</p>
+            <p>Prefer a native app? The same emulator is packaged as an offline desktop application for Windows x64 and Linux with Tauri. Two installer variants are available:</p>
 
             <table>
               <tr>
@@ -848,6 +853,8 @@
                 <td>≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps.</td>
               </tr>
             </table>
+
+            <p>On Linux the installation size for every configuration may be substantially larger (it depends on the package format).</p>
 
         </div>
     </div>

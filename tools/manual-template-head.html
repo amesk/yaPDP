@@ -1,13 +1,18 @@
 <!DOCTYPE html>
-<html lang='en'>
+<!-- The chrome of this page — language, title, meta tags and the hero — is
+     tokenised rather than translated in place: the same head serves manual.html
+     (English) and manual_ru.html (Russian), and tools/build-manual.js fills each
+     token with the string of the page being written. A second copy of this file
+     would duplicate the ~200 lines of page-local CSS below and the two copies
+     would drift — the very failure a single manual source exists to prevent.
+     Everything that is NOT a token is shared markup and CSS. -->
+<html lang='{{LANG}}'>
 
 <head>
     <meta charset="UTF-8">
-    <title>yaPDP — User Manual</title>
-    <meta name="description"
-        content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 and VT100 video terminals, LP11 line printer, storage, configuration and guest operating systems.">
-    <meta name="keywords"
-        content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
+    <title>{{TITLE}}</title>
+    <meta name="description" content="{{DESCRIPTION}}">
+    <meta name="keywords" content="{{KEYWORDS}}">
     <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 
     <!-- Same stylesheet as the emulator, so the manual shares the exact
@@ -235,17 +240,14 @@
         <div class="landing-page">
 
             <div class="hero">
-                <h1>yaPDP — User Manual</h1>
-                <p class="tagline">Welcome to the machine. This guide walks you through every page of the emulator —
-                    from the very first boot to the deepest configuration options — so you can spend your time in the
-                    machine room, not in the documentation.</p>
-                <p class="zero-setup">Everything below applies to both the browser version and the Tauri desktop app.
-                </p>
+                <h1>{{HERO_TITLE}}</h1>
+                <p class="tagline">{{HERO_TAGLINE}}</p>
+                <p class="zero-setup">{{HERO_NOTE}}</p>
                 <div class="panel-actions-landing">
-                    <a class="btn-primary" href="pdp11.html">Launch Online!</a>
-                    <a class="btn-secondary" href="index.html">Back to the Home Page</a>
+                    <a class="btn-primary" href="pdp11.html">{{BTN_LAUNCH}}</a>
+                    <a class="btn-secondary" href="index.html">{{BTN_HOME}}</a>
+                    <a class="btn-secondary" href="{{ALT_HREF}}">{{ALT_LABEL}}</a>
                 </div>
             </div>
 
             <hr>
-

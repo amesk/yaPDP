@@ -10,11 +10,12 @@
  *
  * docs/manual/*.md is now the single source: one Markdown file per section,
  * English, with docs/manual/ru/ holding the Russian translation. This script
- * reads those files and emits BOTH outputs from them, so the same fact can no
+ * reads those files and emits ALL outputs from them, so the same fact can no
  * longer be written down in two places and disagree.
  *
- *   docs/manual/*.md ─┬─→ manual.html                 (user manual page)
- *   docs/manual/ru/   └─→ landing/src/data/manualData.ts (React landing)
+ *   docs/manual/*.md ─┬─→ manual.html                    (user manual page, EN)
+ *   docs/manual/ru/   ├─→ manual_ru.html                 (user manual page, RU)
+ *                     └─→ landing/src/data/manualData.ts (React landing)
  *
  * Design choices worth knowing:
  *
@@ -37,6 +38,9 @@
  *   node tools/build-manual.js --write    # write the real targets
  *   node tools/build-manual.js --check    # exit non-zero if the real targets
  *                                         # are not what the source would emit
+ *
+ * The three outputs are produced, checked and written together: a page cannot
+ * be left behind at an older revision because one of the three modes forgot it.
  */
 "use strict";
 
@@ -47,6 +51,7 @@ const ROOT = path.join(__dirname, "..");
 const SRC = path.join(ROOT, "docs", "manual");
 const SRC_RU = path.join(SRC, "ru");
 const OUT_HTML = path.join(ROOT, "manual.html");
+const OUT_HTML_RU = path.join(ROOT, "manual_ru.html");
 const OUT_TS = path.join(ROOT, "landing", "src", "data", "manualData.ts");
 
 // --- the Markdown subset we actually use ------------------------------------
@@ -196,15 +201,22 @@ function parseBlocks(md) {
   return blocks;
 }
 
-function blocksToHtml(blocks, level = 2) {
+function blocksToHtml(blocks, level = 2, headings = null) {
   const out = [];
   const openWrappers = [];
   for (const b of blocks) {
     switch (b.type) {
       case "h": {
         const tag = "h" + Math.min(6, b.level);
-        const id = slug(b.text);
-        out.push("  <" + tag + ' id="' + id + '">' + inline(b.text) + "</" + tag + ">");
+        // `headings` supplies ready-made anchor ids, consumed in order. The
+        // Russian page passes the ENGLISH ids here: slug() strips every
+        // non-ASCII character, so a Russian <h3> would be emitted with an empty
+        // id — and every heading of the section would then collide on that same
+        // empty id. With the English ids the anchors stay unique and a deep link
+        // resolves in either language.
+        const id = headings && headings.length ? headings.shift() : slug(b.text);
+        out.push("  <" + tag + (id ? ' id="' + id + '"' : "") + ">" + inline(b.text) +
+          "</" + tag + ">");
         break;
       }
       case "p": {
@@ -415,29 +427,108 @@ function configTabs(blocksEn, blocksRu) {
 
 // --- outputs -----------------------------------------------------------------
 
-// The page chrome is NOT rebuilt from Markdown: manual.html has a hero block,
-// two stylesheets and ~200 lines of page-local CSS that the source does not
-// describe and should not start describing. Those parts are kept verbatim in
-// tools/manual-template-head.html / -tail.html, sliced out of the live page,
+// The page chrome is NOT rebuilt from Markdown: each manual page has a hero
+// block, two stylesheets and ~200 lines of page-local CSS that the source does
+// not describe and should not start describing. Those parts are kept verbatim
+// in tools/manual-template-head.html / -tail.html, sliced out of the live page,
 // so regenerating the manual retains its exact look. Only the table of
 // contents and the section bodies are generated.
-function buildHtml(sections) {
+//
+// That chrome carries {{TOKENS}} because there are two manual pages now, one
+// per language: the markup and the CSS are shared, the strings are not. A
+// second head file would have duplicated all of it and the two copies would
+// drift, so the translated strings live here and the template stays the single
+// copy of the page.
+const CHROME = {
+  en: {
+    lang: "en",
+    title: "yaPDP — User Manual",
+    description: "yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 and VT100 video terminals, LP11 line printer, storage, configuration and guest operating systems.",
+    keywords: "yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide",
+    heroTitle: "yaPDP — User Manual",
+    heroTagline: "Welcome to the machine. This guide walks you through every page of the emulator —\n" +
+      "                    from the very first boot to the deepest configuration options — so you can spend your time in\n" +
+      "                    the machine room, not in the documentation.",
+    heroNote: "Everything below applies to both the browser version and the Tauri desktop app.",
+    btnLaunch: "Launch Online!",
+    btnHome: "Back to the Home Page",
+    altHref: "manual_ru.html",
+    altLabel: "Русская версия",
+    toc: "Table of Contents",
+  },
+  ru: {
+    lang: "ru",
+    title: "yaPDP — Руководство пользователя",
+    description: "yaPDP — Yet Another PDP‑11/70 Emulator. Пошаговое руководство пользователя: быстрый запуск, пультовая панель, телетайп Model 33 ASR, видеотерминалы VT52 и VT100, построчный принтер LP11, работа с образами, конфигурация и гостевые операционные системы.",
+    keywords: "yaPDP,PDP,PDP-11,11/70,эмулятор,телетайп,Model 33,VT52,VT100,DECscope,RT-11,RSX-11M,RSTS,BSD,Unix,руководство пользователя,мануал",
+    heroTitle: "yaPDP — Руководство пользователя",
+    heroTagline: "Добро пожаловать в машинный зал. Это руководство проведёт вас по каждой странице эмулятора —\n" +
+      "                    от первого запуска до самых глубоких настроек, — чтобы вы проводили время за машиной, а не\n" +
+      "                    за чтением документации.",
+    heroNote: "Всё описанное ниже относится и к версии в браузере, и к настольному приложению на Tauri.",
+    btnLaunch: "Запустить онлайн!",
+    btnHome: "На главную страницу",
+    altHref: "manual.html",
+    altLabel: "English version",
+    toc: "Оглавление",
+  },
+};
+
+// The pages themselves. The section text is picked by field name, so nothing
+// below knows how a section is shaped — only where its title and its body live.
+const PAGES = [
+  { lang: "en", out: OUT_HTML, titleField: "titleEn", bodyField: "blocksEn" },
+  { lang: "ru", out: OUT_HTML_RU, titleField: "titleRu", bodyField: "blocksRu" },
+];
+
+// Fills the template's {{TOKEN}}s from the page's CHROME entry. An unknown token
+// is an error rather than an empty string: a typo in the template would
+// otherwise silently drop a piece of the page.
+function fillChrome(template, page) {
+  const c = CHROME[page.lang];
+  if (!c) throw new Error("no chrome strings for language: " + page.lang);
+  const vars = {
+    LANG: c.lang, TITLE: c.title, DESCRIPTION: c.description, KEYWORDS: c.keywords,
+    HERO_TITLE: c.heroTitle, HERO_TAGLINE: c.heroTagline, HERO_NOTE: c.heroNote,
+    BTN_LAUNCH: c.btnLaunch, BTN_HOME: c.btnHome,
+    ALT_HREF: c.altHref, ALT_LABEL: c.altLabel,
+  };
+  const filled = template.replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
+    Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : m);
+  const unknown = filled.match(/\{\{[^}]*\}\}/);
+  if (unknown) throw new Error("unknown chrome token in the page template: " + unknown[0]);
+  return filled;
+}
+
+// The anchor ids of a block list's headings — used to hand the Russian page the
+// English ids (slug() cannot slug Cyrillic: see blocksToHtml).
+function headingIds(blocks) {
+  return blocks.filter((b) => b.type === "h").map((b) => slug(b.text));
+}
+
+function buildHtml(sections, page) {
   const headFile = path.join(__dirname, "manual-template-head.html");
   const tailFile = path.join(__dirname, "manual-template-tail.html");
   if (!fs.existsSync(headFile) || !fs.existsSync(tailFile)) {
     throw new Error("missing page template: expected tools/manual-template-head.html " +
       "and tools/manual-template-tail.html (sliced from the live manual.html)");
   }
-  const head = fs.readFileSync(headFile, "utf8");
+  // The template's own trailing whitespace is not part of the contract: the
+  // join below adds it, so a template re-saved by an editor that trims the
+  // final newline cannot glue the table of contents onto the hero separator.
+  const head = fillChrome(fs.readFileSync(headFile, "utf8"), page).replace(/\s+$/, "");
   const tail = fs.readFileSync(tailFile, "utf8");
 
-  const toc = sections.map((s, i) =>
-    "                <li><a href=\"#" + s.id + "\">" + inline(s.titleEn) + "</a></li>").join("\n");
+  const toc = sections.map((s) =>
+    "                <li><a href=\"#" + s.id + "\">" + inline(s[page.titleField]) +
+    "</a></li>").join("\n");
   const bodies = sections.map((s) =>
-    '            <h2 id="' + s.id + '">' + inline(s.titleEn) + "</h2>\n\n" +
-    blocksToHtml(s.blocksEn, 2).replace(/^ {2}/gm, "            ")).join("\n\n");
+    '            <h2 id="' + s.id + '">' + inline(s[page.titleField]) + "</h2>\n\n" +
+    blocksToHtml(s[page.bodyField], 2,
+      page.lang === "en" ? null : headingIds(s.blocksEn).slice())
+      .replace(/^ {2}/gm, "            ")).join("\n\n");
 
-  return head + "            <h2>Table of Contents</h2>\n\n            <ol>\n" +
+  return head + "\n\n            <h2>" + CHROME[page.lang].toc + "</h2>\n\n            <ol>\n" +
     toc + "\n            </ol>\n\n            <hr>\n\n" + bodies + "\n" + tail + "\n";
 }
 
@@ -664,7 +755,8 @@ function generate() {
   const CONFIG_TABS_DATA = configTabs(secById["config"].blocksEn, secById["config"].blocksRu);
 
   return {
-    html: buildHtml(sections),
+    html: buildHtml(sections, PAGES[0]),
+    htmlRu: buildHtml(sections, PAGES[1]),
     ts: buildTs(sections, { GUEST_OS_TABLE, FLOATING_CONTROLS_DATA, CONFIG_TABS_DATA }),
     sections,
   };
@@ -683,7 +775,7 @@ function main() {
     process.exit(1);
   }
 
-  const { html, ts, sections } = out;
+  const { html, htmlRu, ts, sections } = out;
   const missing = sections.filter((s) => !s.titleRu || !s.blocksRu.length)
     .map((s) => s.id);
   if (missing.length) {
@@ -691,33 +783,40 @@ function main() {
     process.exit(1);
   }
 
+  // The three outputs, listed once: --check, --write and the review run all walk
+  // this list, so a new output cannot be forgotten by one of the three modes.
+  const targets = [
+    { file: OUT_HTML, content: html },
+    { file: OUT_HTML_RU, content: htmlRu },
+    { file: OUT_TS, content: ts },
+  ];
+  const names = (suffix) => targets.map((t) => path.basename(t.file) + (suffix || ""));
+
   if (check) {
-    const curHtml = fs.existsSync(OUT_HTML) ? fs.readFileSync(OUT_HTML, "utf8") : "";
-    const curTs = fs.existsSync(OUT_TS) ? fs.readFileSync(OUT_TS, "utf8") : "";
-    const drift = [];
-    if (curHtml !== html) drift.push("manual.html");
-    if (curTs !== ts) drift.push("manualData.ts");
+    const drift = targets.filter((t) =>
+      !fs.existsSync(t.file) || fs.readFileSync(t.file, "utf8") !== t.content)
+      .map((t) => path.basename(t.file));
     if (drift.length) {
       console.error("build-manual: generated output differs from " + drift.join(" and ") +
         " — run `npm run manual:build`");
       process.exit(1);
     }
-    console.log("build-manual: " + sections.length + " sections, output in sync");
+    console.log("build-manual: " + sections.length + " sections, output in sync (" +
+      names().join(", ") + ")");
     return;
   }
 
   if (write) {
-    fs.writeFileSync(OUT_HTML, html);
-    fs.writeFileSync(OUT_TS, ts);
-    console.log("build-manual: wrote manual.html and manualData.ts (" +
-      sections.length + " sections)");
+    for (const t of targets) fs.writeFileSync(t.file, t.content);
+    console.log("build-manual: wrote " + names().join(", ") +
+      " (" + sections.length + " sections)");
     return;
   }
 
-  fs.writeFileSync(OUT_HTML + ".generated", html);
-  fs.writeFileSync(OUT_TS + ".generated", ts);
-  console.log("build-manual: wrote manual.html.generated and manualData.ts.generated (" +
-    sections.length + " sections, " + html.length + " + " + ts.length + " bytes)");
+  for (const t of targets) fs.writeFileSync(t.file + ".generated", t.content);
+  console.log("build-manual: wrote " + names(".generated").join(", ") +
+    " (" + sections.length + " sections, " + html.length + " + " + htmlRu.length +
+    " + " + ts.length + " bytes)");
   console.log("  review them, then run with --write to replace the live files");
 }
 

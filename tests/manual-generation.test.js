@@ -3,8 +3,9 @@
  * User-manual generation guard.
  *
  * docs/manual/*.md is the single source for the user manual, and
- * tools/build-manual.js generates both manual.html and
- * landing/src/data/manualData.ts from it. Regenerating must keep every
+ * tools/build-manual.js generates manual.html (English), manual_ru.html
+ * (Russian) and landing/src/data/manualData.ts from it. Regenerating must
+ * keep every
  * construct the page styles or links on — and that is exactly what a port from
  * hand-written HTML quietly loses. Seven defects of that one kind shipped in a
  * row: stylesheet classes, internal links, code blocks, emphasis, block quotes,
@@ -16,8 +17,8 @@
  * fails here instead of in review:
  *
  *   1. every section in docs/manual/ is present in both outputs;
- *   2. the two outputs carry the same section ids (manual.html <h2 id> vs
- *      MANUAL_SECTIONS);
+ *   2. every output carries the same section ids (manual.html / manual_ru.html
+ *      <h2 id> vs MANUAL_SECTIONS);
  *   3. the classes the stylesheet relies on are present, and in the counts the
  *      page expects (shot 1 per screenshot, control-btn and control-name one
  *      per button, disk one per styled first cell);
@@ -25,7 +26,10 @@
  *      <blockquote>, internal <a href="#…">;
  *   5. the generated HTML has balanced <div> — an unbalanced wrapper makes the
  *      browser swallow the rest of the document, which hid five whole sections;
- *   6. the Russian source covers every section the English source has.
+ *   6. the Russian source covers every section the English source has;
+ *   7. both pages are the same generator over the same sections: the Russian
+ *      one is held to the same checks, links back to the English one, and no
+ *      {{token}} of the page chrome survives into either.
  *
  * Run with:  node tests/manual-generation.test.js
  *
@@ -41,6 +45,7 @@ const ROOT = path.join(__dirname, "..");
 const SRC = path.join(ROOT, "docs", "manual");
 const SRC_RU = path.join(SRC, "ru");
 const OUT_HTML = path.join(ROOT, "manual.html");
+const OUT_HTML_RU = path.join(ROOT, "manual_ru.html");
 const OUT_TS = path.join(ROOT, "landing", "src", "data", "manualData.ts");
 const META = path.join(SRC, "_meta.yml");
 
@@ -75,12 +80,64 @@ function classCounts(html) {
   return out;
 }
 
+// The checks that hold for a manual page whatever its language: its section
+// list, its anchors, its wrapper balance and the absence of source syntax. Both
+// pages are run through it — the Russian one is the same generator over the same
+// sections, so a defect there (a lost section, an unbalanced <div>, a `{.class}`
+// marker rendered as text) is exactly as bad, and until now nothing watched it.
+function checkPage(html, label, meta) {
+  const ids = (html.match(/<h2 id="([^"]+)"/g) || [])
+    .map((s) => s.replace(/<h2 id="|"/g, ""));
+  assert.deepStrictEqual(ids.slice().sort(), meta.slice().sort(),
+    label + " does not carry every section from _meta.yml");
+
+  // the section a link points at must exist — a dangling #anchor is a dead link
+  for (const m of html.matchAll(/<a href="#([^"]+)"/g)) {
+    if (m[1] === "toc") continue;
+    assert.ok(meta.indexOf(m[1]) !== -1,
+      label + ": internal link points at a section that does not exist: #" + m[1]);
+  }
+
+  // balanced wrappers — an unclosed <div> makes the browser swallow the rest
+  // of the document, which once hid five whole sections
+  const open = count(html, /<div\b/g);
+  const close = count(html, /<\/div>/g);
+  assert.strictEqual(open, close,
+    label + ": unbalanced <div> (" + open + " open, " + close + " closed) — the " +
+    "browser will swallow everything after the first unclosed one");
+
+  // Review comments never reach the page. The Russian source marks
+  // machine-translated blocks with an HTML comment and the generator strips it —
+  // what this rejects is the ESCAPED comment, which is visible text: the reader
+  // would see the review note itself. The ampersand is written as \x26 so this
+  // guard does not contain, in its own source, the text it forbids.
+  assert.ok(html.indexOf("translated: needs review") === -1,
+    label + ": a review marker reached the page as text: the reader would see it");
+  assert.ok(!/\x26lt;!--/.test(html),
+    label + ": an escaped HTML comment reached the page — comments must be " +
+    "stripped, not printed");
+
+  // {.class} and ::: are source syntax; visible in the page they are bugs
+  for (const marker of [/\{\.[a-z-]/g, /^::: /m]) {
+    assert.ok(!marker.test(html),
+      label + ": a generator marker leaked into the page: " + marker);
+  }
+
+  // an unfilled {{token}} means a string missing from the generator's CHROME
+  // table — the page would show the placeholder itself
+  assert.ok(html.indexOf("{{") === -1,
+    label + ": an unfilled chrome token reached the page");
+}
+
 function run() {
   assert.ok(fs.existsSync(META), "docs/manual/_meta.yml is missing");
   assert.ok(fs.existsSync(OUT_HTML), "manual.html is missing — run npm run manual:build");
+  assert.ok(fs.existsSync(OUT_HTML_RU),
+    "manual_ru.html is missing — run npm run manual:build");
   assert.ok(fs.existsSync(OUT_TS), "manualData.ts is missing — run npm run manual:build");
 
   const html = fs.readFileSync(OUT_HTML, "utf8");
+  const htmlRu = fs.readFileSync(OUT_HTML_RU, "utf8");
   const ts = fs.readFileSync(OUT_TS, "utf8");
   const meta = metaSections();
   const en = sectionFiles(SRC);
@@ -93,13 +150,20 @@ function run() {
   assert.deepStrictEqual(ru.slice().sort(), en.slice().sort(),
     "the Russian source does not cover the same sections as the English one");
 
-  // --- 2. both outputs carry the same sections ------------------------------
-  const htmlIds = (html.match(/<h2 id="([^"]+)"/g) || [])
-    .map((s) => s.replace(/<h2 id="|"/g, ""));
+  // --- 2. both pages carry every section, and each carries its own language --
+  checkPage(html, "manual.html", meta);
+  checkPage(htmlRu, "manual_ru.html", meta);
+
+  assert.ok(/<html lang='en'>/.test(html), "manual.html is not marked as English");
+  assert.ok(/<html lang='ru'>/.test(htmlRu), "manual_ru.html is not marked as Russian");
+  // the pages link to each other, or a reader is stuck in one language
+  assert.ok(html.indexOf('href="manual_ru.html"') !== -1,
+    "manual.html carries no link to the Russian page");
+  assert.ok(htmlRu.indexOf('href="manual.html"') !== -1,
+    "manual_ru.html carries no link to the English page");
+
   const tsIds = (ts.match(/^\s{4}id: '([^']+)',/gm) || [])
     .map((s) => s.replace(/^\s{4}id: '|',$/g, ""));
-  assert.deepStrictEqual(htmlIds.slice().sort(), meta.slice().sort(),
-    "manual.html does not carry every section from _meta.yml");
   assert.ok(tsIds.length >= meta.length,
     "manualData.ts carries fewer sections than _meta.yml");
   for (const id of meta) {
@@ -185,13 +249,6 @@ function run() {
     "internal links were lost on the way: " + linksInSource +
     " in the source, " + anchors + " in the page");
 
-  // the section a link points at must exist — a dangling #anchor is a dead link
-  for (const m of html.matchAll(/<a href="#([^"]+)"/g)) {
-    if (m[1] === "toc") continue;
-    assert.ok(meta.indexOf(m[1]) !== -1,
-      "internal link points at a section that does not exist: #" + m[1]);
-  }
-
   // --- 4b. the TypeScript output carries DATA, not markup ------------------
   // manualData.ts is consumed by React as plain strings. A marker or a
   // Markdown fragment that survives into a value renders literally on the
@@ -223,53 +280,43 @@ function run() {
       "manualData.ts points at a file that does not exist: " + rel);
   }
 
-  // --- 5. balanced wrappers ------------------------------------------------
-  const open = count(html, /<div\b/g);
-  const close = count(html, /<\/div>/g);
-  assert.strictEqual(open, close,
-    "unbalanced <div> (" + open + " open, " + close + " closed) — the browser " +
-    "will swallow everything after the first unclosed one");
+  // --- 5, 5c and 6 hold for both pages: they live in checkPage() ----------
 
   // --- 5b. the caption marker sits at the END of its paragraph ------------
   // A caption may span several lines. When {.shot-caption} was placed at the
   // end of the FIRST line, the generator captioned that fragment and left the
   // rest as a plain paragraph — the defect the author found in Storage. The
   // marker belongs to the last line of the paragraph.
-  for (const id of en) {
-    const lines = fs.readFileSync(path.join(SRC, id + ".md"), "utf8").split("\n");
+  // Both languages are walked: the Russian page renders its own captions, and a
+  // translation that wraps the paragraph differently has the same defect.
+  const sources = en.map((id) => ["docs/manual/" + id + ".md", path.join(SRC, id + ".md")])
+    .concat(ru.map((id) => ["docs/manual/ru/" + id + ".md", path.join(SRC_RU, id + ".md")]));
+  for (const [rel, file] of sources) {
+    const lines = fs.readFileSync(file, "utf8").split("\n");
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].indexOf("{.shot-caption}") === -1) continue;
       // anything non-empty after this line means the marker is mid-paragraph
       const next = lines[i + 1] !== undefined ? lines[i + 1].trim() : "";
       assert.strictEqual(next, "",
-        "docs/manual/" + id + ".md:" + (i + 1) +
+        rel + ":" + (i + 1) +
         " — {.shot-caption} must be on the paragraph's LAST line, or the " +
         "caption is cut in half (next line: " + JSON.stringify(next.slice(0, 40)) + ")");
     }
   }
 
-  // --- 5c. review comments never reach the page ----------------------------
-  // The Russian source marks machine-translated blocks with an HTML comment.
-  // Such a comment must be consumed by the generator, not printed: an escaped
-  // one (&lt;!-- … --&gt;) is VISIBLE TEXT, so the reader sees the review note
-  // itself. Check both the raw and the escaped form.
-  assert.ok(html.indexOf("translated: needs review") === -1,
-    "a review marker reached manual.html as text: the reader would see it");
-  assert.ok(html.indexOf("&lt;!--") === -1,
-    "an escaped HTML comment reached manual.html: comments must be stripped, " +
-    "not printed");
+  // --- 5c. review comments — checked per page inside checkPage() -----------
+  // The data file is not a page, so the same facts are asserted here for it: the
+  // landing renders its strings as plain text, which makes a review note or an
+  // unfilled chrome token just as visible there.
   assert.ok(ts.indexOf("translated: needs review") === -1,
     "a review marker reached manualData.ts");
-
-  // --- 6. no stray generator markers left in the output --------------------
-  // {.class} and ::: are source syntax; visible in the page they are bugs.
-  for (const marker of [/\{\.[a-z-]/g, /^::: /m]) {
-    assert.ok(!marker.test(html),
-      "a generator marker leaked into manual.html: " + marker);
-  }
+  assert.ok(!/\x26lt;!--/.test(ts),
+    "an escaped HTML comment reached manualData.ts");
+  assert.ok(ts.indexOf("{{") === -1,
+    "an unfilled chrome token reached manualData.ts");
 
   console.log("manual-generation: all checks passed (" +
-    meta.length + " sections, " + imgs + " images, " +
+    meta.length + " sections × 2 pages, " + imgs + " images, " +
     count(html, /<code>/g) + " inline codes, " + anchors + " internal links)");
 }
 

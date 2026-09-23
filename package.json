@@ -75,10 +75,23 @@
         "media/manifest.json"
       ]
     },
+    "manual": {
+      "command": "node tools/build-manual.js --check",
+      "files": [
+        "docs/manual/**",
+        "tools/build-manual.js",
+        "tools/manual-template-head.html",
+        "tools/manual-template-tail.html",
+        "manual.html",
+        "manual_ru.html",
+        "landing/src/data/manualData.ts"
+      ]
+    },
     "test": {
       "command": "node tools/run-tests.js",
       "dependencies": [
-        "manifest"
+        "manifest",
+        "manual"
       ],
       "files": [
         "src/**",
