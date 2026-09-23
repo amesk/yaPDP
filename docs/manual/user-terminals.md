@@ -16,7 +16,7 @@ A user VT52 terminal (TTY 1) running an interactive session.
 
 A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.
 
-- Font. Text is rendered in the authentic fritzm/vt52 bitmap display font ( monospace is the fallback until the webfont loads).
-- Clear screen. Clear screen (ESC E) and form feed ( ^L ) both wipe the display and home the cursor, so clear and multi-page nroff/man output start each page from the top row.
+- Font. Text is rendered in the authentic fritzm/vt52 bitmap display font (monospace is the fallback until the webfont loads).
+- Clear screen. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so clear and multi-page nroff/man output start each page from the top row.
 - CRT simulation (optional). A pure-CSS effect adds brightness flicker, scanline shimmer and a vertical-hold roll band.
-- Text mode (optional). Renders the terminal as a plain text field instead of the canvas, enabling native text selection and Windows Clipboard ( Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering.
+- Text mode (optional). Renders the terminal as a plain text field instead of the canvas, enabling native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering.

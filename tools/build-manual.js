@@ -82,7 +82,7 @@ function parseBlocks(md) {
     if (para.length) { blocks.push({ type: "p", text: para.join(" ").trim() }); para = []; }
   };
   const flushList = () => {
-    if (list) { blocks.push({ type: "ul", items: list }); list = null; }
+    if (list) { blocks.push({ type: list.kind, items: list.items }); list = null; }
   };
   const flushTable = () => {
     if (table) { blocks.push({ type: "table", rows: table }); table = null; }
@@ -108,11 +108,20 @@ function parseBlocks(md) {
       continue;
     }
 
+    // Two list kinds, and the difference matters: a numbered list is a recipe
+    // ("do these in order"), a bulleted one is a set. The converter used to
+    // collapse both into <ul>, which turned the quick-boot steps and the panel
+    // switch sequence into unordered bullets.
     const li = /^[-*]\s+(.*)$/.exec(line);
-    if (li) {
+    const oli = /^\d+[.)]\s+(.*)$/.exec(line);
+    if (li || oli) {
       flushPara(); flushTable();
-      if (!list) list = [];
-      list.push(li[1].trim());
+      const kind = oli ? "ol" : "ul";
+      if (!list || list.kind !== kind) {
+        flushList();
+        list = { kind: kind, items: [] };
+      }
+      list.items.push((oli ? oli[1] : li[1]).trim());
       continue;
     }
 
@@ -148,9 +157,10 @@ function blocksToHtml(blocks, level = 2) {
         out.push("  <p>" + inline(b.text) + "</p>");
         break;
       case "ul":
-        out.push("  <ul>");
+      case "ol":
+        out.push("  <" + b.type + ">");
         for (const it of b.items) out.push("    <li>" + inline(it) + "</li>");
-        out.push("  </ul>");
+        out.push("  </" + b.type + ">");
         break;
       case "img":
         out.push('  <img src="' + b.src + '" alt="' + inline(b.alt) + '">');

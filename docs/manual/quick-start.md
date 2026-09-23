@@ -14,9 +14,9 @@ The first-run onboarding hint.
 **In a hurry?** Use the **magic wand** button in the top-right corner of the window. It stays on
 every page except **Info**. One click does everything:
 
-- Opens a picker listing every guest operating system (and the paper tapes ) whose image this build ships — the picker is filtered by the build manifest ( media/manifest.json ), plus any images you have imported by drag & drop . Paper tapes always stay listed.
-- Chooses one, switches to the operator console , and reboots the machine.
-- Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root ).
+1. Opens a picker listing every guest operating system (and the paper tapes) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag & drop. Paper tapes always stay listed.
+2. Chooses one, switches to the operator console, and reboots the machine.
+3. Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root).
 
 ![Quick boot picker](assets/images/manual/dialog-quickboot.png)
 
@@ -39,6 +39,6 @@ teletype/keyboard.
 
 ### The classic way
 
-- At the @ prompt, type boot rp1 and press ENTER.
-- BSD 2.11 will autoboot into multiuser mode. Login as root (no password).
-- Try ls , ps -aux , df — or compile a C program with cc .
+1. At the @ prompt, type boot rp1 and press ENTER.
+2. BSD 2.11 will autoboot into multiuser mode. Login as root (no password).
+3. Try ls, ps -aux, df — or compile a C program with cc.

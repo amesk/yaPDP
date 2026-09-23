@@ -8,9 +8,9 @@ into four tabs, with the **Apply** and **Restore defaults** actions in a bar bel
 ### Equipment
 
 - Console terminal — the operator console (tty0): a Model 33 ASR teletype, a DECscope VT52 or a DEC VT100.
-- User terminals — the two user terminals (TTY 1 / TTY 2) , each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.
-- Line printer (LP11) — install the animated LP11 line printer on its own Printer page .
-- VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own Display page .
+- User terminals — the two user terminals (TTY 1 / TTY 2), each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.
+- Line printer (LP11) — install the animated LP11 line printer on its own Printer page.
+- VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own Display page.
 - Teletype print width — 72 or 80 columns for the Model 33 ASR console (a teletype is at most an 80-column machine).
 - Printer width — 72/80/100/132 columns for the LP11 printer page.
 - Teletype speed — authentic (real 110-baud Model 33 ASR, ~10 chars/sec) or fast development pace.
