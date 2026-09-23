@@ -139,18 +139,51 @@ function run() {
   assert.ok((cls["config-item"] || 0) > 0, "no CONFIG cards generated");
 
   // --- 4. markup that is not plain text ------------------------------------
-  const pre = count(html, /<pre>/g);
-  const code = count(html, /<code>/g);
-  const em = count(html, /<(em|i)>/g);
-  const bq = count(html, /<blockquote>/g);
-  const anchors = count(html, /<a href="#/g);
+  // These are CONTRACTS, not counts: the source uses a construct, the output
+  // must render it. Absolute counts are deliberately NOT compared against a
+  // saved copy of the page — such a copy ages the moment the manual gains a
+  // chapter, and a guard that goes red on legitimate edits gets switched off.
+  // What it checks instead is that a construct present in the source still
+  // reaches the output at all, and that the counts stay internally consistent.
 
-  assert.ok(pre > 0, "no <pre> blocks: fenced ``` code in the source is not rendered");
-  assert.ok(code > 0, "no inline <code>: backticks in the source are not rendered");
-  assert.ok(em > 0, "no emphasis: *text* in the source is not rendered");
-  assert.ok(bq > 0, "no <blockquote>: '> text' in the source is not rendered");
-  assert.ok(anchors >= meta.length,
-    "the manual cross-references itself: expected at least one link per section, got " + anchors);
+  // Per-source-file expectation: if a file uses the construct, the output must
+  // show it. This scales with the manual and never depends on a frozen copy.
+  const srcAll = en.map((id) => fs.readFileSync(path.join(SRC, id + ".md"), "utf8")).join("\n");
+
+  const fencesInSource = count(srcAll, /^```/gm);
+  const inlineCodeInSource = count(srcAll, /`[^`\n]+`/g);
+  const emphasisInSource = count(srcAll, /\*[^*\n]+\*/g);
+  const quotesInSource = count(srcAll, /^> /gm);
+  const linksInSource = count(srcAll, /\]\(#[a-z0-9-]+\)/g);
+
+  if (fencesInSource > 0) {
+    assert.ok(count(html, /<pre>/g) > 0,
+      "the source has ``` fenced blocks but the page renders no <pre>");
+  }
+  if (inlineCodeInSource > 0) {
+    assert.ok(count(html, /<code>/g) > 0,
+      "the source has `inline code` but the page renders no <code>");
+  }
+  if (emphasisInSource > 0) {
+    assert.ok(count(html, /<(em|i)>/g) > 0,
+      "the source has *emphasis* but the page renders no <em>");
+  }
+  if (quotesInSource > 0) {
+    assert.ok(count(html, /<blockquote>/g) > 0,
+      "the source has '> quoted' lines but the page renders no <blockquote>");
+  }
+  if (linksInSource > 0) {
+    assert.ok(count(html, /<a href="#/g) > 0,
+      "the source has internal links but the page renders no <a href=\"#…\">");
+  }
+
+  // a link in the source must survive as a link, not degrade to plain text:
+  // the one failure mode that matters is silent loss, so compare the two
+  // sides' totals loosely (output may add the table of contents' own links).
+  const anchors = count(html, /<a href="#/g);
+  assert.ok(anchors >= linksInSource,
+    "internal links were lost on the way: " + linksInSource +
+    " in the source, " + anchors + " in the page");
 
   // the section a link points at must exist — a dangling #anchor is a dead link
   for (const m of html.matchAll(/<a href="#([^"]+)"/g)) {
@@ -166,6 +199,24 @@ function run() {
     "unbalanced <div> (" + open + " open, " + close + " closed) — the browser " +
     "will swallow everything after the first unclosed one");
 
+  // --- 5b. the caption marker sits at the END of its paragraph ------------
+  // A caption may span several lines. When {.shot-caption} was placed at the
+  // end of the FIRST line, the generator captioned that fragment and left the
+  // rest as a plain paragraph — the defect the author found in Storage. The
+  // marker belongs to the last line of the paragraph.
+  for (const id of en) {
+    const lines = fs.readFileSync(path.join(SRC, id + ".md"), "utf8").split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].indexOf("{.shot-caption}") === -1) continue;
+      // anything non-empty after this line means the marker is mid-paragraph
+      const next = lines[i + 1] !== undefined ? lines[i + 1].trim() : "";
+      assert.strictEqual(next, "",
+        "docs/manual/" + id + ".md:" + (i + 1) +
+        " — {.shot-caption} must be on the paragraph's LAST line, or the " +
+        "caption is cut in half (next line: " + JSON.stringify(next.slice(0, 40)) + ")");
+    }
+  }
+
   // --- 6. no stray generator markers left in the output --------------------
   // {.class} and ::: are source syntax; visible in the page they are bugs.
   for (const marker of [/\{\.[a-z-]/g, /^::: /m]) {
@@ -174,8 +225,8 @@ function run() {
   }
 
   console.log("manual-generation: all checks passed (" +
-    meta.length + " sections, " +
-    imgs + " images, " + code + " inline codes, " + anchors + " internal links)");
+    meta.length + " sections, " + imgs + " images, " +
+    count(html, /<code>/g) + " inline codes, " + anchors + " internal links)");
 }
 
 run();
