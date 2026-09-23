@@ -69,8 +69,12 @@ function inline(text) {
       })
     // a text run marked {.class} becomes a <span> — used for the control names
     // inside the floating-controls table, which the stylesheet grid-aligns.
-    .replace(/([^{}]+)\{\.([a-z-]+)\}/g,
-      (m, text, cls) => '<span class="' + cls + '">' + text.trim() + "</span>")
+    // A marked text run becomes a <span> — used for the control names in the
+    // floating-controls table. It must wrap ONLY the label: the cell also holds
+    // the button image, and .control-name styles text (weight, colour), so
+    // swallowing the <img> inside the span broke the cell's layout.
+    .replace(/(^|>)([^{}<>]+)\{\.([a-z-]+)\}/g,
+      (m, pre, text, cls) => pre + '<span class="' + cls + '">' + text.trim() + "</span>")
     // internal links: [text](#anchor) — the manual cross-references itself,
     // and a plain-text "Config page" is a worse page than a link.
     .replace(/\[([^\]]+)\]\(#([a-z0-9-]+)\)/g,
