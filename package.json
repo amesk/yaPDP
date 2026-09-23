@@ -48,7 +48,9 @@
     "e2e:mobile": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
-    "voice": "node tools/voicer.js"
+    "voice": "node tools/voicer.js",
+    "manual:build": "node tools/build-manual.js --write",
+    "manual:check": "node tools/build-manual.js --check"
   },
   "devDependencies": {
     "canvas": "^3.2.3",
