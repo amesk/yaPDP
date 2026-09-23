@@ -313,7 +313,7 @@ export const FLOATING_CONTROLS_DATA: FloatingControlEntry[] = [
     image: 'assets/images/manual/btn-magicwand.png',
     nameEn: 'Magic wand', nameRu: 'Волшебная палочка',
     whereEn: 'Top-right corner (every page except Info)', whereRu: 'Правый верхний угол (все страницы, кроме Info)',
-    descEn: 'Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See Quick Start .', descRu: 'Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. Быстрый старт.',
+    descEn: 'Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See Quick Start.', descRu: 'Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. Быстрый старт.',
   },
   {
     image: 'assets/images/manual/btn-reboot.png',
