@@ -199,8 +199,13 @@
 #g60printer div#paper {
     position: absolute;
     top: 0;
-    left: 67px;
-    width: 741px;
+    /* Default 72-column sheet (72*7 + 2*18 = 540px), centred in the 808px body
+       (67px left skin + (675 - 540)/2 = 135). applyPaperGeometry() overrides
+       both per column count and publishes --tty-sheet-native; keeping the CSS
+       default equal to the real layout means the printer block does NOT move
+       when the artwork lands (#77's startup CLS gate). */
+    left: 135px;
+    width: 540px;
     height: 400px;
     max-height: 400px;
     vertical-align: top;
@@ -1247,10 +1252,13 @@
     /* min(32.433464/118, 17.285152/66) */
     /* Printable width: the artwork's Paper marker sets it. The sheet itself is
        laid out by the printer (computePaperGeometry, per column count), so the
-       page publishes its real width in the UNITLESS --tty-sheet-native; 741 is
-       only the no-JS fallback (the CSS base paper width). Dividing two numbers
-       keeps the factor unitless — a length here would make scale() invalid. */
-    --tty-sheet-native: 741;
+       page publishes its real width in the UNITLESS --tty-sheet-native. 540 is
+       the no-JS fallback: the DEFAULT 72-column sheet (the same value the
+       #g60printer paper rule above uses), kept equal so --tty-sheet-k does not
+       change when the real width lands and the printer block never shifts.
+       Dividing two numbers keeps the factor unitless — a length here would make
+       scale() invalid. */
+    --tty-sheet-native: 540;
     --tty-sheet-k: calc(var(--tty-u-num) * var(--tty-paper-w) / var(--tty-sheet-native));
 
     /* ---- Keyboard: the marker drives the key grid -------------------
