@@ -282,9 +282,9 @@
             <p><strong>In a hurry?</strong> Use the <strong>magic wand</strong> button in the top-right corner of the window. It stays on every page except <strong>Info</strong>. One click does everything:</p>
 
             <ol>
-              <li>Opens a picker listing every guest operating system (and the <a href="#storage">paper tapes</a>) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag &amp; drop. Paper tapes always stay listed.</li>
+              <li>Opens a picker listing every guest operating system (and the <a href="#storage">paper tapes</a>) whose image this build ships — the picker is filtered by the build manifest (<code>media/manifest.json</code>), plus any images you have imported by drag &amp; drop. Paper tapes always stay listed.</li>
               <li>Chooses one, switches to the <a href="#console">operator console</a>, and reboots the machine.</li>
-              <li>Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root).</li>
+              <li>Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login root).</li>
             </ol>
 
             <p><img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Quick boot picker"></p>
@@ -295,14 +295,14 @@
 
             <p><img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast"></p>
 
-            <p><span class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the</span> teletype/keyboard.</p>
+            <p class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the teletype/keyboard.</p>
 
             <h3 id="the-classic-way">The classic way</h3>
 
             <ol>
-              <li>At the @ prompt, type boot rp1 and press ENTER.</li>
-              <li>BSD 2.11 will autoboot into multiuser mode. Login as root (no password).</li>
-              <li>Try ls, ps -aux, df — or compile a C program with cc.</li>
+              <li>At the <code>@</code> prompt, type <code>boot rp1</code> and press ENTER.</li>
+              <li>BSD 2.11 will autoboot into multiuser mode. Login as <code>root</code> (no password).</li>
+              <li>Try <code>ls</code>, <code>ps -aux</code>, <code>df</code> — or compile a C program with <code>cc</code>.</li>
             </ol>
 
             <p>&lt;!-- translated: needs review --&gt; The boot command is upper case in the manual (<code>BOOT RK1</code>) because that is what works on every console: a Model 33 ASR teletype has no lower-case type at all, so a lower-case command can never reach the machine from it. On a video terminal (VT52 or VT100) lower case works just as well — the guest folds it.</p>
@@ -343,7 +343,7 @@
 
             <h2 id="console">The Operator Console</h2>
 
-            <p>The operator console is what the PDP-11 uses as its <code>TT0:</code> — the machine's own typewriter. Depending on the <a href="#config">CONFIG page</a>, it is a <strong>Model 33 ASR teletype</strong> or one of the two video terminals: a <strong>DECscope VT52</strong> (see below) or a <strong>DEC VT100</strong>.</p>
+            <p>The operator console is what the PDP-11 uses as its <code>TT0:</code> — the machine's own typewriter. Depending on the <a href="#config">CONFIG page</a>, it is a <strong>Model 33 ASR teletype</strong> or one of the two video terminals: <code>a</code> <strong>DECscope VT52</strong> (see below) or a <strong>DEC VT100</strong>.</p>
 
             <h3 id="model-33-asr-teletype">Model 33 ASR teletype</h3>
 
@@ -355,14 +355,14 @@
 
             <ul>
               <li>Keyboard. Round dark keycaps with light two-line legends — the base glyph centred, the CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN, DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break condition).</li>
-              <li>Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – z to A – Z only when the Upper Case Only <a href="#config">CONFIG</a> option is enabled (off by default, so 2.11 BSD receives lower case).</li>
-              <li>Force PDP Output Uppercase. A real Model 33 ASR print mechanism has no lower-case type, so machine output is printed in upper case (on by default) and a loader that writes lower case cannot put those letters on the paper. The punched tape still records the <em>raw</em> byte — reading such a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.</li>
-              <li>Paper printing. Authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a <em>different</em> glyph leaves the real dark overstrike blot a hard-copy terminal makes.</li>
+              <li>Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – <code>z</code> to A – <code>Z</code> only when the Upper Case Only <a href="#config">CONFIG</a> option is enabled (off by default, so 2.11 BSD receives lower case).</li>
+              <li>Force PDP Output Uppercase. <code>A</code> real Model 33 ASR print mechanism has no lower-case type, so machine output is printed in upper case (on by default) and a loader that writes lower case cannot put those letters on the paper. The punched tape still records the <em>raw</em> byte — reading such a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.</li>
+              <li>Paper printing. Authentic nroff/man overstrike (<code>^H</code>) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a <em>different</em> glyph leaves the real dark overstrike blot a hard-copy terminal makes.</li>
               <li>Margins. Long lines faithfully jam the carriage at the right margin (72 or 80 columns); characters overstrike the last column instead of wrapping. The paper width follows the selected width so a full line reaches the paper edge. The paper is anchored to the carriage and grows upward out of the top of the machine body; once its edge reaches the top of the window, a scrollbar appears and the view follows the freshly printed line.</li>
               <li>ASR reader/punch. Beside the machine sits the ASR tape reader/punch unit. Every byte echoed to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track 8 = parity). As on a real ASR-33 the punch is OFF by default — enable it from the <a href="#config">CONFIG page</a> or its own control. Both hanging tapes swing briefly on every step of the mechanism; once a tape reaches the bottom of the window it is scrolled with the mouse wheel (neither tape draws a scrollbar).</li>
-              <li>Paper-tape reader. The Load tape button below the machine opens a file dialog and inserts a paper tape into the reader — a raw.ptap (as saved by the punch or the Storage page), a compressed.ptap.zst, or a plain.txt whose characters become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window, its ragged free end torn like the punched tape's — once it reaches the bottom it is scrolled with the mouse wheel (like the punched tape, it draws no scrollbar). As the tape is read it visibly moves up through the slot and shortens, swinging on every byte; when the last byte is read the tape has gone into the machine and a new one can be loaded.</li>
+              <li>Paper-tape reader. The Load tape button below the machine opens a file dialog and inserts a paper tape into the reader — a raw <code>.ptap</code> (as saved by the punch or the Storage page), a compressed <code>.ptap.zst</code>, or a plain <code>.txt</code> whose characters become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window, its ragged free end torn like the punched tape's — once it reaches the bottom it is scrolled with the mouse wheel (like the punched tape, it draws no scrollbar). As the tape is read it visibly moves up through the slot and shortens, swinging on every byte; when the last byte is read the tape has gone into the machine and a new one can be loaded.</li>
               <li>Reader switch. The four-position switch on the TAPE READER cabinet governs reading: START — runs the reader continuously, sending the tape to the machine at the console speed (authentic ~10 chars/sec or the fast <a href="#config">CONFIG</a> pace);</li>
-              <li>AUTO — sends one byte and then feeds the next only when the machine's DL11 has accepted the previous one (paused by DC3 / X-OFF, resumed by DC1 / X-ON);</li>
+              <li>AUTO — sends one byte and then feeds the next only when the machine's DL11 has accepted the previous one (paused by <code>DC3 / X-OFF</code>, resumed by <code>DC1 / X-ON</code>);</li>
               <li>STOP — pauses;</li>
               <li>FREE — releases the tape and shows the Remove tape from reader button (hidden in every other mode) to pull it out.</li>
             </ul>
@@ -408,10 +408,10 @@
             <p class="shot-caption">A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.</p>
 
             <ul>
-              <li>Font. Text is rendered in the authentic fritzm/vt52 bitmap display font (monospace is the fallback until the webfont loads).</li>
-              <li>Clear screen. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so clear and multi-page nroff/man output start each page from the top row.</li>
+              <li>Font. Text is rendered in the authentic <code>fritzm/vt52</code> bitmap display font (<code>monospace</code> is the fallback until the webfont loads).</li>
+              <li>Clear screen. Clear screen (ESC E) and form feed (<code>^L</code>) both wipe the display and home the cursor, so <code>clear</code> and multi-page nroff/man output start each page from the top row.</li>
               <li>CRT simulation (optional). A pure-CSS effect adds brightness flicker, scanline shimmer and a vertical-hold roll band.</li>
-              <li>Text mode (optional). Renders the terminal as a plain text field instead of the canvas, enabling native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering.</li>
+              <li>Text mode (optional). Renders the terminal as a plain text field instead of the canvas, enabling native text selection and Windows Clipboard (<code>Ctrl+C</code> / <code>Ctrl+V</code> / right-click paste) for fast source-code entry — at the cost of the SGR emphasis rendering.</li>
             </ul>
 
 
@@ -426,8 +426,8 @@
             <ul>
               <li>Speed. Like the real LP11, it echoes characters far faster than the <a href="#console">Model 33 ASR console teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300 lines/min.</li>
               <li>DONE handshake. The LP11 honours the historical DONE handshake: writing LPDB clears DONE and re-asserts it as each character is consumed by the mechanism, so a guest print job is throttled at printer speed.</li>
-              <li>OFF LINE. When the printer is OFF LINE (or powered off), the controller latches a sticky ERROR flag in LPCS while keeping DONE set — so a guest OS driver reports an error (e.g. ?LP0: I/O error) instead of silently discarding the job.</li>
-              <li>Form feed. The LP11 honours form feed (FF, 0x0C) — the 2.11BSD spooler (lpr / lpd) sends FF between jobs so each starts on a fresh page: it fills the rest of the sheet (66 lines at 6 LPI) and closes it with a dashed fold/perforation marker.</li>
+              <li>OFF LINE. When the printer is OFF LINE (or powered off), the controller latches a sticky ERROR flag in LPCS while keeping DONE set — so a guest OS driver reports an error (e.g. <code>?LP0: I/O error</code>) instead of silently discarding the job.</li>
+              <li>Form feed. The LP11 honours form feed (FF, 0x0C) — the 2.11BSD spooler (<code>lpr</code> / <code>lpd</code>) sends FF between jobs so each starts on a fresh page: it fills the rest of the sheet (66 lines at 6 LPI) and closes it with a dashed fold/perforation marker.</li>
               <li>Tabs &amp; paper. The carriage advances to the next 8-column tab stop on TAB, and the paper is sized to the configured print width (centred in the machine body). The cabinet auto-scales down proportionally to fit the window when it gets too small, and the rising fanfold paper climbs the same fraction of the window after scaling.</li>
             </ul>
 
@@ -447,13 +447,13 @@
 
             <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab"></p>
 
-            <p><span class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and</span> persistent disk changes.</p>
+            <p class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and persistent disk changes.</p>
 
             <p><strong>Images tab:</strong></p>
 
             <ul>
-              <li>Drop image. Drop a disk or tape image here —.dsk,.tap,.ptap and their.zst -compressed forms are supported. While the Storage page is active you can also drop a file anywhere over the window: a full-window drop target appears. A.zst file is a zstd frame and the browser unwraps it on the fly, so a downloaded image needs no unpacking first.</li>
-              <li>The file name is the device name. An image is mounted under the device URL taken from the file itself: RP1.DSK.ZST becomes rp1.dsk, which is why the guest boots it with boot rp1. Rename the file to the unit you want to use — the table below maps every device to its drive, its controller and its boot command.</li>
+              <li>Drop image. Drop a disk or tape image here — <code>.dsk</code>, <code>.tap</code>, <code>.ptap</code> and their <code>.zst</code>-compressed forms are supported. While the Storage page is active you can also drop a file anywhere over the window: a full-window drop target appears. A.zst file is a zstd frame and the browser unwraps it on the fly, so a downloaded image needs no unpacking first.</li>
+              <li>The file name is the device name. An image is mounted under the device URL taken from the file itself: <code>RP1.DSK.ZST</code> becomes <code>rp1.dsk</code>, which is why the guest boots it with <code>boot rp1</code>. Rename the file to the unit you want to use — the table below maps every device to its drive, its controller and its boot command.</li>
               <li>Mounted images / Unmount. Lists the images mounted in this browser and lets you unmount one again. The counter next to it counts the images <em>you</em> mounted (dropped or imported), not the ones the desktop build carries inside itself. Mounted images live in browser storage (IndexedDB) and are re-mounted automatically on the next launch.</li>
               <li>Export disk. Downloads a mounted disk image to your machine.</li>
               <li>Persistent disk changes. Guest-OS writes are saved to browser storage and overlaid on the base image on the next launch, so files an operating system created are still there tomorrow. Only the blocks the guest actually wrote are kept — the base image is fetched again on every launch — and a saved block always wins over the pristine one. They are written out periodically and when you leave the page, and they belong to one image: Reset image discards them for the selected disk, Reset all for every disk, which returns the media to its factory state.</li>
@@ -472,50 +472,50 @@
                 <td><span class="disk">rk0 … rk5</span></td>
                 <td>RK05 disk cartridge</td>
                 <td>RK11</td>
-                <td>boot rkN</td>
+                <td><code>boot rkN</code></td>
               </tr>
               <tr>
                 <td><span class="disk">rl0 … rl3</span></td>
                 <td>RL01 / RL02 cartridge</td>
                 <td>RL11</td>
-                <td>boot rlN</td>
+                <td><code>boot rlN</code></td>
               </tr>
               <tr>
                 <td><span class="disk">rp0 … rp4</span></td>
                 <td>RP04 / RP06 disk pack</td>
                 <td>RP11</td>
-                <td>boot rpN</td>
+                <td><code>boot rpN</code></td>
               </tr>
               <tr>
                 <td><span class="disk">ra0 … ra2</span></td>
                 <td>RA80 / RA81 (MSCP)</td>
                 <td>UDA50</td>
-                <td>boot raN</td>
+                <td><code>boot raN</code></td>
               </tr>
               <tr>
                 <td><span class="disk">tm0 … tm2</span></td>
                 <td>9-track magnetic tape</td>
                 <td>TM11</td>
-                <td>boot tmN (RSTS restores with ROLLIN)</td>
+                <td><code>boot tmN</code> (RSTS restores with ROLLIN)</td>
               </tr>
               <tr>
                 <td><span class="disk">*.ptap</span></td>
                 <td>Paper tape reader / punch</td>
                 <td>PTR11</td>
-                <td>boot pr</td>
+                <td><code>boot pr</code></td>
               </tr>
             </table>
 
             <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab"></p>
 
-            <p><span class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code></span> drop zone and the punch-tape export.</p>
+            <p class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code> drop zone and the punch-tape export.</p>
 
             <p><strong>Paper Tapes tab:</strong></p>
 
             <ul>
-              <li>Paper tape reader file. A selector for the reader (#ptr) holding the tapes this build ships — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, <a href="#vt11">Lunar Lander</a> and the bootstrap loader — plus any.ptap you dropped. Load one and boot it with BOOT PR.</li>
+              <li>Paper tape reader file. A selector for the reader (<code>#ptr</code>) holding the tapes this build ships — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, <a href="#vt11">Lunar Lander</a> and the bootstrap loader — plus any.ptap you dropped. Load one and boot it with <code>BOOT PR</code>.</li>
               <li>Rewind tape and the tape state. The indicator beside the button says whether a tape is loaded and how far the reader has moved through it; Rewind tape puts it back to the first frame, which is what a guest does when it restarts a read.</li>
-              <li>Drop paper tape. A small drop zone accepting.ptap and.ptap.zst — dropped tapes are added to the reader file selector.</li>
+              <li>Drop paper tape. A small drop zone accepting <code>.ptap</code> and <code>.ptap.zst</code> — dropped tapes are added to the reader file selector.</li>
               <li>Export paper tape. The punch buffer is filled by the bytes the console echoes, and the counter shows how much is on the tape. Download saves it as a.ptap; Clear empties the buffer for the next tape.</li>
             </ul>
 
@@ -555,7 +555,7 @@
 
             <ul>
               <li>Console terminal — the <a href="#console">operator console</a> (tty0): a Model 33 ASR teletype, a DECscope VT52 or a DEC VT100.</li>
-              <li>User terminals — the two <a href="#user-terminals">user terminals (TTY 1 / TTY 2)</a>, each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.</li>
+              <li>User terminals — the two <a href="#user-terminals">user terminals (TTY 1 / TTY 2)</a>, each <code>None | VT52 | VT100</code> and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.</li>
               <li>Line printer (LP11) — install the animated LP11 line printer on its own <a href="#printer">Printer page</a>.</li>
               <li>VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own <a href="#vt11">Display page</a>.</li>
               <li>Teletype print width — 72 or 80 columns for the Model 33 ASR console (a teletype is at most an 80-column machine).</li>
@@ -648,106 +648,106 @@
               <tr>
                 <td><span class="disk">RK0</span></td>
                 <td>Unix V5</td>
-                <td>boot rk0</td>
-                <td>unix → login as root</td>
+                <td><code>boot rk0</code></td>
+                <td><code>unix</code> → login as root</td>
                 <td>root</td>
               </tr>
               <tr>
                 <td><span class="disk">RK1</span></td>
                 <td>RT-11 v4.0</td>
-                <td>BOOT RK1</td>
+                <td><code>BOOT RK1</code></td>
                 <td>boots immediately to monitor prompt</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RK2</span></td>
                 <td>RSTS V06C-03</td>
-                <td>BOOT RK2</td>
+                <td><code>BOOT RK2</code></td>
                 <td>wizard answers START at the Option: prompt</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RK3</span></td>
                 <td>XXDP (diagnostics)</td>
-                <td>BOOT RK3</td>
+                <td><code>BOOT RK3</code></td>
                 <td>DEC field diagnostic operating system</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RK4</span></td>
                 <td>RT-11 3B Distribution</td>
-                <td>BOOT RK4</td>
+                <td><code>BOOT RK4</code></td>
                 <td>RT-11 distribution baseline</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">TM0</span></td>
                 <td>RSTS 4B-17 (tape)</td>
-                <td>BOOT TM0</td>
+                <td><code>BOOT TM0</code></td>
                 <td>follow ROLLIN restore procedure</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RL0</span></td>
                 <td>BSD 2.9</td>
-                <td>boot rl0</td>
-                <td>rl(0,0)rlunix → CTRL/D → login root</td>
+                <td><code>boot rl0</code></td>
+                <td><code>rl(0,0)rlunix</code> → CTRL/D → login <code>root</code></td>
                 <td>root</td>
               </tr>
               <tr>
                 <td><span class="disk">RL1</span></td>
                 <td>RSX-11M v3.2</td>
-                <td>BOOT RL1</td>
-                <td>autostarts; enter the date when asked</td>
+                <td><code>BOOT RL1</code></td>
+                <td>login <code>1,2</code> password <code>SYSTEM</code></td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RL2</span></td>
                 <td>RSTS/E v7.0</td>
-                <td>BOOT RL2</td>
+                <td><code>BOOT RL2</code></td>
                 <td>wizard answers START at the Option: prompt</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RL3</span></td>
                 <td>XXDP (extended)</td>
-                <td>BOOT RL3</td>
+                <td><code>BOOT RL3</code></td>
                 <td>extended diagnostics library</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RP0</span></td>
                 <td>ULTRIX-11 V3.1</td>
-                <td>boot rp0</td>
+                <td><code>boot rp0</code></td>
                 <td>boots to a single-user shell (multi-user is a known emulator bug)</td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RP1</span></td>
                 <td>BSD 2.11</td>
-                <td>boot rp1</td>
+                <td><code>boot rp1</code></td>
                 <td>autoboots to multiuser, login root (no password)</td>
                 <td>root (no password)</td>
               </tr>
               <tr>
                 <td><span class="disk">RP2</span></td>
                 <td>RSTS/E v9.6</td>
-                <td>BOOT RP2</td>
-                <td>boots to the date prompt; then 11,70 / PDP</td>
+                <td><code>BOOT RP2</code></td>
+                <td>boots to the date prompt; then <code>11,70</code> / PDP</td>
                 <td>11,70 (PDP)</td>
               </tr>
               <tr>
                 <td><span class="disk">RP3</span></td>
                 <td>RSX-11M v4.6</td>
-                <td>BOOT RP3</td>
-                <td>autostarts; enter date/time when asked</td>
+                <td><code>BOOT RP3</code></td>
+                <td>auto-logs <code>1,2</code> <code>SYSTEM</code></td>
                 <td></td>
               </tr>
               <tr>
                 <td><span class="disk">RP4</span></td>
                 <td>RSTS/E v10.1</td>
-                <td>BOOT RP4</td>
-                <td>boots to the date prompt; then 11,70 / PDP</td>
+                <td><code>BOOT RP4</code></td>
+                <td>boots to the date prompt; then 11,70 / <code>PDP</code></td>
                 <td>11,70 (PDP)</td>
               </tr>
             </table>
@@ -807,7 +807,7 @@
 
             <p><img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog"></p>
 
-            <p><span class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the</span> <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</p>
+            <p class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</p>
 
             <h3 id="sidebar-activity-lamps">Sidebar activity lamps</h3>
 

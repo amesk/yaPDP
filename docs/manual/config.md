@@ -8,7 +8,7 @@ into four tabs, with the **Apply** and **Restore defaults** actions in a bar bel
 :::config-item-text
 ### Equipment
 - Console terminal — the [operator console](#console) (tty0): a Model 33 ASR teletype, a DECscope VT52 or a DEC VT100.
-- User terminals — the two [user terminals (TTY 1 / TTY 2)](#user-terminals), each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.
+- User terminals — the two [user terminals (TTY 1 / TTY 2)](#user-terminals), each `None | VT52 | VT100` and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.
 - Line printer (LP11) — install the animated LP11 line printer on its own [Printer page](#printer).
 - VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own [Display page](#vt11).
 - Teletype print width — 72 or 80 columns for the Model 33 ASR console (a teletype is at most an 80-column machine).

@@ -2,7 +2,7 @@
 
 The operator console is what the PDP-11 uses as its `TT0:` — the machine's own typewriter.
 Depending on the [CONFIG page](#config), it is a **Model 33 ASR teletype** or one of the
-two video terminals: a **DECscope VT52** (see below) or a **DEC VT100**.
+two video terminals: `a` **DECscope VT52** (see below) or a **DEC VT100**.
 
 ### Model 33 ASR teletype
 
@@ -14,14 +14,14 @@ sheet, a glass carriage window, and a stamped Teletype Corporation logo on the l
 The Model 33 ASR operator console at the @ prompt.{.shot-caption}
 
 - Keyboard. Round dark keycaps with light two-line legends — the base glyph centred, the CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN, DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break condition).
-- Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – z to A – Z only when the Upper Case Only [CONFIG](#config) option is enabled (off by default, so 2.11 BSD receives lower case).
-- Force PDP Output Uppercase. A real Model 33 ASR print mechanism has no lower-case type, so machine output is printed in upper case (on by default) and a loader that writes lower case cannot put those letters on the paper. The punched tape still records the *raw* byte — reading such a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.
-- Paper printing. Authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph leaves the real dark overstrike blot a hard-copy terminal makes.
+- Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – `z` to A – `Z` only when the Upper Case Only [CONFIG](#config) option is enabled (off by default, so 2.11 BSD receives lower case).
+- Force PDP Output Uppercase. `A` real Model 33 ASR print mechanism has no lower-case type, so machine output is printed in upper case (on by default) and a loader that writes lower case cannot put those letters on the paper. The punched tape still records the *raw* byte — reading such a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.
+- Paper printing. Authentic nroff/man overstrike (`^H`) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a *different* glyph leaves the real dark overstrike blot a hard-copy terminal makes.
 - Margins. Long lines faithfully jam the carriage at the right margin (72 or 80 columns); characters overstrike the last column instead of wrapping. The paper width follows the selected width so a full line reaches the paper edge. The paper is anchored to the carriage and grows upward out of the top of the machine body; once its edge reaches the top of the window, a scrollbar appears and the view follows the freshly printed line.
 - ASR reader/punch. Beside the machine sits the ASR tape reader/punch unit. Every byte echoed to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track 8 = parity). As on a real ASR-33 the punch is OFF by default — enable it from the [CONFIG page](#config) or its own control. Both hanging tapes swing briefly on every step of the mechanism; once a tape reaches the bottom of the window it is scrolled with the mouse wheel (neither tape draws a scrollbar).
-- Paper-tape reader. The Load tape button below the machine opens a file dialog and inserts a paper tape into the reader — a raw.ptap (as saved by the punch or the Storage page), a compressed.ptap.zst, or a plain.txt whose characters become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window, its ragged free end torn like the punched tape's — once it reaches the bottom it is scrolled with the mouse wheel (like the punched tape, it draws no scrollbar). As the tape is read it visibly moves up through the slot and shortens, swinging on every byte; when the last byte is read the tape has gone into the machine and a new one can be loaded.
+- Paper-tape reader. The Load tape button below the machine opens a file dialog and inserts a paper tape into the reader — a raw `.ptap` (as saved by the punch or the Storage page), a compressed `.ptap.zst`, or a plain `.txt` whose characters become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window, its ragged free end torn like the punched tape's — once it reaches the bottom it is scrolled with the mouse wheel (like the punched tape, it draws no scrollbar). As the tape is read it visibly moves up through the slot and shortens, swinging on every byte; when the last byte is read the tape has gone into the machine and a new one can be loaded.
 - Reader switch. The four-position switch on the TAPE READER cabinet governs reading: START — runs the reader continuously, sending the tape to the machine at the console speed (authentic ~10 chars/sec or the fast [CONFIG](#config) pace);
-- AUTO — sends one byte and then feeds the next only when the machine's DL11 has accepted the previous one (paused by DC3 / X-OFF, resumed by DC1 / X-ON);
+- AUTO — sends one byte and then feeds the next only when the machine's DL11 has accepted the previous one (paused by `DC3 / X-OFF`, resumed by `DC1 / X-ON`);
 - STOP — pauses;
 - FREE — releases the tape and shows the Remove tape from reader button (hidden in every other mode) to pull it out.
 
