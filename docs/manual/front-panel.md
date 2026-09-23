@@ -11,17 +11,21 @@ The PDP-11/70 front panel, powered on.{.shot-caption}
 
 A simple light chaser — toggle this in to see the address and data LEDs dance:
 
-`Switch sequence: HALT, 001000, LOAD ADDRESS
-012700, DEPOSIT
-000001, DEPOSIT
-006100, DEPOSIT
-000005, DEPOSIT
-000775, DEPOSIT
-001000, LOAD ADDRESS, ENABLE, START`
+```
+Switch sequence: HALT, 001000, LOAD ADDRESS
+                 012700, DEPOSIT
+                 000001, DEPOSIT
+                 006100, DEPOSIT
+                 000005, DEPOSIT
+                 000775, DEPOSIT
+                 001000, LOAD ADDRESS, ENABLE, START
+```
 
 Restart the bootloader:
 
-`HALT, 120000, LOAD ADDRESS, ENABLE, START`
+```
+HALT, 120000, LOAD ADDRESS, ENABLE, START
+```
 
 The **Bootstrap now!** button refuses to start the machine while it is powered off:
 

@@ -14,8 +14,8 @@ The first-run onboarding hint.{.shot-caption}
 **In a hurry?** Use the **magic wand** button in the top-right corner of the window. It stays on
 every page except **Info**. One click does everything:
 
-1. Opens a picker listing every guest operating system (and the paper tapes) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag & drop. Paper tapes always stay listed.
-2. Chooses one, switches to the operator console, and reboots the machine.
+1. Opens a picker listing every guest operating system (and the [paper tapes](#storage)) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag & drop. Paper tapes always stay listed.
+2. Chooses one, switches to the [operator console](#console), and reboots the machine.
 3. Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root).
 
 ![Quick boot picker](assets/images/manual/dialog-quickboot.png){.shot}
@@ -25,7 +25,7 @@ The quick-boot picker lists every guest OS and paper tape.{.shot-caption}
 The wizard is prompt-aware: it watches the console output and types the login only when the guest
 actually prints `login:`, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
 prompt reliably. Each guest also declares the machine profile it wants — e.g. RT-11/RSX/RSTS enable the
-LP11 line printer, and Unix V5/BSD force a teletype console — so the wizard
+[LP11 line printer](#printer), and Unix V5/BSD force a teletype console — so the wizard
 reconfigures the machine if
 needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and
 clear screens), and a toast warns

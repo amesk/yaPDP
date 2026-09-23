@@ -71,6 +71,10 @@ function inline(text) {
     // inside the floating-controls table, which the stylesheet grid-aligns.
     .replace(/([^{}]+)\{\.([a-z-]+)\}/g,
       (m, text, cls) => '<span class="' + cls + '">' + text.trim() + "</span>")
+    // internal links: [text](#anchor) — the manual cross-references itself,
+    // and a plain-text "Config page" is a worse page than a link.
+    .replace(/\[([^\]]+)\]\(#([a-z0-9-]+)\)/g,
+      (m, text, anchor) => '<a href="#' + anchor + '">' + text + '</a>')
     .replace(/`([^`]+)`/g, (m, code) => "<code>" + code + "</code>")
     .replace(/\*\*([^*]+)\*\*/g, (m, b) => "<strong>" + b + "</strong>")
     .replace(/(^|[\s(])\*([^*\n]+)\*/g, (m, pre, i) => pre + "<em>" + i + "</em>");
@@ -84,6 +88,7 @@ function parseBlocks(md) {
   let para = [];
   let list = null;
   let table = null;
+  let fence = null;   // inside a ``` block
 
   const flushPara = () => {
     if (para.length) { blocks.push({ type: "p", text: para.join(" ").trim() }); para = []; }
@@ -120,6 +125,25 @@ function parseBlocks(md) {
     // ("do these in order"), a bulleted one is a set. The converter used to
     // collapse both into <ul>, which turned the quick-boot steps and the panel
     // switch sequence into unordered bullets.
+    // A fenced code block (``` ... ```) is a <pre> in the output: the panel
+    // switch sequences are column-aligned recipes, and folding them into one
+    // line loses the alignment that makes them readable.
+    if (/^```/.test(line.trim())) {
+      if (fence === null) { flushAll(); fence = []; }
+      else { blocks.push({ type: "pre", text: fence.join("\n") }); fence = null; }
+      continue;
+    }
+    if (fence !== null) { fence.push(raw.replace(/\s+$/, "")); continue; }
+
+    // "> text" is a block quote — the one Note: in storage.md, which the
+    // reference page sets as <blockquote><em>Note:</em> …</blockquote>.
+    const bq = /^>\s?(.*)$/.exec(line);
+    if (bq) {
+      flushAll();
+      blocks.push({ type: "blockquote", text: bq[1].trim() });
+      continue;
+    }
+
     const li = /^[-*]\s+(.*)$/.exec(line);
     const oli = /^\d+[.)]\s+(.*)$/.exec(line);
     if (li || oli) {
@@ -156,6 +180,7 @@ function parseBlocks(md) {
     // an indented continuation belongs to the paragraph we are in
     para.push(line.trim());
   }
+  if (fence !== null) throw new Error("unterminated ``` code block");
   flushAll();
   return blocks;
 }
@@ -200,8 +225,22 @@ function blocksToHtml(blocks, level = 2) {
         openWrappers.push(b.cls);
         break;
       case "close":
-        out.push("  </div>");
-        openWrappers.pop();
+        // One ::: closes EVERY wrapper opened since the last close — the CONFIG
+        // card opens two (<div class="config-item"><div ...-text">), and an
+        // unbalanced <div> makes the browser swallow the rest of the document:
+        // that is why every section after Configuration failed to render.
+        while (openWrappers.length) {
+          out.push("  </div>");
+          openWrappers.pop();
+        }
+        break;
+      case "blockquote":
+        out.push("  <blockquote>" + inline(b.text) + "</blockquote>");
+        break;
+      case "pre":
+        // <pre> keeps the alignment verbatim; the source's own indentation is
+        // what the reference page shows, so no re-indenting here.
+        out.push("  <pre>" + b.text + "</pre>");
         break;
       case "table": {
         out.push("  <table>");

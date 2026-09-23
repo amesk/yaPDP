@@ -4,7 +4,7 @@
 
 If a guest OS image cannot be fetched completely — a big BSD image dropped by the hosting server
 mid-download, or an image that is not bundled in the Minimal desktop build — the emulator doesn't stall
-silently. A dialog in the same shared modal style as the first-run hint
+silently. A dialog in the same shared modal style as the [first-run hint](#quick-start)
 explains that the image is
 incomplete and offers **Open Storage**, which jumps straight to the drop
 zone for a manual
@@ -16,4 +16,4 @@ build explains that the image is not shipped and points to the drop zone.
 
 ![Image load failure dialog](assets/images/manual/dialog-imgerror.png){.shot}
 
-An incomplete image triggers this dialog with an Open Storage shortcut.{.shot-caption}
+An incomplete image triggers this dialog with an [Open Storage](#storage) shortcut.{.shot-caption}

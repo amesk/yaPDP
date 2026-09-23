@@ -313,7 +313,7 @@ export const FLOATING_CONTROLS_DATA: FloatingControlEntry[] = [
     image: '',
     nameEn: '{.disk .control-cell} ![Magic wand](assets/images/manual/btn-magicwand.png){.control-btn} Magic wand{.control-name}', nameRu: '{.disk .control-cell} ![Кнопка magic wand](assets/images/manual/btn-magicwand.png){.control-btn} Волшебная палочка{.control-name}',
     whereEn: 'Top-right corner (every page except Info)', whereRu: 'Правый верхний угол (все страницы, кроме Info)',
-    descEn: 'Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See Quick Start.', descRu: 'Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. Быстрый старт.',
+    descEn: 'Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See [Quick Start](#quick-start).', descRu: 'Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. Быстрый старт.',
   },
   {
     image: '',
@@ -325,7 +325,7 @@ export const FLOATING_CONTROLS_DATA: FloatingControlEntry[] = [
     image: '',
     nameEn: '{.disk .control-cell} ![Mute](assets/images/manual/btn-mute.png){.control-btn} Mute{.control-name}', nameRu: '{.disk .control-cell} ![Кнопка Mute](assets/images/manual/btn-mute.png){.control-btn} Без звука (Mute){.control-name}',
     whereEn: 'Bottom-left corner, just right of the sidebar', whereRu: 'Левый нижний угол, справа от боковой панели',
-    descEn: 'Round button that toggles all sounds at once — hum, teletype/LP11, paper feed/tear, key clicks and the bell. State is persisted with the rest of the configuration.', descRu: 'Круглая кнопка, выключающая все звуки разом — гул, телетайп/LP11, подача и отрыв бумаги, щелчки клавиш и звонок. Состояние сохраняется вместе с остальной конфигурацией.',
+    descEn: 'Round button that toggles *all* sounds at once — hum, teletype/LP11, paper feed/tear, key clicks and the bell. State is persisted with the rest of the configuration.', descRu: 'Круглая кнопка, выключающая все звуки разом — гул, телетайп/LP11, подача и отрыв бумаги, щелчки клавиш и звонок. Состояние сохраняется вместе с остальной конфигурацией.',
   },
   {
     image: '',
