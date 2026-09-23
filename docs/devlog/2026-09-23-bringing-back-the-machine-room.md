@@ -17,6 +17,8 @@ So I built my own emulator — yaPDP (Yet Another PDP-11). And I built it so tha
 
 ![The yaPDP front panel, with all its switches and lamps](assets/images/os/basic.png){.shot}
 
+The yaPDP front panel, reproduced switch by switch: twenty data switches, the address lamps above them, and the rotary knobs an operator actually turned. DEC's PDP-11/70 panel is the part most emulators skip.{.shot-caption}
+
 ## What an SM-4 was, if you never saw one
 
 For anyone who missed the ES EVM and SM EVM era, a short introduction.
@@ -27,13 +29,19 @@ The USSR had its own "Small Computer System" — the SM EVM family. The early SM
 
 ![The PDP-11/40, the hardware ancestor of the Soviet SM-4](assets/images/devlog/sm4/pdp1140.jpg){.shot}
 
+The PDP-11/40, the machine Soviet industry reverse-engineered into the SM-4. Same instruction set, same UNIBUS concept under a different name (IMK), a different plant building it.{.shot-caption}
+
 **SM-1420 (1983)** was my personal favourite. A full functional analogue of the more powerful PDP-11/34 and, in part, the 11/45. It brought hardware floating point, a memory manager expanding the address space to 4 MB, and — the pinnacle of engineering ambition for its time — the ability to attach IZOT hard drives (Soviet equivalents of DEC's RK05 or RM02) holding a whole 5 or 29 megabytes. The disk itself was a heavy "saucepan" of removable platters that you had to slot carefully into the drive.
 
 These were the machines that ran RAFOS (a clone of RT-11) and OS RV (a clone of RSX-11M). Booting a multi-user system on an SM-1420, sitting down at an alphanumeric terminal like a VTA-2000 or a DVK, starting the C compiler and writing code that drove a machine tool in a factory — that was pure adrenaline. What I wanted back was exactly that: the feeling of operating a genuine steel cabinet.
 
 ![The DVK-2, a Soviet PDP-11-compatible machine](assets/images/devlog/sm4/dvk2.png){.shot}
 
+A DVK-2 — a Soviet PDP-11-compatible machine that usually worked as a terminal to an SM EVM. This is the hardware my generation learned C on.{.shot-caption}
+
 ![The VTA-2000 alphanumeric terminal](assets/images/devlog/sm4/vta2000.png){.shot}
+
+The VTA-2000 alphanumeric terminal. A green-phosphor character display that replaced the teletype in Soviet machine rooms, and the screen I sat in front of as a teenager.{.shot-caption}
 
 ## Why not SIMH
 
@@ -55,6 +63,8 @@ A sensible person would reach for **xterm.js**, and I probably will when I need 
 
 ![VT52 as implemented in yaPDP](assets/images/manual/console-vt52.png){.shot}
 
+yaPDP's own VT52, drawn from scratch rather than delegated to xterm.js: a DECscope cabinet, a 4:3 tube, and the character-cell attributes the real hardware had.{.shot-caption}
+
 ## The punch, honest down to the last hole
 
 Once there is a teletype, you want it as faithful as it can be. That is where the paper-tape punch came from — it works much the way the original did, and the tapes it exports load perfectly into a PDP-11 tape reader, simulated or (if any are still alive) real.
@@ -62,6 +72,8 @@ Once there is a teletype, you want it as faithful as it can be. That is where th
 Getting there took fixing it first: the original emulator's punch was minimal — just enough to start a bootloader. RT-11 could not see it, let alone work with it. And once tapes could be read, I naturally wanted to punch them too. That had to be written from scratch.
 
 ![Paper tape: eight tracks for data, five for the teletype](assets/images/devlog/sm4/papertape.png){.shot}
+
+Paper tape: eight tracks of data, and the smaller five-track format the teletype itself used. yaPDP punches and reads both, and a tape exported from it loads into a real PDP-11 reader if you still have one.{.shot-caption}
 
 Playing with the real operating systems of that era taught me a few things I had only read about:
 
