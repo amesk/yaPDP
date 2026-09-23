@@ -50,7 +50,9 @@
     "term": "node tools/headless-term.js",
     "voice": "node tools/voicer.js",
     "manual:build": "node tools/build-manual.js --write",
-    "manual:check": "node tools/build-manual.js --check"
+    "manual:check": "node tools/build-manual.js --check",
+    "devlog:build": "node tools/build-devlog.js --write",
+    "devlog:check": "node tools/build-devlog.js --check"
   },
   "devDependencies": {
     "canvas": "^3.2.3",

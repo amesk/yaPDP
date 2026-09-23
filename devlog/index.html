@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<!-- The chrome of this page — language, title, meta tags and the hero — is
+     tokenised rather than translated in place: the same head serves manual.html
+     (English) and manual_ru.html (Russian), and tools/build-manual.js fills each
+     token with the string of the page being written. A second copy of this file
+     would duplicate the ~200 lines of page-local CSS below and the two copies
+     would drift — the very failure a single manual source exists to prevent.
+     Everything that is NOT a token is shared markup and CSS. -->
+<html lang='en'>
+
+<head>
+    <meta charset="UTF-8">
+    <title>yaPDP devlog — building a PDP-11/70 in the browser</title>
+    <meta name="description" content="Notes from building yaPDP, a PDP-11/70 emulator with a Model 33 ASR teletype, VT52/VT100 terminals and an SM-4 in mind.">
+    <meta name="keywords" content="yaPDP,PDP,PDP-11,devlog,retrocomputing,emulator,SM-4,teletype,paper tape">
+    <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+
+    <!-- Same stylesheet as the emulator, so the manual shares the exact
+       DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
+    <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
+    <link rel="stylesheet" href="css/landing.css" type="text/css" charset="utf-8" media="all" />
+
+    <!-- Manual-page-only rules. Identical to the main page (index.html):
+       the base pdp11.css already supplies the body photo backdrop, fonts and
+       the .app-layout chrome; here we only adapt the content slab and reuse
+       the main-page hero / call-to-action blocks. -->
+    <style>
+        /* Manual-page backdrop: same machine-room photo override as the
+           main page. Only this page is affected; the emulator keeps its
+           original backdrop. Paths are relative to manual.html at the repo
+           root. */
+        body {
+            background-image:
+                linear-gradient(rgba(24, 21, 17, 0.82), rgba(24, 21, 17, 0.82)),
+                url("assets/images/pdp11-machine-room.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Content slab — mirrors the emulator's Info page (dark translucent card
+           over the machine-room photo, block layout, readable column width). */
+        .landing-page {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            color: #e0d8c8;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 16px 24px 32px 24px;
+            background: rgba(28, 25, 21, 0.82);
+        }
+
+        .landing-page h1,
+        .landing-page h2,
+        .landing-page h3,
+        .landing-page h4 {
+            color: #f0e6c8;
+        }
+
+        .landing-page a {
+            color: #c8a860;
+        }
+
+        .landing-page a:hover {
+            color: #e8d080;
+        }
+
+        .landing-page code {
+            color: #d4c4a0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .landing-page pre {
+            color: #d0c8b8;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            overflow-x: auto;
+        }
+
+        .landing-page table {
+            color: #e0d8c8;
+            border-collapse: collapse;
+        }
+
+        .landing-page table thead {
+            color: #f0e6c8;
+        }
+
+        .landing-page table td,
+        .landing-page table th {
+            padding: 5px 10px;
+            border-bottom: 1px solid #3a3528;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .landing-page blockquote {
+            margin: 12px 0;
+            padding: 6px 14px;
+            border-left: 3px solid #c8a860;
+            border-radius: 0 4px 4px 0;
+            background: rgba(0, 0, 0, 0.2);
+            color: #d4c4a0;
+        }
+
+        .landing-page hr {
+            border: 0;
+            border-top: 1px solid #4a453a;
+            margin: 26px 0;
+        }
+
+        .landing-page b,
+        .landing-page strong {
+            color: inherit;
+        }
+
+        /* Hero block */
+        .hero {
+            text-align: center;
+        }
+
+        .hero img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            border: 1px solid #4a453a;
+        }
+
+        .hero .tagline {
+            color: #c8b890;
+            font-style: italic;
+            font-size: 15px;
+            margin: 10px 0 4px 0;
+        }
+
+        /* Zero-friction promise: the whole point is instant immersion. */
+        .hero .zero-setup {
+            color: #c8a860;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            margin: 8px 0 0 0;
+        }
+
+
+        /* Small feature badges in the feature table (reuses .disk/.system) */
+        .landing-page td.disk {
+            white-space: nowrap;
+        }
+
+        /* Manual page illustrations: inline screenshots and their captions. */
+        .landing-page .shot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            margin: 14px 0 2px 0;
+        }
+
+        .landing-page .shot-caption {
+            color: #c8b890;
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+            margin: 2px 0 14px 0;
+        }
+
+        /* Floating-button thumbnails inside the controls table. */
+        .landing-page .control-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .landing-page .control-btn {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .landing-page .control-name {
+            color: #f0e6c8;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Config-tab illustrations: each screenshot beside its description. */
+        .landing-page .config-item {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin: 18px 0;
+        }
+
+        .landing-page .config-item-img {
+            flex: 0 0 46%;
+            max-width: 46%;
+            height: auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+        }
+
+        .landing-page .config-item-text {
+            flex: 1 1 auto;
+        }
+
+        .landing-page .config-item-text h3 {
+            margin-top: 0;
+        }
+
+        .landing-page .config-item-text p {
+            margin: 6px 0 0 0;
+        }
+
+        .landing-page .config-item-text ul {
+            margin: 6px 0 0 0;
+            padding-left: 18px;
+        }
+
+        .landing-page .config-item-text li {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <div class="landing-page">
+
+            <div class="hero">
+                <h1>yaPDP devlog</h1>
+                <p class="tagline">Notes from building a PDP-11/70 emulator in the browser — the machine room, the teletype, the paper tape, and the Soviet SM-4 I am really after.</p>
+                <p class="zero-setup">Newest first. There is also a feed: <a href="feed.xml">feed.xml</a>.</p>
+                <div class="panel-actions-landing">
+                    <a class="btn-primary" href="../pdp11.html">Launch the emulator!</a>
+                    <a class="btn-secondary" href="../index.html">User manual</a>
+                    <a class="btn-secondary" href="../manual.html">User manual</a>
+                </div>
+            </div>
+
+            <hr>
+
+            <h2><a href="2026-09-23-bringing-back-the-machine-room.html">Bringing back the machine room: rebuilding a PDP-11/70 I first met in 1984</a></h2>
+            <p class="shot-caption">2026-09-23</p>
+            <p>I grew up with Soviet PDP-11 clones. Thirty years later I built a PDP-11/70 emulator in the browser to get that machine room feeling back — and this is what it cost.</p>
+
+        </div>
+    </div>
+</body>
+
+</html>
