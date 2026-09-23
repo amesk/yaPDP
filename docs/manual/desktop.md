@@ -5,5 +5,5 @@ with Tauri. Two installer variants are available:
 
 | Variant | Ships | Notes |
 |---|---|---|
-| Minimal | rk0 (Unix V5), rk1 (RT-11), bootcode + the demo paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander) | ≈19 MB on Windows. The download is the application itself — artwork and audio — while the bundled images add about 1 MB. All other images are dragged & dropped at runtime. |
-| Full | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | ≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps. |
+| Minimal{.disk}  | rk0 (Unix V5), rk1 (RT-11), bootcode + the demo paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander) | ≈19 MB on Windows. The download is the application itself — artwork and audio — while the bundled images add about 1 MB. All other images are dragged & dropped at runtime. |
+| Full{.disk}  | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | ≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps. |

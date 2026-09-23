@@ -8,13 +8,13 @@ terminal you picked — the DECscope's slanted monoblock (an off-white moulded-p
 grille, a recessed screen in a deep bezel and a plain side panel with a raised ridge) or the VT100's own
 enclosure. Input comes from the physical keyboard, as on the original machines.
 
-![A user VT52 terminal](assets/images/manual/terminal-vt52.png)
+![A user VT52 terminal](assets/images/manual/terminal-vt52.png){.shot}
 
-A user VT52 terminal (TTY 1) running an interactive session.
+A user VT52 terminal (TTY 1) running an interactive session.{.shot-caption}
 
-![A user VT100 terminal](assets/images/manual/terminal-vt100.png)
+![A user VT100 terminal](assets/images/manual/terminal-vt100.png){.shot}
 
-A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.
+A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.{.shot-caption}
 
 - Font. Text is rendered in the authentic fritzm/vt52 bitmap display font (monospace is the fallback until the webfont loads).
 - Clear screen. Clear screen (ESC E) and form feed (^L) both wipe the display and home the cursor, so clear and multi-page nroff/man output start each page from the top row.

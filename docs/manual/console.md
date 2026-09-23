@@ -9,9 +9,9 @@ two video terminals: a **DECscope VT52** (see below) or a **DEC VT100**.
 The console is rendered as an authentic light-cream/beige Model 33 ASR: a paper roll behind the rising
 sheet, a glass carriage window, and a stamped Teletype Corporation logo on the lower face plate.
 
-![The Model 33 ASR operator console](assets/images/manual/console-teletype.png)
+![The Model 33 ASR operator console](assets/images/manual/console-teletype.png){.shot}
 
-The Model 33 ASR operator console at the @ prompt.
+The Model 33 ASR operator console at the @ prompt.{.shot-caption}
 
 - Keyboard. Round dark keycaps with light two-line legends — the base glyph centred, the CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN, DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break condition).
 - Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – z to A – Z only when the Upper Case Only CONFIG option is enabled (off by default, so 2.11 BSD receives lower case).
@@ -37,9 +37,9 @@ When the console terminal is set to a VT52, the operator console becomes a DECsc
 white/grey (P4) phosphor on a black tube — see User Terminals below for
 the full behaviour, which is shared.
 
-![A DECscope VT52 as the operator console](assets/images/manual/console-vt52.png)
+![A DECscope VT52 as the operator console](assets/images/manual/console-vt52.png){.shot}
 
-A DECscope VT52 as the operator console, showing the @ prompt.
+A DECscope VT52 as the operator console, showing the @ prompt.{.shot-caption}
 
 ### VT100 as the console
 
@@ -48,9 +48,9 @@ that succeeded the DECscope. It is drawn in its own cabinet, at its own proporti
 terminal's, not a restyled DECscope), and it shares everything that is not the tube itself: the page
 layout, the zoom button and double-click zoom, the STATE/REBOOT placement and the keyboard handling.
 
-![A DEC VT100 as the operator console](assets/images/manual/console-vt100.png)
+![A DEC VT100 as the operator console](assets/images/manual/console-vt100.png){.shot}
 
-A DEC VT100 as the operator console, showing the @ prompt.
+A DEC VT100 as the operator console, showing the @ prompt.{.shot-caption}
 
 A VT100 is a **superset of the VT52**, exactly as the hardware was: the DECscope sequences still work
 and the terminal adds the ANSI grammar (CSI sequences, DEC private modes, scrolling regions, G0/G1

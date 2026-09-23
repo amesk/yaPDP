@@ -14,6 +14,6 @@ The wording adapts to the environment: a page opened as a local `file://` explai
 browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal
 build explains that the image is not shipped and points to the drop zone.
 
-![Image load failure dialog](assets/images/manual/dialog-imgerror.png)
+![Image load failure dialog](assets/images/manual/dialog-imgerror.png){.shot}
 
-An incomplete image triggers this dialog with an Open Storage shortcut.
+An incomplete image triggers this dialog with an Open Storage shortcut.{.shot-caption}

@@ -5,9 +5,9 @@ The Storage page manages every kind of storage media. It has two tabs — **Imag
 mounted into the machine and remembered between sessions; a paper tape is a stream of bytes that the
 reader walks through from the first frame to the end.
 
-![The Storage page — Images tab](assets/images/manual/storage.png)
+![The Storage page — Images tab](assets/images/manual/storage.png){.shot}
 
-The Storage page, Images tab: the drop zone, mounted images, disk export and
+The Storage page, Images tab: the drop zone, mounted images, disk export and{.shot-caption}
 persistent disk changes.
 
 **Images tab:**
@@ -22,16 +22,16 @@ persistent disk changes.
 
 | Image | Drive | Controller | Boot it with |
 |---|---|---|---|
-| rk0 … rk5 | RK05 disk cartridge | RK11 | boot rkN |
-| rl0 … rl3 | RL01 / RL02 cartridge | RL11 | boot rlN |
-| rp0 … rp4 | RP04 / RP06 disk pack | RP11 | boot rpN |
-| ra0 … ra2 | RA80 / RA81 (MSCP) | UDA50 | boot raN |
-| tm0 … tm2 | 9-track magnetic tape | TM11 | boot tmN (RSTS restores with ROLLIN) |
-| *.ptap | Paper tape reader / punch | PTR11 | boot pr |
+| rk0 … rk5{.disk} | RK05 disk cartridge | RK11 | boot rkN |
+| rl0 … rl3{.disk} | RL01 / RL02 cartridge | RL11 | boot rlN |
+| rp0 … rp4{.disk} | RP04 / RP06 disk pack | RP11 | boot rpN |
+| ra0 … ra2{.disk} | RA80 / RA81 (MSCP) | UDA50 | boot raN |
+| tm0 … tm2{.disk} | 9-track magnetic tape | TM11 | boot tmN (RSTS restores with ROLLIN) |
+| *.ptap{.disk}  | Paper tape reader / punch | PTR11 | boot pr |
 
-![The Storage page — Paper Tapes tab](assets/images/manual/storage-tapes.png)
+![The Storage page — Paper Tapes tab](assets/images/manual/storage-tapes.png){.shot}
 
-The Storage page, Paper Tapes tab: the reader file selector, a `.ptap`
+The Storage page, Paper Tapes tab: the reader file selector, a `.ptap`{.shot-caption}
 drop zone and the punch-tape export.
 
 **Paper Tapes tab:**

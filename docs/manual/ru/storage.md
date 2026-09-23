@@ -21,12 +21,12 @@
 
 | Образ | Привод | Контроллер | Загрузить командой |
 |---|---|---|---|
-| rk0 … rk5 | картридж RK05 | RK11 | `boot rkN` |
-| rl0 … rl3 | картридж RL01 / RL02 | RL11 | `boot rlN` |
-| rp0 … rp4 | пакет RP04 / RP06 | RP11 | `boot rpN` |
-| ra0 … ra2 | RA80 / RA81 (MSCP) | UDA50 | `boot raN` |
-| tm0 … tm2 | магнитная лента 9 дорожек | TM11 | `boot tmN` (RSTS восстанавливается через ROLLIN) |
-| *.ptap | читатель/перфоратор перфоленты | PTR11 | `boot pr` |
+| rk0 … rk5{.disk} | картридж RK05 | RK11 | `boot rkN` |
+| rl0 … rl3{.disk} | картридж RL01 / RL02 | RL11 | `boot rlN` |
+| rp0 … rp4{.disk} | пакет RP04 / RP06 | RP11 | `boot rpN` |
+| ra0 … ra2{.disk} | RA80 / RA81 (MSCP) | UDA50 | `boot raN` |
+| tm0 … tm2{.disk} | магнитная лента 9 дорожек | TM11 | `boot tmN` (RSTS восстанавливается через ROLLIN) |
+| *.ptap{.disk}  | читатель/перфоратор перфоленты | PTR11 | `boot pr` |
 
 <!-- translated: needs review -->
 ![Страница Storage — вкладка Paper Tapes](assets/images/manual/storage-tapes.png)
