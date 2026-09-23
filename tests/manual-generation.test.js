@@ -192,6 +192,37 @@ function run() {
       "internal link points at a section that does not exist: #" + m[1]);
   }
 
+  // --- 4b. the TypeScript output carries DATA, not markup ------------------
+  // manualData.ts is consumed by React as plain strings. A marker or a
+  // Markdown fragment that survives into a value renders literally on the
+  // landing page — the author saw exactly that: the floating-controls rows
+  // shipped '{.disk .control-cell} ![Magic wand](…){.control-btn} …' as the
+  // button's NAME and an empty image, so no icons appeared at all.
+  //
+  // The HTML output and the TS output are produced by different code paths in
+  // the generator, so checking one says nothing about the other.
+  const tsValues = (ts.match(/^\s+\w+\w*: '((?:[^'\\]|\\.)*)'/gm) || []);
+  for (const line of tsValues) {
+    assert.ok(line.indexOf("{.") === -1,
+      "a {.class} marker leaked into manualData.ts: " + line.trim().slice(0, 80));
+    assert.ok(!/\]\s*\(/.test(line),
+      "a Markdown link/image leaked into manualData.ts: " + line.trim().slice(0, 80));
+    assert.ok(line.indexOf(" :::") === -1 && line.indexOf(":::") === -1,
+      "a ::: wrapper leaked into manualData.ts: " + line.trim().slice(0, 80));
+  }
+
+  // every image path in the TS output must exist on disk, and no entry may
+  // carry an empty one (an empty src is a silently missing illustration)
+  const tsImages = ts.match(/image: '([^']*)'/g) || [];
+  assert.ok(tsImages.length > 0, "no image paths in manualData.ts");
+  for (const entry of tsImages) {
+    const rel = entry.replace(/^image: '|'$/g, "");
+    assert.ok(rel.length > 0,
+      "manualData.ts has an entry with an empty image path");
+    assert.ok(fs.existsSync(path.join(ROOT, rel)),
+      "manualData.ts points at a file that does not exist: " + rel);
+  }
+
   // --- 5. balanced wrappers ------------------------------------------------
   const open = count(html, /<div\b/g);
   const close = count(html, /<\/div>/g);
