@@ -1,7 +1,7 @@
 ## Guest Operating Systems
 
 The emulator ships with ready-to-boot disk and tape images. Just type `boot`
-at the `@` prompt — or pick one with the magic wand.
+at the `@` prompt — or pick one with the [magic wand](#quick-start).
 In a build with a reduced image set (e.g. the **Minimal** desktop variant), rows whose
 image is not shipped are dimmed and marked *image not in this build* — the table shows
 exactly what can boot here.

@@ -282,8 +282,8 @@
             <p><strong>In a hurry?</strong> Use the <strong>magic wand</strong> button in the top-right corner of the window. It stays on every page except <strong>Info</strong>. One click does everything:</p>
 
             <ol>
-              <li>Opens a picker listing every guest operating system (and the paper tapes) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag &amp; drop. Paper tapes always stay listed.</li>
-              <li>Chooses one, switches to the operator console, and reboots the machine.</li>
+              <li>Opens a picker listing every guest operating system (and the <a href="#storage">paper tapes</a>) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag &amp; drop. Paper tapes always stay listed.</li>
+              <li>Chooses one, switches to the <a href="#console">operator console</a>, and reboots the machine.</li>
               <li>Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root).</li>
             </ol>
 
@@ -291,7 +291,7 @@
 
             <p class="shot-caption">The quick-boot picker lists every guest OS and paper tape.</p>
 
-            <p>The wizard is prompt-aware: it watches the console output and types the login only when the guest actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the prompt reliably. Each guest also declares the machine profile it wants — e.g. RT-11/RSX/RSTS enable the LP11 line printer, and Unix V5/BSD force a teletype console — so the wizard reconfigures the machine if needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and clear screens), and a toast warns <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being typed.</p>
+            <p>The wizard is prompt-aware: it watches the console output and types the login only when the guest actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the prompt reliably. Each guest also declares the machine profile it wants — e.g. RT-11/RSX/RSTS enable the <a href="#printer">LP11 line printer</a>, and Unix V5/BSD force a teletype console — so the wizard reconfigures the machine if needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and clear screens), and a toast warns <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being typed.</p>
 
             <p><img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast"></p>
 
@@ -320,11 +320,17 @@
 
             <p>A simple light chaser — toggle this in to see the address and data LEDs dance:</p>
 
-            <p><code>Switch sequence: HALT, 001000, LOAD ADDRESS 012700, DEPOSIT 000001, DEPOSIT 006100, DEPOSIT 000005, DEPOSIT 000775, DEPOSIT 001000, LOAD ADDRESS, ENABLE, START</code></p>
+            <pre>Switch sequence: HALT, 001000, LOAD ADDRESS
+                           012700, DEPOSIT
+                           000001, DEPOSIT
+                           006100, DEPOSIT
+                           000005, DEPOSIT
+                           000775, DEPOSIT
+                           001000, LOAD ADDRESS, ENABLE, START</pre>
 
             <p>Restart the bootloader:</p>
 
-            <p><code>HALT, 120000, LOAD ADDRESS, ENABLE, START</code></p>
+            <pre>HALT, 120000, LOAD ADDRESS, ENABLE, START</pre>
 
             <p>The <strong>Bootstrap now!</strong> button refuses to start the machine while it is powered off:</p>
 
@@ -337,7 +343,7 @@
 
             <h2 id="console">The Operator Console</h2>
 
-            <p>The operator console is what the PDP-11 uses as its <code>TT0:</code> — the machine's own typewriter. Depending on the CONFIG page, it is a <strong>Model 33 ASR teletype</strong> or one of the two video terminals: a <strong>DECscope VT52</strong> (see below) or a <strong>DEC VT100</strong>.</p>
+            <p>The operator console is what the PDP-11 uses as its <code>TT0:</code> — the machine's own typewriter. Depending on the <a href="#config">CONFIG page</a>, it is a <strong>Model 33 ASR teletype</strong> or one of the two video terminals: a <strong>DECscope VT52</strong> (see below) or a <strong>DEC VT100</strong>.</p>
 
             <h3 id="model-33-asr-teletype">Model 33 ASR teletype</h3>
 
@@ -349,13 +355,13 @@
 
             <ul>
               <li>Keyboard. Round dark keycaps with light two-line legends — the base glyph centred, the CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN, DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break condition).</li>
-              <li>Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – z to A – Z only when the Upper Case Only CONFIG option is enabled (off by default, so 2.11 BSD receives lower case).</li>
-              <li>Force PDP Output Uppercase. A real Model 33 ASR print mechanism has no lower-case type, so machine output is printed in upper case (on by default) and a loader that writes lower case cannot put those letters on the paper. The punched tape still records the raw byte — reading such a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.</li>
-              <li>Paper printing. Authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a different glyph leaves the real dark overstrike blot a hard-copy terminal makes.</li>
+              <li>Upper Case Only. The on-screen keycaps always send upper-case letters. The physical keyboard folds a – z to A – Z only when the Upper Case Only <a href="#config">CONFIG</a> option is enabled (off by default, so 2.11 BSD receives lower case).</li>
+              <li>Force PDP Output Uppercase. A real Model 33 ASR print mechanism has no lower-case type, so machine output is printed in upper case (on by default) and a loader that writes lower case cannot put those letters on the paper. The punched tape still records the <em>raw</em> byte — reading such a tape in LOCAL prints upper case, while in LINE the original lower case reaches the machine.</li>
+              <li>Paper printing. Authentic nroff/man overstrike (^H) rendering: re-printing the same glyph gives bold, underscores give underline, and striking a <em>different</em> glyph leaves the real dark overstrike blot a hard-copy terminal makes.</li>
               <li>Margins. Long lines faithfully jam the carriage at the right margin (72 or 80 columns); characters overstrike the last column instead of wrapping. The paper width follows the selected width so a full line reaches the paper edge. The paper is anchored to the carriage and grows upward out of the top of the machine body; once its edge reaches the top of the window, a scrollbar appears and the view follows the freshly printed line.</li>
-              <li>ASR reader/punch. Beside the machine sits the ASR tape reader/punch unit. Every byte echoed to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track 8 = parity). As on a real ASR-33 the punch is OFF by default — enable it from the CONFIG page or its own control. Both hanging tapes swing briefly on every step of the mechanism; once a tape reaches the bottom of the window it is scrolled with the mouse wheel (neither tape draws a scrollbar).</li>
+              <li>ASR reader/punch. Beside the machine sits the ASR tape reader/punch unit. Every byte echoed to the console punches a matching row of holes on an 8-track paper tape (tracks 1–7 = ASCII, track 8 = parity). As on a real ASR-33 the punch is OFF by default — enable it from the <a href="#config">CONFIG page</a> or its own control. Both hanging tapes swing briefly on every step of the mechanism; once a tape reaches the bottom of the window it is scrolled with the mouse wheel (neither tape draws a scrollbar).</li>
               <li>Paper-tape reader. The Load tape button below the machine opens a file dialog and inserts a paper tape into the reader — a raw.ptap (as saved by the punch or the Storage page), a compressed.ptap.zst, or a plain.txt whose characters become 7-bit tape codes. The full tape hangs from the reader slot down to the bottom of the window, its ragged free end torn like the punched tape's — once it reaches the bottom it is scrolled with the mouse wheel (like the punched tape, it draws no scrollbar). As the tape is read it visibly moves up through the slot and shortens, swinging on every byte; when the last byte is read the tape has gone into the machine and a new one can be loaded.</li>
-              <li>Reader switch. The four-position switch on the TAPE READER cabinet governs reading: START — runs the reader continuously, sending the tape to the machine at the console speed (authentic ~10 chars/sec or the fast CONFIG pace);</li>
+              <li>Reader switch. The four-position switch on the TAPE READER cabinet governs reading: START — runs the reader continuously, sending the tape to the machine at the console speed (authentic ~10 chars/sec or the fast <a href="#config">CONFIG</a> pace);</li>
               <li>AUTO — sends one byte and then feeds the next only when the machine's DL11 has accepted the previous one (paused by DC3 / X-OFF, resumed by DC1 / X-ON);</li>
               <li>STOP — pauses;</li>
               <li>FREE — releases the tape and shows the Remove tape from reader button (hidden in every other mode) to pull it out.</li>
@@ -370,7 +376,7 @@
 
             <h3 id="vt52-as-the-console">VT52 as the console</h3>
 
-            <p>When the console terminal is set to a VT52, the operator console becomes a DECscope with its authentic white/grey (P4) phosphor on a black tube — see User Terminals below for the full behaviour, which is shared.</p>
+            <p>When the console terminal is set to a VT52, the operator console becomes a DECscope with its authentic white/grey (P4) phosphor on a black tube — see <a href="#user-terminals">User Terminals</a> below for the full behaviour, which is shared.</p>
 
             <p><img class="shot" src="assets/images/manual/console-vt52.png" alt="A DECscope VT52 as the operator console"></p>
 
@@ -418,7 +424,7 @@
             <p class="shot-caption">The LP11 line printer printing a job listing.</p>
 
             <ul>
-              <li>Speed. Like the real LP11, it echoes characters far faster than the Model 33 ASR console teletype (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300 lines/min.</li>
+              <li>Speed. Like the real LP11, it echoes characters far faster than the <a href="#console">Model 33 ASR console teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300 lines/min.</li>
               <li>DONE handshake. The LP11 honours the historical DONE handshake: writing LPDB clears DONE and re-asserts it as each character is consumed by the mechanism, so a guest print job is throttled at printer speed.</li>
               <li>OFF LINE. When the printer is OFF LINE (or powered off), the controller latches a sticky ERROR flag in LPCS while keeping DONE set — so a guest OS driver reports an error (e.g. ?LP0: I/O error) instead of silently discarding the job.</li>
               <li>Form feed. The LP11 honours form feed (FF, 0x0C) — the 2.11BSD spooler (lpr / lpd) sends FF between jobs so each starts on a fresh page: it fills the rest of the sheet (66 lines at 6 LPI) and closes it with a dashed fold/perforation marker.</li>
@@ -428,7 +434,7 @@
 
             <h2 id="vt11">The VT11 Vector Display (Display page)</h2>
 
-            <p>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024×768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. Lunar Lander uses it — the quick-boot wizard enables the display and switches to the Display page automatically.</p>
+            <p>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024×768 logical resolution, auto-scaled to fit the window), enabled from the <a href="#config">CONFIG page</a>. Lunar Lander uses it — the <a href="#quick-start">quick-boot wizard</a> enables the display and switches to the Display page automatically.</p>
 
             <p><img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display"></p>
 
@@ -448,7 +454,7 @@
             <ul>
               <li>Drop image. Drop a disk or tape image here —.dsk,.tap,.ptap and their.zst -compressed forms are supported. While the Storage page is active you can also drop a file anywhere over the window: a full-window drop target appears. A.zst file is a zstd frame and the browser unwraps it on the fly, so a downloaded image needs no unpacking first.</li>
               <li>The file name is the device name. An image is mounted under the device URL taken from the file itself: RP1.DSK.ZST becomes rp1.dsk, which is why the guest boots it with boot rp1. Rename the file to the unit you want to use — the table below maps every device to its drive, its controller and its boot command.</li>
-              <li>Mounted images / Unmount. Lists the images mounted in this browser and lets you unmount one again. The counter next to it counts the images you mounted (dropped or imported), not the ones the desktop build carries inside itself. Mounted images live in browser storage (IndexedDB) and are re-mounted automatically on the next launch.</li>
+              <li>Mounted images / Unmount. Lists the images mounted in this browser and lets you unmount one again. The counter next to it counts the images <em>you</em> mounted (dropped or imported), not the ones the desktop build carries inside itself. Mounted images live in browser storage (IndexedDB) and are re-mounted automatically on the next launch.</li>
               <li>Export disk. Downloads a mounted disk image to your machine.</li>
               <li>Persistent disk changes. Guest-OS writes are saved to browser storage and overlaid on the base image on the next launch, so files an operating system created are still there tomorrow. Only the blocks the guest actually wrote are kept — the base image is fetched again on every launch — and a saved block always wins over the pristine one. They are written out periodically and when you leave the page, and they belong to one image: Reset image discards them for the selected disk, Reset all for every disk, which returns the media to its factory state.</li>
             </ul>
@@ -507,18 +513,20 @@
             <p><strong>Paper Tapes tab:</strong></p>
 
             <ul>
-              <li>Paper tape reader file. A selector for the reader (#ptr) holding the tapes this build ships — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, Lunar Lander and the bootstrap loader — plus any.ptap you dropped. Load one and boot it with BOOT PR.</li>
+              <li>Paper tape reader file. A selector for the reader (#ptr) holding the tapes this build ships — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, <a href="#vt11">Lunar Lander</a> and the bootstrap loader — plus any.ptap you dropped. Load one and boot it with BOOT PR.</li>
               <li>Rewind tape and the tape state. The indicator beside the button says whether a tape is loaded and how far the reader has moved through it; Rewind tape puts it back to the first frame, which is what a guest does when it restarts a read.</li>
               <li>Drop paper tape. A small drop zone accepting.ptap and.ptap.zst — dropped tapes are added to the reader file selector.</li>
               <li>Export paper tape. The punch buffer is filled by the bytes the console echoes, and the counter shows how much is on the tape. Download saves it as a.ptap; Clear empties the buffer for the next tape.</li>
             </ul>
 
-            <p><em>Note:</em> the paper-tape reader is driven by the console bytes — every byte echoed to the console punches a matching row of holes on the ASR paper tape.</p>
+            <blockquote><em>Note:</em> the paper-tape reader is driven by the console bytes — every byte echoed to the console</blockquote>
+
+            <p>punches a matching row of holes on the <a href="#console">ASR paper tape</a>.</p>
 
 
             <h2 id="machine-state">Machine State (STATE button)</h2>
 
-            <p>The round <strong>STATE</strong> button (top-left corner, right of REBOOT) opens the machine-state dialog — a full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display picture are all captured. Think of it as a save file of the whole machine.</p>
+            <p>The round <strong>STATE</strong> button (top-left corner, right of <a href="#controls">REBOOT</a>) opens the machine-state dialog — a full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display picture are all captured. Think of it as a save file of the whole machine.</p>
 
             <p><img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog"></p>
 
@@ -530,7 +538,7 @@
               <li>Rename / Delete — organise the list or remove states; the counter next to the list shows how many states you have.</li>
             </ul>
 
-            <p>The STATE button mirrors REBOOT and is available on the <strong>Panel</strong>, <strong>Console</strong> (teletype, VT52 or VT100) and <strong>TTY</strong> pages. States are stored in the browser's IndexedDB and survive reloads and sessions.</p>
+            <p>The STATE button mirrors <a href="#controls">REBOOT</a> and is available on the <strong>Panel</strong>, <strong>Console</strong> (teletype, VT52 or VT100) and <strong>TTY</strong> pages. States are stored in the browser's IndexedDB and survive reloads and sessions.</p>
 
 
             <h2 id="config">Configuration (Config page)</h2>
@@ -546,10 +554,10 @@
             <h3 id="equipment">Equipment</h3>
 
             <ul>
-              <li>Console terminal — the operator console (tty0): a Model 33 ASR teletype, a DECscope VT52 or a DEC VT100.</li>
-              <li>User terminals — the two user terminals (TTY 1 / TTY 2), each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.</li>
-              <li>Line printer (LP11) — install the animated LP11 line printer on its own Printer page.</li>
-              <li>VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own Display page.</li>
+              <li>Console terminal — the <a href="#console">operator console</a> (tty0): a Model 33 ASR teletype, a DECscope VT52 or a DEC VT100.</li>
+              <li>User terminals — the two <a href="#user-terminals">user terminals (TTY 1 / TTY 2)</a>, each None | VT52 | VT100 and each with its own sidebar page; the number of terminals is read off the two selects, and TT2 can only be filled once TT1 is.</li>
+              <li>Line printer (LP11) — install the animated LP11 line printer on its own <a href="#printer">Printer page</a>.</li>
+              <li>VT11 graphics display — install the DEC VT11 vector-graphics terminal on its own <a href="#vt11">Display page</a>.</li>
               <li>Teletype print width — 72 or 80 columns for the Model 33 ASR console (a teletype is at most an 80-column machine).</li>
               <li>Printer width — 72/80/100/132 columns for the LP11 printer page.</li>
               <li>Teletype speed — authentic (real 110-baud Model 33 ASR, ~10 chars/sec) or fast development pace.</li>
@@ -557,6 +565,7 @@
               <li>Force PDP Output Uppercase — print machine output in upper case (authentic Model 33 ASR, which cannot print lower case); on by default. The paper tape keeps the raw code, and a video terminal (VT52 or VT100) is not affected at all — both print lower case.</li>
             </ul>
 
+            </div>
             </div>
 
             <div class="config-item">
@@ -577,6 +586,7 @@
             </ul>
 
             </div>
+            </div>
 
             <div class="config-item">
 
@@ -595,6 +605,7 @@
             </ul>
 
             </div>
+            </div>
 
             <div class="config-item">
 
@@ -609,10 +620,11 @@
             </ul>
 
             </div>
+            </div>
 
             <p>Leaving the Config page with uncommitted changes asks for confirmation, so nothing is lost silently:</p>
 
-            <img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Unapplied configuration warning">
+            <p><img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Unapplied configuration warning"></p>
 
             <p class="shot-caption">The emulator warns before leaving Config with uncommitted changes.</p>
 
@@ -623,7 +635,7 @@
 
             <h2 id="guest-oses">Guest Operating Systems</h2>
 
-            <p>The emulator ships with ready-to-boot disk and tape images. Just type <code>boot</code> at the <code>@</code> prompt — or pick one with the magic wand. In a build with a reduced image set (e.g. the <strong>Minimal</strong> desktop variant), rows whose image is not shipped are dimmed and marked <em>image not in this build</em> — the table shows exactly what can boot here.</p>
+            <p>The emulator ships with ready-to-boot disk and tape images. Just type <code>boot</code> at the <code>@</code> prompt — or pick one with the <a href="#quick-start">magic wand</a>. In a build with a reduced image set (e.g. the <strong>Minimal</strong> desktop variant), rows whose image is not shipped are dimmed and marked <em>image not in this build</em> — the table shows exactly what can boot here.</p>
 
             <table>
               <tr>
@@ -748,13 +760,13 @@
             <p>Use the sidebar to switch between:</p>
 
             <ul>
-              <li>Panel — the front panel with switches and LEDs.</li>
-              <li>Console — the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.</li>
-              <li>TTY 1 / TTY 2 — user video terminals (VT52 or VT100), shown only when configured.</li>
-              <li>Printer — the LP11 line printer page, shown only when configured.</li>
-              <li>Display — the VT11 vector-graphics CRT page, shown only when configured.</li>
-              <li>Storage — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).</li>
-              <li>Config — configure the emulated peripherals (persisted between sessions).</li>
+              <li><a href="#front-panel">Panel</a> — the front panel with switches and LEDs.</li>
+              <li><a href="#console">Console</a> — the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.</li>
+              <li><a href="#user-terminals">TTY 1 / TTY 2</a> — user video terminals (VT52 or VT100), shown only when configured.</li>
+              <li><a href="#printer">Printer</a> — the LP11 line printer page, shown only when configured.</li>
+              <li><a href="#vt11">Display</a> — the VT11 vector-graphics CRT page, shown only when configured.</li>
+              <li><a href="#storage">Storage</a> — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).</li>
+              <li><a href="#config">Config</a> — configure the emulated peripherals (persisted between sessions).</li>
               <li>Info — detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).</li>
             </ul>
 
@@ -769,7 +781,7 @@
               <tr>
                 <td class="disk control-cell"><span class="control-name"><img class="control-btn" src="assets/images/manual/btn-magicwand.png" alt="Magic wand"> Magic wand</span></td>
                 <td>Top-right corner (every page except Info)</td>
-                <td>Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See Quick Start.</td>
+                <td>Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See <a href="#quick-start">Quick Start</a>.</td>
               </tr>
               <tr>
                 <td class="disk control-cell"><span class="control-name"><img class="control-btn" src="assets/images/manual/btn-reboot.png" alt="Reboot"> Reboot</span></td>
@@ -779,7 +791,7 @@
               <tr>
                 <td class="disk control-cell"><span class="control-name"><img class="control-btn" src="assets/images/manual/btn-mute.png" alt="Mute"> Mute</span></td>
                 <td>Bottom-left corner, just right of the sidebar</td>
-                <td>Round button that toggles all sounds at once — hum, teletype/LP11, paper feed/tear, key clicks and the bell. State is persisted with the rest of the configuration.</td>
+                <td>Round button that toggles <em>all</em> sounds at once — hum, teletype/LP11, paper feed/tear, key clicks and the bell. State is persisted with the rest of the configuration.</td>
               </tr>
               <tr>
                 <td class="disk control-cell"><span class="control-name"><img class="control-btn" src="assets/images/manual/btn-fullscreen.png" alt="Fullscreen"> Fullscreen</span></td>
@@ -795,24 +807,24 @@
 
             <p><img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog"></p>
 
-            <p><span class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the</span> Auto-boot shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</p>
+            <p><span class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the</span> <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</p>
 
             <h3 id="sidebar-activity-lamps">Sidebar activity lamps</h3>
 
-            <p>Each output sidebar button has a small blinking green LED in its top-right corner: it pulses while the PDP-11 writes output to that console/terminal (and blinks for the whole print job on the Printer button), then switches off about half a second after the output stops.</p>
+            <p>Each output sidebar button has a small blinking green LED in its top-right corner: it pulses while the PDP-11 writes output to that console/terminal (and blinks for the whole print job on the <a href="#printer">Printer</a> button), then switches off about half a second after the output stops.</p>
 
 
             <h2 id="troubleshooting">Troubleshooting</h2>
 
             <h3 id="an-image-cannot-be-loaded">An image cannot be loaded</h3>
 
-            <p>If a guest OS image cannot be fetched completely — a big BSD image dropped by the hosting server mid-download, or an image that is not bundled in the Minimal desktop build — the emulator doesn't stall silently. A dialog in the same shared modal style as the first-run hint explains that the image is incomplete and offers <strong>Open Storage</strong>, which jumps straight to the drop zone for a manual drag &amp; drop of the downloaded file.</p>
+            <p>If a guest OS image cannot be fetched completely — a big BSD image dropped by the hosting server mid-download, or an image that is not bundled in the Minimal desktop build — the emulator doesn't stall silently. A dialog in the same shared modal style as the <a href="#quick-start">first-run hint</a> explains that the image is incomplete and offers <strong>Open Storage</strong>, which jumps straight to the drop zone for a manual drag &amp; drop of the downloaded file.</p>
 
             <p>The wording adapts to the environment: a page opened as a local <code>file://</code> explains that the browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal build explains that the image is not shipped and points to the drop zone.</p>
 
             <p><img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Image load failure dialog"></p>
 
-            <p class="shot-caption">An incomplete image triggers this dialog with an Open Storage shortcut.</p>
+            <p class="shot-caption">An incomplete image triggers this dialog with an <a href="#storage">Open Storage</a> shortcut.</p>
 
 
             <h2 id="desktop">The Desktop App</h2>
