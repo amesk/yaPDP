@@ -14,9 +14,9 @@ The first-run onboarding hint.{.shot-caption}
 **In a hurry?** Use the **magic wand** button in the top-right corner of the window. It stays on
 every page except **Info**. One click does everything:
 
-1. Opens a picker listing every guest operating system (and the [paper tapes](#storage)) whose image this build ships — the picker is filtered by the build manifest (media/manifest.json), plus any images you have imported by drag & drop. Paper tapes always stay listed.
+1. Opens a picker listing every guest operating system (and the [paper tapes](#storage)) whose image this build ships — the picker is filtered by the build manifest (`media/manifest.json`), plus any images you have imported by drag & drop. Paper tapes always stay listed.
 2. Chooses one, switches to the [operator console](#console), and reboots the machine.
-3. Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root).
+3. Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: `boot rk0` → `unix` → login root).
 
 ![Quick boot picker](assets/images/manual/dialog-quickboot.png){.shot}
 
@@ -34,14 +34,14 @@ typed.
 
 ![Autoloading in progress toast](assets/images/manual/dialog-autoload.png){.shot}
 
-While the wizard types the boot sequence, a toast asks you not to touch the{.shot-caption}
-teletype/keyboard.
+While the wizard types the boot sequence, a toast asks you not to touch the
+teletype/keyboard.{.shot-caption}
 
 ### The classic way
 
-1. At the @ prompt, type boot rp1 and press ENTER.
-2. BSD 2.11 will autoboot into multiuser mode. Login as root (no password).
-3. Try ls, ps -aux, df — or compile a C program with cc.
+1. At the `@` prompt, type `boot rp1` and press ENTER.
+2. BSD 2.11 will autoboot into multiuser mode. Login as `root` (no password).
+3. Try `ls`, `ps -aux`, `df` — or compile a C program with `cc`.
 
 <!-- translated: needs review -->
 The boot command is upper case in the manual (`BOOT RK1`) because that is what

@@ -25,9 +25,9 @@ Use the sidebar to switch between:
 
 ![Reboot confirmation dialog](assets/images/manual/dialog-reboot.png){.shot}
 
-The REBOOT button asks for confirmation by default: the dialog carries the{.shot-caption}
+The REBOOT button asks for confirmation by default: the dialog carries the
 [Auto-boot](#config) shortcut (**Start the default bootstrap automatically after reboot**) and the
-"Don't show this warning anymore" option.
+"Don't show this warning anymore" option.{.shot-caption}
 
 ### Sidebar activity lamps
 
