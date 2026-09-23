@@ -3,10 +3,11 @@
 <!-- translated: needs review -->
 Страница Config управляет эмулируемыми периферийными устройствами, и её настройки сохраняются между сессиями. Форма разделена на четыре вкладки, действия **Apply** и **Restore defaults** находятся на панели под вкладками:
 
-![CONFIG — вкладка Equipment](assets/images/manual/config-equipment.png)
-
+:::config-item
+![CONFIG — вкладка Equipment](assets/images/manual/config-equipment.png){.config-item-img}
+:::config-item-text
 ### Оборудование
-
+:::
 <!-- translated: needs review -->
 - **Console terminal** — консоль оператора (tty0): телетайп Model 33 ASR, DECscope VT52 или DEC VT100.
 - **User terminals** — два пользовательских терминала (TTY 1 / TTY 2), каждый `None | VT52 | VT100` и у каждого своя страница в боковой панели; число терминалов выводится из двух селектов, а TT2 можно заполнить только после TT1.
@@ -18,10 +19,11 @@
 - **Upper Case Only** — отправлять буквы с физической клавиатуры в верхнем регистре (аутентичный Model 33 ASR); по умолчанию выключено, чтобы проходил нижний регистр (например, имена файлов в 2.11 BSD).
 - **Force PDP Output Uppercase** — печатать вывод машины в верхнем регистре (аутентичный Model 33 ASR, который не умеет печатать строчные); по умолчанию включено. Перфолента сохраняет исходный код, а видеотерминал (VT52 или VT100) не затрагивается вовсе — оба печатают оба регистра.
 
-![CONFIG — вкладка Look & sound](assets/images/manual/config-visual.png)
-
+:::config-item
+![CONFIG — вкладка Look & sound](assets/images/manual/config-visual.png){.config-item-img}
+:::config-item-text
 ### Вид и звук
-
+:::
 <!-- translated: needs review -->
 - **VT100 key click** — звуковая отдача нажатия клавиш на терминалах VT100; клавиатура DECscope была механической и щёлкать ей нечем, поэтому поле гаснет, когда VT100 не установлен.
 - **VT100 phosphor** — трубка VT100: P4 белый (люминофор, с которым он выпускался) или P1 зелёный. DECscope жёстко привязан к P4 — с другим он никогда не продавался.
@@ -30,10 +32,11 @@
 - **Machine hum** — фоновый гул блока питания и шум вентилятора, пока машина включена.
 - **Photo backdrop** — показывать фотографию машинного зала PDP-11 за страницами.
 
-![CONFIG — вкладка Behaviour](assets/images/manual/config-behaviour.png)
-
+:::config-item
+![CONFIG — вкладка Behaviour](assets/images/manual/config-behaviour.png){.config-item-img}
+:::config-item-text
 ### Поведение
-
+:::
 <!-- translated: needs review -->
 - **Reboot confirmation** — спрашивать перед перезагрузкой машины; опцию «Don't show this warning anymore» можно вернуть здесь в любой момент.
 - **Help Me! sticker** — показывать рукописную памятку оператора о загрузчике на странице Panel.
@@ -41,10 +44,11 @@
 - **Auto-boot** — автоматически запускать загрузку по умолчанию при включении или перезагрузке машины. В диалоге подтверждения перезагрузки есть ярлык к этой опции (её галочка «Start the default bootstrap automatically after reboot»).
 - **First-run hint** — повторить приветственный оверлей первого запуска с подсказками по быстрому запуску при следующем входе.
 
-![CONFIG — вкладка Development](assets/images/manual/config-development.png)
-
+:::config-item
+![CONFIG — вкладка Development](assets/images/manual/config-development.png){.config-item-img}
+:::config-item-text
 ### Разработка
-
+:::
 <!-- translated: needs review -->
 - **Plain text input instead of the canvas CRT** — выводить терминал как текстовое поле вместо canvas CRT, что даёт нативное выделение текста и Windows Clipboard (Ctrl+C / Ctrl+V / вставка правой кнопкой) для быстрого ввода исходного кода; при этом теряются атрибуты SGR (жирный/подчёркивание/инверсия). Действует на страницу, поэтому так выводятся и VT52, и VT100.
 

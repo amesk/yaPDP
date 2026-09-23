@@ -62,8 +62,15 @@ function inline(text) {
     // images first: they may sit inside a table cell (the floating-controls
     // table puts a button icon in front of the label), and the cell renderer
     // runs this same function.
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,
-      (m, alt, src) => '<img src="' + src + '" alt="' + alt + '">')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)(\{\.[a-z-. ]+\})?/g,
+      (m, alt, src, cls) => {
+        const c = cls ? cls.slice(2, -1).trim() : "shot";
+        return '<img class="' + c + '" src="' + src + '" alt="' + alt + '">';
+      })
+    // a text run marked {.class} becomes a <span> — used for the control names
+    // inside the floating-controls table, which the stylesheet grid-aligns.
+    .replace(/([^{}]+)\{\.([a-z-]+)\}/g,
+      (m, text, cls) => '<span class="' + cls + '">' + text.trim() + "</span>")
     .replace(/`([^`]+)`/g, (m, code) => "<code>" + code + "</code>")
     .replace(/\*\*([^*]+)\*\*/g, (m, b) => "<strong>" + b + "</strong>")
     .replace(/(^|[\s(])\*([^*\n]+)\*/g, (m, pre, i) => pre + "<em>" + i + "</em>");
@@ -101,10 +108,11 @@ function parseBlocks(md) {
       continue;
     }
 
-    const img = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(line.trim());
+    const img = /^!\[([^\]]*)\]\(([^)]+)\)(\{\.[a-z-]+\})?$/.exec(line.trim());
     if (img) {
       flushAll();
-      blocks.push({ type: "img", alt: img[1], src: img[2] });
+      blocks.push({ type: "img", alt: img[1], src: img[2],
+        cls: img[3] ? img[3].slice(2, -1) : "shot" });
       continue;
     }
 
@@ -136,6 +144,15 @@ function parseBlocks(md) {
       continue;
     }
 
+    // ::: wrappers — the CONFIG tab cards are a two-column grid in the
+    // stylesheet (.config-item), so the grouping has to survive the source.
+    const wrap = /^:::([a-z-]*)$/.exec(line.trim());
+    if (wrap) {
+      flushAll();
+      blocks.push({ type: wrap[1] ? "open" : "close", cls: wrap[1] });
+      continue;
+    }
+
     // an indented continuation belongs to the paragraph we are in
     para.push(line.trim());
   }
@@ -145,6 +162,7 @@ function parseBlocks(md) {
 
 function blocksToHtml(blocks, level = 2) {
   const out = [];
+  const openWrappers = [];
   for (const b of blocks) {
     switch (b.type) {
       case "h": {
@@ -153,17 +171,37 @@ function blocksToHtml(blocks, level = 2) {
         out.push("  <" + tag + ' id="' + id + '">' + inline(b.text) + "</" + tag + ">");
         break;
       }
-      case "p":
-        out.push("  <p>" + inline(b.text) + "</p>");
+      case "p": {
+        // A paragraph marked {.shot-caption} in the source is an image caption;
+        // the stylesheet gives it its own typography. The marker lives in the
+        // Markdown so the source still describes the look.
+        const m = /^(.*)\{\.([a-z-]+)\}$/.exec(b.text);
+        const cls = m ? m[2] : "";
+        out.push("  <p" + (cls ? ' class="' + cls + '"' : "") + ">" +
+          inline(m ? m[1] : b.text) + "</p>");
         break;
+      }
       case "ul":
       case "ol":
         out.push("  <" + b.type + ">");
         for (const it of b.items) out.push("    <li>" + inline(it) + "</li>");
         out.push("  </" + b.type + ">");
         break;
-      case "img":
-        out.push('  <img src="' + b.src + '" alt="' + inline(b.alt) + '">');
+      case "img": {
+        // Inside a CONFIG card the image is a grid cell, not a standalone
+        // picture: no <p> wrapper, or the grid breaks.
+        const img = '<img class="' + (b.cls || "shot") + '" src="' + b.src +
+          '" alt="' + inline(b.alt) + '">';
+        out.push(openWrappers.length ? "  " + img : "  <p>" + img + "</p>");
+        break;
+      }
+      case "open":
+        out.push("  <div" + (b.cls ? ' class="' + b.cls + '"' : "") + ">");
+        openWrappers.push(b.cls);
+        break;
+      case "close":
+        out.push("  </div>");
+        openWrappers.pop();
         break;
       case "table": {
         out.push("  <table>");
@@ -171,7 +209,15 @@ function blocksToHtml(blocks, level = 2) {
           out.push("    <tr>");
           for (const c of row) {
             const cell = i === 0 ? "th" : "td";
-            out.push("      <" + cell + ">" + inline(c) + "</" + cell + ">");
+            // a cell may open with {.class} / {.a .b}: the class belongs to the
+            // <td> itself (the disk/image tables style their first column).
+            const m = /^\{\.([a-z-. ]+)\}\s*(.*)$/.exec(c.trim());
+            // the marker is {.disk .control-cell}: strip the braces and turn
+            // the dot-separated list into a real class list ("disk control-cell")
+            const cls = m ? m[1].replace(/\./g, " ").replace(/\s+/g, " ").trim() : "";
+            const text = m ? m[2] : c;
+            out.push("      <" + cell + (cls ? ' class="' + cls + '"' : "") + ">" +
+              inline(text) + "</" + cell + ">");
           }
           out.push("    </tr>");
         });

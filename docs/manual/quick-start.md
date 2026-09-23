@@ -5,9 +5,9 @@ right away — which page to open, the mounted guest OSes and their boot command
 button next to **Got it** opens the wizard directly, so a first-time user can see a guest OS running
 in one click:
 
-![First-run onboarding hint](assets/images/manual/dialog-onboarding.png)
+![First-run onboarding hint](assets/images/manual/dialog-onboarding.png){.shot}
 
-The first-run onboarding hint.
+The first-run onboarding hint.{.shot-caption}
 
 ### The magic wand
 
@@ -18,9 +18,9 @@ every page except **Info**. One click does everything:
 2. Chooses one, switches to the operator console, and reboots the machine.
 3. Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: boot rk0 → unix → login root).
 
-![Quick boot picker](assets/images/manual/dialog-quickboot.png)
+![Quick boot picker](assets/images/manual/dialog-quickboot.png){.shot}
 
-The quick-boot picker lists every guest OS and paper tape.
+The quick-boot picker lists every guest OS and paper tape.{.shot-caption}
 
 The wizard is prompt-aware: it watches the console output and types the login only when the guest
 actually prints `login:`, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
@@ -32,9 +32,9 @@ clear screens), and a toast warns
 *"Autoloading in progress — don't touch the teletype/keyboard"* while the sequence is being
 typed.
 
-![Autoloading in progress toast](assets/images/manual/dialog-autoload.png)
+![Autoloading in progress toast](assets/images/manual/dialog-autoload.png){.shot}
 
-While the wizard types the boot sequence, a toast asks you not to touch the
+While the wizard types the boot sequence, a toast asks you not to touch the{.shot-caption}
 teletype/keyboard.
 
 ### The classic way

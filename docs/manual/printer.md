@@ -5,9 +5,9 @@ keyboard — it only prints. Use the **Print** button to send the accumulated jo
 printer via the system dialog, or **Save.txt** to export the output (page breaks are kept as
 `\f` markers).
 
-![The LP11 line printer](assets/images/manual/printer.png)
+![The LP11 line printer](assets/images/manual/printer.png){.shot}
 
-The LP11 line printer printing a job listing.
+The LP11 line printer printing a job listing.{.shot-caption}
 
 - Speed. Like the real LP11, it echoes characters far faster than the Model 33 ASR console teletype (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300 lines/min.
 - DONE handshake. The LP11 honours the historical DONE handshake: writing LPDB clears DONE and re-asserts it as each character is consumed by the mechanism, so a guest print job is throttled at printer speed.

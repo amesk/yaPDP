@@ -3,9 +3,9 @@
 Every switch, LED, and rotary knob of a real PDP-11/70 is faithfully recreated. The Panel page is where
 you toggle in a bootstrap loader the way DEC engineers did in the 1970s.
 
-![The PDP-11/70 front panel](assets/images/manual/panel.png)
+![The PDP-11/70 front panel](assets/images/manual/panel.png){.shot}
 
-The PDP-11/70 front panel, powered on.
+The PDP-11/70 front panel, powered on.{.shot-caption}
 
 ### Front panel switch sequences
 
@@ -25,9 +25,9 @@ Restart the bootloader:
 
 The **Bootstrap now!** button refuses to start the machine while it is powered off:
 
-![Bootstrap now! power-off guard](assets/images/manual/dialog-poweroff.png)
+![Bootstrap now! power-off guard](assets/images/manual/dialog-poweroff.png){.shot}
 
-Bootstrap now! requires the machine to be powered on first.
+Bootstrap now! requires the machine to be powered on first.{.shot-caption}
 
 The dialog also offers a shortcut to the CONFIG **Auto-boot** option: tick the checkbox to start
 the default bootstrap automatically on every future power-on, without visiting the Config page. The
