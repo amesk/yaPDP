@@ -104,6 +104,31 @@ function run() {
     assert.strictEqual(g.headOffset, 103, "80 cols: head offset shifts with the paper");
   }
 
+  // --- Teletype with no side margins (marginX: 0) ---
+  // The Model 33 ASR prints on a smooth roll, so the console teletype passes
+  // paperMarginX: 0 (see initG60Printer in src/pdp11-app.js): the sheet is the
+  // print-area cell plus its padding only, still centred in the body.
+  {
+    const g = compute(72, {
+      bodyWidth: TTY_BODY, charWidth: CHAR_WIDTH,
+      paddingX: PADDING_X, marginX: 0, leftSkin: LEFT_SKIN,
+    });
+    assert.strictEqual(g.printAreaWidth, 504, "72 cols no-margin: content width");
+    assert.strictEqual(g.paperWidth, 540, "72 cols no-margin: 504+36 (no margin cols)");
+    assert.strictEqual(g.paperLeft, 201, "72 cols no-margin: centred (round(133.5)=134)");
+    assert.strictEqual(g.headOffset, 131, "72 cols no-margin: head stays put (paperLeft+marginX invariant)");
+  }
+
+  {
+    const g = compute(80, {
+      bodyWidth: TTY_BODY, charWidth: CHAR_WIDTH,
+      paddingX: PADDING_X, marginX: 0, leftSkin: LEFT_SKIN,
+    });
+    assert.strictEqual(g.paperWidth, 596, "80 cols no-margin: 560+36");
+    assert.strictEqual(g.paperLeft, 173, "80 cols no-margin: centred (round(105.5)=106)");
+    assert.strictEqual(g.headOffset, 103, "80 cols no-margin: head stays put");
+  }
+
   // LP11 machine: 1160px body, bodyWidth = 1160 - 133 = 1027.
   const LP11_BODY = 1160 - LEFT_SKIN - RIGHT_SKIN;
   assert.strictEqual(LP11_BODY, 1027, "LP11 body width");

@@ -307,7 +307,11 @@
 
         // Printable-paper layout constants (CSS values, see g60printer.css).
         var PAPER_PADDING_X = 18;  // horizontal padding of the print-area cell
-        var PAPER_MARGIN_X = 33;   // width of the left/right paper margin columns
+        // Width of the left/right paper margin columns. The LP11 line printer
+        // keeps the authentic 33px fanfold tractor-hole margins; the Model 33
+        // ASR console teletype prints on a smooth friction-fed roll with no
+        // side margins, so it overrides this to 0 via options.paperMarginX.
+        var PAPER_MARGIN_X = (typeof opts.paperMarginX === 'number') ? opts.paperMarginX : 33;
         var LEFT_SKIN_WIDTH = 67;  // width of the fixed left machine skin
         var RIGHT_SKIN_WIDTH = 66; // width of the fixed right machine skin
 
@@ -348,10 +352,15 @@
             // the browser adds the 2*paddingX cell padding on top.
             var printAreaWidth = contentWidth;
 
-            // Carriage offset follows the paper so column 0 stays aligned.
-            // 30 was the original offset for the left-anchored layout
-            // (paperLeft === leftSkin).
-            var headOffset = 30 + (paperLeft - leftSkin);
+            // The carriage offset follows the PRINT ORIGIN (column 0's left
+            // edge), NOT the sheet's own left edge. marginX only changes how
+            // much blank sheet sits left of the text — paperLeft grows by
+            // exactly what marginX shrinks, so paperLeft + marginX is
+            // INVARIANT and the head must key off it. Keying off paperLeft
+            // alone made the head drift right by the margin width when the
+            // margins were removed. The 30px base was calibrated for the LP11's
+            // 33px margin, hence the -33 (30 === 33 - 3).
+            var headOffset = 30 + (paperLeft + marginX - leftSkin - 33);
 
             return {
                 paperWidth: paperWidth,

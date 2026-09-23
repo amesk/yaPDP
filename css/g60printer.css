@@ -407,10 +407,15 @@
 
 #g60printer td#papermargin_left,
 #g60printer td#papermargin_right {
-    /* The `background` shorthand resets image + repeat + position + color
-       in one declaration, so no trace of paper-margin.png (sprocket holes)
-       can survive here. The LP11 page rules below still use that image. */
-    background: linear-gradient(to bottom, #f6f1e5 0%, #ede6d5 100%) repeat-y;
+    /* Smooth friction-fed roll: the Model 33 ASR has no fanfold tractor margins
+       (the base rule above gives these cells a 33px width and the LP11 keeps
+       it), so they carry no paper at all here and are removed from the table
+       layout entirely. The sheet then prints to its edge and the zero-width
+       cells can no longer part from the sheet and reveal the cabinet through
+       the gap. A collapsed `width: 0` still measured 2px under border-collapse,
+       which ate 4px of the printable line, hence `display: none`. The LP11
+       page rules below keep their image and their 33px margins untouched. */
+    display: none;
 }
 
 /* ==================================================================

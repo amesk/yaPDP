@@ -246,6 +246,9 @@ function initG60Printer() {
   // no punch, so it never receives this callback.
   g60printer = new G60Printer('g60printer', {
     maxCols: maxCols,
+    // The Model 33 ASR prints on a smooth roll with no side margins; the LP11
+    // keeps the default 33px fanfold tractor-hole margins.
+    paperMarginX: 0,
     pageBreakMarker: false,
     charPrintDelay: teletypeDelay((cfg) ? cfg.teletypeSpeed : null),
     // Authentic physical carriage return: the head glides back to the left
