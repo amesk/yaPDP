@@ -203,6 +203,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whose size depends on the package format. (`docs/manual/desktop.md`,
   `manual.html`)
 
+- **The console teletype prints to the edge of its paper.** The Model 33 ASR was
+  friction-fed, so the two 33px side margin columns the LP11 needs for its
+  tractor holes were dead space on the teletype — margins wider than any
+  historical photo, and cells that parted from the sheet under scaling so the
+  cabinet showed through the gap. The console sheet is now the printed line plus
+  its small padding, and the teletype's side margin cells are out of the table
+  layout, so the sheet stays whole at any zoom. The carriage is unmoved: its
+  offset is keyed to the print origin instead of the sheet's edge. The LP11
+  fanfold and its perforated margins are untouched. (`src/g60printer.js`,
+  `src/pdp11-app.js`, `css/g60printer.css`; the geometry is pinned by
+  `tests/paper-geometry.test.js`)
+
 ### Added
 
 - **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,
