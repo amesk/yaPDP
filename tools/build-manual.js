@@ -340,10 +340,25 @@ function tableIn(blocks) {
 }
 
 // "| ![alt](src) Label | ... |" -> { image, text }
+// A floating-controls cell now looks like this in the source:
+//
+//   {.disk .control-cell} ![Magic wand](…/btn-magicwand.png){.control-btn} Magic wand{.control-name}
+//
+// The leading {.class} marker on the CELL appeared later than this parser, and
+// the icon/label markers came with it — so the parser must strip all three:
+// a cell that starts with a marker used to fall through to "no image" and the
+// whole line, picture and braces included, landed in the entry's name (the
+// landing then rendered an empty src and shipped no icons at all).
 function splitIcon(cell) {
-  const m = /^!\[([^\]]*)\]\(([^)]+)\)\s*(.*)$/.exec(cell.trim());
-  if (!m) return { image: "", text: cell.trim() };
-  return { image: m[2], text: m[3].trim() };
+  let text = String(cell).trim();
+  // 1. the cell's own class marker
+  text = text.replace(/^\{\.[a-z-. ]+\}\s*/, "");
+  // 2. the icon, with its own {.class} marker
+  const m = /^!\[([^\]]*)\]\(([^)]+)\)(?:\{\.[a-z-. ]+\})?\s*(.*)$/.exec(text);
+  if (!m) return { image: "", text: text.trim() };
+  // 3. the label's {.class} marker
+  const label = m[3].replace(/\{\.[a-z-. ]+\}\s*$/, "").trim();
+  return { image: m[2], text: label };
 }
 
 // CONFIG tabs: each h3 in config.md opens a tab; its bullets are the items,
@@ -593,19 +608,35 @@ function generate() {
   // The boot COMMAND is language-independent (it is typed at the guest), so it
   // is taken once, from the English source; only "what happens" differs per
   // language and comes from its own file.
+  // Cells in these tables carry their own {.class} markers (the stylesheet
+  // styles the first column). Strip them here: the marker is page decoration
+  // and must never reach the data the landing renders.
+  const bare = (cell) => String(cell || "").replace(/\{\.[a-z-. ]+\}/g, "").trim();
+
+  // The TS output is DATA for React, which renders it as plain text — so
+  // Markdown syntax has to come off: a link showed up in the landing as
+  // "See [Quick Start](#quick-start)." with the brackets intact. The visible
+  // words stay, the syntax does not.
+  const plain = (text) => String(text || "")
+    .replace(/\[([^\]]+)\]\(#[a-z0-9-]+\)/g, "$1")   // [text](#anchor) -> text
+    .replace(/`([^`]+)`/g, "$1")                          // `code` -> code
+    .replace(/\*\*([^*]+)\*\*/g, "$1")                // **bold** -> bold
+    .replace(/\*([^*]+)\*/g, "$1")                      // *italic* -> italic
+    .trim();
+
   const GUEST_OS_TABLE = guestEn.slice(1).map((row, i) => {
     const ruRow = guestRu[i + 1] || [];
     const entry = {
-      disk: row[0] || "",
-      name: row[1] || "",
-      bootCommand: row[2] || "",
-      instructionsEn: row[3] || "",
-      instructionsRu: ruRow[3] || "",
+      disk: bare(row[0]),
+      name: bare(row[1]),
+      bootCommand: bare(row[2]),
+      instructionsEn: bare(row[3]),
+      instructionsRu: bare(ruRow[3]),
     };
     // An optional fifth column carries the login credentials, where the guest
     // has a documented one. Kept out of the table when empty rather than
     // emitted as '', so the landing's `credentials?: string` keeps its meaning.
-    if (row[4]) entry.credentials = row[4];
+    if (bare(row[4])) entry.credentials = bare(row[4]);
     return entry;
   });
 
@@ -617,9 +648,9 @@ function generate() {
     const ruRow = ctrlRu[i + 1] || [];
     return {
       image: en0.image,
-      nameEn: en0.text, nameRu: ru0.text,
-      whereEn: row[1] || "", whereRu: ruRow[1] || "",
-      descEn: row[2] || "", descRu: ruRow[2] || "",
+      nameEn: plain(en0.text), nameRu: plain(ru0.text),
+      whereEn: plain(row[1]), whereRu: plain(ruRow[1]),
+      descEn: plain(row[2]), descRu: plain(ruRow[2]),
     };
   });
 
