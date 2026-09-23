@@ -1,9 +1,9 @@
-import { Github, Monitor, BookOpen, Download, Terminal, Sliders, HardDrive, Cpu, Home, Send } from 'lucide-react';
+import { Github, Monitor, BookOpen, Download, Terminal, Sliders, HardDrive, Cpu, Home, Send, FileText } from 'lucide-react';
 
 interface NavbarProps {
   lang: 'en' | 'ru';
-  view: 'overview' | 'manual' | 'emulator';
-  onSelectView: (view: 'overview' | 'manual' | 'emulator') => void;
+  view: 'overview' | 'manual' | 'emulator' | 'devlog';
+  onSelectView: (view: 'overview' | 'manual' | 'emulator' | 'devlog') => void;
   onToggleLang: () => void;
 }
 
@@ -71,6 +71,18 @@ export function Navbar({
               <Terminal className="w-3 h-3 shrink-0" />
               <span>{lang === 'en' ? 'Emulator' : 'Эмулятор'}</span>
             </button>
+            <button
+              onClick={() => onSelectView('devlog')}
+              type="button"
+              className={`px-2 py-0.5 rounded transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                view === 'devlog'
+                  ? 'bg-[#c8a860] text-black font-bold shadow-xs'
+                  : 'text-[#8a7650] hover:text-[#d4c4a0]'
+              }`}
+            >
+              <FileText className="w-3 h-3 shrink-0" />
+              <span>{lang === 'en' ? 'Devlog' : 'Девлог'}</span>
+            </button>
           </div>
 
           {/* Mobile Right Quick Actions (Language & GitHub) */}
@@ -112,7 +124,7 @@ export function Navbar({
         </div>
 
         {/* Mobile Row 2: Full-width segmented view switcher */}
-        <div className="md:hidden grid grid-cols-3 rounded p-0.5 bg-[#14120e] border border-[#3a3528] text-[11px] font-mono w-full">
+        <div className="md:hidden grid grid-cols-4 rounded p-0.5 bg-[#14120e] border border-[#3a3528] text-[11px] font-mono w-full">
           <button
             onClick={() => onSelectView('overview')}
             type="button"
@@ -147,6 +159,18 @@ export function Navbar({
           >
             <Terminal className="w-3 h-3 shrink-0" />
             <span className="truncate">{lang === 'en' ? 'Emulator' : 'Эмулятор'}</span>
+          </button>
+          <button
+            onClick={() => onSelectView('devlog')}
+            type="button"
+            className={`py-1 text-center rounded transition-all cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap ${
+              view === 'devlog'
+                ? 'bg-[#c8a860] text-black font-bold shadow-xs'
+                : 'text-[#8a7650] hover:text-[#d4c4a0]'
+            }`}
+          >
+            <FileText className="w-3 h-3 shrink-0" />
+            <span className="truncate">{lang === 'en' ? 'Devlog' : 'Девлог'}</span>
           </button>
         </div>
 

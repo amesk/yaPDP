@@ -11,17 +11,18 @@ import { Acknowledgments } from './components/Acknowledgments.tsx';
 import { LiveEmulatorModal } from './components/LiveEmulatorModal.tsx';
 import { UserManual } from './components/UserManual.tsx';
 import { PDP11Emulator } from './components/PDP11Emulator.tsx';
+import { Devlog } from './components/Devlog.tsx';
 
 export default function App() {
   const [lang, setLang] = useState<'en' | 'ru'>('en');
-  const [view, setView] = useState<'overview' | 'manual' | 'emulator'>('overview');
+  const [view, setView] = useState<'overview' | 'manual' | 'emulator' | 'devlog'>('overview');
   const [isEmulatorOpen, setIsEmulatorOpen] = useState<boolean>(false);
 
   const toggleLanguage = () => {
     setLang((prev) => (prev === 'en' ? 'ru' : 'en'));
   };
 
-  const handleSelectView = (newView: 'overview' | 'manual' | 'emulator') => {
+  const handleSelectView = (newView: 'overview' | 'manual' | 'emulator' | 'devlog') => {
     setView(newView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -53,7 +54,9 @@ export default function App() {
         '#troubleshooting',
         '#desktop'
       ];
-      if (hash.startsWith('#emulator') || hash.startsWith('#pdp11')) {
+      if (hash.startsWith('#devlog')) {
+        setView('devlog');
+      } else if (hash.startsWith('#emulator') || hash.startsWith('#pdp11')) {
         setView('emulator');
       } else if (manualSections.some((sec) => hash.startsWith(sec))) {
         setView('manual');
@@ -93,6 +96,12 @@ export default function App() {
         <main className="flex-1 w-full px-4 sm:px-6 md:px-8 py-5 sm:py-8">
           {view === 'manual' ? (
             <UserManual
+              lang={lang}
+              onBackToHome={() => handleSelectView('overview')}
+              onOpenEmulator={() => handleSelectView('emulator')}
+            />
+          ) : view === 'devlog' ? (
+            <Devlog
               lang={lang}
               onBackToHome={() => handleSelectView('overview')}
               onOpenEmulator={() => handleSelectView('emulator')}
