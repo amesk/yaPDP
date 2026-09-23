@@ -38,4 +38,5 @@ site/
 
 # Generated manual output (generator dry-run targets)
 manual.html.generated
+manual_ru.html.generated
 landing/src/data/manualData.ts.generated

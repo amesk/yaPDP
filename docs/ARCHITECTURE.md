@@ -103,4 +103,5 @@ Disk (`.dsk`), tape (`.tap`), and paper tape (`.ptap`) images live in the [`medi
 - [Feature deep-dive](FEATURES.md) — the Model 33 ASR teletype, LP11, VT52 and VT100, the startup gate, quick boot and the UI pages in detail
 - [Known issues](known-issues.md) — open emulator bugs (e.g. ULTRIX‑11 multi-user panic)
 - [Example boot sessions](ExampleBoots.md) — full boot logs for every guest OS
-- [User manual](../manual.html) — step-by-step guide with live screenshots
+- [User manual](../manual.html) — step-by-step guide with live screenshots; everything are generated from
+  [`docs/manual/*.md`](manual/quick-start.md) and descendants by [`tools/build-manual.js`](../tools/build-manual.js)

@@ -109,6 +109,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`,
   `tests/e2e-mobile-input.js` — `npm run e2e:mobile`, in `validate`)
 
+- **The user manual is generated from one Markdown source.**
+  `npm run manual:build` writes both pages plus `landing/src/data/manualData.ts`
+  in one run, and `npm run manual:check` fails when a committed page drifts from
+  the Markdown. (`tools/build-manual.js`, `tools/manual-template-head.html`,
+  `manual.html`, `tests/manual-generation.test.js`)
+
 ### Changed
 
 - **The operator's hand-written "Help Me!" sticky note no longer costs the front
@@ -191,6 +197,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   landing now serves and emits the repository's single `favicon.ico` from its
   Vite config (`landing/vite.config.ts`) rather than keeping a second copy that
   could drift from the emulator's.
+
+- **The desktop section of the user manual covers Linux.** The page announced the
+  desktop app for Windows x64 only and said nothing about the Linux installers,
+  whose size depends on the package format. (`docs/manual/desktop.md`,
+  `manual.html`)
 
 ### Added
 

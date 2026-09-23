@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<!-- The chrome of this page — language, title, meta tags and the hero — is
+     tokenised rather than translated in place: the same head serves manual.html
+     (English) and manual_ru.html (Russian), and tools/build-manual.js fills each
+     token with the string of the page being written. A second copy of this file
+     would duplicate the ~200 lines of page-local CSS below and the two copies
+     would drift — the very failure a single manual source exists to prevent.
+     Everything that is NOT a token is shared markup and CSS. -->
+<html lang='ru'>
+
+<head>
+    <meta charset="UTF-8">
+    <title>yaPDP — Руководство пользователя</title>
+    <meta name="description" content="yaPDP — Yet Another PDP‑11/70 Emulator. Пошаговое руководство пользователя: быстрый запуск, пультовая панель, телетайп Model 33 ASR, видеотерминалы VT52 и VT100, построчный принтер LP11, работа с образами, конфигурация и гостевые операционные системы.">
+    <meta name="keywords" content="yaPDP,PDP,PDP-11,11/70,эмулятор,телетайп,Model 33,VT52,VT100,DECscope,RT-11,RSX-11M,RSTS,BSD,Unix,руководство пользователя,мануал">
+    <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
+
+    <!-- Same stylesheet as the emulator, so the manual shares the exact
+       DEC 1960s palette, photo backdrop, typography and scrollbar theming. -->
+    <link rel="stylesheet" href="css/pdp11.css" type="text/css" charset="utf-8" media="all" />
+    <link rel="stylesheet" href="css/landing.css" type="text/css" charset="utf-8" media="all" />
+
+    <!-- Manual-page-only rules. Identical to the main page (index.html):
+       the base pdp11.css already supplies the body photo backdrop, fonts and
+       the .app-layout chrome; here we only adapt the content slab and reuse
+       the main-page hero / call-to-action blocks. -->
+    <style>
+        /* Manual-page backdrop: same machine-room photo override as the
+           main page. Only this page is affected; the emulator keeps its
+           original backdrop. Paths are relative to manual.html at the repo
+           root. */
+        body {
+            background-image:
+                linear-gradient(rgba(24, 21, 17, 0.82), rgba(24, 21, 17, 0.82)),
+                url("assets/images/pdp11-machine-room.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Content slab — mirrors the emulator's Info page (dark translucent card
+           over the machine-room photo, block layout, readable column width). */
+        .landing-page {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            color: #e0d8c8;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 16px 24px 32px 24px;
+            background: rgba(28, 25, 21, 0.82);
+        }
+
+        .landing-page h1,
+        .landing-page h2,
+        .landing-page h3,
+        .landing-page h4 {
+            color: #f0e6c8;
+        }
+
+        .landing-page a {
+            color: #c8a860;
+        }
+
+        .landing-page a:hover {
+            color: #e8d080;
+        }
+
+        .landing-page code {
+            color: #d4c4a0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+
+        .landing-page pre {
+            color: #d0c8b8;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            overflow-x: auto;
+        }
+
+        .landing-page table {
+            color: #e0d8c8;
+            border-collapse: collapse;
+        }
+
+        .landing-page table thead {
+            color: #f0e6c8;
+        }
+
+        .landing-page table td,
+        .landing-page table th {
+            padding: 5px 10px;
+            border-bottom: 1px solid #3a3528;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .landing-page blockquote {
+            margin: 12px 0;
+            padding: 6px 14px;
+            border-left: 3px solid #c8a860;
+            border-radius: 0 4px 4px 0;
+            background: rgba(0, 0, 0, 0.2);
+            color: #d4c4a0;
+        }
+
+        .landing-page hr {
+            border: 0;
+            border-top: 1px solid #4a453a;
+            margin: 26px 0;
+        }
+
+        .landing-page b,
+        .landing-page strong {
+            color: inherit;
+        }
+
+        /* Hero block */
+        .hero {
+            text-align: center;
+        }
+
+        .hero img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            border: 1px solid #4a453a;
+        }
+
+        .hero .tagline {
+            color: #c8b890;
+            font-style: italic;
+            font-size: 15px;
+            margin: 10px 0 4px 0;
+        }
+
+        /* Zero-friction promise: the whole point is instant immersion. */
+        .hero .zero-setup {
+            color: #c8a860;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            margin: 8px 0 0 0;
+        }
+
+
+        /* Small feature badges in the feature table (reuses .disk/.system) */
+        .landing-page td.disk {
+            white-space: nowrap;
+        }
+
+        /* Manual page illustrations: inline screenshots and their captions. */
+        .landing-page .shot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            margin: 14px 0 2px 0;
+        }
+
+        .landing-page .shot-caption {
+            color: #c8b890;
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+            margin: 2px 0 14px 0;
+        }
+
+        /* Floating-button thumbnails inside the controls table. */
+        .landing-page .control-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .landing-page .control-btn {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .landing-page .control-name {
+            color: #f0e6c8;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* Config-tab illustrations: each screenshot beside its description. */
+        .landing-page .config-item {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+            margin: 18px 0;
+        }
+
+        .landing-page .config-item-img {
+            flex: 0 0 46%;
+            max-width: 46%;
+            height: auto;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+        }
+
+        .landing-page .config-item-text {
+            flex: 1 1 auto;
+        }
+
+        .landing-page .config-item-text h3 {
+            margin-top: 0;
+        }
+
+        .landing-page .config-item-text p {
+            margin: 6px 0 0 0;
+        }
+
+        .landing-page .config-item-text ul {
+            margin: 6px 0 0 0;
+            padding-left: 18px;
+        }
+
+        .landing-page .config-item-text li {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <div class="landing-page">
+
+            <div class="hero">
+                <h1>yaPDP — Руководство пользователя</h1>
+                <p class="tagline">Добро пожаловать в машинный зал. Это руководство проведёт вас по каждой странице эмулятора —
+                    от первого запуска до самых глубоких настроек, — чтобы вы проводили время за машиной, а не
+                    за чтением документации.</p>
+                <p class="zero-setup">Всё описанное ниже относится и к версии в браузере, и к настольному приложению на Tauri.</p>
+                <div class="panel-actions-landing">
+                    <a class="btn-primary" href="pdp11.html">Запустить онлайн!</a>
+                    <a class="btn-secondary" href="index.html">На главную страницу</a>
+                    <a class="btn-secondary" href="manual.html">English version</a>
+                </div>
+            </div>
+
+            <hr>
+
+            <h2>Оглавление</h2>
+
+            <ol>
+                <li><a href="#quick-start">Быстрый старт</a></li>
+                <li><a href="#front-panel">Пультовая панель (страница Panel)</a></li>
+                <li><a href="#console">Консоль оператора</a></li>
+                <li><a href="#user-terminals">Пользовательские терминалы (TTY 1 / TTY 2)</a></li>
+                <li><a href="#printer">Построчный принтер LP11 (страница Printer)</a></li>
+                <li><a href="#vt11">Векторный дисплей VT11 (страница Display)</a></li>
+                <li><a href="#storage">Хранилище (перфолента, образы дисков и лент)</a></li>
+                <li><a href="#machine-state">Состояние машины (кнопка STATE)</a></li>
+                <li><a href="#config">Конфигурация (страница Config)</a></li>
+                <li><a href="#guest-oses">Гостевые операционные системы</a></li>
+                <li><a href="#controls">Кнопки, сочетания клавиш и индикаторы</a></li>
+                <li><a href="#troubleshooting">Устранение неполадок</a></li>
+                <li><a href="#desktop">Настольное приложение</a></li>
+            </ol>
+
+            <hr>
+
+            <h2 id="quick-start">Быстрый старт</h2>
+
+            <p>При самом первом запуске эмулятор встречает вас короткой подсказкой, которая сразу объясняет, что делать: какую страницу открыть, какие гостевые ОС смонтированы и какими командами они загружаются. Кнопка <strong>Quick boot</strong> рядом с <strong>Got it</strong> открывает мастер напрямую, так что новичок одним нажатием видит работающую гостевую ОС:</p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="Подсказка первого запуска"></p>
+
+            <p>Подсказка первого запуска.</p>
+
+            <h3 id="the-magic-wand">Волшебная палочка</h3>
+
+            <p><strong>Спешите?</strong> Используйте кнопку <strong>magic wand</strong> в правом верхнем углу окна. Она остаётся на всех страницах, кроме <strong>Info</strong>. Одно нажатие делает всё:</p>
+
+            <ol>
+              <li>Открывает список всех гостевых операционных систем (и перфолент), образы которых есть в этой сборке — список фильтруется по манифесту сборки (<code>media/manifest.json</code>) плюс всё, что вы добавили перетаскиванием. Перфоленты остаются в списке всегда.</li>
+              <li>Выбирает одну, переключается на консоль оператора и перезагружает машину.</li>
+              <li>Вводит команду загрузки — и логин тоже, там где учётные данные известны (например Unix V5: <code>boot rk0</code> → <code>unix</code> → <code>login root</code>).</li>
+            </ol>
+
+            <p><img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Список быстрого запуска"></p>
+
+            <p>Список быстрого запуска показывает каждую гостевую ОС и перфоленту.</p>
+
+            <p>Мастер учитывает приглашения: он следит за выводом консоли и вводит логин только тогда, когда гость действительно напечатал <code>login:</code>, поэтому медленные загрузки с большим объёмом вывода (например 2.11 BSD) всё равно надёжно доходят до приглашения. Каждый гость также объявляет нужный ему профиль машины — например RT-11/RSX/RSTS включают построчный принтер LP11, а Unix V5/BSD требуют консоль-телетайп, — так что мастер при необходимости перенастраивает машину и автоматически продолжает загрузку. Каждый запуск из мастера начинается с чистой страницы (свежая бумага и очищенные экраны), а всплывающее уведомление предупреждает: <em>«Autoloading in progress — don't touch the teletype/keyboard»</em>, пока вводится последовательность.</p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Уведомление об автозагрузке"></p>
+
+            <p>Пока мастер вводит последовательность загрузки, уведомление просит не трогать телетайп и клавиатуру.</p>
+
+            <h3 id="the-classic-way">Классический способ</h3>
+
+            <ol>
+              <li>На приглашении <code>@</code> наберите <code>boot rp1</code> и нажмите ENTER.</li>
+              <li>BSD 2.11 автоматически загрузится в многопользовательский режим. Войдите как <code>root</code> (без пароля).</li>
+              <li>Попробуйте <code>ls</code>, <code>ps -aux</code>, <code>df</code> — или скомпилируйте программу на C командой <code>cc</code>.</li>
+            </ol>
+
+            <p>Команда загрузки в руководстве записана прописными (<code>BOOT RK1</code>), потому что так она работает на любой консоли: у телетайпа Model 33 ASR вообще нет строчных литер, поэтому строчная команда с него до машины не дойдёт. На видеотерминале (VT52 или VT100) строчные работают так же хорошо — гость их приводит сам.</p>
+
+
+            <h2 id="front-panel">Пультовая панель (страница Panel)</h2>
+
+            <p>Каждый тумблер, светодиод и поворотный переключатель настоящего PDP-11/70 воспроизведены точно. Страница Panel — это то место, где вы вводите загрузчик тумблерами так же, как инженеры DEC в 1970-х.</p>
+
+            <p><img class="shot" src="assets/images/manual/panel.png" alt="Пультовая панель PDP-11/70"></p>
+
+            <p>Пультовая панель PDP-11/70, питание включено.</p>
+
+            <h3 id="front-panel-switch-sequences">Последовательности переключения тумблеров</h3>
+
+            <p>Простой «бегущий огонёк» — введите это, чтобы увидеть, как пляшут светодиоды адреса и данных:</p>
+
+            <pre>Switch sequence: HALT, 001000, LOAD ADDRESS
+012700, DEPOSIT
+000001, DEPOSIT
+006100, DEPOSIT
+000005, DEPOSIT
+000775, DEPOSIT
+001000, LOAD ADDRESS, ENABLE, START</pre>
+
+            <p>Перезапуск загрузчика:</p>
+
+            <pre>HALT, 120000, LOAD ADDRESS, ENABLE, START</pre>
+
+            <p>Кнопка <strong>Bootstrap now!</strong> отказывается запускать машину, пока питание выключено:</p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! — защита при выключенном питании"></p>
+
+            <p>Bootstrap now! требует, чтобы машина была сначала включена.</p>
+
+            <p>В том же диалоге есть ярлык к опции CONFIG <strong>Auto-boot</strong>: поставьте галочку, чтобы при каждом последующем включении питания автоматически выполнялась загрузка по умолчанию, не заходя на страницу Config. Выбор сохраняется и синхронизирован с галочкой на странице CONFIG.</p>
+
+
+            <h2 id="console">Консоль оператора</h2>
+
+            <p>Консоль оператора — это то, что PDP-11 использует как свой <code>TT0:</code>, собственная пишущая машинка машины. В зависимости от страницы CONFIG это либо <strong>телепайп Model 33 ASR</strong>, либо один из двух видеотерминалов: <strong>DECscope VT52</strong> (см. ниже) или <strong>DEC VT100</strong>.</p>
+
+            <h3 id="model-33-asr-teletype">Телетайп Model 33 ASR</h3>
+
+            <p>Консоль отрисована как аутентичный Model 33 ASR светло-кремового/бежевого цвета: рулон бумаги позади поднимающегося листа, стеклянное окно каретки и штампованный логотип Teletype Corporation на нижней лицевой панели.</p>
+
+            <p><img class="shot" src="assets/images/manual/console-teletype.png" alt="Консоль оператора Model 33 ASR"></p>
+
+            <p>Консоль оператора Model 33 ASR на приглашении @.</p>
+
+            <ul>
+              <li><strong>Keyboard.</strong> Круглые тёмные колпачки клавиш с двумя светлыми надписями — основной глиф по центру, имя CTRL-кода или символ сдвига сверху — плюс исторические специальные клавиши: ESC, LINE FEED, RETURN, DELETE, HERE IS (ответчик), REPT (автоповтор) и BREAK (выставляет состояние break у консольного DL11).</li>
+              <li><strong>Upper Case Only.</strong> Экранные клавиши всегда отправляют заглавные буквы. Физическая клавиатура приводит a – z к A – Z только когда включена опция CONFIG Upper Case Only (по умолчанию выключена, поэтому 2.11 BSD получает строчные).</li>
+              <li><strong>Force PDP Output Uppercase.</strong> У настоящего печатающего механизма Model 33 ASR нет строчных литер, поэтому вывод машины печатается заглавными (включено по умолчанию), и загрузчик, который пишет строчными, не может вывести эти буквы на бумагу. Перфорированная лента при этом хранит исходный байт — чтение такой ленты в LOCAL печатает заглавные, а в LINE исходные строчные доходят до машины.</li>
+              <li><strong>Paper printing.</strong> Аутентичная отрисовка оверстрайка nroff/man (<code>^H</code>): повторная печать того же глифа даёт жирный, подчёркивания дают подчёркивание, а удар другого глифа оставляет настоящую тёмную кляксу оверстрайка, какую делает терминал с твёрдой копией.</li>
+              <li><strong>Margins.</strong> Длинные строки честно заклинивают каретку у правого края (72 или 80 колонок); символы печатаются поверх последней колонки вместо переноса. Ширина бумаги следует за выбранной шириной, поэтому полная строка доходит до края бумаги. Бумага привязана к каретке и растёт вверх из верхней части корпуса машины; как только её край доходит до верха окна, появляется полоса прокрутки, и вид следует за только что напечатанной строкой.</li>
+              <li><strong>ASR reader/punch.</strong> Рядом с машиной стоит блок читателя/перфоратора ленты ASR. Каждый байт, эхо-выведенный в консоль, пробивает соответствующую строку отверстий на 8-дорожечной перфоленте (дорожки 1–7 = ASCII, дорожка 8 = чётность). Как и на настоящем ASR-33, перфоратор по умолчанию выключен — включите его на странице CONFIG или собственным органом управления. Обе висящие ленты слегка качаются на каждом такте механизма; когда лента доходит до низа окна, она прокручивается колесом мыши (ни одна лента не рисует полосу прокрутки).</li>
+              <li><strong>Paper-tape reader.</strong> Кнопка <strong>Load tape</strong> под машиной открывает диалог выбора файла и вставляет перфоленту в читатель — сырой <code>.ptap</code> (как сохранённый перфоратором или страницей Storage), сжатый <code>.ptap.zst</code> или обычный <code>.txt</code>, символы которого становятся 7-битными кодами ленты. Вся лента висит из прорези читателя до низа окна, её рваный свободный конец оборван, как у перфорированной ленты — дойдя до низа, она прокручивается колесом мыши (как и перфорированная лента, она не рисует полосу прокрутки). По мере чтения лента заметно движется вверх через прорезь и укорачивается, качаясь на каждом байте; когда прочитан последний байт, лента ушла в машину и можно загрузить новую.</li>
+              <li><strong>Reader switch.</strong> Четырёхпозиционный переключатель на корпусе TAPE READER управляет чтением: <strong>START</strong> — читает непрерывно, отправляя ленту в машину со скоростью консоли (аутентичные ~10 знаков/с или быстрый темп из CONFIG);</li>
+              <li><strong>AUTO</strong> — отправляет один байт и подаёт следующий только когда DL11 машины принял предыдущий (приостанавливается по DC3 / X-OFF, возобновляется по DC1 / X-ON);</li>
+              <li><strong>STOP</strong> — пауза;</li>
+              <li><strong>FREE</strong> — освобождает ленту и показывает кнопку Remove tape from reader (скрытую во всех остальных режимах), чтобы вытащить её.</li>
+            </ul>
+
+            <p>Нажатие на подпись позиции сразу переключает на неё; нажатие на сам круглый диск переключателя поворачивает его на один щелчок по часовой стрелке (<strong>START → STOP → FREE → AUTO</strong>), как поворот настоящего переключателя.</p>
+
+            <ul>
+              <li><strong>CCU knob.</strong> Переключатель LINE / OFF / LOCAL на панели работает так же: нажмите подпись, чтобы перейти, или нажмите на сам диск, чтобы повернуть его на щелчок по часовой стрелке (LINE → OFF → LOCAL). CCU направляет каждый прочитанный байт точно так же, как клавиатура: в LOCAL лента печатается только на бумаге (копия лента-в-бумагу, в машину ничего не уходит); в LINE он отправляется в машину и печатается эхом машины — печать ещё и локально удвоила бы каждый символ на эхо-выводящих гостях).</li>
+              <li><strong>Duplicating tapes.</strong> При включённом перфораторе (ON) каждый прочитанный байт также пробивается на выходную ленту — классический трюк ASR для копирования лент (лента на входе, свежая лента на выходе).</li>
+            </ul>
+
+            <h3 id="vt52-as-the-console">VT52 в качестве консоли</h3>
+
+            <p>Когда консольный терминал установлен в VT52, консоль оператора становится DECscope с его аутентичным белым/серым (P4) люминофором на чёрной трубке — полное поведение см. ниже в разделе «Пользовательские терминалы», оно общее.</p>
+
+            <p><img class="shot" src="assets/images/manual/console-vt52.png" alt="DECscope VT52 в роли консоли оператора"></p>
+
+            <p>DECscope VT52 в роли консоли оператора, показывающий приглашение @.</p>
+
+            <h3 id="vt100-as-the-console">VT100 в качестве консоли</h3>
+
+            <p>Установите консольный терминал в <strong>VT100</strong>, и консоль станет <strong>DEC VT100</strong> — ANSI-терминалом, пришедшим на смену DECscope. Он нарисован в собственном корпусе, со своими пропорциями (арт принадлежит терминалу, а не перелицованному DECscope), и наследует всё, кроме самой трубки: разметку страницы, кнопку зума и зум двойным нажатием, расположение STATE/REBOOT и обработку клавиатуры.</p>
+
+            <p><img class="shot" src="assets/images/manual/console-vt100.png" alt="DEC VT100 в роли консоли оператора"></p>
+
+            <p>DEC VT100 в роли консоли оператора, показывающий приглашение @.</p>
+
+            <p>VT100 — это <strong>надмножество VT52</strong>, ровно как и само железо: последовательности DECscope продолжают работать, а терминал добавляет грамматику ANSI (последовательности CSI, приватные режимы DEC, области прокрутки, наборы символов G0/G1), на которой говорит с момента включения — VT100 это машина только с CRT и у неё нет режима твёрдой копии, в который нужно сначала войти. То, чего на железе никогда не было, отвергается, а не подделывается: прямая адресация <code>ESC Y</code>, включение/выключение графики <code>ESC F</code>/<code>ESC G</code>, режимы клавиатуры VT52 и ответ-идентификация VT52. На вопрос, кто он (<code>CSI c</code>), VT100 отвечает <code>VT100 with AVO</code>, а <code>CSI ? 2 h</code> (DECANM) переводит его в режим совместимости с VT52, как делала настоящая машина.</p>
+
+            <p>Две опции CONFIG принадлежат только этому терминалу: <strong>люминофор трубки</strong> — P4 белый, с которым VT100 выпускался, или P1 зелёный — и <strong>щелчок клавиш</strong> (клавиатура DECscope была механической и щёлкать ей нечем). Переключатель <strong>VT52 reverse video</strong> принадлежит самому DECscope и никогда не затрагивает VT100: там инверсный текст появляется по атрибуту SGR 7, который посылает программа.</p>
+
+
+            <h2 id="user-terminals">Пользовательские терминалы (TTY 1 / TTY 2)</h2>
+
+            <p>До двух пользовательских видеотерминалов (показываются только если настроены на странице CONFIG) позволяют гостевым ОС, предпочитающим видеотерминалы, работать рядом. Каждый — это <strong>DECscope VT52</strong> или <strong>DEC VT100</strong>, выбирается независимо (<code>None | VT52 | VT100</code>), и каждый нарисован в корпусе выбранного терминала: либо наклонный моноблок DECscope (корпус из формованного пластика цвета слоновой кости с вентиляционной решёткой, утопленный экран в глубокой рамке и гладкая боковая панель с выступающим гребнем), либо собственный корпус VT100. Ввод идёт с физической клавиатуры, как на оригинальных машинах.</p>
+
+            <p><img class="shot" src="assets/images/manual/terminal-vt52.png" alt="Пользовательский терминал VT52"></p>
+
+            <p>Пользовательский терминал VT52 (TTY 1) с интерактивной сессией.</p>
+
+            <p><img class="shot" src="assets/images/manual/terminal-vt100.png" alt="Пользовательский терминал VT100"></p>
+
+            <p>Пользовательский терминал VT100 (TTY 2) — та же страница, то же поведение, собственный корпус.</p>
+
+            <ul>
+              <li><strong>Font.</strong> Текст выводится аутентичным растровым шрифтом дисплея fritzm/vt52 (<code>monospace</code> используется как запасной, пока веб-шрифт не загрузился).</li>
+              <li><strong>Clear screen.</strong> Очистка экрана (ESC E) и form feed (<code>^L</code>) стирают дисплей и возвращают курсор в начало, поэтому вывод clear и многостраничного nroff/man начинает каждую страницу с верхней строки.</li>
+              <li><strong>CRT simulation (опционально).</strong> Чисто CSS-эффект добавляет мерцание яркости, дрожание строк развёртки и полосу вертикального срыва.</li>
+              <li><strong>Text mode (опционально).</strong> Выводит терминал как обычное текстовое поле вместо canvas, включая нативное выделение текста и Windows Clipboard (<code>Ctrl+C</code> / <code>Ctrl+V</code> / вставка правой кнопкой) для быстрого ввода исходного кода — ценой отказа от отрисовки выделения SGR.</li>
+            </ul>
+
+
+            <h2 id="printer">Построчный принтер LP11 (страница Printer)</h2>
+
+            <p>LP11 — это анимированный построчный принтер на широкой бумаге на 132 колонки (выбирается 72/80/100/132). У него нет клавиатуры — он только печатает. Кнопка <strong>Print</strong> отправляет накопленные задания на настоящий системный принтер через системный диалог, а <strong>Save.txt</strong> экспортирует вывод (разрывы страниц сохраняются как маркеры <code>\f</code>).</p>
+
+            <p><img class="shot" src="assets/images/manual/printer.png" alt="Построчный принтер LP11"></p>
+
+            <p>Построчный принтер LP11 печатает листинг задания.</p>
+
+            <ul>
+              <li><strong>Speed.</strong> Как и настоящий LP11, он выводит символы куда быстрее, чем консольный телетайп Model 33 ASR (у которого сохраняется аутентичный темп ~33 знака/с), печатая почти как оригинал — около 300 строк в минуту.</li>
+              <li><strong>DONE handshake.</strong> LP11 соблюдает исторический механизм DONE: запись в LPDB сбрасывает DONE и снова выставляет его по мере того, как механизм поглощает очередной символ, — поэтому печать из гостевой ОС притормаживается до скорости принтера.</li>
+              <li><strong>OFF LINE.</strong> Когда принтер OFF LINE (или выключен), контроллер защёлкивает липкий флаг ERROR в LPCS, оставляя DONE выставленным, — поэтому драйвер гостевой ОС сообщает об ошибке (например, <code>?LP0: I/O error</code>), а не отбрасывает задание молча.</li>
+              <li><strong>Form feed.</strong> LP11 соблюдает form feed (FF, 0x0C) — спулер 2.11BSD (<code>lpr</code> / <code>lpd</code>) шлёт FF между заданиями, чтобы каждое начиналось с нового листа: остаток листа заполняется (66 строк при 6 LPI) и закрывается пунктирным маркером сгиба/перфорации.</li>
+              <li><strong>Tabs &amp; paper.</strong> Каретка переходит к следующей 8-колоночной позиции табуляции по TAB, а бумага подгоняется под выбранную ширину печати (по центру корпуса машины). Корпус пропорционально уменьшается, чтобы поместиться в окно, когда оно слишком маленькое, а поднимающаяся фальцованная бумага проходит ту же долю окна после масштабирования.</li>
+            </ul>
+
+
+            <h2 id="vt11">Векторный дисплей VT11 (страница Display)</h2>
+
+            <p>Дополнительный процессор векторной графики DEC VT11 с собственной страницей на CRT с зелёным люминофором (логическое разрешение 1024×768, автоматически масштабируется под окно). Включается на странице CONFIG.</p>
+
+            <p>Lunar Lander использует его — мастер быстрого запуска сам включает дисплей и переключается на страницу Display.</p>
+
+            <p><img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander на векторном дисплее VT11"></p>
+
+            <p>Lunar Lander, нарисованный на векторном CRT VT11.</p>
+
+
+            <h2 id="storage">Хранилище (перфолента, образы дисков и лент)</h2>
+
+            <p>Страница Storage управляет всеми видами носителей. В ней две вкладки — <strong>Images</strong> и <strong>Paper Tapes</strong> — потому что это два совершенно разных рабочих процесса. Образ — это целое устройство, смонтированное в машину и запоминаемое между сессиями; перфолента — поток байтов, который читатель проходит от первого кадра до конца.</p>
+
+            <p><img class="shot" src="assets/images/manual/storage.png" alt="Страница Storage — вкладка Images"></p>
+
+            <p>Страница Storage, вкладка Images: зона перетаскивания, смонтированные образы, экспорт диска и сохраняемые изменения диска.</p>
+
+            <p><strong>Вкладка Images:</strong></p>
+
+            <ul>
+              <li><strong>Drop image.</strong> Бросьте сюда образ диска или ленты — поддерживаются <code>.dsk</code>, <code>.tap</code>, <code>.ptap</code> и их сжатые формы <code>.zst</code>. Пока активна страница Storage, файл можно бросить в любое место окна: появляется цель перетаскивания на всё окно. Файл <code>.zst</code> — это кадр zstd, и браузер распаковывает его на лету, поэтому скачанный образ не нужно распаковывать заранее.</li>
+              <li><strong>Имя файла — это имя устройства.</strong> Образ монтируется под URL устройства, взятым из самого файла: <code>RP1.DSK.ZST</code> становится <code>rp1.dsk</code>, поэтому гость загружает его командой <code>boot rp1</code>. Переименуйте файл в нужное устройство — таблица ниже сопоставляет каждое устройство с его приводом, контроллером и командой загрузки.</li>
+              <li><strong>Mounted images / Unmount.</strong> Перечисляет образы, смонтированные в этом браузере, и позволяет отключить любой из них. Счётчик рядом считает образы, которые смонтировали вы (перетаскиванием или импортом), а не те, что настольная сборка несёт в себе. Смонтированные образы живут в хранилище браузера (IndexedDB) и подключаются заново автоматически при следующем запуске.</li>
+              <li><strong>Export disk.</strong> Скачивает смонтированный образ диска на ваш компьютер.</li>
+              <li><strong>Persistent disk changes.</strong> Записи гостевой ОС сохраняются в хранилище браузера и накладываются поверх базового образа при следующем запуске, поэтому файлы, созданные операционной системой, остаются на месте и завтра. Хранятся только те блоки, которые гость действительно записал — базовый образ качается заново при каждом запуске, — и сохранённый блок всегда имеет приоритет над чистым. Они записываются периодически и при уходе со страницы, и принадлежат одному образу: <strong>Reset image</strong> отбрасывает их для выбранного диска, <strong>Reset all</strong> — для всех дисков, возвращая носители к заводскому состоянию.</li>
+            </ul>
+
+            <p><strong>Какой файл какому устройству соответствует:</strong></p>
+
+            <table>
+              <tr>
+                <th>Образ</th>
+                <th>Привод</th>
+                <th>Контроллер</th>
+                <th>Загрузить командой</th>
+              </tr>
+              <tr>
+                <td><span class="disk">rk0 … rk5</span></td>
+                <td>картридж RK05</td>
+                <td>RK11</td>
+                <td><code>boot rkN</code></td>
+              </tr>
+              <tr>
+                <td><span class="disk">rl0 … rl3</span></td>
+                <td>картридж RL01 / RL02</td>
+                <td>RL11</td>
+                <td><code>boot rlN</code></td>
+              </tr>
+              <tr>
+                <td><span class="disk">rp0 … rp4</span></td>
+                <td>пакет RP04 / RP06</td>
+                <td>RP11</td>
+                <td><code>boot rpN</code></td>
+              </tr>
+              <tr>
+                <td><span class="disk">ra0 … ra2</span></td>
+                <td>RA80 / RA81 (MSCP)</td>
+                <td>UDA50</td>
+                <td><code>boot raN</code></td>
+              </tr>
+              <tr>
+                <td><span class="disk">tm0 … tm2</span></td>
+                <td>магнитная лента 9 дорожек</td>
+                <td>TM11</td>
+                <td><code>boot tmN</code> (RSTS восстанавливается через ROLLIN)</td>
+              </tr>
+              <tr>
+                <td><span class="disk">*.ptap</span></td>
+                <td>читатель/перфоратор перфоленты</td>
+                <td>PTR11</td>
+                <td><code>boot pr</code></td>
+              </tr>
+            </table>
+
+            <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="Страница Storage — вкладка Paper Tapes"></p>
+
+            <p>Страница Storage, вкладка Paper Tapes: выбор файла для читателя, зона перетаскивания <code>.ptap</code> и экспорт перфорированной ленты.</p>
+
+            <p><strong>Вкладка Paper Tapes:</strong></p>
+
+            <ul>
+              <li><strong>Paper tape reader file.</strong> Селектор для читателя (<code>#ptr</code>) со лентами, входящими в эту сборку — BASIC-11 V007A, ODT-11X-V004A, ED-11-V004B, Lunar Lander и загрузчик, — плюс любые <code>.ptap</code>, которые вы бросили. Загрузите одну и запустите командой <code>BOOT PR</code>.</li>
+              <li><strong>Rewind tape и состояние ленты.</strong> Индикатор рядом с кнопкой показывает, загружена ли лента и насколько читатель продвинулся по ней; <strong>Rewind tape</strong> возвращает её к первому кадру — именно это делает гость при перезапуске чтения.</li>
+              <li><strong>Drop paper tape.</strong> Небольшая зона перетаскивания, принимающая <code>.ptap</code> и <code>.ptap.zst</code> — брошенные ленты добавляются в селектор файлов читателя.</li>
+              <li><strong>Export paper tape.</strong> Буфер перфоратора заполняется байтами, которые эхо-выводит консоль, и счётчик показывает, сколько уже на ленте. <strong>Download</strong> сохраняет её как <code>.ptap</code>; <strong>Clear</strong> очищает буфер для следующей ленты.</li>
+            </ul>
+
+            <p><em>Примечание:</em> читатель перфоленты управляется байтами консоли — каждый байт, эхо-выведенный в консоль, пробивает соответствующую строку отверстий на перфоленте ASR.</p>
+
+
+            <h2 id="machine-state">Состояние машины (кнопка STATE)</h2>
+
+            <p>Круглая кнопка <strong>STATE</strong> (левый верхний угол, справа от REBOOT) открывает диалог состояния машины — это полное сохранение и восстановление эмулируемого PDP-11, а не только процессора: регистры, память, каждое устройство ввода-вывода (консоль, терминалы, принтер, диски, лента и перфоратор/читатель перфоленты), бумага в телетайпе и LP11, содержимое экранов видеотерминалов (и VT52, и VT100) и даже картинка на векторном дисплее VT11. По сути это файл сохранения всей машины.</p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-state.png" alt="Диалог состояния машины"></p>
+
+            <p>Диалог состояния машины с одним только что сохранённым состоянием.</p>
+
+            <ul>
+              <li><strong>Save state</strong> — сохраняет машину ровно в том виде, в котором она сейчас, под автоматически созданным именем (дата и время). Аппаратная конфигурация входит в состояние: при восстановлении заново применяются тип консоли, пользовательские терминалы, принтер и дисплей VT11, а машина перезапускается им в соответствие.</li>
+              <li><strong>Load</strong> — восстанавливает выбранное состояние и перезапускает машину; сначала запрашивается подтверждение. Состояния, сохранённые более старыми версиями эмулятора, продолжают работать.</li>
+              <li><strong>Rename / Delete</strong> — упорядочить список или удалить состояния; счётчик рядом со списком показывает, сколько состояний сохранено.</li>
+            </ul>
+
+            <p>Кнопка STATE повторяет логику REBOOT и доступна на страницах <strong>Panel</strong>, <strong>Console</strong> (телетайп, VT52 или VT100) и <strong>TTY</strong>. Состояния хранятся в IndexedDB браузера и переживают перезагрузки и сессии.</p>
+
+
+            <h2 id="config">Конфигурация (страница Config)</h2>
+
+            <p>Страница Config управляет эмулируемыми периферийными устройствами, и её настройки сохраняются между сессиями. Форма разделена на четыре вкладки, действия <strong>Apply</strong> и <strong>Restore defaults</strong> находятся на панели под вкладками:</p>
+
+            <div class="config-item">
+
+            <img class="config-item-img" src="assets/images/manual/config-equipment.png" alt="CONFIG — вкладка Equipment">
+
+            <div class="config-item-text">
+
+            <h3 id="equipment">Оборудование</h3>
+
+            </div>
+            </div>
+
+            <ul>
+              <li><strong>Console terminal</strong> — консоль оператора (tty0): телетайп Model 33 ASR, DECscope VT52 или DEC VT100.</li>
+              <li><strong>User terminals</strong> — два пользовательских терминала (TTY 1 / TTY 2), каждый <code>None | VT52 | VT100</code> и у каждого своя страница в боковой панели; число терминалов выводится из двух селектов, а TT2 можно заполнить только после TT1.</li>
+              <li><strong>Line printer (LP11)</strong> — установить анимированный построчный принтер LP11 на отдельной странице Printer.</li>
+              <li><strong>VT11 graphics display</strong> — установить терминал векторной графики DEC VT11 на отдельной странице Display.</li>
+              <li><strong>Teletype print width</strong> — 72 или 80 колонок для консоли Model 33 ASR (телетайп — машина не более чем на 80 колонок).</li>
+              <li><strong>Printer width</strong> — 72/80/100/132 колонки для страницы принтера LP11.</li>
+              <li><strong>Teletype speed</strong> — authentic (настоящий Model 33 ASR на 110 бод, ~10 знаков/с) или fast — ускоренный темп для разработки.</li>
+              <li><strong>Upper Case Only</strong> — отправлять буквы с физической клавиатуры в верхнем регистре (аутентичный Model 33 ASR); по умолчанию выключено, чтобы проходил нижний регистр (например, имена файлов в 2.11 BSD).</li>
+              <li><strong>Force PDP Output Uppercase</strong> — печатать вывод машины в верхнем регистре (аутентичный Model 33 ASR, который не умеет печатать строчные); по умолчанию включено. Перфолента сохраняет исходный код, а видеотерминал (VT52 или VT100) не затрагивается вовсе — оба печатают оба регистра.</li>
+            </ul>
+
+            <div class="config-item">
+
+            <img class="config-item-img" src="assets/images/manual/config-visual.png" alt="CONFIG — вкладка Look &amp; sound">
+
+            <div class="config-item-text">
+
+            <h3 id="look-sound">Вид и звук</h3>
+
+            </div>
+            </div>
+
+            <ul>
+              <li><strong>VT100 key click</strong> — звуковая отдача нажатия клавиш на терминалах VT100; клавиатура DECscope была механической и щёлкать ей нечем, поэтому поле гаснет, когда VT100 не установлен.</li>
+              <li><strong>VT100 phosphor</strong> — трубка VT100: P4 белый (люминофор, с которым он выпускался) или P1 зелёный. DECscope жёстко привязан к P4 — с другим он никогда не продавался.</li>
+              <li><strong>VT52 reverse video</strong> — исторический режим обратного видео DECscope: чёрный текст на белом. Это собственный переключатель DECscope; VT100 показывает инверсный текст только когда программа просит об этом атрибутом SGR 7.</li>
+              <li><strong>CRT effects</strong> — чисто CSS-имитация CRT: мерцание яркости, дрожание люминофора и полоса вертикального срыва.</li>
+              <li><strong>Machine hum</strong> — фоновый гул блока питания и шум вентилятора, пока машина включена.</li>
+              <li><strong>Photo backdrop</strong> — показывать фотографию машинного зала PDP-11 за страницами.</li>
+            </ul>
+
+            <div class="config-item">
+
+            <img class="config-item-img" src="assets/images/manual/config-behaviour.png" alt="CONFIG — вкладка Behaviour">
+
+            <div class="config-item-text">
+
+            <h3 id="behaviour">Поведение</h3>
+
+            </div>
+            </div>
+
+            <ul>
+              <li><strong>Reboot confirmation</strong> — спрашивать перед перезагрузкой машины; опцию «Don't show this warning anymore» можно вернуть здесь в любой момент.</li>
+              <li><strong>Help Me! sticker</strong> — показывать рукописную памятку оператора о загрузчике на странице Panel.</li>
+              <li><strong>Machine power</strong> — машина включена; выключение обесточивает PDP-11 (POWER LOCK в положении off).</li>
+              <li><strong>Auto-boot</strong> — автоматически запускать загрузку по умолчанию при включении или перезагрузке машины. В диалоге подтверждения перезагрузки есть ярлык к этой опции (её галочка «Start the default bootstrap automatically after reboot»).</li>
+              <li><strong>First-run hint</strong> — повторить приветственный оверлей первого запуска с подсказками по быстрому запуску при следующем входе.</li>
+            </ul>
+
+            <div class="config-item">
+
+            <img class="config-item-img" src="assets/images/manual/config-development.png" alt="CONFIG — вкладка Development">
+
+            <div class="config-item-text">
+
+            <h3 id="development">Разработка</h3>
+
+            </div>
+            </div>
+
+            <ul>
+              <li><strong>Plain text input instead of the canvas CRT</strong> — выводить терминал как текстовое поле вместо canvas CRT, что даёт нативное выделение текста и Windows Clipboard (Ctrl+C / Ctrl+V / вставка правой кнопкой) для быстрого ввода исходного кода; при этом теряются атрибуты SGR (жирный/подчёркивание/инверсия). Действует на страницу, поэтому так выводятся и VT52, и VT100.</li>
+            </ul>
+
+            <p>Уход со страницы Config с неприменёнными изменениями запрашивает подтверждение, так что ничего не теряется молча:</p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Предупреждение о неприменённой конфигурации"></p>
+
+            <p>Эмулятор предупреждает перед уходом со страницы Config с неприменёнными изменениями.</p>
+
+            <p><strong>Структурные изменения</strong> (тип консоли, терминалы, принтер, дисплей VT11) применяются кнопкой <strong>Apply</strong>, которая перезапускает машину, чтобы эмулируемое оборудование совпало с конфигурацией. Ширина печати, скорость телетайпа, флаги Upper Case Only и Force PDP Output Uppercase, щелчок клавиш, обратное видео, эффекты CRT, текстовый режим VT52, гул машины и фотография-фон применяются сразу. <strong>Restore defaults</strong> заполняет форму заводскими значениями (применяются кнопкой <strong>Apply</strong>); четыре «живые» опции BEHAVIOUR — <strong>Reboot confirmation</strong>, <strong>Help Me! sticker</strong>, <strong>Machine power</strong> и <strong>Auto-boot</strong> — сбрасываются к заводским сразу, не дожидаясь Apply (машина при этом выключается, так как заводское состояние — off).</p>
+
+            <p>Гул синтезируется через Web Audio на отдельном звуковом канале, поэтому он никогда не перебивает звуки телетайпа/принтера или щелчок клавиш VT100.</p>
+
+
+            <h2 id="guest-oses">Гостевые операционные системы</h2>
+
+            <p>Эмулятор поставляется с готовыми к загрузке образами дисков и лент. Просто наберите <code>boot</code> на приглашении <code>@</code> — или выберите нужный волшебной палочкой.</p>
+
+            <p>В сборке с урезанным набором образов (например, настольный вариант <strong>Minimal</strong>) строки, чей образ не поставляется, затемнены и помечены <em>image not in this build</em> — таблица показывает ровно то, что здесь можно загрузить.</p>
+
+            <table>
+              <tr>
+                <th>Disk</th>
+                <th>Operating System</th>
+                <th>Boot Command</th>
+                <th>What Happens</th>
+                <th>Credentials</th>
+              </tr>
+              <tr>
+                <td><span class="disk">RK0</span></td>
+                <td>Unix V5</td>
+                <td>boot rk0</td>
+                <td>unix → войти как root</td>
+                <td>root</td>
+              </tr>
+              <tr>
+                <td><span class="disk">RK1</span></td>
+                <td>RT-11 v4.0</td>
+                <td>BOOT RK1</td>
+                <td>загружается сразу в монитор RT-11</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RK2</span></td>
+                <td>RSTS V06C-03</td>
+                <td>BOOT RK2</td>
+                <td>мастер вводит START на приглашение Option:</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RK3</span></td>
+                <td>XXDP (diagnostics)</td>
+                <td>BOOT RK3</td>
+                <td>полевая диагностическая система DEC</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RK4</span></td>
+                <td>RT-11 3B Distribution</td>
+                <td>BOOT RK4</td>
+                <td>дистрибутив базовой версии RT-11</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">TM0</span></td>
+                <td>RSTS 4B-17 (tape)</td>
+                <td>BOOT TM0</td>
+                <td>следуйте процедуре восстановления ROLLIN</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RL0</span></td>
+                <td>BSD 2.9</td>
+                <td>boot rl0</td>
+                <td>rl(0,0)rlunix → CTRL/D → логин root</td>
+                <td>root</td>
+              </tr>
+              <tr>
+                <td><span class="disk">RL1</span></td>
+                <td>RSX-11M v3.2</td>
+                <td>BOOT RL1</td>
+                <td>автостарт; введите дату по запросу</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RL2</span></td>
+                <td>RSTS/E v7.0</td>
+                <td>BOOT RL2</td>
+                <td>мастер вводит START на приглашение Option:</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RL3</span></td>
+                <td>XXDP (extended)</td>
+                <td>BOOT RL3</td>
+                <td>расширенная библиотека тестов XXDP</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RP0</span></td>
+                <td>ULTRIX-11 V3.1</td>
+                <td>boot rp0</td>
+                <td>загружается в однопользовательский режим (multi-user — известный баг эмулятора)</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RP1</span></td>
+                <td>BSD 2.11</td>
+                <td>boot rp1</td>
+                <td>автозагрузка в многопользовательский режим, логин root (без пароля)</td>
+                <td>root (no password)</td>
+              </tr>
+              <tr>
+                <td><span class="disk">RP2</span></td>
+                <td>RSTS/E v9.6</td>
+                <td>BOOT RP2</td>
+                <td>загружается до запроса даты; далее 11,70 / PDP</td>
+                <td>11,70 (PDP)</td>
+              </tr>
+              <tr>
+                <td><span class="disk">RP3</span></td>
+                <td>RSX-11M v4.6</td>
+                <td>BOOT RP3</td>
+                <td>автостарт; введите дату и время по запросу</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td><span class="disk">RP4</span></td>
+                <td>RSTS/E v10.1</td>
+                <td>BOOT RP4</td>
+                <td>загружается до запроса даты; далее 11,70 / PDP</td>
+                <td>11,70 (PDP)</td>
+              </tr>
+            </table>
+
+
+            <h2 id="controls">Кнопки, сочетания клавиш и индикаторы</h2>
+
+            <h3 id="switching-pages">Переключение страниц</h3>
+
+            <p>Боковая панель переключает между страницами:</p>
+
+            <ul>
+              <li><strong>Panel</strong> — пультовая панель с тумблерами и светодиодами.</li>
+              <li><strong>Console</strong> — консоль оператора: телетайп Model 33 ASR либо DECscope VT52 / DEC VT100, когда консольный терминал — видеотерминал.</li>
+              <li><strong>TTY 1 / TTY 2</strong> — пользовательские видеотерминалы (VT52 или VT100), показываются только если настроены.</li>
+              <li><strong>Printer</strong> — страница построчного принтера LP11, показывается только если настроен.</li>
+              <li><strong>Display</strong> — страница векторного CRT VT11, показывается только если настроен.</li>
+              <li><strong>Storage</strong> — носители в двух вкладках: Images (зона перетаскивания, смонтированные образы) и Paper Tapes (читатель, экспорт перфоратора).</li>
+              <li><strong>Config</strong> — настройка эмулируемых периферийных устройств (сохраняется между сессиями).</li>
+              <li><strong>Info</strong> — подробные инструкции, справочник по ОС и блок About (версия, сайт, автор и лицензия; маркер версии внизу боковой панели открывает эту страницу).</li>
+            </ul>
+
+            <h3 id="floating-controls">Плавающие элементы управления</h3>
+
+            <table>
+              <tr>
+                <th>Элемент</th>
+                <th>Где</th>
+                <th>Что делает</th>
+              </tr>
+              <tr>
+                <td class="disk control-cell"><img class="control-btn" src="assets/images/manual/btn-magicwand.png" alt="Кнопка magic wand"><span class="control-name">Волшебная палочка</span></td>
+                <td>Правый верхний угол (все страницы, кроме Info)</td>
+                <td>Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. Быстрый старт.</td>
+              </tr>
+              <tr>
+                <td class="disk control-cell"><img class="control-btn" src="assets/images/manual/btn-reboot.png" alt="Кнопка перезагрузки"><span class="control-name">Перезагрузка</span></td>
+                <td>Левый верхний угол, справа от боковой панели</td>
+                <td>Круглая кнопка со значком рестарта. Перезапускает машину; при включённом Auto-boot загружает и встроенный загрузчик по умолчанию. По умолчанию сначала запрашивается подтверждение, с опцией «Don't show this warning anymore». Без Auto-boot после перезагрузки машина останавливается.</td>
+              </tr>
+              <tr>
+                <td class="disk control-cell"><img class="control-btn" src="assets/images/manual/btn-mute.png" alt="Кнопка Mute"><span class="control-name">Без звука (Mute)</span></td>
+                <td>Левый нижний угол, справа от боковой панели</td>
+                <td>Круглая кнопка, выключающая все звуки разом — гул, телетайп/LP11, подача и отрыв бумаги, щелчки клавиш и звонок. Состояние сохраняется вместе с остальной конфигурацией.</td>
+              </tr>
+              <tr>
+                <td class="disk control-cell"><img class="control-btn" src="assets/images/manual/btn-fullscreen.png" alt="Кнопка Fullscreen"><span class="control-name">Полноэкранный режим</span></td>
+                <td>Правый нижний угол окна</td>
+                <td>Плавающая кнопка, скрывающая интерфейс браузера и системы (адресную строку, рамку окна ОС, панель задач), не трогая интерфейс эмулятора. Нажмите ещё раз или Esc, чтобы вернуться.</td>
+              </tr>
+              <tr>
+                <td class="disk control-cell"><img class="control-btn" src="assets/images/manual/btn-zoom.png" alt="Кнопка зума"><span class="control-name">Масштаб терминала</span></td>
+                <td>Правый нижний угол, слева от кнопки полного экрана</td>
+                <td>Плавающая кнопка, скрывающая корпус терминала и увеличивающая экран до максимального размера 4:3, какой позволяет окно. Состояние запоминается для каждого терминала.</td>
+              </tr>
+            </table>
+
+            <p><img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Диалог подтверждения перезагрузки"></p>
+
+            <p>Кнопка REBOOT по умолчанию запрашивает подтверждение: в диалоге есть ярлык Auto-boot (<strong>Start the default bootstrap automatically after reboot</strong>) и опция «Don't show this warning anymore».</p>
+
+            <h3 id="sidebar-activity-lamps">Индикаторы активности на боковой панели</h3>
+
+            <p>У каждой кнопки вывода в боковой панели есть маленький мигающий зелёный светодиод в правом верхнем углу: он пульсирует, пока PDP-11 пишет вывод в эту консоль/терминал (а на кнопке Printer мигает всё время задания печати), и гаснет примерно через полсекунды после прекращения вывода.</p>
+
+
+            <h2 id="troubleshooting">Устранение неполадок</h2>
+
+            <h3 id="an-image-cannot-be-loaded">Образ не загружается</h3>
+
+            <p>Если образ гостевой ОС не удаётся получить целиком — большой образ BSD, оборванный хостингом на середине загрузки, или образ, которого нет в сборке Minimal, — эмулятор не зависает молча. Диалог в том же общем стиле, что и подсказка первого запуска, объясняет, что образ неполный, и предлагает кнопку <strong>Open Storage</strong>, которая сразу переходит к зоне перетаскивания, чтобы вы вручную бросили туда скачанный файл.</p>
+
+            <p>Формулировка подстраивается под окружение: страница, открытая как локальный <code>file://</code>, объясняет, что браузер блокирует загрузку каталога с медиа (и предлагает локальный веб-сервер), а сборка Tauri Minimal объясняет, что образ не входит в поставку, и указывает на зону перетаскивания.</p>
+
+            <p><img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Диалог ошибки загрузки образа"></p>
+
+            <p>Неполный образ вызывает этот диалог с ярлыком Open Storage.</p>
+
+
+            <h2 id="desktop">Настольное приложение</h2>
+
+            <p>Предпочитаете нативное приложение? Тот же эмулятор упакован как офлайн-приложение для Windows x64 и Linux на Tauri. Доступны два варианта установщика:</p>
+
+            <table>
+              <tr>
+                <th>Вариант</th>
+                <th>Что содержит</th>
+                <th>Примечания</th>
+              </tr>
+              <tr>
+                <td><span class="disk">Minimal</span></td>
+                <td>rk0 (Unix V5), rk1 (RT-11), bootcode и демонстрационные перфоленты (BASIC-11, ODT-11, ED-11, Lunar Lander)</td>
+                <td>Примерно 19 МБ в Windows. Загружаемый файл — это само приложение, вместе с графикой и звуком, а встроенные образы добавляют около 1 МБ. Все остальные образы перетаскиваются в окно во время работы.</td>
+              </tr>
+              <tr>
+                <td><span class="disk">Full</span></td>
+                <td>все образы — диски RK/RL/RP/RA, ленты TM, все перфоленты</td>
+                <td>Примерно 103 МБ в Windows, зато все 16 гостевых ОС загружаются офлайн без единого лишнего шага.</td>
+              </tr>
+            </table>
+
+            <p>Для Linux размер инсталляции для всех конфигураций может быть существенно больше (зависит от формата).</p>
+
+        </div>
+    </div>
+</body>
+
+</html>

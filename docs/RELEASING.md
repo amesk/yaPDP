@@ -29,6 +29,10 @@ bump → document → build → publish. Total time: under an hour.
 - [ ] `npm run e2e:os` passes (boots Unix V5, RT-11, BSD 2.11, BASIC-11)
 - [ ] `npm run manifest` — run it if `media/` changed since the last release
       (the committed manifest feeds the quick-boot picker)
+- [ ] **Manual pages in sync** — if the Markdown under `docs/manual/` changed,
+      `npm run manual:build` rewrites `manual.html` and
+      `landing/src/data/manualData.ts` together; `npm run manual:check` (inside
+      `npm test`) fails when a committed output drifts from the source
 - [ ] **Screenshots in sync** — if any UI or document (user manual, README,
       landing) visually changed since the last release, regenerate and commit:
       `npm run screenshots:manual` writes every shot to **both** the repo
