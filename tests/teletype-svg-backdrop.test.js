@@ -53,7 +53,7 @@ const NATIVE = {
   ctrlW: 106,                // REL/OFF/BSP/ON cluster (2x2 grid) width
   switchW: 40,               // vertical four-detent reader lever block (40x115)
   apronW: 118, apronH: 66,   // CCU apron block
-  sheetW: 741                // paper sheet inside the 808px printer block
+  sheetW: 540                // default 72-column sheet inside the 808px printer block
 };
 
 const EPS = 1e-4;
@@ -372,7 +372,7 @@ function run() {
     assert.ok(/var\(--tty-u-num\)/.test(sheetK),
       "--tty-sheet-k must derive from the unitless --tty-u-num:\n" + sheetK);
     close(parseFloat(vars["--tty-sheet-native"]), NATIVE.sheetW,
-      "the --tty-sheet-native fallback must be the CSS base sheet width (741)");
+      "the --tty-sheet-native fallback must be the CSS default sheet width (540)");
     // The marker really is the numerator: the old hard-coded 741-based factor
     // (paper.w / 741) is NOT what the page must use any more — it left the sheet
     // visibly narrower than the platen.

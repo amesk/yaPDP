@@ -107,6 +107,23 @@ function run() {
       "the growth rule must come AFTER the base 400px rule to win the cascade");
   }
 
+  // --- Startup stability (#77): the CSS default sheet MUST equal the real
+  //     72-column layout. If they drift, --tty-sheet-k changes when the artwork
+  //     lands and the printer block jumps (measured 0.0106 CLS on the throttled
+  //     startup gate, which failed the strict 0.01 budget). 540 = 72*7 + 2*18,
+  //     centred in the 808px body as 67 + (675 - 540)/2 = 135. -----------------
+  {
+    const base = extractRule(css, "#g60printer div#paper {");
+    assert.ok(/width\s*:\s*540px\s*;/.test(base),
+      "the default #g60printer sheet width must be the 72-column sheet (540px):\n" + base);
+    assert.ok(/left\s*:\s*135px\s*;/.test(base),
+      "the default #g60printer sheet must be centred (left:135px):\n" + base);
+    const native = /--tty-sheet-native\s*:\s*540\s*;/.exec(css);
+    assert.ok(native,
+      "--tty-sheet-native must default to the same 540px sheet: a mismatch " +
+      "moves the printer block when the real width lands (#77)");
+  }
+
   console.log("teletype-paper-css: all tests passed");
 }
 

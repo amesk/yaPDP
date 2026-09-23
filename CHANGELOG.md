@@ -211,9 +211,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its small padding, and the teletype's side margin cells are out of the table
   layout, so the sheet stays whole at any zoom. The carriage is unmoved: its
   offset is keyed to the print origin instead of the sheet's edge. The LP11
-  fanfold and its perforated margins are untouched. (`src/g60printer.js`,
-  `src/pdp11-app.js`, `css/g60printer.css`; the geometry is pinned by
-  `tests/paper-geometry.test.js`)
+  fanfold and its perforated margins are untouched. The narrower sheet also
+  keeps the startup still: the CSS default sheet and `--tty-sheet-native` now
+  match the real 72-column layout, so the printer block no longer jumps when
+  the artwork lands (`src/g60printer.js`, `src/pdp11-app.js`,
+  `css/g60printer.css`; the geometry is pinned by `tests/paper-geometry.test.js`,
+  the startup stability by `tests/teletype-paper-css.test.js` and
+  `tests/e2e-startup-cls.js`).
 
 ### Added
 
