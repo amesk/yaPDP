@@ -248,6 +248,19 @@ function run() {
     }
   }
 
+  // --- 5c. review comments never reach the page ----------------------------
+  // The Russian source marks machine-translated blocks with an HTML comment.
+  // Such a comment must be consumed by the generator, not printed: an escaped
+  // one (&lt;!-- … --&gt;) is VISIBLE TEXT, so the reader sees the review note
+  // itself. Check both the raw and the escaped form.
+  assert.ok(html.indexOf("translated: needs review") === -1,
+    "a review marker reached manual.html as text: the reader would see it");
+  assert.ok(html.indexOf("&lt;!--") === -1,
+    "an escaped HTML comment reached manual.html: comments must be stripped, " +
+    "not printed");
+  assert.ok(ts.indexOf("translated: needs review") === -1,
+    "a review marker reached manualData.ts");
+
   // --- 6. no stray generator markers left in the output --------------------
   // {.class} and ::: are source syntax; visible in the page they are bugs.
   for (const marker of [/\{\.[a-z-]/g, /^::: /m]) {

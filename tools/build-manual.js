@@ -56,6 +56,10 @@ const OUT_TS = path.join(ROOT, "landing", "src", "data", "manualData.ts");
 // having a single readable source).
 function inline(text) {
   return String(text)
+    // Comments go FIRST, before the escaping below turns their angle brackets
+    // into visible text (&lt;!-- … --&gt;). A review marker that reaches the
+    // page is worse than useless: the reader sees the note itself.
+    .replace(/<!--[\s\S]*?-->/g, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -109,6 +113,9 @@ function parseBlocks(md) {
     const line = raw.replace(/\s+$/, "");
 
     if (!line.trim()) { flushAll(); continue; }
+
+    // A line that is only a comment (a review marker) carries no content.
+    if (/^<!--[\s\S]*-->$/.test(line.trim())) continue;
 
     const h = /^(#{2,6})\s+(.*)$/.exec(line);
     if (h) {
