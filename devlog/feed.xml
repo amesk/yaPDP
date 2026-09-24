@@ -4,7 +4,14 @@
   <link href="https://amesk.github.io/yaPDP/devlog/feed.xml" rel="self"/>
   <link href="https://amesk.github.io/yaPDP/devlog/"/>
   <id>https://amesk.github.io/yaPDP/devlog/</id>
-  <updated>2026-09-23T00:00:00Z</updated>
+  <updated>2026-09-24T00:00:00Z</updated>
+  <entry>
+    <title>Building my own PDP-11/70 anyway</title>
+    <link href="https://amesk.github.io/yaPDP/devlog/2026-09-24-own-pdp11-anyway.html"/>
+    <id>https://amesk.github.io/yaPDP/devlog/2026-09-24-own-pdp11-anyway.html</id>
+    <updated>2026-09-24T00:00:00Z</updated>
+    <summary>SIMH exists, it is excellent, and I did not use it. This is the second half of the story: the engineering compromises, the debugging, the architectural debts — and why the machine room was worth building twice.</summary>
+  </entry>
   <entry>
     <title>Bringing back the machine room: rebuilding a PDP-11/70 I first met in 1984</title>
     <link href="https://amesk.github.io/yaPDP/devlog/2026-09-23-bringing-back-the-machine-room.html"/>

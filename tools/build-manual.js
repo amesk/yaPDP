@@ -513,6 +513,11 @@ function fillChrome(template, page) {
     LANG: c.lang, TITLE: c.title, DESCRIPTION: c.description, KEYWORDS: c.keywords,
     HERO_TITLE: c.heroTitle, HERO_TAGLINE: c.heroTagline, HERO_NOTE: c.heroNote,
     NAV_BUTTONS: nav,
+    // The template carries one placeholder for a contents list and the manual
+    // builds its own list of sections further down (buildHtml), so the token is
+    // blank here rather than unknown. It must be declared: an undeclared token
+    // is a hard error, which is how a renamed placeholder gets caught.
+    TOC: "",
   };
   const filled = template.replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
     Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : m);
