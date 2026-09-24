@@ -177,6 +177,56 @@
             margin: 2px 0 14px 0;
         }
 
+        /* A row of frames that belong together: the historical photograph and
+           the emulator's own rendering of the same machine, shown in sequence.
+           Equal column widths and top alignment — NOT object-fit: a cut-out
+           machine and a machine inside its cabinet are crops of different
+           scope, and cropping them to a shared ratio would silently cut the
+           cabinet away. Frames keep their own proportions and are seen whole.
+           Each frame carries its own caption, so a reader can tell the
+           photograph from the rendering without counting places. */
+        .landing-page .pair,
+        .landing-page .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-start;
+            justify-content: center;
+            margin: 16px 0 4px 0;
+        }
+
+        .landing-page .pair > figure,
+        .landing-page .row > figure {
+            /* A pair splits the column in two; a longer chain wraps on its own,
+               so four frames become two rows of two rather than four unreadable
+               slivers. */
+            flex: 1 1 180px;
+            max-width: 46%;
+            margin: 0;
+        }
+
+        .landing-page .pair > figure .shot,
+        .landing-page .row > figure .shot {
+            /* Override the centred standalone rule: inside a group a frame fills
+               its own column. */
+            width: 100%;
+            margin: 0;
+        }
+
+        .landing-page .pair > figure .shot-caption,
+        .landing-page .row > figure .shot-caption {
+            text-align: center;
+            margin: 4px 0 0 0;
+        }
+
+        @media (max-width: 700px) {
+            .landing-page .pair > figure,
+            .landing-page .row > figure {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+        }
+
         /* Floating-button thumbnails inside the controls table. */
         .landing-page .control-cell {
             display: flex;

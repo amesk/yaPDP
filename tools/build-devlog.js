@@ -139,6 +139,67 @@ function inline(text) {
     .replace(/(^|[\s(])\*([^*\n]+)\*/g, (m, pre, i) => pre + "<em>" + i + "</em>");
 }
 
+// A group of images shown side by side: the historical photograph next to the
+// emulator's own rendering of the same machine. The point of a group is not
+// that two pictures resemble each other — it is that the emulator was drawn
+// FROM the photograph, so the outline is the same outline. The frames therefore
+// keep their own proportions: a cut-out machine and a machine in its cabinet
+// are crops of different scope, and forcing them to one ratio would silently
+// crop the cabinet away.
+//
+// Source syntax (MUST be flush-left, one image per line):
+//
+//   :::pair
+//   ![photo](assets/images/devlog/pairs/vt52-original.jpg){.shot}
+//   ![emulator](assets/images/manual/console-vt52.png){.shot}
+//   :::captions
+//   The photograph, 1975
+//   The same machine, in yaPDP
+//   :::
+//
+// The colon count of every marker must line up (here three), so a group can
+// never be closed by a marker that belongs to a different level. The captions
+// block is optional; without it the group is just a row of images.
+function parseGroup(lines, start) {
+  const open = /^(:{2,})\s*(pair|row)\s*$/.exec(lines[start]);
+  const fence = open[1];
+  const kind = open[2];
+  const images = [];
+  let captions = null;
+  let hi = start + 1;
+  for (; hi < lines.length; hi++) {
+    const line = lines[hi].trim();
+    if (line === fence) break;                       // --- end of the group
+    if (/^[:]{2,}\s*captions\s*$/.test(line)) {
+      captions = [];
+      for (hi++; hi < lines.length; hi++) {
+        const cap = lines[hi].trim();
+        if (cap === fence || cap === ":::") break;
+        if (cap) captions.push(cap);
+      }
+      break;
+    }
+    const img = /^!\[([^\]]*)\]\(([^)]+)\)(\{\.[a-z-. ]+\})?$/.exec(line);
+    if (img) {
+      images.push({ alt: img[1], src: img[2],
+        cls: img[3] ? img[3].slice(2, -1) : "shot" });
+      continue;
+    }
+    throw new Error("group line " + (hi + 1) + ": expected an image, got " +
+      JSON.stringify(lines[hi]));
+  }
+  if (hi >= lines.length) throw new Error("unterminated " + fence + kind + " group");
+  if (images.length < 2) {
+    throw new Error("a " + kind + " needs at least two images, got " + images.length);
+  }
+  if (captions && captions.length !== images.length) {
+    throw new Error("" + kind + " has " + images.length + " image(s) but " +
+      captions.length + " caption(s) — they must match one for one");
+  }
+  return { block: { type: "group", kind: kind, images: images, captions: captions },
+    next: hi + 1 };
+}
+
 function parseBlocks(md) {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
@@ -154,11 +215,20 @@ function parseBlocks(md) {
   };
   const flushAll = () => { flushPara(); flushList(); };
 
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.replace(/\s+$/, "");
 
     if (!line.trim()) { flushAll(); continue; }
     if (/^<!--[\s\S]*-->$/.test(line.trim())) continue;
+
+    if (/^(:{2,})\s*(pair|row)\s*$/.test(line.trim())) {
+      flushAll();
+      const g = parseGroup(lines, i);
+      blocks.push(g.block);
+      i = g.next - 1;
+      continue;
+    }
 
     if (/^```/.test(line.trim())) {
       if (fence === null) { flushAll(); fence = []; }
@@ -234,6 +304,26 @@ function blocksToHtml(blocks) {
         out.push('  <p><img class="' + (b.cls || "shot") + '" src="' + b.src +
           '" alt="' + inline(b.alt) + '"></p>');
         break;
+      case "group": {
+        // One row of frames that belong together. Each frame keeps its own
+        // proportions (see parseGroup), and each may carry its own caption
+        // directly under it, which is how a reader tells the photograph from
+        // the rendering without counting places in a shared caption.
+        out.push('  <div class="' + b.kind + '">');
+        for (let i = 0; i < b.images.length; i++) {
+          const im = b.images[i];
+          out.push('    <figure>');
+          out.push('      <img class="' + im.cls + '" src="' + im.src +
+            '" alt="' + inline(im.alt) + '">');
+          if (b.captions) {
+            out.push('      <figcaption class="shot-caption">' +
+              inline(b.captions[i]) + '</figcaption>');
+          }
+          out.push('    </figure>');
+        }
+        out.push('  </div>');
+        break;
+      }
       case "ul":
       case "ol":
         out.push("  <" + b.type + ">");

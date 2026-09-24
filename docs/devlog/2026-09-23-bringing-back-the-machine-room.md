@@ -61,13 +61,37 @@ I am a C enthusiast, and I wanted to work the way Kernighan and Ritchie did — 
 
 A sensible person would reach for **xterm.js**, and I probably will when I need a **VT100**. But for now I want the feeling of hardware, not a pixel-perfect terminal.
 
+:::row
+![The photograph the VT52 was traced from](assets/images/devlog/pairs/vt52-original.jpg){.shot}
+![The terminal cut out from its background](assets/images/devlog/pairs/vt52-no-background.png){.shot}
+![The vector tracing, rendered](assets/images/devlog/pairs/vt52-maximized.png){.shot}
 ![VT52 as implemented in yaPDP](assets/images/manual/console-vt52.png){.shot}
+:::captions
+A photograph of the real VT52 — the frame everything below was traced from
+The same frame with the room cut away, leaving the terminal alone
+The tracing in SVG, rendered back to a bitmap
+yaPDP's own VT52, drawn from scratch rather than delegated to xterm.js
+:::
 
-yaPDP's own VT52, drawn from scratch rather than delegated to xterm.js: a DECscope cabinet, a 4:3 tube, and the character-cell attributes the real hardware had.{.shot-caption}
+This is why the terminal in yaPDP is not a lookalike. It was not modelled after a VT52 in the rough sense of the word — it was traced from that photograph, so the cabinet, the 4:3 tube and the character-cell attributes the real hardware had are the same lines, carried over by hand.{.shot-caption}
 
 ## The punch, honest down to the last hole
 
 Once there is a teletype, you want it as faithful as it can be. That is where the paper-tape punch came from — it works much the way the original did, and the tapes it exports load perfectly into a PDP-11 tape reader, simulated or (if any are still alive) real.
+
+The teletype itself went the same way as the VT52: it began as a photograph, then a cut-out, then a tracing, and only then became hardware you can type at.
+
+:::row
+![The photograph the Model 33 was traced from](assets/images/devlog/pairs/teletype-real.jpg){.shot}
+![The Model 33 cut out from its background](assets/images/devlog/pairs/teletype-no-background.png){.shot}
+![The tracing, inked and styled](assets/images/devlog/pairs/teletype-stylized-prepared.png){.shot}
+![The Model 33 ASR in yaPDP](assets/images/manual/console-teletype.png){.shot}
+:::captions
+The photograph of the real Model 33 ASR
+The same machine with its background cut away
+Traced, inked and styled for the screen
+The Model 33 ASR in yaPDP — the same machine, carrying the same lines
+:::
 
 Getting there took fixing it first: the original emulator's punch was minimal — just enough to start a bootloader. RT-11 could not see it, let alone work with it. And once tapes could be read, I naturally wanted to punch them too. That had to be written from scratch.
 

@@ -177,6 +177,56 @@
             margin: 2px 0 14px 0;
         }
 
+        /* A row of frames that belong together: the historical photograph and
+           the emulator's own rendering of the same machine, shown in sequence.
+           Equal column widths and top alignment — NOT object-fit: a cut-out
+           machine and a machine inside its cabinet are crops of different
+           scope, and cropping them to a shared ratio would silently cut the
+           cabinet away. Frames keep their own proportions and are seen whole.
+           Each frame carries its own caption, so a reader can tell the
+           photograph from the rendering without counting places. */
+        .landing-page .pair,
+        .landing-page .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-start;
+            justify-content: center;
+            margin: 16px 0 4px 0;
+        }
+
+        .landing-page .pair > figure,
+        .landing-page .row > figure {
+            /* A pair splits the column in two; a longer chain wraps on its own,
+               so four frames become two rows of two rather than four unreadable
+               slivers. */
+            flex: 1 1 180px;
+            max-width: 46%;
+            margin: 0;
+        }
+
+        .landing-page .pair > figure .shot,
+        .landing-page .row > figure .shot {
+            /* Override the centred standalone rule: inside a group a frame fills
+               its own column. */
+            width: 100%;
+            margin: 0;
+        }
+
+        .landing-page .pair > figure .shot-caption,
+        .landing-page .row > figure .shot-caption {
+            text-align: center;
+            margin: 4px 0 0 0;
+        }
+
+        @media (max-width: 700px) {
+            .landing-page .pair > figure,
+            .landing-page .row > figure {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+        }
+
         /* Floating-button thumbnails inside the controls table. */
         .landing-page .control-cell {
             display: flex;
@@ -314,13 +364,51 @@
 
   <p>A sensible person would reach for <strong>xterm.js</strong>, and I probably will when I need a <strong>VT100</strong>. But for now I want the feeling of hardware, not a pixel-perfect terminal.</p>
 
-  <p><img class="shot" src="../assets/images/manual/console-vt52.png" alt="VT52 as implemented in yaPDP"></p>
+  <div class="row">
+    <figure>
+      <img class="shot" src="../assets/images/devlog/pairs/vt52-original.jpg" alt="The photograph the VT52 was traced from">
+      <figcaption class="shot-caption">A photograph of the real VT52 — the frame everything below was traced from</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/images/devlog/pairs/vt52-no-background.png" alt="The terminal cut out from its background">
+      <figcaption class="shot-caption">The same frame with the room cut away, leaving the terminal alone</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/images/devlog/pairs/vt52-maximized.png" alt="The vector tracing, rendered">
+      <figcaption class="shot-caption">The tracing in SVG, rendered back to a bitmap</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/images/manual/console-vt52.png" alt="VT52 as implemented in yaPDP">
+      <figcaption class="shot-caption">yaPDP's own VT52, drawn from scratch rather than delegated to xterm.js</figcaption>
+    </figure>
+  </div>
 
-  <p class="shot-caption">yaPDP's own VT52, drawn from scratch rather than delegated to xterm.js: a DECscope cabinet, a 4:3 tube, and the character-cell attributes the real hardware had.</p>
+  <p class="shot-caption">This is why the terminal in yaPDP is not a lookalike. It was not modelled after a VT52 in the rough sense of the word — it was traced from that photograph, so the cabinet, the 4:3 tube and the character-cell attributes the real hardware had are the same lines, carried over by hand.</p>
 
   <h2 id="the-punch-honest-down-to-the-last-hole">The punch, honest down to the last hole</h2>
 
   <p>Once there is a teletype, you want it as faithful as it can be. That is where the paper-tape punch came from — it works much the way the original did, and the tapes it exports load perfectly into a PDP-11 tape reader, simulated or (if any are still alive) real.</p>
+
+  <p>The teletype itself went the same way as the VT52: it began as a photograph, then a cut-out, then a tracing, and only then became hardware you can type at.</p>
+
+  <div class="row">
+    <figure>
+      <img class="shot" src="../assets/images/devlog/pairs/teletype-real.jpg" alt="The photograph the Model 33 was traced from">
+      <figcaption class="shot-caption">The photograph of the real Model 33 ASR</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/images/devlog/pairs/teletype-no-background.png" alt="The Model 33 cut out from its background">
+      <figcaption class="shot-caption">The same machine with its background cut away</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/images/devlog/pairs/teletype-stylized-prepared.png" alt="The tracing, inked and styled">
+      <figcaption class="shot-caption">Traced, inked and styled for the screen</figcaption>
+    </figure>
+    <figure>
+      <img class="shot" src="../assets/images/manual/console-teletype.png" alt="The Model 33 ASR in yaPDP">
+      <figcaption class="shot-caption">The Model 33 ASR in yaPDP — the same machine, carrying the same lines</figcaption>
+    </figure>
+  </div>
 
   <p>Getting there took fixing it first: the original emulator's punch was minimal — just enough to start a bootloader. RT-11 could not see it, let alone work with it. And once tapes could be read, I naturally wanted to punch them too. That had to be written from scratch.</p>
 
