@@ -358,8 +358,14 @@ function chromeFor(post) {
     HERO_TAGLINE: post.summary || "",
     HERO_NOTE: "",
     BTN_LAUNCH: "Launch the emulator!",
+    // A post is a static page: it works without JavaScript, and a reader who
+    // arrives from a search engine or Hacker News gets the text, not a blank
+    // screen. Its "All posts" therefore leads to the landing page's devlog
+    // section, which is where a reader inside the site expects to land — the
+    // standalone devlog/index.html stays as the no-JavaScript list (the footer
+    // link below), not as the primary destination.
     BTN_HOME: "All posts",
-    HOME_HREF: "index.html",
+    HOME_HREF: "../#devlog",
     ALT_HREF: "../manual.html",
     ALT_LABEL: "User manual",
     TOC: "",
@@ -381,7 +387,12 @@ function renderPost(post) {
   // buttons for a post ("All posts", then the manual). Overriding them after
   // the fact rendered "All posts" twice — the button map belongs in one place.
   const chrome = chromeFor(post);
-  const meta = '            <p class="shot-caption">' + post.date + "</p>";
+  // The date line, plus the no-JavaScript way to the list. The button above
+  // leads to the landing page's devlog section, which needs the SPA bundle; a
+  // reader who has scripts off (or is a robot) still needs a plain list, and
+  // that is the standalone index this link points at.
+  const meta = '            <p class="shot-caption">' + post.date +
+    ' — <a href="index.html">all posts as a plain list</a></p>';
   let html = renderPage(post, "\n" + blocksToHtml(post.blocks) + "\n" + meta + "\n", chrome);
   // The post lives in devlog/, so every root-relative link needs one level up —
   // otherwise the hero buttons point at devlog/pdp11.html, which does not exist.
