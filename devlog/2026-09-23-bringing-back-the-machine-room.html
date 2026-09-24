@@ -51,11 +51,21 @@
            truly fills the window on a phone; --app-h is published by
            src/mobile-keys.js and wins where it exists. */
         .app-layout {
+            /* display: flex is NOT decoration here: .landing-page below carries
+               flex: 1, which means "grow to fill the parent". That only works if
+               the parent is a flex container. Dropping this line left the slab
+               as tall as its own content, so on the devlog index — whose content
+               is shorter than the window — the column stopped right after the
+               first post instead of running to the bottom of the screen. The
+               base rule in css/pdp11.css:1564 sets both properties together for
+               the same reason; keep them together. */
+            display: flex;
             height: var(--app-h, 100vh);
         }
 
         @supports (height: 100dvh) {
             .app-layout {
+                display: flex;
                 height: var(--app-h, 100dvh);
             }
         }
