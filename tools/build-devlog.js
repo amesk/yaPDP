@@ -402,7 +402,15 @@ function renderPost(post) {
     // The favicon is named without a directory in the shared template, so a
     // post at devlog/<slug>.html asks for devlog/favicon.ico, which does not
     // exist. It has to climb one level like the stylesheet and the assets.
-    .replace(/href="favicon\.ico"/g, 'href="../favicon.ico"');
+    .replace(/href="favicon\.ico"/g, 'href="../favicon.ico"')
+    // The page-local CSS names the machine-room backdrop with a relative url(),
+    // and that is neither href nor src: a post asked for
+    // devlog/assets/images/pdp11-machine-room.jpg and lost the backdrop
+    // entirely. Every relative url() in the template climbs with the rest.
+    .replace(/url\("assets\//g, 'url("../assets/');
+    // ...but the pair/row figures and the viewer use url-free rules, so nothing
+    // else here needs the same treatment. If the template gains a url() that is
+    // not under assets/, this replace will not cover it — add it here. 
   return html;
 }
 
@@ -443,7 +451,9 @@ function renderIndex(posts) {
   html = html.replace(/href="(manual\.html|manual_ru\.html|pdp11\.html)"/g,
     'href="../$1"')
     // the favicon is named without a directory, so it needs the same climb
-    .replace('href="favicon.ico"', 'href="../favicon.ico"');
+    .replace('href="favicon.ico"', 'href="../favicon.ico"')
+    // ...and so does the machine-room backdrop named inside the page CSS
+    .replace('url("assets/', 'url("../assets/');
   return html;
 }
 
