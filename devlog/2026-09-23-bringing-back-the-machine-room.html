@@ -10,6 +10,15 @@
 
 <head>
     <meta charset="UTF-8">
+    <!-- Without this the phone treats the page as a desktop document: it lays it
+         out in a virtual 980px viewport and zooms the whole thing down to fit.
+         The reading column then keeps its full 800px width inside those 980px
+         and leaves a strip of the machine-room photograph down each side — the
+         strips that were noticed on a phone. The landing page carries this line
+         (landing/index.html), which is why it reads correctly at 393 CSS pixels
+         and these pages did not. Same width=device-width, so one layout serves
+         both. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bringing back the machine room: rebuilding a PDP-11/70 I first met in 1984 — yaPDP devlog</title>
     <meta name="description" content="I grew up with Soviet PDP-11 clones. Thirty years later I built a PDP-11/70 emulator in the browser to get that machine room feeling back — and this is what it cost.">
     <meta name="keywords" content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,devlog,retrocomputing,SM-4,SM-1420">
