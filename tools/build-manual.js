@@ -453,6 +453,9 @@ const CHROME = {
     btnLaunch: "Launch Online!",
     btnHome: "Back to the Home Page",
     homeHref: "index.html",
+    // The manual sits at the site root, so the post list is one hop down.
+    btnPosts: "All posts",
+    postsHref: "devlog/index.html",
     altHref: "manual_ru.html",
     altLabel: "Русская версия",
     toc: "Table of Contents",
@@ -470,6 +473,8 @@ const CHROME = {
     btnLaunch: "Запустить онлайн!",
     btnHome: "На главную страницу",
     homeHref: "index.html",
+    btnPosts: "Все посты",
+    postsHref: "devlog/index.html",
     altHref: "manual.html",
     altLabel: "English version",
     toc: "Оглавление",
@@ -489,11 +494,25 @@ const PAGES = [
 function fillChrome(template, page) {
   const c = CHROME[page.lang];
   if (!c) throw new Error("no chrome strings for language: " + page.lang);
+  // The button row is built here, from a list of destinations, exactly as the
+  // devlog does it (see navButtons in tools/build-devlog.js). The manual used
+  // to fill three anchor slots in the template instead, which is why it drifted
+  // from the devlog: same page, same chrome, two mechanisms. The language
+  // switch stays a button in this row — it is a destination like the rest.
+  const nav = [
+    ["btn-primary", "pdp11.html", c.btnLaunch],
+    ["btn-secondary", c.postsHref, c.btnPosts],
+    ["btn-secondary", c.homeHref, c.btnHome],
+    ["btn-secondary", c.altHref, c.altLabel],
+  ]
+    .filter(([, href, label]) => href && label)
+    .map(([cls, href, label]) =>
+      '                    <a class="' + cls + '" href="' + href + '">' + label + "</a>")
+    .join("\n");
   const vars = {
     LANG: c.lang, TITLE: c.title, DESCRIPTION: c.description, KEYWORDS: c.keywords,
     HERO_TITLE: c.heroTitle, HERO_TAGLINE: c.heroTagline, HERO_NOTE: c.heroNote,
-    BTN_LAUNCH: c.btnLaunch, BTN_HOME: c.btnHome, HOME_HREF: c.homeHref,
-    ALT_HREF: c.altHref, ALT_LABEL: c.altLabel,
+    NAV_BUTTONS: nav,
   };
   const filled = template.replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
     Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : m);
