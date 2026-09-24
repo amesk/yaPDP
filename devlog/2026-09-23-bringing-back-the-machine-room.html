@@ -261,29 +261,36 @@
             margin: 4px 0 0 0;
         }
 
-        @media (max-width: 700px) {
-            .landing-page .pair > figure,
-            .landing-page .row > figure {
-                flex: 1 1 100%;
-                max-width: 100%;
-            }
+        /* The outline of the reading column belongs to a screen wider than the
+           column itself. The landing page (landing/src/App.tsx) keeps
+           max-w-[800px] on a w-full flex child, so below 800 the width is
+           never reached and its gold edge lines fall off-screen. These pages
+           set max-width: 800px with margin: 0 auto instead, so once the window
+           is at or under 800 the slab still stops short and BOTH lines are
+           drawn — the column looked squeezed into a frame beside a landing
+           page that had none. The breakpoint is therefore 800, the width where
+           the margin between slab and window edge (and with it the outline)
+           appears at all; 700 would leave the 700-800 band untouched, which is
+           the band that was noticed.
 
-            /* On a phone the slab and the landing page must show the same
-               thing. The landing page (landing/src/App.tsx) keeps max-w-[800px]
-               on a w-full flex child, so below 800 the width is never reached
-               and its gold edge lines fall off-screen. These pages set
-               max-width: 800px with margin: 0 auto, so at a 700-860px window
-               the slab stops 30px short and BOTH lines are drawn — the reading
-               column looked squeezed into a frame while the landing page had
-               none. Dropping the outline here removes the frame rather than
-               moving it, which is the landing page's own answer to a narrow
-               screen. box-shadow goes too: it is the glow around those edges,
-               and without the edges it reads as a smear. */
+           Dropping the outline removes the frame rather than moving it, which
+           is the landing page's own answer to a narrow screen. box-shadow goes
+           too: it is the glow around those edges, and without the edges it
+           reads as a smear. */
+        @media (max-width: 800px) {
             .landing-page {
                 max-width: 100%;
                 border-left: 0;
                 border-right: 0;
                 box-shadow: none;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .landing-page .pair > figure,
+            .landing-page .row > figure {
+                flex: 1 1 100%;
+                max-width: 100%;
             }
         }
 
