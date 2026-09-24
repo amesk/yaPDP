@@ -19,7 +19,7 @@ So I built my own emulator — yaPDP (Yet Another PDP-11). And I built it so tha
 ![The front panel of a real PDP-11/70](assets/images/devlog/pairs/pdp11-70-front.jpg){.shot}
 ![The yaPDP front panel, with all its switches and lamps](assets/images/manual/panel.png){.shot}
 :::captions
-The operator's panel of a real PDP-11/70 — the switches an operator actually threw
+The operator's panel of a real PDP-11/70 — the switches an operator actually threw. Photograph: [pdp-11.nl](https://www.pdp-11.nl/pdp11-70/pdp11-70-front.jpg)
 The same panel in yaPDP, reproduced switch by switch
 :::
 
@@ -37,8 +37,8 @@ The USSR had its own "Small Computer System" — the SM EVM family. The early SM
 ![An SM-4 in a machine room](assets/images/devlog/sm4/smevm_10.jpg){.shot}
 ![An SM-1420](assets/images/devlog/sm4/sm1420-1.jpg){.shot}
 :::captions
-An SM-4 — the rack-sized machine Soviet industry built as a PDP-11/40 equivalent
-An SM-1420, the later and more powerful member of the same family
+An SM-4 — the rack-sized machine Soviet industry built as a PDP-11/40 equivalent. Photograph: [computer-museum.ru](https://www.computer-museum.ru/images/histussr/smevm_10.jpg)
+An SM-1420, the later and more powerful member of the same family. Photograph: [oldpc.su](http://oldpc.su/pc/sm/sm1420/sm1420-1.jpg)
 :::
 
 These two are what the phrase "a machine room" means to me. Not a desktop, not a terminal on a desk — a room with its own air conditioning, and cabinets you walk along.
