@@ -360,12 +360,13 @@ function chromeFor(post) {
     BTN_LAUNCH: "Launch the emulator!",
     // A post is a static page: it works without JavaScript, and a reader who
     // arrives from a search engine or Hacker News gets the text, not a blank
-    // screen. Its "All posts" therefore leads to the landing page's devlog
-    // section, which is where a reader inside the site expects to land — the
-    // standalone devlog/index.html stays as the no-JavaScript list (the footer
-    // link below), not as the primary destination.
-    BTN_HOME: "All posts",
-    HOME_HREF: "../#devlog",
+    // screen. "Back to the Home Page" therefore climbs to the site root — the
+    // landing page — and names exactly what it does. The devlog section is one
+    // click further in; the standalone devlog/index.html stays as the
+    // no-JavaScript list (the caption link below), not as the primary
+    // destination.
+    BTN_HOME: "Back to the Home Page",
+    HOME_HREF: "../",
     ALT_HREF: "../manual.html",
     ALT_LABEL: "User manual",
     TOC: "",
@@ -453,15 +454,15 @@ function renderIndex(posts) {
       "the teletype, the paper tape, and the Soviet SM-4 I am really after.",
     HERO_NOTE: "Newest first. There is also a feed: <a href=\"feed.xml\">feed.xml</a>.",
     BTN_LAUNCH: "Launch the emulator!",
-    // Two buttons on the index, and no third. The template renders a primary
-    // launch button, a home button and an alternate link; on this page the
-    // launch button already carries the emulator, so making the alternate link
-    // carry it too printed "Launch the emulator!" twice. ALT_* is therefore
-    // blanked here — the template drops a token it is given an empty string for.
-    BTN_HOME: "User manual",
-    HOME_HREF: "../manual.html",
-    ALT_HREF: "",
-    ALT_LABEL: "",
+    // Three buttons, and the alternate link carries the manual rather than a
+    // second copy of the emulator: the primary launch button already owns the
+    // emulator here, and an ALT_* equal to it printed "Launch the emulator!"
+    // twice. The home button climbs to the site root — the landing page — and
+    // the manual moves into the alternate slot to make room for it.
+    BTN_HOME: "Back to the Home Page",
+    HOME_HREF: "../",
+    ALT_HREF: "../manual.html",
+    ALT_LABEL: "User manual",
     TOC: "",
     DATE: posts.length ? posts[0].date : "",
   };
