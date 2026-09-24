@@ -374,7 +374,17 @@ function chromeFor(post) {
 }
 
 function renderPage(page, body, chrome) {
-  let head = fs.readFileSync(TEMPLATE_HEAD, "utf8")
+  let head = fs.readFileSync(TEMPLATE_HEAD, "utf8");
+  // An empty ALT_HREF means this page does not want the alternate link at all —
+  // the devlog index carries the emulator as its primary button, so a second
+  // copy of it was a duplicate. The element is removed while it still holds its
+  // tokens: blanking the tokens first (which is what the code below does) left
+  // an empty <a href=""></a> behind, because by then there was no token left to
+  // match on.
+  if (!chrome.ALT_HREF) {
+    head = head.replace(/\s*<a class="btn-secondary" href="\{\{ALT_HREF\}\}">\{\{ALT_LABEL\}\}<\/a>/, "");
+  }
+  head = head
     .replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
       Object.prototype.hasOwnProperty.call(chrome, key) ? chrome[key] : "")
     .replace(/\s+$/, "");
@@ -443,14 +453,15 @@ function renderIndex(posts) {
       "the teletype, the paper tape, and the Soviet SM-4 I am really after.",
     HERO_NOTE: "Newest first. There is also a feed: <a href=\"feed.xml\">feed.xml</a>.",
     BTN_LAUNCH: "Launch the emulator!",
-    // On the index itself "All posts" would be a link to this very page, so the
-    // manual takes that slot and the second button (the template's duplicate)
-    // carries the emulator. The second button used to repeat "User manual" with
-    // a wrong href: only the path had been rewritten, not the label.
+    // Two buttons on the index, and no third. The template renders a primary
+    // launch button, a home button and an alternate link; on this page the
+    // launch button already carries the emulator, so making the alternate link
+    // carry it too printed "Launch the emulator!" twice. ALT_* is therefore
+    // blanked here — the template drops a token it is given an empty string for.
     BTN_HOME: "User manual",
     HOME_HREF: "../manual.html",
-    ALT_HREF: "../pdp11.html",
-    ALT_LABEL: "Launch the emulator!",
+    ALT_HREF: "",
+    ALT_LABEL: "",
     TOC: "",
     DATE: posts.length ? posts[0].date : "",
   };
