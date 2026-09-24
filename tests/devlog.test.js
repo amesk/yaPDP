@@ -143,6 +143,12 @@ function run() {
     // must NOT grow, or background-size: cover stretches the photograph
     [/height:\s*var\(--app-h,\s*100(?:d)?vh\)/,
       "the slab height from the shared base (.app-layout { height: var(--app-h, ...) })"],
+    // display: flex on .app-layout is not decoration: .landing-page carries
+    // flex: 1, which only grows inside a flex parent. Without it the slab is as
+    // tall as its content, so the devlog index — shorter than the window — ended
+    // right after the first post instead of running to the bottom.
+    [/\.app-layout\s*\{[^}]*display:\s*flex/,
+      "display: flex on .app-layout (without it the slab does not fill the window)"],
     // the gold edge lines and the drop shadow around the reading column
     [/border-left:\s*1px solid #3a3528/, "the left gold edge line"],
     [/border-right:\s*1px solid #3a3528/, "the right gold edge line"],
