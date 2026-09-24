@@ -74,6 +74,19 @@
            over the machine-room photo, block layout, readable column width). */
         .landing-page {
             flex: 1;
+            /* width: 100% and min-width: 0 are the other half of that flex: 1,
+               and the landing page carries both (landing/src/App.tsx uses
+               "flex-1 w-full min-w-0" on the same slab). Without them the column
+               kept max-width: 800px and margin: 0 auto but never grew: a
+               block-level child in a row-direction flex container is sized by
+               its content unless told otherwise, so on a phone the slab stayed
+               narrower than the window and the machine-room photograph showed
+               as a strip down each side. flex: 1 grows the item along the main
+               axis, not the cross axis, so it never widened the slab here.
+               min-width: 0 keeps the column from being pushed wider than the
+               window by a long unbreakable line. */
+            width: 100%;
+            min-width: 0;
             overflow-y: auto;
             overflow-x: hidden;
             box-sizing: border-box;
@@ -261,31 +274,12 @@
             margin: 4px 0 0 0;
         }
 
-        /* The outline of the reading column belongs to a screen wider than the
-           column itself. The landing page (landing/src/App.tsx) keeps
-           max-w-[800px] on a w-full flex child, so below 800 the width is
-           never reached and its gold edge lines fall off-screen. These pages
-           set max-width: 800px with margin: 0 auto instead, so once the window
-           is at or under 800 the slab still stops short and BOTH lines are
-           drawn — the column looked squeezed into a frame beside a landing
-           page that had none. The breakpoint is therefore 800, the width where
-           the margin between slab and window edge (and with it the outline)
-           appears at all; 700 would leave the 700-800 band untouched, which is
-           the band that was noticed.
-
-           Dropping the outline removes the frame rather than moving it, which
-           is the landing page's own answer to a narrow screen. box-shadow goes
-           too: it is the glow around those edges, and without the edges it
-           reads as a smear. */
-        @media (max-width: 800px) {
-            .landing-page {
-                max-width: 100%;
-                border-left: 0;
-                border-right: 0;
-                box-shadow: none;
-            }
-        }
-
+        /* No breakpoint for the outline any more. A 800px media query was tried
+           here to hide the gold edge lines on a narrow screen, but the lines
+           were a symptom: the slab was not reaching the window edge because it
+           lacked width: 100% (see above). With the width fixed the slab meets
+           the edge below 800px and the outline falls off it on its own, exactly
+           as the landing page's does — no rule required. */
         @media (max-width: 700px) {
             .landing-page .pair > figure,
             .landing-page .row > figure {
