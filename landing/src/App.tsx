@@ -81,7 +81,7 @@ export default function App() {
       {/* Centered Landing Page Slab - faithfully mirroring .landing-page from yaPDP over the machine-room photo backdrop */}
       <div
         className={`flex-1 w-full min-w-0 ${
-          view === 'emulator' ? 'max-w-[1200px]' : 'max-w-[960px]'
+          view === 'emulator' ? 'max-w-[1200px]' : 'max-w-[800px]'
         } mx-auto flex flex-col bg-[#1c1915]/85 border-x border-[#3a3528]/80 shadow-[0_0_60px_rgba(0,0,0,0.85)] transition-all`}
       >
         {/* Top sticky navigation bar inside the slab */}
