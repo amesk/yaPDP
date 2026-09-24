@@ -114,6 +114,64 @@ function run() {
       "devlog/" + p.slug + ".html: the post date is not on the page");
   }
 
+  // --- 3b. a page must carry what the landing page carries ------------------
+  //
+  // The manual and the devlog are generated from tools/manual-template-head.html
+  // while the landing page is a React bundle styled with Tailwind. One look
+  // therefore lives in two unrelated places, and everything present in one copy
+  // and missing from the other breaks silently. Five defects of that shape were
+  // found by a human in a single day: a missing backdrop (a relative url() that
+  // does not climb for a page under devlog/), a stretched backdrop (the slab
+  // scrolled the document instead of itself), a white band under the index, and
+  // the gold edge lines and drop shadow that only the landing page carried.
+  //
+  // Each check below pins one of those to the generated output, so the next
+  // occurrence fails here rather than in review. The landing page itself is
+  // never read: it is a moving target (Tailwind classes, a bundle) and holding
+  // generated HTML against a bundle would be brittle. What is pinned is the
+  // effect, named in the message so a failure says what is missing.
+  const landing = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const pages = posts.map((p) => ["devlog/" + p.slug + ".html",
+    fs.readFileSync(path.join(OUT, p.slug + ".html"), "utf8")]);
+  pages.push(["devlog/index.html", fs.readFileSync(path.join(OUT, "index.html"), "utf8")]);
+
+  const shared = [
+    // the machine-room backdrop, reachable from one level down
+    [/\.\.\/assets\/images\/pdp11-machine-room\.jpg/,
+      "the machine-room backdrop (url(\"../assets/images/pdp11-machine-room.jpg\"))"],
+    // the slab scrolls itself, as on the landing page and the emulator: body
+    // must NOT grow, or background-size: cover stretches the photograph
+    [/height:\s*var\(--app-h,\s*100(?:d)?vh\)/,
+      "the slab height from the shared base (.app-layout { height: var(--app-h, ...) })"],
+    // the gold edge lines and the drop shadow around the reading column
+    [/border-left:\s*1px solid #3a3528/, "the left gold edge line"],
+    [/border-right:\s*1px solid #3a3528/, "the right gold edge line"],
+    [/box-shadow:\s*0 0 60px rgba\(0, 0, 0, 0\.85\)/, "the slab drop shadow"],
+    // the reading column is the typographic width, not the old 960
+    [/max-width:\s*800px/, "the 800px reading column"],
+  ];
+
+  for (const [label, html] of pages) {
+    for (const [re, what] of shared) {
+      assert.ok(re.test(html),
+        label + ": missing " + what + " — the landing page has it, so the " +
+        "generated pages must too (see tests/devlog.test.js, check 3b)");
+    }
+    // and the opposite direction: nothing may scroll the document here, because
+    // that is what stretched the backdrop
+    assert.ok(!/body\s*\{[^}]*overflow:\s*auto/.test(html),
+      label + ": body is set to overflow: auto — the document must not scroll, " +
+      "the slab does (see css/pdp11.css .app-layout)");
+    assert.ok(!/min-height:\s*100vh/.test(html),
+      label + ": min-height: 100vh found — that grew body and stretched the " +
+      "backdrop (see the reverted fix in the git log)");
+  }
+
+  // the backdrop file itself must exist — the reference above is worthless if
+  // the photograph was renamed
+  assert.ok(fs.existsSync(path.join(ROOT, "assets", "images", "pdp11-machine-room.jpg")),
+    "assets/images/pdp11-machine-room.jpg is missing: every page names it as the backdrop");
+
   // --- 4. the committed output matches the source ---------------------------
   // This is the check that makes the suite useful in CI: a post edited in
   // Markdown but never regenerated fails here, with the command to run.
