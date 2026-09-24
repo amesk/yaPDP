@@ -360,31 +360,55 @@ function chromeFor(post) {
     BTN_LAUNCH: "Launch the emulator!",
     // A post is a static page: it works without JavaScript, and a reader who
     // arrives from a search engine or Hacker News gets the text, not a blank
-    // screen. "Back to the Home Page" therefore climbs to the site root — the
-    // landing page — and names exactly what it does. The devlog section is one
-    // click further in; the standalone devlog/index.html stays as the
-    // no-JavaScript list (the caption link below), not as the primary
-    // destination.
+    // screen. Every destination on the site is a button of the same kind, in
+    // the same order; the only link a page omits is the one that leads to
+    // itself, and on a post none do.
+    BTN_POSTS: "All posts",
+    POSTS_HREF: "index.html",
     BTN_HOME: "Back to the Home Page",
     HOME_HREF: "../",
     ALT_HREF: "../manual.html",
     ALT_LABEL: "User manual",
+    EXTRA_HREF: "",
+    EXTRA_LABEL: "",
     TOC: "",
     DATE: post.date,
   };
 }
 
+// The hero's button row, assembled from a list rather than patched out of the
+// template by regex.
+//
+// The row used to be three anchors in the template, one per destination, and a
+// page with no use for a slot filled its href with "" and removed the anchor
+// afterwards. Removing anchors by pattern meant writing "\{\{ALT_HREF\}\}"
+// inside a RegExp, where doubled braces are quantifiers rather than literal
+// braces: the patterns matched more than the anchor they were aimed at and left
+// dead <a href=""> buttons behind. A list of destinations has no such failure
+// mode — an entry that is absent is simply not rendered.
+//
+// The order is fixed across the site (launch, posts, home, alternate) so a
+// reader moving between pages finds every destination in the same place.
+function navButtons(chrome) {
+  return [
+    ["btn-primary", "pdp11.html", chrome.BTN_LAUNCH],
+    ["btn-secondary", chrome.POSTS_HREF, chrome.BTN_POSTS],
+    ["btn-secondary", chrome.HOME_HREF, chrome.BTN_HOME],
+    ["btn-secondary", chrome.ALT_HREF, chrome.ALT_LABEL],
+    ["btn-secondary", chrome.EXTRA_HREF, chrome.EXTRA_LABEL],
+  ]
+    // A destination with no href or no label is not a button. Dropping it is
+    // what keeps the index from linking to itself and the manual from carrying
+    // an empty alternate slot.
+    .filter(([, href, label]) => href && label)
+    .map(([cls, href, label]) =>
+      '                    <a class="' + cls + '" href="' + href + '">' + label + "</a>")
+    .join("\n");
+}
+
 function renderPage(page, body, chrome) {
   let head = fs.readFileSync(TEMPLATE_HEAD, "utf8");
-  // An empty ALT_HREF means this page does not want the alternate link at all —
-  // the devlog index carries the emulator as its primary button, so a second
-  // copy of it was a duplicate. The element is removed while it still holds its
-  // tokens: blanking the tokens first (which is what the code below does) left
-  // an empty <a href=""></a> behind, because by then there was no token left to
-  // match on.
-  if (!chrome.ALT_HREF) {
-    head = head.replace(/\s*<a class="btn-secondary" href="\{\{ALT_HREF\}\}">\{\{ALT_LABEL\}\}<\/a>/, "");
-  }
+  chrome = Object.assign({}, chrome, { NAV_BUTTONS: navButtons(chrome) });
   head = head
     .replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
       Object.prototype.hasOwnProperty.call(chrome, key) ? chrome[key] : "")
@@ -398,12 +422,11 @@ function renderPost(post) {
   // buttons for a post ("All posts", then the manual). Overriding them after
   // the fact rendered "All posts" twice — the button map belongs in one place.
   const chrome = chromeFor(post);
-  // The date line, plus the no-JavaScript way to the list. The button above
-  // leads to the landing page's devlog section, which needs the SPA bundle; a
-  // reader who has scripts off (or is a robot) still needs a plain list, and
-  // that is the standalone index this link points at.
-  const meta = '            <p class="shot-caption">' + post.date +
-    ' — <a href="index.html">all posts as a plain list</a></p>';
+  // The date line carries the date, nothing else. It used to carry a second
+  // text link to the post list; that destination is now the "All posts" button
+  // in the row above, and keeping both printed it twice — the same duplication
+  // that once printed "Launch the emulator!" twice.
+  const meta = '            <p class="shot-caption">' + post.date + '</p>';
   let html = renderPage(post, "\n" + blocksToHtml(post.blocks) + "\n" + meta + "\n", chrome);
   // The post lives in devlog/, so every root-relative link needs one level up —
   // otherwise the hero buttons point at devlog/pdp11.html, which does not exist.
@@ -454,15 +477,16 @@ function renderIndex(posts) {
       "the teletype, the paper tape, and the Soviet SM-4 I am really after.",
     HERO_NOTE: "Newest first. There is also a feed: <a href=\"feed.xml\">feed.xml</a>.",
     BTN_LAUNCH: "Launch the emulator!",
-    // Three buttons, and the alternate link carries the manual rather than a
-    // second copy of the emulator: the primary launch button already owns the
-    // emulator here, and an ALT_* equal to it printed "Launch the emulator!"
-    // twice. The home button climbs to the site root — the landing page — and
-    // the manual moves into the alternate slot to make room for it.
+    // The same destinations as a post, in the same order. "All posts" is absent
+    // because this page IS the list — navButtons drops an entry with no href.
+    BTN_POSTS: "",
+    POSTS_HREF: "",
     BTN_HOME: "Back to the Home Page",
     HOME_HREF: "../",
     ALT_HREF: "../manual.html",
     ALT_LABEL: "User manual",
+    EXTRA_HREF: "",
+    EXTRA_LABEL: "",
     TOC: "",
     DATE: posts.length ? posts[0].date : "",
   };
