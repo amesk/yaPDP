@@ -38,6 +38,42 @@
             background-repeat: no-repeat;
         }
 
+        /* These pages are taller than the window, and the backdrop was painted
+           on a body that cannot grow with them.
+
+           pdp11.css is written for the emulator: body has overflow: hidden and
+           .app-layout is exactly one viewport tall (height: 100vh), because the
+           machine panel scrolls inside itself and the page must not move. A
+           manual page or a devlog index inherits that layout but is a normal
+           long document: its content is taller than the window, so the backdrop
+           stopped at the fold and a white band showed underneath.
+
+           The fix is to let these two pages be document-flow pages, which is
+           what they are. The emulator keeps the fixed-height layout because this
+           rule lives in the manual template and never reaches it. */
+        body {
+            overflow: auto;
+            min-height: 100%;
+        }
+
+        .app-layout {
+            display: block;
+            height: auto;
+            min-height: 100vh;
+        }
+
+        @supports (height: 100dvh) {
+            .app-layout {
+                min-height: 100dvh;
+            }
+        }
+
+        /* The slab no longer needs its own scrollbar: the document scrolls, and
+           the backdrop now covers the whole of it. */
+        .landing-page {
+            overflow: visible;
+        }
+
         /* Content slab — mirrors the emulator's Info page (dark translucent card
            over the machine-room photo, block layout, readable column width). */
         .landing-page {
