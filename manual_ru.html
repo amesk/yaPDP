@@ -160,7 +160,13 @@
             height: auto;
             border: 1px solid #4a453a;
             border-radius: 4px;
-            margin: 14px 0 2px 0;
+            /* Centred like the caption below it: a portrait photograph (the
+               DVK-2, the VTA-2000) is narrower than the column, and with the
+               image flush left and its caption centred the block read as two
+               misaligned halves. The manual is regenerated from this template,
+               so one edit covers both the manual and every devlog post. */
+            display: block;
+            margin: 14px auto 2px auto;
         }
 
         .landing-page .shot-caption {
