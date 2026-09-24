@@ -82,10 +82,11 @@ function run() {
     for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
       const url = m[1];
       if (/^(https?:|mailto:|#|\.\.\/)/.test(url)) continue;
-      // The page chrome names the favicon at the site root; browsers resolve
-      // that themselves and it is not part of the post's content. Everything
-      // else must climb one level: a post lives in devlog/.
-      if (url === "favicon.ico") continue;
+      // Everything must climb one level: a post lives in devlog/. The favicon
+      // used to be excused here, which quietly allowed the real defect it was
+      // meant to catch — a post asking for devlog/favicon.ico, which does not
+      // exist. It is rewritten by the generator like the stylesheet and the
+      // assets, so no exception is needed.
       assert.fail("devlog/" + p.slug + ".html: root-relative link in a page that " +
         "lives one level down: " + url + " (should start with ../)");
     }

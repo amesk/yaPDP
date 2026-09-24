@@ -402,7 +402,11 @@ function renderPost(post) {
     'href="../$1"');
   // inside the post body, the stylesheet and asset paths are root-relative too
   html = html.replace(/href="css\//g, 'href="../css/')
-    .replace(/src="assets\//g, 'src="../assets/');
+    .replace(/src="assets\//g, 'src="../assets/')
+    // The favicon is named without a directory in the shared template, so a
+    // post at devlog/<slug>.html asks for devlog/favicon.ico, which does not
+    // exist. It has to climb one level like the stylesheet and the assets.
+    .replace(/href="favicon\.ico"/g, 'href="../favicon.ico"');
   return html;
 }
 
@@ -435,7 +439,9 @@ function renderIndex(posts) {
   // the index lives in devlog/, so the manual and feed links need one level up
   html = html.replace('href="manual.html"', 'href="../manual.html"')
     .replace('href="index.html"', 'href="../index.html"')
-    .replace('href="pdp11.html"', 'href="../pdp11.html"');
+    .replace('href="pdp11.html"', 'href="../pdp11.html"')
+    // the favicon is named without a directory, so it needs the same climb
+    .replace('href="favicon.ico"', 'href="../favicon.ico"');
   return html;
 }
 
