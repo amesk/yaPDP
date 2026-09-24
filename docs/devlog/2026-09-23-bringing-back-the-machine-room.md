@@ -53,9 +53,9 @@ These were the machines that ran RAFOS (a clone of RT-11) and OS RV (a clone of 
 
 ![The DVK-2, a Soviet PDP-11-compatible machine](assets/images/devlog/sm4/dvk2.png){.shot}
 
-A DVK-2 — a Soviet PDP-11-compatible machine that usually worked as a terminal to an SM EVM. This is the hardware my generation learned C on.{.shot-caption}
+A DVK-2 — a Soviet PDP-11-compatible machine that usually worked as a terminal to an SM EVM. This is the hardware my generation learned C on. Photograph: [habrastorage.org](https://habrastorage.org/r/w1560/getpro/habr/upload_files/904/383/add/904383add5ecbf6fe44f44542d1c2e55.JPG){.shot-caption}
 
-![The VTA-2000 alphanumeric terminal](assets/images/devlog/sm4/vta2000.png){.shot}
+![The VTA-2000 alphanumeric terminal](assets/images/devlog/sm4/vta2000-real.png){.shot}
 
 The VTA-2000 alphanumeric terminal. A green-phosphor character display that replaced the teletype in Soviet machine rooms, and the screen I sat in front of as a teenager.{.shot-caption}
 
@@ -74,6 +74,10 @@ So the goal was to bring back the atmosphere of the machine room itself. Deliber
 ## A teletype, not an xterm
 
 I am a C enthusiast, and I wanted to work the way Kernighan and Ritchie did — that book is even part of the emulator's photographic backdrop. Hence the choice of terminals: a teletype, and my own hand-written VT52.
+
+![The book itself: the first edition of Kernighan and Ritchie](assets/images/devlog/sm4/kr-book.png){.shot}
+
+*The C Programming Language* — the book everything in this project started from, and the one lying on the desk in the emulator's machine room.{.shot-caption}
 
 A sensible person would reach for **xterm.js**, and I probably will when I need a **VT100**. But for now I want the feeling of hardware, not a pixel-perfect terminal.
 
