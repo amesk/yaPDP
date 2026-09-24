@@ -233,6 +233,12 @@ function run() {
   }
 
   // --- 6. the feed lists every post, newest first ---------------------------
+  //
+  // The order is the generator's (newest first, slug as the tie-break), not the
+  // order the files come back from the filesystem. docs/devlog/ holds
+  // `<date>-<slug>.md`, so readdir already sorts ascending by date — comparing
+  // readdir order against a reversed copy of itself passed for the wrong reason
+  // and failed the moment the two disagreed.
   const feedPath = path.join(OUT, "feed.xml");
   assert.ok(fs.existsSync(feedPath), "devlog/feed.xml is missing");
   const feed = fs.readFileSync(feedPath, "utf8");
@@ -240,10 +246,22 @@ function run() {
     assert.ok(feed.indexOf(p.slug + ".html") !== -1,
       "the feed does not list the post: " + p.slug);
   }
-  const dates = posts.map((p) => p.meta.date);
-  const sorted = dates.slice().sort().reverse();
-  assert.deepStrictEqual(dates, sorted,
-    "posts are not ordered newest-first: " + JSON.stringify(dates));
+  // The feed lists newest first, so its order is the check: the first post
+  // named in the feed must be the newest one.
+  const feedOrder = [...feed.matchAll(/([^/"<>]+\.html)/g)]
+    .map((m) => m[1].replace(/\.html$/, ""))
+    .filter((s, i, a) => a.indexOf(s) === i);
+  assert.ok(feedOrder.length === posts.length,
+    "the feed names " + feedOrder.length + " post(s), expected " + posts.length);
+  const bySlug = {};
+  for (const p of posts) bySlug[p.slug] = p.meta.date;
+  const feedDates = feedOrder.map((s) => bySlug[s]);
+  const dates = posts.map((p) => p.meta.date).slice()
+    .sort((a, b) => (a === b ? 0 : (a < b ? 1 : -1)));
+  assert.deepStrictEqual(feedDates, dates,
+    "the feed is not ordered newest-first: " + JSON.stringify(feedDates) +
+    " — the feed itself is what a reader subscribes to, so its order is checked" +
+    " rather than the directory listing");
 
   // the index links every post too
   const index = fs.readFileSync(path.join(OUT, "index.html"), "utf8");

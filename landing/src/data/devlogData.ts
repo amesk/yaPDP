@@ -11,6 +11,12 @@ export interface DevlogPost {
 
 export const DEVLOG_POSTS: DevlogPost[] = [
   {
+    slug: '2026-09-24-own-pdp11-anyway',
+    date: '2026-09-24',
+    title: 'Building my own PDP-11/70 anyway',
+    summary: 'SIMH exists, it is excellent, and I did not use it. This is the second half of the story: the engineering compromises, the debugging, the architectural debts — and why the machine room was worth building twice.',
+  },
+  {
     slug: '2026-09-23-bringing-back-the-machine-room',
     date: '2026-09-23',
     title: 'Bringing back the machine room: rebuilding a PDP-11/70 I first met in 1984',

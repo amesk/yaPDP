@@ -200,6 +200,35 @@ function parseGroup(lines, start) {
     next: hi + 1 };
 }
 
+// A collapsible block:
+//
+//   :::spoiler What I was after, in one frame
+//   ![The landing](assets/images/.../vt11-lunar-lander.png){.shot}
+//   Some prose that explains it.
+//   :::
+//
+// The title is the first thing on the opening marker. The body is parsed as
+// blocks of its own, so a spoiler can hold images, paragraphs, lists and code —
+// the manual's and the devlog's syntax stays one thing throughout. Native
+// <details> rather than a script: these pages are static and must render with
+// JavaScript off, which is the same reason there is a devlog at all.
+function parseSpoiler(lines, start) {
+  const open = /^(:{2,})\s*spoiler\s+(.+)$/.exec(lines[start].trim());
+  const fence = open[1];
+  const title = open[2].trim();
+  let hi = start + 1;
+  for (; hi < lines.length; hi++) {
+    if (lines[hi].trim() === fence) break;
+  }
+  if (hi >= lines.length) {
+    throw new Error("unterminated " + fence + "spoiler block (opened at line " +
+      (start + 1) + ")");
+  }
+  const inner = lines.slice(start + 1, hi).join("\n");
+  return { block: { type: "spoiler", title: title, blocks: parseBlocks(inner) },
+    next: hi + 1 };
+}
+
 function parseBlocks(md) {
   const lines = md.replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
@@ -222,6 +251,14 @@ function parseBlocks(md) {
     if (!line.trim()) { flushAll(); continue; }
     if (/^<!--[\s\S]*-->$/.test(line.trim())) continue;
 
+    if (/^(:{2,})\s*spoiler\s+\S/.test(line.trim())) {
+      flushAll();
+      const s = parseSpoiler(lines, i);
+      blocks.push(s.block);
+      i = s.next - 1;
+      continue;
+    }
+
     if (/^(:{2,})\s*(pair|row)\s*$/.test(line.trim())) {
       flushAll();
       const g = parseGroup(lines, i);
@@ -241,6 +278,14 @@ function parseBlocks(md) {
     if (h) {
       flushAll();
       blocks.push({ type: "h", level: h[1].length, text: h[2].trim() });
+      continue;
+    }
+
+    const link = /^\[!\[([^\]]*)\]\(([^)]+)\)(\{\.[a-z-. ]+\})?\]\(([^)]+)\)$/.exec(line.trim());
+    if (link) {
+      flushAll();
+      blocks.push({ type: "imglink", alt: link[1], src: link[2],
+        cls: link[3] ? link[3].slice(2, -1) : "shot", href: link[4] });
       continue;
     }
 
@@ -304,6 +349,14 @@ function blocksToHtml(blocks) {
         out.push('  <p><img class="' + (b.cls || "shot") + '" src="' + b.src +
           '" alt="' + inline(b.alt) + '"></p>');
         break;
+      case "imglink":
+        // A picture that is also a link — used for the video preview, which
+        // must not embed a player: an <iframe> would pull scripts and trackers
+        // from youtube.com into a page that otherwise renders from one origin
+        // with JavaScript off. Clicking through leaves this page clean.
+        out.push('  <p><a href="' + b.href + '"><img class="' + (b.cls || "shot") +
+          '" src="' + b.src + '" alt="' + inline(b.alt) + '"></a></p>');
+        break;
       case "group": {
         // One row of frames that belong together. Each frame keeps its own
         // proportions (see parseGroup), and each may carry its own caption
@@ -322,6 +375,13 @@ function blocksToHtml(blocks) {
           out.push('    </figure>');
         }
         out.push('  </div>');
+        break;
+      }
+      case "spoiler": {
+        out.push('  <details class="spoiler">');
+        out.push("    <summary>" + inline(b.title) + "</summary>");
+        out.push(blocksToHtml(b.blocks).replace(/^ {2}/gm, "    "));
+        out.push("  </details>");
         break;
       }
       case "ul":
@@ -406,9 +466,34 @@ function navButtons(chrome) {
     .join("\n");
 }
 
-function renderPage(page, body, chrome) {
+// The table of contents, built from the post's own `##` headings.
+//
+// The manual numbers its sections by hand and its template fits them, but a post
+// is an article that grows: writing the list by hand means it goes stale the
+// first time a heading is renamed. The headings are already in the block list, so
+// the list is derived from them — the ids it links to are the same ones
+// blocksToHtml writes on the <h2> elements, from the same slug().
+function navContents(blocks) {
+  const items = blocks
+    .filter((b) => b.type === "h" && b.level === 2)
+    .map((b) => '                <li><a href="#' + slug(b.text) + '">' +
+      inline(b.text) + "</a></li>");
+  // A short post has no need of a contents list: three headings a reader can see
+  // at once are not worth a list above them.
+  if (items.length < 4) return "";
+  return '            <h2>On this page</h2>\n\n            <ol>\n' + items.join("\n") +
+    "\n            </ol>\n\n            <hr>";
+}
+
+function renderPage(page, body, chrome, tocContents) {
   let head = fs.readFileSync(TEMPLATE_HEAD, "utf8");
-  chrome = Object.assign({}, chrome, { NAV_BUTTONS: navButtons(chrome) });
+  chrome = Object.assign({}, chrome, {
+    NAV_BUTTONS: navButtons(chrome),
+    // The contents list is not in the shared template: it belongs to a long
+    // article, and the manual builds its own. A caller that has one passes it;
+    // a page without any (the index) leaves the token blank.
+    TOC: tocContents || "",
+  });
   head = head
     .replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
       Object.prototype.hasOwnProperty.call(chrome, key) ? chrome[key] : "")
@@ -427,7 +512,9 @@ function renderPost(post) {
   // in the row above, and keeping both printed it twice — the same duplication
   // that once printed "Launch the emulator!" twice.
   const meta = '            <p class="shot-caption">' + post.date + '</p>';
-  let html = renderPage(post, "\n" + blocksToHtml(post.blocks) + "\n" + meta + "\n", chrome);
+  const toc = navContents(post.blocks);
+  let html = renderPage(post, "\n" + blocksToHtml(post.blocks) + "\n" + meta + "\n",
+    chrome, toc);
   // The post lives in devlog/, so every root-relative link needs one level up —
   // otherwise the hero buttons point at devlog/pdp11.html, which does not exist.
   //
