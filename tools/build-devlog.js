@@ -359,8 +359,9 @@ function chromeFor(post) {
     HERO_NOTE: "",
     BTN_LAUNCH: "Launch the emulator!",
     BTN_HOME: "All posts",
-    ALT_HREF: "index.html",
-    ALT_LABEL: "Devlog index",
+    HOME_HREF: "index.html",
+    ALT_HREF: "../manual.html",
+    ALT_LABEL: "User manual",
     TOC: "",
     DATE: post.date,
   };
@@ -371,35 +372,30 @@ function renderPage(page, body, chrome) {
     .replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
       Object.prototype.hasOwnProperty.call(chrome, key) ? chrome[key] : "")
     .replace(/\s+$/, "");
-  // The manual's template carries the alternate-language link in TWO places (a
-  // button in the hero and one in the closing block). A devlog post has a single
-  // "All posts" button, so the second copy would render the same link twice.
-  // The duplicate is dropped here rather than by editing the shared template.
-  const dup = '<a class="btn-secondary" href="' + chrome.ALT_HREF + '">' +
-    chrome.ALT_LABEL + "</a>";
-  const first = head.indexOf(dup);
-  if (first !== -1) {
-    const second = head.indexOf(dup, first + dup.length);
-    if (second !== -1) {
-      head = head.slice(0, second) +
-        '<a class="btn-secondary" href="../manual.html">User manual</a>' +
-        head.slice(second + dup.length);
-    }
-  }
   const tail = fs.readFileSync(TEMPLATE_TAIL, "utf8");
   return head + "\n" + body + "\n" + tail + "\n";
 }
 
 function renderPost(post) {
+  // No ALT_* override here: chromeFor already supplies the two secondary
+  // buttons for a post ("All posts", then the manual). Overriding them after
+  // the fact rendered "All posts" twice — the button map belongs in one place.
   const chrome = chromeFor(post);
-  chrome.ALT_HREF = "index.html";
-  chrome.ALT_LABEL = "All posts";
   const meta = '            <p class="shot-caption">' + post.date + "</p>";
   let html = renderPage(post, "\n" + blocksToHtml(post.blocks) + "\n" + meta + "\n", chrome);
   // The post lives in devlog/, so every root-relative link needs one level up —
   // otherwise the hero buttons point at devlog/pdp11.html, which does not exist.
-  html = html.replace(/href="(pdp11\.html|index\.html|manual\.html|manual_ru\.html)"/g,
-    'href="../$1"');
+  //
+  // Everything climbs one level — except index.html, which is a trap: in the
+  // manual's template that name means the landing page, but a post's "All posts"
+  // must reach the devlog index, and from inside devlog/ that is plain
+  // index.html. Climbing sent the reader to the landing page instead: the button
+  // said "All posts" and did something else. So index.html is restored after the
+  // other links climb, and the chrome above already points everything else at
+  // ../ explicitly.
+  html = html.replace(/href="(pdp11\.html|manual\.html|manual_ru\.html)"/g,
+    'href="../$1"')
+    .replace(/href="\.\.\/index\.html"/g, 'href="index.html"');
   // inside the post body, the stylesheet and asset paths are root-relative too
   html = html.replace(/href="css\//g, 'href="../css/')
     .replace(/src="assets\//g, 'src="../assets/')
@@ -428,18 +424,24 @@ function renderIndex(posts) {
       "the teletype, the paper tape, and the Soviet SM-4 I am really after.",
     HERO_NOTE: "Newest first. There is also a feed: <a href=\"feed.xml\">feed.xml</a>.",
     BTN_LAUNCH: "Launch the emulator!",
+    // On the index itself "All posts" would be a link to this very page, so the
+    // manual takes that slot and the second button (the template's duplicate)
+    // carries the emulator. The second button used to repeat "User manual" with
+    // a wrong href: only the path had been rewritten, not the label.
     BTN_HOME: "User manual",
-    ALT_HREF: "manual.html",
-    ALT_LABEL: "User manual",
+    HOME_HREF: "../manual.html",
+    ALT_HREF: "../pdp11.html",
+    ALT_LABEL: "Launch the emulator!",
     TOC: "",
     DATE: posts.length ? posts[0].date : "",
   };
   const body = "\n" + items + "\n";
   let html = renderPage(null, body, chrome);
-  // the index lives in devlog/, so the manual and feed links need one level up
-  html = html.replace('href="manual.html"', 'href="../manual.html"')
-    .replace('href="index.html"', 'href="../index.html"')
-    .replace('href="pdp11.html"', 'href="../pdp11.html"')
+  // The index lives in devlog/, so links to the rest of the site climb a level.
+  // index.html is deliberately NOT touched: on this page that name is the page
+  // itself, and rewriting it sent "User manual" to the landing page.
+  html = html.replace(/href="(manual\.html|manual_ru\.html|pdp11\.html)"/g,
+    'href="../$1"')
     // the favicon is named without a directory, so it needs the same climb
     .replace('href="favicon.ico"', 'href="../favicon.ico"');
   return html;

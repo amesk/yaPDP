@@ -82,11 +82,18 @@ function run() {
     for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
       const url = m[1];
       if (/^(https?:|mailto:|#|\.\.\/)/.test(url)) continue;
-      // Everything must climb one level: a post lives in devlog/. The favicon
+      // Every link must climb one level: a post lives in devlog/. The favicon
       // used to be excused here, which quietly allowed the real defect it was
       // meant to catch — a post asking for devlog/favicon.ico, which does not
       // exist. It is rewritten by the generator like the stylesheet and the
       // assets, so no exception is needed.
+      //
+      // index.html is the one legitimate exception, and the reason is a trap in
+      // the shared template: there that name means the landing page, but a
+      // post's "All posts" must reach the devlog index — and from inside
+      // devlog/ that is plain index.html. Climbing sent the reader to the
+      // landing page: the button said "All posts" and did something else.
+      if (url === "index.html") continue;
       assert.fail("devlog/" + p.slug + ".html: root-relative link in a page that " +
         "lives one level down: " + url + " (should start with ../)");
     }
