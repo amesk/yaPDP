@@ -72,6 +72,33 @@ function run() {
     }
   }
 
+  // --- 2b. a post's images live in a folder named after the post -------------
+  //
+  // Per-post images used to be spread over shared folders (sm4/, pairs/), so
+  // after a few posts there was no way to tell which image belonged to which
+  // article without opening them all. Each post now keeps its own folder under
+  // assets/images/devlog/, named exactly like the post file — the same
+  // <date>-<slug> form as docs/devlog/. Shared material that belongs to no
+  // single post (the two terminal SVG sources, the inkscape export) stays in
+  // pairs/ and is deliberately not forced into a post folder.
+  const sharedDirs = ["pairs"];
+  for (const p of posts) {
+    const body = fs.readFileSync(path.join(SRC, p.file), "utf8");
+    for (const m of body.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)) {
+      const src = m[1];
+      if (/^https?:/.test(src)) continue;
+      const under = src.match(/^assets\/images\/devlog\/([^/]+)\//);
+      if (!under) continue;   // outside the devlog tree: not this check's business
+      const dir = under[1];
+      if (sharedDirs.indexOf(dir) !== -1) continue;   // shared material
+      assert.strictEqual(dir, p.slug,
+        p.file + ": image " + src + " sits in \"" + dir + "\" — a post's " +
+        "images belong in assets/images/devlog/" + p.slug + "/ (named after " +
+        "the post). Shared material that belongs to no single post goes to " +
+        "assets/images/devlog/pairs/ instead.");
+    }
+  }
+
   // --- 3. the generated pages exist and carry no root-relative links --------
   for (const p of posts) {
     const page = path.join(OUT, p.slug + ".html");
