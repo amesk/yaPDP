@@ -227,6 +227,113 @@
             }
         }
 
+        /* Illustration viewer (the script is at the end of the document).
+
+           A page is static, so this is plain CSS rather than a component. The
+           picture is shown whole — max-width and max-height together, never a
+           crop — and its caption sits underneath, because a photograph studied
+           at full size is useless if you lose which frame you are looking at. */
+        .landing-page .shot-openable {
+            cursor: zoom-in;
+        }
+
+        .shot-viewer {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(12, 10, 8, 0.94);
+            padding: 32px 16px;
+        }
+
+        .shot-viewer[hidden] {
+            display: none;
+        }
+
+        .shot-viewer figure {
+            margin: 0;
+            max-width: 96vw;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .shot-viewer img {
+            /* Both limits, so a tall frame and a wide frame are each shown in
+               full; the picture is never cropped to fit. */
+            max-width: 96vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+        }
+
+        .shot-viewer .shot-caption {
+            color: #c8b890;
+            font-size: 13px;
+            font-style: italic;
+            text-align: center;
+            max-width: 80ch;
+            margin: 0;
+        }
+
+        /* "3 / 4" beside the caption: which frame of a chain this is. */
+        .shot-viewer .shot-caption[data-step]:not([data-step=""])::after {
+            content: attr(data-step);
+            color: #8a7f6a;
+            font-style: normal;
+        }
+
+        .shot-viewer-close,
+        .shot-viewer-nav {
+            position: fixed;
+            background: rgba(28, 25, 20, 0.9);
+            color: #e8dcc0;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            cursor: pointer;
+            line-height: 1;
+            font-family: inherit;
+        }
+
+        .shot-viewer-close {
+            top: 12px;
+            right: 16px;
+            font-size: 26px;
+            padding: 4px 12px 6px 12px;
+        }
+
+        .shot-viewer-nav {
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 30px;
+            padding: 10px 14px 12px 14px;
+        }
+
+        .shot-viewer-prev { left: 16px; }
+        .shot-viewer-next { right: 16px; }
+
+        .shot-viewer-close:hover,
+        .shot-viewer-nav:hover {
+            border-color: #c8a860;
+            color: #f5ecd8;
+        }
+
+        .shot-viewer-nav[hidden] {
+            display: none;
+        }
+
+        /* The page behind must not scroll while the viewer is up. */
+        body.shot-viewer-open {
+            overflow: hidden;
+        }
+
         /* Floating-button thumbnails inside the controls table. */
         .landing-page .control-cell {
             display: flex;
@@ -916,6 +1023,121 @@
 
         </div>
     </div>
+
+    <!-- Illustration viewer.
+
+         The manual and every devlog post are static pages: a reader arriving
+         from a search engine must get the text, not a blank screen waiting for
+         a bundle, so the landing page's React lightbox cannot be used here.
+         This is the same behaviour in plain JavaScript.
+
+         Any illustration can be opened, not only those inside a picture group
+         — a dialog screenshot is worth studying too, and a rule that works on
+         some pictures but not others is worse than no rule. Frames belonging to
+         one group are handed over as a set, so the arrow keys walk the chain
+         from photograph to cut-out to tracing to emulator without closing the
+         viewer. -->
+    <script>
+        (function () {
+            "use strict";
+
+            var shots = [].slice.call(document.querySelectorAll("img.shot"));
+            if (!shots.length) return;
+
+            // For each picture, the set it belongs to: everything in its own
+            // group, or just itself when it stands alone.
+            function groupOf(img) {
+                var host = img.closest(".pair, .row");
+                if (!host) return [img];
+                return [].slice.call(host.querySelectorAll("img.shot"));
+            }
+
+            var overlay = document.createElement("div");
+            overlay.className = "shot-viewer";
+            overlay.setAttribute("role", "dialog");
+            overlay.setAttribute("aria-modal", "true");
+            overlay.hidden = true;
+            overlay.innerHTML =
+                '<button class="shot-viewer-close" type="button" aria-label="Close">\u00d7</button>' +
+                '<button class="shot-viewer-nav shot-viewer-prev" type="button" aria-label="Previous illustration">\u2039</button>' +
+                '<button class="shot-viewer-nav shot-viewer-next" type="button" aria-label="Next illustration">\u203a</button>' +
+                '<figure><img alt=""><figcaption class="shot-caption"></figcaption></figure>';
+            document.body.appendChild(overlay);
+
+            var big = overlay.querySelector("img");
+            var cap = overlay.querySelector(".shot-caption");
+            var prev = overlay.querySelector(".shot-viewer-prev");
+            var next = overlay.querySelector(".shot-viewer-next");
+            var set = [];
+            var at = 0;
+
+            function captionFor(img) {
+                // A grouped frame carries its own <figcaption>; a standalone one
+                // is followed by its caption paragraph.
+                var fig = img.closest("figure");
+                if (fig) {
+                    var own = fig.querySelector(".shot-caption");
+                    if (own) return own.innerHTML;
+                }
+                var p = img.parentElement && img.parentElement.nextElementSibling;
+                if (p && p.classList.contains("shot-caption")) return p.innerHTML;
+                return img.getAttribute("alt") || "";
+            }
+
+            function show(i) {
+                at = (i + set.length) % set.length;
+                var img = set[at];
+                big.src = img.src;
+                big.alt = img.getAttribute("alt") || "";
+                cap.innerHTML = captionFor(img);
+                var many = set.length > 1;
+                prev.hidden = many ? false : true;
+                next.hidden = many ? false : true;
+                // "3 / 4" is enough to tell a reader that this frame is part of a
+                // chain, without a separate counter to keep in step.
+                cap.setAttribute("data-step",
+                    many ? " " + (at + 1) + " / " + set.length : "");
+            }
+
+            function open(img) {
+                set = groupOf(img);
+                show(set.indexOf(img));
+                overlay.hidden = false;
+                document.body.classList.add("shot-viewer-open");
+            }
+
+            function close() {
+                overlay.hidden = true;
+                big.removeAttribute("src");
+                document.body.classList.remove("shot-viewer-open");
+            }
+
+            shots.forEach(function (img) {
+                img.classList.add("shot-openable");
+                img.setAttribute("tabindex", "0");
+                img.setAttribute("role", "button");
+                img.addEventListener("click", function () { open(img); });
+                img.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(img); }
+                });
+            });
+
+            overlay.querySelector(".shot-viewer-close").addEventListener("click", close);
+            prev.addEventListener("click", function () { show(at - 1); });
+            next.addEventListener("click", function () { show(at + 1); });
+            // A click on the backdrop closes; a click on the picture itself does not.
+            overlay.addEventListener("click", function (e) {
+                if (e.target === overlay) close();
+            });
+            document.addEventListener("keydown", function (e) {
+                if (overlay.hidden) return;
+                if (e.key === "Escape") close();
+                else if (e.key === "ArrowLeft") show(at - 1);
+                else if (e.key === "ArrowRight") show(at + 1);
+            });
+        })();
+    </script>
 </body>
 
 </html>
+

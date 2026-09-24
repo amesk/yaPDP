@@ -55,6 +55,16 @@ function count(html, pattern) {
   return (html.match(pattern) || []).length;
 }
 
+// Markup as the browser sees it: the contents of <script> and <style> are
+// removed first. A <img> written inside a script is a string the script will
+// insert later, not an element of this document, and counting it as markup
+// produced a phantom "28 images, 27 classified". The page-local viewer keeps
+// its <img> in a string for exactly that reason.
+function markupOnly(html) {
+  return html.replace(/<script\b[\s\S]*?<\/script>/gi, "")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, "");
+}
+
 function sectionFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
@@ -171,8 +181,9 @@ function run() {
   }
 
   // --- 3. the stylesheet's classes -----------------------------------------
-  const cls = classCounts(html);
-  const imgs = count(html, /<img\b/g);
+  const markup = markupOnly(html);
+  const cls = classCounts(markup);
+  const imgs = count(markup, /<img\b/g);
   // Three kinds of image carry a class, each with its own role: a screenshot
   // (.shot, capped to the content width), a CONFIG tab illustration
   // (.config-item-img, a grid cell) and a floating-control icon (.control-btn).
