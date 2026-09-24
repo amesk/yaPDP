@@ -27,6 +27,16 @@ The USSR had its own "Small Computer System" — the SM EVM family. The early SM
 
 **SM-4 (1979)** was the equivalent of a PDP-11/40. Enormous racks, the size of a couple of wardrobes, needing their own air-conditioned room. Clocked around 1–2 MHz, up to 256 KB of RAM (the base models were smaller — 128 KB of *magnetic core* memory), and it carried the IMC bus, the Soviet answer to UNIBUS.
 
+:::pair
+![An SM-4 in a machine room](assets/images/devlog/sm4/smevm_10.jpg){.shot}
+![An SM-1420](assets/images/devlog/sm4/sm1420-1.jpg){.shot}
+:::captions
+An SM-4 — the rack-sized machine Soviet industry built as a PDP-11/40 equivalent
+An SM-1420, the later and more powerful member of the same family
+:::
+
+These two are what the phrase "a machine room" means to me. Not a desktop, not a terminal on a desk — a room with its own air conditioning, and cabinets you walk along.
+
 ![The PDP-11/40, the hardware ancestor of the Soviet SM-4](assets/images/devlog/sm4/pdp1140.jpg){.shot}
 
 The PDP-11/40, the machine Soviet industry reverse-engineered into the SM-4. Same instruction set, same UNIBUS concept under a different name (IMK), a different plant building it.{.shot-caption}
