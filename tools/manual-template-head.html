@@ -227,6 +227,113 @@
             }
         }
 
+        /* Illustration viewer (the script is at the end of the document).
+
+           A page is static, so this is plain CSS rather than a component. The
+           picture is shown whole — max-width and max-height together, never a
+           crop — and its caption sits underneath, because a photograph studied
+           at full size is useless if you lose which frame you are looking at. */
+        .landing-page .shot-openable {
+            cursor: zoom-in;
+        }
+
+        .shot-viewer {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(12, 10, 8, 0.94);
+            padding: 32px 16px;
+        }
+
+        .shot-viewer[hidden] {
+            display: none;
+        }
+
+        .shot-viewer figure {
+            margin: 0;
+            max-width: 96vw;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .shot-viewer img {
+            /* Both limits, so a tall frame and a wide frame are each shown in
+               full; the picture is never cropped to fit. */
+            max-width: 96vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+        }
+
+        .shot-viewer .shot-caption {
+            color: #c8b890;
+            font-size: 13px;
+            font-style: italic;
+            text-align: center;
+            max-width: 80ch;
+            margin: 0;
+        }
+
+        /* "3 / 4" beside the caption: which frame of a chain this is. */
+        .shot-viewer .shot-caption[data-step]:not([data-step=""])::after {
+            content: attr(data-step);
+            color: #8a7f6a;
+            font-style: normal;
+        }
+
+        .shot-viewer-close,
+        .shot-viewer-nav {
+            position: fixed;
+            background: rgba(28, 25, 20, 0.9);
+            color: #e8dcc0;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            cursor: pointer;
+            line-height: 1;
+            font-family: inherit;
+        }
+
+        .shot-viewer-close {
+            top: 12px;
+            right: 16px;
+            font-size: 26px;
+            padding: 4px 12px 6px 12px;
+        }
+
+        .shot-viewer-nav {
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 30px;
+            padding: 10px 14px 12px 14px;
+        }
+
+        .shot-viewer-prev { left: 16px; }
+        .shot-viewer-next { right: 16px; }
+
+        .shot-viewer-close:hover,
+        .shot-viewer-nav:hover {
+            border-color: #c8a860;
+            color: #f5ecd8;
+        }
+
+        .shot-viewer-nav[hidden] {
+            display: none;
+        }
+
+        /* The page behind must not scroll while the viewer is up. */
+        body.shot-viewer-open {
+            overflow: hidden;
+        }
+
         /* Floating-button thumbnails inside the controls table. */
         .landing-page .control-cell {
             display: flex;
