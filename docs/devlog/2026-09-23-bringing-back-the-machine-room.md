@@ -20,7 +20,7 @@ So I built my own emulator — yaPDP (Yet Another PDP-11). And I built it so tha
 ![The yaPDP front panel, with all its switches and lamps](assets/images/manual/panel.png){.shot}
 :::captions
 The operator's panel of a real PDP-11/70 — the switches an operator actually threw. Photograph: [pdp-11.nl](https://www.pdp-11.nl/pdp11-70/pdp11-70-front.jpg)
-The same panel in yaPDP, reproduced switch by switch
+The same panel in yaPDP, adapted from [Paul Nankervis's pdp11-js](https://github.com/paulnank/pdp11-js) with modifications
 :::
 
 Twenty data switches, the address lamps above them, and the rotary knobs an operator actually turned. DEC's PDP-11/70 panel is the part most emulators skip — and the part you can see above, in the photograph, is what the second picture had to answer to.{.shot-caption}
