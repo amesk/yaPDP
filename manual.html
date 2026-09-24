@@ -38,40 +38,26 @@
             background-repeat: no-repeat;
         }
 
-        /* These pages are taller than the window, and the backdrop was painted
-           on a body that cannot grow with them.
+        /* The page scrolls INSIDE the slab, exactly as the landing page and the
+           emulator do: body stays one viewport tall (see .app-layout in
+           pdp11.css) and .landing-page carries overflow-y: auto. That is what
+           keeps the backdrop the right size — background-size: cover is measured
+           against the element it is painted on, so a body that grows with the
+           content stretches the photograph over several screens and it goes
+           soft. Scrolling the document instead of the slab was tried and
+           reverted for that reason.
 
-           pdp11.css is written for the emulator: body has overflow: hidden and
-           .app-layout is exactly one viewport tall (height: 100vh), because the
-           machine panel scrolls inside itself and the page must not move. A
-           manual page or a devlog index inherits that layout but is a normal
-           long document: its content is taller than the window, so the backdrop
-           stopped at the fold and a white band showed underneath.
-
-           The fix is to let these two pages be document-flow pages, which is
-           what they are. The emulator keeps the fixed-height layout because this
-           rule lives in the manual template and never reaches it. */
-        body {
-            overflow: auto;
-            min-height: 100%;
-        }
-
+           The height is 100dvh rather than the inherited 100vh so the column
+           truly fills the window on a phone; --app-h is published by
+           src/mobile-keys.js and wins where it exists. */
         .app-layout {
-            display: block;
-            height: auto;
-            min-height: 100vh;
+            height: var(--app-h, 100vh);
         }
 
         @supports (height: 100dvh) {
             .app-layout {
-                min-height: 100dvh;
+                height: var(--app-h, 100dvh);
             }
-        }
-
-        /* The slab no longer needs its own scrollbar: the document scrolls, and
-           the backdrop now covers the whole of it. */
-        .landing-page {
-            overflow: visible;
         }
 
         /* Content slab — mirrors the emulator's Info page (dark translucent card
