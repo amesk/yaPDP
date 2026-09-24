@@ -452,6 +452,7 @@ const CHROME = {
     heroNote: "Everything below applies to both the browser version and the Tauri desktop app.",
     btnLaunch: "Launch Online!",
     btnHome: "Back to the Home Page",
+    homeHref: "index.html",
     altHref: "manual_ru.html",
     altLabel: "Русская версия",
     toc: "Table of Contents",
@@ -468,6 +469,7 @@ const CHROME = {
     heroNote: "Всё описанное ниже относится и к версии в браузере, и к настольному приложению на Tauri.",
     btnLaunch: "Запустить онлайн!",
     btnHome: "На главную страницу",
+    homeHref: "index.html",
     altHref: "manual.html",
     altLabel: "English version",
     toc: "Оглавление",
@@ -490,7 +492,7 @@ function fillChrome(template, page) {
   const vars = {
     LANG: c.lang, TITLE: c.title, DESCRIPTION: c.description, KEYWORDS: c.keywords,
     HERO_TITLE: c.heroTitle, HERO_TAGLINE: c.heroTagline, HERO_NOTE: c.heroNote,
-    BTN_LAUNCH: c.btnLaunch, BTN_HOME: c.btnHome,
+    BTN_LAUNCH: c.btnLaunch, BTN_HOME: c.btnHome, HOME_HREF: c.homeHref,
     ALT_HREF: c.altHref, ALT_LABEL: c.altLabel,
   };
   const filled = template.replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
