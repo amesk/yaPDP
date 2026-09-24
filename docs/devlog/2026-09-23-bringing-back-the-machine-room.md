@@ -16,7 +16,7 @@ Where is the fan noise? Where is the teletype hammering loud enough to make your
 So I built my own emulator — yaPDP (Yet Another PDP-11). And I built it so that every decision in it would be a deliberate one, rather than "it ended up this way because I found a snippet on Stack Overflow that some AI generated for me."
 
 :::pair
-![The front panel of a real PDP-11/70](assets/images/devlog/pairs/pdp11-70-front.jpg){.shot}
+![The front panel of a real PDP-11/70](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/pdp11-70-front.jpg){.shot}
 ![The yaPDP front panel, with all its switches and lamps](assets/images/manual/panel.png){.shot}
 :::captions
 The operator's panel of a real PDP-11/70 — the switches an operator actually threw. Photograph: [pdp-11.nl](https://www.pdp-11.nl/pdp11-70/pdp11-70-front.jpg)
@@ -34,8 +34,8 @@ The USSR had its own "Small Computer System" — the SM EVM family. The early SM
 **SM-4 (1979)** was the equivalent of a PDP-11/40. Enormous racks, the size of a couple of wardrobes, needing their own air-conditioned room. Clocked around 1–2 MHz, up to 256 KB of RAM (the base models were smaller — 128 KB of *magnetic core* memory), and it carried the IMC bus, the Soviet answer to UNIBUS.
 
 :::pair
-![An SM-4 in a machine room](assets/images/devlog/sm4/smevm_10.jpg){.shot}
-![An SM-1420](assets/images/devlog/sm4/sm1420-1.jpg){.shot}
+![An SM-4 in a machine room](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/smevm_10.jpg){.shot}
+![An SM-1420](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/sm1420-1.jpg){.shot}
 :::captions
 An SM-4 — the rack-sized machine Soviet industry built as a PDP-11/40 equivalent. Photograph: [computer-museum.ru](https://www.computer-museum.ru/images/histussr/smevm_10.jpg)
 An SM-1420, the later and more powerful member of the same family. Photograph: [oldpc.su](http://oldpc.su/pc/sm/sm1420/sm1420-1.jpg)
@@ -43,7 +43,7 @@ An SM-1420, the later and more powerful member of the same family. Photograph: [
 
 These two are what the phrase "a machine room" means to me. Not a desktop, not a terminal on a desk — a room with its own air conditioning, and cabinets you walk along.
 
-![The PDP-11/40, the hardware ancestor of the Soviet SM-4](assets/images/devlog/sm4/pdp1140.jpg){.shot}
+![The PDP-11/40, the hardware ancestor of the Soviet SM-4](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/pdp1140.jpg){.shot}
 
 The PDP-11/40, the machine Soviet industry reverse-engineered into the SM-4. Same instruction set, same UNIBUS concept under a different name (IMK), a different plant building it.{.shot-caption}
 
@@ -51,11 +51,11 @@ The PDP-11/40, the machine Soviet industry reverse-engineered into the SM-4. Sam
 
 These were the machines that ran RAFOS (a clone of RT-11) and OS RV (a clone of RSX-11M). Booting a multi-user system on an SM-1420, sitting down at an alphanumeric terminal like a VTA-2000 or a DVK, starting the C compiler and writing code that drove a machine tool in a factory — that was pure adrenaline. What I wanted back was exactly that: the feeling of operating a genuine steel cabinet.
 
-![The DVK-2, a Soviet PDP-11-compatible machine](assets/images/devlog/sm4/dvk2.png){.shot}
+![The DVK-2, a Soviet PDP-11-compatible machine](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/dvk2.png){.shot}
 
 A DVK-2 — a Soviet PDP-11-compatible machine that usually worked as a terminal to an SM EVM. This is the hardware my generation learned C on. Photograph: [habrastorage.org](https://habrastorage.org/r/w1560/getpro/habr/upload_files/904/383/add/904383add5ecbf6fe44f44542d1c2e55.JPG){.shot-caption}
 
-![The VTA-2000 alphanumeric terminal](assets/images/devlog/sm4/vta2000-real.png){.shot}
+![The VTA-2000 alphanumeric terminal](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/vta2000-real.png){.shot}
 
 The VTA-2000 alphanumeric terminal. A green-phosphor character display that replaced the teletype in Soviet machine rooms, and the screen I sat in front of as a teenager.{.shot-caption}
 
@@ -75,16 +75,16 @@ So the goal was to bring back the atmosphere of the machine room itself. Deliber
 
 I am a C enthusiast, and I wanted to work the way Kernighan and Ritchie did — that book is even part of the emulator's photographic backdrop. Hence the choice of terminals: a teletype, and my own hand-written VT52.
 
-![The book itself: the first edition of Kernighan and Ritchie](assets/images/devlog/sm4/kr-book.png){.shot}
+![The book itself: the first edition of Kernighan and Ritchie](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/kr-book.png){.shot}
 
 *The C Programming Language* — the book everything in this project started from, and the one lying on the desk in the emulator's machine room.{.shot-caption}
 
 A sensible person would reach for **xterm.js**, and I probably will when I need a **VT100**. But for now I want the feeling of hardware, not a pixel-perfect terminal.
 
 :::row
-![The photograph the VT52 was traced from](assets/images/devlog/pairs/vt52-original.jpg){.shot}
-![The terminal cut out from its background](assets/images/devlog/pairs/vt52-no-background.png){.shot}
-![The vector tracing, rendered](assets/images/devlog/pairs/vt52-maximized.png){.shot}
+![The photograph the VT52 was traced from](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/vt52-original.jpg){.shot}
+![The terminal cut out from its background](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/vt52-no-background.png){.shot}
+![The vector tracing, rendered](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/vt52-maximized.png){.shot}
 ![VT52 as implemented in yaPDP](assets/images/manual/console-vt52.png){.shot}
 :::captions
 A photograph of the real VT52 — the frame everything below was traced from
@@ -102,9 +102,9 @@ Once there is a teletype, you want it as faithful as it can be. That is where th
 The teletype itself went the same way as the VT52: it began as a photograph, then a cut-out, then a tracing, and only then became hardware you can type at.
 
 :::row
-![The photograph the Model 33 was traced from](assets/images/devlog/pairs/teletype-real.jpg){.shot}
-![The Model 33 cut out from its background](assets/images/devlog/pairs/teletype-no-background.png){.shot}
-![The tracing, inked and styled](assets/images/devlog/pairs/teletype-stylized-prepared.png){.shot}
+![The photograph the Model 33 was traced from](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/teletype-real.jpg){.shot}
+![The Model 33 cut out from its background](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/teletype-no-background.png){.shot}
+![The tracing, inked and styled](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/teletype-stylized-prepared.png){.shot}
 ![The Model 33 ASR in yaPDP](assets/images/manual/console-teletype.png){.shot}
 :::captions
 The photograph of the real Model 33 ASR
@@ -115,7 +115,7 @@ The Model 33 ASR in yaPDP — the same machine, carrying the same lines
 
 Getting there took fixing it first: the original emulator's punch was minimal — just enough to start a bootloader. RT-11 could not see it, let alone work with it. And once tapes could be read, I naturally wanted to punch them too. That had to be written from scratch.
 
-![Paper tape: eight tracks for data, five for the teletype](assets/images/devlog/sm4/papertape.png){.shot}
+![Paper tape: eight tracks for data, five for the teletype](assets/images/devlog/2026-09-23-bringing-back-the-machine-room/papertape.png){.shot}
 
 Paper tape: eight tracks of data, and the smaller five-track format the teletype itself used. yaPDP punches and reads both, and a tape exported from it loads into a real PDP-11 reader if you still have one.{.shot-caption}
 
