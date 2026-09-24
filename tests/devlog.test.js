@@ -115,12 +115,15 @@ function run() {
       // exist. It is rewritten by the generator like the stylesheet and the
       // assets, so no exception is needed.
       //
-      // index.html is the one legitimate exception, and the reason is a trap in
-      // the shared template: there that name means the landing page, but a
-      // post's "All posts" must reach the devlog index — and from inside
-      // devlog/ that is plain index.html. Climbing sent the reader to the
-      // landing page: the button said "All posts" and did something else.
+      // Two legitimate exceptions, and both are pages that live in devlog/:
+      //   index.html            the post list, which is this directory's own
+      //                         index — in the shared template that name means
+      //                         the landing page, so climbing would send the
+      //                         reader somewhere the link does not promise
+      //   <post-slug>.html      another post, sitting beside this one
+      // Anything else relative is a root-relative path and must climb.
       if (url === "index.html") continue;
+      if (/^[a-z0-9-]+\.html$/.test(url) && fs.existsSync(path.join(OUT, url))) continue;
       assert.fail("devlog/" + p.slug + ".html: root-relative link in a page that " +
         "lives one level down: " + url + " (should start with ../)");
     }
@@ -130,6 +133,17 @@ function run() {
       "devlog/" + p.slug + ".html: a {.class} marker leaked into the output");
     assert.ok(html.indexOf(":::") === -1,
       "devlog/" + p.slug + ".html: a ::: wrapper leaked into the output");
+
+    // No raw Markdown link syntax may reach the page. inline() converts
+    // [text](target) in three shapes — an anchor, an absolute URL and a
+    // relative path — and a fourth shape nobody thought of would otherwise ship
+    // silently: the opening bracket is eaten by the HTML escaping above it, so
+    // the reader gets "The first article](2026-09-23-....html)" with no link at
+    // all, and nothing in the suite noticed. This asserts the conversion
+    // happened rather than that the text is present.
+    assert.ok(!/\]\(/.test(html),
+      "devlog/" + p.slug + ".html: raw ]( left in the output — inline() did not " +
+      "convert a Markdown link in this post's text");
 
     // the title and the date must be on the page — that is what a reader
     // arriving from a feed needs to orient themselves
