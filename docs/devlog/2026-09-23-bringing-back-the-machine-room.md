@@ -15,7 +15,7 @@ Where is the fan noise? Where is the teletype hammering loud enough to make your
 
 So I built my own emulator — yaPDP (Yet Another PDP-11). And I built it so that every decision in it would be a deliberate one, rather than "it ended up this way because I found a snippet on Stack Overflow that some AI generated for me."
 
-![The yaPDP front panel, with all its switches and lamps](assets/images/os/basic.png){.shot}
+![The yaPDP front panel, with all its switches and lamps](assets/images/manual/panel.png){.shot}
 
 The yaPDP front panel, reproduced switch by switch: twenty data switches, the address lamps above them, and the rotary knobs an operator actually turned. DEC's PDP-11/70 panel is the part most emulators skip.{.shot-caption}
 
