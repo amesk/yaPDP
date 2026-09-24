@@ -72,6 +72,16 @@
             margin: 0 auto;
             padding: 16px 24px 32px 24px;
             background: rgba(28, 25, 21, 0.82);
+            /* The slab's outline, matching the landing page. There it comes from
+               Tailwind classes on the slab element in landing/src/App.tsx
+               (border-x border-[#3a3528]/80 shadow-[0_0_60px_rgba(0,0,0,0.85)]),
+               which these static pages cannot use — a manual page and a devlog
+               post are generated from this template, not from the SPA. Without
+               this rule the column stood bare while the landing page beside it
+               was framed, which is the difference that was noticed. */
+            border-left: 1px solid #3a3528;
+            border-right: 1px solid #3a3528;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.85);
         }
 
         .landing-page h1,
