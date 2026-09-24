@@ -171,6 +171,22 @@ function run() {
     assert.ok(!/min-height:\s*100vh/.test(html),
       label + ": min-height: 100vh found — that grew body and stretched the " +
       "backdrop (see the reverted fix in the git log)");
+
+    // Every devlog page must offer a way back to the landing page. The pages
+    // live one level down, so the way home is "../" — an absolute-looking URL
+    // (/ or index.html) would work on GitHub Pages but breaks a reader who
+    // opened the directory over file:// or under a sub-path, which is the whole
+    // reason these pages are generated with relative links.
+    //
+    // This check exists because the link was lost once: the index carried the
+    // manual in the home slot and blanked the alternate slot, so the template's
+    // home anchor was removed and nothing replaced it. Two buttons shipped —
+    // "Launch the emulator!" and "User manual" — and only a human reading the
+    // live page noticed. The button must be present AND point at the root.
+    assert.ok(html.indexOf('<a class="btn-secondary" href="../">') !== -1,
+      label + ": no link back to the landing page — every devlog page needs " +
+      "\"Back to the Home Page\" → \"../\" (see tools/build-devlog.js chromeFor/" +
+      "renderIndex, and tests/devlog.test.js check 3b)");
   }
 
   // the backdrop file itself must exist — the reference above is worthless if
