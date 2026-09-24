@@ -267,6 +267,24 @@
                 flex: 1 1 100%;
                 max-width: 100%;
             }
+
+            /* On a phone the slab and the landing page must show the same
+               thing. The landing page (landing/src/App.tsx) keeps max-w-[800px]
+               on a w-full flex child, so below 800 the width is never reached
+               and its gold edge lines fall off-screen. These pages set
+               max-width: 800px with margin: 0 auto, so at a 700-860px window
+               the slab stops 30px short and BOTH lines are drawn — the reading
+               column looked squeezed into a frame while the landing page had
+               none. Dropping the outline here removes the frame rather than
+               moving it, which is the landing page's own answer to a narrow
+               screen. box-shadow goes too: it is the glow around those edges,
+               and without the edges it reads as a smear. */
+            .landing-page {
+                max-width: 100%;
+                border-left: 0;
+                border-right: 0;
+                box-shadow: none;
+            }
         }
 
         /* Illustration viewer (the script is at the end of the document).
