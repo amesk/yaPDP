@@ -134,6 +134,20 @@ function inline(text) {
       (m, text, anchor) => '<a href="#' + anchor + '">' + text + '</a>')
     .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g,
       (m, text, href) => '<a href="' + href + '">' + text + '</a>')
+    // A relative target: another post beside this one, or a page at the site
+    // root (a post lives in devlog/, so everything except a sibling page climbs
+    // one level). Without this rule the two absolute patterns above left the
+    // Markdown untouched — `[The first article](2026-09-23-....html)` reached the
+    // reader as literal text with its opening bracket eaten by the escaping
+    // above, and the same would have happened to every relative link in every
+    // future post.
+    .replace(/\[([^\]]+)\]\(([^)#][^)]*)\)/g, (m, text, href) => {
+      if (/^(https?:|#|mailto:|\/|\.\.\/)/.test(href)) {
+        return '<a href="' + href + '">' + text + '</a>';
+      }
+      const sibling = /^[a-z0-9-]+\.html$/.test(href);
+      return '<a href="' + (sibling ? href : "../" + href) + '">' + text + '</a>';
+    })
     .replace(/`([^`]+)`/g, (m, code) => "<code>" + code + "</code>")
     .replace(/\*\*([^*]+)\*\*/g, (m, b) => "<strong>" + b + "</strong>")
     .replace(/(^|[\s(])\*([^*\n]+)\*/g, (m, pre, i) => pre + "<em>" + i + "</em>");
