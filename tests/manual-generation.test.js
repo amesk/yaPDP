@@ -172,6 +172,48 @@ function run() {
   assert.ok(htmlRu.indexOf('href="manual.html"') !== -1,
     "manual_ru.html carries no link to the English page");
 
+  // --- 2b. cross-references exist in BOTH languages --------------------------
+  // The Russian manual shipped without a single internal link while the English
+  // one carried them all: the translation dropped every "see [Quick Start]"
+  // reference, so a Russian reader had to find the chapter by hand. The
+  // generator renders the same construct for either language, so the loss can
+  // only happen in the translation — the SOURCE PAIR is compared here, section
+  // by section, rather than the two pages (each page also carries its own table
+  // of contents, which is not a cross-reference at all).
+  const anchorsIn = (file) => Array.from(
+    fs.readFileSync(file, "utf8").matchAll(/\]\(#([a-z0-9-]+)\)/g), (m) => m[1]);
+  const enAnchors = new Set(meta);
+  let enLinks = 0;
+  let ruLinks = 0;
+  for (const id of en) {
+    const e = anchorsIn(path.join(SRC, id + ".md"));
+    const r = anchorsIn(path.join(SRC_RU, id + ".md"));
+    for (const a of e) enAnchors.add(a);
+    enLinks += e.length;
+    ruLinks += r.length;
+    assert.strictEqual(r.length, e.length,
+      "docs/manual/ru/" + id + ".md carries " + r.length + " internal links, its " +
+      "English source carries " + e.length + " — a cross-reference was dropped in " +
+      "translation and the Russian reader is left without the link");
+  }
+  // The Russian page is emitted with the ENGLISH heading ids (slug() cannot slug
+  // Cyrillic — see blocksToHtml), so a Russian link must point at an English
+  // anchor; a Cyrillic one would resolve to the top of the page instead.
+  for (const id of ru) {
+    for (const a of anchorsIn(path.join(SRC_RU, id + ".md"))) {
+      assert.ok(enAnchors.has(a),
+        "docs/manual/ru/" + id + ".md links to #" + a +
+        ", which no English heading carries — the link would go nowhere");
+    }
+  }
+  assert.ok(enLinks > 0, "the English manual sources carry no internal links");
+  // and the page must render what its source declares, or the loss moved from
+  // the translation into the generator
+  const ruPageLinks = count(htmlRu, /<a href="#/g);
+  assert.ok(ruPageLinks >= ruLinks,
+    "manual_ru.html renders fewer internal links than its source declares: " +
+    ruLinks + " in the source, " + ruPageLinks + " in the page");
+
   const tsIds = (ts.match(/^\s{4}id: '([^']+)',/gm) || [])
     .map((s) => s.replace(/^\s{4}id: '|',$/g, ""));
   assert.ok(tsIds.length >= meta.length,
@@ -328,7 +370,8 @@ function run() {
 
   console.log("manual-generation: all checks passed (" +
     meta.length + " sections × 2 pages, " + imgs + " images, " +
-    count(html, /<code>/g) + " inline codes, " + anchors + " internal links)");
+    count(html, /<code>/g) + " inline codes, " + anchors + " + " +
+    count(htmlRu, /<a href="#/g) + " internal links)");
 }
 
 run();
