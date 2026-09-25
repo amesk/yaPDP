@@ -458,6 +458,7 @@ const CHROME = {
     postsHref: "devlog/index.html",
     altHref: "manual_ru.html",
     altLabel: "Русская версия",
+    langSwitchTitle: "Switch language",
     toc: "Table of Contents",
   },
   ru: {
@@ -477,6 +478,7 @@ const CHROME = {
     postsHref: "devlog/index.html",
     altHref: "manual.html",
     altLabel: "English version",
+    langSwitchTitle: "Переключить язык",
     toc: "Оглавление",
   },
 };
@@ -499,15 +501,22 @@ function fillChrome(template, page) {
   // to fill three anchor slots in the template instead, which is why it drifted
   // from the devlog: same page, same chrome, two mechanisms. The language
   // switch stays a button in this row — it is a destination like the rest.
+  // The language switch is not a button in this row: it is the landing page's
+  // EN / RU control, with the active language highlighted and the other one a
+  // link. Two labels for one destination ("Русская версия" / "English version")
+  // told the reader which languages exist but not which one they were reading;
+  // the landing page answers both questions at a glance, so the manual does the
+  // same. The row is otherwise the same destinations in the same order as every
+  // other page.
   const nav = [
     ["btn-primary", "pdp11.html", c.btnLaunch],
     ["btn-secondary", c.postsHref, c.btnPosts],
     ["btn-secondary", c.homeHref, c.btnHome],
-    ["btn-secondary", c.altHref, c.altLabel],
   ]
     .filter(([, href, label]) => href && label)
     .map(([cls, href, label]) =>
       '                    <a class="' + cls + '" href="' + href + '">' + label + "</a>")
+    .concat([langSwitch(c)])
     .join("\n");
   const vars = {
     LANG: c.lang, TITLE: c.title, DESCRIPTION: c.description, KEYWORDS: c.keywords,
@@ -530,6 +539,21 @@ function fillChrome(template, page) {
 // English ids (slug() cannot slug Cyrillic: see blocksToHtml).
 function headingIds(blocks) {
   return blocks.filter((b) => b.type === "h").map((b) => slug(b.text));
+}
+
+function langSwitch(c) {
+  // The landing page's control, in the same markup: a bordered pill, the active
+  // language in gold and bold, the other one a link to the other manual. The
+  // page knows its own language (c.lang), so the active half is a <span> and the
+  // inactive half an <a> — nothing is clickable that would not move the reader.
+  const en = c.lang === "en"
+    ? '<span class="lang-active">EN</span>'
+    : '<a href="manual.html">EN</a>';
+  const ru = c.lang === "ru"
+    ? '<span class="lang-active">RU</span>'
+    : '<a href="manual_ru.html">RU</a>';
+  return '                    <span class="lang-switch" title="' + c.langSwitchTitle +
+    '">' + en + '<span class="lang-sep">/</span>' + ru + "</span>";
 }
 
 function buildHtml(sections, page) {
