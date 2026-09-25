@@ -475,6 +475,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `index.html`, `manual.html`, `docs/ExampleBoots.md`, `src/osboot.js`,
   `src/quickboot.js`, `src/pdp11-panel.js`, `tools/screenshots-manual.js`)
 
+- **The Russian user manual's sections link to one another, as the English
+  manual's do.** The translation had dropped all 32 in-page cross-references,
+  so nothing in the Russian text led to a related topic while the English page
+  could jump between its sections; both pages now carry the same 45 internal
+  links — the 32 cross-references and the table of contents.
+
 ### Added
 
 - **A startup loading gate holds the first frame.** The overlay is inline in
