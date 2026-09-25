@@ -80,11 +80,19 @@ function startServer() {
 // is hidden with @media screen rules injected alongside: this markup only ever
 // exists for the PDF run, because the script injects it into the loaded page.
 function coverHtml(lang, title, subtitle, date) {
+  // A title page carries four things, and each says something the others do
+  // not: the brand, the artwork, the title, the date. The version before this
+  // printed seven lines and repeated itself — "User Manual" twice, "yaPDP"
+  // three times, "Yet Another PDP-11/70 Emulator" twice with one of them
+  // word-for-word identical to the line above it. Repetition on a cover does
+  // not reinforce; it reads as an accident.
+  //
+  // The attribution to pdp11-js and mass:werk belongs in the colophon, which
+  // will be added when the colophon exists. It is not lost meanwhile: the
+  // landing page's acknowledgements and README both carry it.
   const t = {
-    en: { manual: "User Manual", machine: "DEC PDP-11/70 in the browser",
-      foot: "Yet Another PDP-11/70 Emulator" },
-    ru: { manual: "Руководство пользователя", machine: "DEC PDP-11/70 в браузере",
-      foot: "Yet Another PDP-11/70 Emulator" },
+    en: { machine: "DEC PDP-11/70 in the browser" },
+    ru: { machine: "DEC PDP-11/70 в браузере" },
   }[lang];
   return `
 <div class="pdf-cover">
@@ -98,15 +106,9 @@ function coverHtml(lang, title, subtitle, date) {
   </figure>
   <div class="pdf-cover-mid">
     <h1 class="pdf-cover-title">${title}</h1>
-    <p class="pdf-cover-subtitle">${t.manual} · ${t.machine}</p>
-    <p class="pdf-cover-machine">yaPDP — ${t.foot}</p>
+    <p class="pdf-cover-subtitle">${t.machine}</p>
   </div>
-  <div class="pdf-cover-meta">
-    <b>yaPDP</b> · Yet Another PDP‑11/70 Emulator<br>
-    Date: ${date}<br>
-    Panel adapted from Paul Nankervis's pdp11-js · printing engine from
-    mass:werk (Norbert Landsteiner)
-  </div>
+  <div class="pdf-cover-meta">Date: ${date}</div>
 </div>`;
 }
 
