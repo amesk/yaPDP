@@ -72,7 +72,7 @@ export function DownloadSection({ lang }: DownloadSectionProps) {
               : 'Скачать свежие сборки — Windows (MSI / NSIS) и Linux (deb / rpm / AppImage):'}
           </p>
           <span className="text-[11px] text-[#a09278] font-mono">
-            Directly from Alexei Eskenazi&apos;s GitHub release repository
+            Directly from the project&apos;s GitHub repository
           </span>
         </div>
 

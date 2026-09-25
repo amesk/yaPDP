@@ -138,7 +138,7 @@ export function GetStarted({ lang, onLaunchOnline }: GetStartedProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#3a3528]">
-            {RESOURCE_LINKS.map((link) => (
+            {RESOURCE_LINKS.filter((link) => !link.lang || link.lang === lang).map((link) => (
               <tr key={link.id} className="hover:bg-white/[0.02] transition-colors">
                 <td className="py-2 px-3.5 text-[#e8d080] font-semibold align-top break-words sm:whitespace-nowrap font-mono">
                   {link.name}

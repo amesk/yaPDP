@@ -173,6 +173,10 @@ export const RESOURCE_LINKS: ResourceLinkItem[] = [
     displayUrl: 'https://t.me/yaPDP_news_ru',
     url: 'https://t.me/yaPDP_news_ru',
     notes: 'Official updates and news channel by Alexei Eskenazi',
+    // The channel is Russian, so it is listed in the Russian locale only: an
+    // English reader was being offered a link they would not follow, and the
+    // header and footer point them at GitHub Discussions instead.
+    lang: 'ru',
   },
   {
     id: 'readme',

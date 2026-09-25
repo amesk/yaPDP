@@ -1,4 +1,4 @@
-import { Github, Monitor, BookOpen, Download, Terminal, Sliders, HardDrive, Cpu, Home, Send, FileText } from 'lucide-react';
+import { Github, Monitor, BookOpen, Download, Terminal, Sliders, HardDrive, Cpu, Home, Send, FileText, MessagesSquare } from 'lucide-react';
 
 interface NavbarProps {
   lang: 'en' | 'ru';
@@ -202,16 +202,35 @@ export function Navbar({
             <span className={lang === 'ru' ? 'text-[#e8d080] font-bold' : 'opacity-60'}>RU</span>
           </button>
 
-          {/* Telegram Link */}
-          <a
-            href="https://t.me/yaPDP_news_ru"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors shrink-0"
-            title="Telegram News Channel (RU)"
-          >
-            <Send className="w-3.5 h-3.5 -rotate-12" />
-          </a>
+          {/* GitHub Discussions in English, Telegram in Russian.
+              The project's channel is Russian: in the English locale it was a
+              dead end (a reader who does not use Telegram was not going to
+              start), so it is replaced by the place questions are actually
+              asked — GitHub Discussions, enabled on amesk/yaPDP. The Russian
+              locale keeps its own channel and gains nothing from a forum it
+              does not use. Locale decides, which is why the pair is rendered
+              conditionally rather than both being shown. */}
+          {lang === 'en' ? (
+            <a
+              href="https://github.com/amesk/yaPDP/discussions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 text-[#c8b890] hover:text-[#f0e6c8] transition-colors shrink-0"
+              title="GitHub Discussions"
+            >
+              <MessagesSquare className="w-3.5 h-3.5" />
+            </a>
+          ) : (
+            <a
+              href="https://t.me/yaPDP_news_ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors shrink-0"
+              title="Telegram-канал новостей"
+            >
+              <Send className="w-3.5 h-3.5 -rotate-12" />
+            </a>
+          )}
 
           {/* GitHub Link */}
           <a
