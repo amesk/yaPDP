@@ -835,6 +835,15 @@ function generate() {
   };
 }
 
+// mkdir -p before writing. landing/src/data/ holds nothing but the generated
+// data modules, so it does not exist in a fresh checkout (Git cannot store an
+// empty directory) and writing manualData.ts failed with ENOENT there — the
+// same trap as devlog/.
+function writeTarget(file, content) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+}
+
 function main() {
   const args = process.argv.slice(2);
   const write = args.includes("--write");
@@ -880,13 +889,13 @@ function main() {
   }
 
   if (write) {
-    for (const t of targets) fs.writeFileSync(t.file, t.content);
+    for (const t of targets) writeTarget(t.file, t.content);
     console.log("build-manual: wrote " + names().join(", ") +
       " (" + sections.length + " sections)");
     return;
   }
 
-  for (const t of targets) fs.writeFileSync(t.file + ".generated", t.content);
+  for (const t of targets) writeTarget(t.file + ".generated", t.content);
   console.log("build-manual: wrote " + names(".generated").join(", ") +
     " (" + sections.length + " sections, " + html.length + " + " + htmlRu.length +
     " + " + ts.length + " bytes)");
