@@ -99,16 +99,30 @@ export function Navbar({
               <span className={lang === 'ru' ? 'text-[#e8d080] font-bold' : 'opacity-60'}>RU</span>
             </button>
 
-            {/* Telegram Link */}
-            <a
-              href="https://t.me/yaPDP_news_ru"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors"
-              title="Telegram Channel (RU)"
-            >
-              <Send className="w-3.5 h-3.5 -rotate-12" />
-            </a>
+            {/* Telegram in Russian, GitHub Discussions in English.
+                The desktop right-hand group below carries the same pair, so the
+                mobile bar and the desktop bar offer the same destinations. */}
+            {lang === 'en' ? (
+              <a
+                href="https://github.com/amesk/yaPDP/discussions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 text-[#c8b890] hover:text-[#f0e6c8] transition-colors"
+                title="GitHub Discussions"
+              >
+                <MessagesSquare className="w-3.5 h-3.5" />
+              </a>
+            ) : (
+              <a
+                href="https://t.me/yaPDP_news_ru"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors"
+                title="Telegram-канал новостей"
+              >
+                <Send className="w-3.5 h-3.5 -rotate-12" />
+              </a>
+            )}
 
             {/* GitHub Link */}
             <a
