@@ -82,9 +82,11 @@ function startServer() {
 function coverHtml(lang, title, subtitle, date) {
   const t = {
     en: { manual: "User Manual", machine: "DEC PDP-11/70 in the browser",
-      foot: "Yet Another PDP-11/70 Emulator" },
+      foot: "Yet Another PDP-11/70 Emulator",
+      caption: "BASIC-11 on the Model 33 ASR teletype, punched to paper tape — a screenshot from the emulator itself" },
     ru: { manual: "Руководство пользователя", machine: "DEC PDP-11/70 в браузере",
-      foot: "Yet Another PDP-11/70 Emulator" },
+      foot: "Yet Another PDP-11/70 Emulator",
+      caption: "BASIC-11 на телетайпе Model 33 ASR, с выводом на перфоленту — кадр из самого эмулятора" },
   }[lang];
   return `
 <div class="pdf-cover">
@@ -97,6 +99,11 @@ function coverHtml(lang, title, subtitle, date) {
     <p class="pdf-cover-subtitle">${t.manual} · ${t.machine}</p>
     <p class="pdf-cover-machine">yaPDP — ${t.foot}</p>
   </div>
+  <figure class="pdf-cover-shot">
+    <img src="http://127.0.0.1:${PORT}/assets/images/os/basic.png"
+         alt="BASIC-11 running on the Model 33 ASR teletype in yaPDP">
+    <figcaption>${t.caption}</figcaption>
+  </figure>
   <div class="pdf-cover-meta">
     <b>yaPDP</b> · Yet Another PDP‑11/70 Emulator<br>
     Date: ${date}<br>
@@ -137,6 +144,25 @@ const COVER_CSS = `
 .pdf-cover-title { font-size: 28pt; line-height: 1.25; margin: 0 0 6mm 0; color: #1a1815; }
 .pdf-cover-subtitle { font-size: 13pt; color: #4a453a; margin: 0 0 10mm 0; }
 .pdf-cover-machine { font-size: 11pt; color: #6a5f4a; margin: 0; }
+
+/* The frame. A dark emulator screenshot floats on a white cover without one,
+   and a photograph in a book is expected to be framed — this is that frame:
+   a hairline in the cover's own grey, not the gold, which belongs to the brand
+   line above. */
+.pdf-cover-shot { margin: 0 0 8mm 0; }
+.pdf-cover-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 0.75pt solid #8a8278;
+  background: #12100d;
+}
+.pdf-cover-shot figcaption {
+  font-size: 9pt;
+  color: #4a453a;
+  margin-top: 2mm;
+  text-align: center;
+}
 .pdf-cover-meta {
   border-top: 1px solid #d8d0bc;
   padding-top: 4mm;
@@ -320,7 +346,21 @@ async function buildOne(browser, key, stamp) {
   //
   // headerTemplate is only rendered when displayHeaderFooter is on; an empty
   // header meant no header at all, which is why the top of the page was bare.
-  const runningTitle = key === "en" ? "User Manual" : "Руководство пользователя";
+  // The running title is the product's own description, not the document's:
+  // "yaPDP — Yet Another PDP-11/70 Emulator" says which emulator the reader is
+  // holding a manual for, which a bare "User Manual" does not.
+  //
+  // Header and footer are plain text blocks on purpose. An earlier version
+  // centred the header with `display:flex; justify-content:flex-end`, and
+  // Chromium's header/footer renderer does not lay out flex containers: it kept
+  // only the trailing runs of the line, so the header printed as "User Manual"
+  // with "yaPDP — " cut off. It renders these templates in a restricted mode —
+  // borders are dropped there too — and a text block with text-align is what it
+  // supports. Footer keeps a two-cell layout the same way, with justify between
+  // the spans replaced by a table-free split: the page number goes in a
+  // right-aligned block of its own.
+  const productLine = "yaPDP — Yet Another PDP-11/70 Emulator";
+  const docName = key === "en" ? "User Manual" : "Руководство пользователя";
   const chromeStyle =
     "width:100%;font-size:8pt;color:#6a5f4a;" +
     "font-family:'Courier Prime',monospace;padding:0 " + A4.margin + "mm;";
@@ -330,22 +370,11 @@ async function buildOne(browser, key, stamp) {
     printBackground: false,
     displayHeaderFooter: true,
     headerTemplate:
-      '<div style="' + chromeStyle +
-      'display:flex;justify-content:flex-end;align-items:flex-end;">' +
-      // Page 1 is the cover: a running title over the cover is noise, so the
-      // header appears from the second page on. Chromium exposes .pageNumber to
-      // the templates, and CSS can hide an element per page only like this.
-      "<span class=\"title\">yaPDP — " + runningTitle + "</span></div>" +
-      // The hairline sits at the bottom edge of the header box, which is the
-      // margin area right above the text.
-      '<div style="border-bottom:0.5pt solid #b8b0a0;margin:0 ' + A4.margin +
-      'mm;"></div>',
+      '<div style="' + chromeStyle + 'text-align:right;">' +
+      productLine + "</div>",
     footerTemplate:
-      '<div style="border-top:0.5pt solid #b8b0a0;margin:0 ' + A4.margin +
-      'mm;"></div>' +
-      '<div style="' + chromeStyle +
-      'display:flex;justify-content:space-between;align-items:flex-start;">' +
-      "<span>yaPDP — " + runningTitle + '</span>' +
+      '<div style="' + chromeStyle + 'text-align:left;">' + docName + "</div>" +
+      '<div style="' + chromeStyle + 'text-align:right;margin-top:-8pt;">' +
       '<span class="pageNumber"></span></div>',
     margin: { top: A4.margin + "mm", right: A4.margin + "mm",
       bottom: A4.margin + "mm", left: A4.margin + "mm" },
