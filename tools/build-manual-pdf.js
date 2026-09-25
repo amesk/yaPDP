@@ -432,27 +432,61 @@ async function buildOne(browser, key, stamp) {
   const stamp = new Date().toISOString().slice(0, 10);
 
   try {
+    const { PDFDocument, rgb } = await import("pdf-lib");
     for (const k of keys) {
       const { pdf, cover, out } = await buildOne(browser, k, stamp);
       // The cover and the body are joined with pdf-lib, which understands the
       // format. An earlier attempt did this by hand — renumbering objects and
       // splicing the page tree with regexes — and produced a file with no page
       // tree at all. A format with a grammar deserves a parser.
-      const { PDFDocument } = await import("pdf-lib");
       const merged = await PDFDocument.create();
       const coverDoc = await PDFDocument.load(cover);
       const bodyDoc = await PDFDocument.load(pdf);
-      for (const p of await merged.copyPages(coverDoc, coverDoc.getPageIndices())) {
-        merged.addPage(p);
+      const coverPages = await merged.copyPages(coverDoc, coverDoc.getPageIndices());
+      for (const p of coverPages) merged.addPage(p);
+      const bodyPages = await merged.copyPages(bodyDoc, bodyDoc.getPageIndices());
+      for (const p of bodyPages) merged.addPage(p);
+
+      // --- the rules under the header and over the footer --------------------
+      //
+      // They cannot be drawn by the header/footer templates: Chromium renders
+      // those in a restricted mode that lays out text and drops borders, so the
+      // two <div>s with border-bottom/border-top measured nothing at all — the
+      // running titles appeared and the lines did not. Whatever the templates
+      // do support, a hairline is not it.
+      //
+      // So the rules are drawn onto the finished pages. Coordinates are in
+      // points, origin bottom-left, which is why the header rule sits near the
+      // top of the sheet (height − offset) and the footer rule near the bottom.
+      // The margin is 18mm and the rules sit inside it, away from the text
+      // block: 12mm from each edge, in from the trim by the page margin.
+      const MM = 72 / 25.4;
+      // Darker than the #b8b0a0 first tried: that tone is a printer's hairline,
+      // invisible on screen at 0.5pt, and it was reported as "the lines did not
+      // appear" while they were in fact drawn on all 25 body pages. A rule that
+      // cannot be seen is not a rule. #8a8278 reads as a deliberate line without
+      // competing with the text, and 0.75pt survives both screen and press.
+      const ruleColor = rgb(0.541, 0.510, 0.471); // #8a8278
+      const marginPx = 18 * MM;
+      // The cover is the first page and carries no running header or footer, so
+      // it carries no rules either.
+      for (let i = coverPages.length; i < merged.getPageCount(); i++) {
+        const page = merged.getPage(i);
+        const { width, height } = page.getSize();
+        const topY = height - 12 * MM;
+        const bottomY = 12 * MM;
+        page.drawLine({ start: { x: marginPx, y: topY },
+          end: { x: width - marginPx, y: topY }, thickness: 0.75, color: ruleColor });
+        page.drawLine({ start: { x: marginPx, y: bottomY },
+          end: { x: width - marginPx, y: bottomY }, thickness: 0.75, color: ruleColor });
       }
-      for (const p of await merged.copyPages(bodyDoc, bodyDoc.getPageIndices())) {
-        merged.addPage(p);
-      }
+
       const bytes = Buffer.from(await merged.save());
       fs.writeFileSync(path.join(OUT_DIR, out), bytes);
       console.log("wrote " + path.relative(ROOT, path.join(OUT_DIR, out)) +
         " (" + (bytes.length / 1024).toFixed(0) + " KB, " + merged.getPageCount() +
-        " pages: cover + " + bodyDoc.getPageCount() + ")");
+        " pages: cover + " + bodyDoc.getPageCount() + ", rules on " +
+        (merged.getPageCount() - coverPages.length) + ")");
     }
   } finally {
     await browser.close();
