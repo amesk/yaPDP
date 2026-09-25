@@ -168,21 +168,36 @@ export default function App() {
                 GitHub
               </a>
               <span>·</span>
-              <a
-                href="https://t.me/yaPDP_news_ru"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#24A1DE] transition-colors"
-              >
-                Telegram (RU)
-              </a>
+              {/* The project's channel is Russian, the rest of the site is not:
+                  it is shown where it is useful and omitted where it is a dead
+                  end. An English reader gets a place to ask questions instead,
+                  which the header links to as well. */}
+              {lang === 'en' ? (
+                <a
+                  href="https://github.com/amesk/yaPDP/discussions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#c8a860] transition-colors"
+                >
+                  Discussions
+                </a>
+              ) : (
+                <a
+                  href="https://t.me/yaPDP_news_ru"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#24A1DE] transition-colors"
+                >
+                  Telegram
+                </a>
+              )}
               <span>·</span>
-              <button
-                onClick={() => handleSelectView('manual')}
-                className="hover:text-[#c8a860] transition-colors cursor-pointer"
+              <a
+                href="devlog/index.html"
+                className="hover:text-[#c8a860] transition-colors"
               >
-                {lang === 'en' ? 'Manual' : 'Руководство'}
-              </button>
+                {lang === 'en' ? 'Devlog' : 'Девлог'}
+              </a>
               <span>·</span>
               <button
                 onClick={() => setIsEmulatorOpen(true)}
