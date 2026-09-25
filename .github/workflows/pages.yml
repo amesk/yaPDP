@@ -55,6 +55,33 @@ jobs:
           # cache is content-addressed, so landing packages still hit).
           cache-dependency-path: package-lock.json
 
+      # Restored before npm ci so the Chromium download behind the `puppeteer`
+      # postinstall is skipped on a cache hit — the manual PDFs need a browser.
+      - name: Cache puppeteer Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # The manual pages, the devlog pages and the manual PDFs are generated,
+      # not committed (see .gitignore): the deployed site is assembled from
+      # sources, so this step is what puts manual.html / manual_ru.html / the
+      # PDFs at the site root before site-preview.js copies the tree.
+      #
+      # The guard is a runtime check for the target itself, not a file: the
+      # rollback path publishes an older checkout that may predate both the
+      # `docs` script and the generator, and the committed pages of that
+      # checkout are still the right thing to publish.
+      - name: Build the documentation (manual pages, PDFs, devlog)
+        shell: bash
+        run: |
+          if node -e "process.exit(require('./package.json').scripts.docs ? 0 : 1)"; then
+            npm ci
+            PUPPETEER_NO_SANDBOX=1 npm run docs
+          else
+            echo "::notice::no docs target in this checkout — publishing its committed pages"
+          fi
+
       - name: Build the landing SPA (skipped when landing/ is absent — rollback path)
         working-directory: landing
         if: hashFiles('landing/package.json') != ''

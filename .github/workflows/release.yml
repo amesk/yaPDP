@@ -7,8 +7,11 @@
 #   build-rust       (Linux + Windows x 1)   cargo compile ONCE per OS
 #   package-linux    (minimal + full)        `cargo tauri bundle` from the
 #   package-windows  (minimal + full)          prebuilt binary — no recompile
-#   assemble         collect bundles, CHANGELOG/RELEASE_NOTES, SHA256SUMS,
-#                    create/update a DRAFT release (never auto-publishes)
+#   docs             npm run docs            manual drift check + manual PDFs
+#                                            (manual:pdf) + devlog pages
+#   assemble         collect bundles + PDFs + CHANGELOG/RELEASE_NOTES,
+#                    SHA256SUMS, create/update a DRAFT release
+#                    (never auto-publishes)
 #
 # toolchain: tools/tauri-build.js gained a --bundle-only mode that runs
 # `cargo tauri bundle` (package an already-built target/release, no cargo).
@@ -279,12 +282,63 @@ jobs:
           if-no-files-found: error
 
   # -------------------------------------------------------------------------
+  # Documentation the release ships. `npm run docs` is the wireit target over
+  # three steps: the manual drift check (`manual`), the devlog pages
+  # (`devlog:build`) and the manual PDFs (`manual:pdf`, whose declared `output`
+  # is the two files staged below). The PDFs are rendered from the committed
+  # manual.html / manual_ru.html, which `manual` has just verified against the
+  # Markdown source — so a stale page fails the job instead of shipping a PDF
+  # that disagrees with the site.
+  # -------------------------------------------------------------------------
+  docs:
+    name: Build docs (manual PDFs + devlog)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # Restored BEFORE npm ci, so the ~150 MB Chromium download behind the
+      # `puppeteer` postinstall is skipped on a cache hit — the PDF build needs
+      # a real browser.
+      - name: Cache puppeteer Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build docs (manual PDFs + devlog)
+        # PUPPETEER_NO_SANDBOX is the opt-in tools/build-manual-pdf.js reads to
+        # pass --no-sandbox: the same switch the browser-driven e2e tests use on
+        # a runner, where the Chrome sandbox is not available.
+        env:
+          PUPPETEER_NO_SANDBOX: '1'
+        run: npm run docs
+
+      - name: Upload manual PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-manual
+          path: |
+            manual.pdf
+            manual_ru.pdf
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------------
   # Assemble: collect every bundle + docs + checksums into a DRAFT release.
   # -------------------------------------------------------------------------
   assemble:
     name: Assemble draft release
     runs-on: ubuntu-latest
-    needs: [package-linux, package-windows]
+    needs: [package-linux, package-windows, docs]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -296,6 +350,12 @@ jobs:
           pattern: bundle-*
           path: bundles/
           merge-multiple: true
+
+      - name: Download manual PDFs
+        uses: actions/download-artifact@v4
+        with:
+          name: docs-manual
+          path: docs-out/
 
       - name: Resolve tag name
         id: tag
@@ -314,6 +374,10 @@ jobs:
           mkdir -p staged
           cp CHANGELOG.md staged/
           cp RELEASE_NOTES.md staged/
+          # The manual PDFs built by the docs job. They carry the same two names
+          # the landing links to (manual.pdf / manual_ru.pdf), so the download
+          # from the release and the copy on the site stay the same document.
+          cp docs-out/*.pdf staged/
           SUMFILE="yaPDP-$VERSION-SHA256SUMS.txt"
           find bundles -type f -print0 \
             | xargs -0 sha256sum \

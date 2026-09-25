@@ -200,7 +200,11 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run serve` | Local static server on port 1170 (HTTP Range supported) for browser development |
 | `npm run site:preview` | Build the React landing, assemble the full site (`site/`) and serve it on <http://localhost:3000> — SPA at `/`, emulator at `/pdp11.html` |
 | `npm run site:build` | Build the landing + assemble `site/` only (no server); `npm run site:serve` re-serves an already built `site/` on port 3000 |
-| `npm run manual:build` | Regenerate the user manual from its Markdown source (`docs/manual/*.md` + `docs/manual/ru/*.md`): `manual.html` and `landing/src/data/manualData.ts`. `npm run manual:check` fails when a committed output drifts from the Markdown and is wired into `npm test` (and therefore CI); [`tests/manual-generation.test.js`](../tests/manual-generation.test.js) guards the structure of both pages ([`tools/build-manual.js`](../tools/build-manual.js)) |
+| `npm run manual:build` | Regenerate the user manual from its Markdown source (`docs/manual/*.md` + `docs/manual/ru/*.md`): `manual.html`, `manual_ru.html` and `landing/src/data/manualData.ts`. **None of the three is committed** — see the note under the table; [`tests/manual-generation.test.js`](../tests/manual-generation.test.js) generates them in memory and guards the structure of both pages ([`tools/build-manual.js`](../tools/build-manual.js)) |
+| `npm run manual:check` | Report a stale generated file in the working tree (a local sanity check: there is no committed copy left to compare against) |
+| `npm run devlog:build` / `devlog:check` | The same pair for the devlog: `devlog/<date>-<slug>.html`, `devlog/index.html`, `devlog/feed.xml` and `landing/src/data/devlogData.ts` ([`tools/build-devlog.js`](../tools/build-devlog.js)) |
+| `npm run manual:pdf` | Render the printable manual — `manual.pdf` and `manual_ru.pdf` at the repository root, next to `manual.html` and exactly where the landing links to them. Chromium prints the served pages, so the PDF *is* the web manual: same layout and `@media print` rules, selectable text, working links ([`tools/build-manual-pdf.js`](../tools/build-manual-pdf.js)) |
+| `npm run docs` | Build the whole documentation set in one target — manual pages and data, devlog pages and feed, and the two PDFs. This is what the Pages deploy and the release workflow run before the site is assembled |
 | `npm run screenshots:manual` | Regenerate the user-manual page screenshots into `assets/images/manual/` — drives the installed Edge/Chrome via `puppeteer-core` (see the [User manual](../README.md#user-manual) section in the README) |
 | `npm run screenshots:os` | Boot each guest OS through the quick-boot wizard and capture a screenshot into `assets/images/os/` for the landing-page carousel (Unix V5 on the Model 33 teletype, 2.11 BSD and RT-11 v4.0 on a VT100, RT-11 on a DECscope, DEC BASIC, Lunar Lander, XXDP+). The machine profile seeded per shot must mirror the scenario's `hardware` block or the wizard reloads the page mid-capture — [`tests/screenshots-os-config.test.js`](../tests/screenshots-os-config.test.js) pins that |
 | `npm run clean` | Remove `desktop/` and the generated `tauri.conf.json` |
@@ -210,6 +214,17 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run media:compress` | Compress a disk/tape image into `media/<name>.<ext>.zst` — `npm run media:compress -- media/ra0.tap` (Node's own zstd, no external compressor; an existing `.zst` is kept unless `--force`, and every frame is decoded back with the same `fzstd` build the browser loads before it is written) ([`tools/media-zst.js`](../tools/media-zst.js)) |
 | `npm run media:unpack` | Unpack a `media/*.zst` back to the raw image — `npm run media:unpack -- media/ra0.tap.zst` (the target is left alone unless `--force`). `node tools/media-zst.js check <file.zst>` only decodes and reports |
 | `npm run version:sync` | Push the `package.json` version into `src/version.js` (UI marker), both `src-tauri/tauri.conf.*.json` (installer version) and `src-tauri/Cargo.toml` — the single step after bumping the version |
+
+**Generated documentation is not committed.** `manual.html`, `manual_ru.html`,
+`devlog/`, `landing/src/data/manualData.ts`, `landing/src/data/devlogData.ts` and
+the two PDFs are build products (listed in `.gitignore`): the sources are the
+Markdown under `docs/manual/` and `docs/devlog/` plus the two page templates
+(`tools/manual-template-*.html`). Every consumer builds them first — the Pages
+deploy runs `npm run docs` before it assembles the site, `landing/` regenerates
+its data modules in a `prebuild`/`predev` hook (they are imports the SPA cannot
+compile without), and `npm test` generates them in memory. The classic static
+site links `manual.html` from `index.html`, so a deploy that skips the build
+publishes a dead link: `npm run site:build` and `pages.yml` both build first.
 
 ```bash
 # Build the full desktop app (stage + installers) in one step

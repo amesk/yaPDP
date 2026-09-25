@@ -4,8 +4,10 @@
  *
  * docs/manual/*.md is the single source for the user manual, and
  * tools/build-manual.js generates manual.html (English), manual_ru.html
- * (Russian) and landing/src/data/manualData.ts from it. Regenerating must
- * keep every
+ * (Russian) and landing/src/data/manualData.ts from it. None of those three is
+ * committed (see .gitignore): the Pages deploy, the release and landing/'s
+ * prebuild generate them, and this test generates them in memory and guards
+ * what comes out. Regenerating must keep every
  * construct the page styles or links on — and that is exactly what a port from
  * hand-written HTML quietly loses. Seven defects of that one kind shipped in a
  * row: stylesheet classes, internal links, code blocks, emphasis, block quotes,
@@ -44,10 +46,11 @@ const assert = require("assert");
 const ROOT = path.join(__dirname, "..");
 const SRC = path.join(ROOT, "docs", "manual");
 const SRC_RU = path.join(SRC, "ru");
-const OUT_HTML = path.join(ROOT, "manual.html");
-const OUT_HTML_RU = path.join(ROOT, "manual_ru.html");
-const OUT_TS = path.join(ROOT, "landing", "src", "data", "manualData.ts");
 const META = path.join(SRC, "_meta.yml");
+// The three outputs are generated in memory (see run()): they are build
+// products, not committed files — the Pages deploy and the release build them —
+// so reading them off disk would test whatever a working tree happens to hold.
+const { generate } = require("../tools/build-manual.js");
 
 // --- helpers ---------------------------------------------------------------
 
@@ -141,14 +144,14 @@ function checkPage(html, label, meta) {
 
 function run() {
   assert.ok(fs.existsSync(META), "docs/manual/_meta.yml is missing");
-  assert.ok(fs.existsSync(OUT_HTML), "manual.html is missing — run npm run manual:build");
-  assert.ok(fs.existsSync(OUT_HTML_RU),
-    "manual_ru.html is missing — run npm run manual:build");
-  assert.ok(fs.existsSync(OUT_TS), "manualData.ts is missing — run npm run manual:build");
 
-  const html = fs.readFileSync(OUT_HTML, "utf8");
-  const htmlRu = fs.readFileSync(OUT_HTML_RU, "utf8");
-  const ts = fs.readFileSync(OUT_TS, "utf8");
+  // Generated here rather than read from disk: manual.html, manual_ru.html and
+  // manualData.ts are build products (not committed — see .gitignore), so this
+  // is the guard on what the deploy and the release will produce.
+  const built = generate();
+  const html = built.html;
+  const htmlRu = built.htmlRu;
+  const ts = built.ts;
   const meta = metaSections();
   const en = sectionFiles(SRC);
   const ru = sectionFiles(SRC_RU);
