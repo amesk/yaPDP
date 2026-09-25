@@ -355,6 +355,120 @@
             color: #524939;
         }
 
+        /* --- print ---------------------------------------------------------
+           The same page becomes a PDF for the release assets and for the
+           landing page (tools/build-manual-pdf.js). Nothing here is a second
+           layout: the printed document IS this document, with the screen chrome
+           taken away.
+
+           What goes: the machine-room backdrop and the dark slab (a photograph
+           behind text wastes toner and destroys contrast on paper), the gold
+           edge lines and their shadow, the hero's button row (a PDF has no
+           links to pages that do not exist on it), the sticky behaviours, and
+           the illustration viewer, which is a JavaScript overlay with nothing
+           to click on paper.
+
+           What stays: the text, the pictures with their captions, the tables,
+           the contents list. Those are the manual. */
+        @media print {
+            html,
+            body {
+                background: #fff !important;
+                background-image: none !important;
+                height: auto !important;
+                overflow: visible !important;
+                color: #000;
+            }
+
+            .app-layout {
+                display: block !important;
+                height: auto !important;
+            }
+
+            .landing-page {
+                max-width: none !important;
+                width: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                background-image: none !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                color: #000;
+            }
+
+            .landing-page h1,
+            .landing-page h2,
+            .landing-page h3,
+            .landing-page h4 {
+                color: #000;
+            }
+
+            .landing-page a,
+            .landing-page code,
+            .landing-page blockquote,
+            .landing-page .shot-caption,
+            .landing-page .hero .tagline,
+            .landing-page .zero-setup {
+                color: #000;
+            }
+
+            .landing-page pre {
+                color: #000;
+                background: #f4f4f4;
+                border: 1px solid #bbb;
+            }
+
+            .landing-page blockquote {
+                background: none;
+                border-left: 3px solid #999;
+            }
+
+            .landing-page table td,
+            .landing-page table th {
+                border-bottom: 1px solid #ccc;
+            }
+
+            .landing-page hr {
+                border-top: 1px solid #ccc;
+            }
+
+            /* The hero keeps its title and tagline — they are the head of the
+               document — but loses the button row and the picture behind it. */
+            .panel-actions-landing,
+            .shot-viewer,
+            .download-subtext,
+            .app-corner-links {
+                display: none !important;
+            }
+
+            /* A picture and its caption belong to each other; a table row and
+               its heading belong to each other. Splitting either across pages
+               is the classic failure of automatic pagination. */
+            .landing-page figure,
+            .landing-page img,
+            .landing-page pre,
+            .landing-page blockquote,
+            .landing-page tr,
+            .landing-page li {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            .landing-page h2,
+            .landing-page h3 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            /* The pictures are screenshots of a dark emulator on a dark page:
+               on white paper they need an outline or they float unattached. */
+            .landing-page img {
+                border: 1px solid #ddd;
+            }
+        }
+
         @media (max-width: 700px) {
             .landing-page .pair > figure,
             .landing-page .row > figure {
