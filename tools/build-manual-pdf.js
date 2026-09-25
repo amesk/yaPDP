@@ -226,17 +226,52 @@ async function buildOne(browser, key, stamp) {
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "load" });
   await page.evaluateHandle("document.fonts.ready");
-  // The cover and its styles are injected into the loaded page, so the PDF is a
-  // single call over a single document and its structure stays Chromium's
-  // business. Neither reaches the web manual.
-  await page.addStyleTag({ content: COVER_CSS });
-  await page.evaluate((markup) => {
-    const host = document.querySelector(".landing-page") || document.body;
+
+  // --- the cover, printed on its own ---------------------------------------
+  //
+  // The cover is rendered as a separate one-page document rather than as the
+  // first page of the manual, because a running header must not appear above a
+  // title page. Both ways of hiding it on page one were measured and both
+  // failed:
+  //
+  //   * @page :first { margin-top: … } — Chromium ignores the :first page
+  //     selector entirely (a test page with a 40mm first-page margin printed
+  //     its first page at the normal margin).
+  //   * CSS inside headerTemplate cannot tell which page it is rendering, so a
+  //     rule aimed at the first page put "HEADER" on every page.
+  //
+  // displayHeaderFooter applies to a whole print call and cannot be narrowed
+  // per page. Printing the cover in its own call therefore needs no trick: no
+  // header, no footer, nothing to suppress. The two files are not merged —
+  // merging was abandoned earlier for good reason — the cover is kept beside the
+  // body and the next step concatenates them the way the PDF format intends,
+  // through a library rather than by pattern-matching bytes.
+  const cover = await browser.newPage();
+  await cover.setViewport({ width: 794, height: 1123, deviceScaleFactor: 1 });
+  await cover.setContent(
+    "<!DOCTYPE html><html><head><meta charset='UTF-8'>" +
+    "<link rel='stylesheet' href='http://127.0.0.1:" + PORT + "/css/pdp11.css'>" +
+    "<style>body{background:#fff !important;background-image:none !important;}" +
+    "body>*{display:none;}</style></head><body></body></html>",
+    { waitUntil: "load" });
+  await cover.evaluateHandle("document.fonts.ready");
+  await cover.addStyleTag({ content: COVER_CSS });
+  await cover.evaluate((markup) => {
     const wrap = document.createElement("div");
     wrap.innerHTML = markup;
-    host.insertBefore(wrap.firstElementChild, host.firstChild);
-    // The illustration viewer is a JavaScript overlay with nothing to click on
-    // paper; @media print hides it, and this drops the empty host as well.
+    document.body.appendChild(wrap.firstElementChild);
+  }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp));
+  const coverPdf = await cover.pdf({
+    format: "A4", printBackground: true, displayHeaderFooter: false,
+    margin: { top: "18mm", right: "18mm", bottom: "18mm", left: "18mm" },
+  });
+  await cover.close();
+
+  // --- the body ------------------------------------------------------------
+  await page.addStyleTag({ content: COVER_CSS });
+  await page.evaluate((markup) => {
+    // The body is the manual with its screen chrome removed by @media print; the
+    // illustration viewer has nothing to click on paper.
     document.querySelectorAll(".shot-viewer").forEach((el) => el.remove());
   }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp));
 
@@ -277,17 +312,41 @@ async function buildOne(browser, key, stamp) {
     " color: #000; font-variant-numeric: tabular-nums; }" +
     "}" });
 
+  // Header and footer. Chromium prints these outside the content box, in the
+  // margin, so the rules below are the only chrome the document carries. The
+  // hairline under the header and above the footer separates them from the text
+  // — without it the running title sits in the same visual field as the first
+  // line of the page and reads as part of it.
+  //
+  // headerTemplate is only rendered when displayHeaderFooter is on; an empty
+  // header meant no header at all, which is why the top of the page was bare.
+  const runningTitle = key === "en" ? "User Manual" : "Руководство пользователя";
+  const chromeStyle =
+    "width:100%;font-size:8pt;color:#6a5f4a;" +
+    "font-family:'Courier Prime',monospace;padding:0 " + A4.margin + "mm;";
+
   const renderPdf = async () => page.pdf({
     format: "A4",
     printBackground: false,
     displayHeaderFooter: true,
-    headerTemplate: "<div></div>",
+    headerTemplate:
+      '<div style="' + chromeStyle +
+      'display:flex;justify-content:flex-end;align-items:flex-end;">' +
+      // Page 1 is the cover: a running title over the cover is noise, so the
+      // header appears from the second page on. Chromium exposes .pageNumber to
+      // the templates, and CSS can hide an element per page only like this.
+      "<span class=\"title\">yaPDP — " + runningTitle + "</span></div>" +
+      // The hairline sits at the bottom edge of the header box, which is the
+      // margin area right above the text.
+      '<div style="border-bottom:0.5pt solid #b8b0a0;margin:0 ' + A4.margin +
+      'mm;"></div>',
     footerTemplate:
-      '<div style="width:100%;font-size:8pt;color:#6a5f4a;' +
-      "font-family:'Courier Prime',monospace;padding:0 " + A4.margin + 'mm;' +
-      'display:flex;justify-content:space-between;">' +
-      "<span>yaPDP — " + (key === "en" ? "User Manual" : "Руководство пользователя") +
-      '</span><span class="pageNumber"></span></div>',
+      '<div style="border-top:0.5pt solid #b8b0a0;margin:0 ' + A4.margin +
+      'mm;"></div>' +
+      '<div style="' + chromeStyle +
+      'display:flex;justify-content:space-between;align-items:flex-start;">' +
+      "<span>yaPDP — " + runningTitle + '</span>' +
+      '<span class="pageNumber"></span></div>',
     margin: { top: A4.margin + "mm", right: A4.margin + "mm",
       bottom: A4.margin + "mm", left: A4.margin + "mm" },
   });
@@ -348,7 +407,7 @@ async function buildOne(browser, key, stamp) {
   }
   await page.close();
 
-  return { pdf: pdf, out: spec.out, pages: written, passes: pass };
+  return { pdf: pdf, cover: coverPdf, out: spec.out, pages: written, passes: pass };
 }
 
 
@@ -374,11 +433,26 @@ async function buildOne(browser, key, stamp) {
 
   try {
     for (const k of keys) {
-      const { pdf, out } = await buildOne(browser, k, stamp);
-      fs.writeFileSync(path.join(OUT_DIR, out), pdf);
-      const pages = (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) || []).length;
+      const { pdf, cover, out } = await buildOne(browser, k, stamp);
+      // The cover and the body are joined with pdf-lib, which understands the
+      // format. An earlier attempt did this by hand — renumbering objects and
+      // splicing the page tree with regexes — and produced a file with no page
+      // tree at all. A format with a grammar deserves a parser.
+      const { PDFDocument } = await import("pdf-lib");
+      const merged = await PDFDocument.create();
+      const coverDoc = await PDFDocument.load(cover);
+      const bodyDoc = await PDFDocument.load(pdf);
+      for (const p of await merged.copyPages(coverDoc, coverDoc.getPageIndices())) {
+        merged.addPage(p);
+      }
+      for (const p of await merged.copyPages(bodyDoc, bodyDoc.getPageIndices())) {
+        merged.addPage(p);
+      }
+      const bytes = Buffer.from(await merged.save());
+      fs.writeFileSync(path.join(OUT_DIR, out), bytes);
       console.log("wrote " + path.relative(ROOT, path.join(OUT_DIR, out)) +
-        " (" + (pdf.length / 1024).toFixed(0) + " KB, " + pages + " pages)");
+        " (" + (bytes.length / 1024).toFixed(0) + " KB, " + merged.getPageCount() +
+        " pages: cover + " + bodyDoc.getPageCount() + ")");
     }
   } finally {
     await browser.close();
