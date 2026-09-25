@@ -36,7 +36,23 @@ landing/node_modules/
 landing/dist/
 site/
 
-# Generated manual output (generator dry-run targets)
+# Generator dry-run targets (the default mode of both generators)
 manual.html.generated
 manual_ru.html.generated
 landing/src/data/manualData.ts.generated
+
+# ---- Generated documentation — deliberately NOT committed ----
+# The sources are docs/manual/*.md (+ ru/), docs/devlog/*.md and the two page
+# templates; everything below is built from them. Nothing here is kept in Git
+# because every consumer builds it first: the Pages deploy assembles the site in
+# CI, landing/ regenerates its data in a `prebuild` hook, and the test suite
+# generates in memory. The PDFs additionally carry the day they were produced,
+# so re-rendering an unchanged manual is never byte-identical — a committed copy
+# could not be drift-checked the way a text output can.
+/manual.html
+/manual_ru.html
+/devlog/
+/manual.pdf
+/manual_ru.pdf
+landing/src/data/manualData.ts
+landing/src/data/devlogData.ts

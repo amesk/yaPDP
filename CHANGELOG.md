@@ -132,6 +132,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   measures that the panel keeps the same width with the note shown as with it
   hidden on a phone, and keeps its full size on a wide window)
 
+- **The generated documentation is a build product, not a tracked file.** The
+  repository holds the Markdown sources (`docs/manual/*.md`, `docs/manual/ru/*.md`,
+  `docs/devlog/*.md`) and the two page templates; `manual.html`, `manual_ru.html`,
+  `devlog/` (pages, index and `feed.xml`) and the landing's data modules
+  (`landing/src/data/manualData.ts`, `landing/src/data/devlogData.ts`) are built
+  from them and covered by `.gitignore`. Every consumer builds them first: the
+  Pages deploy runs `npm run docs` before it assembles the site, and `landing/`
+  regenerates its data in a `prebuild`/`predev` hook, since it imports the modules
+  and cannot compile without them. The published manual, the devlog pages and the
+  landing's content are therefore generated from the sources at deploy time, so a
+  page can no longer be published stale; the manual and devlog guards generate
+  their output in memory and thus test the sources rather than a checked-in copy.
+  (`.gitignore`, `package.json`, `landing/package.json`,
+  `.github/workflows/pages.yml`, `tests/manual-generation.test.js`,
+  `tests/devlog.test.js`, `tools/build-devlog.js`, `docs/BUILDING.md`)
+
+- **The printable manual (`manual.pdf`, `manual_ru.pdf`) is rebuilt on every site
+  deploy and attached to every draft release.** It is rendered from the same pages
+  the site serves, so the release carries the manual that matches what the reader
+  sees — its own cross-references included, the Russian edition's among them.
+  (`.github/workflows/release.yml`, `tools/build-manual-pdf.js`,
+  `docs/RELEASING.md`)
+
 ### Fixed
 
 - **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the

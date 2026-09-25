@@ -65,7 +65,14 @@ const SITE = "https://amesk.github.io/yaPDP";
 
 // The three fields a post cannot do without, plus the summary used by the list
 // and the feed. Deliberately tiny: a devlog post is a date, a title and text.
-function parseFrontMatter(text) {
+function parseFrontMatter(raw) {
+  // Normalise CRLF first. A working copy on Windows is checked out with CRLF
+  // (Git converts it on the way into the index), so every line ends in \r\n —
+  // and the front-matter match anchors on a bare \n. parseBlocks below
+  // normalises for the same reason, but this runs first, so on a Windows
+  // checkout `--check`/`--write` failed with "missing front-matter block" on
+  // posts that were perfectly well formed.
+  const text = String(raw).replace(/\r\n/g, "\n");
   const m = /^---\n([\s\S]*?)\n---\n?/.exec(text);
   if (!m) throw new Error("missing front-matter block (--- ... ---)");
   const meta = {};
@@ -742,6 +749,13 @@ function main() {
     console.log("build-devlog: " + out.posts.length + " post(s), output in sync");
     return;
   }
+
+  // The output directory is created here instead of being assumed. devlog/ used
+  // to be a committed directory, so it was always there; the pages, the feed and
+  // the index are build products now (Git cannot store an empty directory, so a
+  // fresh clone has no devlog/ at all) and the first build failed with ENOENT on
+  // devlog/index.html.
+  fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const suffix = write ? "" : ".generated";
   for (const t of targets) {

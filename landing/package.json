@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
+    "predev": "node ../tools/build-manual.js --write && node ../tools/build-devlog.js --write",
     "build": "wireit",
+    "prebuild": "node ../tools/build-manual.js --write && node ../tools/build-devlog.js --write",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

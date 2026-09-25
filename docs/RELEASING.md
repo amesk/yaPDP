@@ -29,10 +29,14 @@ bump → document → build → publish. Total time: under an hour.
 - [ ] `npm run e2e:os` passes (boots Unix V5, RT-11, BSD 2.11, BASIC-11)
 - [ ] `npm run manifest` — run it if `media/` changed since the last release
       (the committed manifest feeds the quick-boot picker)
-- [ ] **Manual pages in sync** — if the Markdown under `docs/manual/` changed,
-      `npm run manual:build` rewrites `manual.html` and
-      `landing/src/data/manualData.ts` together; `npm run manual:check` (inside
-      `npm test`) fails when a committed output drifts from the source
+- [ ] **Documentation — nothing to commit.** `manual.html`, `manual_ru.html`,
+      `devlog/` and `landing/src/data/{manual,devlog}Data.ts` are generated from
+      the Markdown under `docs/manual/` and `docs/devlog/` (see `.gitignore`),
+      and so are `manual.pdf` / `manual_ru.pdf`. `npm run manual:check` and
+      `npm run devlog:check` only tell you a working copy is stale; the Pages
+      deploy and the release run `npm run docs` and build all of it from source
+- [ ] `npm test` passes (the manual and devlog guards generate in memory, so
+      they test the sources rather than whatever the working tree holds)
 - [ ] **Screenshots in sync** — if any UI or document (user manual, README,
       landing) visually changed since the last release, regenerate and commit:
       `npm run screenshots:manual` writes every shot to **both** the repo
@@ -117,7 +121,12 @@ actually produced: the `.AppImage` also carries the WebKitGTK runtime.
 
 - [ ] Create a **GitHub Release** from tag `releases/vX.Y.Z`
 - [ ] Title: `yaPDP vX.Y.Z`; body: paste the RELEASE_NOTES summary
-- [ ] Attach the artifacts (both variants, all platforms built)
+- [ ] Attach the artifacts (both variants, all platforms built). The `release`
+      workflow does all of this from the tag: it builds both variants on Linux
+      and Windows, runs `npm run docs` for the manual pages, the PDFs and the
+      devlog, and creates a **draft** release carrying the installers,
+      `manual.pdf` / `manual_ru.pdf`, `CHANGELOG.md`, `RELEASE_NOTES.md` and the
+      SHA256SUMS — review that draft, then publish it by hand
 - [ ] Mark as latest (unless this is a pre-release — mark pre-release for
       alpha/beta)
 - [ ] Update the live demo on GitHub Pages if the web build changed
@@ -133,7 +142,7 @@ actually produced: the `.AppImage` also carries the WebKitGTK runtime.
 
 ## Optional automation (future)
 
-- `release.yml` / `nightly.yml` workflow templates exist in
-  `.github/workflows/` (commented out) — nightly builds and auto-release can
-  be enabled when the commit format is stable enough for changelog generation
-  (e.g. release-please).
+- `release.yml` already drives the whole release from a `releases/v*` tag (see
+  §6) and stops at a draft. What is still missing is a nightly build (there is
+  no `nightly.yml` in the tree) and auto-release: both can be added when the
+  commit format is stable enough for changelog generation (e.g. release-please).

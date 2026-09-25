@@ -17,7 +17,10 @@
  *   node tools/build-manual-pdf.js en           # only manual.pdf
  *   node tools/build-manual-pdf.js ru           # only manual_ru.pdf
  *
- * Output: dist-docs/manual.pdf, dist-docs/manual_ru.pdf
+ * Output: manual.pdf, manual_ru.pdf — in the repository root, next to
+ * manual.html: that is where the landing reads them from (landing/src/data.ts)
+ * and where the release picks them up. Also the `npm run manual:pdf` wireit
+ * target, which declares these two paths as its `output`.
  *
  * The pages are loaded over HTTP from the repository's own static server
  * (tools/serve.js) on a private port, because a file:// page cannot fetch the
@@ -32,7 +35,14 @@ const { spawn } = require("child_process");
 const puppeteer = require("puppeteer");
 
 const ROOT = path.resolve(__dirname, "..");
-const OUT_DIR = path.join(ROOT, "dist-docs");
+// The PDFs are written to the repository ROOT rather than to a private build
+// directory. An earlier revision put them under dist-docs/, which nothing ever
+// read: the landing links to `manual.pdf` / `manual_ru.pdf` beside manual.html
+// (landing/src/data.ts) and the release attaches those same files, so the
+// committed PDFs went stale the moment the manual changed. The two paths below
+// are the `output` of the `manual:pdf` wireit target in package.json — move
+// them here and that declaration has to move too.
+const OUT_DIR = ROOT;
 const PORT = 1187;
 
 // A4 at 96dpi minus the margins puppeteer applies, in millimetres. The numbers
@@ -183,7 +193,15 @@ async function pageNumbersFor(pdfBuffer, candidates) {
   // "run in-process": PDF.js then fails with "Setting up fake worker failed",
   // which is how this was discovered. The path is resolved from the package
   // location, so it holds wherever the tool is run from.
-  const worker = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+  //
+  // It has to be a URL rather than a filesystem path. require.resolve returns
+  // "E:\...\pdf.worker.mjs" on Windows, and PDF.js hands whatever is here to the
+  // ESM loader, which reads the drive letter as a URL scheme and refuses it
+  // ("Only URLs with a scheme in: file, data, and node are supported ... Received
+  // protocol 'e:'"). pathToFileURL gives file:///E:/... there and file:///... on
+  // POSIX, so one expression covers both platforms.
+  const worker = require("url").pathToFileURL(
+    require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
   pdfjs.GlobalWorkerOptions.workerSrc = worker;
   const doc = await pdfjs.getDocument({
     data: new Uint8Array(pdfBuffer),

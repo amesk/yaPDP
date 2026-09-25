@@ -24,7 +24,7 @@
     "desktop:minimal": "node tools/build-desktop.js --variant minimal && node tools/tauri-build.js",
     "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
     "serve": "node tools/serve.js",
-    "site:build": "npm --prefix landing run build && node tools/site-preview.js site",
+    "site:build": "npm run docs && npm --prefix landing run build && node tools/site-preview.js site",
     "site:serve": "node tools/serve.js --port 3000 --dir site --index index.html",
     "site:preview": "npm run site:build && npm run site:serve",
     "screenshots:manual": "node tools/screenshots-manual.js",
@@ -49,10 +49,12 @@
     "validate": "wireit",
     "term": "node tools/headless-term.js",
     "voice": "node tools/voicer.js",
-    "manual:build": "node tools/build-manual.js --write",
+    "manual:build": "wireit",
     "manual:check": "node tools/build-manual.js --check",
-    "devlog:build": "node tools/build-devlog.js --write",
-    "devlog:check": "node tools/build-devlog.js --check"
+    "manual:pdf": "wireit",
+    "devlog:build": "wireit",
+    "devlog:check": "node tools/build-devlog.js --check",
+    "docs": "wireit"
   },
   "devDependencies": {
     "canvas": "^3.2.3",
@@ -79,23 +81,63 @@
         "media/manifest.json"
       ]
     },
-    "manual": {
-      "command": "node tools/build-manual.js --check",
+    "manual:build": {
+      "command": "node tools/build-manual.js --write",
       "files": [
         "docs/manual/**",
         "tools/build-manual.js",
         "tools/manual-template-head.html",
-        "tools/manual-template-tail.html",
+        "tools/manual-template-tail.html"
+      ],
+      "output": [
         "manual.html",
         "manual_ru.html",
         "landing/src/data/manualData.ts"
       ]
     },
+    "devlog:build": {
+      "command": "node tools/build-devlog.js --write",
+      "files": [
+        "docs/devlog/**",
+        "tools/build-devlog.js",
+        "tools/manual-template-head.html",
+        "tools/manual-template-tail.html"
+      ],
+      "output": [
+        "devlog/**",
+        "landing/src/data/devlogData.ts"
+      ]
+    },
+    "manual:pdf": {
+      "command": "node tools/build-manual-pdf.js",
+      "dependencies": [
+        "manual:build"
+      ],
+      "files": [
+        "docs/manual/**",
+        "tools/build-manual-pdf.js",
+        "tools/manual-template-head.html",
+        "tools/manual-template-tail.html",
+        "manual.html",
+        "manual_ru.html",
+        "assets/images/**"
+      ],
+      "output": [
+        "manual.pdf",
+        "manual_ru.pdf"
+      ]
+    },
+    "docs": {
+      "dependencies": [
+        "manual:build",
+        "devlog:build",
+        "manual:pdf"
+      ]
+    },
     "test": {
       "command": "node tools/run-tests.js",
       "dependencies": [
-        "manifest",
-        "manual"
+        "manifest"
       ],
       "files": [
         "src/**",
