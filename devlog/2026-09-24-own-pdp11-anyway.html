@@ -425,9 +425,36 @@
                 border-left: 3px solid #999;
             }
 
+            .landing-page table,
+            .landing-page table thead,
+            .landing-page table tbody,
             .landing-page table td,
             .landing-page table th {
+                /* The screen colours are a pale beige on a dark slab — #e0d8c8
+                   for cells, #f0e6c8 for the head — and on white paper they
+                   read as a washed-out orange. The borders were recoloured
+                   here from the start and the text was not, so a printed table
+                   came out in that pale tone across every row. */
+                color: #000;
+            }
+
+            /* One rule per ROW, not per cell.
+
+               The screen styles draw border-bottom on every td, and the cells
+               are aligned to the top of the row. When the first column holds a
+               short word and a later column holds a sentence, the cells have
+               different heights, so each column's line lands at its own y — the
+               staircase that was noticed. Collapsing the table makes a rule on
+               the row draw once across the full width at the row's own height,
+               which is what a printed table wants. The cell borders are removed
+               here so the two do not double up. */
+            .landing-page table tr {
                 border-bottom: 1px solid #ccc;
+            }
+
+            .landing-page table td,
+            .landing-page table th {
+                border-bottom: 0;
             }
 
             .landing-page hr {
