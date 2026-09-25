@@ -82,10 +82,8 @@ function startServer() {
 function coverHtml(lang, title, subtitle, date) {
   const t = {
     en: { manual: "User Manual", machine: "DEC PDP-11/70 in the browser",
-      other: "Русское издание — отдельный файл",
       foot: "Yet Another PDP-11/70 Emulator" },
     ru: { manual: "Руководство пользователя", machine: "DEC PDP-11/70 в браузере",
-      other: "English edition is a separate file",
       foot: "Yet Another PDP-11/70 Emulator" },
   }[lang];
   return `
@@ -97,11 +95,10 @@ function coverHtml(lang, title, subtitle, date) {
   <div class="pdf-cover-mid">
     <h1 class="pdf-cover-title">${title}</h1>
     <p class="pdf-cover-subtitle">${t.manual} · ${t.machine}</p>
-    <p class="pdf-cover-machine">yaPDP — ${t.foot}<br>${t.other}</p>
+    <p class="pdf-cover-machine">yaPDP — ${t.foot}</p>
   </div>
   <div class="pdf-cover-meta">
     <b>yaPDP</b> · Yet Another PDP‑11/70 Emulator<br>
-    Edition: ${t.manual} (${lang.toUpperCase()})<br>
     Date: ${date}<br>
     Panel adapted from Paul Nankervis's pdp11-js · printing engine from
     mass:werk (Norbert Landsteiner)
@@ -152,6 +149,69 @@ const COVER_CSS = `
 
 // The title of the document, taken from its own <h1> so the cover cannot drift
 // from the page it introduces.
+// --- reading the finished PDF ------------------------------------------------
+
+// Where each contents entry landed in a finished PDF, keyed by the anchor id the
+// contents list links to.
+//
+// PDF.js parses the file properly and getTextContent() returns every run with
+// its coordinates, so a heading can be found by its own text rather than
+// guessed at from the flow. Titles are matched longest-first, because a short
+// heading can be a prefix of a longer one — "Storage" inside "Storage (paper
+// tape, disk & tape images)" — and the longer candidate must win that race.
+//
+async function pageNumbersFor(pdfBuffer, candidates) {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // The worker path must point at a real file. An empty string does not mean
+  // "run in-process": PDF.js then fails with "Setting up fake worker failed",
+  // which is how this was discovered. The path is resolved from the package
+  // location, so it holds wherever the tool is run from.
+  const worker = require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = worker;
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(pdfBuffer),
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: false,
+    disableFontFace: true,
+  }).promise;
+
+  // Page 1 is the cover and is not numbered, so the printed page numbers are
+  // the indices minus one. The cover is where the reader sees "no number"; the
+  // contents therefore refers to the PDF's own pages, which is what a PDF
+  // reader shows in its toolbar, and that is the number the footer prints too.
+  const found = {};
+  // A heading is typeset as a heading; the same words in the contents list are
+  // body text. That difference is the whole test: "The Front Panel (Panel page)"
+  // appears on two pages — once in the list of contents and once where the
+  // section starts — and only the second one is set in the large face. Matched
+  // by text alone the map pointed at the contents page. Measured on a real
+  // render: 17.95pt for a body heading against 11.96pt for its contents entry,
+  // so a threshold between them separates the two reliably.
+  const HEADING_MIN_HEIGHT = 15;
+  for (let pageNo = 1; pageNo <= doc.numPages && candidates.length; pageNo++) {
+    const page = await doc.getPage(pageNo);
+    const content = await page.getTextContent();
+    // Only items set large enough to be a heading take part; the rest of the
+    // page is still joined into `text` for nothing — the needle search below
+    // runs against the heading runs alone.
+    const headingText = content.items
+      .filter((it) => it.height >= HEADING_MIN_HEIGHT)
+      .map((it) => it.str).join(" ").replace(/\s+/g, " ");
+    if (!headingText) continue;
+    for (const c of candidates.slice()) {
+      if (found[c.id] !== undefined) continue;
+      const needle = c.title.replace(/\s+/g, " ");
+      if (headingText.indexOf(needle) !== -1) {
+        found[c.id] = pageNo;
+        candidates.splice(candidates.indexOf(c), 1);
+      }
+    }
+  }
+  if (doc.cleanup) await doc.cleanup();
+  return found;
+}
+
 function titleOf(html) {
   const m = /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html);
   return m ? m[1].replace(/<[^>]+>/g, "").trim() : "yaPDP";
@@ -180,7 +240,44 @@ async function buildOne(browser, key, stamp) {
     document.querySelectorAll(".shot-viewer").forEach((el) => el.remove());
   }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp));
 
-  const pdf = await page.pdf({
+  // --- page numbers in the table of contents -------------------------------
+  //
+  // A contents list belongs on paper with page numbers, and the paginator decides
+  // them after layout — the two-pass affair LaTeX makes of \tableofcontents.
+  //
+  // Two attempts are recorded here because both failed in instructive ways:
+  //
+  //   1. floor(offsetTop / page height). Wrong: page-break-inside: avoid on
+  //      figures and tables pushes whole blocks to the next page, so the
+  //      document runs longer than a division of the flow predicts, and the
+  //      error grows as you read — measured +1 by the second section, +6 by the
+  //      tenth.
+  //   2. content: target-counter(attr(href url), page). CSS.supports answers
+  //      true for it, but Chromium has no counter(page) — also verified — so
+  //      there is nothing for target-counter to read. Nothing was rendered.
+  //
+  // What works is asking the finished PDF where each heading landed, and the
+  // tool for that is PDF.js: it is the engine behind Firefox's viewer now
+  // compiled for Node, it parses the file properly, and getTextContent() hands
+  // back every run with its coordinates. One dependency, no native build, same
+  // behaviour on every platform. The generator therefore runs twice: render,
+  // read the map, write the numbers in, render again. If the second render
+  // shifts the pagination the numbers are checked once more and the pass is
+  // repeated, which is exactly what "rerun to get cross-references right"
+  // means in LaTeX.
+  await page.emulateMediaType("print");
+  await page.addStyleTag({ content:
+    "@media print {" +
+    ".landing-page ol { list-style: none; padding-left: 0; }" +
+    ".landing-page ol li { position: relative; page-break-inside: avoid;" +
+    " break-inside: avoid; padding-right: 12mm; }" +
+    /* Reserved for the number, written into the list by the caller. Absolute
+       positioning keeps a long title from wrapping around it. */
+    ".landing-page ol li .toc-page { position: absolute; right: 0;" +
+    " color: #000; font-variant-numeric: tabular-nums; }" +
+    "}" });
+
+  const renderPdf = async () => page.pdf({
     format: "A4",
     printBackground: false,
     displayHeaderFooter: true,
@@ -194,9 +291,64 @@ async function buildOne(browser, key, stamp) {
     margin: { top: A4.margin + "mm", right: A4.margin + "mm",
       bottom: A4.margin + "mm", left: A4.margin + "mm" },
   });
+
+  // Which contents entries the list carries, in order, with the heading text
+  // each one points at. Read from the live document so the map keys and the
+  // markup cannot disagree.
+  const entries = await page.evaluate(() => {
+    const out = [];
+    document.querySelectorAll(".landing-page ol li a[href^='#']").forEach((a) => {
+      out.push({ id: a.getAttribute("href").slice(1), title: a.textContent.trim() });
+    });
+    return out;
+  });
+
+  // The heading text must be found in a page's text layer, and headings are
+  // typeset as headings — but the layer carries the same characters, so an exact
+  // match on the title is the test. Titles are matched by longest-first: a short
+  // heading can be a prefix of a longer one ("Storage" inside "Storage (paper
+  // tape, disk & tape images)"), so the longer candidate has to win.
+  const byTitle = entries.slice().sort((a, b) => b.title.length - a.title.length);
+
+  let pdf = await renderPdf();
+  const written = {};
+  let pass = 0;
+  while (pass < 3) {
+    pass++;
+    const map = await pageNumbersFor(pdf, byTitle);
+    // Stop when a pass changes nothing: the numbers are then stable and a
+    // further render would only repeat the same file.
+    let changed = false;
+    for (const id of Object.keys(map)) {
+      if (written[id] !== map[id]) changed = true;
+    }
+    if (!changed && pass > 1) break;
+    Object.assign(written, map);
+    const applied = await page.evaluate((numbers) => {
+      let n = 0;
+      document.querySelectorAll(".landing-page ol li").forEach((li) => {
+        const a = li.querySelector("a[href^='#']");
+        if (!a) return;
+        const id = a.getAttribute("href").slice(1);
+        const num = numbers[id];
+        if (num === undefined) return;
+        let span = li.querySelector(".toc-page");
+        if (!span) {
+          span = document.createElement("span");
+          span.className = "toc-page";
+          li.appendChild(span);
+        }
+        span.textContent = String(num);
+        n++;
+      });
+      return n;
+    }, written);
+    if (!applied) break;
+    pdf = await renderPdf();
+  }
   await page.close();
 
-  return { pdf: pdf, out: spec.out };
+  return { pdf: pdf, out: spec.out, pages: written, passes: pass };
 }
 
 
