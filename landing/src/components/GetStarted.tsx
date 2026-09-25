@@ -138,24 +138,28 @@ export function GetStarted({ lang, onLaunchOnline }: GetStartedProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#3a3528]">
-            {RESOURCE_LINKS.map((link) => (
+            {RESOURCE_LINKS.filter((link) => !link.lang || link.lang === lang).map((link) => (
               <tr key={link.id} className="hover:bg-white/[0.02] transition-colors">
                 <td className="py-2 px-3.5 text-[#e8d080] font-semibold align-top break-words sm:whitespace-nowrap font-mono">
-                  {link.name}
+                  {(lang === 'ru' && link.nameRu) ? link.nameRu : link.name}
                 </td>
                 <td className="py-2 px-3.5 text-[#d4c4a0] align-top">
                   <a
-                    href={link.url}
+                    href={lang === 'ru' ? (link.urlRu || link.url) : (link.urlEn || link.url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[#c8a860] hover:text-[#e8d080] underline font-mono break-all"
                   >
-                    <span>{link.displayUrl}</span>
+                    <span>
+                      {lang === 'ru'
+                        ? (link.displayUrlRu || link.displayUrl || link.url)
+                        : (link.displayUrlEn || link.displayUrl || link.url)}
+                    </span>
                     <ExternalLink className="w-3 h-3 flex-shrink-0" />
                   </a>
-                  {link.notes && (
+                  {(lang === 'ru' ? (link.notesRu || link.notes) : link.notes) && (
                     <span className="text-xs text-[#a09278] block sm:inline sm:ml-2">
-                      — {link.notes}
+                      — {lang === 'ru' ? (link.notesRu || link.notes) : link.notes}
                     </span>
                   )}
                 </td>

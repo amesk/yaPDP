@@ -10,6 +10,15 @@
 
 <head>
     <meta charset="UTF-8">
+    <!-- Without this the phone treats the page as a desktop document: it lays it
+         out in a virtual 980px viewport and zooms the whole thing down to fit.
+         The reading column then keeps its full 800px width inside those 980px
+         and leaves a strip of the machine-room photograph down each side — the
+         strips that were noticed on a phone. The landing page carries this line
+         (landing/index.html), which is why it reads correctly at 393 CSS pixels
+         and these pages did not. Same width=device-width, so one layout serves
+         both. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>yaPDP — User Manual</title>
     <meta name="description" content="yaPDP — Yet Another PDP‑11/70 Emulator. A step-by-step user manual: quick boot, front panel, Model 33 ASR teletype console, VT52 and VT100 video terminals, LP11 line printer, storage, configuration and guest operating systems.">
     <meta name="keywords" content="yaPDP,PDP,PDP-11,11/70,JavaScript,Emulator,Teletype,Model 33,VT52,VT100,DECscope,ANSI,RT-11,RSX-11M,RSTS,BSD,Unix,manual,user guide">
@@ -38,18 +47,73 @@
             background-repeat: no-repeat;
         }
 
+        /* The page scrolls INSIDE the slab, exactly as the landing page and the
+           emulator do: body stays one viewport tall (see .app-layout in
+           pdp11.css) and .landing-page carries overflow-y: auto. That is what
+           keeps the backdrop the right size — background-size: cover is measured
+           against the element it is painted on, so a body that grows with the
+           content stretches the photograph over several screens and it goes
+           soft. Scrolling the document instead of the slab was tried and
+           reverted for that reason.
+
+           The height is 100dvh rather than the inherited 100vh so the column
+           truly fills the window on a phone; --app-h is published by
+           src/mobile-keys.js and wins where it exists. */
+        .app-layout {
+            /* display: flex is NOT decoration here: .landing-page below carries
+               flex: 1, which means "grow to fill the parent". That only works if
+               the parent is a flex container. Dropping this line left the slab
+               as tall as its own content, so on the devlog index — whose content
+               is shorter than the window — the column stopped right after the
+               first post instead of running to the bottom of the screen. The
+               base rule in css/pdp11.css:1564 sets both properties together for
+               the same reason; keep them together. */
+            display: flex;
+            height: var(--app-h, 100vh);
+        }
+
+        @supports (height: 100dvh) {
+            .app-layout {
+                display: flex;
+                height: var(--app-h, 100dvh);
+            }
+        }
+
         /* Content slab — mirrors the emulator's Info page (dark translucent card
            over the machine-room photo, block layout, readable column width). */
         .landing-page {
             flex: 1;
+            /* width: 100% and min-width: 0 are the other half of that flex: 1,
+               and the landing page carries both (landing/src/App.tsx uses
+               "flex-1 w-full min-w-0" on the same slab). Without them the column
+               kept max-width: 800px and margin: 0 auto but never grew: a
+               block-level child in a row-direction flex container is sized by
+               its content unless told otherwise, so on a phone the slab stayed
+               narrower than the window and the machine-room photograph showed
+               as a strip down each side. flex: 1 grows the item along the main
+               axis, not the cross axis, so it never widened the slab here.
+               min-width: 0 keeps the column from being pushed wider than the
+               window by a long unbreakable line. */
+            width: 100%;
+            min-width: 0;
             overflow-y: auto;
             overflow-x: hidden;
             box-sizing: border-box;
             color: #e0d8c8;
-            max-width: 960px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 16px 24px 32px 24px;
             background: rgba(28, 25, 21, 0.82);
+            /* The slab's outline, matching the landing page. There it comes from
+               Tailwind classes on the slab element in landing/src/App.tsx
+               (border-x border-[#3a3528]/80 shadow-[0_0_60px_rgba(0,0,0,0.85)]),
+               which these static pages cannot use — a manual page and a devlog
+               post are generated from this template, not from the SPA. Without
+               this rule the column stood bare while the landing page beside it
+               was framed, which is the difference that was noticed. */
+            border-left: 1px solid #3a3528;
+            border-right: 1px solid #3a3528;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.85);
         }
 
         .landing-page h1,
@@ -160,7 +224,13 @@
             height: auto;
             border: 1px solid #4a453a;
             border-radius: 4px;
-            margin: 14px 0 2px 0;
+            /* Centred like the caption below it: a portrait photograph (the
+               DVK-2, the VTA-2000) is narrower than the column, and with the
+               image flush left and its caption centred the block read as two
+               misaligned halves. The manual is regenerated from this template,
+               so one edit covers both the manual and every devlog post. */
+            display: block;
+            margin: 14px auto 2px auto;
         }
 
         .landing-page .shot-caption {
@@ -169,6 +239,438 @@
             font-style: italic;
             text-align: center;
             margin: 2px 0 14px 0;
+        }
+
+        /* A row of frames that belong together: the historical photograph and
+           the emulator's own rendering of the same machine, shown in sequence.
+           Equal column widths and top alignment — NOT object-fit: a cut-out
+           machine and a machine inside its cabinet are crops of different
+           scope, and cropping them to a shared ratio would silently cut the
+           cabinet away. Frames keep their own proportions and are seen whole.
+           Each frame carries its own caption, so a reader can tell the
+           photograph from the rendering without counting places. */
+        .landing-page .pair,
+        .landing-page .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-start;
+            justify-content: center;
+            margin: 16px 0 4px 0;
+        }
+
+        .landing-page .pair > figure,
+        .landing-page .row > figure {
+            /* A pair splits the column in two; a longer chain wraps on its own,
+               so four frames become two rows of two rather than four unreadable
+               slivers. */
+            flex: 1 1 180px;
+            max-width: 46%;
+            margin: 0;
+        }
+
+        .landing-page .pair > figure .shot,
+        .landing-page .row > figure .shot {
+            /* Override the centred standalone rule: inside a group a frame fills
+               its own column. */
+            width: 100%;
+            margin: 0;
+        }
+
+        .landing-page .pair > figure .shot-caption,
+        .landing-page .row > figure .shot-caption {
+            text-align: center;
+            margin: 4px 0 0 0;
+        }
+
+        /* No breakpoint for the outline any more. A 800px media query was tried
+           here to hide the gold edge lines on a narrow screen, but the lines
+           were a symptom: the slab was not reaching the window edge because it
+           lacked width: 100% (see above). With the width fixed the slab meets
+           the edge below 800px and the outline falls off it on its own, exactly
+           as the landing page's does — no rule required. */
+        /* The language switch in the hero's button row: the landing page's
+           EN / RU control, in the same shape but drawn in the static pages' own
+           terms.
+
+           On the landing page this is a Tailwind pill inside a <button> that
+           toggles state. A generated page cannot toggle anything — it is
+           static, and the other language is a different document — so the
+           active half is a <span> (nothing clickable that would not move the
+           reader) and the other half is a link to the other manual. The look is
+           the same: bordered pill, muted background, the active language in
+           gold and bold, the separator dimmed. */
+        .panel-actions-landing .lang-switch {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.125rem;
+            height: 40px;
+            padding: 0 12px;
+            border: 1px solid #524939;
+            border-radius: 4px;
+            background: #221e18;
+            font-family: arial, helvetica, sans-serif;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            cursor: default;
+        }
+
+        .panel-actions-landing .lang-switch .lang-active,
+        .panel-actions-landing .lang-switch a {
+            text-decoration: none;
+            padding: 0 2px;
+            /* The template's `.landing-page a` rule (color #c8a860, plus the
+               hover below it) reaches into this island too, and it made the
+               INACTIVE half shout louder than the active one: the link came out
+               in saturated gold while the active language was a paler tone, so
+               the language you were reading looked dimmer than the one you were
+               not. Both colours are therefore set here, on selectors with three
+               classes against that rule's one. */
+            font-weight: normal;
+        }
+
+        /* the language this page is written in: gold, bold, and the only part
+           that is not a link */
+        .panel-actions-landing .lang-switch .lang-active {
+            color: #e8d080;
+            font-weight: bold;
+        }
+
+        /* the other language: readable but quiet, and it lights up on hover.
+           font-size is set here too — the template's own anchor rule gives a
+           link 13px against the 11px of this island, so the inactive half came
+           out visibly LARGER than the active one and drew the eye first. Size
+           and weight are now equal; only the colour separates them. */
+        .panel-actions-landing .lang-switch a {
+            color: #8a7650;
+            font-size: 11px;
+        }
+
+        .panel-actions-landing .lang-switch a:hover {
+            color: #c8a860;
+        }
+
+        .panel-actions-landing .lang-switch .lang-sep {
+            color: #524939;
+        }
+
+        /* --- print ---------------------------------------------------------
+           The same page becomes a PDF for the release assets and for the
+           landing page (tools/build-manual-pdf.js). Nothing here is a second
+           layout: the printed document IS this document, with the screen chrome
+           taken away.
+
+           What goes: the machine-room backdrop and the dark slab (a photograph
+           behind text wastes toner and destroys contrast on paper), the gold
+           edge lines and their shadow, the hero's button row (a PDF has no
+           links to pages that do not exist on it), the sticky behaviours, and
+           the illustration viewer, which is a JavaScript overlay with nothing
+           to click on paper.
+
+           What stays: the text, the pictures with their captions, the tables,
+           the contents list. Those are the manual. */
+        @media print {
+            html,
+            body {
+                background: #fff !important;
+                background-image: none !important;
+                height: auto !important;
+                overflow: visible !important;
+                color: #000;
+            }
+
+            .app-layout {
+                display: block !important;
+                height: auto !important;
+            }
+
+            .landing-page {
+                max-width: none !important;
+                width: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                background-image: none !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                overflow: visible !important;
+                color: #000;
+            }
+
+            .landing-page h1,
+            .landing-page h2,
+            .landing-page h3,
+            .landing-page h4 {
+                color: #000;
+            }
+
+            .landing-page a,
+            .landing-page code,
+            .landing-page blockquote,
+            .landing-page .shot-caption,
+            .landing-page .hero .tagline,
+            .landing-page .zero-setup {
+                color: #000;
+            }
+
+            .landing-page pre {
+                color: #000;
+                background: #f4f4f4;
+                border: 1px solid #bbb;
+            }
+
+            .landing-page blockquote {
+                background: none;
+                border-left: 3px solid #999;
+            }
+
+            .landing-page table,
+            .landing-page table thead,
+            .landing-page table tbody,
+            .landing-page table td,
+            .landing-page table th {
+                /* The screen colours are a pale beige on a dark slab — #e0d8c8
+                   for cells, #f0e6c8 for the head — and on white paper they
+                   read as a washed-out orange. The borders were recoloured
+                   here from the start and the text was not, so a printed table
+                   came out in that pale tone across every row. */
+                color: #000;
+            }
+
+            /* One rule per ROW, not per cell.
+
+               The screen styles draw border-bottom on every td, and the cells
+               are aligned to the top of the row. When the first column holds a
+               short word and a later column holds a sentence, the cells have
+               different heights, so each column's line lands at its own y — the
+               staircase that was noticed. Collapsing the table makes a rule on
+               the row draw once across the full width at the row's own height,
+               which is what a printed table wants. The cell borders are removed
+               here so the two do not double up. */
+            .landing-page table tr {
+                border-bottom: 1px solid #ccc;
+            }
+
+            .landing-page table td,
+            .landing-page table th {
+                border-bottom: 0;
+            }
+
+            .landing-page hr {
+                border-top: 1px solid #ccc;
+            }
+
+            /* The hero keeps its title and tagline — they are the head of the
+               document — but loses the button row and the picture behind it. */
+            .panel-actions-landing,
+            .shot-viewer,
+            .download-subtext,
+            .app-corner-links {
+                display: none !important;
+            }
+
+            /* A picture and its caption belong to each other; a table row and
+               its heading belong to each other. Splitting either across pages
+               is the classic failure of automatic pagination. */
+            .landing-page figure,
+            .landing-page img,
+            .landing-page pre,
+            .landing-page blockquote,
+            .landing-page tr,
+            .landing-page li {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+
+            /* A chapter starts on a fresh sheet, the way a printed guide is
+               laid out: the reader finds a section by its own page rather than
+               partway down somebody else's. It costs pages — the manual grows —
+               and that is the trade a reference book makes.
+
+               The first heading is the exception: it would otherwise push a
+               blank page between the contents list and the opening section. */
+            .landing-page h2 {
+                page-break-before: always;
+                break-before: page;
+            }
+
+            .landing-page hr + h2,
+            .landing-page h2:first-of-type {
+                page-break-before: auto;
+                break-before: auto;
+            }
+
+            /* A heading must not sit alone at the foot of a page, and a
+               subheading must not open one on its own. */
+            .landing-page h2,
+            .landing-page h3 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            .landing-page h3 {
+                page-break-before: avoid;
+                break-before: avoid;
+            }
+
+            /* No single line of a paragraph stranded at the turn of a page. */
+            .landing-page p,
+            .landing-page li {
+                orphans: 2;
+                widows: 2;
+            }
+
+            /* A picture and its caption are one block, and a block is not split
+               across sheets.
+
+               This rule was already here for figures, and the Storage screenshot
+               still came apart: the image and its caption paragraph were emitted
+               as two sibling <p> elements, so there was no common box for the
+               rule to protect. The generators now wrap the pair in
+               <figure class="shot-figure">; this makes the wrapping enforceable.
+
+               break-after on the image is the belt to that braces: even if a
+               figure is ever built some other way, the engine is told not to put
+               a page boundary straight after a picture. max-height keeps a tall
+               frame from exceeding the page box, which no break rule can repair. */
+            .shot-figure {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin: 0;
+            }
+
+            .landing-page .shot-figure img {
+                max-height: 200mm;
+                width: auto;
+                max-width: 100%;
+            }
+
+            .landing-page img.shot {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+            /* The pictures are screenshots of a dark emulator on a dark page:
+               on white paper they need an outline or they float unattached. */
+            .landing-page img {
+                border: 1px solid #ddd;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .landing-page .pair > figure,
+            .landing-page .row > figure {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+        }
+
+        /* Illustration viewer (the script is at the end of the document).
+
+           A page is static, so this is plain CSS rather than a component. The
+           picture is shown whole — max-width and max-height together, never a
+           crop — and its caption sits underneath, because a photograph studied
+           at full size is useless if you lose which frame you are looking at. */
+        .landing-page .shot-openable {
+            cursor: zoom-in;
+        }
+
+        .shot-viewer {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(12, 10, 8, 0.94);
+            padding: 32px 16px;
+        }
+
+        .shot-viewer[hidden] {
+            display: none;
+        }
+
+        .shot-viewer figure {
+            margin: 0;
+            max-width: 96vw;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .shot-viewer img {
+            /* Both limits, so a tall frame and a wide frame are each shown in
+               full; the picture is never cropped to fit. */
+            max-width: 96vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+        }
+
+        .shot-viewer .shot-caption {
+            color: #c8b890;
+            font-size: 13px;
+            font-style: italic;
+            text-align: center;
+            max-width: 80ch;
+            margin: 0;
+        }
+
+        /* "3 / 4" beside the caption: which frame of a chain this is. */
+        .shot-viewer .shot-caption[data-step]:not([data-step=""])::after {
+            content: attr(data-step);
+            color: #8a7f6a;
+            font-style: normal;
+        }
+
+        .shot-viewer-close,
+        .shot-viewer-nav {
+            position: fixed;
+            background: rgba(28, 25, 20, 0.9);
+            color: #e8dcc0;
+            border: 1px solid #4a453a;
+            border-radius: 4px;
+            cursor: pointer;
+            line-height: 1;
+            font-family: inherit;
+        }
+
+        .shot-viewer-close {
+            top: 12px;
+            right: 16px;
+            font-size: 26px;
+            padding: 4px 12px 6px 12px;
+        }
+
+        .shot-viewer-nav {
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 30px;
+            padding: 10px 14px 12px 14px;
+        }
+
+        .shot-viewer-prev { left: 16px; }
+        .shot-viewer-next { right: 16px; }
+
+        .shot-viewer-close:hover,
+        .shot-viewer-nav:hover {
+            border-color: #c8a860;
+            color: #f5ecd8;
+        }
+
+        .shot-viewer-nav[hidden] {
+            display: none;
+        }
+
+        /* The page behind must not scroll while the viewer is up. */
+        body.shot-viewer-open {
+            overflow: hidden;
         }
 
         /* Floating-button thumbnails inside the controls table. */
@@ -246,11 +748,14 @@
                     the machine room, not in the documentation.</p>
                 <p class="zero-setup">Everything below applies to both the browser version and the Tauri desktop app.</p>
                 <div class="panel-actions-landing">
-                    <a class="btn-primary" href="pdp11.html">Launch Online!</a>
+                                        <a class="btn-primary" href="pdp11.html">Launch Online!</a>
+                    <a class="btn-secondary" href="devlog/index.html">All posts</a>
                     <a class="btn-secondary" href="index.html">Back to the Home Page</a>
-                    <a class="btn-secondary" href="manual_ru.html">Русская версия</a>
+                    <span class="lang-switch" title="Switch language"><span class="lang-active">EN</span><span class="lang-sep">/</span><a href="manual_ru.html">RU</a></span>
                 </div>
             </div>
+
+
 
             <hr>
 
@@ -278,9 +783,10 @@
 
             <p>On your very first launch the emulator greets you with a short onboarding hint that explains what to do right away — which page to open, the mounted guest OSes and their boot commands. A <strong>Quick boot</strong> button next to <strong>Got it</strong> opens the wizard directly, so a first-time user can see a guest OS running in one click:</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="First-run onboarding hint"></p>
-
-            <p class="shot-caption">The first-run onboarding hint.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="First-run onboarding hint">
+              <figcaption class="shot-caption">The first-run onboarding hint.</figcaption>
+            </figure>
 
             <h3 id="the-magic-wand">The magic wand</h3>
 
@@ -292,15 +798,17 @@
               <li>Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login root).</li>
             </ol>
 
-            <p><img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Quick boot picker"></p>
-
-            <p class="shot-caption">The quick-boot picker lists every guest OS and paper tape.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Quick boot picker">
+              <figcaption class="shot-caption">The quick-boot picker lists every guest OS and paper tape.</figcaption>
+            </figure>
 
             <p>The wizard is prompt-aware: it watches the console output and types the login only when the guest actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the prompt reliably. Each guest also declares the machine profile it wants — e.g. RT-11/RSX/RSTS enable the <a href="#printer">LP11 line printer</a>, and Unix V5/BSD force a teletype console — so the wizard reconfigures the machine if needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and clear screens), and a toast warns <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being typed.</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast"></p>
-
-            <p class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the teletype/keyboard.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast">
+              <figcaption class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the teletype/keyboard.</figcaption>
+            </figure>
 
             <h3 id="the-classic-way">The classic way</h3>
 
@@ -317,9 +825,10 @@
 
             <p>Every switch, LED, and rotary knob of a real PDP-11/70 is faithfully recreated. The Panel page is where you toggle in a bootstrap loader the way DEC engineers did in the 1970s.</p>
 
-            <p><img class="shot" src="assets/images/manual/panel.png" alt="The PDP-11/70 front panel"></p>
-
-            <p class="shot-caption">The PDP-11/70 front panel, powered on.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/panel.png" alt="The PDP-11/70 front panel">
+              <figcaption class="shot-caption">The PDP-11/70 front panel, powered on.</figcaption>
+            </figure>
 
             <h3 id="front-panel-switch-sequences">Front panel switch sequences</h3>
 
@@ -339,9 +848,10 @@
 
             <p>The <strong>Bootstrap now!</strong> button refuses to start the machine while it is powered off:</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! power-off guard"></p>
-
-            <p class="shot-caption">Bootstrap now! requires the machine to be powered on first.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! power-off guard">
+              <figcaption class="shot-caption">Bootstrap now! requires the machine to be powered on first.</figcaption>
+            </figure>
 
             <p>The dialog also offers a shortcut to the CONFIG <strong>Auto-boot</strong> option: tick the checkbox to start the default bootstrap automatically on every future power-on, without visiting the Config page. The choice persists and stays in sync with the CONFIG page checkbox.</p>
 
@@ -354,9 +864,10 @@
 
             <p>The console is rendered as an authentic light-cream/beige Model 33 ASR: a paper roll behind the rising sheet, a glass carriage window, and a stamped Teletype Corporation logo on the lower face plate.</p>
 
-            <p><img class="shot" src="assets/images/manual/console-teletype.png" alt="The Model 33 ASR operator console"></p>
-
-            <p class="shot-caption">The Model 33 ASR operator console at the @ prompt.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/console-teletype.png" alt="The Model 33 ASR operator console">
+              <figcaption class="shot-caption">The Model 33 ASR operator console at the @ prompt.</figcaption>
+            </figure>
 
             <ul>
               <li>Keyboard. Round dark keycaps with light two-line legends — the base glyph centred, the CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN, DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break condition).</li>
@@ -383,17 +894,19 @@
 
             <p>When the console terminal is set to a VT52, the operator console becomes a DECscope with its authentic white/grey (P4) phosphor on a black tube — see <a href="#user-terminals">User Terminals</a> below for the full behaviour, which is shared.</p>
 
-            <p><img class="shot" src="assets/images/manual/console-vt52.png" alt="A DECscope VT52 as the operator console"></p>
-
-            <p class="shot-caption">A DECscope VT52 as the operator console, showing the @ prompt.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/console-vt52.png" alt="A DECscope VT52 as the operator console">
+              <figcaption class="shot-caption">A DECscope VT52 as the operator console, showing the @ prompt.</figcaption>
+            </figure>
 
             <h3 id="vt100-as-the-console">VT100 as the console</h3>
 
             <p>Set the console terminal to <strong>VT100</strong> and the console becomes a <strong>DEC VT100</strong> — the ANSI terminal that succeeded the DECscope. It is drawn in its own cabinet, at its own proportions (the artwork is the terminal's, not a restyled DECscope), and it shares everything that is not the tube itself: the page layout, the zoom button and double-click zoom, the STATE/REBOOT placement and the keyboard handling.</p>
 
-            <p><img class="shot" src="assets/images/manual/console-vt100.png" alt="A DEC VT100 as the operator console"></p>
-
-            <p class="shot-caption">A DEC VT100 as the operator console, showing the @ prompt.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/console-vt100.png" alt="A DEC VT100 as the operator console">
+              <figcaption class="shot-caption">A DEC VT100 as the operator console, showing the @ prompt.</figcaption>
+            </figure>
 
             <p>A VT100 is a <strong>superset of the VT52</strong>, exactly as the hardware was: the DECscope sequences still work and the terminal adds the ANSI grammar (CSI sequences, DEC private modes, scrolling regions, G0/G1 character sets), which it speaks from power-on — a VT100 is a CRT-only machine and has no hardcopy mode to enter first. What never existed on the hardware is refused rather than faked: <code>ESC Y</code> direct addressing, <code>ESC F</code>/<code>ESC G</code> graphics on/off, the VT52 keypad modes and the VT52 identification reply. Asked who it is (<code>CSI c</code>) the VT100 answers <code>VT100 with AVO</code>, and <code>CSI ? 2 h</code> (DECANM) drops it into VT52 compatibility mode, as the real machine did.</p>
 
@@ -404,13 +917,15 @@
 
             <p>Up to two user video terminals (shown only when configured on the CONFIG page) let guest OSes that prefer video terminals run side by side. Each is a <strong>DECscope VT52</strong> or a <strong>DEC VT100</strong>, chosen independently (<code>None | VT52 | VT100</code>), and each is drawn in the cabinet of the terminal you picked — the DECscope's slanted monoblock (an off-white moulded-plastic cabinet with a vent grille, a recessed screen in a deep bezel and a plain side panel with a raised ridge) or the VT100's own enclosure. Input comes from the physical keyboard, as on the original machines.</p>
 
-            <p><img class="shot" src="assets/images/manual/terminal-vt52.png" alt="A user VT52 terminal"></p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/terminal-vt52.png" alt="A user VT52 terminal">
+              <figcaption class="shot-caption">A user VT52 terminal (TTY 1) running an interactive session.</figcaption>
+            </figure>
 
-            <p class="shot-caption">A user VT52 terminal (TTY 1) running an interactive session.</p>
-
-            <p><img class="shot" src="assets/images/manual/terminal-vt100.png" alt="A user VT100 terminal"></p>
-
-            <p class="shot-caption">A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/terminal-vt100.png" alt="A user VT100 terminal">
+              <figcaption class="shot-caption">A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.</figcaption>
+            </figure>
 
             <ul>
               <li>Font. Text is rendered in the authentic <code>fritzm/vt52</code> bitmap display font (<code>monospace</code> is the fallback until the webfont loads).</li>
@@ -424,9 +939,10 @@
 
             <p>The LP11 is an animated line printer on wide 132-column paper (72/80/100/132 selectable). It has no keyboard — it only prints. Use the <strong>Print</strong> button to send the accumulated jobs to the real OS printer via the system dialog, or <strong>Save.txt</strong> to export the output (page breaks are kept as <code>\f</code> markers).</p>
 
-            <p><img class="shot" src="assets/images/manual/printer.png" alt="The LP11 line printer"></p>
-
-            <p class="shot-caption">The LP11 line printer printing a job listing.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/printer.png" alt="The LP11 line printer">
+              <figcaption class="shot-caption">The LP11 line printer printing a job listing.</figcaption>
+            </figure>
 
             <ul>
               <li>Speed. Like the real LP11, it echoes characters far faster than the <a href="#console">Model 33 ASR console teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300 lines/min.</li>
@@ -441,18 +957,20 @@
 
             <p>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024×768 logical resolution, auto-scaled to fit the window), enabled from the <a href="#config">CONFIG page</a>. Lunar Lander uses it — the <a href="#quick-start">quick-boot wizard</a> enables the display and switches to the Display page automatically.</p>
 
-            <p><img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display"></p>
-
-            <p class="shot-caption">Lunar Lander drawn on the VT11 vector-graphics CRT.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display">
+              <figcaption class="shot-caption">Lunar Lander drawn on the VT11 vector-graphics CRT.</figcaption>
+            </figure>
 
 
             <h2 id="storage">Storage (paper tape, disk &amp; tape images)</h2>
 
             <p>The Storage page manages every kind of storage media. It has two tabs — <strong>Images</strong> and <strong>Paper Tapes</strong> — because the two workflows are completely different. An image is a whole device mounted into the machine and remembered between sessions; a paper tape is a stream of bytes that the reader walks through from the first frame to the end.</p>
 
-            <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab"></p>
-
-            <p class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and persistent disk changes.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab">
+              <figcaption class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and persistent disk changes.</figcaption>
+            </figure>
 
             <p><strong>Images tab:</strong></p>
 
@@ -511,9 +1029,10 @@
               </tr>
             </table>
 
-            <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab"></p>
-
-            <p class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code> drop zone and the punch-tape export.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab">
+              <figcaption class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code> drop zone and the punch-tape export.</figcaption>
+            </figure>
 
             <p><strong>Paper Tapes tab:</strong></p>
 
@@ -533,9 +1052,10 @@
 
             <p>The round <strong>STATE</strong> button (top-left corner, right of <a href="#controls">REBOOT</a>) opens the machine-state dialog — a full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display picture are all captured. Think of it as a save file of the whole machine.</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog"></p>
-
-            <p class="shot-caption">The machine-state dialog with one freshly saved state.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog">
+              <figcaption class="shot-caption">The machine-state dialog with one freshly saved state.</figcaption>
+            </figure>
 
             <ul>
               <li>Save state — captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring it re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.</li>
@@ -629,9 +1149,10 @@
 
             <p>Leaving the Config page with uncommitted changes asks for confirmation, so nothing is lost silently:</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Unapplied configuration warning"></p>
-
-            <p class="shot-caption">The emulator warns before leaving Config with uncommitted changes.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Unapplied configuration warning">
+              <figcaption class="shot-caption">The emulator warns before leaving Config with uncommitted changes.</figcaption>
+            </figure>
 
             <p><strong>Structural changes</strong> (console type, terminals, printer, VT11 display) are committed with <strong>Apply</strong>, which restarts the machine so the emulated hardware matches the configuration. Print widths, teletype speed, the Upper Case Only and Force PDP Output Uppercase flags, key click, reverse video, CRT effects, VT52 text mode, machine hum and the photo backdrop apply immediately. <strong>Restore defaults</strong> fills the form with factory values (committed by <strong>Apply</strong>); the four live BEHAVIOUR options — <strong>Reboot confirmation</strong>, <strong>Help Me! sticker</strong>, <strong>Machine power</strong> and <strong>Auto-boot</strong> — are reset to their factory values immediately, without waiting for Apply (the machine powers down, since the factory state is off).</p>
 
@@ -810,9 +1331,10 @@
               </tr>
             </table>
 
-            <p><img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog"></p>
-
-            <p class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog">
+              <figcaption class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</figcaption>
+            </figure>
 
             <h3 id="sidebar-activity-lamps">Sidebar activity lamps</h3>
 
@@ -827,9 +1349,10 @@
 
             <p>The wording adapts to the environment: a page opened as a local <code>file://</code> explains that the browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal build explains that the image is not shipped and points to the drop zone.</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Image load failure dialog"></p>
-
-            <p class="shot-caption">An incomplete image triggers this dialog with an <a href="#storage">Open Storage</a> shortcut.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Image load failure dialog">
+              <figcaption class="shot-caption">An incomplete image triggers this dialog with an <a href="#storage">Open Storage</a> shortcut.</figcaption>
+            </figure>
 
 
             <h2 id="desktop">The Desktop App</h2>
@@ -858,6 +1381,121 @@
 
         </div>
     </div>
+
+    <!-- Illustration viewer.
+
+         The manual and every devlog post are static pages: a reader arriving
+         from a search engine must get the text, not a blank screen waiting for
+         a bundle, so the landing page's React lightbox cannot be used here.
+         This is the same behaviour in plain JavaScript.
+
+         Any illustration can be opened, not only those inside a picture group
+         — a dialog screenshot is worth studying too, and a rule that works on
+         some pictures but not others is worse than no rule. Frames belonging to
+         one group are handed over as a set, so the arrow keys walk the chain
+         from photograph to cut-out to tracing to emulator without closing the
+         viewer. -->
+    <script>
+        (function () {
+            "use strict";
+
+            var shots = [].slice.call(document.querySelectorAll("img.shot"));
+            if (!shots.length) return;
+
+            // For each picture, the set it belongs to: everything in its own
+            // group, or just itself when it stands alone.
+            function groupOf(img) {
+                var host = img.closest(".pair, .row");
+                if (!host) return [img];
+                return [].slice.call(host.querySelectorAll("img.shot"));
+            }
+
+            var overlay = document.createElement("div");
+            overlay.className = "shot-viewer";
+            overlay.setAttribute("role", "dialog");
+            overlay.setAttribute("aria-modal", "true");
+            overlay.hidden = true;
+            overlay.innerHTML =
+                '<button class="shot-viewer-close" type="button" aria-label="Close">\u00d7</button>' +
+                '<button class="shot-viewer-nav shot-viewer-prev" type="button" aria-label="Previous illustration">\u2039</button>' +
+                '<button class="shot-viewer-nav shot-viewer-next" type="button" aria-label="Next illustration">\u203a</button>' +
+                '<figure><img alt=""><figcaption class="shot-caption"></figcaption></figure>';
+            document.body.appendChild(overlay);
+
+            var big = overlay.querySelector("img");
+            var cap = overlay.querySelector(".shot-caption");
+            var prev = overlay.querySelector(".shot-viewer-prev");
+            var next = overlay.querySelector(".shot-viewer-next");
+            var set = [];
+            var at = 0;
+
+            function captionFor(img) {
+                // A grouped frame carries its own <figcaption>; a standalone one
+                // is followed by its caption paragraph.
+                var fig = img.closest("figure");
+                if (fig) {
+                    var own = fig.querySelector(".shot-caption");
+                    if (own) return own.innerHTML;
+                }
+                var p = img.parentElement && img.parentElement.nextElementSibling;
+                if (p && p.classList.contains("shot-caption")) return p.innerHTML;
+                return img.getAttribute("alt") || "";
+            }
+
+            function show(i) {
+                at = (i + set.length) % set.length;
+                var img = set[at];
+                big.src = img.src;
+                big.alt = img.getAttribute("alt") || "";
+                cap.innerHTML = captionFor(img);
+                var many = set.length > 1;
+                prev.hidden = many ? false : true;
+                next.hidden = many ? false : true;
+                // "3 / 4" is enough to tell a reader that this frame is part of a
+                // chain, without a separate counter to keep in step.
+                cap.setAttribute("data-step",
+                    many ? " " + (at + 1) + " / " + set.length : "");
+            }
+
+            function open(img) {
+                set = groupOf(img);
+                show(set.indexOf(img));
+                overlay.hidden = false;
+                document.body.classList.add("shot-viewer-open");
+            }
+
+            function close() {
+                overlay.hidden = true;
+                big.removeAttribute("src");
+                document.body.classList.remove("shot-viewer-open");
+            }
+
+            shots.forEach(function (img) {
+                img.classList.add("shot-openable");
+                img.setAttribute("tabindex", "0");
+                img.setAttribute("role", "button");
+                img.addEventListener("click", function () { open(img); });
+                img.addEventListener("keydown", function (e) {
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(img); }
+                });
+            });
+
+            overlay.querySelector(".shot-viewer-close").addEventListener("click", close);
+            prev.addEventListener("click", function () { show(at - 1); });
+            next.addEventListener("click", function () { show(at + 1); });
+            // A click on the backdrop closes; a click on the picture itself does not.
+            overlay.addEventListener("click", function (e) {
+                if (e.target === overlay) close();
+            });
+            document.addEventListener("keydown", function (e) {
+                if (overlay.hidden) return;
+                if (e.key === "Escape") close();
+                else if (e.key === "ArrowLeft") show(at - 1);
+                else if (e.key === "ArrowRight") show(at + 1);
+            });
+        })();
+    </script>
 </body>
 
 </html>
+

@@ -11,17 +11,18 @@ import { Acknowledgments } from './components/Acknowledgments.tsx';
 import { LiveEmulatorModal } from './components/LiveEmulatorModal.tsx';
 import { UserManual } from './components/UserManual.tsx';
 import { PDP11Emulator } from './components/PDP11Emulator.tsx';
+import { Devlog } from './components/Devlog.tsx';
 
 export default function App() {
   const [lang, setLang] = useState<'en' | 'ru'>('en');
-  const [view, setView] = useState<'overview' | 'manual' | 'emulator'>('overview');
+  const [view, setView] = useState<'overview' | 'manual' | 'emulator' | 'devlog'>('overview');
   const [isEmulatorOpen, setIsEmulatorOpen] = useState<boolean>(false);
 
   const toggleLanguage = () => {
     setLang((prev) => (prev === 'en' ? 'ru' : 'en'));
   };
 
-  const handleSelectView = (newView: 'overview' | 'manual' | 'emulator') => {
+  const handleSelectView = (newView: 'overview' | 'manual' | 'emulator' | 'devlog') => {
     setView(newView);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -53,7 +54,9 @@ export default function App() {
         '#troubleshooting',
         '#desktop'
       ];
-      if (hash.startsWith('#emulator') || hash.startsWith('#pdp11')) {
+      if (hash.startsWith('#devlog')) {
+        setView('devlog');
+      } else if (hash.startsWith('#emulator') || hash.startsWith('#pdp11')) {
         setView('emulator');
       } else if (manualSections.some((sec) => hash.startsWith(sec))) {
         setView('manual');
@@ -78,7 +81,7 @@ export default function App() {
       {/* Centered Landing Page Slab - faithfully mirroring .landing-page from yaPDP over the machine-room photo backdrop */}
       <div
         className={`flex-1 w-full min-w-0 ${
-          view === 'emulator' ? 'max-w-[1200px]' : 'max-w-[960px]'
+          view === 'emulator' ? 'max-w-[1200px]' : 'max-w-[800px]'
         } mx-auto flex flex-col bg-[#1c1915]/85 border-x border-[#3a3528]/80 shadow-[0_0_60px_rgba(0,0,0,0.85)] transition-all`}
       >
         {/* Top sticky navigation bar inside the slab */}
@@ -93,6 +96,12 @@ export default function App() {
         <main className="flex-1 w-full px-4 sm:px-6 md:px-8 py-5 sm:py-8">
           {view === 'manual' ? (
             <UserManual
+              lang={lang}
+              onBackToHome={() => handleSelectView('overview')}
+              onOpenEmulator={() => handleSelectView('emulator')}
+            />
+          ) : view === 'devlog' ? (
+            <Devlog
               lang={lang}
               onBackToHome={() => handleSelectView('overview')}
               onOpenEmulator={() => handleSelectView('emulator')}
@@ -159,21 +168,36 @@ export default function App() {
                 GitHub
               </a>
               <span>·</span>
-              <a
-                href="https://t.me/yaPDP_news_ru"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-[#24A1DE] transition-colors"
-              >
-                Telegram (RU)
-              </a>
+              {/* The project's channel is Russian, the rest of the site is not:
+                  it is shown where it is useful and omitted where it is a dead
+                  end. An English reader gets a place to ask questions instead,
+                  which the header links to as well. */}
+              {lang === 'en' ? (
+                <a
+                  href="https://github.com/amesk/yaPDP/discussions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#c8a860] transition-colors"
+                >
+                  Discussions
+                </a>
+              ) : (
+                <a
+                  href="https://t.me/yaPDP_news_ru"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#24A1DE] transition-colors"
+                >
+                  Telegram
+                </a>
+              )}
               <span>·</span>
-              <button
-                onClick={() => handleSelectView('manual')}
-                className="hover:text-[#c8a860] transition-colors cursor-pointer"
+              <a
+                href="devlog/index.html"
+                className="hover:text-[#c8a860] transition-colors"
               >
-                {lang === 'en' ? 'Manual' : 'Руководство'}
-              </button>
+                {lang === 'en' ? 'Devlog' : 'Девлог'}
+              </a>
               <span>·</span>
               <button
                 onClick={() => setIsEmulatorOpen(true)}

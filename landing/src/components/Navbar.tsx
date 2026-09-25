@@ -1,9 +1,9 @@
-import { Github, Monitor, BookOpen, Download, Terminal, Sliders, HardDrive, Cpu, Home, Send } from 'lucide-react';
+import { Github, Monitor, BookOpen, Download, Terminal, Sliders, HardDrive, Cpu, Home, Send, FileText, MessagesSquare } from 'lucide-react';
 
 interface NavbarProps {
   lang: 'en' | 'ru';
-  view: 'overview' | 'manual' | 'emulator';
-  onSelectView: (view: 'overview' | 'manual' | 'emulator') => void;
+  view: 'overview' | 'manual' | 'emulator' | 'devlog';
+  onSelectView: (view: 'overview' | 'manual' | 'emulator' | 'devlog') => void;
   onToggleLang: () => void;
 }
 
@@ -71,6 +71,18 @@ export function Navbar({
               <Terminal className="w-3 h-3 shrink-0" />
               <span>{lang === 'en' ? 'Emulator' : 'Эмулятор'}</span>
             </button>
+            <button
+              onClick={() => onSelectView('devlog')}
+              type="button"
+              className={`px-2 py-0.5 rounded transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                view === 'devlog'
+                  ? 'bg-[#c8a860] text-black font-bold shadow-xs'
+                  : 'text-[#8a7650] hover:text-[#d4c4a0]'
+              }`}
+            >
+              <FileText className="w-3 h-3 shrink-0" />
+              <span>{lang === 'en' ? 'Devlog' : 'Девлог'}</span>
+            </button>
           </div>
 
           {/* Mobile Right Quick Actions (Language & GitHub) */}
@@ -87,16 +99,30 @@ export function Navbar({
               <span className={lang === 'ru' ? 'text-[#e8d080] font-bold' : 'opacity-60'}>RU</span>
             </button>
 
-            {/* Telegram Link */}
-            <a
-              href="https://t.me/yaPDP_news_ru"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors"
-              title="Telegram Channel (RU)"
-            >
-              <Send className="w-3.5 h-3.5 -rotate-12" />
-            </a>
+            {/* Telegram in Russian, GitHub Discussions in English.
+                The desktop right-hand group below carries the same pair, so the
+                mobile bar and the desktop bar offer the same destinations. */}
+            {lang === 'en' ? (
+              <a
+                href="https://github.com/amesk/yaPDP/discussions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 text-[#c8b890] hover:text-[#f0e6c8] transition-colors"
+                title="GitHub Discussions"
+              >
+                <MessagesSquare className="w-3.5 h-3.5" />
+              </a>
+            ) : (
+              <a
+                href="https://t.me/yaPDP_news_ru"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors"
+                title="Telegram-канал новостей"
+              >
+                <Send className="w-3.5 h-3.5 -rotate-12" />
+              </a>
+            )}
 
             {/* GitHub Link */}
             <a
@@ -112,7 +138,7 @@ export function Navbar({
         </div>
 
         {/* Mobile Row 2: Full-width segmented view switcher */}
-        <div className="md:hidden grid grid-cols-3 rounded p-0.5 bg-[#14120e] border border-[#3a3528] text-[11px] font-mono w-full">
+        <div className="md:hidden grid grid-cols-4 rounded p-0.5 bg-[#14120e] border border-[#3a3528] text-[11px] font-mono w-full">
           <button
             onClick={() => onSelectView('overview')}
             type="button"
@@ -148,56 +174,33 @@ export function Navbar({
             <Terminal className="w-3 h-3 shrink-0" />
             <span className="truncate">{lang === 'en' ? 'Emulator' : 'Эмулятор'}</span>
           </button>
+          <button
+            onClick={() => onSelectView('devlog')}
+            type="button"
+            className={`py-1 text-center rounded transition-all cursor-pointer flex items-center justify-center gap-1 whitespace-nowrap ${
+              view === 'devlog'
+                ? 'bg-[#c8a860] text-black font-bold shadow-xs'
+                : 'text-[#8a7650] hover:text-[#d4c4a0]'
+            }`}
+          >
+            <FileText className="w-3 h-3 shrink-0" />
+            <span className="truncate">{lang === 'en' ? 'Devlog' : 'Девлог'}</span>
+          </button>
         </div>
 
-        {/* Center: Navigation shortcuts depending on active view (desktop only) */}
-        <nav className="hidden lg:flex items-center gap-2 xl:gap-3 text-[11px] font-medium text-[#c8b890] shrink-0 whitespace-nowrap">
-          {view === 'overview' ? (
-            <>
-              <a href="#screenshots" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Screenshots' : 'Скриншоты'}
-              </a>
-              <a href="#features" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Features' : 'Возможности'}
-              </a>
-              <a href="#story" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Story' : 'История'}
-              </a>
-              <a href="#quick-boot" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Quick Boot' : 'Запуск'}
-              </a>
-              <a href="#download" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Download' : 'Скачать'}
-              </a>
-            </>
-          ) : view === 'manual' ? (
-            <>
-              <a href="#quick-start" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Quick Start' : 'Старт'}
-              </a>
-              <a href="#front-panel" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Panel' : 'Пульт'}
-              </a>
-              <a href="#console" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Console' : 'Консоль'}
-              </a>
-              <a href="#printer" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Printer' : 'Принтер'}
-              </a>
-              <a href="#storage" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Storage' : 'Диски'}
-              </a>
-              <a href="#config" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Config' : 'Настройки'}
-              </a>
-            </>
-          ) : (
-            // Emulator view: the machine fills the page; the window's own
-            // control bar (Back / Manual / Open standalone / Reset) covers
-            // navigation, so no duplicated centre shortcuts here.
-            <></>
-          )}
-        </nav>
+        {/* The centre group of section shortcuts used to sit here: five anchors on
+            the overview and six on the manual, shown from lg up. Removed because
+            it did not fit — the header is inside an 800px slab, and the three
+            groups together asked for 884px of a 766px box, so the section links
+            and then the Telegram/GitHub icons were pushed off the slab and onto
+            the machine-room backdrop (measured at 1280, 1366, 1440, 1600 and
+            1920: the right group ended at 1141 against a slab edge of 798).
+
+            It was also the least missed of the three: the manual carries the
+            same sections as its own table of contents, the overview shows them
+            in order as you scroll, and the three view tabs already lead where
+            most readers are going. The links are still reachable — the manual's
+            contents list is the same set, one click away. */}
 
         {/* Desktop Right: Actions */}
         <div className="hidden md:flex items-center gap-1.5 shrink-0">
@@ -213,16 +216,35 @@ export function Navbar({
             <span className={lang === 'ru' ? 'text-[#e8d080] font-bold' : 'opacity-60'}>RU</span>
           </button>
 
-          {/* Telegram Link */}
-          <a
-            href="https://t.me/yaPDP_news_ru"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors shrink-0"
-            title="Telegram News Channel (RU)"
-          >
-            <Send className="w-3.5 h-3.5 -rotate-12" />
-          </a>
+          {/* GitHub Discussions in English, Telegram in Russian.
+              The project's channel is Russian: in the English locale it was a
+              dead end (a reader who does not use Telegram was not going to
+              start), so it is replaced by the place questions are actually
+              asked — GitHub Discussions, enabled on amesk/yaPDP. The Russian
+              locale keeps its own channel and gains nothing from a forum it
+              does not use. Locale decides, which is why the pair is rendered
+              conditionally rather than both being shown. */}
+          {lang === 'en' ? (
+            <a
+              href="https://github.com/amesk/yaPDP/discussions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 text-[#c8b890] hover:text-[#f0e6c8] transition-colors shrink-0"
+              title="GitHub Discussions"
+            >
+              <MessagesSquare className="w-3.5 h-3.5" />
+            </a>
+          ) : (
+            <a
+              href="https://t.me/yaPDP_news_ru"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 text-[#c8b890] hover:text-[#24A1DE] transition-colors shrink-0"
+              title="Telegram-канал новостей"
+            >
+              <Send className="w-3.5 h-3.5 -rotate-12" />
+            </a>
+          )}
 
           {/* GitHub Link */}
           <a

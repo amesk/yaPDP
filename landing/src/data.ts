@@ -154,6 +154,21 @@ export const RESOURCE_LINKS: ResourceLinkItem[] = [
     notes: 'Interactive in-browser PDP-11/70 emulator',
   },
   {
+    // The manual as a printable document, in the language of the page that is
+    // reading this table: an English reader gets manual.pdf, a Russian one
+    // manual_ru.pdf. Both files sit next to manual.html at the site root, so
+    // the link works from the landing page and from a downloaded copy alike.
+    id: 'manual-pdf',
+    name: 'User Manual (PDF)',
+    nameRu: 'Руководство пользователя (PDF)',
+    displayUrlEn: 'manual.pdf',
+    displayUrlRu: 'manual_ru.pdf',
+    urlEn: 'manual.pdf',
+    urlRu: 'manual_ru.pdf',
+    notes: 'Printable edition with a cover — same text as the manual, on paper',
+    notesRu: 'Печатное издание с обложкой — тот же текст, что и в мануале, на бумаге',
+  },
+  {
     id: 'upstream',
     name: 'Hosted live demo (upstream)',
     displayUrl: 'https://paulnank.github.io/pdp11-js/pdp11.html',
@@ -173,6 +188,10 @@ export const RESOURCE_LINKS: ResourceLinkItem[] = [
     displayUrl: 'https://t.me/yaPDP_news_ru',
     url: 'https://t.me/yaPDP_news_ru',
     notes: 'Official updates and news channel by Alexei Eskenazi',
+    // The channel is Russian, so it is listed in the Russian locale only: an
+    // English reader was being offered a link they would not follow, and the
+    // header and footer point them at GitHub Discussions instead.
+    lang: 'ru',
   },
   {
     id: 'readme',

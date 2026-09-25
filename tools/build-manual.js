@@ -204,7 +204,8 @@ function parseBlocks(md) {
 function blocksToHtml(blocks, level = 2, headings = null) {
   const out = [];
   const openWrappers = [];
-  for (const b of blocks) {
+  for (let bi = 0; bi < blocks.length; bi++) {
+    const b = blocks[bi];
     switch (b.type) {
       case "h": {
         const tag = "h" + Math.min(6, b.level);
@@ -240,7 +241,29 @@ function blocksToHtml(blocks, level = 2, headings = null) {
         // picture: no <p> wrapper, or the grid breaks.
         const img = '<img class="' + (b.cls || "shot") + '" src="' + b.src +
           '" alt="' + inline(b.alt) + '">';
-        out.push(openWrappers.length ? "  " + img : "  <p>" + img + "</p>");
+        if (openWrappers.length) { out.push("  " + img); break; }
+
+        // A picture followed by a {.shot-caption} paragraph is one thing on the
+        // page: the caption names the frame, and a reader who meets the caption
+        // on the next sheet has lost which picture it belongs to. They used to
+        // be emitted as two sibling <p> elements, so no CSS rule could hold them
+        // together — page-break-inside: avoid needs a common box to protect.
+        // Wrapped in a <figure>, the pair is one block and the break rule has
+        // something to apply to. Seen in the printed manual: the Storage
+        // screenshot stayed on page 17 while its caption went to page 18.
+        const next = blocks[bi + 1];
+        const isCaption = next && next.type === "p" && /\{\.shot-caption\}$/.test(next.text);
+        if (isCaption) {
+          const m = /^(.*)\{\.shot-caption\}$/.exec(next.text);
+          out.push('  <figure class="shot-figure">');
+          out.push("    " + img);
+          out.push('    <figcaption class="shot-caption">' + inline(m[1]) +
+            "</figcaption>");
+          out.push("  </figure>");
+          bi++;                     // the caption is consumed by the figure
+          break;
+        }
+        out.push("  <p>" + img + "</p>");
         break;
       }
       case "open":
@@ -452,8 +475,13 @@ const CHROME = {
     heroNote: "Everything below applies to both the browser version and the Tauri desktop app.",
     btnLaunch: "Launch Online!",
     btnHome: "Back to the Home Page",
+    homeHref: "index.html",
+    // The manual sits at the site root, so the post list is one hop down.
+    btnPosts: "All posts",
+    postsHref: "devlog/index.html",
     altHref: "manual_ru.html",
     altLabel: "Русская версия",
+    langSwitchTitle: "Switch language",
     toc: "Table of Contents",
   },
   ru: {
@@ -468,8 +496,12 @@ const CHROME = {
     heroNote: "Всё описанное ниже относится и к версии в браузере, и к настольному приложению на Tauri.",
     btnLaunch: "Запустить онлайн!",
     btnHome: "На главную страницу",
+    homeHref: "index.html",
+    btnPosts: "Все посты",
+    postsHref: "devlog/index.html",
     altHref: "manual.html",
     altLabel: "English version",
+    langSwitchTitle: "Переключить язык",
     toc: "Оглавление",
   },
 };
@@ -487,11 +519,37 @@ const PAGES = [
 function fillChrome(template, page) {
   const c = CHROME[page.lang];
   if (!c) throw new Error("no chrome strings for language: " + page.lang);
+  // The button row is built here, from a list of destinations, exactly as the
+  // devlog does it (see navButtons in tools/build-devlog.js). The manual used
+  // to fill three anchor slots in the template instead, which is why it drifted
+  // from the devlog: same page, same chrome, two mechanisms. The language
+  // switch stays a button in this row — it is a destination like the rest.
+  // The language switch is not a button in this row: it is the landing page's
+  // EN / RU control, with the active language highlighted and the other one a
+  // link. Two labels for one destination ("Русская версия" / "English version")
+  // told the reader which languages exist but not which one they were reading;
+  // the landing page answers both questions at a glance, so the manual does the
+  // same. The row is otherwise the same destinations in the same order as every
+  // other page.
+  const nav = [
+    ["btn-primary", "pdp11.html", c.btnLaunch],
+    ["btn-secondary", c.postsHref, c.btnPosts],
+    ["btn-secondary", c.homeHref, c.btnHome],
+  ]
+    .filter(([, href, label]) => href && label)
+    .map(([cls, href, label]) =>
+      '                    <a class="' + cls + '" href="' + href + '">' + label + "</a>")
+    .concat([langSwitch(c)])
+    .join("\n");
   const vars = {
     LANG: c.lang, TITLE: c.title, DESCRIPTION: c.description, KEYWORDS: c.keywords,
     HERO_TITLE: c.heroTitle, HERO_TAGLINE: c.heroTagline, HERO_NOTE: c.heroNote,
-    BTN_LAUNCH: c.btnLaunch, BTN_HOME: c.btnHome,
-    ALT_HREF: c.altHref, ALT_LABEL: c.altLabel,
+    NAV_BUTTONS: nav,
+    // The template carries one placeholder for a contents list and the manual
+    // builds its own list of sections further down (buildHtml), so the token is
+    // blank here rather than unknown. It must be declared: an undeclared token
+    // is a hard error, which is how a renamed placeholder gets caught.
+    TOC: "",
   };
   const filled = template.replace(/\{\{([A-Z_]+)\}\}/g, (m, key) =>
     Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : m);
@@ -504,6 +562,21 @@ function fillChrome(template, page) {
 // English ids (slug() cannot slug Cyrillic: see blocksToHtml).
 function headingIds(blocks) {
   return blocks.filter((b) => b.type === "h").map((b) => slug(b.text));
+}
+
+function langSwitch(c) {
+  // The landing page's control, in the same markup: a bordered pill, the active
+  // language in gold and bold, the other one a link to the other manual. The
+  // page knows its own language (c.lang), so the active half is a <span> and the
+  // inactive half an <a> — nothing is clickable that would not move the reader.
+  const en = c.lang === "en"
+    ? '<span class="lang-active">EN</span>'
+    : '<a href="manual.html">EN</a>';
+  const ru = c.lang === "ru"
+    ? '<span class="lang-active">RU</span>'
+    : '<a href="manual_ru.html">RU</a>';
+  return '                    <span class="lang-switch" title="' + c.langSwitchTitle +
+    '">' + en + '<span class="lang-sep">/</span>' + ru + "</span>";
 }
 
 function buildHtml(sections, page) {
