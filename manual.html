@@ -316,21 +316,39 @@
             cursor: default;
         }
 
-        .panel-actions-landing .lang-switch a,
-        .panel-actions-landing .lang-switch .lang-active {
-            color: #d4c4a0;
+        .panel-actions-landing .lang-switch .lang-active,
+        .panel-actions-landing .lang-switch a {
             text-decoration: none;
             padding: 0 2px;
+            /* The template's `.landing-page a` rule (color #c8a860, plus the
+               hover below it) reaches into this island too, and it made the
+               INACTIVE half shout louder than the active one: the link came out
+               in saturated gold while the active language was a paler tone, so
+               the language you were reading looked dimmer than the one you were
+               not. Both colours are therefore set here, on selectors with three
+               classes against that rule's one. */
+            font-weight: normal;
         }
 
-        /* the language this page is written in */
+        /* the language this page is written in: gold, bold, and the only part
+           that is not a link */
         .panel-actions-landing .lang-switch .lang-active {
             color: #e8d080;
             font-weight: bold;
         }
 
+        /* the other language: readable but quiet, and it lights up on hover.
+           font-size is set here too — the template's own anchor rule gives a
+           link 13px against the 11px of this island, so the inactive half came
+           out visibly LARGER than the active one and drew the eye first. Size
+           and weight are now equal; only the colour separates them. */
+        .panel-actions-landing .lang-switch a {
+            color: #8a7650;
+            font-size: 11px;
+        }
+
         .panel-actions-landing .lang-switch a:hover {
-            color: #f0e6c8;
+            color: #c8a860;
         }
 
         .panel-actions-landing .lang-switch .lang-sep {
