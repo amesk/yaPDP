@@ -521,6 +521,36 @@
                 widows: 2;
             }
 
+            /* A picture and its caption are one block, and a block is not split
+               across sheets.
+
+               This rule was already here for figures, and the Storage screenshot
+               still came apart: the image and its caption paragraph were emitted
+               as two sibling <p> elements, so there was no common box for the
+               rule to protect. The generators now wrap the pair in
+               <figure class="shot-figure">; this makes the wrapping enforceable.
+
+               break-after on the image is the belt to that braces: even if a
+               figure is ever built some other way, the engine is told not to put
+               a page boundary straight after a picture. max-height keeps a tall
+               frame from exceeding the page box, which no break rule can repair. */
+            .shot-figure {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin: 0;
+            }
+
+            .landing-page .shot-figure img {
+                max-height: 200mm;
+                width: auto;
+                max-width: 100%;
+            }
+
+            .landing-page img.shot {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
             /* The pictures are screenshots of a dark emulator on a dark page:
                on white paper they need an outline or they float unattached. */
             .landing-page img {
@@ -753,9 +783,10 @@
 
             <p>On your very first launch the emulator greets you with a short onboarding hint that explains what to do right away — which page to open, the mounted guest OSes and their boot commands. A <strong>Quick boot</strong> button next to <strong>Got it</strong> opens the wizard directly, so a first-time user can see a guest OS running in one click:</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="First-run onboarding hint"></p>
-
-            <p class="shot-caption">The first-run onboarding hint.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-onboarding.png" alt="First-run onboarding hint">
+              <figcaption class="shot-caption">The first-run onboarding hint.</figcaption>
+            </figure>
 
             <h3 id="the-magic-wand">The magic wand</h3>
 
@@ -767,15 +798,17 @@
               <li>Types the boot command — and the login too, where the credentials are known (e.g. Unix V5: <code>boot rk0</code> → <code>unix</code> → login root).</li>
             </ol>
 
-            <p><img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Quick boot picker"></p>
-
-            <p class="shot-caption">The quick-boot picker lists every guest OS and paper tape.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-quickboot.png" alt="Quick boot picker">
+              <figcaption class="shot-caption">The quick-boot picker lists every guest OS and paper tape.</figcaption>
+            </figure>
 
             <p>The wizard is prompt-aware: it watches the console output and types the login only when the guest actually prints <code>login:</code>, so slow boots with lots of output (e.g. 2.11 BSD) still reach the prompt reliably. Each guest also declares the machine profile it wants — e.g. RT-11/RSX/RSTS enable the <a href="#printer">LP11 line printer</a>, and Unix V5/BSD force a teletype console — so the wizard reconfigures the machine if needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and clear screens), and a toast warns <em>"Autoloading in progress — don't touch the teletype/keyboard"</em> while the sequence is being typed.</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast"></p>
-
-            <p class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the teletype/keyboard.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-autoload.png" alt="Autoloading in progress toast">
+              <figcaption class="shot-caption">While the wizard types the boot sequence, a toast asks you not to touch the teletype/keyboard.</figcaption>
+            </figure>
 
             <h3 id="the-classic-way">The classic way</h3>
 
@@ -792,9 +825,10 @@
 
             <p>Every switch, LED, and rotary knob of a real PDP-11/70 is faithfully recreated. The Panel page is where you toggle in a bootstrap loader the way DEC engineers did in the 1970s.</p>
 
-            <p><img class="shot" src="assets/images/manual/panel.png" alt="The PDP-11/70 front panel"></p>
-
-            <p class="shot-caption">The PDP-11/70 front panel, powered on.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/panel.png" alt="The PDP-11/70 front panel">
+              <figcaption class="shot-caption">The PDP-11/70 front panel, powered on.</figcaption>
+            </figure>
 
             <h3 id="front-panel-switch-sequences">Front panel switch sequences</h3>
 
@@ -814,9 +848,10 @@
 
             <p>The <strong>Bootstrap now!</strong> button refuses to start the machine while it is powered off:</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! power-off guard"></p>
-
-            <p class="shot-caption">Bootstrap now! requires the machine to be powered on first.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-poweroff.png" alt="Bootstrap now! power-off guard">
+              <figcaption class="shot-caption">Bootstrap now! requires the machine to be powered on first.</figcaption>
+            </figure>
 
             <p>The dialog also offers a shortcut to the CONFIG <strong>Auto-boot</strong> option: tick the checkbox to start the default bootstrap automatically on every future power-on, without visiting the Config page. The choice persists and stays in sync with the CONFIG page checkbox.</p>
 
@@ -829,9 +864,10 @@
 
             <p>The console is rendered as an authentic light-cream/beige Model 33 ASR: a paper roll behind the rising sheet, a glass carriage window, and a stamped Teletype Corporation logo on the lower face plate.</p>
 
-            <p><img class="shot" src="assets/images/manual/console-teletype.png" alt="The Model 33 ASR operator console"></p>
-
-            <p class="shot-caption">The Model 33 ASR operator console at the @ prompt.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/console-teletype.png" alt="The Model 33 ASR operator console">
+              <figcaption class="shot-caption">The Model 33 ASR operator console at the @ prompt.</figcaption>
+            </figure>
 
             <ul>
               <li>Keyboard. Round dark keycaps with light two-line legends — the base glyph centred, the CTRL-code name or shift symbol above — plus the historical special keys: ESC, LINE FEED, RETURN, DELETE, HERE IS (answerback), REPT (auto-repeat) and BREAK (asserts the console DL11 break condition).</li>
@@ -858,17 +894,19 @@
 
             <p>When the console terminal is set to a VT52, the operator console becomes a DECscope with its authentic white/grey (P4) phosphor on a black tube — see <a href="#user-terminals">User Terminals</a> below for the full behaviour, which is shared.</p>
 
-            <p><img class="shot" src="assets/images/manual/console-vt52.png" alt="A DECscope VT52 as the operator console"></p>
-
-            <p class="shot-caption">A DECscope VT52 as the operator console, showing the @ prompt.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/console-vt52.png" alt="A DECscope VT52 as the operator console">
+              <figcaption class="shot-caption">A DECscope VT52 as the operator console, showing the @ prompt.</figcaption>
+            </figure>
 
             <h3 id="vt100-as-the-console">VT100 as the console</h3>
 
             <p>Set the console terminal to <strong>VT100</strong> and the console becomes a <strong>DEC VT100</strong> — the ANSI terminal that succeeded the DECscope. It is drawn in its own cabinet, at its own proportions (the artwork is the terminal's, not a restyled DECscope), and it shares everything that is not the tube itself: the page layout, the zoom button and double-click zoom, the STATE/REBOOT placement and the keyboard handling.</p>
 
-            <p><img class="shot" src="assets/images/manual/console-vt100.png" alt="A DEC VT100 as the operator console"></p>
-
-            <p class="shot-caption">A DEC VT100 as the operator console, showing the @ prompt.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/console-vt100.png" alt="A DEC VT100 as the operator console">
+              <figcaption class="shot-caption">A DEC VT100 as the operator console, showing the @ prompt.</figcaption>
+            </figure>
 
             <p>A VT100 is a <strong>superset of the VT52</strong>, exactly as the hardware was: the DECscope sequences still work and the terminal adds the ANSI grammar (CSI sequences, DEC private modes, scrolling regions, G0/G1 character sets), which it speaks from power-on — a VT100 is a CRT-only machine and has no hardcopy mode to enter first. What never existed on the hardware is refused rather than faked: <code>ESC Y</code> direct addressing, <code>ESC F</code>/<code>ESC G</code> graphics on/off, the VT52 keypad modes and the VT52 identification reply. Asked who it is (<code>CSI c</code>) the VT100 answers <code>VT100 with AVO</code>, and <code>CSI ? 2 h</code> (DECANM) drops it into VT52 compatibility mode, as the real machine did.</p>
 
@@ -879,13 +917,15 @@
 
             <p>Up to two user video terminals (shown only when configured on the CONFIG page) let guest OSes that prefer video terminals run side by side. Each is a <strong>DECscope VT52</strong> or a <strong>DEC VT100</strong>, chosen independently (<code>None | VT52 | VT100</code>), and each is drawn in the cabinet of the terminal you picked — the DECscope's slanted monoblock (an off-white moulded-plastic cabinet with a vent grille, a recessed screen in a deep bezel and a plain side panel with a raised ridge) or the VT100's own enclosure. Input comes from the physical keyboard, as on the original machines.</p>
 
-            <p><img class="shot" src="assets/images/manual/terminal-vt52.png" alt="A user VT52 terminal"></p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/terminal-vt52.png" alt="A user VT52 terminal">
+              <figcaption class="shot-caption">A user VT52 terminal (TTY 1) running an interactive session.</figcaption>
+            </figure>
 
-            <p class="shot-caption">A user VT52 terminal (TTY 1) running an interactive session.</p>
-
-            <p><img class="shot" src="assets/images/manual/terminal-vt100.png" alt="A user VT100 terminal"></p>
-
-            <p class="shot-caption">A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/terminal-vt100.png" alt="A user VT100 terminal">
+              <figcaption class="shot-caption">A user VT100 terminal (TTY 2) — same page, same behaviour, its own cabinet.</figcaption>
+            </figure>
 
             <ul>
               <li>Font. Text is rendered in the authentic <code>fritzm/vt52</code> bitmap display font (<code>monospace</code> is the fallback until the webfont loads).</li>
@@ -899,9 +939,10 @@
 
             <p>The LP11 is an animated line printer on wide 132-column paper (72/80/100/132 selectable). It has no keyboard — it only prints. Use the <strong>Print</strong> button to send the accumulated jobs to the real OS printer via the system dialog, or <strong>Save.txt</strong> to export the output (page breaks are kept as <code>\f</code> markers).</p>
 
-            <p><img class="shot" src="assets/images/manual/printer.png" alt="The LP11 line printer"></p>
-
-            <p class="shot-caption">The LP11 line printer printing a job listing.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/printer.png" alt="The LP11 line printer">
+              <figcaption class="shot-caption">The LP11 line printer printing a job listing.</figcaption>
+            </figure>
 
             <ul>
               <li>Speed. Like the real LP11, it echoes characters far faster than the <a href="#console">Model 33 ASR console teletype</a> (which keeps its authentic ~33 cps pacing), printing at close to the original's ~300 lines/min.</li>
@@ -916,18 +957,20 @@
 
             <p>An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024×768 logical resolution, auto-scaled to fit the window), enabled from the <a href="#config">CONFIG page</a>. Lunar Lander uses it — the <a href="#quick-start">quick-boot wizard</a> enables the display and switches to the Display page automatically.</p>
 
-            <p><img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display"></p>
-
-            <p class="shot-caption">Lunar Lander drawn on the VT11 vector-graphics CRT.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/vt11.png" alt="Lunar Lander on the VT11 vector display">
+              <figcaption class="shot-caption">Lunar Lander drawn on the VT11 vector-graphics CRT.</figcaption>
+            </figure>
 
 
             <h2 id="storage">Storage (paper tape, disk &amp; tape images)</h2>
 
             <p>The Storage page manages every kind of storage media. It has two tabs — <strong>Images</strong> and <strong>Paper Tapes</strong> — because the two workflows are completely different. An image is a whole device mounted into the machine and remembered between sessions; a paper tape is a stream of bytes that the reader walks through from the first frame to the end.</p>
 
-            <p><img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab"></p>
-
-            <p class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and persistent disk changes.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/storage.png" alt="The Storage page — Images tab">
+              <figcaption class="shot-caption">The Storage page, Images tab: the drop zone, mounted images, disk export and persistent disk changes.</figcaption>
+            </figure>
 
             <p><strong>Images tab:</strong></p>
 
@@ -986,9 +1029,10 @@
               </tr>
             </table>
 
-            <p><img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab"></p>
-
-            <p class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code> drop zone and the punch-tape export.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/storage-tapes.png" alt="The Storage page — Paper Tapes tab">
+              <figcaption class="shot-caption">The Storage page, Paper Tapes tab: the reader file selector, a <code>.ptap</code> drop zone and the punch-tape export.</figcaption>
+            </figure>
 
             <p><strong>Paper Tapes tab:</strong></p>
 
@@ -1008,9 +1052,10 @@
 
             <p>The round <strong>STATE</strong> button (top-left corner, right of <a href="#controls">REBOOT</a>) opens the machine-state dialog — a full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display picture are all captured. Think of it as a save file of the whole machine.</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog"></p>
-
-            <p class="shot-caption">The machine-state dialog with one freshly saved state.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-state.png" alt="The machine-state dialog">
+              <figcaption class="shot-caption">The machine-state dialog with one freshly saved state.</figcaption>
+            </figure>
 
             <ul>
               <li>Save state — captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring it re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.</li>
@@ -1104,9 +1149,10 @@
 
             <p>Leaving the Config page with uncommitted changes asks for confirmation, so nothing is lost silently:</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Unapplied configuration warning"></p>
-
-            <p class="shot-caption">The emulator warns before leaving Config with uncommitted changes.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-config-leave.png" alt="Unapplied configuration warning">
+              <figcaption class="shot-caption">The emulator warns before leaving Config with uncommitted changes.</figcaption>
+            </figure>
 
             <p><strong>Structural changes</strong> (console type, terminals, printer, VT11 display) are committed with <strong>Apply</strong>, which restarts the machine so the emulated hardware matches the configuration. Print widths, teletype speed, the Upper Case Only and Force PDP Output Uppercase flags, key click, reverse video, CRT effects, VT52 text mode, machine hum and the photo backdrop apply immediately. <strong>Restore defaults</strong> fills the form with factory values (committed by <strong>Apply</strong>); the four live BEHAVIOUR options — <strong>Reboot confirmation</strong>, <strong>Help Me! sticker</strong>, <strong>Machine power</strong> and <strong>Auto-boot</strong> — are reset to their factory values immediately, without waiting for Apply (the machine powers down, since the factory state is off).</p>
 
@@ -1285,9 +1331,10 @@
               </tr>
             </table>
 
-            <p><img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog"></p>
-
-            <p class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-reboot.png" alt="Reboot confirmation dialog">
+              <figcaption class="shot-caption">The REBOOT button asks for confirmation by default: the dialog carries the <a href="#config">Auto-boot</a> shortcut (<strong>Start the default bootstrap automatically after reboot</strong>) and the "Don't show this warning anymore" option.</figcaption>
+            </figure>
 
             <h3 id="sidebar-activity-lamps">Sidebar activity lamps</h3>
 
@@ -1302,9 +1349,10 @@
 
             <p>The wording adapts to the environment: a page opened as a local <code>file://</code> explains that the browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal build explains that the image is not shipped and points to the drop zone.</p>
 
-            <p><img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Image load failure dialog"></p>
-
-            <p class="shot-caption">An incomplete image triggers this dialog with an <a href="#storage">Open Storage</a> shortcut.</p>
+            <figure class="shot-figure">
+              <img class="shot" src="assets/images/manual/dialog-imgerror.png" alt="Image load failure dialog">
+              <figcaption class="shot-caption">An incomplete image triggers this dialog with an <a href="#storage">Open Storage</a> shortcut.</figcaption>
+            </figure>
 
 
             <h2 id="desktop">The Desktop App</h2>

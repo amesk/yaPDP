@@ -521,6 +521,36 @@
                 widows: 2;
             }
 
+            /* A picture and its caption are one block, and a block is not split
+               across sheets.
+
+               This rule was already here for figures, and the Storage screenshot
+               still came apart: the image and its caption paragraph were emitted
+               as two sibling <p> elements, so there was no common box for the
+               rule to protect. The generators now wrap the pair in
+               <figure class="shot-figure">; this makes the wrapping enforceable.
+
+               break-after on the image is the belt to that braces: even if a
+               figure is ever built some other way, the engine is told not to put
+               a page boundary straight after a picture. max-height keeps a tall
+               frame from exceeding the page box, which no break rule can repair. */
+            .shot-figure {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin: 0;
+            }
+
+            .landing-page .shot-figure img {
+                max-height: 200mm;
+                width: auto;
+                max-width: 100%;
+            }
+
+            .landing-page img.shot {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
             /* The pictures are screenshots of a dark emulator on a dark page:
                on white paper they need an outline or they float unattached. */
             .landing-page img {
@@ -903,9 +933,10 @@ ADDRESS LIGHTS SHOULD READ 032236, CHANGE SWITCH 7 TO CONTINUE</pre>
 
   <p>The first is an MVP that fully solves the immersion problem. Learning an unfamiliar stack as I went, I did get the effect I was after:</p>
 
-  <p><img class="shot" src="../assets/images/devlog/2026-09-24-own-pdp11-anyway/basic11-terminal.png" alt="BASIC-11 on the Model 33 ASR"></p>
-
-  <p class="shot-caption">Almost every switch on the panel works, local mode works, paper tapes are read and punched — and sometimes echoed, which is what they did in the sixties.</p>
+  <figure class="shot-figure">
+    <img class="shot" src="../assets/images/devlog/2026-09-24-own-pdp11-anyway/basic11-terminal.png" alt="BASIC-11 on the Model 33 ASR">
+    <figcaption class="shot-caption">Almost every switch on the panel works, local mode works, paper tapes are read and punched — and sometimes echoed, which is what they did in the sixties.</figcaption>
+  </figure>
 
   <p>The second is to carry on with the core refactor: remove the original, and get more of DEC's XXDP diagnostics to pass, which increases the amount of DEC software that is guaranteed to work on yaPDP. The first steps are already in the repository: <a href="https://github.com/amesk/yaPDP/blob/master/src/core/bus.js">src/core/bus.js</a>, <a href="https://github.com/amesk/yaPDP/blob/master/src/core/device.js">src/core/device.js</a> and <a href="https://github.com/amesk/yaPDP/blob/master/src/core/machine.js">src/core/machine.js</a>.</p>
 

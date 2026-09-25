@@ -344,7 +344,8 @@ function slug(text) {
 
 function blocksToHtml(blocks) {
   const out = [];
-  for (const b of blocks) {
+  for (let bi = 0; bi < blocks.length; bi++) {
+    const b = blocks[bi];
     switch (b.type) {
       case "h": {
         const tag = "h" + Math.min(6, b.level);
@@ -359,10 +360,32 @@ function blocksToHtml(blocks) {
           inline(m ? m[1] : b.text) + "</p>");
         break;
       }
-      case "img":
-        out.push('  <p><img class="' + (b.cls || "shot") + '" src="' + b.src +
-          '" alt="' + inline(b.alt) + '"></p>');
+      case "img": {
+        // A picture followed by a {.shot-caption} paragraph is one thing on the
+        // page: the caption names the frame, and a reader who meets the caption
+        // on the next sheet has lost which picture it belongs to. They used to
+        // be emitted as two sibling <p> elements, so no CSS rule could hold them
+        // together — page-break-inside: avoid needs a common box to protect.
+        // Wrapped in a <figure>, the pair is one block and the break rule has
+        // something to apply to. Seen in the printed manual: the Storage
+        // screenshot stayed on one page while its caption went to the next.
+        const img = '<img class="' + (b.cls || "shot") + '" src="' + b.src +
+          '" alt="' + inline(b.alt) + '">';
+        const next = blocks[bi + 1];
+        const isCaption = next && next.type === "p" && /\{\.shot-caption\}$/.test(next.text);
+        if (isCaption) {
+          const m = /^(.*)\{\.shot-caption\}$/.exec(next.text);
+          out.push('  <figure class="shot-figure">');
+          out.push("    " + img);
+          out.push('    <figcaption class="shot-caption">' + inline(m[1]) +
+            "</figcaption>");
+          out.push("  </figure>");
+          bi++;                     // the caption is consumed by the figure
+          break;
+        }
+        out.push("  <p>" + img + "</p>");
         break;
+      }
       case "imglink":
         // A picture that is also a link — used for the video preview, which
         // must not embed a player: an <iframe> would pull scripts and trackers

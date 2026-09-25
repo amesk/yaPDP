@@ -521,6 +521,36 @@
                 widows: 2;
             }
 
+            /* A picture and its caption are one block, and a block is not split
+               across sheets.
+
+               This rule was already here for figures, and the Storage screenshot
+               still came apart: the image and its caption paragraph were emitted
+               as two sibling <p> elements, so there was no common box for the
+               rule to protect. The generators now wrap the pair in
+               <figure class="shot-figure">; this makes the wrapping enforceable.
+
+               break-after on the image is the belt to that braces: even if a
+               figure is ever built some other way, the engine is told not to put
+               a page boundary straight after a picture. max-height keeps a tall
+               frame from exceeding the page box, which no break rule can repair. */
+            .shot-figure {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin: 0;
+            }
+
+            .landing-page .shot-figure img {
+                max-height: 200mm;
+                width: auto;
+                max-width: 100%;
+            }
+
+            .landing-page img.shot {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
             /* The pictures are screenshots of a dark emulator on a dark page:
                on white paper they need an outline or they float unattached. */
             .landing-page img {
@@ -783,21 +813,24 @@
 
   <p>These two are what the phrase "a machine room" means to me. Not a desktop, not a terminal on a desk — a room with its own air conditioning, and cabinets you walk along.</p>
 
-  <p><img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/pdp1140.jpg" alt="The PDP-11/40, the hardware ancestor of the Soviet SM-4"></p>
-
-  <p class="shot-caption">The PDP-11/40, the machine Soviet industry reverse-engineered into the SM-4. Same instruction set, same UNIBUS concept under a different name (IMK), a different plant building it.</p>
+  <figure class="shot-figure">
+    <img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/pdp1140.jpg" alt="The PDP-11/40, the hardware ancestor of the Soviet SM-4">
+    <figcaption class="shot-caption">The PDP-11/40, the machine Soviet industry reverse-engineered into the SM-4. Same instruction set, same UNIBUS concept under a different name (IMK), a different plant building it.</figcaption>
+  </figure>
 
   <p><strong>SM-1420 (1983)</strong> was my personal favourite. A full functional analogue of the more powerful PDP-11/34 and, in part, the 11/45. It brought hardware floating point, a memory manager expanding the address space to 4 MB, and — the pinnacle of engineering ambition for its time — the ability to attach IZOT hard drives (Soviet equivalents of DEC's RK05 or RM02) holding a whole 5 or 29 megabytes. The disk itself was a heavy "saucepan" of removable platters that you had to slot carefully into the drive.</p>
 
   <p>These were the machines that ran RAFOS (a clone of RT-11) and OS RV (a clone of RSX-11M). Booting a multi-user system on an SM-1420, sitting down at an alphanumeric terminal like a VTA-2000 or a DVK, starting the C compiler and writing code that drove a machine tool in a factory — that was pure adrenaline. What I wanted back was exactly that: the feeling of operating a genuine steel cabinet.</p>
 
-  <p><img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/dvk2.png" alt="The DVK-2, a Soviet PDP-11-compatible machine"></p>
+  <figure class="shot-figure">
+    <img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/dvk2.png" alt="The DVK-2, a Soviet PDP-11-compatible machine">
+    <figcaption class="shot-caption">A DVK-2 — a Soviet PDP-11-compatible machine that usually worked as a terminal to an SM EVM. This is the hardware my generation learned C on. Photograph: <a href="https://habrastorage.org/r/w1560/getpro/habr/upload_files/904/383/add/904383add5ecbf6fe44f44542d1c2e55.JPG">habrastorage.org</a></figcaption>
+  </figure>
 
-  <p class="shot-caption">A DVK-2 — a Soviet PDP-11-compatible machine that usually worked as a terminal to an SM EVM. This is the hardware my generation learned C on. Photograph: <a href="https://habrastorage.org/r/w1560/getpro/habr/upload_files/904/383/add/904383add5ecbf6fe44f44542d1c2e55.JPG">habrastorage.org</a></p>
-
-  <p><img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/vta2000-real.png" alt="The VTA-2000 alphanumeric terminal"></p>
-
-  <p class="shot-caption">The VTA-2000 alphanumeric terminal. A green-phosphor character display that replaced the teletype in Soviet machine rooms, and the screen I sat in front of as a teenager.</p>
+  <figure class="shot-figure">
+    <img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/vta2000-real.png" alt="The VTA-2000 alphanumeric terminal">
+    <figcaption class="shot-caption">The VTA-2000 alphanumeric terminal. A green-phosphor character display that replaced the teletype in Soviet machine rooms, and the screen I sat in front of as a teenager.</figcaption>
+  </figure>
 
   <h2 id="why-not-simh">Why not SIMH</h2>
 
@@ -815,9 +848,10 @@
 
   <p>I am a C enthusiast, and I wanted to work the way Kernighan and Ritchie did — that book is even part of the emulator's photographic backdrop. Hence the choice of terminals: a teletype, and my own hand-written VT52.</p>
 
-  <p><img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/kr-book.png" alt="The book itself: the first edition of Kernighan and Ritchie"></p>
-
-  <p class="shot-caption"><em>The C Programming Language</em> — the book everything in this project started from, and the one lying on the desk in the emulator's machine room.</p>
+  <figure class="shot-figure">
+    <img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/kr-book.png" alt="The book itself: the first edition of Kernighan and Ritchie">
+    <figcaption class="shot-caption"><em>The C Programming Language</em> — the book everything in this project started from, and the one lying on the desk in the emulator's machine room.</figcaption>
+  </figure>
 
   <p>A sensible person would reach for <strong>xterm.js</strong>, and I probably will when I need a <strong>VT100</strong>. But for now I want the feeling of hardware, not a pixel-perfect terminal.</p>
 
@@ -869,9 +903,10 @@
 
   <p>Getting there took fixing it first: the original emulator's punch was minimal — just enough to start a bootloader. RT-11 could not see it, let alone work with it. And once tapes could be read, I naturally wanted to punch them too. That had to be written from scratch.</p>
 
-  <p><img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/papertape.png" alt="Paper tape: eight tracks for data, five for the teletype"></p>
-
-  <p class="shot-caption">Paper tape: eight tracks of data, and the smaller five-track format the teletype itself used. yaPDP punches and reads both, and a tape exported from it loads into a real PDP-11 reader if you still have one.</p>
+  <figure class="shot-figure">
+    <img class="shot" src="../assets/images/devlog/2026-09-23-bringing-back-the-machine-room/papertape.png" alt="Paper tape: eight tracks for data, five for the teletype">
+    <figcaption class="shot-caption">Paper tape: eight tracks of data, and the smaller five-track format the teletype itself used. yaPDP punches and reads both, and a tape exported from it loads into a real PDP-11 reader if you still have one.</figcaption>
+  </figure>
 
   <p>Playing with the real operating systems of that era taught me a few things I had only read about:</p>
 

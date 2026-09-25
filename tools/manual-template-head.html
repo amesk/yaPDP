@@ -521,6 +521,36 @@
                 widows: 2;
             }
 
+            /* A picture and its caption are one block, and a block is not split
+               across sheets.
+
+               This rule was already here for figures, and the Storage screenshot
+               still came apart: the image and its caption paragraph were emitted
+               as two sibling <p> elements, so there was no common box for the
+               rule to protect. The generators now wrap the pair in
+               <figure class="shot-figure">; this makes the wrapping enforceable.
+
+               break-after on the image is the belt to that braces: even if a
+               figure is ever built some other way, the engine is told not to put
+               a page boundary straight after a picture. max-height keeps a tall
+               frame from exceeding the page box, which no break rule can repair. */
+            .shot-figure {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                margin: 0;
+            }
+
+            .landing-page .shot-figure img {
+                max-height: 200mm;
+                width: auto;
+                max-width: 100%;
+            }
+
+            .landing-page img.shot {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
             /* The pictures are screenshots of a dark emulator on a dark page:
                on white paper they need an outline or they float unattached. */
             .landing-page img {
