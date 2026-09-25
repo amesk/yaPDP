@@ -289,6 +289,54 @@
            lacked width: 100% (see above). With the width fixed the slab meets
            the edge below 800px and the outline falls off it on its own, exactly
            as the landing page's does — no rule required. */
+        /* The language switch in the hero's button row: the landing page's
+           EN / RU control, in the same shape but drawn in the static pages' own
+           terms.
+
+           On the landing page this is a Tailwind pill inside a <button> that
+           toggles state. A generated page cannot toggle anything — it is
+           static, and the other language is a different document — so the
+           active half is a <span> (nothing clickable that would not move the
+           reader) and the other half is a link to the other manual. The look is
+           the same: bordered pill, muted background, the active language in
+           gold and bold, the separator dimmed. */
+        .panel-actions-landing .lang-switch {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.125rem;
+            height: 40px;
+            padding: 0 12px;
+            border: 1px solid #524939;
+            border-radius: 4px;
+            background: #221e18;
+            font-family: arial, helvetica, sans-serif;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            cursor: default;
+        }
+
+        .panel-actions-landing .lang-switch a,
+        .panel-actions-landing .lang-switch .lang-active {
+            color: #d4c4a0;
+            text-decoration: none;
+            padding: 0 2px;
+        }
+
+        /* the language this page is written in */
+        .panel-actions-landing .lang-switch .lang-active {
+            color: #e8d080;
+            font-weight: bold;
+        }
+
+        .panel-actions-landing .lang-switch a:hover {
+            color: #f0e6c8;
+        }
+
+        .panel-actions-landing .lang-switch .lang-sep {
+            color: #524939;
+        }
+
         @media (max-width: 700px) {
             .landing-page .pair > figure,
             .landing-page .row > figure {
@@ -482,7 +530,7 @@
                                         <a class="btn-primary" href="pdp11.html">Запустить онлайн!</a>
                     <a class="btn-secondary" href="devlog/index.html">Все посты</a>
                     <a class="btn-secondary" href="index.html">На главную страницу</a>
-                    <a class="btn-secondary" href="manual.html">English version</a>
+                    <span class="lang-switch" title="Переключить язык"><a href="manual.html">EN</a><span class="lang-sep">/</span><span class="lang-active">RU</span></span>
                 </div>
             </div>
 
