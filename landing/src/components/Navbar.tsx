@@ -174,54 +174,19 @@ export function Navbar({
           </button>
         </div>
 
-        {/* Center: Navigation shortcuts depending on active view (desktop only) */}
-        <nav className="hidden lg:flex items-center gap-2 xl:gap-3 text-[11px] font-medium text-[#c8b890] shrink-0 whitespace-nowrap">
-          {view === 'overview' ? (
-            <>
-              <a href="#screenshots" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Screenshots' : 'Скриншоты'}
-              </a>
-              <a href="#features" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Features' : 'Возможности'}
-              </a>
-              <a href="#story" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Story' : 'История'}
-              </a>
-              <a href="#quick-boot" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Quick Boot' : 'Запуск'}
-              </a>
-              <a href="#download" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Download' : 'Скачать'}
-              </a>
-            </>
-          ) : view === 'manual' ? (
-            <>
-              <a href="#quick-start" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Quick Start' : 'Старт'}
-              </a>
-              <a href="#front-panel" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Panel' : 'Пульт'}
-              </a>
-              <a href="#console" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Console' : 'Консоль'}
-              </a>
-              <a href="#printer" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Printer' : 'Принтер'}
-              </a>
-              <a href="#storage" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Storage' : 'Диски'}
-              </a>
-              <a href="#config" className="hover:text-[#f0e6c8] transition-colors py-0.5 whitespace-nowrap">
-                {lang === 'en' ? 'Config' : 'Настройки'}
-              </a>
-            </>
-          ) : (
-            // Emulator view: the machine fills the page; the window's own
-            // control bar (Back / Manual / Open standalone / Reset) covers
-            // navigation, so no duplicated centre shortcuts here.
-            <></>
-          )}
-        </nav>
+        {/* The centre group of section shortcuts used to sit here: five anchors on
+            the overview and six on the manual, shown from lg up. Removed because
+            it did not fit — the header is inside an 800px slab, and the three
+            groups together asked for 884px of a 766px box, so the section links
+            and then the Telegram/GitHub icons were pushed off the slab and onto
+            the machine-room backdrop (measured at 1280, 1366, 1440, 1600 and
+            1920: the right group ended at 1141 against a slab edge of 798).
+
+            It was also the least missed of the three: the manual carries the
+            same sections as its own table of contents, the overview shows them
+            in order as you scroll, and the three view tabs already lead where
+            most readers are going. The links are still reachable — the manual's
+            contents list is the same set, one click away. */}
 
         {/* Desktop Right: Actions */}
         <div className="hidden md:flex items-center gap-1.5 shrink-0">
