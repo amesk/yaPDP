@@ -750,15 +750,13 @@ function main() {
     return;
   }
 
-  // The output directory is created here instead of being assumed. devlog/ used
-  // to be a committed directory, so it was always there; the pages, the feed and
-  // the index are build products now (Git cannot store an empty directory, so a
-  // fresh clone has no devlog/ at all) and the first build failed with ENOENT on
-  // devlog/index.html.
-  fs.mkdirSync(OUT_DIR, { recursive: true });
-
+  // Each target's directory is created here instead of being assumed. devlog/
+  // and landing/src/data/ hold nothing but generated files, so they do not exist
+  // in a fresh checkout at all (Git cannot store an empty directory) and the
+  // first build failed with ENOENT on devlog/index.html and on devlogData.ts.
   const suffix = write ? "" : ".generated";
   for (const t of targets) {
+    fs.mkdirSync(path.dirname(t.path), { recursive: true });
     fs.writeFileSync(t.path + suffix, t.content);
   }
   console.log("build-devlog: wrote " + targets.length + " file(s)" +
