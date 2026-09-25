@@ -483,10 +483,42 @@
                 break-inside: avoid;
             }
 
+            /* A chapter starts on a fresh sheet, the way a printed guide is
+               laid out: the reader finds a section by its own page rather than
+               partway down somebody else's. It costs pages — the manual grows —
+               and that is the trade a reference book makes.
+
+               The first heading is the exception: it would otherwise push a
+               blank page between the contents list and the opening section. */
+            .landing-page h2 {
+                page-break-before: always;
+                break-before: page;
+            }
+
+            .landing-page hr + h2,
+            .landing-page h2:first-of-type {
+                page-break-before: auto;
+                break-before: auto;
+            }
+
+            /* A heading must not sit alone at the foot of a page, and a
+               subheading must not open one on its own. */
             .landing-page h2,
             .landing-page h3 {
                 page-break-after: avoid;
                 break-after: avoid;
+            }
+
+            .landing-page h3 {
+                page-break-before: avoid;
+                break-before: avoid;
+            }
+
+            /* No single line of a paragraph stranded at the turn of a page. */
+            .landing-page p,
+            .landing-page li {
+                orphans: 2;
+                widows: 2;
             }
 
             /* The pictures are screenshots of a dark emulator on a dark page:
