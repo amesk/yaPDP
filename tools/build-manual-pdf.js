@@ -92,15 +92,15 @@ function coverHtml(lang, title, subtitle, date) {
     <span class="pdf-cover-digital">digital</span>
     <span class="pdf-cover-model">| PDP-11/70</span>
   </div>
+  <figure class="pdf-cover-shot">
+    <img src="http://127.0.0.1:${PORT}/assets/images/devlog/cover-art.jpg"
+         alt="yaPDP — illustration by the project's author">
+  </figure>
   <div class="pdf-cover-mid">
     <h1 class="pdf-cover-title">${title}</h1>
     <p class="pdf-cover-subtitle">${t.manual} · ${t.machine}</p>
     <p class="pdf-cover-machine">yaPDP — ${t.foot}</p>
   </div>
-  <figure class="pdf-cover-shot">
-    <img src="http://127.0.0.1:${PORT}/assets/images/devlog/cover-art.jpg"
-         alt="yaPDP — illustration by the project's author">
-  </figure>
   <div class="pdf-cover-meta">
     <b>yaPDP</b> · Yet Another PDP‑11/70 Emulator<br>
     Date: ${date}<br>
@@ -142,17 +142,15 @@ const COVER_CSS = `
 .pdf-cover-subtitle { font-size: 13pt; color: #4a453a; margin: 0 0 10mm 0; }
 .pdf-cover-machine { font-size: 11pt; color: #6a5f4a; margin: 0; }
 
-/* The cover illustration: the author's own artwork, replacing the BASIC-11
-   screenshot that stood here first. It is drawn on a light ground, so it sits
-   inside the frame rather than bleeding to the sheet edge, and it carries no
-   caption — the picture is the title page's own statement, not a figure
-   needing attribution. */
-.pdf-cover-shot { margin: 0 0 8mm 0; }
+/* The cover illustration sits directly under the brand rule, at the top of the
+   sheet, and the title block follows it. The picture is what the eye should
+   land on first — it carries the machine room — while the title and subtitle
+   are text, and text belongs below the image on a title page. */
+.pdf-cover-shot { margin: 6mm 0 10mm 0; }
 .pdf-cover-shot img {
   display: block;
   width: 100%;
   height: auto;
-  border: 0.75pt solid #8a8278;
 }
 .pdf-cover-meta {
   border-top: 1px solid #d8d0bc;
