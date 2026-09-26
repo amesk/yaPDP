@@ -147,6 +147,19 @@
             overflow-x: auto;
         }
 
+        /* A table gets its own scroll container. Four columns cannot fit a
+           phone — the reading column is about 390 CSS pixels there and the
+           slab hides horizontal overflow — so an unwrapped table was cut off
+           with no way to reach the rest of it. The wrapper scrolls instead,
+           and only does so when the table really is wider than its column, so
+           a wide screen is unchanged. */
+        .landing-page .table-scroll {
+            overflow-x: auto;
+            /* Room for the scrollbar on platforms that reserve space for it,
+               so the last column is not hidden under it. */
+            padding-bottom: 2px;
+        }
+
         .landing-page table {
             color: #e0d8c8;
             border-collapse: collapse;
