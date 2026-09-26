@@ -142,8 +142,7 @@ export default function App() {
 
         {/* Footer copyright inside the slab */}
         <footer className="w-full bg-[#12100d]/90 border-t border-[#3a3528] py-4 px-4 sm:px-6 text-center text-xs text-[#8a7650] font-mono">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <span className="text-center sm:text-left">yaPDP © Alexei Eskenazi (amesk) · DEC PDP‑11/70 Simulator</span>
+          <div className="flex flex-col items-center gap-2">
             <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5">
               <button
                 onClick={() => handleSelectView('overview')}
@@ -206,6 +205,7 @@ export default function App() {
                 {lang === 'en' ? 'Online Emulator' : 'Эмулятор'}
               </button>
             </div>
+            <span>yaPDP © Alexei Eskenazi (amesk) · DEC PDP‑11/70 Simulator</span>
           </div>
         </footer>
       </div>
