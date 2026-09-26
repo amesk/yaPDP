@@ -97,7 +97,10 @@ The logic is mechanical: crossing empty space is easier than hammering out a doz
 The carriage return is animated. The head actually travels back to the left margin, and on this machine that is a noticeable hundred milliseconds:
 
 ```js
-// ASR возвращается ~100 мс, LP11 (300 строк/мин) — мгновенно
+// The print head physically travels back to the left margin over ~100 ms, not
+// a teleport. Configurable per printer — the fast LP11 line printer (300 LPM)
+// keeps 0 (instant) so a CR never throttles it, while the console teletype
+// passes ~100 for the authentic glide.
 var carriageReturnMs = (typeof opts.carriageReturnMs === 'number' && opts.carriageReturnMs > 0)
     ? opts.carriageReturnMs : 0;
 ```
@@ -126,10 +129,19 @@ Paper does not adapt to its contents and does not scroll sideways. It is calcula
 
 ```js
 function computePaperGeometry(cols, opts) {
-    var contentWidth = cols * cw;                       // 7px на знак
-    var paperWidth = Math.min(contentWidth + 2 * paddingX + 2 * marginX, bodyWidth);
-    var paperLeft  = leftSkin + Math.max(0, Math.round((bodyWidth - paperWidth) / 2));
-    var headOffset = 30 + (paperLeft - leftSkin);
+    var bodyWidth = opts.bodyWidth;
+    var cw = opts.charWidth;
+    var paddingX = opts.paddingX;
+    var marginX = opts.marginX;
+    var leftSkin = opts.leftSkin;
+
+    var contentWidth = cols * cw;
+    // Rendered paper width = content + cell padding + both margin columns.
+    var paperWidth = contentWidth + 2 * paddingX + 2 * marginX;
+    paperWidth = Math.min(paperWidth, bodyWidth);
+
+    // Centre the paper between the fixed side skins.
+    var paperLeft = leftSkin + Math.max(0, Math.round((bodyWidth - paperWidth) / 2));
     ...
 }
 ```
@@ -186,9 +198,12 @@ The core stores attributes but does not decide what to do with them. It asks:
 
 ```js
 static attrMask() {
-    return ~(ATTR_BOLD | ATTR_UNDERSCORE);   // VT52: ни жирного, ни подчёркивания
+    // A DECscope VT52 (no DECANM) has no SGR emphasis: bold and underline are
+    // VT100-only. In VT52 mode they must never reach the tube, however they
+    // landed in the cell (overstrike or SGR).
+    return ~(ATTR_BOLD | ATTR_UNDERSCORE);
 }
-static cursorIsBlock() { return false; }     // VT52 рисует подчёркивание
+static cursorIsBlock() { return false; }   // the VT52 draws an underline
 ```
 
 The DECscope had no SGR expressiveness, so in VT52 mode bold and underline must not reach the tube however they ended up in the cell — through overstrike or an escape sequence. The VT52 cursor is an underline, the VT100's is a block. A small thing, and from it you can tell which machine you are sitting at.
@@ -227,9 +242,12 @@ One offset per line, not per glyph, so the baseline is fixed and letters do not 
 A tube in code is a pair of colours. Glass and light; it is never one colour:
 
 ```js
+//   p1  the green phosphor that late-1970s and 1980s terminals are known for.
+//       Muted rather than the bright green of period film, which is a fiction:
+//       a real P1 sits close to this.
 const PHOSPHORS = Object.freeze({
-    p4: Object.freeze({ fg: "#E0E0E0", bg: "#141914" }),  // трубка VT52 и VT100-1978
-    p1: Object.freeze({ fg: "#2BD62B", bg: "#0A1A0A" })   // зелёный 80-х
+    p4: Object.freeze({ fg: "#E0E0E0", bg: "#141914" }),
+    p1: Object.freeze({ fg: "#2BD62B", bg: "#0A1A0A" })
 });
 ```
 
@@ -261,7 +279,8 @@ Unknown VT52 sequences are swallowed silently by the VT100. That is not laziness
 What delights me is that the private mode `CSI ? 2 h` (DECANM) drops the VT100 into VT52 compatibility. That is real hardware behaviour. So I inherited the grammar rather than rewriting it: a VT100 is obliged to be able to be a VT52, and let that be literally the same code.
 
 ```js
-// src/vt52.js — режим переключается на уровне ИНСТАНСА, а не класса
+// src/vt52.js
+/** The engine asks the INSTANCE, so each terminal keeps its own mode. */
 attrMask()      { return this.modes.ansi ? -1 : ~(ATTR_BOLD | ATTR_UNDERSCORE); }
 cursorIsBlock() { return !!this.modes.ansi; }
 ```
@@ -298,14 +317,15 @@ Therefore every dialect declares what it accepts:
 
 ```js
 // src/dialect/vt100.js
-acceptsPhosphor     = true;    // трубку выбирает оператор из CONFIG
-acceptsReverseVideo = false;   // тумблера нет, только SGR 7 от программы
+/** acceptsPhosphor — this terminal takes a tube choice from CONFIG. */
+acceptsPhosphor     = true;
+acceptsReverseVideo = false;   // no switch: only SGR 7 from a program
 acceptsKeyClick     = true;
 
 // src/vt52.js
-acceptsReverseVideo = true;    // тумблер на самой машине
-acceptsKeyClick     = false;   // клавиатура механическая
-powerOnState() { return { phosphor: "p4" }; }  // другой трубки у VT52 не было
+acceptsReverseVideo = true;    // the switch is on the machine itself
+acceptsKeyClick     = false;   // mechanical keyboard
+powerOnState() { return { phosphor: "p4" }; }  // it had no other tube
 ```
 
 The trap is in inheritance. The VT100 extends the VT52, so by default it inherits all its opt-ins; a superset has to explicitly refuse what it does not have. Otherwise the reverse-video switch on the DECscope would recolour the VT100 too.

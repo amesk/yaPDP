@@ -40,6 +40,7 @@ site/
 manual.html.generated
 manual_ru.html.generated
 landing/src/data/manualData.ts.generated
+landing/src/data/devlogData.ts.generated
 
 # ---- Generated documentation — deliberately NOT committed ----
 # The sources are docs/manual/*.md (+ ru/), docs/devlog/*.md and the two page
