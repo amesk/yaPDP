@@ -14,7 +14,7 @@ download and a fully-offline bundle with every disk/tape image:
 | Variant | Ships | Notes |
 |---------|-------|-------|
 | **Minimal** | `rk0` (Unix V5), `rk1` (RT‑11), `bootcode` and the demo paper tapes (BASIC‑11, ODT‑11, ED‑11, Lunar Lander) | ≈19 MB on Windows. Unix V5, RT‑11 and the paper tapes boot offline; all other images are **dragged & dropped** at runtime. |
-| **Full** | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | ≈103 MB on Windows, but all 16 guest OSes boot offline with zero extra steps. |
+| **Full** | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes | ≈103 MB on Windows, but all fifteen bootable images come up offline with zero extra steps. |
 
 The download is the application itself — artwork, audio and fonts, ≈26 MB
 uncompressed — rather than the disk images: the Minimal media set adds about 1 MB.

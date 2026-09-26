@@ -15,7 +15,7 @@ the UI pages.
 | **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. See [below](#vt52-terminal). |
 | **VT100 Terminal** | The terminal the 1980s guests actually ran on: canvas tube with a P4 white or P1 green phosphor (the DECscope pins P4), the VT100 key click, reverse video only when the software asks for it with SGR 7, and the ANSI dialect built on the DECscope the hardware superseded. See [below](#vt100-terminal). |
 | **VT11 Display** | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. |
-| **16 Guest Operating Systems** | Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
+| **Bootable Media & Quick Boot** | Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander. |
 | **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
 | **Paper Tape Reader** | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape. |
 | **Startup gate** | A first-paint overlay holds the page until the artwork, the fonts and the media manifest are ready, so the machine no longer assembles itself on screen on a slow link. See [below](#startup-gate). |

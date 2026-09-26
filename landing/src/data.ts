@@ -81,9 +81,9 @@ export const FEATURES_EN: FeatureItem[] = [
     description: 'An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page, enabled from the CONFIG page.',
   },
   {
-    id: '16-os',
-    title: '16 Guest OSes',
-    description: 'Boot Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more.',
+    id: 'bootable-media',
+    title: 'Bootable Media',
+    description: 'Fifteen bootable disk and tape images — Unix V5, BSD 2.9 & 2.11, Ultrix-11, RSX-11M (3.2 & 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander.',
   },
   {
     id: 'storage',
@@ -124,9 +124,9 @@ export const FEATURES_RU: FeatureItem[] = [
     description: 'Опциональный векторный графический процессор DEC VT11 с зеленым люминофором на отдельной странице, включаемый через CONFIG.',
   },
   {
-    id: '16-os',
-    title: '16 гостевых ОС',
-    description: 'Загружайте Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 и 4.6), RSTS/E (от 4B‑17 до 10.1), RT‑11, диагностику XXDP и другие.',
+    id: 'bootable-media',
+    title: 'Загрузочные носители',
+    description: 'Пятнадцать загрузочных образов на дисках и лентах — Unix V5, BSD 2.9 и 2.11, Ultrix-11, RSX-11M (3.2 и 4.6), RSTS/E (от 4B-17 до 10.1), RT-11 и диагностика XXDP, — а также считыватель перфоленты для самосборного загрузчика и для программ вроде BASIC-11 и Lunar Lander.',
   },
   {
     id: 'storage',
