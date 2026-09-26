@@ -1,81 +1,79 @@
-# yaPDP — Yet Another PDP‑11/70 Web Emulator, with Authentic Front Panel & Model 33 ASR Teletype
+# yaPDP — Yet Another PDP‑11/70 Web Emulator with an Authentic Front Panel & Model 33 ASR Teletype
 
-![CI](https://github.com/amesk/yaPDP/actions/workflows/ci.yml/badge.svg)
+> **An immersive PDP-11 in the browser.** Features an authentic working front panel, Teletype Model 33 ASR, paper tapes, crisp VT52/VT100 terminals, VT11 vector display, and a clattering LP11 line printer. Built to bring back the machine room.
 
-![PDP‑11/70 Front Panel](assets/pdp1170-large.png)
+[![CI](https://github.com/amesk/yaPDP/actions/workflows/ci.yml/badge.svg)](https://github.com/amesk/yaPDP/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20Simulation-brightgreen)](https://amesk.github.io/yaPDP/)
+
+---
+
+## Live Experience
+
+<p align="center">
+  <img src="assets/pdp11-animated-panel.gif" alt="Animated PDP-11/70 front panel — the DEC light chaser running"/>
+</p>
+
+<p align="center">
+  <b>▸ <a href="https://amesk.github.io/yaPDP/pdp11.html">Launch the live PDP-11/70 emulator directly in your browser</a> ◂</b>
+  <br/>
+  <sub><a href="https://amesk.github.io/yaPDP/">Project site</a> · <a href="https://github.com/amesk/yaPDP">Source on GitHub</a> · Desktop builds for Windows & Linux</sub>
+</p>
 
 ---
 
 ## Foreword: A Personal Note
 
-I first saw DEC minicomputers as a child, and later worked hands‑on with their Soviet clones — the **SM‑4** and **SM‑1420** running **RSX‑11M**. Decades later, thanks to the incredible work of Paul Nankervis, it is possible to boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E and RT‑11 in a browser.
+I first saw DEC minicomputers as a child, and later worked hands‑on with their Soviet clones — the **SM‑4** and **SM‑1420** running **RSX‑11M**. Decades later, thanks to the incredible work of Paul Nankervis, it is possible to boot Unix V5, BSD 2.11, Ultrix‑11, RSX‑11M, RSTS/E and RT‑11 directly in a web browser.
 
 This repository is the result: **yaPDP**. Welcome to the machine.
 
 ---
 
-## About This Project
+## Key Features & The Machine Room Experience
 
-This is **yaPDP**, a **PDP‑11/70** emulator written entirely in JavaScript. It runs in any modern browser — no plugins, no downloads, no configuration. Just run the emulator and you're standing in front of a DEC minicomputer.
+**yaPDP** runs in any modern browser with zero plugins, zero downloads, and zero server requirements.
 
-### What makes it special
+* **Authentic Front Panel:** Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader or run light-chaser routines the way DEC engineers did in the 1970s.
+* **Model 33 ASR Teletype:** The operator console features a fully animated, authentic Model 33 ASR — featuring 3D keycaps, paper printing with true `nroff`/`man` overstrike, carriage margin jamming, and an 8-track paper-tape reader/punch unit with real START/STOP/FREE/AUTO switches.
+* **Clattering LP11 Line Printer:** Beige/grey cabinet, fanfold paper, ON LINE lamp, ~300 lines/min, DONE handshake, sticky ERROR latching, and realistic soundscapes. Print directly to a physical printer or export as `.txt`.
+* **Crisp Vector Terminals:** High-definition DECscope **VT52** (canvas tube with P4 phosphor, reverse video, CRT simulation) and **VT100** (P4 white / P1 green phosphor, VT100 key clicks, SGR attribute rendering, native clipboard integration).
+* **VT11 Graphics Display Processor:** Optional vector-graphics display page running on its own green-phosphor CRT — includes the classic *Lunar Lander*.
+* **Guest Operating Systems & Quick Boot:** Single-click magic wand boots any guest OS from the preloaded images — Unix V5, BSD 2.9 & 2.11, ULTRIX‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11 and XXDP diagnostics — applying the machine profile and typing the boot command, prompt-aware.
+* **Persistent Browser Storage:** Disk and tape changes persist across sessions using local browser storage.
+* **Touch & Mobile Optimized:** Responsive layout with custom on-screen keyboards for VT52/VT100/Model 33, special-key bars (`CTRL`, `ESC`, `TAB`, `RUBOUT`, control codes), and two-finger pan/zoom for small devices.
 
-| Feature | Description |
-|---------|-------------|
-| **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
-| **Model 33 ASR Teletype** | The operator console: a fully animated, authentic Model 33 ASR — faithful keyboard with the historical special keys, paper printing with true nroff/man overstrike, carriage jamming at the margin, and an 8-track paper-tape reader/punch unit with the real START/STOP/FREE/AUTO switch and CCU. |
-| **Authentic LP11 Line Printer** | Beige/grey cabinet, fanfold paper, ON LINE lamp, ~300 lines/min, DONE handshake and sticky ERROR latching; **Print** to a real printer or **Save .txt**. |
-| **VT52 Terminal** | A DECscope VT52 on canvas with authentic P4 phosphor, optional reverse video, CRT simulation and a text mode with native clipboard. |
-| **VT100 Terminal** | The terminal the 1980s guests ran on: canvas tube with a P4 white or P1 green phosphor, VT100 key click, reverse video driven by the software's own SGR attributes, and the ANSI dialect built on the DECscope the VT100 supersedes. |
-| **VT11 Display** | Optional vector-graphics display processor on its own green-phosphor CRT page — Lunar Lander included. |
-| **Quick boot (magic wand)** | One click boots any guest OS: applies the right machine profile, types `boot <dev>` and the login, prompt-aware. |
-| **16 Guest Operating Systems** | Unix V5, 2.11 BSD, Ultrix‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11, XXDP diagnostics, and more. |
-| **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
-| **Paper Tape Reader** | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape. |
-| **Phones & Tablets** | Touch devices get an on-screen keyboard for every terminal (VT52/VT100 and the Model 33) plus a special-key bar — Enter, ESC, TAB, RUBOUT and the control codes (^C, ^D, ^Z, ^S, ^Q) with a latching CTRL — two-finger zoom and pan of the machine pages (which also works where the browser has no page zoom of its own, such as a home-screen app), a compact bottom navigation bar, and Storage/Config tabs that wrap to fit the screen. |
+---
 
-The full walkthrough of every feature lives in
-[`docs/FEATURES.md`](docs/FEATURES.md).
+## Hardware & Guest OS Gallery
 
-### Live Demo
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/images/manual/terminal-vt52.png" alt="DEC VT52 Terminal" width="100%"/>
+      <br/>
+      <sub><b>DEC VT52 Video Terminal</b></sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/images/manual/terminal-vt100.png" alt="DEC VT100 Terminal" width="100%"/>
+      <br/>
+      <sub><b>DEC VT100 Video Terminal</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
+      <img src="assets/images/os/basic.png" alt="PDP-11 Running BASIC" width="100%"/>
+      <br/>
+      <sub><b>Running BASIC-11 on the PDP-11</b></sub>
+    </td>
+  </tr>
+</table>
 
-- [**yaPDP**](https://paulnank.github.io/pdp11-js/pdp11.html)
-
-The repository root also contains [`index.html`](index.html) — a landing page in the
-same DEC style as the emulator itself — and [`manual.html`](manual.html), a
-step-by-step user manual with live screenshots.
-
-## User Manual
-
-[`manual.html`](manual.html) is a step-by-step user guide in the same DEC style
-as the landing page: quick boot (magic wand), the front panel, the Model 33 ASR
-operator console, VT52 and VT100 terminals, the LP11 line printer, storage, configuration
-and every guest OS boot command. Its page illustrations are live screenshots of
-the emulator, regenerated with `npm run screenshots:manual`
-([`tools/screenshots-manual.js`](tools/screenshots-manual.js)).
-
-The promo demo-reel (the voiced videos used in the articles/landing) is recorded
-and assembled by [`tools/record-video.js`](tools/record-video.js) +
-[`tools/assemble-video.js`](tools/assemble-video.js); the same pipeline runs
-server-side on demand via the **build-promo-videos** GitHub Actions workflow —
-see [`docs/BUILDING.md`](docs/BUILDING.md).
-
-## Desktop App (Tauri)
-
-The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/),
-running fully offline. Two installer variants are published: **Minimal** (≈19 MB on
-Windows) ships `rk0` (Unix V5), `rk1` (RT‑11) and `bootcode` together with the demo
-paper tapes — BASIC‑11, ODT‑11, ED‑11 and Lunar Lander — and everything else is
-drag & dropped at runtime; **Full** (≈103 MB) carries every disk and tape image, so
-all 16 guest OSes boot offline. Most of that download is the application itself
-(artwork, audio and fonts), not the images: the Minimal media set adds about 1 MB.
-Installers for Windows x64 (MSI/NSIS/portable) and Linux x64 (deb/rpm/AppImage).
-Toolchain installation and build commands: [`docs/BUILDING.md`](docs/BUILDING.md). The
-step-by-step release procedure: [`docs/RELEASING.md`](docs/RELEASING.md).
+---
 
 ## Guest Operating Systems
 
-The emulator ships with ready-to-boot disk and tape images. Just type `boot <device>` at the `@` prompt.
+The emulator ships with preloaded disk and tape images. To manual boot, type the boot command at the `@` prompt:
 
 | Disk | Operating System | How to Boot |
 |------|-----------------|-------------|
@@ -95,84 +93,71 @@ The emulator ships with ready-to-boot disk and tape images. Just type `boot <dev
 | **RP3** | RSX‑11M v4.6 | `BOOT RP3` — auto-logs `1,2` SYSTEM |
 | **RP4** | RSTS/E v10.1 | `BOOT RP4` — answer prompts, login `11,70` |
 
-> Full boot session logs for every OS can be found in [`docs/ExampleBoots.md`](docs/ExampleBoots.md).
-
-## Quick Start
-
-1. Open the [yaPDP emulator](https://paulnank.github.io/pdp11-js/pdp11.html).
-2. At the `@` prompt, type `boot rp1` and press ENTER.
-3. BSD 2.11 will autoboot into multiuser mode. Login as `root` (no password).
-4. Try `ls`, `ps -aux`, `df` — or compile a C program with `cc`.
-
-A detailed walkthrough of every page (Panel, Console, TTY, Printer, Display,
-Storage, Config, Info, REBOOT/STATE buttons, fullscreen, terminal zoom, mute) and the classic
-panel tricks (light chaser, bootloader restart) is in
-[`docs/FEATURES.md`](docs/FEATURES.md).
-
-## Project Architecture
-
-At a glance: the CPU ([`src/pdp11.js`](src/pdp11.js)) executes against an I/O
-page ([`src/iopage.js`](src/iopage.js)) that owns the peripherals;
-[`src/pdp11-app.js`](src/pdp11-app.js) glues the machine to the UI and honours
-the user configuration ([`src/config.js`](src/config.js)); the custom bootstrap
-loader is [`src/bootcode.js`](src/bootcode.js); guest-OS boot scenarios and the
-quick-boot wizard live in [`src/osboot.js`](src/osboot.js) and
-[`src/quickboot.js`](src/quickboot.js). Modular tests live in `tests/` and are
-driven by `tools/run-tests.js` (`npm test`).
-
-The complete file map (every `src/`, `tests/`, `css/`, `tools/` module with its
-purpose) and the media-file layout: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> Full boot session logs for every OS are available in [`docs/ExampleBoots.md`](docs/ExampleBoots.md).
 
 ---
 
-## License
+## Desktop Application (Tauri v2)
 
-This project is released under the [MIT License](LICENSE).
+For offline execution, **yaPDP** is packaged as a cross-platform desktop application using [Tauri v2](https://tauri.app/).
 
-Copyright (c) 2026 Alexei Eskenazi
+* **Minimal Installer (~19 MB):** Ships core media (`rk0` Unix V5, `rk1` RT-11, `bootcode`, BASIC-11, ODT-11, ED-11, Lunar Lander). Additional disk images can be drag-and-dropped at runtime.
+* **Full Installer (~103 MB):** Pre-packaged with every disk and tape image, so the whole guest‑OS line‑up boots completely offline. Most of that download is the application itself (artwork, audio, fonts), not the images.
+* **Supported Platforms:** Windows x64 (MSI / NSIS / Portable) and Linux x64 (deb / rpm / AppImage).
+
+For build instructions and toolchain configuration, see [`docs/BUILDING.md`](docs/BUILDING.md) and [`docs/RELEASING.md`](docs/RELEASING.md).
+
+---
+
+## Quick Start & Documentation
+
+1. Open the [yaPDP Live Emulator](https://amesk.github.io/yaPDP/pdp11.html).
+2. At the `@` prompt, type `boot rp1` and press **ENTER**.
+3. BSD 2.11 will autoboot into multiuser mode. Log in as `root` (no password).
+4. Run standard UNIX commands (`ls`, `ps -aux`, `df`) or compile C programs with `cc`.
+
+### Manual & Feature Walkthroughs
+* **User Manual:** Step-by-step user guide with DEC-styled layout and live screenshots: [`manual.html`](https://amesk.github.io/yaPDP/manual.html).
+* **Feature Deep-Dive:** Walkthrough of hardware pages, panel tricks, and peripheral controls: [`docs/FEATURES.md`](docs/FEATURES.md).
+* **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
+* **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+---
+
+## Project Architecture & Technical Highlights
+
+Building **yaPDP** involved implementing low-level computer architecture and real-time hardware emulation in JavaScript:
+
+* **CPU Core (`src/pdp11.js`):** Cycle-accurate 16-bit PDP-11 CPU instruction decoder, registers, and trap logic.
+* **Memory & Memory-Mapped I/O (`src/iopage.js`):** Interconnects CPU execution with virtual hardware peripheral registers.
+* **Application & State Glue (`src/pdp11-app.js`, `src/config.js`):** Connects the emulation engine to browser DOM elements, sound players, and state synchronization.
+* **Bootstrap Loader & OS Wizard (`src/bootcode.js`, `src/osboot.js`, `src/quickboot.js`):** Bootloader injection logic and prompt-aware automated OS startup scripts.
+* **Automation & Video Pipeline:** Automated screenshot generation via [`tools/screenshots-manual.js`](tools/screenshots-manual.js) and headless promo video assembly via [`tools/record-video.js`](tools/record-video.js) / [`tools/assemble-video.js`](tools/assemble-video.js).
+
+Full directory structure and module descriptions are detailed in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the Unibus machine layer has its own deep dive in [`docs/machine-layer.md`](docs/machine-layer.md) and the XXDP diagnostics in [`docs/xxdp-diagnostics.md`](docs/xxdp-diagnostics.md).
 
 ---
 
 ## Acknowledgments
 
-This project stands on the shoulders of giants.
+This project stands on the shoulders of giants:
 
-### Paul Nankervis — Original PDP‑11 Emulator
-
-Paul wrote the original [pdp11-js](https://github.com/paulnank/pdp11-js) emulator, which this repository is forked from. His meticulous work — cycle‑accurate CPU emulation, beautifully rendered front panels, and a meticulously curated collection of vintage operating systems — made this project possible. His story about chasing the RSTS/E console light pattern is legendary among DEC enthusiasts.
-
-> *"I met my core objective — I can now see the RSTS/E console light pattern that I was looking for."*
-> — Paul Nankervis
-
-### Norbert Landsteiner (mass:werk) — Google60 Teletype
-
-The Model 33 ASR teletype emulation is adapted from [**Google60**](https://www.masswerk.at/google60/) by **Norbert Landsteiner** of [mass:werk](https://www.masswerk.at/). Google60 is a brilliant simulation of the Google search interface as it would have appeared on a Model 33 ASR Teletype in the 1960s/1970s. Norbert's meticulous implementation — from the 3D keycaps to the paper advance animation and authentic sound effects — brings the teletype to life. This project repurposes his engine as the operator console for the PDP‑11.
-
-His work is a masterclass in retro‑UI simulation. Thank you, Norbert.
-
-### Additional Sources
-
-- [**Bitsavers**](http://bitsavers.org/pdf/dec/pdp11/) — DEC PDP‑11 documentation archive
-- [**Bitsavers Software**](http://bitsavers.org/bits/DEC/pdp11/) — PDP‑11 software and disk images
-- [**The Unix Heritage Society (TUHS)**](https://www.tuhs.org/) — Preserving UNIX history
-- [**RSTS.ORG**](http://www.rsts.org/) — RSTS/E community and software preservation
+* **Paul Nankervis — Original PDP-11 Emulator:** Author of the original [pdp11-js](https://github.com/paulnank/pdp11-js) engine. His cycle-accurate CPU emulation and curated OS collections made this project possible.
+  > *"I met my core objective — I can now see the RSTS/E console light pattern that I was looking for."* — Paul Nankervis
+* **Norbert Landsteiner (mass:werk) — Google60 Teletype:** The Model 33 ASR teletype visual engine and audio simulation are adapted from [Google60](https://www.masswerk.at/google60/).
+* **Digital Equipment Corporation (DEC):** For creating the legendary PDP-11 architecture.
+* **Archives & Preservation Communities:** [Bitsavers](http://bitsavers.org/pdf/dec/pdp11/), [The Unix Heritage Society (TUHS)](https://www.tuhs.org/), and [RSTS.ORG](http://www.rsts.org/).
 
 ---
 
-## Links
+## License & Resource Links
 
-| Resource | URL |
-|----------|-----|
-| Original pdp11-js | <https://github.com/paulnank/pdp11-js/> |
-| Google60 (mass:werk) | <https://www.masswerk.at/google60/> |
-| mass:werk | <https://www.masswerk.at/> |
-| Bitsavers (docs) | <http://bitsavers.org/pdf/dec/pdp11/> |
-| Bitsavers (software) | <http://bitsavers.org/bits/DEC/pdp11/> |
-| TUHS | <https://www.tuhs.org/> |
+This project is licensed under the **[MIT License](LICENSE)**.
+*Copyright (c) 2026 Alexei Eskenazi*
 
----
-
-*Happy emulating!*
-
-— Paul Nankervis (*original author*)  
-— *Fork maintained with love for the DEC era*
+| Resource | Link |
+|----------|------|
+| **Original pdp11-js** | [github.com/paulnank/pdp11-js](https://github.com/paulnank/pdp11-js/) |
+| **Google60 (mass:werk)** | [mass.werk.at/google60](https://www.masswerk.at/google60/) |
+| **Bitsavers Documentation** | [bitsavers.org/pdf/dec/pdp11](http://bitsavers.org/pdf/dec/pdp11/) |
+| **TUHS Archives** | [tuhs.org](https://www.tuhs.org/) |
