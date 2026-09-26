@@ -461,9 +461,28 @@ async function buildOne(browser, key, stamp) {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const srv = await startServer();
-  const browser = await puppeteer.launch({
-    args: process.env.PUPPETEER_NO_SANDBOX ? ["--no-sandbox"] : [],
+
+  // Launch the browser, and cope with a host that will not let it be sandboxed.
+  //
+  // Ubuntu 23.10+ restricts unprivileged user namespaces through AppArmor, and
+  // Chromium then refuses to start with "No usable sandbox" — a stack trace
+  // about zygote that says nothing about the real cause and stops the whole
+  // documentation build. The flag is passed only on the retry, so a host where
+  // the sandbox works (CI, and most developer machines) keeps it: this is not a
+  // default turned off, it is a fallback for a specific failure.
+  const launch = (noSandbox) => puppeteer.launch({
+    args: noSandbox ? ["--no-sandbox"] : [],
   });
+  const wantNoSandbox = Boolean(process.env.PUPPETEER_NO_SANDBOX);
+  let browser;
+  try {
+    browser = await launch(wantNoSandbox);
+  } catch (err) {
+    if (wantNoSandbox || !/No usable sandbox/i.test(String(err && err.message))) throw err;
+    console.warn("build-manual-pdf: this host blocks the Chromium sandbox " +
+      "(unprivileged user namespaces are restricted); retrying with --no-sandbox");
+    browser = await launch(true);
+  }
 
   // The date on the cover is the day the file was produced, not the day of the
   // build: a printed edition carries its own date.
