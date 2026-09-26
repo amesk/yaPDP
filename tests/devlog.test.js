@@ -152,6 +152,16 @@ function run() {
       "devlog/" + p.slug + ".html: raw ]( left in the output — inline() did not " +
       "convert a Markdown link in this post's text");
 
+    // Every table must sit in its own scroll container. A four-column table is
+    // wider than a phone's reading column and the slab hides horizontal
+    // overflow, so an unwrapped table is cut off with no way to reach the rest
+    // of it — which is exactly what happened with the first table this project
+    // published. The wrapper is where the sideways scroll lives.
+    assert.ok(!/<table>/.test(html) || /<div class="table-scroll">\s*\n?\s*<table>/.test(html),
+      "devlog/" + p.slug + ".html: a <table> is not inside .table-scroll — a wide " +
+      "table cannot be swept on a narrow screen and its right-hand columns are " +
+      "unreachable (see the \"table\" case in blocksToHtml)");
+
     // No pipe row may survive into the page. The parser understands tables now,
     // but a table written in a shape it does not recognise — indented, or with
     // a different separator row — would otherwise reach the reader as a run of

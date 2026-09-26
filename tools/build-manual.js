@@ -289,10 +289,20 @@ function blocksToHtml(blocks, level = 2, headings = null) {
         out.push("  <pre>" + b.text + "</pre>");
         break;
       case "table": {
-        out.push("  <table>");
+        // Wrapped in a scroll container, exactly as the devlog's renderer does
+        // it: a four-column table (the guest-OS table, the storage table) is
+        // wider than a phone's reading column, and the slab hides horizontal
+        // overflow — an unwrapped table was cut off with no way to reach the
+        // rest. On a wide screen the wrapper never overflows and nothing moves.
+        //
+        // Each body cell also carries data-label with its column heading, ready
+        // for a narrow-screen card layout if a table is ever switched to it.
+        const head = b.rows[0] || [];
+        out.push('  <div class="table-scroll">');
+        out.push("    <table>");
         b.rows.forEach((row, i) => {
-          out.push("    <tr>");
-          for (const c of row) {
+          out.push("      <tr>");
+          row.forEach((c, ci) => {
             const cell = i === 0 ? "th" : "td";
             // a cell may open with {.class} / {.a .b}: the class belongs to the
             // <td> itself (the disk/image tables style their first column).
@@ -301,12 +311,15 @@ function blocksToHtml(blocks, level = 2, headings = null) {
             // the dot-separated list into a real class list ("disk control-cell")
             const cls = m ? m[1].replace(/\./g, " ").replace(/\s+/g, " ").trim() : "";
             const text = m ? m[2] : c;
-            out.push("      <" + cell + (cls ? ' class="' + cls + '"' : "") + ">" +
-              inline(text) + "</" + cell + ">");
-          }
-          out.push("    </tr>");
+            const label = (i > 0 && head[ci])
+              ? ' data-label="' + inline(head[ci]) + '"' : "";
+            out.push("        <" + cell + (cls ? ' class="' + cls + '"' : "") + label +
+              ">" + inline(text) + "</" + cell + ">");
+          });
+          out.push("      </tr>");
         });
-        out.push("  </table>");
+        out.push("    </table>");
+        out.push("  </div>");
         break;
       }
     }

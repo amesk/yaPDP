@@ -450,20 +450,38 @@ function blocksToHtml(blocks) {
         // First row is the head; the rest is the body. A cell may open with
         // {.class} (the manual's disk tables style their first column), so the
         // marker is recognised here and turned into a real class list.
-        out.push("  <table>");
+        //
+        // The table is wrapped in a scroll container because a four-column
+        // table cannot fit a phone: the reading column is about 390 CSS pixels
+        // wide there, and the slab hides horizontal overflow, so an unwrapped
+        // table was simply cut off with no way to reach the rest of it. With
+        // the wrapper the table keeps its own width and the reader sweeps it
+        // sideways. Nothing changes on a wide screen — the wrapper only
+        // overflows when the table is wider than its column.
+        //
+        // Each body cell also carries data-label with its column's heading, so
+        // a narrow-screen rule can print the heading beside the value if a
+        // table is ever switched to the card layout. It costs one attribute and
+        // saves rewriting the renderer when that day comes.
+        const head = b.rows[0] || [];
+        out.push('  <div class="table-scroll">');
+        out.push("    <table>");
         b.rows.forEach((row, i) => {
-          out.push("    <tr>");
-          for (const c of row) {
+          out.push("      <tr>");
+          row.forEach((c, ci) => {
             const cell = i === 0 ? "th" : "td";
             const m = /^\{\.([a-z-. ]+)\}\s*(.*)$/.exec(c.trim());
             const cls = m ? m[1].replace(/\./g, " ").replace(/\s+/g, " ").trim() : "";
             const text = m ? m[2] : c;
-            out.push("      <" + cell + (cls ? ' class="' + cls + '"' : "") + ">" +
-              inline(text) + "</" + cell + ">");
-          }
-          out.push("    </tr>");
+            const label = (i > 0 && head[ci])
+              ? ' data-label="' + inline(head[ci]) + '"' : "";
+            out.push("        <" + cell + (cls ? ' class="' + cls + '"' : "") + label +
+              ">" + inline(text) + "</" + cell + ">");
+          });
+          out.push("      </tr>");
         });
-        out.push("  </table>");
+        out.push("    </table>");
+        out.push("  </div>");
         break;
       }
       case "ul":
