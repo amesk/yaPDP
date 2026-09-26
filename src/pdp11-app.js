@@ -66,15 +66,6 @@ function setTtyPunch(on) {
   if (on) setRelHeld(false);
 }
 
-// Punch the automatic NUL trailer on the paper tape (see punchtape.js
-// punchTrailer). No-op when the tape UI is absent or the punch is a VT52
-// console — the console punch only exists on the teletype.
-function punchTapeTrailer() {
-  if (window.paperTape && typeof window.paperTape.punchTrailer === 'function') {
-    window.paperTape.punchTrailer();
-  }
-}
-
 // Tape reader switch state. On the automatic (ASR) Model 33 the reader is
 // controlled by a VERTICAL four-detent lever whose positions read top to
 // bottom as on the machine: START (manual run — the reader feeds continuously
@@ -186,10 +177,9 @@ function g60ConsoleWrite(code) {
   // disengages it. These control bytes are not printed themselves.
   if (code === 0x12) { setTtyPunch(true); return; }
   if (code === 0x14) {
-    // Disengaging the punch punches the automatic NUL trailer first — the
-    // tape gets a blank mechanical tail before it stops, like a real
-    // operator finishing a tape.
-    punchTapeTrailer();
+    // Disengaging the punch just stops it. Nothing is punched on the way out:
+    // on the real machine the operator punched any trailing NULs by hand
+    // before switching off, and the emulator adds nothing of its own.
     setRelHeld(false);
     setTtyPunch(false);
     return;
@@ -3927,9 +3917,6 @@ function initTtyControls() {
     punchOffBtn.addEventListener('click', function () {
       playButtonPress();
       setRelHeld(false);
-      // The OFF button finishes the tape: punch the automatic NUL trailer
-      // before the punch stops (same as machine DC4).
-      punchTapeTrailer();
       setTtyPunch(false);
     });
   }

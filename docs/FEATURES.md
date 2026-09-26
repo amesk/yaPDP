@@ -98,13 +98,15 @@ the holes OR-ing together exactly like real hardware: **DELETE** (RUB OUT)
 punches all holes and turns the byte into DEL, any other key corrupts it the
 same way it would on a real ASR-33. **REL** releases it. The receive path
 records machine output too: a **NUL** (0x00) from the machine punches a blank
-row with only the feed hole — the classic tape leader/trailer that threads the
-reader — and a received **DEL** punches an all-holes RUB OUT row, exactly as a
-real ASR-33 receive punch would. The keyboard can make a NULL too — the
-bit-paired combination **CTRL+SHIFT+P** (P's shifted symbol is **@**; with both
-code bars the base 0x50 ends up with bits 4 and 6 flipped, i.e. 0x00), which
-with the punch engaged punches the same blank leader row; on a PC keyboard
-**Ctrl+@** does the same.
+row with only the feed hole, and a received **DEL** punches an all-holes RUB
+OUT row, exactly as a real ASR-33 receive punch would. The keyboard can make a
+NULL too — the bit-paired combination **CTRL+SHIFT+P** (P's shifted symbol is
+**@**; with both code bars the base 0x50 ends up with bits 4 and 6 flipped,
+i.e. 0x00); on a PC keyboard **Ctrl+@** does the same. Punching NULs is how a
+tape gets its leader: on the real machine the operator held REPT and tapped the
+NUL key as many times as the tape needed, and that is exactly what this does —
+nothing is added automatically, so a tape punched here is the bytes that were
+punched, which is what a tape used to carry data between machines wants.
 
 The TAPE READER reads a loaded tape into the machine: **Load tape** opens a
 file dialog for a raw `.ptap`, a compressed `.ptap.zst`, or a `.txt` (its
