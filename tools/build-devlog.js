@@ -256,6 +256,7 @@ function parseBlocks(md) {
   let para = [];
   let list = null;
   let fence = null;
+  let table = null;
 
   const flushPara = () => {
     if (para.length) { blocks.push({ type: "p", text: para.join(" ").trim() }); para = []; }
@@ -263,7 +264,10 @@ function parseBlocks(md) {
   const flushList = () => {
     if (list) { blocks.push({ type: list.kind, items: list.items }); list = null; }
   };
-  const flushAll = () => { flushPara(); flushList(); };
+  const flushTable = () => {
+    if (table) { blocks.push({ type: "table", rows: table }); table = null; }
+  };
+  const flushAll = () => { flushPara(); flushList(); flushTable(); };
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
@@ -271,6 +275,20 @@ function parseBlocks(md) {
 
     if (!line.trim()) { flushAll(); continue; }
     if (/^<!--[\s\S]*-->$/.test(line.trim())) continue;
+
+    // A pipe row is table structure, not prose. The manual's converter has
+    // always understood these; this one did not, so a table in a post reached
+    // the reader as a run of paragraphs made of pipes and dashes. The first
+    // row becomes the head, the |---| row is structure and is dropped.
+    if (/^\|/.test(line)) {
+      flushPara(); flushList();
+      const cells = line.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      if (!cells.every((c) => /^-{2,}$/.test(c) || c === "")) {
+        if (!table) table = [];
+        table.push(cells);
+      }
+      continue;
+    }
 
     if (/^(:{2,})\s*spoiler\s+\S/.test(line.trim())) {
       flushAll();
@@ -426,6 +444,26 @@ function blocksToHtml(blocks) {
         out.push("    <summary>" + inline(b.title) + "</summary>");
         out.push(blocksToHtml(b.blocks).replace(/^ {2}/gm, "    "));
         out.push("  </details>");
+        break;
+      }
+      case "table": {
+        // First row is the head; the rest is the body. A cell may open with
+        // {.class} (the manual's disk tables style their first column), so the
+        // marker is recognised here and turned into a real class list.
+        out.push("  <table>");
+        b.rows.forEach((row, i) => {
+          out.push("    <tr>");
+          for (const c of row) {
+            const cell = i === 0 ? "th" : "td";
+            const m = /^\{\.([a-z-. ]+)\}\s*(.*)$/.exec(c.trim());
+            const cls = m ? m[1].replace(/\./g, " ").replace(/\s+/g, " ").trim() : "";
+            const text = m ? m[2] : c;
+            out.push("      <" + cell + (cls ? ' class="' + cls + '"' : "") + ">" +
+              inline(text) + "</" + cell + ">");
+          }
+          out.push("    </tr>");
+        });
+        out.push("  </table>");
         break;
       }
       case "ul":

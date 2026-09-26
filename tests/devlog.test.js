@@ -152,6 +152,31 @@ function run() {
       "devlog/" + p.slug + ".html: raw ]( left in the output — inline() did not " +
       "convert a Markdown link in this post's text");
 
+    // No pipe row may survive into the page. The parser understands tables now,
+    // but a table written in a shape it does not recognise — indented, or with
+    // a different separator row — would otherwise reach the reader as a run of
+    // paragraphs made of pipes and dashes, which is exactly what happened before
+    // it knew tables at all. This asserts the conversion, not the presence of a
+    // table, so a post without one is unaffected.
+    // The test is "a pipe where text begins", not "a line starting with a
+    // pipe": an unconverted row lands in the page as <p>| a | b |</p>, so the
+    // pipe sits after a tag rather than at the start of a line. Matching on
+    // ^\s*\| missed exactly that and passed a page full of pipes.
+    assert.ok(!/(^|>)\s*\|[^|]*\|/.test(html),
+      "devlog/" + p.slug + ".html: a pipe row reached the page — a Markdown " +
+      "table was not converted (see the \"table\" case in blocksToHtml, " +
+      "tools/build-devlog.js)");
+
+    // And no Russian may reach an English post: the code blocks are quoted from
+    // the sources, whose comments are English, and the prose is written in
+    // English. A block copied from the Russian edition of an article rather
+    // than from the file would land here as Cyrillic inside the page.
+    if (p.meta.lang === "en") {
+      assert.ok(!/[\u0400-\u04FF]/.test(html),
+        "devlog/" + p.slug + ".html: Cyrillic text in an English post — a block " +
+        "or a paragraph was copied from the Russian source instead of translated");
+    }
+
     // the title and the date must be on the page — that is what a reader
     // arriving from a feed needs to orient themselves
     assert.ok(html.indexOf(p.meta.title.replace(/&/g, "&amp;")
