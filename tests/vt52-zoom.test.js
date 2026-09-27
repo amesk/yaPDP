@@ -220,25 +220,60 @@ function run() {
 
   // --- 7. The fit arithmetic ----------------------------------------------
   {
-    // The box is the tube plus BOTH walls (and their borders) on each side.
-    assert.ok(/VT52_CASE_WALL\s*=\s*(\d+)/.test(app),
-      "the outer wall thickness must be a named constant");
-    assert.ok(/VT52_BEZEL_WALL\s*=\s*(\d+)/.test(app),
-      "the bezel wall thickness must be a named constant");
-    const caseWall = Number(/VT52_CASE_WALL\s*=\s*(\d+)/.exec(app)[1]);
-    const bezelWall = Number(/VT52_BEZEL_WALL\s*=\s*(\d+)/.exec(app)[1]);
-    const cssCase = Number(/--vt52-case-wall\s*:\s*(\d+)px/.exec(
+    // The walls are a fraction of the tube's scale, so the frame keeps the same
+    // proportion to the glass at any size. Measured before the change: 36px a
+    // side on a 1440 window (4.2% of the tube) against the same 36px on a 393
+    // window (12.6%) — the frame never grew, it failed to shrink with the
+    // machine. The constants are therefore in SVG units, named, and the fit
+    // multiplies them by the live u.
+    assert.ok(/VT52_CASE_WALL_U\s*=\s*([\d.]+)/.test(app),
+      "the outer wall thickness must be a named constant (in SVG units)");
+    assert.ok(/VT52_BEZEL_WALL_U\s*=\s*([\d.]+)/.test(app),
+      "the bezel wall thickness must be a named constant (in SVG units)");
+    assert.ok(/VT52_REF_U\s*=\s*([\d.]+)/.test(app),
+      "the reference scale the wall proportions were chosen at must be named, " +
+      "or the fallback below cannot be checked against it");
+
+    const caseWallU = Number(/VT52_CASE_WALL_U\s*=\s*([\d.]+)/.exec(app)[1]);
+    const bezelWallU = Number(/VT52_BEZEL_WALL_U\s*=\s*([\d.]+)/.exec(app)[1]);
+    const refU = Number(/VT52_REF_U\s*=\s*([\d.]+)/.exec(app)[1]);
+
+    // The walls must actually be multiplied by u in the fit, or they are
+    // constants in disguise and the phone frame goes thick again.
+    assert.ok(/VT52_CASE_WALL_U\s*\*\s*u/.test(app) &&
+      /VT52_BEZEL_WALL_U\s*\*\s*u/.test(app),
+      "the walls must be scaled by u in the zoom fit, not used as pixels");
+
+    // The tube's offset is published from the same two numbers, so the case,
+    // its bezel and the glass cannot disagree about where the plastic ends.
+    assert.ok(/--vt52-tube-left/.test(app) && /--vt52-tube-top/.test(app),
+      "the tube offset must be published alongside the walls, so all three " +
+      "layers come from one set of numbers");
+
+    // The stylesheet keeps a fallback for the case where the script never runs.
+    // It must equal the walls at the reference scale, or a page whose script
+    // failed would show a frame of a different thickness than a scaled one.
+    const cssCase = Number(/--vt52-case-wall\s*:\s*([\d.]+)px/.exec(
       extractRule(css, ".vt52-zoomed"))[1]);
-    const cssBezel = Number(/--vt52-bezel-wall\s*:\s*(\d+)px/.exec(
+    const cssBezel = Number(/--vt52-bezel-wall\s*:\s*([\d.]+)px/.exec(
       extractRule(css, ".vt52-zoomed"))[1]);
-    assert.strictEqual(cssCase, caseWall,
-      "the CSS outer wall must equal VT52_CASE_WALL");
-    assert.strictEqual(cssBezel, bezelWall,
-      "the CSS bezel wall must equal VT52_BEZEL_WALL");
-    const tubeLeft = Number(/--vt52-tube-left\s*:\s*(\d+)px/.exec(
-      extractRule(css, ".vt52-zoomed"))[1]);
-    assert.strictEqual(tubeLeft, caseWall + bezelWall,
-      "--vt52-tube-left must be the sum of both walls");
+    assert.ok(Math.abs(cssCase - caseWallU * refU) < 0.6,
+      "the CSS fallback outer wall (" + cssCase + "px) must match the formula " +
+      "at the reference scale (" + (caseWallU * refU).toFixed(2) + "px)");
+    assert.ok(Math.abs(cssBezel - bezelWallU * refU) < 0.6,
+      "the CSS fallback bezel wall (" + cssBezel + "px) must match the formula " +
+      "at the reference scale (" + (bezelWallU * refU).toFixed(2) + "px)");
+
+    // The tube offset in the stylesheet is the sum of the fallback walls plus
+    // their hairlines — the same sum the script writes when it runs.
+    const tubeLeftRaw = /--vt52-tube-left\s*:\s*([^;]+);/.exec(
+      extractRule(css, ".vt52-zoomed"))[1].trim();
+    assert.ok(/calc\(/.test(tubeLeftRaw),
+      "the fallback tube offset must be calced from the two fallback walls, " +
+      "not written as a literal that can drift from them");
+    assert.ok(tubeLeftRaw.indexOf("--vt52-case-wall") !== -1 &&
+      tubeLeftRaw.indexOf("--vt52-bezel-wall") !== -1,
+      "the fallback tube offset must be the sum of both walls");
 
     // The screen marker is the tube: its size must come from the artwork data.
     assert.ok(/VT52_SCREEN_W\s*=\s*112\.852/.test(app) &&

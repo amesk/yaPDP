@@ -2518,8 +2518,19 @@ function initConfigForm() {
 // (see src/vt52zoom.js); these two functions only apply it.
 var VT52_SCREEN_W = 112.852;   // Screen marker width, SVG units
 var VT52_SCREEN_H = 84.639;    // Screen marker height, SVG units
-var VT52_CASE_WALL = 22;       // zoom outer case wall, px (see .vt52-zoomed)
-var VT52_BEZEL_WALL = 14;      // recessed bezel wall, px (see .vt52-zoomed .vt52-bezel)
+// Zoom case walls, in SVG units rather than pixels, so the frame scales with the
+// tube it surrounds. As fixed pixels it was right on a desktop and three times
+// too heavy on a phone: measured at a 1440 window the frame was 36px a side
+// against an 855px tube (4.2%), and at 393 the same 36px against a 285px tube
+// (12.6%). The frame never grew — it failed to shrink with the machine.
+//
+// The reference is that desktop, where the proportions looked right: 36px total
+// per side at u = 7.5763, i.e. 22px case = 2.9038u and 14px bezel = 1.8479u.
+var VT52_REF_U = 7.5763;         // the scale the proportions were chosen at
+var VT52_CASE_WALL_U = 2.9038;   // was 22px at the reference scale
+var VT52_BEZEL_WALL_U = 1.8479;  // was 14px at the reference scale
+// The two 1px layer borders do not scale: a hairline is a hairline at any size.
+var VT52_LAYER_BORDER = 1;
 
 function vt52Zoom(rig) {
   if (!rig) return;
@@ -2535,18 +2546,59 @@ function vt52Zoom(rig) {
   if (tube) { tube.style.width = ''; tube.style.height = ''; }
   var boxTop = rig.getBoundingClientRect().top -
       (page.getBoundingClientRect().top - page.scrollTop);
-  var wall = (VT52_CASE_WALL + VT52_BEZEL_WALL + 2) * 2;
-  var availW = page.clientWidth - VT52_GUTTER_SIDE * 2 - wall;
-  var availH = page.clientHeight - boxTop - VT52_GUTTER_BOTTOM - VT52_GUTTER_TOP - wall;
+  // u is what we are solving for, so this first pass reserves the walls at the
+  // reference scale. The real walls shrink with the tube, so over-reserving
+  // here can only make the fit conservative — never overflow it.
+  var wallGuess = (VT52_CASE_WALL_U + VT52_BEZEL_WALL_U + VT52_LAYER_BORDER * 2)
+      * VT52_REF_U * 2;
+  var availW = page.clientWidth - VT52_GUTTER_SIDE * 2 - wallGuess;
+  var availH = page.clientHeight - boxTop - VT52_GUTTER_BOTTOM - VT52_GUTTER_TOP - wallGuess;
   if (availW <= 0 || availH <= 0) {
     // Fall back to the whole page when the layout is not measurable yet.
-    availH = page.clientHeight - VT52_GUTTER_TOP - VT52_GUTTER_BOTTOM - wall;
+    availH = page.clientHeight - VT52_GUTTER_TOP - VT52_GUTTER_BOTTOM - wallGuess;
   }
   if (availW <= 0 || availH <= 0) return;
   // The 4:3 tube, sized to whichever axis runs out first.
   var u = Math.min(availW / VT52_SCREEN_W, availH / VT52_SCREEN_H);
   if (!isFinite(u) || u <= 0) return;
+  // Second pass. The first pass reserved the walls as if they were at the
+  // reference scale, but they shrink with the tube — so the reservation was too
+  // large and the glass came out smaller than the box allowed (259px against a
+  // 285px tube at a 393 window). The walls are a known fraction of u, so the
+  // fit can be solved exactly: the box is u*SCREEN + 2*(walls(u) + borders), and
+  // with walls linear in u that is a linear equation in u. Solve it once, then
+  // use the result.
+  var wallPerUnit = (VT52_CASE_WALL_U + VT52_BEZEL_WALL_U) * 2;   // both sides
+  var borderPx = VT52_LAYER_BORDER * 4;                          // four hairlines
+  // availW/availH above were computed with the reference walls; add them back
+  // and use the exact wall term instead.
+  var exactW = (page.clientWidth - VT52_GUTTER_SIDE * 2 - borderPx) /
+      (VT52_SCREEN_W + wallPerUnit);
+  var exactH = (page.clientHeight - boxTop - VT52_GUTTER_BOTTOM - VT52_GUTTER_TOP - borderPx) /
+      (VT52_SCREEN_H + wallPerUnit);
+  var exact = Math.min(exactW, exactH);
+  if (isFinite(exact) && exact > 0) u = Math.max(u, exact);
   rig.style.setProperty('--vt52-u', u.toFixed(6));
+  // Publish the wall thicknesses as ready-made pixels, not as a calc() over
+  // --vt52-u. A var() that is not yet defined makes the whole declaration
+  // invalid, and this window is exactly when --vt52-u is being written: the
+  // first cut of this change left the stylesheet on its fallback while the box
+  // was built from the scaled walls, and the tube collapsed to a third of its
+  // size. The stylesheet still carries a fallback, for the case where this
+  // script never runs at all.
+  var caseWallPx = VT52_CASE_WALL_U * u;
+  var bezelWallPx = VT52_BEZEL_WALL_U * u;
+  rig.style.setProperty('--vt52-case-wall', caseWallPx.toFixed(2) + 'px');
+  rig.style.setProperty('--vt52-bezel-wall', bezelWallPx.toFixed(2) + 'px');
+  // The tube's own offset is the same sum, and it is written here rather than
+  // left to a calc() in the stylesheet: the calc() would be resolved against
+  // the element's own inherited values, and the two lines above are inline —
+  // so the tube kept the stylesheet's 36px fallback while the walls around it
+  // shrank, and the glass sat off-centre inside its own case. Same lesson as
+  // the walls themselves: compute it where the numbers are known.
+  var tubeOffset = (caseWallPx + bezelWallPx + VT52_LAYER_BORDER * 2).toFixed(2) + 'px';
+  rig.style.setProperty('--vt52-tube-left', tubeOffset);
+  rig.style.setProperty('--vt52-tube-top', tubeOffset);
   // Size the box in px, right here. A calc() over --vt52-u resolves to 0 when
   // the variable is only just being written (the same trap as the cabinet box:
   // a var() that is not yet defined makes the whole declaration invalid), so the
@@ -2554,9 +2606,10 @@ function vt52Zoom(rig) {
   // The box is the CASE, so it is the tube plus the case wall on each side
   // (padding + border, mirrored by .vt52-zoomed in css/pdp11.css).
   // Three layers, so the box is the tube plus BOTH walls on each side: the
-  // outer case (VT52_CASE_WALL) and the recessed bezel (VT52_BEZEL_WALL), plus
-  // their borders. The tube's own left/top offset is the same sum.
-  var wall = (VT52_CASE_WALL + VT52_BEZEL_WALL + 2) * 2;
+  // outer case and the recessed bezel, plus their borders. The tube's own
+  // left/top offset is the same sum — built from the same two numbers that were
+  // just published, so the box and the stylesheet cannot disagree.
+  var wall = (caseWallPx + bezelWallPx + VT52_LAYER_BORDER * 2) * 2;
   rig.style.width = (u * VT52_SCREEN_W + wall).toFixed(2) + 'px';
   rig.style.height = (u * VT52_SCREEN_H + wall).toFixed(2) + 'px';
   // The tube is an absolutely positioned sibling of the case wall (see
