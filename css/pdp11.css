@@ -2447,6 +2447,15 @@ body {
 .vt52-zoomed .vt52-crt {
     left: var(--vt52-tube-left);
     top: var(--vt52-tube-top);
+    /* border-box, or the 2px frame below is added on top of the width the
+       script writes: u*SCREEN_W is meant to BE the tube, and with content-box
+       the box came out 4px wider and taller than that. The offsets are measured
+       from the case's inner edge, so those extra 4px landed entirely on the
+       right and the bottom — the glass overlapped its own bezel there while a
+       wider gap stayed on the left and the top. Measured at 393: gaps of 15px
+       left and top against 11.7px right and bottom, a difference of exactly the
+       doubled border. */
+    box-sizing: border-box;
     border-radius: 10px;
     overflow: hidden;
     background: var(--vt52-bg);
