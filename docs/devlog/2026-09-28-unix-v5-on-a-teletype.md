@@ -66,6 +66,10 @@ People know the Model 33 keyboard is "not like a PC". They usually do not know h
 
 It is **bit-paired**: one contact per key, one code, and SHIFT and CTRL do not change one letter into another — they invert specific bits. SHIFT flips `0x10`, CTRL flips `0x40`. Everything odd about the seventies follows: `3` with SHIFT is `#`, `P` with SHIFT is `@`, `K` is `[`, `N` is `^`, `M` is `]`. There is no notion of shifting case. There is arithmetic on the code.
 
+![The Model 33 ASR keyboard in yaPDP](assets/images/manual/console-teletype-keyboard.png){.shot}
+
+Look at the keycaps: each one carries its letter and, above it, the control code that letter produces with CTRL. `P @ DLE` is not decoration — it is the whole trick in one label.{.shot-caption}
+
 And the detail I love most. On the keys that carry two legends (`P @ DLE`, `K [ VT`, `N ^ SO`, `M ] CR`), holding SHIFT and CTRL together clears both bits at once, and on `P` that gives **NUL** — the only way to punch a zero byte by hand, without a tape and without a program. I read that in the machine description, went to check the emulator — [`model33KeyCode()`](https://github.com/amesk/yaPDP/blob/master/src/pdp11-app.js) — and it matched.
 
 Rows of those blank characters had a purpose beyond tidiness: with REPT held, operators punched the run of NULs that leads a tape — the only track carrying holes is the feed track. A tape with no leader could not be threaded: the reader needs something to pull the paper down to the first meaningful row.
@@ -76,14 +80,12 @@ The legends on the keycaps are not decoration either — every letter key prints
 
 | Key | CTRL name | Code | What it means |
 | --- | --- | --- | --- |
-| D | EOT | 0x04 | end of input — the CTRL+D that closes a file |
-| G | BELL | 0x07 | bell |
+| D | EOT | 0x04 | end of input — the CTRL+D that closes a file today |
 | H | BS | 0x08 | back one character — today's backspace |
-| I | HT | 0x09 | tab |
-| J | LF | 0x0A | line feed |
-| L | FF | 0x0C | form feed |
 | Q, S | DC1, DC3 | 0x11, 0x13 | tape start and stop — XON/XOFF, greetings from the sixties |
-| P | DLE | 0x10 | and with SHIFT it gives `@` |
+| P | DLE | 0x10 | and with SHIFT it gives `@`, which erases the line |
+
+The rest of the letters carry their control codes the same way, and the keycaps say which: the legend above each letter is the code that CTRL produces. Those four are the ones this article keeps coming back to.
 
 Mechanical keys stand apart: RETURN, LINE FEED, ESC, RUBOUT (also known as DELETE), REPT (auto-repeat while held), BREAK and HERE IS. The last one is about remote work: an "acknowledged" the teletype printed on request — your system ACK, arriving early and staying for decades.
 
