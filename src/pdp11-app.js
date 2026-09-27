@@ -2596,7 +2596,12 @@ function vt52Zoom(rig) {
   // so the tube kept the stylesheet's 36px fallback while the walls around it
   // shrank, and the glass sat off-centre inside its own case. Same lesson as
   // the walls themselves: compute it where the numbers are known.
-  var tubeOffset = (caseWallPx + bezelWallPx + VT52_LAYER_BORDER * 2).toFixed(2) + 'px';
+  // The tube sits inside the CASE's BORDER (the case has a 1px border of its
+  // own and box-sizing: border-box), so its offset is measured from the inner
+  // edge. The box is therefore offset + tube + offset measured inside that
+  // border, which means the case's own two hairlines are not part of the sum.
+  var innerOffset = caseWallPx + bezelWallPx + VT52_LAYER_BORDER;   // one hairline
+  var tubeOffset = innerOffset.toFixed(2) + 'px';
   rig.style.setProperty('--vt52-tube-left', tubeOffset);
   rig.style.setProperty('--vt52-tube-top', tubeOffset);
   // Size the box in px, right here. A calc() over --vt52-u resolves to 0 when
@@ -2609,7 +2614,12 @@ function vt52Zoom(rig) {
   // outer case and the recessed bezel, plus their borders. The tube's own
   // left/top offset is the same sum — built from the same two numbers that were
   // just published, so the box and the stylesheet cannot disagree.
-  var wall = (caseWallPx + bezelWallPx + VT52_LAYER_BORDER * 2) * 2;
+  // The case is border-box, so its width includes its own 1px border on each
+  // side. The content box must be offset + tube + offset, and the border is
+  // added by the browser on top of the width — hence +2 for the case's own
+  // hairlines here, while innerOffset above counts only the bezel's.
+  var caseBorders = VT52_LAYER_BORDER * 2;
+  var wall = (innerOffset * 2) + caseBorders;
   rig.style.width = (u * VT52_SCREEN_W + wall).toFixed(2) + 'px';
   rig.style.height = (u * VT52_SCREEN_H + wall).toFixed(2) + 'px';
   // The tube is an absolutely positioned sibling of the case wall (see
