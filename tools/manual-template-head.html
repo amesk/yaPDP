@@ -577,6 +577,32 @@
                 flex: 1 1 100%;
                 max-width: 100%;
             }
+
+            /* A CONFIG card is a picture beside its description. Side by side
+               it works on a desktop and fails on a phone: the card is a flex
+               row with no narrow-screen rule, so the picture keeps its 46% and
+               the description is squeezed into what is left — 160 against 167
+               pixels inside a 343px slab, measured. Ten technical bullets in a
+               167px column is what "hits the eye" means here.
+
+               Stacked instead, at the same breakpoint as the picture pairs, so
+               the two-column blocks collapse together. */
+            .landing-page .config-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            /* The base rule for .config-item-img sits BELOW this block in the
+               file (`flex: 0 0 46%; max-width: 46%`), and at equal specificity
+               the later declaration wins — so `max-width: 100%` here lost and
+               the picture stayed at 160px against a 343px card. The stack rule
+               therefore needs to outrank it rather than merely follow it, hence
+               the deeper selector. */
+            .landing-page .config-item .config-item-img {
+                flex: 0 0 auto;
+                max-width: 100%;
+                width: 100%;
+            }
         }
 
         /* Illustration viewer (the script is at the end of the document).
