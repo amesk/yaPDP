@@ -2367,13 +2367,21 @@ body {
 
 /* --- 1. outer case --- */
 .vt52-zoomed {
-    /* Wall thicknesses, published so JS, the bezel and the tube all agree:
-       --vt52-case-wall is the outer plastic, --vt52-bezel-wall the recessed
-       frame; the tube's own offset is the sum of the two. */
+    /* Wall thicknesses. JS writes both of these on every zoom (they are a
+       fraction of the tube's scale, so the frame keeps the same proportion to
+       the glass at any size — see VT52_CASE_WALL_U in src/pdp11-app.js). The
+       values below are the fallback for the instant before that runs, and are
+       the same walls at the reference scale.
+
+       The tube's offset is calced from them rather than written as 36px, so the
+       fallback cannot drift from the walls it belongs to. It did once already:
+       the walls became a fraction of u while this line stayed a literal, and the
+       glass sat off-centre inside its own case with the tube at a third of its
+       proper size. */
     --vt52-case-wall: 22px;
     --vt52-bezel-wall: 14px;
-    --vt52-tube-left: 36px;
-    --vt52-tube-top: 36px;
+    --vt52-tube-left: calc(var(--vt52-case-wall) + var(--vt52-bezel-wall) + 2px);
+    --vt52-tube-top: calc(var(--vt52-case-wall) + var(--vt52-bezel-wall) + 2px);
     box-sizing: border-box;
     border: 1px solid #a89f88;
     border-top-color: #ece6d8;
