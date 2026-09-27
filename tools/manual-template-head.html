@@ -246,6 +246,29 @@
             margin: 14px auto 2px auto;
         }
 
+        /* A picture whose detail is the point — the keyboard close-up, where
+           the argument lives in the legends printed above each keycap — takes
+           the full width of the column. Two things had to change for that to
+           work, and the picture was not one of them:
+
+             1. a source line may name more than one class for an image, and the
+                generator now turns the dot-separated list into real classes;
+             2. the wrapper, not the image, was limiting the width — a bare
+                <figure> carries the browser's own margin-inline of 40px a side,
+                which left the frame 263px wide inside a 393px column and made
+                width:100% on the image a no-op. The print rules already reset
+                that margin; the screen rules now do too.
+
+           Applied only where the source asks for it, because the other
+           screenshots are already wider than the column. */
+        .landing-page .shot-figure {
+            margin: 0;
+        }
+
+        .landing-page .shot-wide {
+            width: 100%;
+        }
+
         .landing-page .shot-caption {
             color: #c8b890;
             font-size: 12px;

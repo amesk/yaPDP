@@ -217,6 +217,18 @@ const BUTTON_SHOTS = [
     { id: "#fullscreen-btn", file: "btn-fullscreen.png" }
 ];
 
+// Close-ups of things larger than a single control. Same mechanism as the
+// buttons — an element selector and its own bounding box — with padding so a
+// keycap's two legends are not clipped at the frame edge.
+//
+// The keyboard is here because the fourth devlog post explains bit-paired
+// codes (SHIFT flips 0x10, CTRL flips 0x40) and that argument is carried by the
+// keycaps themselves: the legend above each letter is the code CTRL produces.
+const REGION_SHOTS = [
+    { id: "#punchkeyboard", file: "console-teletype-keyboard.png",
+      page: "teletype", pad: { x: 14, y: 20 } }
+];
+
 // --- Utilities ------------------------------------------------------------
 
 function sleep(ms) {
@@ -396,6 +408,40 @@ async function captureButtons(browser, wants) {
             console.log(`  saved ${b.file}`);
         } catch (err) {
             console.error(`  FAILED ${b.file}: ${err.message}`);
+        }
+    }
+
+    // Larger regions, clipped from a screenshot rather than from the element:
+    // el.screenshot() crops to the element's own box, which cuts the keycap
+    // legends that sit above the keys. A padded clip keeps them in frame.
+    for (const r of REGION_SHOTS.filter((x) => wants(x.file))) {
+        try {
+            await page.evaluate((page) => window.switchPage(page),
+                r.page || "panel");
+            await sleep(400);
+            const el = await page.$(r.id);
+            if (!el) {
+                console.log(`  MISSING ${r.file} (${r.id})`);
+                continue;
+            }
+            const box = await el.boundingBox();
+            if (!box) {
+                console.log(`  MISSING ${r.file} (${r.id} has no box)`);
+                continue;
+            }
+            const pad = r.pad || { x: 0, y: 0 };
+            const png = await page.screenshot({
+                clip: {
+                    x: Math.max(0, box.x - pad.x),
+                    y: Math.max(0, box.y - pad.y),
+                    width: Math.min(box.width + pad.x * 2, VIEWPORT.width),
+                    height: box.height + pad.y * 2
+                }
+            });
+            writeShot(r.file, png);
+            console.log(`  saved ${r.file}`);
+        } catch (err) {
+            console.error(`  FAILED ${r.file}: ${err.message}`);
         }
     }
     await page.close();
@@ -655,7 +701,8 @@ async function captureVt11Lander(browser) {
         if (shotsVT100.length) {
             await captureScenario(browser, CFG_VT100, shotsVT100, "VT100 console");
         }
-        if (BUTTON_SHOTS.some((b) => wants(b.file))) {
+        if (BUTTON_SHOTS.some((b) => wants(b.file)) ||
+            REGION_SHOTS.some((r) => wants(r.file))) {
             await captureButtons(browser, wants);
         }
         if (wants("dialog-onboarding") || wants("dialog-quickboot") ||

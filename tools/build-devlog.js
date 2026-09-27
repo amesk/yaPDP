@@ -394,7 +394,13 @@ function blocksToHtml(blocks) {
         // Wrapped in a <figure>, the pair is one block and the break rule has
         // something to apply to. Seen in the printed manual: the Storage
         // screenshot stayed on one page while its caption went to the next.
-        const img = '<img class="' + (b.cls || "shot") + '" src="' + b.src +
+        // A picture may carry more than one class — {.shot .shot-wide}. The
+        // marker arrives as a dot-separated list, and the same conversion the
+        // table cells use applies here: dots become spaces. Without it the
+        // class attribute read "shot .shot-wide", which no selector matches —
+        // the element had one class whose name contained a dot.
+        const imgOuter = (b.cls || "shot").replace(/\./g, " ").replace(/\s+/g, " ").trim();
+        const img = '<img class="' + imgOuter + '" src="' + b.src +
           '" alt="' + inline(b.alt) + '">';
         const next = blocks[bi + 1];
         const isCaption = next && next.type === "p" && /\{\.shot-caption\}$/.test(next.text);

@@ -66,7 +66,7 @@ People know the Model 33 keyboard is "not like a PC". They usually do not know h
 
 It is **bit-paired**: one contact per key, one code, and SHIFT and CTRL do not change one letter into another — they invert specific bits. SHIFT flips `0x10`, CTRL flips `0x40`. Everything odd about the seventies follows: `3` with SHIFT is `#`, `P` with SHIFT is `@`, `K` is `[`, `N` is `^`, `M` is `]`. There is no notion of shifting case. There is arithmetic on the code.
 
-![The Model 33 ASR keyboard in yaPDP](assets/images/manual/console-teletype-keyboard.png){.shot}
+![The Model 33 ASR keyboard in yaPDP](assets/images/manual/console-teletype-keyboard.png){.shot .shot-wide}
 
 Look at the keycaps: each one carries its letter and, above it, the control code that letter produces with CTRL. `P @ DLE` is not decoration — it is the whole trick in one label.{.shot-caption}
 
