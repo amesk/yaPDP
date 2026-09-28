@@ -9,6 +9,7 @@
  *   - :mount finds media/bootcode.ptap and the guest reads it (COPY PC:)
  *   - the guest punches a file back (COPY ... PC:) and :export writes the
  *     .ptap — the bootloader-build pipeline roundtrip
+ *   - :save-disk writes the whole image back, the guest's writes included
  *   - :status reports reader/punch state
  *
  * Run with:  node tests/headless-term.test.js
@@ -20,11 +21,26 @@ const assert = require("assert");
 const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const vm = require("vm");
 
 const REPO = path.resolve(__dirname, "..");
 const TOOL = path.join(REPO, "tools", "headless-term.js");
 const ORIG_TAPE = path.join(REPO, "media", "bootcode.ptap");
 const OUT_TAPE = path.join(REPO, "out.test.ptap");
+const OUT_DISK = path.join(REPO, "out.test.dsk");
+
+/**
+ * decompressZst — the pristine .dsk behind a .zst, so the saved image can be
+ * compared against it (same loader the tool itself uses: the vendored fzstd
+ * in its own VM context).
+ */
+function decompressZst(file) {
+    const sb = vm.createContext({});
+    vm.runInContext(
+        fs.readFileSync(path.join(REPO, "assets", "vendor", "fzstd.js"), "utf8"),
+        sb, { filename: "assets/vendor/fzstd.js" });
+    return Buffer.from(sb.fzstd.decompress(new Uint8Array(fs.readFileSync(file))));
+}
 
 function runBatch(script, extraArgs) {
     return new Promise((resolve, reject) => {
@@ -49,6 +65,8 @@ async function run() {
         "COPY PC: T.IMG",          // guest reads the tape into a file
         "COPY T.IMG PC:",          // guest punches the file back out
         ":export " + OUT_TAPE,     // host saves the punched bytes
+        ":save-disk " + OUT_DISK,  // host saves the whole (written-back) image
+        ":save-disk",              // no argument: usage, not a crash
         ":status",
         ":quit",
     ].join("\n") + "\n";
@@ -79,10 +97,28 @@ async function run() {
     const idx = out.indexOf(orig.subarray(0, 32));
     assert.ok(idx >= 0, "exported punch contains the original tape payload (idx=" + idx + ")");
 
+    // :save-disk wrote the WHOLE image, and it carries the guest's writes:
+    // the same run created T.IMG in the guest (COPY PC: above), and those
+    // sectors only exist in the boot engine's in-memory write-back, so an
+    // image identical to the pristine one would mean the overlay was lost.
+    assert.ok(fs.existsSync(OUT_DISK), ":save-disk produced " + OUT_DISK);
+    const savedDisk = fs.readFileSync(OUT_DISK);
+    const pristineDisk = decompressZst(path.join(REPO, "media", "rk1.dsk.zst"));
+    assert.strictEqual(savedDisk.length, pristineDisk.length,
+        ":save-disk wrote a full image (pristine " + pristineDisk.length +
+        " bytes, saved " + savedDisk.length + ")");
+    assert.ok(!savedDisk.equals(pristineDisk),
+        ":save-disk captured the guest's writes (the saved image differs from the pristine .dsk)");
+    assert.ok(/saved \d+ bytes to /.test(stderr), ":save-disk reported the image size");
+
+    // A bare :save-disk is a usage error, not a crash or a silent no-op.
+    assert.ok(stderr.indexOf("usage: :save-disk") !== -1,
+        "a bare :save-disk prints its usage");
+
     // :status printed the punch state.
     assert.ok(stderr.indexOf("punch=") !== -1, ":status printed punch state");
 
-    console.log("PASS: headless-term batch — boot, :wait, :mount, tape read/punch roundtrip, :export, :status");
+    console.log("PASS: headless-term batch — boot, :wait, :mount, tape read/punch roundtrip, :export, :save-disk, :status");
 
     // ---- Test 2: multi-step boot (--step) -----------------------------
     // Same guest, booted through the step engine instead of a single
@@ -120,11 +156,16 @@ async function run() {
     console.log("PASS: headless-term multi-step boot (--step send|waitFor)");
 }
 
-run().then(() => {
+function cleanup() {
     try { fs.unlinkSync(OUT_TAPE); } catch (e) { /* ignore */ }
+    try { fs.unlinkSync(OUT_DISK); } catch (e) { /* ignore */ }
+}
+
+run().then(() => {
+    cleanup();
     process.exit(0);
 }).catch((e) => {
-    try { fs.unlinkSync(OUT_TAPE); } catch (e) { /* ignore */ }
+    cleanup();
     console.error("FAIL:", e.message);
     process.exit(1);
 });

@@ -14,6 +14,9 @@
  *     the guest
  *   - guest console input through the ConsoleDL11 device, paper tape
  *     through the PtrPtp device + the shared DiskService (file provider)
+ *   - the guest's whole disk image can be written back to a host file
+ *     (:save-disk), so a rebuilt kernel or an edited /.profile survives the
+ *     run — guest writes otherwise live in the boot engine's memory only
  *
  * Usage:
  *   node tools/headless-term.js [image.zst] [url-name] [boot-cmd]
@@ -36,6 +39,7 @@
  *   :mount <file>   load a paper tape into the reader (.ptap or .zst)
  *   :rewind         rewind the reader tape
  *   :export <file>  save the punch output since the last export
+ *   :save-disk <f>  write the whole disk image (guest writes included)
  *   :wait <marker>  wait until the guest output contains <marker>
  *   :raw <hex>      send raw bytes to the guest console (e.g. :raw 03)
  *   :status         show reader tape / punch bytes / prompt marker
@@ -459,6 +463,43 @@ function exportPunch(hostFile) {
     return true;
 }
 
+/**
+ * saveDisk(hostFile) — :save-disk, the whole disk image on its way to a file.
+ *
+ * Guest writes never reach the .zst on disk: the boot engine's writeBlock
+ * patches the DECOMPRESSED image in memory and hands it back as imageBytes
+ * (see tools/headless-machine.js), so everything the guest changed — a
+ * rebuilt kernel in /unix, an edited /.profile, a new /etc/rc — dies with
+ * the process. This is that image, written out as a raw .dsk (compress it
+ * with tools/media-zst.js to get a .dsk.zst back).
+ */
+async function saveDisk(hostFile) {
+    const img = boot && boot.imageBytes;
+    if (!img || !img.length) {
+        console.error("headless-term: no disk image in memory — nothing to save");
+        return false;
+    }
+
+    // Guest writes reach boot.imageBytes only through a flush: the controller
+    // hands them to the DiskService cache (marked dirty) and the CACHE is
+    // what the provider patches the image from — see src/devices/disk-service.js
+    // (flushDrive). Saving first would write out the pristine image and
+    // silently drop a rebuilt kernel.
+    const drives = (disk && disk.drives) || {};
+    const urls = Object.keys(drives);
+    const pending = urls.filter((url) => disk.dirtyBlockCount(url) > 0);
+    for (const url of pending) await disk.flushDrive(url);
+    if (pending.length) {
+        console.error("headless-term: flushed " + pending.length + " drive(s): " +
+            pending.join(", "));
+    }
+
+    const target = path.resolve(hostFile);
+    fs.writeFileSync(target, Buffer.from(img));
+    console.error("headless-term: saved " + img.length + " bytes to " + target);
+    return true;
+}
+
 // ----------------------------------------------------------------------
 // Commands
 // ----------------------------------------------------------------------
@@ -480,6 +521,10 @@ async function handleCommand(line) {
         case "export":
             if (!arg) { console.error("headless-term: usage: :export <file>"); break; }
             exportPunch(arg);
+            break;
+        case "save-disk":
+            if (!arg) { console.error("headless-term: usage: :save-disk <file>"); break; }
+            await saveDisk(arg);
             break;
         case "wait": {
             if (!arg) { console.error("headless-term: usage: :wait <marker>"); break; }
@@ -518,6 +563,7 @@ async function handleCommand(line) {
                 "  :mount <file>   load paper tape (.ptap/.zst) into the reader\n" +
                 "  :rewind         rewind the reader tape\n" +
                 "  :export <file>  save punch output since last export, clear buffer\n" +
+                "  :save-disk <f>  write the whole disk image (guest writes included)\n" +
                 "  :wait <marker>  wait for <marker> in guest output\n" +
                 "  :raw <hex>      send raw bytes (e.g. :raw 03 = ^C)\n" +
                 "  :status         show reader tape / punch bytes / mode\n" +
