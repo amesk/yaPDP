@@ -30,6 +30,12 @@
         ? require("../core/device.js")
         : (global.yapdpCore || {});
 
+    // MountMap: explicit drive → image-url table (refactor). Falls back to
+    // the historical rp<unit>.dsk template when the drive has no override.
+    const MountMap = (typeof module !== "undefined" && module.exports)
+        ? require("../mountmap.js").MountMap
+        : (global.MountMap || { urlFor: (p, u, s) => p + u + (s || ".dsk") });
+
     // --- Constants ---
     const RP_VECTOR = 0o254;     // Interrupt vector
     const RP_PRIORITY = 5 << 5;  // Base priority level
@@ -165,7 +171,7 @@
                     cache: [],
                     callback: (cb, code, position, address, count, options) =>
                         this.rpCallback(cb, code, position, address, count, options),
-                    url: `rp${drive}.dsk`,
+                    url: MountMap.urlFor("rp", drive, ".dsk"),
                     compressed: true,
                     drive,
                 };

@@ -256,6 +256,52 @@ async function run() {
     console.log("PASS test 4: listDirty / dirtyBlockCount");
   }
 
+  // ---- Test 4b: blocksFor lists the saved block numbers -------------
+  {
+    const sb = buildSandbox();
+    makeContext(sb, sections);
+    const DiskStore = sb.DiskStore;
+    await DiskStore.init();
+
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(DiskStore.blocksFor("rk2.dsk"))), [],
+      "no saved blocks before any write");
+
+    const ctrl = makeCtrl("rk2.dsk", true);
+    ctrl.cache[0] = new Uint16Array(131072 >>> 1);
+    ctrl.cache[5] = new Uint16Array(131072 >>> 1);
+    DiskStore.markDirty(ctrl, 0);
+    DiskStore.markDirty(ctrl, 5);
+    await DiskStore.flush("rk2.dsk");
+
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(DiskStore.blocksFor("rk2.dsk"))).sort((a, b) => a - b),
+      [0, 5],
+      "blocksFor lists every saved block");
+    console.log("PASS test 4b: blocksFor lists saved block numbers");
+  }
+
+  // ---- Test 4c: changedBlockCount counts saved + pending -------------
+  {
+    const sb = buildSandbox();
+    makeContext(sb, sections);
+    const DiskStore = sb.DiskStore;
+    await DiskStore.init();
+
+    const ctrl = makeCtrl("rl1.dsk", true);
+    ctrl.cache[0] = new Uint16Array(131072 >>> 1);
+    ctrl.cache[1] = new Uint16Array(131072 >>> 1);
+    ctrl.cache[2] = new Uint16Array(131072 >>> 1);
+    DiskStore.markDirty(ctrl, 0);
+    DiskStore.markDirty(ctrl, 1);
+    await DiskStore.flush("rl1.dsk"); // blocks 0 and 1 land in IDB
+    DiskStore.markDirty(ctrl, 2);     // block 2 is still pending in memory
+
+    assert.strictEqual(DiskStore.dirtyBlockCount("rl1.dsk"), 2, "saved-only count");
+    assert.strictEqual(DiskStore.changedBlockCount("rl1.dsk"), 3, "saved + pending");
+    console.log("PASS test 4c: changedBlockCount counts saved + pending blocks");
+  }
+
   // ---- Test 5: clear discards saved blocks --------------------------
   {
     const sb = buildSandbox();

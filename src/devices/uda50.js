@@ -31,6 +31,12 @@
         ? require("../core/device.js")
         : (global.yapdpCore || {});
 
+    // MountMap: explicit drive → image-url table (refactor). Falls back to
+    // the historical ra<unit>.dsk template when the drive has no override.
+    const MountMap = (typeof module !== "undefined" && module.exports)
+        ? require("../mountmap.js").MountMap
+        : (global.MountMap || { urlFor: (p, u, s) => p + u + (s || ".dsk") });
+
     // --- Constants ---
     const UDA_PRIORITY = 5 << 5; // IPL 5
     const MAX_UNIT = 3;          // Highest unit number we support
@@ -332,7 +338,7 @@
                         cache: [],
                         callback: (cb, code, position, address, count, options) =>
                             this.rqCallback(cb, code, position, address, count, options),
-                        url: `ra${unit}.dsk`,
+                        url: MountMap.urlFor("ra", unit, ".dsk"),
                         compressed: true, // Bundled disk images ship as .zst
                         unit,
                     };

@@ -983,7 +983,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
             <Download className="w-4 h-4 text-[#c8a860] mb-1.5" />
             <strong className="text-[#f0e6c8] block mb-1">
-              {lang === 'en' ? 'Drop image' : 'Перетаскивание образа'}
+              {lang === 'en' ? 'Import image' : 'Импорт образа'}
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'

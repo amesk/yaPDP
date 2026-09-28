@@ -33,6 +33,12 @@
         ? require("../core/device.js")
         : (global.yapdpCore || {});
 
+    // MountMap: explicit drive → image-url table (refactor). Falls back to
+    // the historical tm<unit>.tap template when the drive has no override.
+    const MountMap = (typeof module !== "undefined" && module.exports)
+        ? require("../mountmap.js").MountMap
+        : (global.MountMap || { urlFor: (p, u, s) => p + u + (s || ".dsk") });
+
     // --- Interrupts ---
     const TM_VECTOR   = 0o224;   // Interrupt vector
     const TM_PRIORITY = 5 << 5;  // Interrupt priority
@@ -273,7 +279,7 @@
                     cache: [],
                     callback: (cb, code, position, address, count, options) =>
                         this.mtCallback(cb, code, position, address, count, options),
-                    url: `tm${drive}.tap`,
+                    url: MountMap.urlFor("tm", drive, ".tap"),
                     compressed: true, // Bundled tape images ship as .zst
                     drive,
                     position: 0,
