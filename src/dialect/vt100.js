@@ -114,6 +114,38 @@
                 return;
             }
 
+            // ESC D / ESC M — IND (index) and RI (reverse index) on a VT100.
+            // Both letters exist in the ANSI grammar only, so the inherited
+            // VT52 grammar below is exactly wrong for them in this dialect: it
+            // reads ESC D as cursor-left and ESC M as delete-line. Every
+            // full-screen program that scrolls through the termcap sf/sr
+            // capabilities scrolls forward with IND — the 2.11 BSD vt100 entry
+            // is ":sf=2*\ED:sr=2*\EM:" — so with the DECscope readings the
+            // screen never moved: the guest drew its next line over the bottom
+            // line and the text above it stayed put.
+            //
+            // Gated on modes.ansi: a VT100 switched into VT52 compatibility
+            // mode (DECANM, CSI ? 2 h) really is a DECscope and keeps the
+            // VT52 meanings of both letters.
+            if (this.modes.ansi && this.parser.buffer.length === 1) {
+                if (c === 'D') {
+                    // IND — down one line, scrolling at the bottom margin. A
+                    // line feed, which is what IND is: LF without the CR.
+                    this.parser.buffer.push(ch);
+                    this.lineFeed();
+                    this.escapeReset();
+                    return;
+                }
+                if (c === 'M') {
+                    // RI — up one line, scrolling the region downward at the
+                    // top margin.
+                    this.parser.buffer.push(ch);
+                    this.reverseIndex();
+                    this.escapeReset();
+                    return;
+                }
+            }
+
             // Sequences with no VT100 meaning at all. Consume them silently:
             // a real VT100 ignores what it does not understand, and answering
             // ESC Z with the VT52 identification would be actively wrong.

@@ -173,6 +173,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A VT100 scrolls with `ESC D` (IND) and `ESC M` (RI), the readings its own
+  termcap entry is written against.** The VT100 dialect inherited the DECscope
+  meanings of those two letters — cursor-left and delete-line — so a guest that
+  scrolls through the termcap `sf`/`sr` capabilities never moved the screen: `vi`
+  under 2.11 BSD (whose vt100 entry is `sf=2*\ED:sr=2*\EM`) redrew its bottom
+  line instead of scrolling the text above it. ANSI mode now answers IND and RI;
+  VT52 compatibility mode (DECANM, `CSI ? 2 h`) keeps the DECscope meanings.
+  (`src/dialect/vt100.js`; pinned by `tests/vt100-dialect.test.js`)
+
 - **Leaving the CONFIG page no longer warns about "uncommitted changes" that
   were never made.** The user-terminal dialects kept in the config are compared
   only for the terminals actually installed: a stale entry for an absent
