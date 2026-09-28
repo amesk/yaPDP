@@ -131,6 +131,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the Markdown. (`tools/build-manual.js`, `tools/manual-template-head.html`,
   `manual.html`, `tests/manual-generation.test.js`)
 
+- **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,
+  `npm run e2e:vt100`). The guest-boot suite already boots RT-11 on a VT100
+  console, but it watches the GENERATED output — it would pass just as happily if
+  the VT100 never drew a cabinet, or drew the DECscope's. This one asserts the
+  terminal the way an operator sees it, on a machine holding a VT100 console plus
+  a DECscope on tty1 and a VT100 on tty2, so every check compares the two
+  dialects rather than trusting one: the rig's dialect and artwork, the canvas
+  filling the tube, the phosphor reaching the VT100 and NOT the DECscope, reverse
+  video flipping the DECscope and NOT the VT100, the key click belonging to the
+  VT100 alone, zoom by button and by double click (including the marker-offset
+  regression), and the terminal types surviving validation and driving what the
+  machine actually builds. It runs in `validate` next to the other e2e suites.
+
+- **A startup loading gate holds the first frame.** The overlay is inline in
+  `pdp11.html`, so the very first painted frame already covers the page, and it
+  is lifted only when the Model 33 artwork markers, the terminal artwork markers,
+  the first-screen webfonts and `media/manifest.json` are ready: before this the
+  CSS fallback artwork painted first and the real art, the fonts and the manifest
+  replaced it piece by piece, so a slow link showed two different machines in a
+  row. Sounds, the machine-room photo, alternative panels and the disk/tape
+  images keep loading behind the gate — none of them is needed for the first
+  screen. Every source is best-effort (a failure resolves its slot instead of
+  hanging) and a 15 s ceiling lifts the gate regardless. (`src/loading-gate.js`,
+  `pdp11.html`, `src/pdp11-app.js`, `css/g60printer.css`)
+
+
 ### Changed
 
 - **The operator's hand-written "Help Me!" sticky note no longer costs the front
@@ -170,145 +196,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sees — its own cross-references included, the Russian edition's among them.
   (`.github/workflows/release.yml`, `tools/build-manual-pdf.js`,
   `docs/RELEASING.md`)
-
-### Fixed
-
-- **A VT100 scrolls with `ESC D` (IND) and `ESC M` (RI), the readings its own
-  termcap entry is written against.** The VT100 dialect inherited the DECscope
-  meanings of those two letters — cursor-left and delete-line — so a guest that
-  scrolls through the termcap `sf`/`sr` capabilities never moved the screen: `vi`
-  under 2.11 BSD (whose vt100 entry is `sf=2*\ED:sr=2*\EM`) redrew its bottom
-  line instead of scrolling the text above it. ANSI mode now answers IND and RI;
-  VT52 compatibility mode (DECANM, `CSI ? 2 h`) keeps the DECscope meanings.
-  (`src/dialect/vt100.js`; pinned by `tests/vt100-dialect.test.js`)
-
-- **Leaving the CONFIG page no longer warns about "uncommitted changes" that
-  were never made.** The user-terminal dialects kept in the config are compared
-  only for the terminals actually installed: a stale entry for an absent
-  terminal (e.g. VT100 once picked for TT1, the terminals removed later) no
-  longer makes the form look edited.
-
-- **Guest-OS writes made in the refactored machine stack (`?core=1`, the
-  default) are saved again.** The disk service kept written blocks in its own
-  cache but nothing ever pushed them to the write-back layer, so a file created
-  in a guest OS never reached browser storage and the "Persistent disk changes"
-  list stayed empty; the writes are now drained to that layer while the machine
-  runs and on leaving the page, and the list refreshes itself.
-
-- **The "Export image" control works in the refactored machine stack (`?core=1`,
-  the default).** The list of downloadable images was filled by the legacy
-  stack only, so the select stayed disabled there; it is now built from the
-  mounted images AND any image with saved write-back blocks (a detached image
-  keeps its changes), and a Download button saves the selected one — the
-  pristine base, fetched on demand when the image is not mounted, with the
-  guest's writes (session and saved) applied on top — as a raw disk image.
-  Every entry states its state ("no changes", "N blocks changed", or "not
-  mounted, N blocks changed"), so a bundled or IndexedDB copy with no changes
-  is still offered while the user's own freshly dropped file is recognisably
-  the same file. When even the base cannot be fetched the export is refused
-  with the usual image-load error dialog.
-
-- **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the
-  rest) fit a phone screen.** The shared dialog box is capped by the window on
-  both axes and scrolls when it overflows, and the action row wraps on a narrow
-  screen instead of running off the right edge. One rule covers every dialog,
-  because they all reuse the same `.modal-*` classes. (`css/pdp11.css`; pinned by
-  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
-  `tests/e2e-mobile-input.js`)
-
-- **The Info page fits a phone screen.** `margin: 0 auto` — meant to centre the
-  slab on a wide window — cancelled the page column's flex stretch, so the page
-  sized itself to its content (the animated panel GIF and the guest-OS tables)
-  and stood ~264px wider than a 390px screen; the right edge was clipped with no
-  way to scroll. The page is now pinned to the container width, the panel image
-  scales down, and the OS / feature tables scroll inside their own box. The
-  bottom navigation bar also counts its padding inside its own width instead of
-  widening the page by 12px. (`css/pdp11.css`; pinned by
-  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
-  `tests/e2e-mobile-input.js`)
-
-- **The cursor no longer lags half a second behind the text.** Moving the cursor
-  called `render(false)`, which in canvas mode repaints nothing at all — the
-  drawn cursor stayed where it was until the next 500 ms blink tick, while the
-  character it had moved past was already erased. Which delay you saw depended on
-  the tick's phase, so it looked intermittent: one backspace seemed instant and
-  the next waited. Cursor movement now repaints the cursor itself (backspace,
-  carriage return and tab), through a shared `repaintCursor()`.
-  (`src/terminal-core.js`)
-
-- **The CONFIG fields that depend on a terminal's dialect now follow the form,
-  and count only the terminals that exist.** Two faults in the same pass:
-  the terminal-type selects and the terminal-count select only re-marked the form
-  dirty, so switching TT1 between VT52 and VT100 left the phosphor, key-click and
-  reverse-video fields stale until a page reload; and the check read every type
-  select, so a value left in the select for a terminal that is NOT installed
-  (TT2 while the count is 1) claimed a VT100 the machine does not have. The
-  reverse-video field also had no id, so it could not be dimmed at all — it now
-  dims when no VT52 is installed, mirroring the two VT100 fields.
-  (`pdp11-app.js`, `pdp11.html`)
-
-- **The quick-boot "Autoloading in progress" warning fits the screen it is
-  shown on.** It is a sentence, not a label, and it was pinned to the middle of
-  the window on one un-wrapped line: on a phone both of its ends fell off the
-  display. It now wraps inside the window — never wider than the window minus a
-  margin — and drops to a smaller size on a narrow screen. (`css/pdp11.css`;
-  the wording and the box it is measured with are pinned by
-  `tests/mobile-css.test.js` and `tests/e2e-mobile-input.js`)
-
-- **The startup loading gate keeps a gutter on a phone.** The overlay covers the
-  whole window and centres its lines, and its hint is measured in `em`: on a
-  phone the text ran into both edges of the display. The overlay carries a
-  padding now — with `box-sizing: border-box`, so the overlay itself still
-  covers exactly the window — and the hint is capped by the window rather than
-  by its measure alone. (`pdp11.html`; the rule is pinned by
-  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
-  `tests/e2e-mobile-input.js`)
-
-- **The landing page shows the emulator's favicon.** `landing/index.html` asked
-  for `favicon.ico`, but the landing is a separate Vite project whose static root
-  is `landing/public` — and the file lived only in the repository root, so the
-  SPA answered a 404 and, away from the assembled site, the tab had no icon. The
-  landing now serves and emits the repository's single `favicon.ico` from its
-  Vite config (`landing/vite.config.ts`) rather than keeping a second copy that
-  could drift from the emulator's.
-
-- **The desktop section of the user manual covers Linux.** The page announced the
-  desktop app for Windows x64 only and said nothing about the Linux installers,
-  whose size depends on the package format. (`docs/manual/desktop.md`,
-  `manual.html`)
-
-- **The console teletype prints to the edge of its paper.** The Model 33 ASR was
-  friction-fed, so the two 33px side margin columns the LP11 needs for its
-  tractor holes were dead space on the teletype — margins wider than any
-  historical photo, and cells that parted from the sheet under scaling so the
-  cabinet showed through the gap. The console sheet is now the printed line plus
-  its small padding, and the teletype's side margin cells are out of the table
-  layout, so the sheet stays whole at any zoom. The carriage is unmoved: its
-  offset is keyed to the print origin instead of the sheet's edge. The LP11
-  fanfold and its perforated margins are untouched. The narrower sheet also
-  keeps the startup still: the CSS default sheet and `--tty-sheet-native` now
-  match the real 72-column layout, so the printer block no longer jumps when
-  the artwork lands (`src/g60printer.js`, `src/pdp11-app.js`,
-  `css/g60printer.css`; the geometry is pinned by `tests/paper-geometry.test.js`,
-  the startup stability by `tests/teletype-paper-css.test.js` and
-  `tests/e2e-startup-cls.js`).
-
-### Added
-
-- **An end-to-end suite for the VT100 terminal itself** (`tests/e2e-vt100.js`,
-  `npm run e2e:vt100`). The guest-boot suite already boots RT-11 on a VT100
-  console, but it watches the GENERATED output — it would pass just as happily if
-  the VT100 never drew a cabinet, or drew the DECscope's. This one asserts the
-  terminal the way an operator sees it, on a machine holding a VT100 console plus
-  a DECscope on tty1 and a VT100 on tty2, so every check compares the two
-  dialects rather than trusting one: the rig's dialect and artwork, the canvas
-  filling the tube, the phosphor reaching the VT100 and NOT the DECscope, reverse
-  video flipping the DECscope and NOT the VT100, the key click belonging to the
-  VT100 alone, zoom by button and by double click (including the marker-offset
-  regression), and the terminal types surviving validation and driving what the
-  machine actually builds. It runs in `validate` next to the other e2e suites.
-
-### Changed
 
 - **The quick-boot wizard puts the teletype on LINE before it types.** Its steps
   go straight into the machine's console input, but the machine's answers only
@@ -513,12 +400,139 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status row are gone. (`assets/vt52.svg`, `src/vt52.js`, `src/pdp11-app.js`,
   `css/pdp11.css`, `pdp11.html`)
 
-### Removed
+- **The Model 33 artwork is 96% lighter and is fetched once.** `assets/Model-33-ASR.svg`
+  went from 2.0 MB to 75 KB, and the teletype rig downloads the file it names
+  instead of asking for it twice, so the console page reaches its real look
+  sooner on a slow link. (`assets/Model-33-ASR.svg`, `src/pdp11-app.js`,
+  `css/g60printer.css`)
 
-- The Model 33 "Drawn in the artwork" keyboard-source option. (`src/config.js`,
-  `src/pdp11-app.js`, `pdp11.html`)
+- The user-manual and guest-OS screenshots are regenerated for the VT100, the
+  retuned Equipment tab and the lighter teletype artwork, written to both the
+  repo source and the landing mirror. (`tools/screenshots-manual.js`,
+  `tools/screenshots-os.js`)
+
 
 ### Fixed
+
+- **A VT100 scrolls with `ESC D` (IND) and `ESC M` (RI), the readings its own
+  termcap entry is written against.** The VT100 dialect inherited the DECscope
+  meanings of those two letters — cursor-left and delete-line — so a guest that
+  scrolls through the termcap `sf`/`sr` capabilities never moved the screen: `vi`
+  under 2.11 BSD (whose vt100 entry is `sf=2*\ED:sr=2*\EM`) redrew its bottom
+  line instead of scrolling the text above it. ANSI mode now answers IND and RI;
+  VT52 compatibility mode (DECANM, `CSI ? 2 h`) keeps the DECscope meanings.
+  (`src/dialect/vt100.js`; pinned by `tests/vt100-dialect.test.js`)
+
+- **Leaving the CONFIG page no longer warns about "uncommitted changes" that
+  were never made.** The user-terminal dialects kept in the config are compared
+  only for the terminals actually installed: a stale entry for an absent
+  terminal (e.g. VT100 once picked for TT1, the terminals removed later) no
+  longer makes the form look edited.
+
+- **Guest-OS writes made in the refactored machine stack (`?core=1`, the
+  default) are saved again.** The disk service kept written blocks in its own
+  cache but nothing ever pushed them to the write-back layer, so a file created
+  in a guest OS never reached browser storage and the "Persistent disk changes"
+  list stayed empty; the writes are now drained to that layer while the machine
+  runs and on leaving the page, and the list refreshes itself.
+
+- **The "Export image" control works in the refactored machine stack (`?core=1`,
+  the default).** The list of downloadable images was filled by the legacy
+  stack only, so the select stayed disabled there; it is now built from the
+  mounted images AND any image with saved write-back blocks (a detached image
+  keeps its changes), and a Download button saves the selected one — the
+  pristine base, fetched on demand when the image is not mounted, with the
+  guest's writes (session and saved) applied on top — as a raw disk image.
+  Every entry states its state ("no changes", "N blocks changed", or "not
+  mounted, N blocks changed"), so a bundled or IndexedDB copy with no changes
+  is still offered while the user's own freshly dropped file is recognisably
+  the same file. When even the base cannot be fetched the export is refused
+  with the usual image-load error dialog.
+
+- **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the
+  rest) fit a phone screen.** The shared dialog box is capped by the window on
+  both axes and scrolls when it overflows, and the action row wraps on a narrow
+  screen instead of running off the right edge. One rule covers every dialog,
+  because they all reuse the same `.modal-*` classes. (`css/pdp11.css`; pinned by
+  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
+  `tests/e2e-mobile-input.js`)
+
+- **The Info page fits a phone screen.** `margin: 0 auto` — meant to centre the
+  slab on a wide window — cancelled the page column's flex stretch, so the page
+  sized itself to its content (the animated panel GIF and the guest-OS tables)
+  and stood ~264px wider than a 390px screen; the right edge was clipped with no
+  way to scroll. The page is now pinned to the container width, the panel image
+  scales down, and the OS / feature tables scroll inside their own box. The
+  bottom navigation bar also counts its padding inside its own width instead of
+  widening the page by 12px. (`css/pdp11.css`; pinned by
+  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
+  `tests/e2e-mobile-input.js`)
+
+- **The cursor no longer lags half a second behind the text.** Moving the cursor
+  called `render(false)`, which in canvas mode repaints nothing at all — the
+  drawn cursor stayed where it was until the next 500 ms blink tick, while the
+  character it had moved past was already erased. Which delay you saw depended on
+  the tick's phase, so it looked intermittent: one backspace seemed instant and
+  the next waited. Cursor movement now repaints the cursor itself (backspace,
+  carriage return and tab), through a shared `repaintCursor()`.
+  (`src/terminal-core.js`)
+
+- **The CONFIG fields that depend on a terminal's dialect now follow the form,
+  and count only the terminals that exist.** Two faults in the same pass:
+  the terminal-type selects and the terminal-count select only re-marked the form
+  dirty, so switching TT1 between VT52 and VT100 left the phosphor, key-click and
+  reverse-video fields stale until a page reload; and the check read every type
+  select, so a value left in the select for a terminal that is NOT installed
+  (TT2 while the count is 1) claimed a VT100 the machine does not have. The
+  reverse-video field also had no id, so it could not be dimmed at all — it now
+  dims when no VT52 is installed, mirroring the two VT100 fields.
+  (`pdp11-app.js`, `pdp11.html`)
+
+- **The quick-boot "Autoloading in progress" warning fits the screen it is
+  shown on.** It is a sentence, not a label, and it was pinned to the middle of
+  the window on one un-wrapped line: on a phone both of its ends fell off the
+  display. It now wraps inside the window — never wider than the window minus a
+  margin — and drops to a smaller size on a narrow screen. (`css/pdp11.css`;
+  the wording and the box it is measured with are pinned by
+  `tests/mobile-css.test.js` and `tests/e2e-mobile-input.js`)
+
+- **The startup loading gate keeps a gutter on a phone.** The overlay covers the
+  whole window and centres its lines, and its hint is measured in `em`: on a
+  phone the text ran into both edges of the display. The overlay carries a
+  padding now — with `box-sizing: border-box`, so the overlay itself still
+  covers exactly the window — and the hint is capped by the window rather than
+  by its measure alone. (`pdp11.html`; the rule is pinned by
+  `tests/mobile-css.test.js` and measured on a 390x844 viewport by
+  `tests/e2e-mobile-input.js`)
+
+- **The landing page shows the emulator's favicon.** `landing/index.html` asked
+  for `favicon.ico`, but the landing is a separate Vite project whose static root
+  is `landing/public` — and the file lived only in the repository root, so the
+  SPA answered a 404 and, away from the assembled site, the tab had no icon. The
+  landing now serves and emits the repository's single `favicon.ico` from its
+  Vite config (`landing/vite.config.ts`) rather than keeping a second copy that
+  could drift from the emulator's.
+
+- **The desktop section of the user manual covers Linux.** The page announced the
+  desktop app for Windows x64 only and said nothing about the Linux installers,
+  whose size depends on the package format. (`docs/manual/desktop.md`,
+  `manual.html`)
+
+- **The console teletype prints to the edge of its paper.** The Model 33 ASR was
+  friction-fed, so the two 33px side margin columns the LP11 needs for its
+  tractor holes were dead space on the teletype — margins wider than any
+  historical photo, and cells that parted from the sheet under scaling so the
+  cabinet showed through the gap. The console sheet is now the printed line plus
+  its small padding, and the teletype's side margin cells are out of the table
+  layout, so the sheet stays whole at any zoom. The carriage is unmoved: its
+  offset is keyed to the print origin instead of the sheet's edge. The LP11
+  fanfold and its perforated margins are untouched. The narrower sheet also
+  keeps the startup still: the CSS default sheet and `--tty-sheet-native` now
+  match the real 72-column layout, so the printer block no longer jumps when
+  the artwork lands (`src/g60printer.js`, `src/pdp11-app.js`,
+  `css/g60printer.css`; the geometry is pinned by `tests/paper-geometry.test.js`,
+  the startup stability by `tests/teletype-paper-css.test.js` and
+  `tests/e2e-startup-cls.js`).
 
 - Reading past the end of a mounted disk/tape image no longer stops the
   machine: the missing cache block is now created explicitly, so the guest
@@ -555,32 +569,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   could jump between its sections; both pages now carry the same 45 internal
   links — the 32 cross-references and the table of contents.
 
-### Added
 
-- **A startup loading gate holds the first frame.** The overlay is inline in
-  `pdp11.html`, so the very first painted frame already covers the page, and it
-  is lifted only when the Model 33 artwork markers, the terminal artwork markers,
-  the first-screen webfonts and `media/manifest.json` are ready: before this the
-  CSS fallback artwork painted first and the real art, the fonts and the manifest
-  replaced it piece by piece, so a slow link showed two different machines in a
-  row. Sounds, the machine-room photo, alternative panels and the disk/tape
-  images keep loading behind the gate — none of them is needed for the first
-  screen. Every source is best-effort (a failure resolves its slot instead of
-  hanging) and a 15 s ceiling lifts the gate regardless. (`src/loading-gate.js`,
-  `pdp11.html`, `src/pdp11-app.js`, `css/g60printer.css`)
+### Removed
 
-### Changed
-
-- **The Model 33 artwork is 96% lighter and is fetched once.** `assets/Model-33-ASR.svg`
-  went from 2.0 MB to 75 KB, and the teletype rig downloads the file it names
-  instead of asking for it twice, so the console page reaches its real look
-  sooner on a slow link. (`assets/Model-33-ASR.svg`, `src/pdp11-app.js`,
-  `css/g60printer.css`)
-
-- The user-manual and guest-OS screenshots are regenerated for the VT100, the
-  retuned Equipment tab and the lighter teletype artwork, written to both the
-  repo source and the landing mirror. (`tools/screenshots-manual.js`,
-  `tools/screenshots-os.js`)
+- The Model 33 "Drawn in the artwork" keyboard-source option. (`src/config.js`,
+  `src/pdp11-app.js`, `pdp11.html`)
 
 ## [0.2.0] - 2026-09-10
 

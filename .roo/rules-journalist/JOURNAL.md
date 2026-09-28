@@ -17,6 +17,14 @@ RELEASE_NOTES (user wording) — never copied verbatim into both.
 - One `### Added / Changed / Fixed / Removed` section per release under
   `[Unreleased]`; on release, rename it to `[X.Y.Z] - YYYY-MM-DD` and open a
   fresh empty `[Unreleased]`.
+- **Merging a branch means merging its entries into the sections that are
+  already there — never appending a second `### Added` (or `Changed`, `Fixed`,
+  `Removed`) to the same `[Unreleased]`.** Keep one section per kind, entries in
+  arrival order inside it; if the incoming branch carries its own headings, fold
+  them in and delete the extra heading as part of the merge. Five headings of
+  one kind in `[Unreleased]` is not a rich release, it is five unreleased blocks
+  glued together, and the reader can no longer tell "new" from "changed" at a
+  glance.
 - **One line per entry — the release, not the journey.** State the **final
   state**. NEVER the path to it:
   - no intermediate fixes, no reverts;
