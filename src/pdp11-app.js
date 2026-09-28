@@ -2078,6 +2078,18 @@ function initConfigForm() {
     return true;
   }
 
+  // Compare only the INSTALLED terminal slots' dialects. A slot beyond the
+  // count keeps whatever it last held, so the stored tail can differ from the
+  // form's 'vt52' filler even though nothing is installed — comparing it made
+  // the form read as "dirty" forever (pick VT100 for TT1 once, remove the
+  // terminals later: userTerminalTypes stayed ['vt100', …] while the form
+  // showed the filler). The count itself is compared separately in isDirty().
+  function sameInstalledTypes(form, current) {
+    var n = Math.min(form.userTerminals, current.userTerminals);
+    return sameTypes(form.userTerminalTypes.slice(0, n),
+      current.userTerminalTypes.slice(0, n));
+  }
+
   // The form is dirty when its values differ from the persisted config. Live
   // settings update Config immediately, so only uncommitted structural edits
   // (and a pending Restore-defaults) surface as a difference.
@@ -2088,7 +2100,7 @@ function initConfigForm() {
     return form.consoleType !== current.consoleType ||
       form.vt100Phosphor !== current.vt100Phosphor ||
       form.userTerminals !== current.userTerminals ||
-      !sameTypes(form.userTerminalTypes, current.userTerminalTypes) ||
+      !sameInstalledTypes(form, current) ||
       form.printer !== current.printer ||
       form.vt11 !== current.vt11 ||
       form.printWidth !== current.printWidth ||
@@ -2495,6 +2507,24 @@ function initConfigForm() {
   // Expose the dirty state so sidebar navigation (pdp11-panel.js) and the
   // beforeunload guard below can warn about uncommitted changes.
   window.isConfigDirty = isDirty;
+
+  // Diagnostics: the form fields whose value differs from the persisted config
+  // (an empty array means clean). Handy when an "uncommitted changes" prompt
+  // appears without an obvious edit — run configDiff() in the browser console
+  // to see exactly which control the form disagrees about.
+  window.configDiff = function () {
+    if (typeof Config === 'undefined') return [];
+    var current = Config.get();
+    var form = readForm();
+    return Object.keys(form).filter(function (k) {
+      var a = form[k], b = current[k];
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length !== b.length ||
+          a.some(function (v, i) { return v !== b[i]; });
+      }
+      return a !== b;
+    });
+  };
 
   // Warn before closing/reloading the page with uncommitted config changes.
   // The quick-boot wizard sets __allowConfigReload before its intentional
