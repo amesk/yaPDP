@@ -117,6 +117,16 @@ function loadPost(file) {
     lang: meta.lang || "en",
     title: meta.title,
     summary: meta.summary || "",
+    // A draft is a post that is being written, not a post that is hidden: the
+    // front matter says so and every consumer skips it — no page, no entry in
+    // the index, nothing in the feed. The file stays in docs/devlog/ and still
+    // goes through this parser, so its Markdown is checked as it is written
+    // rather than when the flag comes off.
+    //
+    // Only the literal "true" counts. An absent key, "false", or anything else
+    // publishes the post, so the four posts written before this option existed
+    // behave exactly as they did.
+    draft: meta.draft === "true",
     blocks: parseBlocks(body),
     body,
   };
@@ -764,6 +774,12 @@ function tsString(s) {
 
 function generate() {
   const posts = postFiles().map(loadPost)
+    // A draft is not published at all: no page, no entry in the index, nothing
+    // in the feed. It still went through loadPost above, so its Markdown is
+    // parsed and its front matter is validated while it is being written —
+    // a broken draft fails the build rather than surfacing when the flag comes
+    // off. The file stays in docs/devlog/ throughout.
+    .filter((p) => !p.draft)
     // newest first; a tie is broken by the slug so the order is stable
     .sort((a, b) => (a.date === b.date ? a.slug.localeCompare(b.slug)
       : (a.date < b.date ? 1 : -1)));
