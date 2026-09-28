@@ -319,6 +319,56 @@ function run() {
       "the index does not link the post: " + p.slug);
   }
 
+  // --- 7. a draft is not published ------------------------------------------
+  //
+  // A post whose front matter says draft is not ready to be read: no page, no
+  // entry in the index, nothing in the feed. The file stays in docs/devlog/ and
+  // still goes through the parser, so a broken draft fails the build while it is
+  // being written rather than on the day the flag comes off.
+  //
+  // The check is built on the generator's own output rather than on a fixture
+  // file, because a fixture would have to be committed — and a committed draft
+  // that nothing skips is exactly the failure this guard exists to catch. A
+  // temporary draft is written, the generator is run again, the outputs are
+  // compared with the first run, and the file is removed in a finally block so a
+  // failed assertion cannot leave it behind.
+  {
+    const draftPath = path.join(SRC, "2026-01-01-draft-guard.md");
+    assert.ok(!fs.existsSync(draftPath),
+      "a leftover draft guard file exists: " + draftPath);
+    fs.writeFileSync(draftPath,
+      "---\ntitle: \"Draft guard\"\ndate: 2026-01-01\nlang: en\n" +
+      "summary: \"Written by the test suite; never committed.\"\ndraft: true\n---\n\n" +
+      "This post must not be published.\n");
+    try {
+      const withDraft = generate();
+      assert.strictEqual(withDraft.posts.length, posts.length,
+        "a draft was counted as a post (" + withDraft.posts.length +
+        " against " + posts.length + ")");
+      assert.ok(withDraft.index.indexOf("draft-guard") === -1,
+        "a draft reached the index");
+      assert.ok(withDraft.feed.indexOf("draft-guard") === -1,
+        "a draft reached the feed");
+      assert.ok(!withDraft.pages.some((p) => p.slug.indexOf("draft-guard") !== -1),
+        "a page was generated for a draft");
+
+      // And the same file without the flag IS published — otherwise the guard
+      // would pass on a generator that had simply stopped reading the folder.
+      fs.writeFileSync(draftPath,
+        "---\ntitle: \"Draft guard\"\ndate: 2026-01-01\nlang: en\n" +
+        "summary: \"Written by the test suite; never committed.\"\n---\n\n" +
+        "The same file, published.\n");
+      const published = generate();
+      assert.strictEqual(published.posts.length, posts.length + 1,
+        "a post without the draft flag was NOT published — the guard would pass " +
+        "even if the folder had stopped being read");
+      assert.ok(published.index.indexOf("draft-guard") !== -1,
+        "a post without the draft flag did not reach the index");
+    } finally {
+      fs.unlinkSync(draftPath);
+    }
+  }
+
   console.log("devlog: all checks passed (" + posts.length + " post(s): " +
     posts.map((p) => p.slug).join(", ") + ")");
 }
