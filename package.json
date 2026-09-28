@@ -29,6 +29,8 @@
     "site:preview": "npm run site:build && npm run site:serve",
     "screenshots:manual": "node tools/screenshots-manual.js",
     "screenshots:os": "node tools/screenshots-os.js",
+    "shots:compare": "node tools/compare-shots.js report",
+    "shots:restore": "node tools/compare-shots.js restore",
     "record:video": "node tools/record-video.js",
     "video:intro": "node tools/make-intro.js",
     "video:demo": "node tools/assemble-video.js",
@@ -64,6 +66,7 @@
     "pdfjs-dist": "^6.3.289",
     "puppeteer-core": "^25.8.0",
     "puppeteer-stream": "^3.0.23",
+    "sharp": "^0.34.5",
     "wireit": "^0.14.13"
   },
   "dependencies": {
