@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The headless console tool can save a guest's disk back to a file.**
+  `headless-term` gains `:save-disk <file>`: it drains the write-back overlay
+  (a guest's changed blocks sit in the disk service's cache until a flush) and
+  writes the whole image, so work done inside a guest — a rebuilt kernel, an
+  edited `/.profile` — survives the run instead of dying with the process.
+  (`tools/headless-term.js`; pinned by `tests/headless-term.test.js`)
+
 - **Disks and tapes can be mounted onto a chosen drive.** The Storage page
   lists every mounted image with its binding ("image -> DRIVE") and gains an
   "Assign to drive" control: pick a mounted image, pick a drive
@@ -158,6 +165,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+
+- **The BSD 2.11 image ships a leaner, networkless kernel.** Its console runs
+  `2.11 BSD UNIX #1` built from the `YAPDP` configuration — `INET`, `NETHER` and
+  `NSL` off — so no network devices attach and no network daemons start: the
+  boot says `Assuming non-networking system`, `ps` shows no
+  `inetd`/`rwhod`/`syslogd`, the kernel is 8.9 KB smaller (`/unix` 153723 ->
+  144782 bytes), 119 KB more memory is free and the console reaches `login:` in
+  74 s instead of ~160 s. The machine is `yapdp.local`,
+  and `/.profile` sets `TERM=vt100` and the `^H` erase character the operator
+  keyboard sends, with the image's own profile kept beside it as
+  `/.profile.orig`. (`media/rp1.dsk.zst`, `media/manifest.json`,
+  `docs/ExampleBoots.md`)
 
 - **The operator's hand-written "Help Me!" sticky note no longer costs the front
   panel any size.** The note is taped beside the cabinet, and because the
@@ -413,6 +432,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+
+- **A devlog post marked `draft` no longer fails the test suite.** The guard
+  demanded a generated page, an index entry and a feed entry for every file in
+  `docs/devlog/`, so committing a draft broke `npm test`; the publication
+  checks now run over the published set, while the front-matter and image
+  checks still cover every file, drafts included. (`tests/devlog.test.js`)
 
 - **A VT100 scrolls with `ESC D` (IND) and `ESC M` (RI), the readings its own
   termcap entry is written against.** The VT100 dialect inherited the DECscope

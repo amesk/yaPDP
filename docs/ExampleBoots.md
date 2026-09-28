@@ -1003,32 +1003,39 @@ $ sysgen
 
 ## Example boot of BSD 2.11
 
+The shipped image is `2.11 BSD UNIX #1` built from the `YAPDP` configuration:
+no network stack, no network daemons, hostname `yapdp.local`, and a console
+profile that sets `TERM=vt100` and the erase character. Its build directory
+travels with the image (`/usr/src/sys/YAPDP`), so the kernel below is rebuilt in
+place — the recipe is at the end of this transcript.
+
 ```
 @boot rp1
 
 70Boot from xp(0,1,0) at 0176700
-Press <CR> to boot, or any other key to abort: 0
+Press <CR> to boot, or any other key to abort: 5
 : xp(0,1,0)unix
 Boot: bootdev=05010 bootcsr=0176700
 
-2.11 BSD UNIX #2: Oct 31 04:05:24 PST 1981
-    root@Sat:/usr/src/sys/VIXEN
+2.11 BSD UNIX #1: Fri Jun 9 00:01:15 CDT 1995
+    root@yapdp.local:/usr/src/sys/YAPDP
+
 
 phys mem  = 3915776
-avail mem = 3684480
+avail mem = 3612096
 user mem  = 307200
 
-hk ? csr 177440 vector 210 skipped:  No CSR.
-ht ? csr 172440 vector 224 skipped:  No CSR.
-ra ? csr 172150 vector 154 skipped:  No CSR.
+lp ? csr 177514 vector 200 skipped:  No CSR.
+ra 0 csr 172150 vector 154 vectorset attached
+rk 0 csr 177400 vector 220 attached
 rl 0 csr 174400 vector 160 attached
-tm 0 csr 172520 vector 224 attached
-tms ? csr 174500 vector 260 skipped:  No CSR.
-ts ? csr 172520 vector 224 interrupt vector already in use.
+ts ? csr 172520 vector 224 does not exist.
 xp 0 csr 176700 vector 254 attached
+cn 1 csr 176500 vector 310 skipped:  No CSR.
+cn 2 csr 176510 vector 320 skipped:  No CSR.
 Automatic reboot in progress...
-Sat Oct 31 16:00:38 PST 1981
-Sat Oct 31 16:00:38 PST 1981
+Fri Jun  9 00:04:53 CDT 1995
+Fri Jun  9 00:04:54 CDT 1995
 checking quotas: done.
 Assuming non-networking system ...
 checking for core dump...
@@ -1036,65 +1043,92 @@ preserving editor files
 clearing /tmp
 standard daemons: update cron accounting.
 starting lpd
-starting local daemons: sendmail.
-Sat Oct 31 16:00:40 PST 1981
+Fri Jun  9 00:05:03 CDT 1995
 
 
-2.11 BSD UNIX (vixen.2bsd.com) (console)
+2.11 BSD UNIX (yapdp.local) (console)
 
 login: root
 erase, kill ^U, intr ^C
+# uname -a
+BSD yapdp.local 2.11 2.11 BSD UNIX #1: Fri Jun 9 00:01:15 CDT 1995      root@yapdp.local:/usr/src/sys/YAPDP  pdp11
+# hostname
+yapdp.local
 # df
 Filesystem  1K-blocks     Used    Avail Capacity  Mounted on
-/dev/xp1a      163557    85424    78133    52%    /
+/dev/xp1a      164586    77775    86811    47%    /
 # ps -aux
 USER       PID NICE SZ TTY TIME COMMAND
-root         0   0   8 ?   0:00 swapper
-root         1   0  29 ?   0:00  (init)
-root        42   0  11 ?   0:00 update
-root        45   0  51 ?   0:00 cron
-root        49  -1  26 ?   0:00 acctd
-root        55   0  47 ?   0:00 /usr/sbin/lpd
-root        75   0  19 co  0:00 -sh
-root        81   0  59 co  0:00 ps -aux
+root         0   0   8 ?   0:00 [swapper]
+root         1   0  31 ?   0:00  (init)
+root        44   0  11 ?   0:00 update
+root        47   0  51 ?   0:00 cron
+root        51  -1  23 ?   0:00 acctd
+root        57   0  47 ?   0:00 /usr/sbin/lpd
+root        62   0  32 ?   0:00 - std.9600 ttyl1 (getty)
+root        63   0  32 ?   0:00 - std.9600 ttyl2 (getty)
+root        61   0  19 co  0:01 -sh
+root        69   0  67 co  0:00 ps -aux
 # ls -al
-total 721
-drwxr-xr-x 14 root         1024 Oct 31 04:11 .
-drwxr-xr-x 14 root         1024 Oct 31 04:11 ..
--rw-r--r--  1 root          349 Oct 29  1996 .cshrc
--rw-r--r--  1 root            0 May 17  1995 .hushlogin
--rw-r--r--  1 root          153 May  2  1997 .kermrc
--rw-r--r--  1 root          335 Oct 29  1996 .login
--rw-r--r--  1 root            8 Jan 17  1988 .mailrc
--rw-r--r--  1 root          152 Oct 29  1996 .profile
--rw-------  1 root            0 Apr 22  2000 .rhosts
--rw-r--r--  1 root           12 May  2  1997 .tiprc
--r--r--r--  1 root        18648 Aug 28  1992 README
--rw-r--r--  1 root         2714 Oct 31 02:55 VERSION
--rw-r--r--  1 root         3371 Oct 31 02:55 VERSION~
-drwxr-xr-x  3 root          512 Apr 23  2000 a
-drwxr-xr-x  2 root         1024 Apr 23  2000 bin
--rwxr-x---  1 root        36286 Oct 31 04:03 boot
-drwxr-xr-x  3 root         4608 Oct 31 04:23 dev
--rwxr-x--x  1 root        38798 Oct 31 04:03 disklabel
-drwxr-xr-x  3 root         1024 Oct 31 16:00 etc
--rwxr--r--  1 root       170258 Apr 22  2000 genunix
--rw-r-----  1 root        11520 Oct 31 16:00 hostid.core
-drwxr-xr-x  2 root          512 Apr 23  2000 lib
-drwxr-xr-x  2 root         1024 Aug 17  1990 lost+found
--rw-r--r--  1 root        27072 Oct 31 16:00 lpd.core
-drwxr-xr-x  2 root          512 Apr 23  2000 mdec
-drwxr-xr-x  2 root          512 Dec 31  1991 mnt
--rwxr-----  1 root       170258 Oct 31 03:15 oldunix
-drwxr-xr-x  2 root          512 Apr 23  2000 sbin
--rw-r--r--  1 root        24896 Oct 31 16:00 sendmail.core
-lrwxrwxrwx  1 root           11 Apr 23  2000 sys -> usr/src/sys
-drwxrwxrwt  2 root          512 Oct 31 16:00 tmp
--rwxr-xr-x  1 root        30490 Oct 31 04:03 toyset
--rwxr--r--  1 root       170509 Oct 31 04:05 unix
-drwxr-xr-x 28 root          512 Oct 31 02:03 usr
-drwxr-xr-x  6 root          512 Apr 23  2000 var
-lrwxrwxrwx  1 root            4 Apr 23  2000 vmunix -> unix
+total 688
+drwxr-xr-x 13 root          512 Jun  9 00:04 .
+drwxr-xr-x 13 root          512 Jun  9 00:04 ..
+-rw-r-----  1 root          349 Oct 31  1981 .cshrc
+-rw-r-----  1 root            0 Oct 31  1981 .hushlogin
+-rw-r-----  1 root          153 Oct 31  1981 .kermrc
+-rw-r-----  1 root          335 Oct 31  1981 .login
+-rw-r-----  1 root            8 Oct 31  1981 .mailrc
+-rw-r-----  1 root          159 Jun  9 00:04 .profile
+-rw-r-----  1 root          152 Jun  9 00:04 .profile.orig
+-rw-r-----  1 root           12 Oct 31  1981 .tiprc
+-rw-r-----  1 root           47 Oct 31  1981 PATCH-LOG
+-rw-r-----  1 root         2625 Oct 31  1981 VERSION
+drwxr-xr-x  2 root         1024 Oct 31  1981 bin
+-rwxr-x--x  1 root        36282 Oct 31  1981 boot
+drwxr-x--x  3 root         2560 Jun  9 00:04 dev
+-rwxr-x--x  1 root        38798 Oct 31  1981 disklabel
+drwxr-xr-x  3 root         1024 Jun  9 00:04 etc
+-rwxr-----  1 root       171007 Oct 31  1981 generic
+-rwxr-x--x  1 root       171025 Oct 31  1981 genunix
+-rw-r-----  1 root          692 Oct 31  1981 hanoi.c
+-rw-r-----  1 root           40 Oct 31  1981 hello.c
+drwxr-xr-x  2 root          512 Oct 31  1981 lib
+drwxr-xr-x  2 root         1024 Jun  8 23:21 lost+found
+drwxr-xr-x  2 root          512 Dec 31  1969 mdec
+drwxr-x--x  2 root          512 Oct 31  1981 mnt
+-rwxr--r--  1 root        76515 Oct 31  1981 netnix
+-rw-r-----  1 root         1690 Oct 31  1981 pi.c
+drwxr-xr-x  2 root          512 Oct 31  1981 sbin
+-rw-r-----  1 root          342 Oct 31  1981 size.c
+lrwxr-x--x  1 root           11 Oct 31  1981 sys -> usr/src/sys
+drwxrwxrwt  2 root          512 Jun  9 00:05 tmp
+-rwxr-x--x  1 root        30490 Oct 31  1981 toyset
+-rwxr--r--  1 root       144782 Jun  9 00:04 unix
+drwxr-xr-x 26 root          512 Oct 31  1981 usr
+drwxr-xr-x  6 root          512 Feb 13  2000 var
+# cat /.profile
+echo 'erase, kill ^U, intr ^C'
+stty erase "^H"
+TERM=vt100
+export TERM
+PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new
+export PATH
+HOME=/
+export HOME
+# cc hello.c
+# ./a.out
+Hello world
+# cc size.c
+# ./a.out
+Size of char: 1 byte
+Size of int: 2 bytes
+Size of long: 4 bytes
+Size of float: 4 bytes
+Size of double: 8 bytes
+# ls -al hello* size* a.out
+-rwxr-x--x  1 root         6436 Jun  9 00:05 a.out
+-rw-r-----  1 root           40 Oct 31  1981 hello.c
+-rw-r-----  1 root          342 Oct 31  1981 size.c
 # while true; do echo; /usr/games/fortune; sleep 5; done
 
 A man's best friend is his dogma.
@@ -1114,72 +1148,71 @@ But Charlie is no more.
 What Charlie thought was H2O was H2SO4.
 
 ^C
-# cat > hello.c
-#include <stdio.h>
-main() {
-    printf("Hello world\n");
-}
-^D
-# cc hello.c
-# ls -al hello* a.out
--rwxr-x--x  1 root         5335 Mar 31 15:52 a.out
--rw-r-----  1 root           59 Mar 31 15:52 hello.c
-# ./a.out
-Hello world
-# cat > size.c
-#include <stdio.h>
-int main() {
-    printf("Size of char: %d byte\n",sizeof(char));
-    printf("Size of int: %d bytes\n",sizeof(int));
-    printf("Size of float: %d bytes\n",sizeof(float));
-    printf("Size of double: %d bytes\n",sizeof(double));
-}
-^D
-# cc size.c
-# ./a.out
-Size of char: 1 byte
-Size of int: 2 bytes
-Size of float: 4 bytes
-Size of double: 8 bytes
-# cd /sys/VIXEN
+#
+```
+
+Rebuilding that kernel in place — the configuration is a list of knobs, and the
+network is three of them (`INET`, `NETHER`, `NSL`):
+
+```
+# hostname yapdp.local
+# cd /usr/src/sys/conf
+# sed -e '/^IDENT/s/VIXEN/YAPDP/' -e '/^INET/s/YES/NO/' \
+      -e '/^NETHER/s/1/0/' -e '/^NSL/s/1/0/' VIXEN > YAPDP
+# ./config YAPDP
+Creating ../YAPDP.
+Copying standard files to ../YAPDP.
+Setting configuration options for YAPDP.
+Creating device header files.
+# cd /usr/src/sys/YAPDP
 # make
-make -f Make.sys I=/usr/include H=../h M=../machine AS="/bin/as -V" CPP="/lib/cpp -P -DKERNEL -DVIXEN -DFPSIM -DSOFUB_MAP -I. -I../h"  CFLAGS="-O -DKERNEL -DVIXEN -DFPSIM -DSOFUB_MAP -I. -I../h" SED="/bin/sed"
-cc -O -DKERNEL -DVIXEN -DFPSIM -DSOFUB_MAP -I. -I../h -S ../sys/init_main.c
+make -f Make.sys I=/usr/include H=../h M=../machine AS="/bin/as -V" CPP="/lib/cpp -P -DKERNEL -DYAPDP -I. -I../h" CFLAGS="-O -DKERNEL -DYAPDP -I. -I../h" SED="/bin/sed"
+cc -O -DKERNEL -DYAPDP -I. -I../h -S ../sys/init_main.c
 /bin/sed -f SPLFIX init_main.s | /bin/as -V -u -o init_main.o
 rm -f init_main.s
-cc -O -DKERNEL -DVIXEN -DFPSIM -DSOFUB_MAP -I. -I../h -S ../sys/init_sysent.c
+cc -O -DKERNEL -DYAPDP -I. -I../h -S ../sys/init_sysent.c
 ...
-text    data    bss     dec     hex
-55168   8458    24348   87974   157a6   total text: 124736
-        overlays: 7680,7360,7680,7488,7488,7744,5632,8000,7744,2752
+make -f Make.pdp I=/usr/include H=../h M=../machine AS="/bin/as -V" ...
+make -f Make.pdpuba I=/usr/include H=../h M=../machine AS="/bin/as -V" ...
+make -f Make.pdpmba I=/usr/include H=../h M=../machine AS="/bin/as -V" ...
+...
 Compacting symbol table
 symcompact unix
-symcompact: 228 symbols removed
+symcompact: 234 symbols removed
 Compacting strings table
 strcompact unix
 rearranging symbols
 symorder ../pdp/symbols.sort unix
 ./checksys unix
-System will occupy 220576 bytes of memory (including buffers and clists).
+System will occupy 304224 bytes of memory (including buffers and clists).
 
-               end {0100046}          nbuf {0020350}           buf {0046716}
-             nproc {0020336}          proc {0063746}         ntext {0020340}
-              text {0077006}         nfile {0020344}          file {0074352}
-            ninode {0020342}         inode {0020432}      ncallout {0020346}
-           callout {0037216}     ucb_clist {0020354}        nclist {0020352}
-          ram_size {0000000}       xitdesc {0020430}      quotdesc {0000000}
-         namecache {0037736}       _iosize {0010456}          nlog {0017414}
+               end {0114474}          nbuf {0014712}           buf {0051442}
+             nproc {0014700}          proc {0074114}         ntext {0014702}
+              text {0113334}         nfile {0014706}          file {0110210}
+            ninode {0014704}         inode {0014774}      ncallout {0014710}
+           callout {0041604}     ucb_clist {0014716}        nclist {0014714}
+          ram_size {0000000}       xitdesc {0014772}      quotdesc {0000000}
+         namecache {0042364}       _iosize {0010746}          nlog {0013762}
 # make install
 install -c -o root -g kmem -m 744 unix /unix
+# ls -l /unix /genunix
+-rwxr-x--x  1 root       171025 Oct 31  1981 /genunix
+-rwxr--r--  1 root       144782 Jun  9 00:04 /unix
+# sync
 # shutdown -h now
-Shutdown at 04:29 (in 0 minutes) [pid 80]
+Shutdown at 00:04 (in 0 minutes) [pid 1156]
 
-        *** FINAL System shutdown message from root@vixen.2bsd.com ***
+
+        *** FINAL System shutdown message from root@yapdp.local ***
 
 System going down IMMEDIATELY
 
+
 System shutdown time has arrived
-# syncing disks... done
+
+June  9 00:04:23 yapdp.local shutdown: halt by root:
+June  9 00:04:27 yapdp.local syslogd: going down on signal 15
+syncing disks... done
 halting
 ```
 
