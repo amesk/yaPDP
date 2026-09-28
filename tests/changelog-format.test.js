@@ -16,6 +16,10 @@
  *   5. Working-tree entries carry no development-history markers (reverts,
  *      "again reworked", "fixed for good", numbered layering steps) — the
  *      changelog records the release, not the journey.
+ *   6. `[Unreleased]` carries at most ONE heading per kind (Added / Changed /
+ *      Fixed / Removed), in that order. Merging a branch folds its entries into
+ *      the section that is already there; appending a second `### Added` is how
+ *      the block grew nine headings for three streams of work.
  *
  * Run with:  node tests/changelog-format.test.js
  * Exit code 0 = all checks passed, non-zero = failure.
@@ -116,6 +120,32 @@ function run() {
         const m = re.exec(body);
         assert.ok(!m, "development-history marker in [Unreleased] ('" + m + "'): " +
             "record the final state, not the path to it (journalist rules)");
+    }
+
+    // 6. one section per kind inside [Unreleased], in the canonical order.
+    const ORDER = ["Added", "Changed", "Fixed", "Removed"];
+    const kinds = [];
+    for (let i = heads[0].line; i < (heads[1] ? heads[1].line - 1 : lines.length); i++) {
+        const m = /^### (.+?)\s*$/.exec(lines[i]);
+        if (m) kinds.push({ kind: m[1], line: i + 1 });
+    }
+    const seen = new Map();
+    for (const k of kinds) {
+        if (!ORDER.includes(k.kind)) continue;
+        assert.ok(!seen.has(k.kind),
+            "duplicate '### " + k.kind + "' in [Unreleased] (line " + k.line +
+            ", first on line " + seen.get(k.kind) + "): merge its entries into the " +
+            "section that is already there — one section per kind (journalist rules)");
+        seen.set(k.kind, k.line);
+    }
+    let lastKind = -1;
+    for (const k of kinds) {
+        const at = ORDER.indexOf(k.kind);
+        if (at < 0) continue;
+        assert.ok(at > lastKind,
+            "[Unreleased] sections must stay in Added -> Changed -> Fixed -> Removed " +
+            "order; '### " + k.kind + "' on line " + k.line + " breaks it");
+        lastKind = at;
     }
 
     console.log("All Changelog-format tests passed.");
