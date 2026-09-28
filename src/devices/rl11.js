@@ -31,6 +31,12 @@
         ? require("../core/device.js")
         : (global.yapdpCore || {});
 
+    // MountMap: explicit drive → image-url table (refactor). Falls back to
+    // the historical rl<unit>.dsk template when the drive has no override.
+    const MountMap = (typeof module !== "undefined" && module.exports)
+        ? require("../mountmap.js").MountMap
+        : (global.MountMap || { urlFor: (p, u, s) => p + u + (s || ".dsk") });
+
     // --- Interrupts ---
     const RL_VECTOR   = 0o160;   // Interrupt vector
     const RL_PRIORITY = 5 << 5;  // Interrupt priority
@@ -185,7 +191,7 @@
                     cache: [],
                     callback: (cb, code, position, address, count, options) =>
                         this.rlCallback(cb, code, position, address, count, options),
-                    url: `rl${drive}.dsk`,
+                    url: MountMap.urlFor("rl", drive, ".dsk"),
                     compressed: true, // Bundled disk images ship as .zst
                     drive,
                 };

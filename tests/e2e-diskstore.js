@@ -89,6 +89,31 @@ const PATTERN = 0xBEEF; // distinctive word written to block 0
     }
     console.log(`[5] fetchBlock overlays saved block after reload (status ${after.status})`);
 
+    // --- 5b. Core stack: a DiskService write reaches DiskStore when drained ---
+    // Regression for the bug where nothing called DiskService.flushDrive, so a
+    // guest write in the core stack never reached DiskStore/IndexedDB.
+    const coreDrain = await page.evaluate(async () => {
+      const m = window.__coreMachine;
+      if (!m || typeof window.__yapdpMountProvider !== "function") {
+        return "no-core-machine"; // legacy build — the check does not apply
+      }
+      window.__yapdpMountProvider("rk9.dsk");
+      const cb = { url: "rk9.dsk", cache: [] };
+      cb.cache[2] = new Uint16Array(131072 >>> 1);
+      cb.cache[2][0] = 0x5150;
+      m.disk.markDirty(cb, 2);
+      await m.disk.flushDrive("rk9.dsk");
+      return DiskStore.listDirty().indexOf("rk9.dsk") !== -1;
+    });
+    if (coreDrain === "no-core-machine") {
+      console.log("[5b] core machine absent (legacy build) — skipped");
+    } else if (coreDrain !== true) {
+      throw new Error("core stack: a flushed DiskService write never reached DiskStore");
+    } else {
+      console.log("[5b] core stack: DiskService write drained into DiskStore");
+      await page.evaluate(() => DiskStore.clear("rk9.dsk"));
+    }
+
     // --- 6. Cleanup: remove test data so the emulator stays pristine ---
     await page.evaluate(() => DiskStore.clear("rk0.dsk"));
     console.log("[6] cleaned up test data (rk0.dsk reset to factory)");

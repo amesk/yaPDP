@@ -286,7 +286,17 @@ var OSBoot = (function () {
             // Paper tapes are selected via the "#ptr" select, not mounted in
             // DataLoader, so they always stay available.
             if (s.paperTape) return true;
-            return have[s.url || urlFor(s.device)];
+            // A MountMap override (user bound a drive to a dropped image) wins
+            // over the naming convention: the scenario targets the drive
+            // (bootDev), not a specific file, so its image is "available" when
+            // the bound url is mounted.
+            var drive = s.bootDev || s.device;
+            var override;
+            if (typeof MountMap !== "undefined" && MountMap &&
+                typeof MountMap.get === "function") {
+                override = MountMap.get(drive);
+            }
+            return have[override || s.url || urlFor(s.device)];
         });
     }
 

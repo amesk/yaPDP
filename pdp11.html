@@ -1496,11 +1496,11 @@
           aria-labelledby="storage-tab-images">
           <div class="config-form">
             <div class="config-field">
-              <span class="config-label">Drop image</span>
+              <span class="config-label">Import image</span>
               <div class="config-control">
                 <span class="drop-zone" id="drop-zone" title="Drop a disk/tape image here">
                   <span class="drop-zone-icon">&#8681;</span>
-                  <span class="drop-zone-text">Drop image</span>
+                  <span class="drop-zone-text">Drop or pick a file</span>
                   <span class="drop-zone-hint">.dsk .tap .ptap .zst</span>
                   <input type="file" id="drop-file-input" accept=".dsk,.tap,.ptap,.zst,.dsk.zst,.tap.zst,.ptap.zst"
                     multiple hidden>
@@ -1511,23 +1511,72 @@
             <div class="config-field">
               <span class="config-label">Mounted images</span>
               <div class="config-control">
-                <select id="mounted-select" disabled>
-                  <option value="">--none--</option>
-                </select>
-                &nbsp;
-                <button type="button" id="mounted-remove" disabled>Unmount</button>
-                <span id="mounted-count" class="mounted-count">0 images</span>
-                <span class="config-hint">Mounted images persist across sessions.</span>
+                <span class="config-inline">
+                  <select id="mounted-select" disabled>
+                    <option value="">--none--</option>
+                  </select>
+                  <button type="button" id="mounted-remove" disabled>Unmount</button>
+                  <span id="mounted-count" class="mounted-count">0 images</span>
+                </span>
+                <span class="config-inline">
+                  <select id="assign-drive" disabled title="Drive to bind the selected image to">
+                    <option value="">&mdash; not bound &mdash;</option>
+                    <optgroup label="RK11 — RK05">
+                      <option value="rk0">rk0</option>
+                      <option value="rk1">rk1</option>
+                      <option value="rk2">rk2</option>
+                      <option value="rk3">rk3</option>
+                      <option value="rk4">rk4</option>
+                      <option value="rk5">rk5</option>
+                      <option value="rk6">rk6</option>
+                      <option value="rk7">rk7</option>
+                    </optgroup>
+                    <optgroup label="RL11 — RL01/RL02">
+                      <option value="rl0">rl0</option>
+                      <option value="rl1">rl1</option>
+                      <option value="rl2">rl2</option>
+                      <option value="rl3">rl3</option>
+                    </optgroup>
+                    <optgroup label="RP11 — RP04/RP06">
+                      <option value="rp0">rp0</option>
+                      <option value="rp1">rp1</option>
+                      <option value="rp2">rp2</option>
+                      <option value="rp3">rp3</option>
+                      <option value="rp4">rp4</option>
+                    </optgroup>
+                    <optgroup label="UDA50 — RA81">
+                      <option value="ra0">ra0</option>
+                      <option value="ra1">ra1</option>
+                      <option value="ra2">ra2</option>
+                      <option value="ra3">ra3</option>
+                    </optgroup>
+                    <optgroup label="TM11 — TU10 tape">
+                      <option value="tm0">tm0</option>
+                      <option value="tm1">tm1</option>
+                      <option value="tm2">tm2</option>
+                    </optgroup>
+                  </select>
+                  <button type="button" id="assign-btn" disabled>Bind</button>
+                  <button type="button" id="assign-anyway-btn" disabled hidden>Assign anyway</button>
+                </span>
+                <span id="assign-warning" class="config-warning"></span>
+                <span class="config-hint">Pick an image, pick a drive and press Bind (e.g. rp1.dsk
+                  &rarr; RP1); choose "&mdash; not bound &mdash;" to detach and return the drive to the
+                  file-name convention. An image whose size does not fit the controller is refused unless you
+                  press "Assign anyway". Mounted images persist across sessions; a bound drive is shown as
+                  "image &rarr; DRIVE".</span>
               </div>
             </div>
 
             <div class="config-field">
-              <span class="config-label">Export disk</span>
+              <span class="config-label">Export image</span>
               <div class="config-control">
                 <select id="downLoadSelect" disabled>
                   <option value="">--none--</option>
                 </select>
-                <span class="config-hint">Download a mounted disk image to your machine.</span>
+                &nbsp;
+                <button type="button" id="download-btn" disabled>Download</button>
+                <span class="config-hint">Download the selected image (guest writes included) to your machine.</span>
               </div>
             </div>
 
@@ -1573,11 +1622,11 @@
             </div>
 
             <div class="config-field">
-              <span class="config-label">Drop paper tape</span>
+              <span class="config-label">Import paper tape</span>
               <div class="config-control">
                 <span class="drop-zone" id="drop-zone-ptap" title="Drop a paper tape (.ptap) here">
                   <span class="drop-zone-icon">&#8681;</span>
-                  <span class="drop-zone-text">Drop tape</span>
+                  <span class="drop-zone-text">Drop or pick a tape</span>
                   <span class="drop-zone-hint">.ptap .ptap.zst</span>
                   <input type="file" id="drop-file-input-ptap" accept=".ptap,.ptap.zst" multiple hidden>
                 </span>
@@ -1747,7 +1796,9 @@
           </tr>
           <tr>
             <td class="disk"><b>Bootable Media &amp; Quick Boot</b></td>
-            <td>Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander.</td>
+            <td>Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11
+              and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the
+              self-building bootstrap and for programs like BASIC-11 and Lunar Lander.</td>
           </tr>
           <tr>
             <td class="disk"><b>Persistent Disk Images</b></td>
@@ -2066,6 +2117,8 @@ Hello world
   <script src='src/fpp.js'></script>
   <script src='src/pasteutil.js'></script>
   <script src='src/navactivity.js'></script>
+  <script src='src/mountmap.js'></script>
+  <script src='src/drive-geometry.js'></script>
   <script src='src/dataloader.js'></script>
   <script src='src/diskstore.js'></script>
   <script>

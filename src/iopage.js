@@ -2210,6 +2210,18 @@ function assertCompleteImage(response, buffer, url) {
     }
 }
 
+// --- driveUrl() ---
+// MountMap-aware drive url (refactor): an explicit override set through the
+// mount table wins; otherwise the historical <prefix><unit><suffix> template
+// is used, so unmapped drives behave exactly as before.
+function driveUrl(prefix, unit, suffix) {
+    if (typeof MountMap !== "undefined" && MountMap &&
+        typeof MountMap.urlFor === "function") {
+        return MountMap.urlFor(prefix, unit, suffix);
+    }
+    return prefix + unit + (suffix || ".dsk");
+}
+
 // --- fetchBlock() ---
 // Fetch a cache block from disk/tape image.
 // - For known-compressed images (controlBlock.compressed): fetches the .zst
@@ -3163,7 +3175,7 @@ iopage.register(0o17772520, 6, (function() {
             mtControlBlock[drive] = {
                 cache: [],
                 callback: mtCallback,
-                url: `tm${drive}.tap`,
+                url: driveUrl("tm", drive, ".tap"),
                 compressed: true, // Bundled tape images ship as .zst
                 drive,
                 position: 0,
@@ -3567,7 +3579,7 @@ iopage.register(0o17777400, 8, (function() {
                     rkControlBlock[drive] = {
                         cache: [],
                         callback: rkCallback,
-                        url: `rk${drive}.dsk`,
+                        url: driveUrl("rk", drive, ".dsk"),
                         compressed: true, // Bundled disk images ship as .zst
                         drive
                     };
@@ -3892,7 +3904,7 @@ iopage.register(0o17774400, 4, (function() {
             rlControlBlock[drive] = {
                 cache: [],
                 callback: rlCallback,
-                url: `rl${drive}.dsk`,
+                url: driveUrl("rl", drive, ".dsk"),
                 compressed: true, // Bundled disk images ship as .zst
                 drive
             };
@@ -4326,7 +4338,7 @@ iopage.register(0o17776700, 20, (function() {
                 rpControlBlock[drive] = {
                     cache: [],
                     callback: rpCallback,
-                    url: `rp${drive}.dsk`,
+                    url: driveUrl("rp", drive, ".dsk"),
                     compressed: true, // Bundled disk images ship as .zst
                     drive
                 };
@@ -4951,7 +4963,7 @@ iopage.register(0o17772150, 2, (function() {
                 rqControlBlock[unit] = {
                     cache: [],
                     callback: rqCallback,
-                    url: `ra${unit}.dsk`,
+                    url: driveUrl("ra", unit, ".dsk"),
                     compressed: true, // Bundled disk images ship as .zst
                     unit
                 };

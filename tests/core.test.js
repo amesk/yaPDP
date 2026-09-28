@@ -28,6 +28,7 @@ const { Rk11 } = require(path.join(__dirname, "..", "src", "devices", "rk11.js")
 const { PtrPtp } = require(path.join(__dirname, "..", "src", "devices", "ptr11.js"));
 const { Lp11 } = require(path.join(__dirname, "..", "src", "devices", "lp11.js"));
 const { DiskService, IO_BLOCKSIZE } = require(path.join(__dirname, "..", "src", "devices", "disk-service.js"));
+const { MountMap } = require(path.join(__dirname, "..", "src", "mountmap.js"));
 
 // ----------------------------------------------------------------------
 // Test helpers for devices
@@ -522,6 +523,16 @@ const p10 = (async () => {
     rk.restore({ ...snap, rkba: 0x1234 });
     assert.strictEqual(rk.rkba, 0x1234);
     ok("rk11: snapshot/restore round-trips controller state");
+
+    // MountMap override: a controller asks the drive→url table instead of
+    // building rk<unit>.dsk, so a remapped drive reads the bound image.
+    MountMap.clear();
+    MountMap.set("rk2", "custom.dsk");
+    const rk2 = new Rk11(m, "rk2", { regions: [{ address: 0o17777600, count: 8 }] });
+    assert.strictEqual(rk2._controlBlockFor(2).url, "custom.dsk");
+    assert.strictEqual(new Rk11(m, "rk3")._controlBlockFor(3).url, "rk3.dsk");
+    MountMap.clear();
+    ok("rk11: control block url follows a MountMap override");
 })();
 
 // ----------------------------------------------------------------------

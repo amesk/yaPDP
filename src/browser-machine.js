@@ -255,6 +255,47 @@
     machine.addDevice(uda);
     uda.install();
 
+    // loadBaseBytes(url) — the pristine image bytes: DataLoader when mounted,
+    // otherwise the network (media/<url>.zst, then the raw file). On success
+    // the bytes are mounted into DataLoader, so the disk provider and the
+    // exporter share ONE fetch path. Resolves undefined when unavailable.
+    async function loadBaseBytes(url) {
+        if (typeof DataLoader === "undefined") return undefined;
+        var local = DataLoader.get(url);
+        if (local !== undefined) return local;
+        // Desktop bundle: images are mounted asynchronously by
+        // tauri-bundled.js. Do NOT fall through to a network fetch (the desktop
+        // build ships media/ as Tauri resources, not as static files, so
+        // 'media/<url>' would 404). Wait for the bundle, then re-check.
+        if (window.__yapdpBundledReady && typeof window.__yapdpBundledReady.then === "function") {
+            try { await window.__yapdpBundledReady; } catch (e) { /* keep going */ }
+            var afterBundle = DataLoader.get(url);
+            if (afterBundle !== undefined) return afterBundle;
+        }
+        if (typeof fetch !== "function" || typeof fzstd === "undefined") return undefined;
+        try {
+            var resp = await fetch("media/" + url + ".zst");
+            if (resp.ok) {
+                var buf = await resp.arrayBuffer();
+                var raw = fzstd.decompress(new Uint8Array(buf));
+                DataLoader.mount(url, raw);
+                return raw;
+            }
+        } catch (e) {
+            // Paper tapes may ship compressed (.ptap.zst) or raw (.ptap), so a
+            // failed .zst probe is not fatal — fall through to the raw file.
+        }
+        try {
+            var rawResp = await fetch("media/" + url);
+            if (!rawResp.ok) return undefined;
+            var rawBytes = new Uint8Array(await rawResp.arrayBuffer());
+            DataLoader.mount(url, rawBytes);
+            return rawBytes;
+        } catch (e) {
+            return undefined;
+        }
+    }
+
     function dataLoaderProvider(url) {
         // LAZY provider: DataLoader is filled by dragdrop.js / quickboot
         // / tauri-bundled.js at various times, so every readBlock re-reads
@@ -292,50 +333,14 @@
         }
 
         async function baseBytes() {
-            if (typeof DataLoader === 'undefined') return undefined;
-            var local = DataLoader.get(url);
+            var local = (typeof DataLoader !== "undefined") ? DataLoader.get(url) : undefined;
             if (local !== undefined) return local;
-            // Desktop bundle: images are mounted asynchronously by
-            // tauri-bundled.js. Do NOT fall through to a network fetch (the
-            // desktop build ships media/ as Tauri resources, not as static
-            // files, so 'media/<url>' would 404). Wait for the bundle to
-            // finish mounting, then re-check DataLoader. Without this a
-            // guest whose image is not mounted yet reads an empty image and
-            // appears not to start (slow images mount last).
-            if (window.__yapdpBundledReady && typeof window.__yapdpBundledReady.then === 'function') {
-                try { await window.__yapdpBundledReady; } catch (e) { /* keep going */ }
-                var afterBundle = DataLoader.get(url);
-                if (afterBundle !== undefined) return afterBundle;
-            }
-            if (fetched || typeof fetch !== 'function' || typeof fzstd === 'undefined') {
-                return undefined;
-            }
+            // One network attempt per provider: an unreachable image must not
+            // make every cache miss re-fetch. loadBaseBytes() is shared with
+            // the exporter (window.exportDiskImage).
+            if (fetched) return undefined;
             fetched = true;
-            try {
-                var resp = await fetch('media/' + url + '.zst');
-                if (resp.ok) {
-                    var buf = await resp.arrayBuffer();
-                    var raw = fzstd.decompress(new Uint8Array(buf));
-                    DataLoader.mount(url, raw);
-                    return raw;
-                }
-            } catch (e) {
-                // Paper tapes may ship compressed (.ptap.zst) or raw (.ptap),
-                // so a failed .zst probe is not fatal — fall through to the
-                // raw-file fetch below. (Mirrors iopage.js fetchBlock()/reader.)
-            }
-            // No .zst image available: fall back to the raw file (e.g. Lander
-            // ships as a raw lander.ptap, while every disk/tape image ships
-            // .zst-compressed).
-            try {
-                var rawResp = await fetch('media/' + url);
-                if (!rawResp.ok) return undefined;
-                var rawBytes = new Uint8Array(await rawResp.arrayBuffer());
-                DataLoader.mount(url, rawBytes);
-                return rawBytes;
-            } catch (e) {
-                return undefined;
-            }
+            return loadBaseBytes(url);
         }
 
         return {
@@ -371,26 +376,117 @@
         };
     }
 
-    // Mount every possible RK drive up front; the lazy provider resolves
-    // the bytes from DataLoader whenever the guest actually reads them.
+    // ensureProvider(url) — attach (or replace) the lazy DataLoader provider
+    // of one image url. Exposed as window.__yapdpMountProvider so the UI
+    // layer (dragdrop.js) can register a provider for a user image whose url
+    // is not one of the well-known defaults below — required when a MountMap
+    // override points a drive at that url.
+    function ensureProvider(url) {
+        if (!url) return;
+        machine.mountDrive(url, dataLoaderProvider(url));
+    }
+    window.__yapdpMountProvider = ensureProvider;
+
+    // Mount every well-known drive up front; the lazy provider resolves the
+    // bytes from DataLoader whenever the guest actually reads them. Any url
+    // referenced by a MountMap override is mounted too, so a remapped drive
+    // (e.g. rl0 -> mybsd.dsk) reads its image instead of implicit zeros.
     function mountDrives() {
         for (var d = 0; d < 8; d++) {
-            machine.mountDrive("rk" + d + ".dsk", dataLoaderProvider("rk" + d + ".dsk"));
+            ensureProvider("rk" + d + ".dsk");
         }
         for (var p = 0; p < 5; p++) {
-            machine.mountDrive("rp" + p + ".dsk", dataLoaderProvider("rp" + p + ".dsk"));
+            ensureProvider("rp" + p + ".dsk");
         }
         for (var l = 0; l < 4; l++) {
-            machine.mountDrive("rl" + l + ".dsk", dataLoaderProvider("rl" + l + ".dsk"));
+            ensureProvider("rl" + l + ".dsk");
         }
         for (var a = 0; a < 4; a++) {
-            machine.mountDrive("ra" + a + ".dsk", dataLoaderProvider("ra" + a + ".dsk"));
+            ensureProvider("ra" + a + ".dsk");
         }
         for (var t = 0; t < 3; t++) {
-            machine.mountDrive("tm" + t + ".tap", dataLoaderProvider("tm" + t + ".tap"));
+            ensureProvider("tm" + t + ".tap");
+        }
+        if (typeof MountMap !== "undefined" && MountMap &&
+            typeof MountMap.list === "function") {
+            var overrides = MountMap.list();
+            Object.keys(overrides).forEach(function (key) {
+                ensureProvider(overrides[key]);
+            });
         }
     }
     mountDrives();
+
+    // Persist guest writes (refactor): DiskService keeps written blocks in its
+    // per-drive cache and marks them dirty, but nothing pushed them to the
+    // provider on its own — so DiskStore/IndexedDB never saw a guest write in
+    // the core stack (the legacy diskIO path called DiskStore.markDirty
+    // directly). Drain the dirty drives into the provider (dataLoaderProvider
+    // -> DiskStore) on a short timer and on page hide, the "flush on a cadence
+    // + pagehide" contract the legacy path already used. Cheap: flushDrive()
+    // returns immediately for a drive with no dirty blocks.
+    function flushDirtyDrives() {
+        var drives = machine.disk.drives || {};
+        Object.keys(drives).forEach(function (url) {
+            var d = drives[url];
+            if (d && d.dirty && d.dirty.size > 0) {
+                try { machine.disk.flushDrive(url); } catch (e) { /* keep going */ }
+            }
+        });
+    }
+    setInterval(flushDirtyDrives, 1000);
+    if (typeof window !== "undefined" && window.addEventListener) {
+        window.addEventListener("pagehide", flushDirtyDrives);
+    }
+
+    // exportDiskImage(url) -> Promise<Uint8Array|null> — assemble the CURRENT
+    // image for download: the pristine base bytes (DataLoader) overlaid with
+    // the guest's writes — the session cache (freshest) first, then the blocks
+    // persisted in DiskStore (from an earlier session). Returns null when the
+    // image is not mounted. The legacy stack had no exporter at all, so the
+    // Storage "Export image" control was dead in the core mode; this is its
+    // core-stack implementation.
+    async function diskImageBytes(url) {
+        // The base may be missing when the image is not mounted (an exportable
+        // image with saved changes but no live mount): fetch it the same way
+        // the disk provider would. Export is cancelled (null) when unavailable.
+        var base = await loadBaseBytes(url);
+        if (!base) return null;
+        var BLOCK = 131072; // IO_BLOCKSIZE
+        var out = base.slice();
+
+        // 1. Session overlay — blocks in DiskService's per-drive cache.
+        var drive = machine.disk.drives[url];
+        var cache = drive ? drive.cache : null;
+        if (cache) {
+            for (var b = 0; b < cache.length; b++) {
+                var block = cache[b];
+                if (!block) continue;
+                var off = b * BLOCK;
+                if (off >= out.length) continue;
+                for (var w = 0; w < block.length; w++) {
+                    var o = off + w * 2;
+                    if (o + 1 >= out.length) break;
+                    out[o] = block[w] & 0xFF;
+                    out[o + 1] = (block[w] >>> 8) & 0xFF;
+                }
+            }
+        }
+
+        // 2. Persisted overlay — write-back blocks saved by DiskStore.
+        if (typeof DiskStore !== "undefined" && typeof DiskStore.blocksFor === "function") {
+            var saved = DiskStore.blocksFor(url);
+            for (var i = 0; i < saved.length; i++) {
+                var bytes = await DiskStore.getBlock(url, saved[i]);
+                if (!bytes) continue;
+                var off2 = saved[i] * BLOCK;
+                if (off2 >= out.length) continue;
+                out.set(bytes.subarray(0, Math.min(bytes.length, out.length - off2)), off2);
+            }
+        }
+        return out;
+    }
+    window.exportDiskImage = diskImageBytes;
 
     // ------------------------------------------------------------------
     // PTR11/PTP11 paper tape — bytes from DataLoader; punch hooks

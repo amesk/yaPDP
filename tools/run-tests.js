@@ -50,6 +50,8 @@ const ORDER = [
     "teletype-cabinet-css.test.js",
     "teletype-svg-backdrop.test.js",
     "dataloader.test.js",
+    "mountmap.test.js",
+    "drive-geometry.test.js",
     "diskstore.test.js",
     "onboarding.test.js",
     "imgerror.test.js",

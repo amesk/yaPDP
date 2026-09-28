@@ -10,6 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Disks and tapes can be mounted onto a chosen drive.** The Storage page
+  lists every mounted image with its binding ("image -> DRIVE") and gains an
+  "Assign to drive" control: pick a mounted image, pick a drive
+  (rk0-rk7, rl0-rl3, rp0-rp4, ra0-ra3, tm0-tm2), press Bind — the drive then
+  reads that image and the guest boots it from there. Choosing "-- not bound --"
+  detaches the image and returns the drive to the file-name convention. An image
+  whose size does not fit the chosen controller (e.g. an RP06 image on an
+  RK05-only RK11) is refused, with the mismatch explained, unless the operator
+  takes the explicit "Assign anyway" path. Controllers ask a drive -> image-url
+  table for their image instead of building the name from the unit number, and
+  bindings are remembered between sessions. (`src/mountmap.js`,
+  `src/drive-geometry.js`, `src/dragdrop.js`, `src/devices/rk11.js`,
+  `src/devices/rl11.js`, `src/devices/rp11.js`, `src/devices/uda50.js`,
+  `src/devices/tm11.js`, `src/iopage.js`, `src/browser-machine.js`,
+  `src/osboot.js`, `css/pdp11.css`, `pdp11.html`)
+
 - **On a phone the operator command rows keep their frequent actions at one tap
   and fold the rest into a "More…" menu.** Every command strip the touch layout
   docks is measured, and only a row that really cannot fit the screen folds its
@@ -157,11 +173,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Leaving the CONFIG page no longer warns about uncommitted changes that were
-  never made.** The user-terminal dialects are compared only for the terminals
-  actually installed, so a stale entry for an absent terminal (e.g. VT100 once
-  picked for TT1, the terminals removed later) no longer marks the form as
-  edited. (`src/pdp11-app.js`)
+- **Leaving the CONFIG page no longer warns about "uncommitted changes" that
+  were never made.** The user-terminal dialects kept in the config are compared
+  only for the terminals actually installed: a stale entry for an absent
+  terminal (e.g. VT100 once picked for TT1, the terminals removed later) no
+  longer makes the form look edited.
+
+- **Guest-OS writes made in the refactored machine stack (`?core=1`, the
+  default) are saved again.** The disk service kept written blocks in its own
+  cache but nothing ever pushed them to the write-back layer, so a file created
+  in a guest OS never reached browser storage and the "Persistent disk changes"
+  list stayed empty; the writes are now drained to that layer while the machine
+  runs and on leaving the page, and the list refreshes itself.
+
+- **The "Export image" control works in the refactored machine stack (`?core=1`,
+  the default).** The list of downloadable images was filled by the legacy
+  stack only, so the select stayed disabled there; it is now built from the
+  mounted images AND any image with saved write-back blocks (a detached image
+  keeps its changes), and a Download button saves the selected one — the
+  pristine base, fetched on demand when the image is not mounted, with the
+  guest's writes (session and saved) applied on top — as a raw disk image.
+  Every entry states its state ("no changes", "N blocks changed", or "not
+  mounted, N blocks changed"), so a bundled or IndexedDB copy with no changes
+  is still offered while the user's own freshly dropped file is recognisably
+  the same file. When even the base cannot be fetched the export is refused
+  with the usual image-load error dialog.
 
 - **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the
   rest) fit a phone screen.** The shared dialog box is capped by the window on

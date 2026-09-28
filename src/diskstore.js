@@ -247,6 +247,26 @@ var DiskStore = (() => {
         return saved ? saved.size : 0;
     }
 
+    // Saved block numbers of one image — used by the export path to overlay
+    // the persisted write-back blocks onto the pristine base image.
+    function blocksFor(url) {
+        const saved = savedIndex.get(url);
+        return saved ? Array.from(saved) : [];
+    }
+
+    // Blocks that differ from the pristine image: saved in IDB PLUS the ones
+    // still pending in memory. dirtyBlockCount() reports the saved set only, so
+    // the Storage "Export image" label needs this union to stay truthful
+    // between a guest write and the next flush.
+    function changedBlockCount(url) {
+        const set = new Set();
+        const saved = savedIndex.get(url);
+        if (saved) saved.forEach((b) => set.add(b));
+        const entry = pending.get(url);
+        if (entry) entry.dirty.forEach((b) => set.add(b));
+        return set.size;
+    }
+
     // Discard saved changes for one image (both IDB and in-memory index).
     function clear(url) {
         const entry = pending.get(url);
@@ -395,6 +415,8 @@ var DiskStore = (() => {
         hasDirty,
         listDirty,
         dirtyBlockCount,
+        blocksFor,
+        changedBlockCount,
         clear,
         clearAll,
         init,

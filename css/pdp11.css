@@ -3207,6 +3207,29 @@ body.crt-effects .vt52-crt::after {
     color: #8a857a;
 }
 
+/* Drive/image compatibility warning on the Storage page (amber, own line). */
+.config-warning {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #d8a24a;
+}
+
+/* Two logical control rows inside one Storage field — image + Unmount, then
+   drive + Bind. Without this the whole thing is one inline flow, and on a
+   narrow screen the flow wraps Bind to the START of the next line, i.e. to the
+   left of Unmount. Each row now keeps its own controls together. */
+.config-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.config-inline+.config-inline {
+    margin-top: 6px;
+}
+
 /* A hint that directly follows an action button needs a real gap — 4px made
    "Restore defaults" look glued to its "Fills the form with…" hint. */
 .config-control button+.config-hint {
