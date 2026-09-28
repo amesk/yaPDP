@@ -400,10 +400,41 @@
     // ------------------------------------------------------------------
     // Export image (download a stored image, guest writes included)
     // ------------------------------------------------------------------
-    // "rp1.dsk  →  RP1  (12 blocks changed)" — the list must say WHY an image is
-    // offered: a bundled / IndexedDB copy with no changes is still worth saving
-    // (the user has no local file), while a freshly dropped untouched image is
-    // just the file they already hold.
+    // The rule is exportableUrls() below; exportLabel() then says WHY an entry
+    // is offered: "rp1.dsk  →  RP1  (12 blocks changed)".
+
+    /**
+     * exportableUrls(mounted, changed, user) — which images "Export image"
+     * offers.
+     *
+     * An image is offered when there is something to save:
+     *
+     *   - it has guest writes — saved in DiskStore, or still pending in the
+     *     running machine (`changed` is that union, see DiskStore.listDirty),
+     *     so a guest that writes re-adds its own image on the next refresh; or
+     *   - the OPERATOR mounted it (drag & drop, or restored from IndexedDB):
+     *     that is a file of theirs, whose current state they may want back.
+     *
+     * An image that merely happens to be mounted — bundled media the machine
+     * streams while a guest runs, with no changes of its own — is NOT offered.
+     * Listing it made "Export image" read like a directory of media/, and it is
+     * exactly why "Reset all" could not fall back to "--none--": a pristine
+     * bundled image is one download away and is nothing the operator produced.
+     */
+    function exportableUrls(mounted, changed, user) {
+        var have = {};
+        var out = [];
+        mounted.concat(changed).forEach(function (url) {
+            if (!url || have[url]) return;
+            var written = changed.indexOf(url) !== -1;
+            var mine = !!(user && user[url]);
+            if (!written && !mine) return;
+            have[url] = true;
+            out.push(url);
+        });
+        return out.sort();
+    }
+
     function exportLabel(url, bindings, mounted) {
         var n = (typeof DiskStore !== "undefined" &&
                  typeof DiskStore.changedBlockCount === "function")
@@ -425,17 +456,12 @@
             return; // legacy stack manages this select on its own
         }
         var prev = select.value;
-        // Every exportable image: the ones mounted now PLUS any image with saved
-        // write-back blocks (a detached image keeps its changes in DiskStore).
+        // Which images may be exported — see exportableUrls(): guest writes, or
+        // an image the operator mounted themselves.
         var mounted = (typeof DataLoader !== "undefined") ? DataLoader.list() : [];
         var changed = (typeof DiskStore !== "undefined" && typeof DiskStore.listDirty === "function")
             ? DiskStore.listDirty() : [];
-        var have = {};
-        var urls = [];
-        mounted.concat(changed).forEach(function (url) {
-            if (!have[url]) { have[url] = true; urls.push(url); }
-        });
-        urls.sort();
+        var urls = exportableUrls(mounted, changed, userImages);
         var bindings = bindingsByUrl();
         select.innerHTML = "";
         if (!urls.length) {
@@ -723,6 +749,19 @@
             e.preventDefault();
             hideOverlay();
         });
+    }
+
+    // The rule and the list builder, on window for the unit test
+    // (tests/export-list.test.js) — the same kind of seam the VT52 marker
+    // parser has (window.vt52MarkerVars). The page never reads it; the
+    // userImages map is handed out so a test can mount an image "by hand" the
+    // way a drag & drop would.
+    if (typeof window !== "undefined") {
+        window.yapdpExportList = {
+            exportableUrls: exportableUrls,
+            refreshExportList: refreshExportList,
+            userImages: userImages
+        };
     }
 
     if (document.readyState === "loading") {

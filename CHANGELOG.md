@@ -464,15 +464,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The "Export image" control works in the refactored machine stack (`?core=1`,
   the default).** The list of downloadable images was filled by the legacy
   stack only, so the select stayed disabled there; it is now built from the
-  mounted images AND any image with saved write-back blocks (a detached image
-  keeps its changes), and a Download button saves the selected one — the
-  pristine base, fetched on demand when the image is not mounted, with the
-  guest's writes (session and saved) applied on top — as a raw disk image.
-  Every entry states its state ("no changes", "N blocks changed", or "not
-  mounted, N blocks changed"), so a bundled or IndexedDB copy with no changes
-  is still offered while the user's own freshly dropped file is recognisably
-  the same file. When even the base cannot be fetched the export is refused
-  with the usual image-load error dialog.
+  images that have something to save — guest writes (saved or still pending in
+  the running machine; a detached image keeps its changes) or an image the
+  operator mounted themselves — and a Download button saves the selected one —
+  the pristine base, fetched on demand when the image is not mounted, with the
+  guest's writes applied on top — as a raw disk image. Every entry states its
+  state ("N blocks changed", "not mounted, N blocks changed", or "no changes"
+  for the operator's own mounted file): pristine bundled media is not offered
+  at all, so the list — and "Reset all" — falls back to "--none--". When even
+  the base cannot be fetched the export is refused with the usual image-load
+  error dialog. (`src/dragdrop.js`; pinned by `tests/export-list.test.js`)
 
 - **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the
   rest) fit a phone screen.** The shared dialog box is capped by the window on
