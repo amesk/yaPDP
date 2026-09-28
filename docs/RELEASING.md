@@ -43,7 +43,11 @@ bump → document → build → publish. Total time: under an hour.
       source (`assets/images/manual/`) and the React landing mirror
       (`landing/public/assets/images/manual/`) — confirm both trees are
       updated and committed together so the docs never show a stale look.
-      (`docs/BUILDING.md` lists the command under the User-manual section)
+      A regenerated tree usually rewrites every PNG: `npm run shots:compare`
+      shows which shots really changed and `npm run shots:restore` reverts the
+      ones that only moved by a sub-pixel, so the release keeps just the
+      meaningful images.
+      (`docs/BUILDING.md` lists the commands under the User-manual section)
 - [ ] CHANGELOG `[Unreleased]` contains everything significant since the last
       tag — if the CHANGELOG maintenance rule was followed, it already does
 

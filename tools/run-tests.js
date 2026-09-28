@@ -52,6 +52,7 @@ const ORDER = [
     "dataloader.test.js",
     "mountmap.test.js",
     "drive-geometry.test.js",
+    "compare-shots.test.js",
     "diskstore.test.js",
     "onboarding.test.js",
     "imgerror.test.js",
