@@ -157,6 +157,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Leaving the CONFIG page no longer warns about uncommitted changes that were
+  never made.** The user-terminal dialects are compared only for the terminals
+  actually installed, so a stale entry for an absent terminal (e.g. VT100 once
+  picked for TT1, the terminals removed later) no longer marks the form as
+  edited. (`src/pdp11-app.js`)
+
 - **Modal dialogs (Machine state, Quick boot, reboot, image-load error and the
   rest) fit a phone screen.** The shared dialog box is capped by the window on
   both axes and scrolls when it overflows, and the action row wraps on a narrow
