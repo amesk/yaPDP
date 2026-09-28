@@ -20,7 +20,11 @@
  *      hero buttons had exactly this defect on the first build;
  *   4. a page missing what the landing page carries (check 3b below);
  *   5. a generator marker ({.class}, :::) leaking into a published page;
- *   6. the feed not listing every post, or listing them out of date order.
+ *   6. the feed not listing every post, or listing them out of date order;
+ *   7. a draft treated as a published post — a page, an index entry or a feed
+ *      entry for a file that is still being written (check 7 writes a throwaway
+ *      draft and proves both halves: it is skipped, and the same file without
+ *      the flag is published).
  *
  * The pages, the index and the feed are generated in memory: devlog/ is a build
  * product (not committed — see .gitignore), so every check runs against exactly
@@ -66,6 +70,15 @@ function run() {
     return { file: f, meta, slug: f.replace(/\.md$/, "") };
   });
 
+  // A draft is not a post: it is written, parsed and validated like one, but it
+  // is not published — no page, no index entry, nothing in the feed (check 7
+  // pins the flag itself). The checks below therefore run on the published set;
+  // the front-matter and image checks above still cover EVERY file in the
+  // folder, so a broken draft fails here while it is being written.
+  const livePosts = posts.filter((p) => p.meta.draft !== "true");
+  const drafts = posts.filter((p) => p.meta.draft === "true");
+  assert.ok(livePosts.length > 0, "docs/devlog/ has no published post");
+
   // --- 2. every image the post names exists ---------------------------------
   for (const p of posts) {
     const body = fs.readFileSync(path.join(SRC, p.file), "utf8");
@@ -106,8 +119,8 @@ function run() {
     }
   }
 
-  // --- 3. every post is generated and carries no root-relative links --------
-  for (const p of posts) {
+  // --- 3. every published post is generated, with no root-relative links ----
+  for (const p of livePosts) {
     const html = pageBySlug[p.slug];
     assert.ok(html, "the generator produced no page for " + p.slug +
       " (docs/devlog/" + p.file + ")");
@@ -214,7 +227,7 @@ function run() {
   // generated HTML against a bundle would be brittle. What is pinned is the
   // effect, named in the message so a failure says what is missing.
   const landing = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-  const pages = posts.map((p) => ["devlog/" + p.slug + ".html", pageBySlug[p.slug]]);
+  const pages = livePosts.map((p) => ["devlog/" + p.slug + ".html", pageBySlug[p.slug]]);
   pages.push(["devlog/index.html", built.index]);
 
   const shared = [
@@ -291,7 +304,7 @@ function run() {
   // and failed the moment the two disagreed.
   const feed = built.feed;
   assert.ok(feed.length > 0, "the generator produced an empty feed");
-  for (const p of posts) {
+  for (const p of livePosts) {
     assert.ok(feed.indexOf(p.slug + ".html") !== -1,
       "the feed does not list the post: " + p.slug);
   }
@@ -300,12 +313,12 @@ function run() {
   const feedOrder = [...feed.matchAll(/([^/"<>]+\.html)/g)]
     .map((m) => m[1].replace(/\.html$/, ""))
     .filter((s, i, a) => a.indexOf(s) === i);
-  assert.ok(feedOrder.length === posts.length,
-    "the feed names " + feedOrder.length + " post(s), expected " + posts.length);
+  assert.ok(feedOrder.length === livePosts.length,
+    "the feed names " + feedOrder.length + " post(s), expected " + livePosts.length);
   const bySlug = {};
-  for (const p of posts) bySlug[p.slug] = p.meta.date;
+  for (const p of livePosts) bySlug[p.slug] = p.meta.date;
   const feedDates = feedOrder.map((s) => bySlug[s]);
-  const dates = posts.map((p) => p.meta.date).slice()
+  const dates = livePosts.map((p) => p.meta.date).slice()
     .sort((a, b) => (a === b ? 0 : (a < b ? 1 : -1)));
   assert.deepStrictEqual(feedDates, dates,
     "the feed is not ordered newest-first: " + JSON.stringify(feedDates) +
@@ -314,7 +327,7 @@ function run() {
 
   // the index links every post too
   const index = built.index;
-  for (const p of posts) {
+  for (const p of livePosts) {
     assert.ok(index.indexOf(p.slug + ".html") !== -1,
       "the index does not link the post: " + p.slug);
   }
@@ -342,9 +355,9 @@ function run() {
       "This post must not be published.\n");
     try {
       const withDraft = generate();
-      assert.strictEqual(withDraft.posts.length, posts.length,
+      assert.strictEqual(withDraft.posts.length, livePosts.length,
         "a draft was counted as a post (" + withDraft.posts.length +
-        " against " + posts.length + ")");
+        " against " + livePosts.length + ")");
       assert.ok(withDraft.index.indexOf("draft-guard") === -1,
         "a draft reached the index");
       assert.ok(withDraft.feed.indexOf("draft-guard") === -1,
@@ -359,7 +372,7 @@ function run() {
         "summary: \"Written by the test suite; never committed.\"\n---\n\n" +
         "The same file, published.\n");
       const published = generate();
-      assert.strictEqual(published.posts.length, posts.length + 1,
+      assert.strictEqual(published.posts.length, livePosts.length + 1,
         "a post without the draft flag was NOT published — the guard would pass " +
         "even if the folder had stopped being read");
       assert.ok(published.index.indexOf("draft-guard") !== -1,
@@ -369,8 +382,10 @@ function run() {
     }
   }
 
-  console.log("devlog: all checks passed (" + posts.length + " post(s): " +
-    posts.map((p) => p.slug).join(", ") + ")");
+  console.log("devlog: all checks passed (" + livePosts.length + " post(s): " +
+    livePosts.map((p) => p.slug).join(", ") +
+    (drafts.length ? "; " + drafts.length + " draft(s): " +
+      drafts.map((p) => p.slug).join(", ") : "") + ")");
 }
 
 run();
