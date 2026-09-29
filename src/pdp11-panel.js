@@ -504,20 +504,35 @@ function examineDeposit(data) {
     // Stop any runaway teletype output backlog before restarting the CPU,
     // so the @ prompt is immediately visible and usable.
     flushG60Console();
-    resetPanelControls();
-    // The default bootstrap is started only when the operator explicitly asks
-    // for it (Bootstrap now! passes forceBoot) or when the auto-boot option is
-    // set — otherwise the machine reboots into a halted state and the operator
-    // boots it manually.
-    if (forceBoot ||
-        (typeof Config !== 'undefined' && Config.get().autoBoot)) {
-      boot();
-    } else if (typeof CPU !== 'undefined') {
-      // No bootstrap: halt the CPU so the machine really rests. Without this,
-      // a bootstrap already loaded in RAM (e.g. from an earlier boot) would
-      // keep running and print its prompt again.
-      CPU.runState = STATE_HALT;
-    }
+
+    // Disks first: a controller reset must not keep serving blocks cached by
+    // the previous boot (2.11 BSD / Unix V5 read a kernel in many blocks and
+    // then stall silently; RT-11 reads one block and never noticed). Flush the
+    // guest's dirty writes into the image, then drop the caches, and only then
+    // reset the machine — dropping the cache first would lose the writes.
+    // This is the awaited variant; the panel keeps working the same way, the
+    // reboot just completes a tick later.
+    var disksReady = (typeof window !== 'undefined' &&
+        typeof window.__yapdpFlushAndResetDisks === 'function')
+      ? window.__yapdpFlushAndResetDisks()
+      : Promise.resolve();
+
+    disksReady.then(function () {
+      resetPanelControls();
+      // The default bootstrap is started only when the operator explicitly
+      // asks for it (Bootstrap now! passes forceBoot) or when the auto-boot
+      // option is set — otherwise the machine reboots into a halted state and
+      // the operator boots it manually.
+      if (forceBoot ||
+          (typeof Config !== 'undefined' && Config.get().autoBoot)) {
+        boot();
+      } else if (typeof CPU !== 'undefined') {
+        // No bootstrap: halt the CPU so the machine really rests. Without
+        // this, a bootstrap already loaded in RAM (e.g. from an earlier boot)
+        // would keep running and print its prompt again.
+        CPU.runState = STATE_HALT;
+      }
+    });
   }
 
   // Confirmation overlay (reuses the shared modal style, see css/pdp11.css).
