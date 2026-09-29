@@ -719,6 +719,10 @@
                 // ---------------------------------------------------------------
                 case '[':
                 case '?':
+                    // Record where the parameters begin. This is always the
+                    // byte right after '[', i.e. buffer.length at entry; an
+                    // explicit index keeps parameterValue()'s slice aligned
+                    // even when the buffer still holds a stale prefix.
                     this.parser.state = this.parser.buffer.length;
                     return;
 
@@ -816,6 +820,19 @@
         // Unknown CSI sequences are logged for debugging.
         // ============================================================================
         checkCSI(c) {
+
+            // A new ESC inside an unterminated CSI sequence aborts it and
+            // starts a fresh one. Real terminals do exactly this: the guest
+            // may begin a sequence, change its mind, and emit the next one
+            // without ever sending a final byte. Losing the abort here also
+            // corrupted the FOLLOWING sequence, because the parameter start
+            // index kept pointing into the stale buffer (ESC[10;20H then
+            // parsed as row 0, col 7 instead of row 9, col 19).
+            if (c === '\u001b') {
+                this.parser.buffer = [ESC];
+                this.parser.state = 0;
+                return;
+            }
 
             // Accumulate all parameter bytes: digits, semicolon, or '?' prefix
             if ( (c >= '0' && c <= '9') || c === ';' ||

@@ -843,6 +843,47 @@ function run() {
         assert.strictEqual(t1.screen[0][0].c, 84, "unit 1 glyph 'T' restored");
     }
 
+    // ---- CSI aborted by a new ESC must not corrupt the next sequence ----
+    // Regression: a guest may start a CSI sequence, abandon it, and emit the
+    // next one without ever sending a final byte. The parser used to fall into
+    // its "unknown escape" branch and DROP the abort, which left the parameter
+    // start index pointing into the stale buffer: "ESC[5;" followed by
+    // "ESC[10;20H" moved the cursor to row 0, col 7 instead of row 9, col 19,
+    // and logged `Unknown CSI: 27,91,53,59,27`. Losing a sequence this way is
+    // invisible in a short burst but shreds a long boot-time stream such as
+    // the 2.11 BSD / Unix V5 startup.
+    {
+        const { term, write } = makeTerminal();
+
+        // Baseline: the intact sequence addresses row 9, col 19.
+        write(ESC + "[10;20H");
+        assert.strictEqual(term.cursorRow, 9, "intact CSI addresses row 9");
+        assert.strictEqual(term.cursorCol, 19, "intact CSI addresses col 19");
+
+        // Abandoned CSI followed immediately by a fresh one: the second must
+        // still be decoded from its own parameters.
+        term.cursorRow = 0;
+        term.cursorCol = 0;
+        write(ESC + "[5;" + ESC + "[10;20H");
+        assert.strictEqual(term.cursorRow, 9, "CSI after an abort addresses row 9");
+        assert.strictEqual(term.cursorCol, 19, "CSI after an abort addresses col 19");
+
+        // An abort must not leave the parser mid-sequence either.
+        assert.strictEqual(term.parser.state, 0, "parser is back to the initial state");
+        assert.strictEqual(term.parser.buffer.length, 0, "parser buffer is empty after the abort");
+    }
+
+    // ---- empty CSI parameters still fall back to their defaults ----
+    // "ESC[;5H" (empty row, column 5) is what a guest emits for a plain
+    // "move to column 5"; it must not be mistaken for a malformed sequence.
+    {
+        const { term, write } = makeTerminal();
+        write(ESC + "[;5H");
+        assert.strictEqual(term.cursorCol, 4, "empty first parameter defaults to row 0");
+        write(ESC + "[1;10r");
+        assert.strictEqual(term.margin.bottom, 10, "multi-parameter CSI sets the margin");
+    }
+
     console.log("vt52.test.js: all overstrike tests passed");
 }
 
