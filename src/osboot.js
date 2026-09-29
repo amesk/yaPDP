@@ -203,11 +203,15 @@ var OSBoot = (function () {
         // prints lower case), which is why it never ran on one; that is not a
         // reason to give it a VT52 now that the VT100 exists.
         //
-        // The image carries TERM=vt52, so the scenario tells the system which
-        // terminal it actually has — without it, nroff never emits underline
-        // (the VT52 termcap has no us/ul) and the man pages lose their
-        // emphasis. The image's erase key is DEL (^?), while the keyboard sends
-        // ^H, so stty is re-taught the erase character too.
+        // The scenario used to type "stty erase ^H" and "TERM=vt100" after the
+        // login, because the shipped image carried TERM=vt52 (so nroff never
+        // emitted underline: the VT52 termcap has no us/ul) and a DEL erase key
+        // while the keyboard sends ^H. The image answers both questions itself
+        // now: /etc/ttys declares the console vt100, which is what gives login
+        // the right TERM, and /.profile sets the erase character. So the wizard
+        // only drives the boot and logs in, like every other scenario — a guest
+        // brought from elsewhere is still the operator's two commands to teach,
+        // not the quick boot's silent ones.
         //
         // The loader prints a lot before "login:" and waits at a "Press <CR> to
         // boot, or any other key to abort:" countdown; an Enter sent as soon as
@@ -215,9 +219,7 @@ var OSBoot = (function () {
         // login waits for the prompt instead of firing on a fixed timer.
         { device: "rp1", label: "BSD 2.11", boot: "boot rp1",
             steps: [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
-                { send: "root", waitFor: "login:" },
-                { send: "stty erase \"^H\"" },
-                { send: "TERM=vt100" }],
+                { send: "root", waitFor: "login:" }],
             autoLogin: true,
             hardware: { console: "vt100", printer: true, vt11: false,
                 forceUpperCaseOut: null } },

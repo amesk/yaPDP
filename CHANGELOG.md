@@ -178,7 +178,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   VT100 does — and `/.profile` keeps only what getty cannot know: the `^H` erase
   character the operator keyboard sends, the search path (now including
   `/usr/games`) and the home directory, with the image's own profile kept beside
-  it as `/.profile.orig`. (`media/rp1.dsk.zst`, `docs/ExampleBoots.md`)
+  it as `/.profile.orig`. The image answering for itself also retires the two
+  commands the BSD 2.11 Quick Boot profile used to type after the login
+  (`stty erase` and `TERM=vt100`): the wizard starts the kernel and logs in, and
+  a guest brought from elsewhere is taught by the operator, not silently.
+  (`media/rp1.dsk.zst`, `docs/ExampleBoots.md`, `src/osboot.js`)
 
 - **The operator's hand-written "Help Me!" sticky note no longer costs the front
   panel any size.** The note is taped beside the cabinet, and because the
