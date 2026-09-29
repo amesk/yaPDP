@@ -1260,7 +1260,24 @@ function dl11(vt52Unit, deviceVector) {
                 }
                 case 0o2: { // RBUF
                     result = insertData(rbuf, physicalAddress, data, byteFlag);
-                    if (result >= 0) rcsr &= ~DL_RCSR_DONE;
+                    if (result >= 0) {
+                        rcsr &= ~DL_RCSR_DONE;
+                        // The guest has taken the byte: the receiver is free.
+                        //
+                        // dlPump() paces itself with a timer, and a timer can
+                        // fire in the window between placing a byte and the
+                        // guest reading it — dlReceiveChar() then refuses, the
+                        // feed keeps receiverBusy set, and nothing restarts it:
+                        // the queue stands still until the page is reloaded.
+                        // Reported as "reboot, then boot rk0, and the console
+                        // is deaf". Reading RBUF is the event that frees the
+                        // receiver, so it is the event that resumes the feed.
+                        //
+                        // The core stack carries the same fix in
+                        // src/devices/dl11.js (_pump); keep the two in step,
+                        // because the legacy stack is still the rollback path.
+                        if (receiverBusy) dlPump(0);
+                    }
                     break;
                 }
                 case 0o4: { // XCSR

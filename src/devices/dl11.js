@@ -102,6 +102,25 @@
         // reset() — power-on / bus reset state
         // ------------------------------------------------------------------
         reset() {
+            // Cancel a feed already in flight, and clear the flag it set.
+            //
+            // _pump() sets receiverBusy and schedules a timer to clear it; a
+            // reset that only emptied typeAhead left the flag standing with an
+            // empty queue, and every later _pump() returned on its first line —
+            // the console went deaf until the page was reloaded. Reported as
+            // "reboot, then boot rk0, and everything hangs": the operator types
+            // the command while the previous feed's timer is still running, so
+            // the reset lands exactly in that window.
+            if (this._timer !== null) {
+                const io = this.machine ? this.machine.io : null;
+                if (io && typeof io.clearTimer === "function") {
+                    io.clearTimer(this._timer);
+                } else {
+                    clearTimeout(this._timer);
+                }
+                this._timer = null;
+            }
+            this.receiverBusy = false;
             this.rcsr = 0;
             this.rbuf = 0;
             this.xcsr = DL_XCSR_DONE;
@@ -192,14 +211,17 @@
 
             this.receiverBusy = true;
             const io = this.machine ? this.machine.io : null;
+            // The handle is kept so reset() can cancel a feed in flight; a
+            // local variable was lost the moment reset() cleared typeAhead.
             const clear = () => {
+                this._timer = null;
                 this.receiverBusy = false;
                 this._pump();
             };
             if (io && typeof io.setTimer === "function") {
-                io.setTimer(clear, DL_INPUT_DELAY);
+                this._timer = io.setTimer(clear, DL_INPUT_DELAY);
             } else {
-                setTimeout(clear, DL_INPUT_DELAY);
+                this._timer = setTimeout(clear, DL_INPUT_DELAY);
             }
         }
 
@@ -241,7 +263,25 @@
                 }
                 case 0o2: { // RBUF
                     result = insertData(this.rbuf, physicalAddress, data, byteFlag);
-                    if (result >= 0) this.rcsr &= ~DL_RCSR_DONE;
+                    if (result >= 0) {
+                        this.rcsr &= ~DL_RCSR_DONE;
+                        // The receiver is free again: the guest has taken the
+                        // byte. If a feed is standing by, let it through now.
+                        //
+                        // _pump() paces itself with a timer, and a timer can
+                        // fire in the window between placing a byte and the
+                        // guest reading it — _acceptChar() then refuses, the
+                        // feed keeps receiverBusy set, and with no further
+                        // event the queue stands still forever. Observed as
+                        // "reboot, then boot rk0, and the console is deaf":
+                        // four bytes queued, receiverBusy true, timer running,
+                        // nothing moving until the page was reloaded. Reading
+                        // RBUF is the event that frees the receiver, so it is
+                        // the event that resumes the feed. The timer stays as
+                        // it is, and with it the pacing, onDrained and the tape
+                        // reader's AUTO mode.
+                        if (this.receiverBusy) this._pump();
+                    }
                     break;
                 }
                 case 0o4: { // XCSR
