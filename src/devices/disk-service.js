@@ -160,6 +160,26 @@
         }
 
         /**
+         * resetAllDrives() — drop every cached block so the next read comes
+         * from the image again.
+         *
+         * A controller reset (Reboot) clears the device registers but used to
+         * leave this cache in place, so the guest kept reading blocks cached
+         * by the PREVIOUS boot. RT-11 tolerates it (one block and go), but a
+         * real kernel that reads and validates many blocks silently stalls —
+         * the 2.11 BSD / Unix V5 "endless silence after unix" symptom.
+         *
+         * Callers MUST flush dirty drives first (flushDrive): the cache holds
+         * the guest's writes and dropping them loses data the real hardware
+         * would have kept on the platter.
+         */
+        resetAllDrives() {
+            for (const url of Object.keys(this.drives)) {
+                this.drives[url].cache = [];
+            }
+        }
+
+        /**
          * tapeLength(url) — total byte length of a mounted provider, or
          * undefined when the provider does not declare one (used by the
          * paper-tape reader for the end-of-tape condition).

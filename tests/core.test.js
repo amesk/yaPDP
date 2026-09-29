@@ -533,6 +533,43 @@ const p10 = (async () => {
     assert.strictEqual(new Rk11(m, "rk3")._controlBlockFor(3).url, "rk3.dsk");
     MountMap.clear();
     ok("rk11: control block url follows a MountMap override");
+
+    // A controller reset must drop the drive block caches. Keeping them meant
+    // the guest kept reading blocks cached by the PREVIOUS boot: RT-11 reads
+    // one block and never noticed, but a kernel that reads and validates many
+    // blocks (2.11 BSD, Unix V5) stalled silently after a Reboot.
+    let cacheReads = 0;
+    const cacheImage = new Uint8Array(IO_BLOCKSIZE * 4);
+    cacheImage[0] = 0x5A; cacheImage[1] = 0xA5;
+    m.mountDrive("rk4.dsk", {
+        readBlock: async (n) => { cacheReads++; return n < 4 ? cacheImage : new Uint8Array(0); },
+        writeBlock: async () => {},
+    });
+    const cbCache = { url: "rk4.dsk", callback: () => {} };
+    await m.disk.io(cbCache, 2, 0, 0, 2, null); // read block 0 → cache
+    assert.strictEqual(cacheReads, 1, "first read pulled the block from the provider");
+
+    m.disk.resetAllDrives(); // the Reboot step
+    await m.disk.io(cbCache, 2, 0, 0, 2, null);
+    assert.strictEqual(cacheReads, 2, "after resetAllDrives the block is read from the image again");
+    ok("disk: resetAllDrives drops the caches so a reboot re-reads the image");
+
+    // ...and the guest's writes must survive it: flush first, then reset.
+    const savedWrites = [];
+    m.mountDrive("rk5.dsk", {
+        readBlock: async () => new Uint8Array(IO_BLOCKSIZE),
+        writeBlock: async (n, bytes) => savedWrites.push({ n, hi: bytes[1] }),
+    });
+    const cbWrite = { url: "rk5.dsk", callback: () => {} };
+    mem[0] = 0xBEEF;
+    await m.disk.io(cbWrite, 1, 0, 0, 2, null); // guest writes block 0
+    assert.strictEqual(m.disk.dirtyBlockCount("rk5.dsk"), 1, "guest write marked the block dirty");
+    await m.disk.flushDrive("rk5.dsk");
+    m.disk.resetAllDrives();
+    assert.strictEqual(savedWrites.length, 1, "flush before the reset kept the guest write");
+    assert.strictEqual(savedWrites[0].hi, 0xBE, "the written bytes reached the provider");
+    assert.strictEqual(m.disk.dirtyBlockCount("rk5.dsk"), 0, "no dirty block is left after the flush");
+    ok("disk: flush-then-reset preserves the guest's writes");
 })();
 
 // ----------------------------------------------------------------------

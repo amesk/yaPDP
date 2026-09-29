@@ -3497,6 +3497,20 @@ iopage.register(0o17777400, 8, (function() {
 
         // Clear interrupt mask
         iMask = 0;
+
+        // Drop the per-drive block caches. A controller reset (Reboot) clears
+        // the registers but must not keep serving blocks cached by the
+        // PREVIOUS boot: RT-11 reads one block and tolerates it, while a kernel
+        // that reads and validates many blocks stalls silently (2.11 BSD /
+        // Unix V5 "endless silence after unix"). Abort any in-flight fetch and
+        // let the next read pull the block from the image again. Callers must
+        // flush dirty drives BEFORE resetting — the cache holds the guest's
+        // writes (see iopage.reset -> flushDirtyDrives).
+        for (var d = 0; d < rkControlBlock.length; d++) {
+            var cb = rkControlBlock[d];
+            if (cb && cb.xhr && typeof cb.xhr.abort === "function") cb.xhr.abort();
+        }
+        rkControlBlock.length = 0;
     }
 
     // --- rkCallback() ---
@@ -4275,6 +4289,16 @@ iopage.register(0o17776700, 20, (function() {
 
         rpdc = [0,0,0,0,0,0,0,0];
         iMask = 0;
+
+        // Drop the per-drive block caches for the same reason as initRK(): a
+        // controller reset must not keep serving blocks cached by the previous
+        // boot (2.11 BSD on rp1 stalls silently after a Reboot). Dirty drives
+        // are flushed by the caller before this runs.
+        for (var d = 0; d < rpControlBlock.length; d++) {
+            var cb = rpControlBlock[d];
+            if (cb && cb.xhr && typeof cb.xhr.abort === "function") cb.xhr.abort();
+        }
+        rpControlBlock.length = 0;
     }
 
     // --- rpCallback() ---

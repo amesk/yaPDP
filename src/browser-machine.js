@@ -439,6 +439,40 @@
         window.addEventListener("pagehide", flushDirtyDrives);
     }
 
+    // flushAndResetDisks() — the Reboot sequence for disk state.
+    //
+    // A controller reset clears the device registers but used to keep serving
+    // blocks cached by the PREVIOUS boot, so a kernel that reads and validates
+    // many blocks (2.11 BSD, Unix V5) stalled silently after a Reboot while
+    // RT-11 — one block and go — never noticed. Two steps, in this order:
+    //
+    //   1. flushDirtyDrives() — push the guest's writes into the provider
+    //      (DiskStore/IndexedDB) BEFORE anything is dropped. Skipping this, or
+    //      flushing afterwards, loses writes the real hardware would have kept.
+    //   2. resetAllDrives() — drop the caches so the next read comes from the
+    //      image again.
+    //
+    // Returns a promise so the Reboot path can await it; the periodic timer
+    // keeps using the bare flushDirtyDrives() above.
+    function flushAndResetDisks() {
+        var drives = machine.disk.drives || {};
+        var pending = [];
+        Object.keys(drives).forEach(function (url) {
+            var d = drives[url];
+            if (d && d.dirty && d.dirty.size > 0) {
+                try { pending.push(machine.disk.flushDrive(url)); } catch (e) { /* keep going */ }
+            }
+        });
+        return Promise.all(pending).then(function () {
+            machine.disk.resetAllDrives();
+        }, function () {
+            // A failed write must still not leave the stale cache in place:
+            // the next boot has to read the image, not yesterday's blocks.
+            machine.disk.resetAllDrives();
+        });
+    }
+    window.__yapdpFlushAndResetDisks = flushAndResetDisks;
+
     // exportDiskImage(url) -> Promise<Uint8Array|null> — assemble the CURRENT
     // image for download: the pristine base bytes (DataLoader) overlaid with
     // the guest's writes — the session cache (freshest) first, then the blocks
@@ -592,6 +626,17 @@
             // would hang (BASIC-11 paper-tape boot). Re-apply the
             // currently selected tape after every reset instead.
             if (ptrSelect) mountSelectedTape();
+            // Disks: an explicit Reboot must not keep serving blocks cached
+            // by the previous boot (2.11 BSD / Unix V5 read a kernel in many
+            // blocks and stall silently; RT-11 never noticed). The Reboot
+            // path awaits flushAndResetDisks() BEFORE calling this reset, so
+            // the dirty blocks are already in the image by now; drop the
+            // caches here so the next read comes from the image again. When
+            // reset() is reached from anywhere else (panel reset, guest HALT
+            // recovery) the flush is still safe because flushDirtyDrives()
+            // only QUEUES the writes before the caches are dropped — see
+            // window.__yapdpFlushAndResetDisks for the awaited variant.
+            machine.disk.resetAllDrives();
             return result;
         },
         register: function (address, count, device) {
