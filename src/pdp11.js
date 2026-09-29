@@ -2443,12 +2443,71 @@ function updateLights() {
 
 function boot() {
     "use strict";
+
+    // Virtual power cycle: every piece of processor state returns to the
+    // value it has when the machine is switched on, and main memory alone is
+    // preserved — exactly like the real 11/70, where core memory kept its
+    // contents across a power cycle (erasing it took deliberate effort).
+    //
+    // Leaving the state behind broke the SECOND boot in a tab: the first
+    // guest left PSW = 0x17 and the MMU programmed by its kernel, the next
+    // boot inherited both, and the machine either halted through vector 2
+    // ("HALT at 2 PSW: 17") or ran on with mmuEnable = 0 because the new
+    // kernel saw an MMU that looked already configured.
+    CPU.CPU_Error = 0;
+    CPU.trapMask = 0;
+    CPU.trapPSW = -1;              // -1 means "no trap in progress"
+    CPU.interruptRequested = 1;
+
+    CPU.flagC = NaN;
+    CPU.flagNZ = NaN;
+    CPU.flagV = 0x8000;
+
+    // MMU: back to its power-up state (off, empty tables).
+    CPU.MMR0 = 0;
+    CPU.MMR1 = 0;
+    CPU.MMR2 = 0;
+    CPU.MMR3 = 0;
+    CPU.mmuEnable = 0;
+    CPU.mmuLastPage = 0;
+    CPU.mmuPageMask = 0x37;
+    CPU.mmuPAR.fill(0);
+    CPU.mmuPDR.fill(0);
+    CPU.unibusMap.fill(0);
+    CPU.modifyAddress = 0;
+    CPU.modifyRegister = -1;
+
+    // Registers: both banks, the per-mode stack pointers and the console
+    // switches.
+    CPU.registerVal.fill(0);
+    CPU.registerAlt.fill(0);
+    CPU.stackPointer.fill(0);
+    CPU.stackLimit = 0xff;
+    CPU.switchRegister = 0;
+
+    // Console display lights.
+    CPU.displayAddress = 0;
+    CPU.displayBusReg = 0;
+    CPU.displayDataPaths = 0;
+    CPU.displayMicroAdrs = 0;
+    CPU.displayPhysical = 0;
+    CPU.displayRegister = 0;
+    CPU.statusLights = 0x3000;
+
+    CPU.PIR = 0;
+
+    // writePSW(0) also sets mmuMode through setMMUmode().
+    writePSW(0);
+    CPU.runState = STATE_RESET;    // as after the RESET instruction
+
+    // The bootstrap goes into memory WITHOUT clearing it: the accelerator
+    // start (console switches place an address written by the DEC boot ROM
+    // into a vector and transfer control) and the guest both rely on RAM
+    // surviving a reboot.
     for (let i = 0; i < bootcode.length; i++) {
         CPU.memory[(BOOTBASE >>> 1) + i] = bootcode[i];
     }
     CPU.registerVal[7] = CPU.registerVal[6] = BOOTBASE;
-    CPU.PIR = 0;
-    writePSW(0);
     iopage.reset();
     CPU.runState = STATE_RUN;
 }

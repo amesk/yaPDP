@@ -490,27 +490,9 @@ function examineDeposit(data) {
     var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
     if (rotary1) rotary1.style.transform = 'rotate(-45deg)';
 
-    // Reset the PROCESSOR state as well. The panel and the devices were
-    // already reset here, but the CPU kept its registers, PSW and MMU mode
-    // from whatever the guest was running before. A guest that boots fine on
-    // a fresh page then dies after a Reboot: the first boot leaves
-    // PSW = 020017 (kernel mode, priority 7, MMU on), Reboot preserves it,
-    // the bootstrap survives on its own registers, and the next kernel starts
-    // in the wrong mode, takes a trap 4 and prints "HALT at 2 PSW: 17".
-    //
-    // Memory is deliberately NOT cleared: the accelerator start (console
-    // switches set an address written by the DEC boot ROM into a vector and
-    // transfer control) and our own bootstrap both rely on RAM surviving a
-    // reset, exactly like the real machine.
-    CPU.registerVal.fill(0);           // R0-R7
-    CPU.registerAlt.fill(0);           // alternate R0-R5 (both register sets)
-    CPU.stackPointer.fill(0);          // alternate R6 per mode
-    CPU.trapPSW = 0;
-    // writePSW(0) is the single source of truth for the mode: it calls
-    // setMMUmode(0) itself, so the MMU mode and the PSW cannot drift apart.
-    // 0 selects kernel mode with priority 0 and no condition codes, the state
-    // the machine powers up in.
-    writePSW(0);
+    // Processor state is reset by boot() itself, which performs a full
+    // virtual power cycle (registers, PSW, MMU) while preserving main memory.
+    // The panel only resets the switches and the power lock.
 
     // Power lock -> RUN position (powered on). skipAutoBoot: doReboot() starts
     // the bootstrap itself, so resetting the panel must not trigger the
@@ -529,32 +511,33 @@ function examineDeposit(data) {
 
     // Disks first: a controller reset must not keep serving blocks cached by
     // the previous boot (2.11 BSD / Unix V5 read a kernel in many blocks and
-    // then stall silently; RT-11 reads one block and never noticed). Flush the
-    // guest's dirty writes into the image, then drop the caches, and only then
-    // reset the machine — dropping the cache first would lose the writes.
-    // This is the awaited variant; the panel keeps working the same way, the
-    // reboot just completes a tick later.
-    var disksReady = (typeof window !== 'undefined' &&
-        typeof window.__yapdpFlushAndResetDisks === 'function')
-      ? window.__yapdpFlushAndResetDisks()
-      : Promise.resolve();
+    // then stall silently; RT-11 reads one block and never noticed). The
+    // flush runs on its own: boot() must NOT wait for it. flushDrive() talks
+    // to IndexedDB, and gating the bootstrap on that promise left the machine
+    // stranded whenever the store was slow or rejected — the panel was already
+    // reset, boot() never ran, and the CPU sat at 0o2370 with psw 0o44 and no
+    // "@" prompt. The cache is dropped inside the promise once the writes are
+    // in; the guest's blocks are never lost because the cache is only cleared
+    // after the flush resolves.
+    if (typeof window !== 'undefined' &&
+        typeof window.__yapdpFlushAndResetDisks === 'function') {
+      window.__yapdpFlushAndResetDisks();
+    }
 
-    disksReady.then(function () {
-      resetPanelControls();
-      // The default bootstrap is started only when the operator explicitly
-      // asks for it (Bootstrap now! passes forceBoot) or when the auto-boot
-      // option is set — otherwise the machine reboots into a halted state and
-      // the operator boots it manually.
-      if (forceBoot ||
-          (typeof Config !== 'undefined' && Config.get().autoBoot)) {
-        boot();
-      } else if (typeof CPU !== 'undefined') {
-        // No bootstrap: halt the CPU so the machine really rests. Without
-        // this, a bootstrap already loaded in RAM (e.g. from an earlier boot)
-        // would keep running and print its prompt again.
-        CPU.runState = STATE_HALT;
-      }
-    });
+    resetPanelControls();
+    // The default bootstrap is started only when the operator explicitly
+    // asks for it (Bootstrap now! passes forceBoot) or when the auto-boot
+    // option is set — otherwise the machine reboots into a halted state and
+    // the operator boots it manually.
+    if (forceBoot ||
+        (typeof Config !== 'undefined' && Config.get().autoBoot)) {
+      boot();
+    } else if (typeof CPU !== 'undefined') {
+      // No bootstrap: halt the CPU so the machine really rests. Without this,
+      // a bootstrap already loaded in RAM (e.g. from an earlier boot) would
+      // keep running and print its prompt again.
+      CPU.runState = STATE_HALT;
+    }
   }
 
   // Confirmation overlay (reuses the shared modal style, see css/pdp11.css).
