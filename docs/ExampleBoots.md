@@ -1004,10 +1004,14 @@ $ sysgen
 ## Example boot of BSD 2.11
 
 The shipped image is `2.11 BSD UNIX #1` built from the `YAPDP` configuration:
-no network stack, no network daemons, hostname `yapdp.local`, and a console
-profile that sets `TERM=vt100` and the erase character. Its build directory
-travels with the image (`/usr/src/sys/YAPDP`), so the kernel below is rebuilt in
-place — the recipe is at the end of this transcript.
+no network stack, no network daemons and the hostname `yapdp.local`. Its build
+directory travels with the image (`/usr/src/sys/YAPDP`), so the kernel below is
+rebuilt in place — the recipe is at the end of this transcript. On this image the
+console is declared `vt100` in `/etc/ttys`, which is where a 2.11 BSD system
+tells `login` what terminal is attached, so `TERM=vt100` arrives there and not
+from the profile; `/.profile` fills in only what getty cannot know — the `^H`
+erase character the operator keyboard sends, the search path and the home
+directory.
 
 ```
 @boot rp1
@@ -1034,8 +1038,8 @@ xp 0 csr 176700 vector 254 attached
 cn 1 csr 176500 vector 310 skipped:  No CSR.
 cn 2 csr 176510 vector 320 skipped:  No CSR.
 Automatic reboot in progress...
-Fri Jun  9 00:04:53 CDT 1995
-Fri Jun  9 00:04:54 CDT 1995
+Fri Jun  9 00:05:44 CDT 1995
+Fri Jun  9 00:05:45 CDT 1995
 checking quotas: done.
 Assuming non-networking system ...
 checking for core dump...
@@ -1043,7 +1047,7 @@ preserving editor files
 clearing /tmp
 standard daemons: update cron accounting.
 starting lpd
-Fri Jun  9 00:05:03 CDT 1995
+Fri Jun  9 00:05:57 CDT 1995
 
 
 2.11 BSD UNIX (yapdp.local) (console)
@@ -1068,17 +1072,17 @@ root        57   0  47 ?   0:00 /usr/sbin/lpd
 root        62   0  32 ?   0:00 - std.9600 ttyl1 (getty)
 root        63   0  32 ?   0:00 - std.9600 ttyl2 (getty)
 root        61   0  19 co  0:01 -sh
-root        69   0  67 co  0:00 ps -aux
+root        71   0  67 co  0:00 ps -aux
 # ls -al
 total 688
-drwxr-xr-x 13 root          512 Jun  9 00:04 .
-drwxr-xr-x 13 root          512 Jun  9 00:04 ..
+drwxr-xr-x 13 root         1024 Jun  9 00:05 .
+drwxr-xr-x 13 root         1024 Jun  9 00:05 ..
 -rw-r-----  1 root          349 Oct 31  1981 .cshrc
 -rw-r-----  1 root            0 Oct 31  1981 .hushlogin
 -rw-r-----  1 root          153 Oct 31  1981 .kermrc
 -rw-r-----  1 root          335 Oct 31  1981 .login
 -rw-r-----  1 root            8 Oct 31  1981 .mailrc
--rw-r-----  1 root          159 Jun  9 00:04 .profile
+-rw-r-----  1 root          147 Jun  9 00:05 .profile
 -rw-r-----  1 root          152 Jun  9 00:04 .profile.orig
 -rw-r-----  1 root           12 Oct 31  1981 .tiprc
 -rw-r-----  1 root           47 Oct 31  1981 PATCH-LOG
@@ -1109,9 +1113,7 @@ drwxr-xr-x  6 root          512 Feb 13  2000 var
 # cat /.profile
 echo 'erase, kill ^U, intr ^C'
 stty erase "^H"
-TERM=vt100
-export TERM
-PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new
+PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new:/usr/games
 export PATH
 HOME=/
 export HOME
@@ -1126,7 +1128,7 @@ Size of long: 4 bytes
 Size of float: 4 bytes
 Size of double: 8 bytes
 # ls -al hello* size* a.out
--rwxr-x--x  1 root         6436 Jun  9 00:05 a.out
+-rwxr-x--x  1 root         6436 Jun  9 00:06 a.out
 -rw-r-----  1 root           40 Oct 31  1981 hello.c
 -rw-r-----  1 root          342 Oct 31  1981 size.c
 # while true; do echo; /usr/games/fortune; sleep 5; done

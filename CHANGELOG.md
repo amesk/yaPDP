@@ -172,11 +172,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   boot says `Assuming non-networking system`, `ps` shows no
   `inetd`/`rwhod`/`syslogd`, the kernel is 8.9 KB smaller (`/unix` 153723 ->
   144782 bytes), 119 KB more memory is free and the console reaches `login:` in
-  74 s instead of ~160 s. The machine is `yapdp.local`,
-  and `/.profile` sets `TERM=vt100` and the `^H` erase character the operator
-  keyboard sends, with the image's own profile kept beside it as
-  `/.profile.orig`. (`media/rp1.dsk.zst`, `media/manifest.json`,
-  `docs/ExampleBoots.md`)
+  about 80 s instead of ~160 s. The machine is `yapdp.local`. The console's terminal
+  type is declared in `/etc/ttys` (`vt100`) — the system-level place where 2.11
+  BSD sets `TERM`, which is what makes a full-screen program scroll the way a
+  VT100 does — and `/.profile` keeps only what getty cannot know: the `^H` erase
+  character the operator keyboard sends, the search path (now including
+  `/usr/games`) and the home directory, with the image's own profile kept beside
+  it as `/.profile.orig`. (`media/rp1.dsk.zst`, `docs/ExampleBoots.md`)
 
 - **The operator's hand-written "Help Me!" sticky note no longer costs the front
   panel any size.** The note is taped beside the cabinet, and because the

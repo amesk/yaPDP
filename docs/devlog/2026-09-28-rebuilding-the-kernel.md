@@ -147,10 +147,10 @@ built by                root@vixen.skn.noip.me:/…/VIXEN      root@yapdp.local:
 console banner          2.11 BSD UNIX (vixen.skn.noip.me)    2.11 BSD UNIX (yapdp.local)
 attaching sl / lo0      both present                        gone
 memory                  avail mem = 3490368                   avail mem = 3612096
-boot to login           ~160 s (the tool's own note)          74 s (tests/e2e-bsd-boot.js)
+boot to login           ~160 s (the tool's own note)          ~80 s (tests/e2e-bsd-boot.js)
 rc                      Assuming NETWORKING system           Assuming non-networking system
 rc                      starting network daemons: inetd …     starting lpd
-TERM                    vt52 (from the image)                 vt100
+TERM                    vt52 (from the image)                 vt100 (from /etc/ttys)
 stty erase              DEL (^?)                              ^H
 ```
 
@@ -173,15 +173,22 @@ And `/.profile` — the file I came for — now does what a console operator nee
 ```sh
 echo 'erase, kill ^U, intr ^C'
 stty erase "^H"
-TERM=vt100
-export TERM
-PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new
+PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new:/usr/games
 export PATH
 HOME=/
 export HOME
 ```
 
-`TERM=vt100` is not decoration. The image ships `TERM=vt52`, and a VT100 is what the emulator's console is; more to the point, a full-screen program that scrolls chooses *how* it scrolls from that variable. Get it wrong and `vi` spends its life redrawing lines that a terminal two generations older could not move.
+Two of the lines I first put here turned out not to belong in a profile at all. `TERM` is not a user's business: a 2.11 BSD system takes the terminal type from the field in `/etc/ttys`, which is what `getty` passes to `login`, and on this image that field still said `vt52`. Setting it in `/.profile` "works" only for a login, only for root, and only after getty has already decided; the system-level place is the file that describes the terminal. So `/etc/ttys` now names `vt100` for the console and the two serial lines:
+
+```
+sed -e '/^console/s/vt52/vt100/' \
+    -e '/^ttyl1/s/vt52/vt100/' \
+    -e '/^ttyl2/s/vt52/vt100/' /etc/ttys > /tmp/ttys.new
+cp /tmp/ttys.new /etc/ttys
+```
+
+`TERM` is not decoration. A VT100 is what the emulator's console is, and a full-screen program that scrolls chooses *how* it scrolls from that variable: `vi` looks up the `sf` and `sr` capabilities of the termcap entry named by `TERM`, and the 2.11 BSD `vt100` entry scrolls with the IND and RI sequences a DECscope two generations older had no answer for. Leave the type at `vt52` and `vi` spends its life redrawing the bottom line by cursor addressing, one line at a time.
 
 ## What the exercise is really about
 
