@@ -1009,9 +1009,10 @@ directory travels with the image (`/usr/src/sys/YAPDP`), so the kernel below is
 rebuilt in place — the recipe is at the end of this transcript. On this image the
 console is declared `vt100` in `/etc/ttys`, which is where a 2.11 BSD system
 tells `login` what terminal is attached, so `TERM=vt100` arrives there and not
-from the profile; `/.profile` fills in only what getty cannot know — the `^H`
-erase character the operator keyboard sends, the search path and the home
-directory.
+from the profile. `/.profile` keeps the image's own `stty dec` — the DEC CRT
+modes, which is what makes a typed Backspace erase on screen rather than echo
+`^H` — and fills in only what getty cannot know: the `^H` erase character the
+operator keyboard sends, the search path and the home directory.
 
 ```
 @boot rp1
@@ -1082,7 +1083,7 @@ drwxr-xr-x 13 root         1024 Jun  9 00:05 ..
 -rw-r-----  1 root          153 Oct 31  1981 .kermrc
 -rw-r-----  1 root          335 Oct 31  1981 .login
 -rw-r-----  1 root            8 Oct 31  1981 .mailrc
--rw-r-----  1 root          147 Jun  9 00:05 .profile
+-rw-r-----  1 root          156 Jun  9 00:05 .profile
 -rw-r-----  1 root          152 Jun  9 00:04 .profile.orig
 -rw-r-----  1 root           12 Oct 31  1981 .tiprc
 -rw-r-----  1 root           47 Oct 31  1981 PATCH-LOG
@@ -1112,6 +1113,7 @@ drwxr-xr-x 26 root          512 Oct 31  1981 usr
 drwxr-xr-x  6 root          512 Feb 13  2000 var
 # cat /.profile
 echo 'erase, kill ^U, intr ^C'
+stty dec
 stty erase "^H"
 PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new:/usr/games
 export PATH

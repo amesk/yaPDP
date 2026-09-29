@@ -172,6 +172,7 @@ And `/.profile` — the file I came for — now does what a console operator nee
 
 ```sh
 echo 'erase, kill ^U, intr ^C'
+stty dec
 stty erase "^H"
 PATH=/bin:/sbin:/usr/sbin:/etc:/usr/ucb:/usr/bin:/usr/new:/usr/games
 export PATH
@@ -179,7 +180,7 @@ HOME=/
 export HOME
 ```
 
-Two of the lines I first put here turned out not to belong in a profile at all. `TERM` is not a user's business: a 2.11 BSD system takes the terminal type from the field in `/etc/ttys`, which is what `getty` passes to `login`, and on this image that field still said `vt52`. Setting it in `/.profile` "works" only for a login, only for root, and only after getty has already decided; the system-level place is the file that describes the terminal. So `/etc/ttys` now names `vt100` for the console and the two serial lines:
+One of these lines does not belong in a profile at all. `TERM` is not a user's business: a 2.11 BSD system takes the terminal type from the field in `/etc/ttys`, which is what `getty` passes to `login`, and on this image that field still said `vt52`. Setting it in `/.profile` "works" only for a login, only for root, and only after getty has already decided; the system-level place is the file that describes the terminal. So `/etc/ttys` now names `vt100` for the console and the two serial lines:
 
 ```
 sed -e '/^console/s/vt52/vt100/' \
@@ -189,6 +190,8 @@ cp /tmp/ttys.new /etc/ttys
 ```
 
 `TERM` is not decoration. A VT100 is what the emulator's console is, and a full-screen program that scrolls chooses *how* it scrolls from that variable: `vi` looks up the `sf` and `sr` capabilities of the termcap entry named by `TERM`, and the 2.11 BSD `vt100` entry scrolls with the IND and RI sequences a DECscope two generations older had no answer for. Leave the type at `vt52` and `vi` spends its life redrawing the bottom line by cursor addressing, one line at a time.
+
+The other correction went the opposite way, and it is why the profile above begins where it does. My first version of this file kept the erase character and dropped the image's `stty dec` — a line I had read past as noise. It is not noise: `stty dec` is what turns on the DEC terminal modes (`crtbs`, `crterase`, `crtkill`, `ctlecho`), and without them the erase *character* still works while the *screen* does not — press Backspace and the console echoes `^H` instead of rubbing the character out. `stty -a` said so in the first line of its output, and with the line back the console reports the same `crt: (crtbs crterase crtkill ctlecho)` the vendor's own profile asked for. That is the same lesson as with `TERM`, from the other side: a line that looks like clutter in somebody else's startup file is usually a decision, and on the console the image's own answer beats a tidy rewrite.
 
 ## What the exercise is really about
 
