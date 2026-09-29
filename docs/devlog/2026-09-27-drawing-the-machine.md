@@ -3,9 +3,10 @@ title: "Drawing the machine: how the teletype, the VT52 and the VT100 are built 
 date: 2026-09-27
 lang: en
 summary: "Two ways of drawing text that barely touch each other — paper you cannot unprint and a tube you can rewrite — and why a button lands on a button only when the artwork says where."
+draft: "true"
 ---
 
-[A teletype is not an xterm](2026-09-23-bringing-back-the-machine-room.html). The first article was about the magic, the second was about the ordinary engineering underneath. This one is about the drawing: how three machines are built on screen, where I got it wrong, and why the code still carries names that lie.
+[A teletype is not an xterm](2026-09-03-bringing-back-the-machine-room.html). The first article was about the magic, the second was about the ordinary engineering underneath. This one is about the drawing: how three machines are built on screen, where I got it wrong, and why the code still carries names that lie.
 
 A fair warning: there is a lot of CSS, coordinates and strange numbers like `0.36657` in here. If the history of the hardware interests you more than layout, the first article is the one to read. The question this one keeps returning to is narrow — why a button ends up *not* on the button, and how to stop catching that by hand.
 

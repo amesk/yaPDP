@@ -3,9 +3,10 @@ title: "Working in Unix V5 on a teletype: no lower case, hash to erase, at-sign 
 date: 2026-09-28
 lang: en
 summary: "Unix V5, 1974, on a Model 33 ASR. No lower case anywhere — on paper or on the keyboard. Hash erases a character, at-sign erases the whole line, and you find out by reading the debris. What it is actually like to work on the system everything else grew from."
+draft: "true"
 ---
 
-The [first article](2026-09-23-bringing-back-the-machine-room.html) was about how the emulator came alive; the [second](2026-09-24-own-pdp11-anyway.html) about what it cost; the [third](2026-09-27-drawing-the-machine.html) about how the three terminals are drawn inside. This one is about the thing all of that was for: working in it.
+The [first article](2026-09-03-bringing-back-the-machine-room.html) was about how the emulator came alive; the [second](2026-09-24-own-pdp11-anyway.html) about what it cost; the [third](2026-09-27-drawing-the-machine.html) about how the three terminals are drawn inside. This one is about the thing all of that was for: working in it.
 
 Open the emulator in a second tab before reading. Everything below happens on paper, and the paper is only there.
 
