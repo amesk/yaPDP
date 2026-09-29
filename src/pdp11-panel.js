@@ -490,6 +490,28 @@ function examineDeposit(data) {
     var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
     if (rotary1) rotary1.style.transform = 'rotate(-45deg)';
 
+    // Reset the PROCESSOR state as well. The panel and the devices were
+    // already reset here, but the CPU kept its registers, PSW and MMU mode
+    // from whatever the guest was running before. A guest that boots fine on
+    // a fresh page then dies after a Reboot: the first boot leaves
+    // PSW = 020017 (kernel mode, priority 7, MMU on), Reboot preserves it,
+    // the bootstrap survives on its own registers, and the next kernel starts
+    // in the wrong mode, takes a trap 4 and prints "HALT at 2 PSW: 17".
+    //
+    // Memory is deliberately NOT cleared: the accelerator start (console
+    // switches set an address written by the DEC boot ROM into a vector and
+    // transfer control) and our own bootstrap both rely on RAM surviving a
+    // reset, exactly like the real machine.
+    CPU.registerVal.fill(0);           // R0-R7
+    CPU.registerAlt.fill(0);           // alternate R0-R5 (both register sets)
+    CPU.stackPointer.fill(0);          // alternate R6 per mode
+    CPU.trapPSW = 0;
+    // writePSW(0) is the single source of truth for the mode: it calls
+    // setMMUmode(0) itself, so the MMU mode and the PSW cannot drift apart.
+    // 0 selects kernel mode with priority 0 and no condition codes, the state
+    // the machine powers up in.
+    writePSW(0);
+
     // Power lock -> RUN position (powered on). skipAutoBoot: doReboot() starts
     // the bootstrap itself, so resetting the panel must not trigger the
     // auto-boot option again.
