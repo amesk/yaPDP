@@ -175,9 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   about 80 s instead of ~160 s. The machine is `yapdp.local`. The console's terminal
   type is declared in `/etc/ttys` (`vt100`) — the system-level place where 2.11
   BSD sets `TERM`, which is what makes a full-screen program scroll the way a
-  VT100 does — and `/.profile` keeps only what getty cannot know: the `^H` erase
-  character the operator keyboard sends, the search path (now including
-  `/usr/games`) and the home directory, with the image's own profile kept beside
+  VT100 does — and `/.profile` keeps the image's own `stty dec` (the DEC CRT
+  modes, so a typed Backspace erases on screen instead of echoing `^H`) plus the
+  `^H` erase character the operator keyboard sends, the search path (now
+  including `/usr/games`) and the home directory; the image's own profile is kept
+  beside
   it as `/.profile.orig`. The image answering for itself also retires the two
   commands the BSD 2.11 Quick Boot profile used to type after the login
   (`stty erase` and `TERM=vt100`): the wizard starts the kernel and logs in, and
