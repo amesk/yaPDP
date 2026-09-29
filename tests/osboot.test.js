@@ -75,13 +75,10 @@ function run() {
         const rp1 = OSBoot.scenarioFor("rp1");
         assert.deepStrictEqual(plain(rp1.steps),
             [{ send: "", waitFor: "Press <CR> to boot, or any other key to abort:" },
-                { send: "root", waitFor: "login:" },
-                // The image's erase key is DEL while the keyboard sends ^H, so the
-                // login teaches stty the erase character; and the image carries
-                // TERM=vt52, so the scenario names the terminal it was given.
-                { send: 'stty erase "^H"' },
-                { send: "TERM=vt100" }],
-            "BSD 2.11 should press Enter at the boot prompt, log in, then set the erase key and TERM");
+                { send: "root", waitFor: "login:" }],
+            "BSD 2.11 should press Enter at the boot prompt and log in: the image " +
+            "declares its own console type (/etc/ttys) and erase key (/.profile), " +
+            "so the wizard must not type them");
 
         assert.strictEqual(OSBoot.scenarioFor("nope"), undefined,
             "unknown device should resolve to undefined");
