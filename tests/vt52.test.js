@@ -884,6 +884,43 @@ function run() {
         assert.strictEqual(term.margin.bottom, 10, "multi-parameter CSI sets the margin");
     }
 
+    // ---- the CPR reply we send must be swallowed, not logged ---------------
+    // The terminal answers CSI 6 n with ESC [ row ; col R. Guests echo it back
+    // on the input path, and the parser used to log one "Unknown CSI" per
+    // echoed report (measured: "Unknown CSI: 27,91,49,59,49,82 'R' 2" for our
+    // own ESC[1;1R). The reply carries no instruction for this screen, so it
+    // must leave the cursor exactly where it was and stay out of the console.
+    {
+        const { term, write } = makeTerminal();
+        term.cursorRow = 4;
+        term.cursorCol = 9;
+        write(ESC + "[1;1R");
+        assert.strictEqual(term.cursorRow, 4, "a CPR reply does not move the row");
+        assert.strictEqual(term.cursorCol, 9, "a CPR reply does not move the column");
+        assert.strictEqual(term.parser.state, 0, "the parser returns to the initial state");
+        assert.strictEqual(term.parser.buffer.length, 0, "the parser buffer is emptied");
+    }
+
+    // ---- ESC ; (a fragment) is dropped without a console line ----------------
+    // A guest can drop the '[', the digits or the final byte of a sequence and
+    // leave "ESC ;" on the wire; the log for it ("Unknown escape: 27,59 ';' 0")
+    // filled the console during a V5 boot. Nothing on screen changes, and the
+    // parser must be ready for the next real sequence.
+    {
+        const { term, write } = makeTerminal();
+        term.cursorRow = 2;
+        term.cursorCol = 3;
+        write(ESC + ";");
+        assert.strictEqual(term.cursorRow, 2, "the fragment leaves the cursor row alone");
+        assert.strictEqual(term.cursorCol, 3, "the fragment leaves the cursor column alone");
+        assert.strictEqual(term.parser.state, 0, "the parser is back to the initial state");
+        assert.strictEqual(term.parser.buffer.length, 0, "the fragment is not left in the buffer");
+        // A real sequence straight after the fragment still parses.
+        write(ESC + "[10;20H");
+        assert.strictEqual(term.cursorRow, 9, "the next sequence still addresses row 9");
+        assert.strictEqual(term.cursorCol, 19, "the next sequence still addresses col 19");
+    }
+
     console.log("vt52.test.js: all overstrike tests passed");
 }
 
