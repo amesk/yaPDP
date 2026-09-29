@@ -7,7 +7,7 @@ summary: "SIMH exists, it is excellent, and I did not use it. This is the second
 
 I could have used SIMH. I built my own instead.
 
-[The first article](2026-09-23-bringing-back-the-machine-room.html) was about the magic: how the thing came alive at all. This one is about the ordinary engineering prose underneath it — impatience, compromises, and what they cost.
+[The first article](2026-09-03-bringing-back-the-machine-room.html) was about the magic: how the thing came alive at all. This one is about the ordinary engineering prose underneath it — impatience, compromises, and what they cost.
 
 ## Why not SIMH
 
@@ -169,6 +169,6 @@ The second is to carry on with the core refactor: remove the original, and get m
 
 There is a bus now, where before there were hooks. There are end-to-end tests that let me change the core without holding my breath, DEC's own diagnostics as an external reference, snapshots, and honest disk persistence. None of it is visible on the screen, which is the point: what you notice when you open the emulator is a teletype that behaves like a teletype and a panel whose switches throw like switches.
 
-That was the goal, and it stands. [The first article](2026-09-23-bringing-back-the-machine-room.html) ends with what the machine room meant when I was fourteen and ran to my parents' work to stand next to it — I will not repeat it here, it is better there. What matters for this half of the story is that the room now has plumbing behind the wall, and I can keep working on it without the whole thing falling over.
+That was the goal, and it stands. [The first article](2026-09-03-bringing-back-the-machine-room.html) ends with what the machine room meant when I was fourteen and ran to my parents' work to stand next to it — I will not repeat it here, it is better there. What matters for this half of the story is that the room now has plumbing behind the wall, and I can keep working on it without the whole thing falling over.
 
 Suggestions are welcome.
