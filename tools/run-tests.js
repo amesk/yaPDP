@@ -65,6 +65,7 @@ const ORDER = [
     "vt52.test.js",
     "g60printer-flush.test.js",
     "dl11-recv.test.js",
+    "dl11-feed-stall.test.js",
     "vt11.test.js",
     "contextmenu.test.js",
     "fullscreen.test.js",
