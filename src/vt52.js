@@ -733,6 +733,23 @@
                     break;
 
                 // ---------------------------------------------------------------
+                // ESC ; — a fragment of an abandoned sequence
+                //
+                // A guest can drop the '[', the digits, or the final byte of an
+                // escape sequence and leave "ESC ;" on the wire; the echo of a
+                // CPR reply truncated the same way reaches the parser too
+                // (measured: "Unknown escape: 27,59 ';' 0" while a V5 boot
+                // streamed). There is no such command in VT52 or ANSI, so the
+                // bytes carry no instruction for the screen — but they are not
+                // an error worth a console line either, and logging one per
+                // occurrence buried the interesting output. Drop the fragment
+                // silently; escapeReset() below returns the parser to the
+                // initial state so the next real sequence parses cleanly.
+                // ---------------------------------------------------------------
+                case ';':
+                    break;
+
+                // ---------------------------------------------------------------
                 // Unknown sequence
                 // ---------------------------------------------------------------
                 default:
@@ -922,6 +939,20 @@
                         this.receiveRoutine(this.unit,
                             Array.from(resp, ch => ch.charCodeAt(0)));
                     }
+                    break;
+
+                // ---------------------------------------------------------------
+                // Cursor position report, the answer side (CPR) — CSI row ; col R
+                // The reply we send for CSI 6 n. It arrives on the input path
+                // whenever the guest echoes it back (a real terminal sees the
+                // same thing), so it must be recognised and consumed. It carries
+                // no instruction for THIS screen: swallowing it here keeps the
+                // cursor where it is and stops the parser from logging one
+                // "Unknown CSI" per echoed report, which is what filled the
+                // console during a guest boot (measured: "Unknown CSI: 27,91,49,
+                // 59,49,82 'R' 2" for our own ESC[1;1R).
+                // ---------------------------------------------------------------
+                case 'R':
                     break;
 
                 // ---------------------------------------------------------------
