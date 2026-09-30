@@ -2227,6 +2227,23 @@ function assertCompleteImage(response, buffer, url) {
     }
 }
 
+// Stream an image fetch with download-progress reporting (media-progress.js).
+// Resolves { bytes, response }; falls back to the plain arrayBuffer() path when
+// the progress module is absent, so an external harness that loads iopage.js on
+// its own keeps working unchanged.
+function fetchImageBytes(url) {
+    const progress = (typeof window !== "undefined" && window.__yapdpMediaProgress &&
+        typeof window.__yapdpMediaProgress.fetchBytes === "function")
+        ? window.__yapdpMediaProgress.fetchBytes
+        : null;
+    if (progress) return progress(url);
+    return fetch(url).then(function (r) {
+        return r.arrayBuffer().then(function (b) {
+            return { bytes: new Uint8Array(b), response: r };
+        });
+    });
+}
+
 // --- driveUrl() ---
 // MountMap-aware drive url (refactor): an explicit override set through the
 // mount table wins; otherwise the historical <prefix><unit><suffix> template
@@ -2312,9 +2329,10 @@ async function fetchBlock(controlBlock, block) {
         // file to fall back to, so their errors surface immediately.
         const isPaperTape = /\.ptap$/i.test(controlBlock.url);
         try {
-            const zstResponse = await fetch(`media/${controlBlock.url}.zst`);
+            const got = await fetchImageBytes(`media/${controlBlock.url}.zst`);
+            const zstResponse = got.response;
             if (zstResponse.ok) {
-                const buffer = await zstResponse.arrayBuffer();
+                const buffer = got.bytes;
                 assertCompleteImage(zstResponse, buffer, controlBlock.url);
                 if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
                     throw new Error("fzstd decompression library not loaded");
@@ -2370,18 +2388,18 @@ async function fetchBlock(controlBlock, block) {
     }
 
     // --- Fallback path: fetch compressed .zst file ---
-    let zstResponse;
+    let got;
     try {
-        zstResponse = await fetch(`media/${controlBlock.url}.zst`);
+        got = await fetchImageBytes(`media/${controlBlock.url}.zst`);
     } catch (err) {
         throw imageError("network", `Network error fetching .zst for ${controlBlock.url}`);
     }
-    if (!zstResponse.ok) {
+    if (!got.response.ok) {
         throw imageError("network", `Network error fetching .zst for ${controlBlock.url}`);
     }
 
-    const buffer = await zstResponse.arrayBuffer();
-    assertCompleteImage(zstResponse, buffer, controlBlock.url);
+    const buffer = got.bytes;
+    assertCompleteImage(got.response, buffer, controlBlock.url);
     if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
         throw new Error("fzstd decompression library not loaded");
     }

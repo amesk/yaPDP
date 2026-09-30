@@ -1061,11 +1061,16 @@ textarea {
    the content but below the modal overlays, so it never covers the OS picker
    dialog.
 
-   The toast carries a whole SENTENCE, not a label: centred and un-wrapped it
-   is wider than a phone, so both of its ends fell off the screen (measured on
-   a 390px viewport). It now wraps inside the window — the box may never be
-   wider than the window minus a margin, and the words break rather than run
-   off. The narrow-screen block below drops it to a size that still reads. */
+   It is a ROW: a spinner, a short label and a "Take control!" button that
+   ends the automatic boot. Un-wrapped such a row is wider than a phone, so
+   the row wraps inside the window — the box may never be wider than the
+   window minus a margin, and the words break rather than run off. The
+   narrow-screen block below drops it to a size that still reads.
+
+   It wears the same STATUS palette as the startup loading gate (a dark warm
+   panel with a gold accent), not an error red: the autoload is a routine
+   process with a way out, not a failure. Error red is reserved for the
+   image-load dialog (.modal-box.error). */
 .quickboot-balloon {
     position: fixed;
     left: 50%;
@@ -1073,13 +1078,17 @@ textarea {
     transform: translateX(-50%);
     z-index: 50000;
     display: none;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
     max-width: calc(100% - 16px);
     box-sizing: border-box;
     padding: 16px 28px;
-    border: 2px solid #d84a3f;
+    border: 2px solid #c8a860;
     border-radius: 10px;
-    background: rgba(62, 16, 12, 0.6);
-    color: #ffd7d0;
+    background: rgba(22, 18, 14, 0.85);
+    color: #e0d8c8;
     font-size: 20px;
     font-weight: bold;
     letter-spacing: 0.5px;
@@ -1091,7 +1100,136 @@ textarea {
 }
 
 .quickboot-balloon.visible {
+    display: flex;
+}
+
+/* Shared "work in progress" spinner. Same look and timing as the startup
+   loading gate's spinner (#yapdp-loading .yapdp-loading-spin in pdp11.html):
+   one visual language for "the machine is busy". The gate keeps its own
+   inline copy because it must be painted on the very first frame, before any
+   stylesheet is fetched — keep the two in sync. */
+.yapdp-spin {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(200, 168, 96, 0.25);
+    border-top-color: #c8a860;
+    border-radius: 50%;
+    animation: yapdp-spin 0.9s linear infinite;
+}
+
+@keyframes yapdp-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .yapdp-spin {
+        animation: none;
+    }
+}
+
+/* "Take control!" — the one control the input gate lets through while the
+   wizard types (see the input gate in src/quickboot.js). */
+.quickboot-take-control {
+    flex: 0 0 auto;
+    padding: 6px 14px;
+    border: 2px solid #c8a860;
+    border-radius: 8px;
+    background: transparent;
+    color: #c8a860;
+    font: inherit;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+}
+
+.quickboot-take-control:hover {
+    background: #c8a860;
+    color: #1c1814;
+}
+
+/* Media download progress (media-progress.js) — a thin status strip pinned to
+   the bottom edge, shown while a disk/tape image streams over the network
+   (autoload, manual BOOT, mount). It is pointer-events:none and sits below the
+   autoload toast (50000) and the modal overlays. The percentage tag floats just
+   above the strip, clear of the round bottom buttons; on a phone it shrinks and
+   the whole strip lifts above the home-indicator safe area. */
+#yapdp-media-progress {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: env(safe-area-inset-bottom, 0px);
+    z-index: 40000;
+    display: none;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+#yapdp-media-progress.visible {
     display: block;
+}
+
+.media-progress-label {
+    position: absolute;
+    left: 12px;
+    bottom: 10px;
+    padding: 2px 8px;
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    background: rgba(22, 18, 14, 0.85);
+    color: #e0d8c8;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.media-progress-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(200, 168, 96, 0.15);
+}
+
+.media-progress-bar {
+    height: 100%;
+    width: 0;
+    background: #c8a860;
+    transition: width 0.2s ease;
+}
+
+.media-progress-bar.indeterminate {
+    width: 40%;
+    animation: media-progress-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes media-progress-indeterminate {
+    0% {
+        margin-left: 0;
+    }
+
+    50% {
+        margin-left: 60%;
+    }
+
+    100% {
+        margin-left: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .media-progress-bar {
+        transition: none;
+    }
+
+    .media-progress-bar.indeterminate {
+        animation: none;
+    }
 }
 
 .floatLeft {
@@ -3729,12 +3867,25 @@ button.action-more-hidden {
         flex: 0 0 auto;
     }
 
-    /* The autoload warning (see .quickboot-balloon further up) is a sentence:
-       on a phone it drops to a size that still reads at arm's length and wraps
-       over two lines instead of running off both edges. */
+    /* The autoload toast (see .quickboot-balloon further up) is a row of
+       spinner + label + button: on a phone it drops to a size that still
+       reads at arm's length and wraps instead of running off both edges. */
     .quickboot-balloon {
         padding: 10px 14px;
         font-size: 15px;
+        gap: 8px;
+    }
+
+    .quickboot-take-control {
+        padding: 5px 12px;
+        font-size: 14px;
+    }
+
+    /* The media-progress tag shrinks and hugs the left edge on a phone. */
+    #yapdp-media-progress .media-progress-label {
+        left: 8px;
+        bottom: 8px;
+        font-size: 11px;
     }
 
     /* Modal dialogs must fit a phone: the shared .modal-box is capped by the
