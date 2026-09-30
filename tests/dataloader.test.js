@@ -84,8 +84,9 @@ function loadSections() {
   const fetchBlock = extractBlock(src, "async function fetchBlock(controlBlock, block)");
   const imageError = extractBlock(src, "function imageError(reason, message)");
   const assertCompleteImage = extractBlock(src, "function assertCompleteImage(response, buffer, url)");
+  const fetchImageBytes = extractBlock(src, "function fetchImageBytes(url)");
 
-  return { ioBlockSize, dataLoader, createCache, fetchBlock, imageError, assertCompleteImage };
+  return { ioBlockSize, dataLoader, createCache, fetchBlock, imageError, assertCompleteImage, fetchImageBytes };
 }
 
 // fetchCode, when provided, is a string of VM code that defines `fetch`
@@ -104,6 +105,7 @@ function makeContext(sandbox, sections, fetchCode) {
     sections.createCache,
     sections.imageError,
     sections.assertCompleteImage,
+    sections.fetchImageBytes,
     sections.fetchBlock,
     fetchImpl,
   ].join("\n");

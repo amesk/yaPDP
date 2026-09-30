@@ -58,6 +58,10 @@
       color: #c8a860;
     }
 
+    /* The gate's spinner is INLINE on purpose: it must be painted on the very
+       first frame, before any stylesheet is fetched. It mirrors the shared
+       .yapdp-spin in css/pdp11.css (used by the quick-boot autoload toast) —
+       keep the two in sync. */
     #yapdp-loading .yapdp-loading-spin {
       width: 34px;
       height: 34px;
@@ -2120,6 +2124,7 @@ Hello world
   <script src='src/mountmap.js'></script>
   <script src='src/drive-geometry.js'></script>
   <script src='src/dataloader.js'></script>
+  <script src='src/media-progress.js'></script>
   <script src='src/diskstore.js'></script>
   <script>
     // The refactored machine layer (core classes + devices) is the DEFAULT.
