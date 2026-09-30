@@ -286,6 +286,18 @@
         try {
             var got = await progress("media/" + url + ".zst");
             if (got.response.ok) {
+                // Record the identity of the bytes just received, so a block
+                // saved from a different build of this disk can be told apart
+                // (see DiskStore.registerImage). Unknown module or unknown
+                // bytes simply leave it unset, which never invalidates.
+                if (typeof DiskStore !== "undefined" &&
+                    typeof DiskStore.registerImage === "function" &&
+                    typeof ImageFingerprint !== "undefined" &&
+                    typeof ImageFingerprint.ofBytes === "function") {
+                    try {
+                        DiskStore.registerImage(url, ImageFingerprint.ofBytes(got.bytes));
+                    } catch (e) { /* identity unknown: stay permissive */ }
+                }
                 var raw = fzstd.decompress(got.bytes);
                 DataLoader.mount(url, raw);
                 return raw;

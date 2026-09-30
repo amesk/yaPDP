@@ -17,9 +17,15 @@
 //   dirty:Set }. diskIO() reports writes via markDirty().
 // - fetchBlock() consults DiskStore BEFORE the network/DataLoader path
 //   so a saved block always wins over the pristine base image.
-// - Every saved block is tagged with IMAGE_VERSION. When the bundled
-//   media images change (new .zst), bump IMAGE_VERSION so stale saved
-//   blocks are ignored instead of being overlaid onto a different disk.
+// - Every saved block is tagged with the FINGERPRINT of the image it came
+//   from (src/imagefingerprint.js), not with a hand-maintained constant.
+//   The old IMAGE_VERSION had to be bumped by hand whenever a bundled
+//   image was repacked, and it was not: rp1.dsk.zst changed three times in
+//   two days while the version stayed "0.1.0", so a stale cached block was
+//   overlaid onto a different disk. A computed fingerprint cannot be
+//   forgotten. An image whose bytes are unknown (file://, desktop bundle,
+//   any host that never fetches a .zst) has no fingerprint and keeps the
+//   old permissive behaviour.
 // - IndexedDB is used only when available (browser, Tauri WebView).
 //   In pure Node test contexts (no indexedDB) DiskStore degrades to a
 //   no-op that keeps state in memory only.
@@ -40,8 +46,36 @@ var DiskStore = (() => {
 
     const DB_NAME = "yapdp-diskstore";
     const DB_STORE = "blocks";
-    // Bump this when bundled media/ images change (new .zst files).
-    const IMAGE_VERSION = "0.1.0";
+
+    // url -> fingerprint of the image bytes last loaded for it (null when the
+    // bytes were never seen, e.g. an image restored from a desktop bundle).
+    // Registering is what makes the cache self-invalidating: a repacked .zst
+    // gets a new fingerprint, and every block saved under the old one stops
+    // matching (see getBlock/restoreOverlay).
+    const fingerprints = new Map();
+
+    function fingerprintOf(url) {
+        var fp = fingerprints.get(url);
+        return (fp === undefined) ? null : fp;
+    }
+
+    function matchOk(saved, current) {
+        var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+        if (F && typeof F.matches === "function") return F.matches(saved, current);
+        // No fingerprint module: fall back to strict equality so an unknown
+        // module never silently accepts a foreign cache.
+        return String(saved) === String(current);
+    }
+
+    // Record the identity of the image bytes just loaded for `url`. Called by
+    // the fetch path (fetchBlock in iopage.js and the browser-machine loader)
+    // with the raw `.zst` body it received. A null fingerprint leaves any
+    // previous value alone: "we did not learn the identity this time" is not
+    // "the identity changed".
+    function registerImage(url, fingerprint) {
+        if (!url || fingerprint == null) return;
+        fingerprints.set(url, String(fingerprint));
+    }
 
     let dbPromise = null;
     let db = null;
@@ -123,7 +157,7 @@ var DiskStore = (() => {
 
     // --- Key helpers ---
     // Each saved block is stored under "url::block"; a per-image record
-    // under "url::meta" carries the image version for staleness checks.
+    // under "url::meta" carries the image fingerprint for staleness checks.
     function blockKey(url, block) { return url + "::" + block; }
     function metaKey(url) { return url + "::meta"; }
 
@@ -184,12 +218,13 @@ var DiskStore = (() => {
         if (!entry || entry.dirty.size === 0) return Promise.resolve(false);
         const { controlBlock, dirty } = entry;
 
+        const fp = fingerprintOf(url);
         const writes = [];
         dirty.forEach((block) => {
             const cacheBlock = controlBlock.cache[block];
             if (cacheBlock !== undefined) {
                 const payload = {
-                    v: IMAGE_VERSION,
+                    v: fp,
                     b: blockToBytes(cacheBlock).buffer,
                     t: Date.now()
                 };
@@ -202,7 +237,7 @@ var DiskStore = (() => {
         dirty.clear();
 
         writes.push(dbPut(metaKey(url), {
-            v: IMAGE_VERSION,
+            v: fp,
             t: Date.now(),
             blocks: Array.from(savedIndex.get(url) || [])
         }));
@@ -217,10 +252,14 @@ var DiskStore = (() => {
     }
 
     // Return the saved bytes of a block (Uint8Array) or undefined when
-    // nothing is saved, the image version changed, or IDB is unavailable.
+    // nothing is saved, the image changed under it, or IDB is unavailable.
+    // The fingerprint recorded with the block must still describe the image
+    // currently loaded: a block saved from a different build of the disk is
+    // exactly the corruption this guards against.
     function getBlock(url, block) {
         return dbGet(blockKey(url, block)).then((payload) => {
-            if (!payload || payload.v !== IMAGE_VERSION) return undefined;
+            if (!payload) return undefined;
+            if (!matchOk(payload.v, fingerprintOf(url))) return undefined;
             return new Uint8Array(payload.b);
         });
     }
@@ -359,7 +398,7 @@ var DiskStore = (() => {
                 }
             }
             if (Object.keys(blocks).length > 0) {
-                out[url] = { v: IMAGE_VERSION, blocks };
+                out[url] = { v: fingerprintOf(url), blocks };
             }
         }
         return out;
@@ -378,7 +417,7 @@ var DiskStore = (() => {
                 if (!rec || typeof rec.blocks !== "object") continue;
                 // The bundled media images changed since the snapshot: its
                 // blocks belong to a different disk. Ignore the overlay.
-                if (rec.v !== IMAGE_VERSION) continue;
+                if (!matchOk(rec.v, fingerprintOf(url))) continue;
                 const entry = pending.get(url);
                 const cb = entry ? entry.controlBlock : null;
                 await clear(url);
@@ -390,12 +429,12 @@ var DiskStore = (() => {
                     if (!isFinite(block)) continue;
                     const bytes = new Uint8Array(rec.blocks[b]); // copy
                     writes.push(dbPut(blockKey(url, block), {
-                        v: IMAGE_VERSION, b: bytes.buffer, t: Date.now()
+                        v: fingerprintOf(url), b: bytes.buffer, t: Date.now()
                     }));
                     set.add(block);
                 }
                 writes.push(dbPut(metaKey(url), {
-                    v: IMAGE_VERSION, t: Date.now(), blocks: Array.from(set)
+                    v: fingerprintOf(url), t: Date.now(), blocks: Array.from(set)
                 }));
                 await Promise.all(writes);
                 savedIndex.set(url, set);
@@ -420,7 +459,9 @@ var DiskStore = (() => {
         clear,
         clearAll,
         init,
-        IMAGE_VERSION
+        // Image identity: register what was just fetched, ask what is known.
+        registerImage,
+        fingerprintOf
     };
 })();
 

@@ -527,6 +527,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   toggles on a genuine double click, in text mode as in canvas mode.
   (`src/pdp11-app.js`; pinned by `tests/vt52-zoom.test.js`)
 
+- **A snapshot taken on a different build of a disk is refused, not restored.**
+  A snapshot stores memory and registers, not the disk image, so restoring it
+  after `media/*.zst` was updated would layer the old memory onto a new disk —
+  a corrupted file system in the guest, silently. The emulator now compares the
+  images the snapshot was taken on with the ones loaded, refuses the restore
+  before touching CPU or RAM, explains it in a dialog (same shell as the
+  failed-image error) and offers to delete the snapshot. (`src/snapshots.js`,
+  `src/diskstore.js`, `src/iopage.js`, `src/browser-machine.js`; pinned by
+  `tests/image-fingerprint-invalidation.test.js`,
+  `tests/e2e-snapshot-image-changed.js`)
+
+- **The write-back cache no longer trusts a hand-bumped version that was
+  forgotten in practice.** Cached blocks, disk overlays and snapshots are now
+  tagged with the FNV-1a/32 fingerprint of the image bytes themselves
+  (`src/imagefingerprint.js`, computed by the fetch path), so repacking a
+  `.zst` invalidates everything derived from it on its own. The old
+  `IMAGE_VERSION` constant was still `"0.1.0"` while `media/rp1.dsk.zst`
+  (BSD 2.11) had been repacked three times, so a stale block matched and was
+  overlaid onto a different disk. An image whose bytes were never seen
+  (`file://`, a desktop bundle) has no fingerprint, and an unknown fingerprint
+  never invalidates — those deployments behave exactly as before. (pinned by
+  `tests/image-fingerprint.test.js`)
+
 - **A devlog post marked `draft` no longer fails the test suite.** The guard
   demanded a generated page, an index entry and a feed entry for every file in
   `docs/devlog/`, so committing a draft broke `npm test`; the publication

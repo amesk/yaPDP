@@ -49,6 +49,7 @@ contract, the bridge and the write-back storage split.
 | [`src/core/machine.js`](../src/core/machine.js) | The chassis: owns the bus, the disk service and the device registry; `mountDrive(url, provider)` attaches byte sources |
 | [`src/core/io.js`](../src/core/io.js) | I/O adapters (`BrowserIO`, `NodeIO`, `Machine.printf`) |
 | [`src/devices/*.js`](../src/devices/) | One card per peripheral — 1:1 ports of the legacy iopage closures: `dl11` (console/terminals), `kw11` (clock), `rk11`, `rl11`, `rp11`, `tm11`, `uda50` (MSCP), `ptr11` (paper tape reader + punch), `lp11` (printer), `mmu-regs`, `cpu-regs`, plus the shared `disk-service.js` |
+| [`src/imagefingerprint.js`](../src/imagefingerprint.js) | The identity of a disk/tape image, as a short string — FNV-1a/32 of the raw `.zst` bytes, 8 hex digits. Computed, never remembered: the write-back cache, the captured overlays and every snapshot are tagged with it, so repacking an image invalidates them on its own (see the note below) |
 | [`src/diskstore.js`](../src/diskstore.js) | The persistent write-back overlay (IndexedDB in the browser, memory in Node) — a shared layer, not a device: `markDirty`/`flush`/`getBlock` |
 | [`src/mountmap.js`](../src/mountmap.js) | The declared drive → image-url table — a shared layer, not a device: controllers ask `urlFor(prefix, unit, suffix)` instead of building `rk${drive}.dsk`, and `set()` remaps a drive to a mounted image chosen on the Storage page (persisted in localStorage) |
 | [`src/drive-geometry.js`](../src/drive-geometry.js) | Image ↔ controller compatibility table — a pure helper mirroring the device geometry (RK05 / RL01-RL02 / RP04-RP06): `check(drive, bytes)` refuses an image whose size does not fit, so the Storage page blocks a mismatched Bind behind an explicit "Assign anyway" (UDA50/MSCP and TM11 magtape are unchecked) |
@@ -97,6 +98,8 @@ contract, the bridge and the write-back storage split.
 |------|---------|
 | [`tests/core.test.js`](../tests/core.test.js) | Bus/device/machine core contracts — install, region access, reset, snapshots |
 | [`tests/diskstore.test.js`](../tests/diskstore.test.js) | DiskStore write-back overlay (extracted from the real source) |
+| [`tests/image-fingerprint.test.js`](../tests/image-fingerprint.test.js) | The FNV-1a/32 fingerprint: published vectors, a BigInt cross-check, and the "unknown never invalidates" rule |
+| [`tests/image-fingerprint-invalidation.test.js`](../tests/image-fingerprint-invalidation.test.js) | What happens to caches and snapshots when an image is repacked: a stale block is refused, an unknown fingerprint is not |
 | [`tests/writeback.test.js`](../tests/writeback.test.js) | Headless write-back: guest writes → flush → image survives reboot |
 | [`tests/headless-boot.test.js`](../tests/headless-boot.test.js) | RT‑11 boots headlessly on the core stack |
 | [`tests/e2e-bsd-boot.js`](../tests/e2e-bsd-boot.js) | BSD 2.11 boots headlessly to `login:` — full-machine shakeout, so it follows the e2e rules (Unibus-map regression anchor) |
@@ -114,6 +117,40 @@ convention). `npm run validate` runs the whole e2e set.
 ## Media files
 
 Disk (`.dsk`), tape (`.tap`), and paper tape (`.ptap`) images live in the [`media/`](../media/) directory. Many are ZST‑compressed to stay within GitHub size limits. Disk and tape images ship as `.zst` and are fetched and decompressed in the browser via the bundled fzstd library (no raw `.dsk`/`.tap` copy is required). See [`media/README.md`](../media/README.md) for the naming convention.
+
+### Repacking an image invalidates the caches and snapshots by itself
+
+Three things remember something about a disk image and must not be trusted
+once the image changes:
+
+| Remembers | Where | Tagged with |
+|-----------|-------|-------------|
+| guest writes (write-back blocks) | IndexedDB, `yapdp-diskstore` | the fingerprint of the image they were written to |
+| a snapshot's disk overlay | inside the snapshot record | the fingerprint, per image url |
+| the whole snapshot | IndexedDB, `yapdp-snapshots` | `imageFingerprints`: url → fingerprint at capture time |
+
+All three carry `src/imagefingerprint.js`'s FNV-1a/32 of the raw `.zst` body
+(8 hex digits), recorded by the fetch path when the bytes actually arrive
+(`DiskStore.registerImage`). Nothing has to be bumped by hand: replace
+`media/rk0.dsk.zst` and every fingerprint derived from it changes, so
+
+* a cached block saved from the previous build no longer matches and is
+  ignored (`DiskStore.getBlock`), and an overlay recorded against it is skipped
+  (`DiskStore.restoreOverlay`) — instead of being written over a different disk;
+* `SnapshotStore.restore()` refuses the snapshot before it touches CPU or RAM,
+  explains why in a dialog and offers to delete it. A half-applied restore
+  (saved memory on top of a disk it does not match) is worse than none.
+
+**Unknown never invalidates.** A fingerprint that was never computed — a page
+opened as `file://`, a desktop-bundle image, any host where the `.zst` was not
+fetched — is `null`, and `null` matches everything (see
+`ImageFingerprint.matches`). This is what keeps those deployments working
+exactly as before, and it is pinned by tests.
+
+This replaces the old hand-maintained `IMAGE_VERSION` constant, which was
+forgotten in practice: `rp1.dsk.zst` (BSD 2.11) was repacked three times while
+the version stayed `0.1.0`, so a stale block matched and was overlaid onto the
+new disk.
 
 ## Related documentation
 

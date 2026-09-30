@@ -243,8 +243,11 @@ var SnapshotStore = (() => {
                     name: name || defaultName(),
                     createdAt: Date.now(),
                     schemaVersion: SCHEMA_VERSION,
-                    imageVersion: (typeof DiskStore !== "undefined" && DiskStore.IMAGE_VERSION)
-                        ? DiskStore.IMAGE_VERSION : "unknown",
+                    // Identity of every image the snapshot's disks belong to:
+                    // { "rk0.dsk": "a1b2c3d4", ... }. A null/absent value
+                    // means the identity was never learned (file://, desktop
+                    // bundle) and never invalidates anything.
+                    imageFingerprints: captureImageFingerprints(),
                     cpu: captureCPU(),
                     memory: mem,
                     mounted: captureMounted(),
@@ -333,8 +336,71 @@ var SnapshotStore = (() => {
 
     // Apply a snapshot to the live machine. Caller must have halted the
     // CPU first (or the CPU start timer must not have fired yet).
+    // Fingerprints of the images this machine is currently running on, read
+    // from DiskStore (which learns them from the bytes the browser received).
+    // Falls back to null per url, which callers treat as "unknown".
+    function captureImageFingerprints() {
+        var out = {};
+        if (typeof DiskStore === "undefined" ||
+            typeof DiskStore.fingerprintOf !== "function") return out;
+        var urls = listMountedUrls(snapMountedList());
+        urls.forEach(function (url) {
+            var fp = DiskStore.fingerprintOf(url);
+            if (fp != null) out[url] = fp;
+        });
+        return out;
+    }
+
+    // The mounted image list as the emulator sees it (DataLoader), as urls.
+    function snapMountedList() {
+        if (typeof DataLoader === "undefined" ||
+            typeof DataLoader.list !== "function") return [];
+        try { return DataLoader.list() || []; } catch (e) { return []; }
+    }
+
+    function listMountedUrls(list) {
+        return (list || []).map(function (u) { return String(u); });
+    }
+
+    // Which images in the snapshot no longer match the ones loaded now.
+    // An unknown fingerprint on either side is NOT a mismatch: a value that
+    // was never computed cannot contradict anything, and treating it as a
+    // mismatch would refuse good snapshots on every host without a .zst.
+    // Returns [{url, then, now}, ...] — empty when the snapshot is usable.
+    function incompatibleImages(snap) {
+        var saved = (snap && snap.imageFingerprints) || null;
+        if (!saved || typeof saved !== "object") return [];
+        var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+        var bad = [];
+        Object.keys(saved).forEach(function (url) {
+            var then = saved[url];
+            var now = (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.fingerprintOf === "function")
+                ? DiskStore.fingerprintOf(url) : null;
+            // Only a KNOWN current fingerprint can contradict a known saved
+            // one; if the image is not loaded now, `now` is null and the
+            // snapshot is not refused for it (it may still be mounted later).
+            if (now == null) return;
+            var ok = F && typeof F.matches === "function"
+                ? F.matches(then, now)
+                : String(then) === String(now);
+            if (!ok) bad.push({ url: url, then: then, now: now });
+        });
+        return bad;
+    }
+
     function restore(snap) {
         if (!snap) return Promise.resolve(false);
+        // Refuse BEFORE touching CPU/RAM: a snapshot whose disks changed under
+        // it cannot be restored consistently, and a half-applied restore
+        // (new RAM on an old disk) is worse than no restore at all. The same
+        // rule DiskStore.restoreOverlay applies per block, applied to the
+        // snapshot as a whole.
+        var bad = incompatibleImages(snap);
+        if (bad.length > 0) {
+            showIncompatibleImageDialog(snap, bad);
+            return Promise.resolve(false);
+        }
         restoreCPU(snap.cpu);
         return restoreMemory(snap.memory).then(function () {
             // Device registers (L2) — restore after RAM so devices see
@@ -637,6 +703,102 @@ var SnapshotStore = (() => {
         return (n / (1024 * 1024)).toFixed(1) + " MB";
     }
 
+    // --- "Snapshot not restored" dialog -----------------------------------
+    // A snapshot whose disk images changed under it is an explicit request that
+    // cannot be met. It gets the same treatment as a failed image fetch: the
+    // .modal-box.error shell from css/pdp11.css, one "Got it" to dismiss and
+    // one action that leads somewhere useful. Built with createElement/
+    // textContent, the way imgerror.js builds its overlay, so an image name —
+    // which comes from a stored snapshot, not from a URL we validated — is
+    // data, never markup.
+    //
+    // The optional third action deletes the incompatible snapshot. Offered,
+    // never automatic: it is the user's work.
+    var __snapIncompatModal = null;
+
+    function incompatibleText(bad) {
+        return bad.map(function (b) {
+            var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+            var detail = (F && typeof F.describe === "function")
+                ? F.describe(b.then, b.now)
+                : (String(b.then) + " vs " + String(b.now));
+            return b.url + " (" + detail + ")";
+        }).join(", ");
+    }
+
+    function showIncompatibleImageDialog(snap, bad) {
+        if (typeof document === "undefined") return;
+        if (!__snapIncompatModal) {
+            __snapIncompatModal = document.createElement("div");
+            __snapIncompatModal.id = "snap-incompatible-overlay";
+            __snapIncompatModal.className = "modal-overlay";
+            __snapIncompatModal.addEventListener("click", function (e) {
+                var action = e.target.getAttribute &&
+                    e.target.getAttribute("data-snap-action");
+                if (action === "remove") {
+                    var id = __snapIncompatModal.getAttribute("data-snap-id");
+                    hideIncompatibleImageDialog();
+                    if (id) remove(id).then(refreshUI);
+                } else if (action === "close" || e.target === __snapIncompatModal ||
+                        (e.target.closest && e.target.closest(".modal-close"))) {
+                    hideIncompatibleImageDialog();
+                }
+            });
+            document.body.appendChild(__snapIncompatModal);
+        }
+
+        var box = document.createElement("div");
+        box.className = "modal-box error";
+
+        var title = document.createElement("span");
+        title.className = "modal-title";
+        title.textContent = "Snapshot not restored";
+        box.appendChild(title);
+
+        var intro = document.createElement("p");
+        intro.className = "modal-intro";
+        intro.appendChild(document.createTextNode("The snapshot "));
+        var name = document.createElement("code");
+        name.textContent = String(snap.name || snap.id || "");
+        intro.appendChild(name);
+        intro.appendChild(document.createTextNode(
+            " was taken on a different build of "));
+        var img = document.createElement("code");
+        img.textContent = incompatibleText(bad);
+        intro.appendChild(img);
+        intro.appendChild(document.createTextNode(
+            ". The image has been updated since, so restoring would put the " +
+            "saved memory on top of a disk it does not match — the guest would " +
+            "see a corrupted file system. The machine was left as it is. " +
+            "Delete the snapshot, or take a fresh one on this build."));
+        box.appendChild(intro);
+
+        var gotItBtn = document.createElement("button");
+        gotItBtn.type = "button";
+        gotItBtn.className = "modal-close";
+        gotItBtn.setAttribute("data-snap-action", "close");
+        gotItBtn.textContent = "Got it";
+        box.appendChild(gotItBtn);
+
+        var removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "modal-close";
+        removeBtn.setAttribute("data-snap-action", "remove");
+        removeBtn.textContent = "Delete this snapshot";
+        box.appendChild(removeBtn);
+
+        __snapIncompatModal.innerHTML = "";
+        __snapIncompatModal.setAttribute("data-snap-id", String(snap.id || ""));
+        __snapIncompatModal.appendChild(box);
+        __snapIncompatModal.classList.add("visible");
+    }
+
+    function hideIncompatibleImageDialog() {
+        if (__snapIncompatModal) {
+            __snapIncompatModal.classList.remove("visible");
+        }
+    }
+
     // ---- Styled confirmation modal ----
     // Reuses the shared modal-overlay style (modal-* classes, css/pdp11.css)
     // so it matches the reboot confirmation and the config leave dialog
@@ -881,7 +1043,11 @@ var SnapshotStore = (() => {
         restore: restore,
         refreshUI: refreshUI,
         wireUI: wireUI,
-        SCHEMA_VERSION: SCHEMA_VERSION
+        SCHEMA_VERSION: SCHEMA_VERSION,
+        // Exposed for tests: the compatibility rule and its dialog.
+        incompatibleImages: incompatibleImages,
+        showIncompatibleImageDialog: showIncompatibleImageDialog,
+        hideIncompatibleImageDialog: hideIncompatibleImageDialog
     };
 })();
 
