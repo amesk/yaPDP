@@ -213,7 +213,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   network never reads as a hung machine. It wears the gate's status palette (a
   dark panel with a gold accent) instead of an error red, which stays reserved
   for the image-load dialog. (`src/quickboot.js`, `css/pdp11.css`; pinned by
-  `tests/quickboot-input-gate.test.js` and `tests/mobile-css.test.js`)
+  `tests/quickboot-input-gate.test.js`, `tests/mobile-css.test.js` and
+  `tests/e2e-quickboot-take-control.js`, which clicks the real button in a real
+  browser)
 
 - **The front panel is monochrome red, the way a real 11/70 panel is.** All 64
   lamps — 22 address, 16 data, 26 status — share one lit red (`--ledColor`: a
