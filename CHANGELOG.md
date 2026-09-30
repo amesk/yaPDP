@@ -507,6 +507,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   repo source and the landing mirror. (`tools/screenshots-manual.js`,
   `tools/screenshots-os.js`)
 
+- **A Cyrillic OS layout no longer types Latin through the physical keyboard.**
+  The console teletype and the VT52/VT100 pages used to fall back to the
+  deprecated `keyCode` (the US key position) whenever `e.key` was not printable
+  ASCII, so a Russian layout silently produced Latin letters — translating the
+  letters but leaving the digits and punctuation of the same physical key behind.
+  Printable characters now come from `e.key` only: a Cyrillic key types nothing
+  (and is not swallowed, so browser shortcuts keep working), while Ctrl+<letter>
+  still resolves through `keyCode`, so Ctrl+C sends an interrupt in any layout.
+  (`src/pdp11-app.js`; pinned by `tests/keyboard-layout.test.js`)
+
 
 ### Fixed
 

@@ -718,19 +718,16 @@ var g60Keyboard = (function () {
         sendDL([code - 64]); e.preventDefault(); return;
       }
 
-      // Printable characters
+      // Printable characters — taken from the event's own `key` only. A non-US
+      // layout (Cyrillic, Greek, ...) is NOT transliterated from the physical
+      // key position: the 7-bit line cannot carry those characters, and a
+      // partial recode translates letters but leaves the digits and
+      // punctuation of the same key behind, so it is worse than nothing.
+      // Ctrl+letter above still reads keyCode, so Ctrl+C and friends keep
+      // working in every layout.
       var ch = 0;
-
-      // 1) Try e.key first — handles Shift/case correctly on US layout
       if (typeof e.key === 'string' && e.key.length === 1) {
         ch = e.key.charCodeAt(0);
-      }
-
-      // 2) If not printable ASCII (e.g., Cyrillic layout), fall back to keyCode
-      if (ch < 32 || ch >= 127) {
-        if (code >= 65 && code <= 90) {
-          ch = code + 32;  // lowercase letter (a-z)
-        }
       }
 
       // The Model 33's @ key is SHIFT+P, and CTRL+@ is the bit-paired
@@ -895,19 +892,12 @@ function installVT52Keyboard(unit, pageId) {
       sendToUnit([code - 64]); e.preventDefault(); return;
     }
 
-    // Printable characters
+    // Printable characters — the event's own `key` only, never a transliteration
+    // of the physical key position (see installPhysicalKeyboard above): a
+    // Cyrillic layout types nothing here instead of half-translated Latin.
     var ch = 0;
-
-    // 1) Try e.key first — handles Shift/case correctly on US layout
     if (typeof e.key === 'string' && e.key.length === 1) {
       ch = e.key.charCodeAt(0);
-    }
-
-    // 2) If not printable ASCII (e.g., Cyrillic layout), fall back to keyCode
-    if (ch < 32 || ch >= 127) {
-      if (code >= 65 && code <= 90) {
-        ch = code + 32;  // lowercase letter (a-z)
-      }
     }
 
     if (ch >= 32 && ch < 127) {
