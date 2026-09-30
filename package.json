@@ -47,6 +47,7 @@
     "e2e:os:legacy": "wireit",
     "e2e:xxdp": "wireit",
     "e2e:panel": "wireit",
+    "e2e:snapshot-image": "wireit",
     "e2e:vt100": "wireit",
     "e2e:mobile": "wireit",
     "validate": "wireit",
@@ -251,8 +252,24 @@
         "e2e:bsd29",
         "e2e:xxdp",
         "e2e:panel",
+        "e2e:snapshot-image",
         "e2e:vt100",
         "e2e:mobile"
+      ]
+    },
+    "e2e:snapshot-image": {
+      "command": "node tests/e2e-snapshot-image-changed.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-snapshot-image-changed.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
       ]
     },
     "e2e:vt100": {

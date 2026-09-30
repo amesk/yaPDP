@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Image downloads show their progress.** While a disk or tape image streams
+  over the network — quick-boot autoload, a manual `BOOT`, or a mount — a thin
+  gold strip at the bottom of the window reports "Loading N%". It reads the
+  transfer as it arrives, falls back to an indeterminate sweep when the host
+  content-encodes the `.zst` (GitHub Pages serves it as gzip) or sends no
+  Content-Length, and stays out of the way: `pointer-events:none`, hidden for
+  sub-150ms loads, respecting `prefers-reduced-motion` and the phone's safe
+  area. (`src/media-progress.js`, `src/browser-machine.js`, `src/iopage.js`,
+  `css/pdp11.css`; pinned by `tests/media-progress.test.js`)
+
 - **A `?boot=` link now checks that the build actually ships the image.** A
   deep link naming a real scenario whose image this deployment does not carry no
   longer starts a boot that is bound to fail on the mount (the image-load error,
@@ -192,6 +202,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Changed
+
+- **The quick-boot autoload hands the machine back on request.** While the
+  wizard types its boot sequence the toast says "Autoloading in progress…" and
+  carries a "Take control!" button. Until the sequence finishes the WHOLE
+  interface is locked — the teletype and the VT52/VT100 terminals ignore the
+  keyboard, the front-panel switches do not move and pointer clicks do not reach
+  the page — so the only way out is the "Take control!" button. The lock keeps a
+  stray keystroke from racing the wizard's bytes into the console. The toast
+  carries the same
+  spinner as the startup loading gate, so a thick image crawling over the
+  network never reads as a hung machine. It wears the gate's status palette (a
+  dark panel with a gold accent) instead of an error red, which stays reserved
+  for the image-load dialog. (`src/quickboot.js`, `css/pdp11.css`; pinned by
+  `tests/quickboot-input-gate.test.js`, `tests/mobile-css.test.js` and
+  `tests/e2e-quickboot-take-control.js`, which clicks the real button in a real
+  browser)
 
 - **The front panel is monochrome red, the way a real 11/70 panel is.** All 64
   lamps — 22 address, 16 data, 26 status — share one lit red (`--ledColor`: a
@@ -493,6 +519,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Fixed
+
+- **In TextMode a single click on a VT52 terminal no longer flips the zoom.**
+  The double-click counter was registered on both the tube box and the textarea
+  inside it, so one physical click arrived twice (the textarea's handler, then
+  the bubble to the box) and every press read as a double click. Zoom now
+  toggles on a genuine double click, in text mode as in canvas mode.
+  (`src/pdp11-app.js`; pinned by `tests/vt52-zoom.test.js`)
+
+- **A snapshot taken on a different build of a disk is refused, not restored.**
+  A snapshot stores memory and registers, not the disk image, so restoring it
+  after `media/*.zst` was updated would layer the old memory onto a new disk —
+  a corrupted file system in the guest, silently. The emulator now compares the
+  images the snapshot was taken on with the ones loaded, refuses the restore
+  before touching CPU or RAM, explains it in a dialog (same shell as the
+  failed-image error) and offers to delete the snapshot. (`src/snapshots.js`,
+  `src/diskstore.js`, `src/iopage.js`, `src/browser-machine.js`; pinned by
+  `tests/image-fingerprint-invalidation.test.js`,
+  `tests/e2e-snapshot-image-changed.js`)
+
+- **The write-back cache no longer trusts a hand-bumped version that was
+  forgotten in practice.** Cached blocks, disk overlays and snapshots are now
+  tagged with the FNV-1a/32 fingerprint of the image bytes themselves
+  (`src/imagefingerprint.js`, computed by the fetch path), so repacking a
+  `.zst` invalidates everything derived from it on its own. The old
+  `IMAGE_VERSION` constant was still `"0.1.0"` while `media/rp1.dsk.zst`
+  (BSD 2.11) had been repacked three times, so a stale block matched and was
+  overlaid onto a different disk. An image whose bytes were never seen
+  (`file://`, a desktop bundle) has no fingerprint, and an unknown fingerprint
+  never invalidates — those deployments behave exactly as before. (pinned by
+  `tests/image-fingerprint.test.js`)
 
 - **A devlog post marked `draft` no longer fails the test suite.** The guard
   demanded a generated page, an index entry and a feed entry for every file in

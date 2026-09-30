@@ -352,6 +352,29 @@ function run() {
       "the reserved height must be cleared BEFORE statusPad is measured");
   }
 
+  // --- 10. One physical click counts once, in either rendering path --------
+  {
+    // The counter is registered on BOTH the tube box (.vt52-crt) and the
+    // textarea, and the textarea is a CHILD of that box. In text mode one
+    // physical click is therefore delivered twice (the textarea's own handler,
+    // then the same event bubbling to the box), so every single click was
+    // counted as the second of a pair and the zoom flipped on each press.
+    const click = /var onScreenClick = function \(ev\)\s*\{([\s\S]*?)\n  \};/.exec(app);
+    assert.ok(click, "onScreenClick body not found");
+    const body = click[1];
+    assert.ok(/ev\.__yapdp/.test(body),
+      "onScreenClick must stamp the event it counted, or the bubble from the " +
+      "textarea's own handler is counted a second time");
+    assert.ok(body.indexOf("ev.__yapdp") < body.indexOf("lastClickAt"),
+      "the stamp must be tested BEFORE the click is counted");
+    // Both delivery points must stay registered: in text mode the visible
+    // textarea is the only hit area the user can reach.
+    assert.ok(/crtBox\.addEventListener\('click', onScreenClick\)/.test(app),
+      "the tube box must keep its click handler");
+    assert.ok(/textarea\.addEventListener\('click', onScreenClick\)/.test(app),
+      "the textarea must keep its click handler");
+  }
+
   console.log("vt52-zoom: all tests passed");
 }
 

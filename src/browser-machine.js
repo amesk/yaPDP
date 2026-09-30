@@ -273,11 +273,32 @@
             if (afterBundle !== undefined) return afterBundle;
         }
         if (typeof fetch !== "function" || typeof fzstd === "undefined") return undefined;
+        var progress = (typeof window !== "undefined" && window.__yapdpMediaProgress &&
+                        typeof window.__yapdpMediaProgress.fetchBytes === "function")
+            ? window.__yapdpMediaProgress.fetchBytes
+            : function (u) {
+                return fetch(u).then(function (r) {
+                    return r.arrayBuffer().then(function (b) {
+                        return { bytes: new Uint8Array(b), response: r };
+                    });
+                });
+            };
         try {
-            var resp = await fetch("media/" + url + ".zst");
-            if (resp.ok) {
-                var buf = await resp.arrayBuffer();
-                var raw = fzstd.decompress(new Uint8Array(buf));
+            var got = await progress("media/" + url + ".zst");
+            if (got.response.ok) {
+                // Record the identity of the bytes just received, so a block
+                // saved from a different build of this disk can be told apart
+                // (see DiskStore.registerImage). Unknown module or unknown
+                // bytes simply leave it unset, which never invalidates.
+                if (typeof DiskStore !== "undefined" &&
+                    typeof DiskStore.registerImage === "function" &&
+                    typeof ImageFingerprint !== "undefined" &&
+                    typeof ImageFingerprint.ofBytes === "function") {
+                    try {
+                        DiskStore.registerImage(url, ImageFingerprint.ofBytes(got.bytes));
+                    } catch (e) { /* identity unknown: stay permissive */ }
+                }
+                var raw = fzstd.decompress(got.bytes);
                 DataLoader.mount(url, raw);
                 return raw;
             }
@@ -286,11 +307,10 @@
             // failed .zst probe is not fatal — fall through to the raw file.
         }
         try {
-            var rawResp = await fetch("media/" + url);
-            if (!rawResp.ok) return undefined;
-            var rawBytes = new Uint8Array(await rawResp.arrayBuffer());
-            DataLoader.mount(url, rawBytes);
-            return rawBytes;
+            var rawGot = await progress("media/" + url);
+            if (!rawGot.response.ok) return undefined;
+            DataLoader.mount(url, rawGot.bytes);
+            return rawGot.bytes;
         } catch (e) {
             return undefined;
         }

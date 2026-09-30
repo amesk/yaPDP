@@ -250,10 +250,59 @@ var QuickBoot = (function () {
         if (overlay) overlay.classList.remove("visible");
     }
 
-    // --- "Autoloading in progress" balloon ------------------------------
-    // A small toast shown while the wizard types the boot sequence, warning
-    // the operator not to touch the teletype/keyboard. It disappears when the
-    // sequence finishes or the user intervenes (any key press).
+    // --- Operator input gate --------------------------------------------
+    // While the autoload toast below is up the wizard owns the machine, so
+    // the operator's own input must NOT reach it. Every keyboard and pointer
+    // event is intercepted in the CAPTURE phase on the document — before the
+    // console keyboard (pdp11-app.js), the mobile key strips and the front
+    // panel handlers ever see it — and dropped. The wizard's own bytes do not
+    // travel through the DOM (they go straight to the DL11 bridge in
+    // sendBytes()), so the boot sequence is unaffected. The toast's own
+    // "Take control!" button is the single exemption: without it the gate
+    // would be a trap.
+    var GATED_EVENTS = [
+        "keydown", "keypress", "keyup",
+        "mousedown", "mouseup", "click",
+        "pointerdown", "pointerup", "contextmenu"
+    ];
+    var gateOn = false;
+
+    function gateEvent(e) {
+        // The toast is the ONLY way out of the autoload: let clicks on it
+        // (and therefore on its button) through.
+        if (e.target && e.target.closest &&
+            e.target.closest("#quick-boot-balloon")) return;
+        // F11 toggles fullscreen (fullscreen.js) — an app control, not
+        // console input; blocking it would strand the operator in a mode
+        // they cannot leave while the boot runs.
+        if (e.type === "keydown" && e.key === "F11") return;
+        if (typeof e.preventDefault === "function") e.preventDefault();
+        if (typeof e.stopImmediatePropagation === "function") {
+            e.stopImmediatePropagation();
+        } else if (typeof e.stopPropagation === "function") {
+            e.stopPropagation();
+        }
+    }
+
+    function setInputGate(on) {
+        if (typeof document === "undefined") return;
+        if (on === gateOn) return;
+        gateOn = on;
+        for (var i = 0; i < GATED_EVENTS.length; i++) {
+            if (on) document.addEventListener(GATED_EVENTS[i], gateEvent, true);
+            else document.removeEventListener(GATED_EVENTS[i], gateEvent, true);
+        }
+        if (document.body) {
+            document.body.classList.toggle("quickboot-autoloading", on);
+        }
+    }
+
+    // --- "Autoloading in progress" toast --------------------------------
+    // A small toast shown while the wizard types the boot sequence. It now
+    // carries the way OUT of the automatic boot: a "Take control!" button
+    // that calls abortAutoload(), plus a spinner so a thick image crawling
+    // over the network never reads as a hung machine. It disappears when the
+    // sequence finishes or the operator takes control.
     var balloon = null;
 
     function ensureBalloon() {
@@ -261,8 +310,29 @@ var QuickBoot = (function () {
         balloon = document.createElement("div");
         balloon.id = "quick-boot-balloon";
         balloon.className = "quickboot-balloon";
-        balloon.textContent =
-            "Autoloading in progress — don't touch the teletype/keyboard";
+        balloon.setAttribute("role", "status");
+        balloon.setAttribute("aria-live", "polite");
+
+        // Shared "work in progress" spinner, the same look as the startup
+        // loading gate (see .yapdp-spin in css/pdp11.css).
+        var spin = document.createElement("span");
+        spin.className = "yapdp-spin quickboot-balloon-spin";
+        spin.setAttribute("aria-hidden", "true");
+
+        var text = document.createElement("span");
+        text.className = "quickboot-balloon-text";
+        text.textContent = "Autoloading in progress…";
+
+        var take = document.createElement("button");
+        take.type = "button";
+        take.id = "quick-boot-take-control";
+        take.className = "quickboot-take-control";
+        take.textContent = "Take control!";
+        take.addEventListener("click", function () { abortAutoload(); });
+
+        balloon.appendChild(spin);
+        balloon.appendChild(text);
+        balloon.appendChild(take);
         document.body.appendChild(balloon);
         return balloon;
     }
@@ -270,10 +340,12 @@ var QuickBoot = (function () {
     function showBalloon() {
         if (typeof document === "undefined") return;
         ensureBalloon().classList.add("visible");
+        setInputGate(true);
     }
 
     function hideBalloon() {
         if (balloon) balloon.classList.remove("visible");
+        setInputGate(false);
     }
 
     // Autoload abort token: bumped by every new launch() and by abortAutoload().
@@ -781,12 +853,12 @@ var QuickBoot = (function () {
             setTimeout(function () { showNoScenario(requested); }, 0);
         }
 
-        // Any operator keystroke ends the autoload warning — from there the
-        // user types on their own ("don't touch the keyboard" no longer
-        // applies). Idempotent: hides nothing when no balloon is shown.
-        document.addEventListener("keydown", function () {
-            hideBalloon();
-        });
+        // The operator's own input no longer dismisses the toast: while the
+        // autoload runs, the input gate set by showBalloon() swallows every
+        // keyboard and pointer event (see gateEvent). The single way out is
+        // the toast's "Take control!" button. Hiding the warning on a
+        // keystroke used to let the operator type while the wizard kept
+        // typing — the two byte streams then raced in the console.
     }
 
     // Capture console output for prompt-waiting steps (called by iopage.js).
@@ -832,6 +904,8 @@ var QuickBoot = (function () {
         hide: hide,
         launch: launch,
         abortAutoload: abortAutoload,
+        // True while the autoload toast is up and the input gate is closed.
+        isAutoloading: function () { return gateOn; },
         // Resolves to the build-manifest image list (or null when absent);
         // shared with the Info page so both surfaces agree on availability.
         manifest: function () { return manifestPromise; },
