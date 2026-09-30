@@ -16,9 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   system through the quick-boot path: the scenario's own boot command, its typed
   steps and its machine profile — console type, LP11 printer, VT11 display — are
   applied, so the guest comes up on the hardware it expects. A key that names no
-  scenario boots nothing and shows a dialog in the style of the image-load
-  error, naming the key and offering the quick-boot list, so a stale link
-  explains itself. (`src/quickboot.js`, `index.html`,
+  scenario — or a link that arrived without one — boots nothing and shows a
+  dialog in the style of the image-load error, naming the key and offering the
+  quick-boot list, so a stale link explains itself. (`src/quickboot.js`,
+  `index.html`,
   `landing/src/App.tsx`, `landing/src/data.ts`,
   `landing/src/components/OSCarousel.tsx`,
   `landing/src/components/LiveEmulatorModal.tsx`; pinned by

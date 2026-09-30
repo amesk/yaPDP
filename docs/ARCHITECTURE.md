@@ -26,12 +26,14 @@ command, the typed steps and the machine profile (console, printer, VT11) come
 from there and the caller — the RUN buttons on the landing galleries — carries
 nothing but the key. The parameter is consumed once and dropped from the URL, so
 the config-driven reload that a profile change triggers resumes through the
-pending key instead of booting twice. A key that names no scenario boots nothing
-and shows the same kind of modal a failed image fetch does
-(`.modal-box.error`, see `src/imgerror.js`): the key is named — inserted as
-text, never as markup — and one button leads to the quick-boot list, so a stale
-or mistyped link explains itself instead of looking like a request the emulator
-ignored. See [`src/quickboot.js`](../src/quickboot.js).
+pending key instead of booting twice. A key that names no scenario — or a link
+that arrived with no key at all (`?boot=`) — boots nothing and shows the same
+kind of modal a failed image fetch does (`.modal-box.error`, see
+`src/imgerror.js`): the key is named (tamed first: cut by code points, control
+characters and bidi overrides replaced), inserted as text rather than markup,
+and one button leads to the quick-boot list, so a stale or mistyped link
+explains itself instead of looking like a request the emulator ignored. See
+[`src/quickboot.js`](../src/quickboot.js).
 
 ## The machine layer (core stack)
 

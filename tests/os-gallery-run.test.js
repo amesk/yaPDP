@@ -162,29 +162,61 @@ function run() {
             "deviceFromSearch must return the key the galleries advertise: " + key);
     }
 
-    // --- 6. the raw key, for the "no such scenario" notice ----------------
+    // --- 6. the raw key, for the "no such scenario" dialog ----------------
     // deviceFromSearch() answers "can this boot?"; bootKeyFromSearch() answers
-    // "did anybody ask?" — the wizard names the key when the answer is no, so
-    // the raw value has to come back exactly as typed (and only when the
-    // parameter is really there).
+    // "did anybody ask?" — the dialog names the key when the answer is no, so
+    // the raw value has to come back exactly as typed.
+    //
+    // An EMPTY value (or a bare "?boot") is a request too: a link that lost its
+    // key is a broken template, and it gets the dialog rather than silence.
+    // Only the absence of the parameter means nobody asked.
     assert.strictEqual(typeof QuickBoot.bootKeyFromSearch, "function",
         "QuickBoot.bootKeyFromSearch is not exported (see src/quickboot.js)");
     const raw = QuickBoot.bootKeyFromSearch;
     const rawCases = [
-        ["", null],                      // no query: nobody asked
+        ["", null],                      // no query at all: nobody asked
         ["?plain=1", null],
-        ["?boot=", null],                // an empty value is not a request
+        ["?boot=", ""],                  // a link that lost its key
+        ["?boot", ""],                   // ... with the "=" lost as well
+        ["?boot&x=1", ""],
+        ["?x=1&boot=", ""],
+        ["?boots=1", null],              // a different parameter must not match
+        ["?noboot=1", null],
         ["?boot=rk0", "rk0"],
         ["?core=1&boot=rp1", "rp1"],
         ["?boot=%", "%"],                // dangling escape: echoed as typed
         ["?boot=not-a-scenario", "not-a-scenario"],
-        ["?boot=%3Crk0%3E", "<rk0>"]     // decoded, then escaped by the wizard
+        ["?boot=%3Crk0%3E", "<rk0>"]     // decoded, then tamed by boundKey()
     ];
     for (const [search, expected] of rawCases) {
         assert.strictEqual(raw(search), expected,
             "bootKeyFromSearch(" + JSON.stringify(search) + ") should be " +
             JSON.stringify(expected));
     }
+    // ... and an empty key is still not a scenario: nothing may boot from it.
+    assert.strictEqual(f("?boot="), null, "an empty key must not resolve");
+    assert.strictEqual(f("?boot"), null, "a keyless parameter must not resolve");
+
+    // --- 7. the key as the dialog shows it --------------------------------
+    // The key is URL text shown back in a modal: it is tamed, not escaped (the
+    // dialog builds itself with textContent).
+    assert.strictEqual(typeof QuickBoot.boundKey, "function",
+        "QuickBoot.boundKey is not exported (see src/quickboot.js)");
+    const bound = QuickBoot.boundKey;
+    assert.strictEqual(bound(""), "");
+    assert.strictEqual(bound("rk0"), "rk0");
+    assert.strictEqual(bound("x".repeat(40)), "x".repeat(40), "40 is not too long");
+    assert.strictEqual(bound("x".repeat(41)), "x".repeat(40) + "…");
+    // Cut by CODE POINTS: 41 emoji must not become 20 whole ones plus half of
+    // the 21st, which the browser would draw as a replacement glyph.
+    assert.strictEqual(bound("😀".repeat(41)), "😀".repeat(40) + "…",
+        "the cut must not split a surrogate pair");
+    // Control characters would either break the paragraph or stay invisible.
+    assert.strictEqual(bound("a\nb\tc\rd"), "a?b?c?d");
+    assert.strictEqual(bound("a\u0000b\u007Fc"), "a?b?c");
+    // Bidi overrides and line separators reorder or reshape what is read.
+    assert.strictEqual(bound("rk\u202E0"), "rk?0");
+    assert.strictEqual(bound("rk\u20280"), "rk?0");
 
     console.log("os-gallery-run: all tests passed (" +
         runKeys.length + " classic card(s), " + spaKeys.length +
