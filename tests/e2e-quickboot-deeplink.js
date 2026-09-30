@@ -252,6 +252,32 @@ async function seededPage(browser, errors) {
       await page.close();
     }
 
+    // --- 3b. A link that lost its key is a broken link, not silence -------
+    // "?boot=" with nothing after it is what a template with an unset variable
+    // emits. The parameter IS there, so somebody asked for something: the same
+    // dialog, with wording of its own — there is no key to name.
+    {
+      const page = await seededPage(browser, errors);
+      await page.goto(BASE + "?boot=", { waitUntil: "domcontentloaded", timeout: 60000 });
+      const explained = await poll(page, () => {
+        const overlay = document.querySelector("#quickboot-link-error.visible");
+        if (!overlay) return false;
+        const intro = overlay.querySelector(".modal-intro");
+        return !!intro && intro.textContent.indexOf("no key at all") !== -1;
+      }, 30000);
+      check("keyless ?boot=: the dialog explains the missing key", explained);
+
+      const state = await settledSnapshot(page);
+      check("keyless ?boot=: nothing boots", state.balloon === false);
+      check("keyless ?boot=: the parameter is left in the URL",
+        state.search.indexOf("boot=") !== -1, state.search);
+      const emptyCode = await page.evaluate(() =>
+        !!document.querySelector("#quickboot-link-error .modal-intro code"));
+      check("keyless ?boot=: no empty <code> element is printed", emptyCode === false);
+      check("keyless ?boot=: no page errors", errors.length === 0, errors.join(" | "));
+      await page.close();
+    }
+
     // --- 4. The key is data, not markup ----------------------------------
     // The key comes from a URL nobody validated and is shown back in the
     // dialog: it must arrive as text, in the shared error shell.

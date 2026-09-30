@@ -168,20 +168,31 @@ var QuickBoot = (function () {
     }
 
     // The raw key carried by a deep link from the landing OS galleries:
-    // ?boot=<device>, or null when the parameter is absent. Kept apart from
-    // deviceFromSearch() so the page can tell "nobody asked for anything"
-    // (say nothing) from "somebody asked for a key we do not have" (say so).
-    // A dangling %-escape comes back as typed: it is about to be shown to the
-    // person who typed it, not evaluated.
+    // ?boot=<device>, or null only when the parameter is absent altogether.
+    //
+    // An EMPTY value is NOT "nobody asked": "?boot=" with nothing after it (or
+    // a bare "?boot") is a link that lost its key — a broken template on the
+    // page that emitted it — and the visitor gets the same explanation as for a
+    // key that names no scenario. That is why this returns "" rather than null
+    // for those, and why the caller tests for null rather than for truthiness.
+    //
+    // Kept apart from deviceFromSearch() so the page can tell "nobody asked for
+    // anything" (say nothing) from "somebody asked for something we cannot do"
+    // (say so). A dangling %-escape comes back as typed: it is about to be
+    // shown to the person who typed it, not evaluated.
     // Pure — unit-testable in Node.
     function bootKeyFromSearch(search) {
-        var m = /[?&]boot=([^&]+)/.exec(search || "");
-        if (!m) return null;
-        try {
-            return decodeURIComponent(m[1]);
-        } catch (err) {
-            return m[1];
+        var s = search || "";
+        var valued = /[?&]boot=([^&]*)/.exec(s);
+        if (valued) {
+            try {
+                return decodeURIComponent(valued[1]);
+            } catch (err) {
+                return valued[1];
+            }
         }
+        // A bare "?boot" (no "=" at all) is the same broken link.
+        return /[?&]boot(?:&|$)/.test(s) ? "" : null;
     }
 
     // The device key carried by that deep link. The key names a QuickBoot
@@ -198,12 +209,21 @@ var QuickBoot = (function () {
             ? device : null;
     }
 
-    // A key shown back to the visitor is bounded: a URL is not a place to trust
-    // with unbounded length. Plain text only — the dialog is built with
-    // createElement/textContent, so nothing here has to be escaped.
+    // A key shown back to the visitor. A URL is not a place to trust, so the
+    // text is tamed before it reaches the dialog:
+    //   - control characters, line separators and bidi overrides become "?": a
+    //     key of newlines would render as a multi-line paragraph, and U+202E
+    //     would silently reorder what the visitor reads;
+    //   - the cut is by CODE POINTS, not UTF-16 units, so a key ending in an
+    //     emoji is not sliced through a surrogate pair and left as half a
+    //     character.
+    // Plain text only — the dialog is built with createElement/textContent, so
+    // nothing here has to be escaped.
     function boundKey(key) {
-        var s = String(key);
-        return s.length > 40 ? s.slice(0, 40) + "…" : s;
+        var s = String(key)
+            .replace(/[\u0000-\u001F\u007F-\u009F\u2028\u2029\u202A-\u202E\u2066-\u2069]/g, "?");
+        var points = Array.from(s);
+        return points.length > 40 ? points.slice(0, 40).join("") + "…" : s;
     }
 
     // ------------------------------------------------------------------
@@ -351,15 +371,23 @@ var QuickBoot = (function () {
 
         var intro = document.createElement("p");
         intro.className = "modal-intro";
-        intro.appendChild(document.createTextNode("The quick-boot key "));
-        var code = document.createElement("code");
-        code.textContent = boundKey(key);
-        intro.appendChild(code);
-        intro.appendChild(document.createTextNode(
-            " names no scenario in this build, so nothing was booted — the " +
-            "machine is idle, exactly as if the page had been opened without " +
-            "it. Pick a guest OS from the quick-boot list, or type the boot " +
-            "command yourself at the @ prompt."));
+        var tail = " — the machine is idle, exactly as if the page had been " +
+            "opened without it. Pick a guest OS from the quick-boot list, or " +
+            "type the boot command yourself at the @ prompt.";
+        // An empty key is its own case: the link arrived without one, and
+        // naming it would print an empty <code> element.
+        if (key === "") {
+            intro.appendChild(document.createTextNode(
+                "The quick-boot link arrived with no key at all, so nothing " +
+                "was booted" + tail));
+        } else {
+            intro.appendChild(document.createTextNode("The quick-boot key "));
+            var code = document.createElement("code");
+            code.textContent = boundKey(key);
+            intro.appendChild(code);
+            intro.appendChild(document.createTextNode(
+                " names no scenario in this build, so nothing was booted" + tail));
+        }
         box.appendChild(intro);
 
         // Dismiss first, then the "fix it" action — matching the other modals
@@ -677,13 +705,15 @@ var QuickBoot = (function () {
             // The visitor asked for this OS explicitly, so the wizard stays
             // shut and the scenario runs on its own.
             setTimeout(function () { launch(linked, false); }, 0);
-        } else if (requested) {
+        } else if (requested !== null) {
             // Somebody asked for a scenario this build does not have: a stale
-            // link from an article, a typo, a key that has been renamed. The
-            // request is explicit, so silence would read as "the emulator
-            // ignored me" — the dialog names the key, explains that nothing was
-            // booted and offers the quick-boot list, and the parameter is left
-            // in the URL so the visitor can see what was actually asked for.
+            // link from an article, a typo, a key that has been renamed — or a
+            // link that arrived with no key at all ("?boot="). The request is
+            // explicit, so silence would read as "the emulator ignored me": the
+            // dialog names the key, explains that nothing was booted and offers
+            // the quick-boot list, and the parameter is left in the URL so the
+            // visitor can see what was actually asked for. The test is against
+            // null, not against truthiness — an empty key is a request too.
             setTimeout(function () { showNoScenario(requested); }, 0);
         }
 
@@ -726,6 +756,7 @@ var QuickBoot = (function () {
         stepBytes: stepBytes,
         deviceFromSearch: deviceFromSearch,
         bootKeyFromSearch: bootKeyFromSearch,
+        boundKey: boundKey,
         bufferContains: bufferContains,
         profileOf: profileOf,
         mergeHardware: mergeHardware,
