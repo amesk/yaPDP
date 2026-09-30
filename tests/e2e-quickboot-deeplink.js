@@ -278,6 +278,97 @@ async function seededPage(browser, errors) {
       await page.close();
     }
 
+    // --- 3c. A cold start: the link is the FIRST thing the page is asked -----
+    // Everything above warms the page up first (seededPage() navigates to BASE),
+    // so the manifest is already in the HTTP cache and the deep link is resolved
+    // against a known-good list. That is exactly how the feature does NOT get
+    // used: a visitor follows a link from an article into a browser that has
+    // never seen the site. Here the very first navigation carries the
+    // parameter, in a fresh context with an empty cache and no localStorage —
+    // the case where the manifest is still in flight when init() runs.
+    //
+    // The point is not that it is fast: it is that the boot waits for that
+    // answer (or the grace period) instead of racing it. A boot may not start
+    // before the build has said whether it ships the image.
+    {
+      const context = await browser.createBrowserContext();
+      const page = await context.newPage();
+      page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
+      await installTypedCounter(page);
+      // No seeding, no warm-up: the deep link IS the first request.
+      await page.goto(BASE + "?boot=rk0", { waitUntil: "domcontentloaded", timeout: 60000 });
+
+      const launched = await poll(page, () => !!document.getElementById("quick-boot-balloon"), 45000);
+      check("cold start: the scenario launched on the first navigation", launched);
+      const typed = await poll(page,
+        () => parseInt(sessionStorage.getItem("yapdp.e2e.typed") || "0", 10) >= 1, 20000);
+      check("cold start: the console was typed into", typed);
+
+      const state = await settledSnapshot(page);
+      check("cold start: the parameter is consumed",
+        state.search.indexOf("boot=") === -1, state.search);
+      check("cold start: nothing was refused that the build ships",
+        state.wizard === false && !(await page.$("#quickboot-link-error.visible")));
+      await page.close();
+      await context.close();
+    }
+
+    // --- 3d. A key the build does not ship ---------------------------------
+    // A scenario this build HAS the hardware profile for but not the image: a
+    // stale link to an OS that was dropped from the deployment. The manifest is
+    // the only thing that knows, and it lands after init(), so this case is the
+    // cold-start race seen from the other side: the boot is held until the
+    // answer arrives, and the answer is "no" — the dialog, not a stalled mount.
+    //
+    // media/manifest.json in the repo ships every gallery image, so the way to
+    // produce a missing one is to serve the page with the manifest fetch
+    // pointed at a list that omits it. That is done by intercepting the one
+    // request, which leaves every other byte of the page exactly as shipped.
+    {
+      const context = await browser.createBrowserContext();
+      const page = await context.newPage();
+      page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
+      await page.setRequestInterception(true);
+      page.on("request", (req) => {
+        if (/media\/manifest\.json/.test(req.url())) {
+          // A build that ships only the Unix V5 disk: ?boot=rk1 names a real
+          // scenario (RT-11) whose image is simply not here.
+          req.respond({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ media: ["rk0.dsk"] })
+          });
+        } else {
+          req.continue();
+        }
+      });
+      await page.goto(BASE + "?boot=rk1", { waitUntil: "domcontentloaded", timeout: 60000 });
+
+      const explained = await poll(page, () => {
+        const overlay = document.querySelector("#quickboot-link-error.visible");
+        if (!overlay) return false;
+        const intro = overlay.querySelector(".modal-intro");
+        return !!intro && intro.textContent.indexOf("rk1") !== -1;
+      }, 45000);
+      check("missing image: the dialog explains it (rather than stalling on a mount)",
+        explained);
+
+      const state = await settledSnapshot(page);
+      check("missing image: nothing boots", state.balloon === false);
+      check("missing image: the parameter is left in the URL",
+        state.search.indexOf("boot=rk1") !== -1, state.search);
+      const wording = await page.evaluate(() => {
+        const overlay = document.querySelector("#quickboot-link-error");
+        const title = overlay ? overlay.querySelector(".modal-title") : null;
+        return title ? title.textContent : "";
+      });
+      check("missing image: the dialog says the image is unavailable, not the scenario",
+        wording === "Quick boot image not available", wording);
+      check("missing image: no page errors", errors.length === 0, errors.join(" | "));
+      await page.close();
+      await context.close();
+    }
+
     // --- 4. The key is data, not markup ----------------------------------
     // The key comes from a URL nobody validated and is shown back in the
     // dialog: it must arrive as text, in the shared error shell.

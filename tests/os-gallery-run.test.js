@@ -218,6 +218,60 @@ function run() {
     assert.strictEqual(bound("rk\u202E0"), "rk?0");
     assert.strictEqual(bound("rk\u20280"), "rk?0");
 
+    // --- 8. is the scenario's image actually in this BUILD? ----------------
+    // A deep link is resolved on page load, before the manifest (which is
+    // fetched asynchronously) has landed. Without this the key names a real
+    // scenario, launch() runs, and the mount fails long after — the visitor
+    // gets imgerror instead of an explanation. This is the emulator half of
+    // "the build ships what the galleries advertise".
+    assert.strictEqual(typeof QuickBoot.scenarioAvailable, "function",
+        "QuickBoot.scenarioAvailable is not exported (see src/quickboot.js)");
+    const avail = QuickBoot.scenarioAvailable;
+    const rk0 = OSBoot.scenarioFor("rk0");
+    const rk1tty = OSBoot.scenarioFor("rk1tty");
+    const basic = OSBoot.scenarioFor("basic");
+
+    // A build shipping only rk0.dsk keeps Unix V5 and drops RT-11 (same disk
+    // family, different scenarios) — the case a stale link hits.
+    assert.strictEqual(avail(rk0, ["rk0.dsk"], []), true,
+        "a scenario whose image is in the manifest is available");
+    assert.strictEqual(avail(rk1tty, ["rk0.dsk"], []), false,
+        "a scenario whose image is absent from the manifest is not");
+
+    // Paper tapes are selected through the #ptr control, never mounted: they
+    // stay bootable in every build, however minimal.
+    assert.strictEqual(avail(basic, [], []), true,
+        "a paper-tape scenario stays available with an empty manifest");
+
+    // No manifest at all (ad-hoc host, file://, fetch failed) proves nothing:
+    // the scenario stays "possibly bootable" and the boot is allowed to try.
+    // Tightening this to false would break every deployment without a
+    // manifest, so it is pinned deliberately.
+    assert.strictEqual(avail(rk0, null, []), true,
+        "a failed manifest must not block a boot");
+    assert.strictEqual(avail(rk0, undefined, []), true,
+        "an absent manifest must not block a boot");
+
+    // A user-mounted image (drag & drop, desktop bundle) makes its OS
+    // bootable even when the build does not ship it — union semantics.
+    assert.strictEqual(avail(OSBoot.scenarioFor("rk4"), null, ["rk4.dsk"]), true,
+        "a mounted image makes its scenario available without a manifest");
+
+    // A key that resolved to nothing is never "available".
+    assert.strictEqual(avail(null, ["rk0.dsk"], []), false);
+    assert.strictEqual(avail(undefined, ["rk0.dsk"], []), false);
+
+    // Every key the galleries advertise must be in the manifest those very
+    // galleries would run against — the build ships what the RUN buttons
+    // promise. The repository's own media/manifest.json is that manifest.
+    const buildManifest = JSON.parse(
+        fs.readFileSync(path.join(ROOT, "media", "manifest.json"), "utf8")).media;
+    for (const key of runKeys.concat(spaKeys)) {
+        assert.strictEqual(avail(OSBoot.scenarioFor(key), buildManifest, []), true,
+            "the build does not ship the image for ?boot=" + key +
+            " — its RUN button would open a dead link on this deployment");
+    }
+
     console.log("os-gallery-run: all tests passed (" +
         runKeys.length + " classic card(s), " + spaKeys.length +
         " SPA slide(s), " + OSBoot.BOOT_SCENARIOS.length + " scenario(s))");
