@@ -2330,44 +2330,63 @@ var panel = {
     LIGHTS_MODE: [0x10, 0x20, 0, 0x40], // Kernel, Super, Undefined, User -> Kernel, Super, User lights
     LIGHTS_STATE: [0x280, 0x300, 0x200, 0x80], // RUN, RESET, WAIT, HALT -> RUN, MASTER, PAUSE lights
     addressId: [], // DOM id's for addressLights
-    addressLights: 0x3fffff, // current state of addressLights (a0-a21)
+    addressLights: 0, // lamps the DOM shows lit right now (a0-a21); set by initPanel()
     autoIncr: 0, // panel auto increment
     displayId: [], // DOM id's for displayLights
-    displayLights: 0xffff, // current state of displayLights (d0-d15)
+    displayLights: 0, // lamps the DOM shows lit right now (d0-d15); set by initPanel()
     halt: 0, // halt switch position
     lampTest: 0, // lamp switch test position
     powerSwitch: 0, // -1 off, 0 run, 1 locked
     rotary0: 0, // rotary switch 0 position
     rotary1: 0, // rotary switch 1 position
     statusId: [], //  DOM id's for statusLights
-    statusLights: 0x3ffffff, // current state of statusLights (s0-s25)
+    statusLights: 0, // lamps the DOM shows lit right now (s0-s25); set by initPanel()
     step: 0 // S Inst / S Bus switch position
 };
 
 function initPanel(idArray, idName, idCount) {
     "use strict";
-    let id, elementId, initVal = 0;
+    let id, elementId;
     for (id = 0; id < idCount; id++) {
         if ((elementId = document.getElementById(idName + id))) {
-            idArray[id] = elementId.style;
+            idArray[id] = elementId; // updateLights() toggles .lit on the element
         } else {
             idArray[id] = {}; // If element not present make a dummy
         }
-        initVal = initVal * 2 + 1;
     }
-    return initVal;
+    // The returned mask is "which lamps the DOM shows lit right now", and the CSS
+    // starts every lens DARK (.mainLed is the unlit shade until .lit is set).
+    // updateLights() only writes the lamps whose bit differs from that mask, so an
+    // all-ones start would silently skip every lamp that is already supposed to be
+    // lit — and, with the class as the only way to light a lamp, those lamps would
+    // stay dark for good (the DATA PATHS lamp was the visible casualty).
+    return 0;
 }
 
 // There are three groups of lights (LEDs/Globes):-
 //  addressLights (a0-a21) which show either a virtual or physical memory address depending on switch rotary0
 //  displayLights (d0-d15) shows current data depending on switch rotary1
 //  statusLights (s0-s25) all else from MMU status, CPU mode, Bus status, parity, and position of rotary switches
-// The updateLights() function runs frequently to calculate the three light bit mask values and then set the appropriate
-// light visibility to either hidden or visible.
+// The updateLights() function runs frequently to calculate the three light bit mask values and then switch each lamp
+// on or off. A lamp is never hidden: on a real panel the lens is always visible, so only its colour changes (.lit).
 //
 // statusLights:         25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0
 //                      |  rotary1  |       rotary0         | PAR |PE AE Rn Pa Ma Us Su Ke Da 16 18 22
 // The PDP 11/45 does not have all of the same lights as a PDP 11/70 - thus some must be dummied out in initPanel()
+
+// Switch one panel lamp on or off. The lamp element carries the .lit class while
+// it is lit (see .mainLed / .rotaryLed in css/pdp11.css). initPanel() hands over
+// the element itself; its dummy sink (used when the element is absent, i.e. in a
+// DOM-less run) has no classList, so that call still cannot throw here.
+function setLamp(lamp, lit) {
+    "use strict";
+    if (!lamp) return;
+    if (lamp.classList) {
+        lamp.classList.toggle('lit', lit);
+    } else {
+        lamp.lit = lit;
+    }
+}
 
 function updateLights() {
     "use strict";
@@ -2380,11 +2399,7 @@ function updateLights() {
                 id++;
                 mask >>>= 1;
             }
-            if (newMask & (1 << id)) {
-                idArray[id].visibility = 'visible';
-            } else {
-                idArray[id].visibility = 'hidden';
-            }
+            setLamp(idArray[id], (newMask & (1 << id)) !== 0);
         }
     }
     if (panel.powerSwitch < 0) {
