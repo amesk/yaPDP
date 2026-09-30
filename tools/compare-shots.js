@@ -142,7 +142,7 @@ async function main(argv) {
         const a = await pixels(old);
         const b = await pixels(Buffer.from(fs.readFileSync(p)));
         const s = stats(a, b);
-        rows.push({ p: p, s: s });
+        rows.push({ p: p, s: s, w0: a.w, h0: a.h, w1: b.w, h1: b.h });
 
         if (mode === "restore") {
             const unchanged = !s.size && s.pct <= pctLimit && s.maxDelta <= deltaLimit;
@@ -152,11 +152,18 @@ async function main(argv) {
     }
 
     if (mode === "report") {
-        rows.sort((x, y) => (x.newFile ? -1 : y.newFile ? 1
-            : x.s.strongPct - y.s.strongPct));
+        rows.sort((x, y) => {
+            const rank = (r) => r.newFile ? -1 : (r.s.size ? 1 : r.s.strongPct);
+            return rank(x) - rank(y);
+        });
         for (const r of rows) {
             if (r.newFile) { console.log("NEW       " + r.p); continue; }
             const s = r.s;
+            if (s.size) {
+                console.log("SIZE-DIFF " + r.p + "  HEAD=" + r.w0 + "x" + r.h0 +
+                    "  now=" + r.w1 + "x" + r.h1);
+                continue;
+            }
             console.log("any=" + s.pct.toFixed(3).padStart(7) + "%  strong=" +
                 s.strongPct.toFixed(4).padStart(8) + "% (" +
                 String(s.strong).padStart(7) + " px)  max=" +
