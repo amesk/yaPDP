@@ -1,7 +1,13 @@
 :root {
     --unitWidth: 4px;
     --unitHeight: 5px;
-    --ledColor: radial-gradient(circle at 4px 4px, yellow, red);
+    /* The front panel is monochrome red: one lit lamp colour and one dark unlit
+       lens. The lit value ramps a bright red core down to a darker red rim —
+       that ramp is the lamp's volume — and stops there: no yellow core, no
+       purple. Every lamp reads them from here, so the whole panel has a single
+       source of colour — see .mainLed / .rotaryLed below. */
+    --ledColor: radial-gradient(circle at 4px 4px, #ff3a00, #ff2600 45%, #d81c00 75%, #8f0f00);
+    --ledOffColor: #0e0500;
 }
 
 /* ===== Authentic VT52 display font (fritzm/vt52) =====
@@ -1218,12 +1224,29 @@ textarea {
     float: left;
 }
 
+/* A panel lamp is never hidden: a real 11/70 shows every lens all the time, lit
+   or not, so the unlit state is the dark lens shade and .lit swaps in the lit
+   red. The class is toggled per lamp by updateLights() in src/pdp11.js.
+   The inset pair shades the lens as a dome — a lit top-left edge and a shaded
+   bottom-right one, matching the gradient's hotspot — so a lamp keeps its volume
+   inside a single red hue; a lit lamp adds a tight halo, which is what makes it
+   read as emitting rather than as a flat disc. */
 .mainLed,
 .rotaryLed {
     width: calc(var(--unitWidth) * 3);
     height: calc(var(--unitWidth) * 3);
     border-radius: 32%;
+    background: var(--ledOffColor);
+    box-shadow: inset 1px 1px 1px rgba(255, 190, 160, 0.16),
+        inset -1px -1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.mainLed.lit,
+.rotaryLed.lit {
     background: var(--ledColor);
+    box-shadow: inset 1px 1px 1px rgba(255, 200, 170, 0.55),
+        inset -1px -1px 2px rgba(90, 0, 0, 0.45),
+        0 0 4px rgba(255, 40, 0, 0.7);
 }
 
 .mainLed {

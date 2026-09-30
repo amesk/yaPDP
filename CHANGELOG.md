@@ -166,6 +166,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The front panel is monochrome red, the way a real 11/70 panel is.** All 64
+  lamps — 22 address, 16 data, 26 status — share one lit red (`--ledColor`: a
+  bright core, `#ff3a00`, deepening to a dark rim, `#8f0f00` — that ramp is what
+  gives a lamp its volume — with no blue anywhere) and one dim unlit lens
+  (`--ledOffColor`, `#0e0500`), and every lamp rule reads those two variables, so
+  the panel has a single source of colour. The lens is also shaded as a dome (a
+  lit top-left edge, a shaded bottom-right one, plus a tight halo while lit), so
+  a lamp reads as a dome rather than a flat disc without a second hue creeping
+  in. A lamp is switched by the `.lit` class instead of being hidden, so an
+  unlit lens stays visible exactly as on the machine, and a lamp the machine has
+  lit is lit on screen from the first frame. (`css/pdp11.css`, `src/pdp11.js`;
+  pinned by `tests/panel-lamp-css.test.js` — the 64-lamp count and the
+  one-source-of-colour rule — and by `tests/e2e-panel-lamps.js`, which holds all
+  64 lamps against the panel's own mask on the running machine, under LAMP TEST
+  and with the machine powered off)
+
 - **The BSD 2.11 image ships a leaner, networkless kernel.** Its console runs
   `2.11 BSD UNIX #1` built from the `YAPDP` configuration — `INET`, `NETHER` and
   `NSL` off — so no network devices attach and no network daemons start: the
