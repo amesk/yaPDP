@@ -833,19 +833,30 @@ async function main() {
             panelShown.sticker.bottom <= panelShown.page.bottom + 1,
             JSON.stringify({ sticker: panelShown.sticker, page: panelShown.page }));
 
-        // The QuickBoot "Autoloading in progress" warning is a whole sentence,
-        // not a label. Centred, un-wrapped and set in 20px type it was wider
-        // than the phone screen — both ends off the display — so it wraps
-        // inside the window now. The element is built here with the real class
-        // and the real wording (tests/mobile-css.test.js pins both to
-        // src/quickboot.js, so this cannot drift into testing a stranger's
-        // markup); driving a real autoload instead would fetch a disk image
-        // and type a boot sequence just to measure a line box.
+        // The QuickBoot autoload toast is a row of spinner + label + "Take
+        // control!" button. Un-wrapped and set in 20px type it was wider than
+        // the phone screen — both ends off the display — so it wraps inside
+        // the window now. The element is built here with the real classes and
+        // the real wording (tests/mobile-css.test.js and
+        // tests/quickboot-input-gate.test.js pin them to src/quickboot.js, so
+        // this cannot drift into testing a stranger's markup); driving a real
+        // autoload instead would fetch a disk image and type a boot sequence
+        // just to measure a line box.
         const toast = await phoneFrame.evaluate(() => {
             const el = document.createElement("div");
             el.className = "quickboot-balloon visible";
-            el.textContent =
-                "Autoloading in progress — don't touch the teletype/keyboard";
+            const spin = document.createElement("span");
+            spin.className = "yapdp-spin quickboot-balloon-spin";
+            const text = document.createElement("span");
+            text.className = "quickboot-balloon-text";
+            text.textContent = "Autoloading in progress…";
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "quickboot-take-control";
+            btn.textContent = "Take control!";
+            el.appendChild(spin);
+            el.appendChild(text);
+            el.appendChild(btn);
             document.body.appendChild(el);
             const q = el.getBoundingClientRect();
             const cs = getComputedStyle(el);
@@ -853,19 +864,16 @@ async function main() {
                 left: Math.round(q.left), right: Math.round(q.right),
                 width: Math.round(q.width), height: Math.round(q.height),
                 vw: window.innerWidth,
-                lineHeight: parseFloat(cs.lineHeight) || 0,
                 whiteSpace: cs.whiteSpace
             };
-            out.lines = out.lineHeight
-                ? Math.round(q.height / out.lineHeight) : 0;
             el.remove();
             return out;
         });
-        check("the autoload warning fits the phone screen",
+        check("the autoload toast fits the phone screen",
             toast.left >= 0 && toast.right <= toast.vw,
             JSON.stringify(toast));
-        check("…and wraps inside it instead of running off both edges",
-            toast.whiteSpace !== "nowrap" && toast.lines >= 2,
+        check("…and is allowed to wrap instead of running off an edge",
+            toast.whiteSpace !== "nowrap",
             JSON.stringify(toast));
 
         await phoneFrame.screenshot({
