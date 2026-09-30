@@ -6,9 +6,14 @@ interface LiveEmulatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   lang: 'en' | 'ru';
+  // Optional QuickBoot scenario key (src/osboot.js). When present the embedded
+  // emulator is opened as pdp11.html?boot=<key>, which boots that guest OS
+  // with the whole machine profile it needs; when absent the visitor gets the
+  // machine as it was left, which is what the plain "launch online" wants.
+  bootKey?: string | null;
 }
 
-export function LiveEmulatorModal({ isOpen, onClose, lang }: LiveEmulatorModalProps) {
+export function LiveEmulatorModal({ isOpen, onClose, lang, bootKey }: LiveEmulatorModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -33,6 +38,12 @@ export function LiveEmulatorModal({ isOpen, onClose, lang }: LiveEmulatorModalPr
   }, [isOpen, onClose]);
 
   if (!isOpen || !mounted) return null;
+
+  // Deep link read by the emulator itself (QuickBoot.deviceFromSearch): the
+  // landing never touches the machine, it only names the scenario to boot.
+  const emulatorUrl = bootKey
+    ? `pdp11.html?boot=${encodeURIComponent(bootKey)}`
+    : 'pdp11.html';
 
   return createPortal(
     <div
@@ -59,7 +70,7 @@ export function LiveEmulatorModal({ isOpen, onClose, lang }: LiveEmulatorModalPr
 
           <div className="flex items-center gap-2">
             <a
-              href="pdp11.html"
+              href={emulatorUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded border border-[#5a4a30] bg-[#1a1714] hover:bg-[#2e2820] text-[#c8a860] hover:text-[#f0e6c8] transition-colors"
@@ -85,7 +96,8 @@ export function LiveEmulatorModal({ isOpen, onClose, lang }: LiveEmulatorModalPr
         {/* Live Emulator iFrame */}
         <div className="relative flex-1 bg-black w-full h-full">
           <iframe
-            src="pdp11.html"
+            key={emulatorUrl}
+            src={emulatorUrl}
             title="yaPDP Live Emulator"
             className="w-full h-full border-0"
             allow="fullscreen"

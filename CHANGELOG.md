@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Every guest OS in the landing galleries boots in one click.** Each tile on
+  the classic landing page and in the SPA landing carries a RUN button that
+  opens the emulator with `pdp11.html?boot=<device>` and starts that operating
+  system through the quick-boot path: the scenario's own boot command, its typed
+  steps and its machine profile — console type, LP11 printer, VT11 display — are
+  applied, so the guest comes up on the hardware it expects. A key that names no
+  scenario boots nothing and shows a dialog in the style of the image-load
+  error, naming the key and offering the quick-boot list, so a stale link
+  explains itself. (`src/quickboot.js`, `index.html`,
+  `landing/src/App.tsx`, `landing/src/data.ts`,
+  `landing/src/components/OSCarousel.tsx`,
+  `landing/src/components/LiveEmulatorModal.tsx`; pinned by
+  `tests/os-gallery-run.test.js` and `tests/e2e-quickboot-deeplink.js`)
+
 - **The headless console tool can save a guest's disk back to a file.**
   `headless-term` gains `:save-disk <file>`: it drains the write-back overlay
   (a guest's changed blocks sit in the disk service's cache until a flush) and

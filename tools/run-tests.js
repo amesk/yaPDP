@@ -57,6 +57,7 @@ const ORDER = [
     "onboarding.test.js",
     "imgerror.test.js",
     "osboot.test.js",
+    "os-gallery-run.test.js",
     "media-manifest.test.js",
     "changelog-format.test.js",
     "manual-generation.test.js",

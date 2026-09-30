@@ -3,6 +3,7 @@ import { SlideItem, FeatureItem, ResourceLinkItem, DownloadVariantItem } from '.
 export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'unix_v5',
+    bootKey: 'rk0',
     title: 'Unix V5',
     caption: 'Unix V5',
     image: 'assets/images/os/unix_v5.png',
@@ -11,6 +12,7 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
   {
     id: 'bsd',
+    bootKey: 'rp1',
     title: '2.11 BSD',
     caption: '2.11 BSD',
     image: 'assets/images/os/bsd.png',
@@ -19,6 +21,7 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
   {
     id: 'rt11',
+    bootKey: 'rk1',
     title: 'RT-11',
     caption: 'RT-11',
     image: 'assets/images/os/rt11.png',
@@ -27,6 +30,7 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
   {
     id: 'rt11-vt52',
+    bootKey: 'rk1vt52',
     title: 'RT-11 · VT52',
     caption: 'RT-11 · VT52',
     image: 'assets/images/os/rt11-vt52.png',
@@ -35,6 +39,7 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
   {
     id: 'basic',
+    bootKey: 'basic',
     title: 'DEC BASIC-11',
     caption: 'DEC BASIC-11',
     image: 'assets/images/os/basic.png',
@@ -43,6 +48,7 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
   {
     id: 'lunar-lander',
+    bootKey: 'lander',
     title: 'Lunar Lander',
     caption: 'Lunar Lander',
     image: 'assets/images/os/lunar-lander.png',
@@ -51,6 +57,7 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
   {
     id: 'xxdp',
+    bootKey: 'rk3',
     title: 'XXDP+',
     caption: 'XXDP+',
     image: 'assets/images/os/xxdp.png',

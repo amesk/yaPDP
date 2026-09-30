@@ -167,6 +167,45 @@ var QuickBoot = (function () {
         return parts.join(" · ");
     }
 
+    // The raw key carried by a deep link from the landing OS galleries:
+    // ?boot=<device>, or null when the parameter is absent. Kept apart from
+    // deviceFromSearch() so the page can tell "nobody asked for anything"
+    // (say nothing) from "somebody asked for a key we do not have" (say so).
+    // A dangling %-escape comes back as typed: it is about to be shown to the
+    // person who typed it, not evaluated.
+    // Pure — unit-testable in Node.
+    function bootKeyFromSearch(search) {
+        var m = /[?&]boot=([^&]+)/.exec(search || "");
+        if (!m) return null;
+        try {
+            return decodeURIComponent(m[1]);
+        } catch (err) {
+            return m[1];
+        }
+    }
+
+    // The device key carried by that deep link. The key names a QuickBoot
+    // SCENARIO, not a disk URL, so launch() applies the whole thing — the boot
+    // command, the typed steps, the paper tape and the scenario's hardware
+    // profile (console, printer, VT11, force-upper). An unknown or malformed
+    // key returns null: the page opens, nothing throws, and nothing boots that
+    // nobody asked for. The wizard explains the miss instead — see init().
+    // Pure — unit-testable in Node.
+    function deviceFromSearch(search) {
+        var device = bootKeyFromSearch(search);
+        if (device === null) return null;
+        return (typeof OSBoot !== "undefined" && OSBoot.scenarioFor(device))
+            ? device : null;
+    }
+
+    // A key shown back to the visitor is bounded: a URL is not a place to trust
+    // with unbounded length. Plain text only — the dialog is built with
+    // createElement/textContent, so nothing here has to be escaped.
+    function boundKey(key) {
+        var s = String(key);
+        return s.length > 40 ? s.slice(0, 40) + "…" : s;
+    }
+
     // ------------------------------------------------------------------
     // Overlay DOM (browser only — not exercised by the Node tests)
     // ------------------------------------------------------------------
@@ -262,6 +301,86 @@ var QuickBoot = (function () {
             });
             listEl.appendChild(btn);
         });
+    }
+
+    // --- "No such scenario" dialog ---------------------------------------
+    // A deep link asking for a key this build does not have — a stale link from
+    // an article, a typo, a renamed scenario — is an explicit request that
+    // cannot be met. It gets the same treatment as a failed image fetch: the
+    // .modal-box.error shell from css/pdp11.css, one "Got it" to dismiss and
+    // one action that leads somewhere useful (the wizard's list). Built with
+    // createElement/textContent, the way imgerror.js builds its overlay, so the
+    // key — which comes from a URL nobody validated — is data, never markup.
+    var linkOverlay = null;
+
+    function hideNoScenario() {
+        if (linkOverlay) linkOverlay.classList.remove("visible");
+    }
+
+    function showNoScenario(key) {
+        if (typeof document === "undefined") return;
+        if (!linkOverlay) {
+            linkOverlay = document.createElement("div");
+            linkOverlay.id = "quickboot-link-error";
+            linkOverlay.className = "modal-overlay";
+            linkOverlay.addEventListener("click", function (e) {
+                if (e.target === linkOverlay) {
+                    hideNoScenario();
+                    return;
+                }
+                var action = e.target.getAttribute &&
+                    e.target.getAttribute("data-bootlink-action");
+                if (action === "wizard") {
+                    hideNoScenario();
+                    show();
+                } else if (action === "close" ||
+                        (e.target.closest && e.target.closest(".modal-close"))) {
+                    hideNoScenario();
+                }
+            });
+            document.body.appendChild(linkOverlay);
+        }
+
+        var box = document.createElement("div");
+        box.className = "modal-box error";
+
+        var title = document.createElement("span");
+        title.className = "modal-title";
+        title.textContent = "Quick boot scenario not found";
+        box.appendChild(title);
+
+        var intro = document.createElement("p");
+        intro.className = "modal-intro";
+        intro.appendChild(document.createTextNode("The quick-boot key "));
+        var code = document.createElement("code");
+        code.textContent = boundKey(key);
+        intro.appendChild(code);
+        intro.appendChild(document.createTextNode(
+            " names no scenario in this build, so nothing was booted — the " +
+            "machine is idle, exactly as if the page had been opened without " +
+            "it. Pick a guest OS from the quick-boot list, or type the boot " +
+            "command yourself at the @ prompt."));
+        box.appendChild(intro);
+
+        // Dismiss first, then the "fix it" action — matching the other modals
+        // (and imgerror's "Got it" → "Open Storage" order).
+        var gotItBtn = document.createElement("button");
+        gotItBtn.type = "button";
+        gotItBtn.className = "modal-close";
+        gotItBtn.setAttribute("data-bootlink-action", "close");
+        gotItBtn.textContent = "Got it";
+        box.appendChild(gotItBtn);
+
+        var wizardBtn = document.createElement("button");
+        wizardBtn.type = "button";
+        wizardBtn.className = "modal-close";
+        wizardBtn.setAttribute("data-bootlink-action", "wizard");
+        wizardBtn.textContent = "Choose a guest OS";
+        box.appendChild(wizardBtn);
+
+        linkOverlay.innerHTML = "";
+        linkOverlay.appendChild(box);
+        linkOverlay.classList.add("visible");
     }
 
     function show() {
@@ -519,20 +638,53 @@ var QuickBoot = (function () {
 
         // Always wire the button — a deferred resume below must not leave it
         // dead, otherwise the wizard cannot be re-opened after a reload.
+        // Wrapped, not passed directly: show() now takes the key of a scenario
+        // nobody has, and a listener would hand it the click event instead.
         var btn = document.getElementById("quick-boot-btn");
-        if (btn) btn.addEventListener("click", show);
+        if (btn) btn.addEventListener("click", function () { show(); });
 
         // Resume a boot that was deferred by a config-driven reload.
         var pending = null;
         try {
             if (window.localStorage) pending = window.localStorage.getItem(PENDING_KEY);
         } catch (err) { /* ignore */ }
+
+        // A deep link from the landing OS galleries. It is read once and
+        // dropped from the URL right away: a hardware-profile change below
+        // reloads the page, and the PENDING KEY — not the parameter — is what
+        // brings the boot back. Leaving the parameter in place would start the
+        // same scenario a second time after that reload.
+        var search = (typeof location !== "undefined") ? location.search : "";
+        var requested = bootKeyFromSearch(search);
+        var linked = deviceFromSearch(search);
+        if (linked) {
+            try {
+                history.replaceState(null, "",
+                    location.pathname + location.hash);
+            } catch (err) { /* ignore: the boot below still runs exactly once */ }
+        }
+
         if (pending) {
             try {
                 if (window.localStorage) window.localStorage.removeItem(PENDING_KEY);
             } catch (err) { /* ignore */ }
-            // Defer so the page/app is fully wired before typing starts.
+            // Defer so the page/app is fully wired before typing starts. A
+            // resume wins over a deep link: that boot was already started, and
+            // a broken link is beside the point while the machine is busy with
+            // what its operator asked for a moment ago.
             setTimeout(function () { launch(pending, true); }, 0);
+        } else if (linked) {
+            // The visitor asked for this OS explicitly, so the wizard stays
+            // shut and the scenario runs on its own.
+            setTimeout(function () { launch(linked, false); }, 0);
+        } else if (requested) {
+            // Somebody asked for a scenario this build does not have: a stale
+            // link from an article, a typo, a key that has been renamed. The
+            // request is explicit, so silence would read as "the emulator
+            // ignored me" — the dialog names the key, explains that nothing was
+            // booted and offers the quick-boot list, and the parameter is left
+            // in the URL so the visitor can see what was actually asked for.
+            setTimeout(function () { showNoScenario(requested); }, 0);
         }
 
         // Any operator keystroke ends the autoload warning — from there the
@@ -572,6 +724,8 @@ var QuickBoot = (function () {
         consolePageFor: consolePageFor,
         stepDelayMs: stepDelayMs,
         stepBytes: stepBytes,
+        deviceFromSearch: deviceFromSearch,
+        bootKeyFromSearch: bootKeyFromSearch,
         bufferContains: bufferContains,
         profileOf: profileOf,
         mergeHardware: mergeHardware,

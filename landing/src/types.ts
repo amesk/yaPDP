@@ -6,6 +6,12 @@ export interface SlideItem {
   caption: string;
   tag?: string;
   description?: string;
+  // QuickBoot scenario key (see src/osboot.js) — the guest OS this tile boots
+  // when the visitor presses Run. The key names a SCENARIO, not a disk: the
+  // boot command, the typed steps and the whole machine profile (console,
+  // printer, VT11) stay in OSBoot, so the landing never duplicates hardware
+  // knowledge and cannot drift out of step with the wizard.
+  bootKey?: string;
 }
 
 export interface FeatureItem {
