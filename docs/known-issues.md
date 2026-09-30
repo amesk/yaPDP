@@ -5,6 +5,40 @@ commit. Each entry: symptom, how to reproduce, what is already known.
 
 ---
 
+## Autoload locks the whole interface until it finishes (escape: "Take control!")
+
+**Number:** none — by design, documented here for discoverability.
+
+**Status:** intended behaviour, not a bug.
+
+**Symptom.** While the quick-boot wizard types its boot sequence, the toast
+"Autoloading in progress… [Take control!]" is up and the emulator's input is
+blocked completely: the teletype and the VT52/VT100 terminals ignore the
+keyboard, the front-panel switches do not move, and mouse clicks — including the
+navigation tabs, the CONFIG/Storage pages and the floating corner buttons — do
+not respond. The only way out before the sequence finishes is the toast's
+"Take control!" button. This is easy to mistake for a frozen page.
+
+**Why.** The wizard types into the same DL11 receive queue the keyboard uses, so
+a stray keystroke during the boot would race the wizard's bytes in the console
+and can derail a boot that is already half-typed. For as long as the autoload
+runs, the input gate swallows every keyboard and pointer event in the capture
+phase (see `gateEvent` / `setInputGate` in `src/quickboot.js`). F11 (fullscreen)
+is the single exception, so the operator cannot get stuck in a mode they cannot
+leave.
+
+**Reproduction.**
+1. `node tools/serve.js` (port 1170), open `pdp11.html?boot=rk1`.
+2. While the "Autoloading in progress…" toast is up, try to type, click a
+   navigation tab or flip a front-panel switch — nothing responds.
+3. Click "Take control!" — the toast disappears, the autoload stops and the
+   machine responds to input again.
+
+**Note.** A failed image fetch aborts the autoload on its own (`imgerror.js`
+calls the abort hook), so the gate cannot outlive the autoload it belongs to.
+
+---
+
 ## XXDP cache tests (EKBCD1/EKBDE0): non-deterministic HALT at pc=10
 
 **Number:** (no GitHub issue yet) — found while exploring the XXDP diagnostics.
