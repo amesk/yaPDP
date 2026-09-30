@@ -205,10 +205,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The quick-boot autoload hands the machine back on request.** While the
   wizard types its boot sequence the toast says "Autoloading in progress…" and
-  carries a "Take control!" button: the operator's own keyboard and pointer
-  input is blocked — the console, the terminals and the front panel ignore it —
-  until the sequence finishes or the button aborts it, so a stray keystroke can
-  no longer race the wizard's bytes into the console. The toast carries the same
+  carries a "Take control!" button. Until the sequence finishes the WHOLE
+  interface is locked — the teletype and the VT52/VT100 terminals ignore the
+  keyboard, the front-panel switches do not move and pointer clicks do not reach
+  the page — so the only way out is the "Take control!" button. The lock keeps a
+  stray keystroke from racing the wizard's bytes into the console. The toast
+  carries the same
   spinner as the startup loading gate, so a thick image crawling over the
   network never reads as a hung machine. It wears the gate's status palette (a
   dark panel with a gold accent) instead of an error red, which stays reserved
