@@ -18,6 +18,21 @@ Both stacks expose the same global `iopage` contract (access/poll/reset/
 register/scheduleCallback/...), so `src/pdp11-app.js`, the front panel and
 every other UI module are stack-agnostic.
 
+The page also answers two URL switches besides the stack choice. `?bridge=1`
+opens the legacy console-output/tooling surface (see
+[machine-layer.md](machine-layer.md)). `?boot=<device>` boots a quick-boot
+scenario on load: the key names a scenario in `src/osboot.js`, so the boot
+command, the typed steps and the machine profile (console, printer, VT11) come
+from there and the caller — the RUN buttons on the landing galleries — carries
+nothing but the key. The parameter is consumed once and dropped from the URL, so
+the config-driven reload that a profile change triggers resumes through the
+pending key instead of booting twice. A key that names no scenario boots nothing
+and shows the same kind of modal a failed image fetch does
+(`.modal-box.error`, see `src/imgerror.js`): the key is named — inserted as
+text, never as markup — and one button leads to the quick-boot list, so a stale
+or mistyped link explains itself instead of looking like a request the emulator
+ignored. See [`src/quickboot.js`](../src/quickboot.js).
+
 ## The machine layer (core stack)
 
 The refactor mirrors the hardware it emulates: devices are *cards* on a

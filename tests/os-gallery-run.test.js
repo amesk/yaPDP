@@ -1,0 +1,194 @@
+#!/usr/bin/env node
+/**
+ * Guest-OS gallery RUN links and the ?boot= deep link between them.
+ *
+ * Both landing pages — the classic index.html at the repo root and the React
+ * SPA in landing/ — offer a Run button per guest OS. Each button carries a
+ * QuickBoot SCENARIO key, never a disk URL: the emulator resolves the key
+ * through OSBoot and brings the machine up with that scenario's hardware
+ * profile (console, printer, VT11, force-upper). That is the whole point of
+ * the split, and it is why the landing must never learn about hardware.
+ *
+ * What is pinned here, and why each failure is worth catching:
+ *
+ *   1. every key on either page resolves to a real scenario in src/osboot.js —
+ *      a renamed or mistyped device key turns Run into a dead button, and the
+ *      click looks like a broken page rather than a bad link;
+ *   2. the two galleries offer the SAME set of guest OSes — a key added on one
+ *      side and forgotten on the other is invisible in review;
+ *   3. one RUN link per card in the classic carousel, each unique — the cards
+ *      are cloned by the carousel script, so a copy-paste that leaves two
+ *      tiles booting the same OS would show up as a silent duplicate;
+ *   4. the classic carousel keeps the guard that stops a RUN click from also
+ *      opening the lightbox (the whole card is clickable);
+ *   5. QuickBoot.deviceFromSearch() — the emulator half of the contract:
+ *      valid keys pass, unknown keys and malformed escapes return null instead
+ *      of throwing halfway through page load, and the parameter composes with
+ *      the other switches (?core=, ?bridge=).
+ *
+ * No browser: the pages are read as text and the two production modules are
+ * driven in a VM sandbox, the same way tests/osboot.test.js does it.
+ *
+ * Run with:  node tests/os-gallery-run.test.js
+ *
+ * Exit code 0 = all checks passed, non-zero = failure.
+ */
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+const assert = require("assert");
+
+const ROOT = path.join(__dirname, "..");
+const OSBOOT_PATH = path.join(ROOT, "src", "osboot.js");
+const QUICKBOOT_PATH = path.join(ROOT, "src", "quickboot.js");
+const CLASSIC_PATH = path.join(ROOT, "index.html");
+const LANDING_DATA_PATH = path.join(ROOT, "landing", "src", "data.ts");
+
+function loadModules() {
+    const sandbox = { console, window: {}, setTimeout: setTimeout };
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(OSBOOT_PATH, "utf8"), sandbox);
+    vm.runInContext(fs.readFileSync(QUICKBOOT_PATH, "utf8"), sandbox);
+    return { OSBoot: sandbox.OSBoot, QuickBoot: sandbox.QuickBoot };
+}
+
+// Device keys the classic page advertises, in document order. A RUN link is an
+// <a class="run-btn" href="pdp11.html?boot=<device>">, so a link without the
+// parameter is a failure in itself, not something to skip.
+function classicRunKeys(html) {
+    return [...html.matchAll(/<a\b[^>]*class="run-btn"[^>]*>/g)].map(function (m) {
+        const href = /href="pdp11\.html\?boot=([a-z0-9]+)"/.exec(m[0]);
+        assert.ok(href, "a .run-btn without a pdp11.html?boot= href: " + m[0]);
+        return href[1];
+    });
+}
+
+// Device keys the SPA advertises: the bootKey of every slide in the gallery.
+function landingBootKeys(src) {
+    const start = src.indexOf("GUEST_OS_SLIDES");
+    assert.ok(start !== -1, "landing/src/data.ts has no GUEST_OS_SLIDES");
+    const end = src.indexOf("];", start);
+    assert.ok(end !== -1, "GUEST_OS_SLIDES is not a terminated array");
+    return [...src.slice(start, end).matchAll(/bootKey:\s*'([^']+)'/g)]
+        .map(function (m) { return m[1]; });
+}
+
+// The body of the carousel's wire() helper, where the RUN guard lives.
+function carouselWireBody(html) {
+    const at = html.indexOf("function wire(item)");
+    assert.ok(at !== -1, "index.html: the carousel wire() helper is gone");
+    const end = html.indexOf("\n            }", at);
+    assert.ok(end !== -1, "index.html: wire() has no closing brace");
+    return html.slice(at, end);
+}
+
+function run() {
+    const { OSBoot, QuickBoot } = loadModules();
+    const classic = fs.readFileSync(CLASSIC_PATH, "utf8");
+    const landing = fs.readFileSync(LANDING_DATA_PATH, "utf8");
+
+    assert.ok(OSBoot && OSBoot.BOOT_SCENARIOS && OSBoot.scenarioFor,
+        "src/osboot.js did not load: the scenario table is the contract here");
+
+    // --- 1. the classic gallery: one RUN link per card, all resolvable ------
+    const cards = (classic.match(/class="carousel-item os-card-link"/g) || []).length;
+    assert.ok(cards > 0, "the classic guest-OS carousel has no cards");
+    const runKeys = classicRunKeys(classic);
+    assert.strictEqual(runKeys.length, cards,
+        "every guest-OS card needs a RUN link: " + runKeys.length +
+        " link(s) for " + cards + " card(s)");
+    assert.strictEqual(new Set(runKeys).size, runKeys.length,
+        "two cards boot the same scenario: " + runKeys.join(", "));
+    for (const key of runKeys) {
+        assert.ok(OSBoot.scenarioFor(key),
+            "index.html: RUN points at ?boot=" + key +
+            ", which is not a scenario in src/osboot.js");
+    }
+
+    // --- 2. the SPA gallery: every slide carries a resolvable key ----------
+    const spaKeys = landingBootKeys(landing);
+    assert.ok(spaKeys.length > 0, "landing/src/data.ts declares no bootKey");
+    for (const key of spaKeys) {
+        assert.ok(OSBoot.scenarioFor(key),
+            "landing/src/data.ts: bootKey '" + key +
+            "' is not a scenario in src/osboot.js");
+    }
+    assert.strictEqual(new Set(spaKeys).size, spaKeys.length,
+        "two SPA tiles boot the same scenario: " + spaKeys.join(", "));
+
+    // --- 3. the two galleries agree ----------------------------------------
+    // Not only "all keys are valid": the SAME keys, or one page quietly offers
+    // a guest OS the other cannot start.
+    assert.deepStrictEqual(spaKeys.slice().sort(), runKeys.slice().sort(),
+        "the two guest-OS galleries must offer the same scenarios " +
+        "(index.html vs landing/src/data.ts)");
+
+    // --- 4. the classic carousel guard -------------------------------------
+    // The card itself opens the lightbox on click, so a RUN click must bail out
+    // before that. Without the guard every RUN click also opens the lightbox.
+    const wire = carouselWireBody(classic);
+    assert.ok(/run-btn/.test(wire),
+        "index.html: the carousel click handler lost its .run-btn guard — " +
+        "a RUN click would also open the lightbox");
+
+    // --- 5. the emulator's own half of the contract ------------------------
+    assert.strictEqual(typeof QuickBoot.deviceFromSearch, "function",
+        "QuickBoot.deviceFromSearch is not exported (see src/quickboot.js)");
+    const f = QuickBoot.deviceFromSearch;
+    const cases = [
+        ["", null],                       // no query at all
+        ["?plain=1", null],               // some other parameter
+        ["?boot=rk0", "rk0"],             // the plain deep link
+        ["?core=1&boot=rp1", "rp1"],      // composes with the other switches
+        ["?bridge=1&boot=rk1vt52", "rk1vt52"],
+        ["?boot=rk1tty", "rk1tty"],       // a scenario that shares a disk image
+        ["?boot=RK0", null],              // device keys are case-sensitive
+        ["?boot=nope", null],             // unknown key: the page simply opens
+        ["?boot=", null],                 // empty value
+        ["?boot=%", null],                // dangling escape must not throw
+    ];
+    for (const [search, expected] of cases) {
+        assert.strictEqual(f(search), expected,
+            "deviceFromSearch(" + JSON.stringify(search) + ") should be " +
+            JSON.stringify(expected));
+    }
+
+    // Every key the galleries advertise must survive the parser unescaped —
+    // otherwise a valid link turns into a silent no-op.
+    for (const key of runKeys.concat(spaKeys)) {
+        assert.strictEqual(f("?boot=" + key), key,
+            "deviceFromSearch must return the key the galleries advertise: " + key);
+    }
+
+    // --- 6. the raw key, for the "no such scenario" notice ----------------
+    // deviceFromSearch() answers "can this boot?"; bootKeyFromSearch() answers
+    // "did anybody ask?" — the wizard names the key when the answer is no, so
+    // the raw value has to come back exactly as typed (and only when the
+    // parameter is really there).
+    assert.strictEqual(typeof QuickBoot.bootKeyFromSearch, "function",
+        "QuickBoot.bootKeyFromSearch is not exported (see src/quickboot.js)");
+    const raw = QuickBoot.bootKeyFromSearch;
+    const rawCases = [
+        ["", null],                      // no query: nobody asked
+        ["?plain=1", null],
+        ["?boot=", null],                // an empty value is not a request
+        ["?boot=rk0", "rk0"],
+        ["?core=1&boot=rp1", "rp1"],
+        ["?boot=%", "%"],                // dangling escape: echoed as typed
+        ["?boot=not-a-scenario", "not-a-scenario"],
+        ["?boot=%3Crk0%3E", "<rk0>"]     // decoded, then escaped by the wizard
+    ];
+    for (const [search, expected] of rawCases) {
+        assert.strictEqual(raw(search), expected,
+            "bootKeyFromSearch(" + JSON.stringify(search) + ") should be " +
+            JSON.stringify(expected));
+    }
+
+    console.log("os-gallery-run: all tests passed (" +
+        runKeys.length + " classic card(s), " + spaKeys.length +
+        " SPA slide(s), " + OSBoot.BOOT_SCENARIOS.length + " scenario(s))");
+}
+
+run();

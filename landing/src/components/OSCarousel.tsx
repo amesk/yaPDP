@@ -1,13 +1,18 @@
 import { useState, useRef, type TouchEvent } from 'react';
 import { GUEST_OS_SLIDES } from '../data.ts';
 import { Lightbox } from './Lightbox.tsx';
-import { ZoomIn } from 'lucide-react';
+import { ZoomIn, Play } from 'lucide-react';
 
 interface OSCarouselProps {
   lang: 'en' | 'ru';
+  // Run on a tile: receives the tile's QuickBoot scenario key. The parent
+  // opens the emulator with it, so the guest OS comes up with the machine
+  // profile it needs (console, printer, VT11) — the landing only carries the
+  // key, never the hardware.
+  onRun?: (device: string) => void;
 }
 
-export function OSCarousel({ lang }: OSCarouselProps) {
+export function OSCarousel({ lang, onRun }: OSCarouselProps) {
   const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const touchStateRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -90,43 +95,65 @@ export function OSCarousel({ lang }: OSCarouselProps) {
           className="flex gap-3.5 overflow-x-auto scroll-smooth py-2 px-4 sm:px-6 no-scrollbar touch-pan-x"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
+          {/* The card chrome lives on a plain div, not on the screenshot
+              button: a nested button inside a button is invalid HTML, and Run
+              has to be a real sibling of the enlarge affordance. */}
           {GUEST_OS_SLIDES.map((slide, idx) => (
-            <button
+            <div
               key={slide.id}
-              type="button"
-              aria-label={`Open screenshot of ${slide.title}`}
-              onClick={() => setSelectedSlideIndex(idx)}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={(e) => handleTouchEnd(idx, e)}
-              className="flex-shrink-0 w-[200px] text-left cursor-pointer rounded-md border border-[#4a4438] hover:border-[#c8a860] focus:border-[#c8a860] focus:outline-none bg-[#1a1815] hover:bg-[#24201a] overflow-hidden p-2.5 transition-all duration-250 hover:shadow-[0_0_20px_rgba(200,168,96,0.35),0_2px_8px_rgba(0,0,0,0.6)] group/card touch-manipulation"
+              className="flex-shrink-0 w-[200px] rounded-md border border-[#4a4438] hover:border-[#c8a860] focus-within:border-[#c8a860] bg-[#1a1815] hover:bg-[#24201a] overflow-hidden p-2.5 transition-all duration-250 hover:shadow-[0_0_20px_rgba(200,168,96,0.35),0_2px_8px_rgba(0,0,0,0.6)] group/card"
             >
-              <figure className="m-0 p-0 w-full">
-                <div className="relative w-full h-[135px] bg-black rounded overflow-hidden">
-                  <img
-                    src={slide.image}
-                    alt={slide.alt}
-                    width="200"
-                    height="135"
-                    draggable={false}
-                    className="w-full h-full object-cover block rounded border border-[#2a2722] group-hover/card:brightness-108 transition-all duration-250 pointer-events-none"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                    <span className="p-1.5 rounded-full bg-[#1c1915]/90 text-[#e8d080] border border-[#c8a860] shadow-md">
-                      <ZoomIn className="w-4 h-4" />
+              <button
+                type="button"
+                aria-label={`Open screenshot of ${slide.title}`}
+                onClick={() => setSelectedSlideIndex(idx)}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={(e) => handleTouchEnd(idx, e)}
+                className="block w-full text-left cursor-pointer focus:outline-none touch-manipulation"
+              >
+                <figure className="m-0 p-0 w-full">
+                  <div className="relative w-full h-[135px] bg-black rounded overflow-hidden">
+                    <img
+                      src={slide.image}
+                      alt={slide.alt}
+                      width="200"
+                      height="135"
+                      draggable={false}
+                      className="w-full h-full object-cover block rounded border border-[#2a2722] group-hover/card:brightness-108 transition-all duration-250 pointer-events-none"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                      <span className="p-1.5 rounded-full bg-[#1c1915]/90 text-[#e8d080] border border-[#c8a860] shadow-md">
+                        <ZoomIn className="w-4 h-4" />
+                      </span>
+                    </div>
+                  </div>
+                  <figcaption className="mt-2.5 px-1 text-center">
+                    <div className="font-sans text-xs sm:text-[13px] font-bold text-[#9a9488] group-hover/card:text-[#ffd27f] transition-colors duration-250 truncate">
+                      {slide.caption}
+                    </div>
+                    <span className="block text-[11px] font-normal text-[#8a857a] group-hover/card:text-[#c8a860] opacity-75 sm:opacity-0 group-hover/card:opacity-100 transition-all duration-250 mt-1">
+                      {lang === 'en' ? 'Click to enlarge' : 'Кликните для увеличения'}
                     </span>
-                  </div>
-                </div>
-                <figcaption className="mt-2.5 px-1 text-center">
-                  <div className="font-sans text-xs sm:text-[13px] font-bold text-[#9a9488] group-hover/card:text-[#ffd27f] transition-colors duration-250 truncate">
-                    {slide.caption}
-                  </div>
-                  <span className="block text-[11px] font-normal text-[#8a857a] group-hover/card:text-[#c8a860] opacity-75 sm:opacity-0 group-hover/card:opacity-100 transition-all duration-250 mt-1">
-                    {lang === 'en' ? 'Click to enlarge' : 'Кликните для увеличения'}
-                  </span>
-                </figcaption>
-              </figure>
-            </button>
+                  </figcaption>
+                </figure>
+              </button>
+
+              {slide.bootKey && onRun && (
+                <button
+                  type="button"
+                  onClick={() => onRun(slide.bootKey!)}
+                  aria-label={`Run ${slide.title} in the emulator`}
+                  title={lang === 'en'
+                    ? `Boot ${slide.title} in the emulator`
+                    : `Загрузить ${slide.title} в эмуляторе`}
+                  className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] hover:from-[#6a5838] hover:to-[#4a4030] active:from-[#7a6848] active:to-[#5a5038] text-[#f0e6c8] shadow-md transition-colors cursor-pointer touch-manipulation"
+                >
+                  <Play className="w-3 h-3" />
+                  {lang === 'en' ? 'Run' : 'Запустить'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
 

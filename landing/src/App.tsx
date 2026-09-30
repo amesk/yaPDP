@@ -17,6 +17,16 @@ export default function App() {
   const [lang, setLang] = useState<'en' | 'ru'>('en');
   const [view, setView] = useState<'overview' | 'manual' | 'emulator' | 'devlog'>('overview');
   const [isEmulatorOpen, setIsEmulatorOpen] = useState<boolean>(false);
+  // Guest OS the emulator modal must boot when it opens: a QuickBoot scenario
+  // key (src/osboot.js). null = show the machine as it is, which is what every
+  // plain "launch online" entry point expects.
+  const [bootDevice, setBootDevice] = useState<string | null>(null);
+
+  // Run on a guest-OS tile: open the emulator and let it boot that OS.
+  const handleRunOS = (device: string) => {
+    setBootDevice(device);
+    setIsEmulatorOpen(true);
+  };
 
   const toggleLanguage = () => {
     setLang((prev) => (prev === 'en' ? 'ru' : 'en'));
@@ -80,9 +90,8 @@ export default function App() {
     <div className="min-h-screen w-full flex flex-col text-[#e0d8c8] selection:bg-[#c8a860] selection:text-black">
       {/* Centered Landing Page Slab - faithfully mirroring .landing-page from yaPDP over the machine-room photo backdrop */}
       <div
-        className={`flex-1 w-full min-w-0 ${
-          view === 'emulator' ? 'max-w-[1200px]' : 'max-w-[800px]'
-        } mx-auto flex flex-col bg-[#1c1915]/85 border-x border-[#3a3528]/80 shadow-[0_0_60px_rgba(0,0,0,0.85)] transition-all`}
+        className={`flex-1 w-full min-w-0 ${view === 'emulator' ? 'max-w-[1200px]' : 'max-w-[800px]'
+          } mx-auto flex flex-col bg-[#1c1915]/85 border-x border-[#3a3528]/80 shadow-[0_0_60px_rgba(0,0,0,0.85)] transition-all`}
       >
         {/* Top sticky navigation bar inside the slab */}
         <Navbar
@@ -120,7 +129,7 @@ export default function App() {
                 onOpenManual={() => handleSelectView('manual')}
               />
 
-              <OSCarousel lang={lang} />
+              <OSCarousel lang={lang} onRun={handleRunOS} />
 
               <FeaturesTable lang={lang} />
 
@@ -213,8 +222,14 @@ export default function App() {
       {/* Fullscreen Interactive Emulator Modal */}
       <LiveEmulatorModal
         isOpen={isEmulatorOpen}
-        onClose={() => setIsEmulatorOpen(false)}
+        onClose={() => {
+          setIsEmulatorOpen(false);
+          // Drop the pending guest OS: reopening the emulator from the footer
+          // must show the machine as it was left, not boot a stale OS again.
+          setBootDevice(null);
+        }}
         lang={lang}
+        bootKey={bootDevice}
       />
     </div>
   );

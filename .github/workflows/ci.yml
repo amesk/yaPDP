@@ -5,6 +5,7 @@
 #   unit  — the modular npm test suite (36+ files) on Node 20 and 22.
 #   e2e   — puppeteer + real Chromium against the dev server on :1170:
 #             * e2e-quickboot-manifest  (quick-boot wizard + media manifest)
+#             * e2e-quickboot-deeplink  (?boot= link the OS galleries use)
 #             * e2e-snapshots           (front-panel/teletype screenshot set)
 #             * e2e-osboot              (real guest OS boots: Unix V5, RT-11,
 #                                        BSD 2.11, BASIC-11)
@@ -94,6 +95,9 @@ jobs:
 
       - name: e2e — quick-boot wizard + manifest
         run: node tests/e2e-quickboot-manifest.js
+
+      - name: e2e — guest-OS gallery deep link (pdp11.html?boot=)
+        run: node tests/e2e-quickboot-deeplink.js
 
       - name: e2e — front-panel screenshots
         run: node tests/e2e-snapshots.js

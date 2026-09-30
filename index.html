@@ -429,6 +429,39 @@
             /* Bright amber text color used in active states */
         }
 
+        /* RUN button: boots this OS in the emulator. The href carries a QuickBoot
+           scenario key (src/osboot.js), so the emulator brings the machine up
+           with the right console, printer and display — this page never learns
+           about hardware. It sits inside the clickable card, so it must read as
+           a control rather than as part of the screenshot. */
+        figure.carousel-item.os-card-link .run-btn {
+            display: block;
+            margin-top: 8px;
+            padding: 5px 10px;
+            font-family: arial, helvetica, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-align: center;
+            text-decoration: none;
+            color: #f0e6c8;
+            background: linear-gradient(to bottom, #5a4a30, #3a3528);
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        figure.carousel-item.os-card-link .run-btn:hover,
+        figure.carousel-item.os-card-link .run-btn:focus-visible {
+            background: linear-gradient(to bottom, #6a5838, #4a4030);
+            color: #ffd27f;
+            outline: none;
+        }
+
+        figure.carousel-item.os-card-link .run-btn:active {
+            background: linear-gradient(to bottom, #7a6848, #5a5038);
+        }
+
         /* Base style for the enlarge hint (hidden by default) */
         figure.carousel-item.os-card-link figcaption .enlarge-hint {
             display: block;
@@ -529,40 +562,57 @@
             <p>
                 Screenshots of yaPDP running real guest operating systems — booted inside
                 the emulator through the magic-wand wizard. Click any thumbnail to view it
-                full size.
+                full size, or press <b>RUN</b> to boot that operating system right away:
+                the emulator configures the machine for it — console, printer, display —
+                and types the boot sequence for you.
             </p>
 
             <div class="carousel" id="os-carousel">
                 <button class="carousel-arrow prev" type="button" aria-label="Previous">◀</button>
                 <div class="carousel-viewport">
                     <div class="carousel-track">
+                        <!-- RUN links carry a QuickBoot scenario key (see
+                             src/osboot.js) — the emulator boots that scenario with
+                             the full machine profile it needs, so this page never
+                             has to know about console types or peripherals. -->
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/unix_v5.png" alt="Unix V5" width="200" height="150">
                             <figcaption>Unix V5<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=rk0" title="Boot Unix V5 in the emulator">RUN</a>
                         </figure>
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/bsd.png" alt="2.11 BSD" width="200" height="150">
                             <figcaption>2.11 BSD<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=rp1" title="Boot 2.11 BSD in the emulator">RUN</a>
                         </figure>
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/rt11.png" alt="RT-11" width="200" height="150">
                             <figcaption>RT-11<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=rk1" title="Boot RT-11 in the emulator">RUN</a>
                         </figure>
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/rt11-vt52.png" alt="RT-11 on VT52" width="200" height="150">
                             <figcaption>RT-11 · VT52<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=rk1vt52"
+                                title="Boot RT-11 on a VT52 console in the emulator">RUN</a>
                         </figure>
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/basic.png" alt="DEC BASIC-11" width="200" height="150">
                             <figcaption>DEC BASIC-11<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=basic"
+                                title="Load BASIC-11 from paper tape in the emulator">RUN</a>
                         </figure>
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/lunar-lander.png" alt="Lunar Lander" width="200" height="150">
                             <figcaption>Lunar Lander<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=lander"
+                                title="Load Lunar Lander from paper tape in the emulator">RUN</a>
                         </figure>
                         <figure class="carousel-item os-card-link">
                             <img src="assets/images/os/xxdp.png" alt="XXDP+ diagnostics" width="200" height="150">
                             <figcaption>XXDP+<span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="run-btn" href="pdp11.html?boot=rk3"
+                                title="Boot XXDP+ diagnostics in the emulator">RUN</a>
                         </figure>
                     </div>
                 </div>
@@ -618,7 +668,10 @@
                     </tr>
                     <tr>
                         <td class="disk">Bootable Media &amp; Quick Boot</td>
-                        <td>Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander.</td>
+                        <td>Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through
+                            10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the
+                            paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar
+                            Lander.</td>
                     </tr>
                     <tr>
                         <td class="disk">Persistent Storage</td>
@@ -862,7 +915,8 @@
                     <tr>
                         <td class="disk">Full</td>
                         <td>every image — RK/RL/RP/RA disks, TM tapes, all paper tapes</td>
-                        <td>≈103 MB on Windows — and every image is bundled, so all fifteen bootable images come up offline with zero extra steps.</td>
+                        <td>≈103 MB on Windows — and every image is bundled, so all fifteen bootable images come up
+                            offline with zero extra steps.</td>
                     </tr>
                 </tbody>
             </table>
@@ -991,7 +1045,12 @@
             }
 
             function wire(item) {
-                item.addEventListener('click', function () { openLightbox(item); });
+                item.addEventListener('click', function (e) {
+                    // RUN is a link, not an enlarge affordance: let the browser
+                    // follow it instead of opening the lightbox on the way.
+                    if (e.target.closest && e.target.closest('.run-btn')) return;
+                    openLightbox(item);
+                });
             }
 
             function cloneItem(item) {
