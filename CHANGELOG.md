@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-30
+
 ### Added
 
 - **Image downloads show their progress.** While a disk or tape image streams
@@ -1296,6 +1298,7 @@ Initial public alpha release.
 
 [0.1.0]: https://github.com/amesk/yaPDP/compare/v0.1.0-alpha2...releases/v0.1.0
 [0.2.0]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0...releases/v0.2.0
-[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.2.0...HEAD
+[0.3.0]: https://github.com/amesk/yaPDP/compare/releases/v0.2.0...releases/v0.3.0
+[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.3.0...HEAD
 [0.1.0-alpha2]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2
 [0.1.0-alpha1]: https://github.com/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1
