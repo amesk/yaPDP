@@ -34,6 +34,8 @@ const ORDER = [
     "headless-machine.test.js",
     "config.test.js",
     "snapshotstore.test.js",
+    "image-fingerprint.test.js",
+    "image-fingerprint-invalidation.test.js",
     "punchtape.test.js",
     "reader.test.js",
     "pasteutil.test.js",

@@ -85,8 +85,13 @@ function loadSections() {
   const imageError = extractBlock(src, "function imageError(reason, message)");
   const assertCompleteImage = extractBlock(src, "function assertCompleteImage(response, buffer, url)");
   const fetchImageBytes = extractBlock(src, "function fetchImageBytes(url)");
+  // fetchBlock now records the image's identity after a successful fetch
+  // (DiskStore.registerImage). The sandbox has no DiskStore, and the helper is
+  // written to no-op without one — so it must be present in the context, or a
+  // ReferenceError masks the error the test is actually asserting on.
+  const registerImageFingerprint = extractBlock(src, "function registerImageFingerprint(imageUrl, bytes)");
 
-  return { ioBlockSize, dataLoader, createCache, fetchBlock, imageError, assertCompleteImage, fetchImageBytes };
+  return { ioBlockSize, dataLoader, createCache, fetchBlock, imageError, assertCompleteImage, fetchImageBytes, registerImageFingerprint };
 }
 
 // fetchCode, when provided, is a string of VM code that defines `fetch`
@@ -106,6 +111,7 @@ function makeContext(sandbox, sections, fetchCode) {
     sections.imageError,
     sections.assertCompleteImage,
     sections.fetchImageBytes,
+    sections.registerImageFingerprint,
     sections.fetchBlock,
     fetchImpl,
   ].join("\n");

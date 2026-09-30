@@ -2244,6 +2244,25 @@ function fetchImageBytes(url) {
     });
 }
 
+// Remember the identity of the image bytes the browser just received, so the
+// write-back cache can tell whether a block it saved came from THIS build of
+// the disk (see DiskStore.registerImage). Only a successful fetch of the
+// compressed body carries an identity: a Range read of a raw .dsk, or an
+// image mounted from a desktop bundle, leaves the fingerprint unknown, and an
+// unknown fingerprint never invalidates anything.
+function registerImageFingerprint(imageUrl, bytes) {
+    if (typeof DiskStore === "undefined" ||
+        typeof DiskStore.registerImage !== "function") return;
+    if (typeof ImageFingerprint === "undefined" ||
+        typeof ImageFingerprint.ofBytes !== "function") return;
+    try {
+        DiskStore.registerImage(imageUrl, ImageFingerprint.ofBytes(bytes));
+    } catch (err) {
+        // A fingerprint is an optimisation for correctness, never a reason to
+        // fail a fetch: leave it unknown and let the cache be permissive.
+    }
+}
+
 // --- driveUrl() ---
 // MountMap-aware drive url (refactor): an explicit override set through the
 // mount table wins; otherwise the historical <prefix><unit><suffix> template
@@ -2334,6 +2353,7 @@ async function fetchBlock(controlBlock, block) {
             if (zstResponse.ok) {
                 const buffer = got.bytes;
                 assertCompleteImage(zstResponse, buffer, controlBlock.url);
+                registerImageFingerprint(controlBlock.url, new Uint8Array(buffer));
                 if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
                     throw new Error("fzstd decompression library not loaded");
                 }
@@ -2400,6 +2420,7 @@ async function fetchBlock(controlBlock, block) {
 
     const buffer = got.bytes;
     assertCompleteImage(got.response, buffer, controlBlock.url);
+    registerImageFingerprint(controlBlock.url, new Uint8Array(buffer));
     if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
         throw new Error("fzstd decompression library not loaded");
     }

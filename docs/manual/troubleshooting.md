@@ -17,3 +17,22 @@ build explains that the image is not shipped and points to the drop zone.
 ![Image load failure dialog](assets/images/manual/dialog-imgerror.png){.shot}
 
 An incomplete image triggers this dialog with an [Open Storage](#storage) shortcut.{.shot-caption}
+
+### A snapshot is refused after an image update
+
+A snapshot stores the machine's memory and registers, not the disk image itself:
+on restore it is layered back onto whatever disk the emulator currently ships.
+If that disk has been **updated** since the snapshot was taken, the two no longer
+match — the guest's file system in memory would not describe the disk underneath
+it, which shows up as a corrupted file system rather than as anything obvious.
+
+The emulator detects this and refuses the restore instead of corrupting the
+disk. It names the image and both builds, and offers to delete the snapshot:
+
+![Snapshot taken on a different build](assets/images/manual/dialog-snapshot-incompatible.png){.shot}
+
+The snapshot was taken on a different build of the disk: it is not restored, and
+can be deleted from here.{.shot-caption}
+
+Take a fresh snapshot on the current build, or delete the stale one — a snapshot
+cannot be migrated onto a disk it was not taken from.

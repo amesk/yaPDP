@@ -170,7 +170,12 @@ async function run() {
     assert.ok(snap.id, "snapshot has id");
     assert.strictEqual(snap.name, "test snapshot");
     assert.strictEqual(snap.schemaVersion, SS.SCHEMA_VERSION);
-    assert.strictEqual(snap.imageVersion, "0.1.0");
+    // Image identity is now COMPUTED (a fingerprint per mounted url), not a
+    // hand-maintained version string. No DiskStore in this sandbox means no
+    // fingerprints were learned, which is recorded as an empty map — and an
+    // empty map, like an unknown fingerprint, never refuses a restore.
+    // (deepStrictEqual would compare prototypes across the VM realm)
+    assert.strictEqual(Object.keys(snap.imageFingerprints || {}).length, 0);
     assert.deepStrictEqual(snap.mounted, ["rk0.dsk", "rk1.dsk"]);
     assert.ok(snap.memory.data instanceof ArrayBuffer, "RAM is ArrayBuffer");
     assert.strictEqual(snap.memory.format, "gzip");

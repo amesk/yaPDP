@@ -542,6 +542,22 @@ async function captureDialogs(browser, wants) {
         await snap(page, "dialog-imgerror.png", 600);
     }
 
+    // 4b. Snapshot taken on a different build of the disk (offered "Delete
+    // this snapshot"). Driven through the real dialog builder, with a
+    // synthetic incompatibility, so the shot is the shipping UI and not a
+    // hand-made mock-up.
+    if (wants("dialog-snapshot-incompatible")) {
+        const page = await open(CFG_TTY);
+        await page.evaluate(() => {
+            if (typeof SnapshotStore === "undefined" ||
+                typeof SnapshotStore.showIncompatibleImageDialog !== "function") return;
+            SnapshotStore.showIncompatibleImageDialog(
+                { id: "snap-shot", name: "unix-v5 before the upgrade" },
+                [{ url: "rk0.dsk", then: "a1b2c3d4", now: "ff0099aa" }]);
+        });
+        await snap(page, "dialog-snapshot-incompatible.png", 600);
+    }
+
     // 5. Bootstrap now! power-off guard (machine must be powered on).
     if (wants("dialog-poweroff")) {
         const page = await open(CFG_POWEROFF);
@@ -707,6 +723,7 @@ async function captureVt11Lander(browser) {
         }
         if (wants("dialog-onboarding") || wants("dialog-quickboot") ||
             wants("dialog-autoload") || wants("dialog-imgerror") ||
+            wants("dialog-snapshot-incompatible") ||
             wants("dialog-poweroff") || wants("dialog-config-leave") ||
             wants("dialog-reboot") || wants("dialog-state")) {
             await captureDialogs(browser, wants);
