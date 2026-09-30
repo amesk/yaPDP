@@ -484,6 +484,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **In TextMode a single click on a VT52 terminal no longer flips the zoom.**
+  The double-click counter was registered on both the tube box and the textarea
+  inside it, so one physical click arrived twice (the textarea's handler, then
+  the bubble to the box) and every press read as a double click. Zoom now
+  toggles on a genuine double click, in text mode as in canvas mode.
+  (`src/pdp11-app.js`; pinned by `tests/vt52-zoom.test.js`)
+
 - **A devlog post marked `draft` no longer fails the test suite.** The guard
   demanded a generated page, an index entry and a feed entry for every file in
   `docs/devlog/`, so committing a draft broke `npm test`; the publication

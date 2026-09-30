@@ -1148,6 +1148,14 @@ function initVT52Page(unit, pageId, canvasId, textareaId, dialect) {
   var lastClickAt = 0;
   var onScreenClick = function (ev) {
     if (typeof Vt52Zoom === 'undefined' || typeof Vt52Zoom.toggleUnit !== 'function') return;
+    // The handler is parked on BOTH the tube box (.vt52-crt) and the textarea,
+    // and the textarea is a CHILD of that box. In text mode one physical click
+    // is therefore delivered twice — the textarea's own handler, then the same
+    // event bubbling to the box — so every single click was counted as the
+    // second of a pair and the zoom flipped on each press. Stamp the event
+    // object, which is the one thing both deliveries share.
+    if (ev.__yapdpZoomClick) return;
+    ev.__yapdpZoomClick = true;
     // Never steal a click that landed on a control.
     if (ev.target && ev.target.closest && ev.target.closest('button, a, input, select')) return;
     var now = (typeof performance !== 'undefined' && performance.now)
