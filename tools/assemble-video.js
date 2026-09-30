@@ -22,6 +22,7 @@
  * Usage:
  *   node tools/assemble-video.js
  *   node tools/assemble-video.js --music assets/music/loop.mp3
+ *   node tools/assemble-video.js --no-burn-titles
  *   node tools/assemble-video.js --voice-engine kokoro --voice-regen
  *   npm run video:demo
  *
@@ -34,6 +35,8 @@
  * the clip audio at their media offsets and emitted as video/*.chapters.txt +
  * video/*.srt sidecars next to each MP4; banner titles are burned into the
  * video, and --burn-subtitles also burns the bottom subtitle lines.
+ * --no-burn-titles leaves the banner titles off the picture — they still go
+ * into the .chapters.txt/.srt sidecars, so an editor can place them later.
  *
  * Output: video/yaPDP-demo.mp4 and video/<clip>.mp4 for every clip.
  */
@@ -340,11 +343,12 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
     const clipPath = srcPath || path.join(VIDEOS, clip.file);
     if (!fs.existsSync(introPath) || !fs.existsSync(clipPath)) return;
     const base = path.basename(clip.file, ".webm");
-    // ctx = { voices, reverb, clipEvents, burnSubtitles } (see main).
+    // ctx = { voices, reverb, clipEvents, burnSubtitles, burnTitles } (see main).
     const voices = (ctx && ctx.voices) || null;
     const reverb = !ctx || ctx.reverb !== false;
     const clipEv = (ctx && ctx.clipEvents && ctx.clipEvents[base]) || [];
     const burnSubtitles = !!(ctx && ctx.burnSubtitles);
+    const burnTitles = !ctx || ctx.burnTitles !== false;
     const slideKey = "slide-" + base;
 
     const nIntro = path.join(tmp, "ind_" + base + "_intro.webm");
@@ -483,9 +487,12 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
         const starts = vutil.segmentStarts([dIntro, dSlide, dClip, dOutro], fade);
         const art = timeline.planArtifacts(clipEv, starts[2]);
         writeMediaSidecars(out, art.chapters, art.srt);
-        if (art.banners.length || (burnSubtitles && art.srt.length)) {
+        // --no-burn-titles drops the banner titles from the picture; the .srt
+        // sidecar still carries them so an editor can place them later.
+        const banners = burnTitles ? art.banners : [];
+        if (banners.length || (burnSubtitles && art.srt.length)) {
             const burned = path.join(tmp, "ind_" + base + "_burn.mp4");
-            burnOverlays(out, burned, art.banners, art.srt, burnSubtitles);
+            burnOverlays(out, burned, banners, art.srt, burnSubtitles);
             fs.copyFileSync(burned, out);
             fs.unlinkSync(burned);
         }
@@ -829,8 +836,11 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
         const ve = process.argv.indexOf("--voice-engine");
         const voiceEngine = ve !== -1 ? process.argv[ve + 1] : "auto";
         // --burn-subtitles also burns the bottom subtitle lines into the video;
-        // the .srt sidecar is written either way, and banner titles always burn.
+        // the .srt sidecar is written either way. Banner titles burn by default
+        // and --no-burn-titles leaves them off the picture (the sidecar keeps
+        // them for a later edit).
         const burnSubtitles = process.argv.includes("--burn-subtitles");
+        const burnTitles = !process.argv.includes("--no-burn-titles");
 
         // Narration pre-pass: make sure every card that will carry voice has
         // its WAV ready (cached under video/voice/, generated via voicer.js
@@ -872,7 +882,7 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
                 clipEvents[base] = await voiceClipEvents(ev, voiceForce, voiceEngine);
             }
         }
-        const voiceCtx = { voices, reverb, clipEvents, burnSubtitles };
+        const voiceCtx = { voices, reverb, clipEvents, burnSubtitles, burnTitles };
 
         // Intro: the canvas-rendered title card from tools/make-intro.js (amber
         // "YAPDP" glow, "YET ANOTHER PDP-11 EMULATOR" subtitle, green phosphor
@@ -1100,6 +1110,7 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
             reelSrt.push(...art.srt);
             reelBanners.push(...art.banners);
         }
+        if (!burnTitles) reelBanners.length = 0;
         writeMediaSidecars(OUT, reelChapters, reelSrt);
         if (reelBanners.length || (burnSubtitles && reelSrt.length)) {
             const burned = path.join(tmp, "reel_burn.mp4");
