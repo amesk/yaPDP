@@ -65,12 +65,12 @@ export function GetStarted({ lang, onLaunchOnline }: GetStartedProps) {
             {lang === 'en' ? (
               <>
                 <strong className="text-[#f0e6c8]">In a hurry?</strong> Use the{' '}
-                <strong className="text-[#e8d080]">magic wand</strong> button in the top-right corner of the window (it stays on every page except <strong>Info</strong>) — it does it all in one click: picks a guest OS, reconfigures the machine, reboots it, and types the boot (and login) for you.
+                <strong className="text-[#e8d080]">magic wand</strong> button in the top-right corner of the window (it stays on every page except <strong>Info</strong>) — it does it all in one click: picks a guest OS, reconfigures the machine, reboots it, and types the boot (and login) for you. While it types, input is locked so nothing races its characters; the toast's <strong className="text-[#e8d080]">Take control!</strong> button stops it and hands the machine to you, and a thin <strong className="text-[#e8d080]">Loading N%</strong> bar shows the image download on a slow link.
               </>
             ) : (
               <>
                 <strong className="text-[#f0e6c8]">Спешите?</strong> Нажмите кнопку{' '}
-                <strong className="text-[#e8d080]">волшебной палочки (Magic Wand)</strong> в правом верхнем углу окна (она доступна на всех экранах, кроме <strong>Info</strong>) — она сделает всё в один клик: выберет гостевую ОС, переконфигурирует машину, перезагрузит её и введет команды загрузки и логина за вас.
+                <strong className="text-[#e8d080]">волшебной палочки (Magic Wand)</strong> в правом верхнем углу окна (она доступна на всех экранах, кроме <strong>Info</strong>) — она сделает всё в один клик: выберет гостевую ОС, переконфигурирует машину, перезагрузит её и введет команды загрузки и логина за вас. Пока она печатает, ввод заблокирован, чтобы ваши символы не смешались с её вводом; кнопка <strong className="text-[#e8d080]">Take control!</strong> в уведомлении останавливает автозагрузку и возвращает машину вам, а тонкая полоса <strong className="text-[#e8d080]">Loading N%</strong> показывает загрузку образа на медленном канале.
               </>
             )}
           </span>

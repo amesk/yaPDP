@@ -384,8 +384,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               />
               <p className="mt-1.5 text-center text-[11px] text-[#8a7650] italic">
                 {lang === 'en'
-                  ? 'A toast asks you not to touch the teletype/keyboard during autoload.'
-                  : 'Уведомление во время автоматического ввода команд загрузки.'}
+                  ? 'Autoload locks input; Take control! stops it and returns the machine.'
+                  : 'Автозагрузка блокирует ввод; Take control! останавливает её и возвращает машину.'}
               </p>
             </div>
           </div>
@@ -397,6 +397,15 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             {lang === 'en'
               ? 'The wizard watches console output and types the login only when the guest prints "login:", ensuring slow boots with heavy disk I/O (like 2.11 BSD) finish reliably. Guests also automatically configure required peripherals (e.g. LP11 line printer for RT-11/RSX, or teletype console for Unix V5).'
               : 'Мастер отслеживает вывод консоли и вводит логин только тогда, когда гостевая ОС напечатает "login:". Это гарантирует надежность при медленной загрузке BSD 2.11. Кроме того, мастер автоматически настраивает необходимое оборудование (например, принтер LP11 для RT-11/RSX или телетайп для Unix V5).'}
+          </div>
+
+          <div className="rounded border-l-4 border-[#c8a860] bg-[#13110d] p-3 text-xs text-[#d4c4a0] leading-relaxed">
+            <span className="text-[#e8d080] font-bold">
+              {lang === 'en' ? 'Take control: ' : 'Взять управление: '}
+            </span>
+            {lang === 'en'
+              ? 'While the wizard types, the emulator ignores the keyboard and the mouse — console, terminals and front panel alike — so nothing you type can race its characters into the console. Until it finishes, the only way out is the toast\u2019s "Take control!" button, which stops the autoload and hands the machine back to you. Disk and tape images can take a while to download on a slow link: a thin "Loading N%" bar along the bottom of the window shows the progress.'
+              : 'Пока мастер печатает, эмулятор игнорирует клавиатуру и мышь — консоль, терминалы и пульт, — так что ваши символы не вклинятся в его ввод. До окончания единственный выход — кнопка "Take control!" в уведомлении: она прерывает автозагрузку и возвращает машину вам. Образы дисков и лент на медленном канале загружаются не сразу: тонкая полоса "Loading N%" внизу окна показывает прогресс.'}
           </div>
         </div>
 

@@ -28,14 +28,24 @@ prompt reliably. Each guest also declares the machine profile it wants — e.g. 
 [LP11 line printer](#printer), and Unix V5/BSD force a teletype console — so the wizard
 reconfigures the machine if
 needed and resumes the boot automatically. Every wizard boot starts on a fresh page (clean paper and
-clear screens), and a toast warns
-*"Autoloading in progress — don't touch the teletype/keyboard"* while the sequence is being
-typed.
+clear screens).
+
+While the sequence is being typed, a toast says *"Autoloading in progress…"* and
+locks the emulator's input: the terminals, the front panel and the page itself
+ignore the keyboard and the mouse, so nothing you type can race the wizard's own
+characters into the console. The only way out before it finishes is the toast's
+**Take control!** button — it aborts the autoload at once and hands the machine
+back to you.
 
 ![Autoloading in progress toast](assets/images/manual/dialog-autoload.png){.shot}
 
-While the wizard types the boot sequence, a toast asks you not to touch the
-teletype/keyboard.{.shot-caption}
+While the wizard types, input is locked; **Take control!** stops the autoload and
+returns the machine to you.{.shot-caption}
+
+Disk and tape images run to several megabytes, so on a slow link the machine can
+sit silent for a while. A thin **Loading N%** bar along the bottom of the window
+shows how much of the image has arrived — during an autoload, a manual boot or a
+mount alike.
 
 ### The classic way
 
