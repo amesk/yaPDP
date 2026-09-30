@@ -235,6 +235,22 @@ the console output and types only when the guest prints `login:` (with a
 timeout fallback), so slow boots with lots of output (e.g. 2.11 BSD) still
 reach the login prompt reliably.
 
+While it types, the autoload toast ("Autoloading in progress…") LOCKS the
+operator's input — keyboard and mouse, for the console, the terminals and the
+front panel alike — so a stray keystroke cannot race the wizard's bytes into the
+console. The single way out is the toast's **Take control!** button, which aborts
+the autoload and hands the machine back; F11 (fullscreen) stays available so the
+operator cannot get stuck in a mode they cannot leave. Because a locked page is
+easy to mistake for a freeze, the behaviour is documented in
+`docs/known-issues.md` as well.
+
+Disk and tape images run to a few megabytes, so the fetch can take a while on a
+slow link — during an autoload, a manual boot or a mount. A thin `Loading N%`
+strip at the bottom of the window reports the download. The strip reads the
+transfer as it arrives; when the host content-encodes the `.zst` image (or sends
+no Content-Length) it falls back to an indeterminate sweep instead of guessing a
+figure. The channel lives in [`src/media-progress.js`](../src/media-progress.js).
+
 Each OS also declares the machine profile it wants (`hardware` in
 `src/osboot.js`): Unix V5, BSD 2.9 and the paper-tape guests force a Model 33
 teletype console, the 1980s guests (RT‑11 v4.0, ULTRIX‑11, BSD 2.11, RSTS/E
