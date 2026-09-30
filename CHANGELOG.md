@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A `?boot=` link now checks that the build actually ships the image.** A
+  deep link naming a real scenario whose image this deployment does not carry no
+  longer starts a boot that is bound to fail on the mount (the image-load error,
+  long after the link looked fine): the emulator waits for the build manifest —
+  the same list the quick-boot wizard's own list is filtered through — and,
+  when the image is missing, explains it in the same dialog as an unknown key.
+  The wait is bounded: a manifest that never resolves (an ad-hoc host, `file://`,
+  a failed fetch) proves nothing and the boot proceeds, exactly as before. A
+  mounted image still makes its scenario bootable without a manifest, and paper
+  tapes stay available in every build. (`src/quickboot.js`; pinned by
+  `tests/os-gallery-run.test.js` and `tests/e2e-quickboot-deeplink.js`)
+
 - **Every guest OS in the landing galleries boots in one click.** Each tile on
   the classic landing page and in the SPA landing carries a RUN button that
   opens the emulator with `pdp11.html?boot=<device>` and starts that operating

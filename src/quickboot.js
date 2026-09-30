@@ -209,6 +209,22 @@ var QuickBoot = (function () {
             ? device : null;
     }
 
+    // Is a scenario bootable in THIS build? It is, when its image is in the
+    // build manifest (browser deployments) or mounted in DataLoader (desktop
+    // bundle, drag-and-drop imports) — the same union rule the wizard's list
+    // uses (OSBoot.filterAvailable). A manifest that never resolved (ad-hoc
+    // host, file://, fetch unavailable) proves nothing, so the scenario stays
+    // "possibly bootable": the server may still have the image, and the boot
+    // is allowed to try — an image that really is missing then falls through
+    // to imgerror, exactly as before this check existed.
+    // Pure — unit-testable in Node.
+    function scenarioAvailable(scenario, manifest, mounted) {
+        if (!scenario) return false;
+        if (!Array.isArray(manifest)) return true;
+        return OSBoot.filterAvailable(manifest, mounted || [])
+            .indexOf(scenario) !== -1;
+    }
+
     // A key shown back to the visitor. A URL is not a place to trust, so the
     // text is tamed before it reaches the dialog:
     //   - control characters, line separators and bidi overrides become "?": a
@@ -337,7 +353,12 @@ var QuickBoot = (function () {
         if (linkOverlay) linkOverlay.classList.remove("visible");
     }
 
-    function showNoScenario(key) {
+    // `unavailable` picks the wording for a key that NAMES a scenario this
+    // build simply does not ship the image for ("names no scenario in this
+    // build" would be a lie — the scenario exists, its disk does not). The
+    // dialog, the taming and the way out are otherwise identical, so the
+    // visitor gets one explanation for both kinds of dead link.
+    function showNoScenario(key, unavailable) {
         if (typeof document === "undefined") return;
         if (!linkOverlay) {
             linkOverlay = document.createElement("div");
@@ -366,7 +387,9 @@ var QuickBoot = (function () {
 
         var title = document.createElement("span");
         title.className = "modal-title";
-        title.textContent = "Quick boot scenario not found";
+        title.textContent = unavailable
+            ? "Quick boot image not available"
+            : "Quick boot scenario not found";
         box.appendChild(title);
 
         var intro = document.createElement("p");
@@ -385,8 +408,10 @@ var QuickBoot = (function () {
             var code = document.createElement("code");
             code.textContent = boundKey(key);
             intro.appendChild(code);
-            intro.appendChild(document.createTextNode(
-                " names no scenario in this build, so nothing was booted" + tail));
+            intro.appendChild(document.createTextNode(unavailable
+                ? " names a scenario this build does not ship the image for, " +
+                    "so nothing was booted" + tail
+                : " names no scenario in this build, so nothing was booted" + tail));
         }
         box.appendChild(intro);
 
@@ -685,12 +710,6 @@ var QuickBoot = (function () {
         var search = (typeof location !== "undefined") ? location.search : "";
         var requested = bootKeyFromSearch(search);
         var linked = deviceFromSearch(search);
-        if (linked) {
-            try {
-                history.replaceState(null, "",
-                    location.pathname + location.hash);
-            } catch (err) { /* ignore: the boot below still runs exactly once */ }
-        }
 
         if (pending) {
             try {
@@ -703,8 +722,53 @@ var QuickBoot = (function () {
             setTimeout(function () { launch(pending, true); }, 0);
         } else if (linked) {
             // The visitor asked for this OS explicitly, so the wizard stays
-            // shut and the scenario runs on its own.
-            setTimeout(function () { launch(linked, false); }, 0);
+            // shut and the scenario runs on its own. The key names a real
+            // scenario (deviceFromSearch said so); whether this BUILD ships its
+            // image is a separate question, and the answer arrives with the
+            // manifest — wait for it before booting. Booting a disk the build
+            // does not have would stall the wizard on a mount that cannot
+            // succeed (imgerror), long after the visitor has been told the
+            // machine was theirs; the dialog is the honest answer.
+            var mounted = (typeof DataLoader !== "undefined" &&
+                           typeof DataLoader.list === "function")
+                ? DataLoader.list() : [];
+            var resolved = false;
+            var resolveLink = function (manifest) {
+                if (resolved) return;
+                resolved = true;
+                if (scenarioAvailable(OSBoot.scenarioFor(linked), manifest, mounted)) {
+                    // The boot is really happening. A hardware-profile change
+                    // inside launch() reloads the page, so the link must not
+                    // outlive this load: drop it BEFORE the boot, or the reload
+                    // starts the same scenario a second time. Dropped only here,
+                    // on the path that boots: a link that cannot be honoured
+                    // keeps its parameter, exactly like an unknown key — the
+                    // visitor can see (and copy) what was actually asked for.
+                    try {
+                        history.replaceState(null, "",
+                            location.pathname + location.hash);
+                    } catch (err) { /* ignore: the boot still runs once */ }
+                    launch(linked, false);
+                } else {
+                    showNoScenario(linked, true);
+                }
+            };
+            // A manifest that never resolves proves nothing (ad-hoc host), so
+            // the boot is allowed to proceed on its own after a short grace
+            // period rather than hanging the page on a fetch that may never
+            // finish. The grace is generous: on a cold cache the manifest is a
+            // small JSON that lands well within it, and the boot itself takes
+            // far longer than the wait.
+            var graceMs = 4000;
+            var graceTimer = setTimeout(function () { resolveLink(null); }, graceMs);
+            if (manifestPromise && typeof manifestPromise.then === "function") {
+                manifestPromise.then(function (manifest) {
+                    clearTimeout(graceTimer);
+                    resolveLink(manifest);
+                });
+            } else {
+                resolveLink(null);
+            }
         } else if (requested !== null) {
             // Somebody asked for a scenario this build does not have: a stale
             // link from an article, a typo, a key that has been renamed — or a
@@ -756,6 +820,7 @@ var QuickBoot = (function () {
         stepBytes: stepBytes,
         deviceFromSearch: deviceFromSearch,
         bootKeyFromSearch: bootKeyFromSearch,
+        scenarioAvailable: scenarioAvailable,
         boundKey: boundKey,
         bufferContains: bufferContains,
         profileOf: profileOf,
