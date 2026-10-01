@@ -50,6 +50,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   timing helpers live in `tools/reel-voice-util.js` with unit tests in
   `tests/reel-voice.test.js`.
 
+### Changed
+
+- **The front-panel RT-11 demo explains its switch work.** The manual bootstrap
+  is now narrated with tiled top step banners (`MANUAL BOOTSTRAP` → the 12-word
+  toggle → `ENABLE + START`) and spoken phrases, so the long stretch of panel
+  switches stays legible to a first-time viewer. (`tools/record-video.js`)
+
+### Fixed
+
+- **The front-panel RT-11 bootstrap demo selects its VT52 console and shows the
+  boot again.** The promo-clip capture drives the CONFIG console-type `<select>`
+  (#75 replaced the radio group it used to be), so the clip picks the VT52
+  operator console, leaves the CONFIG page promptly, and prints the RT-11 boot
+  on the captured console. (`tools/record-video.js`)
+
+- **In-clip narration is no longer buried by the music.** The background track
+  is now ducked under the spoken phrases mixed into a clip — not only under the
+  title cards — in both the reel and the standalone clips.
+  (`tools/assemble-video.js`)
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

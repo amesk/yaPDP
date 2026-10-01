@@ -60,10 +60,19 @@ assert.ok((src.match(/stampStepEvents\(events, cmd\);/g) || []).length >= 2,
 assert.ok(src.includes("if (!cmd.send && !cmd.ctrlC) continue;"),
     "a pure annotation step must not try to type anything");
 
-// Imperative examples: a banner during the panel bootstrap and one on the
-// Lunar Lander start-up card (which survives the assembler's cut).
-assert.ok(src.includes('events.title("MANUAL BOOTSTRAP", 6)'),
+// Imperative examples: the panel-boot toggle-in narrates itself with tiled
+// top step banners + spoken phrases (it takes the event recorder), and the
+// Lunar Lander start-up card gets a banner (which survives the assembler cut).
+assert.ok(src.includes("function toggleInPanelBootstrap(page, events)"),
+    "toggleInPanelBootstrap must take the event recorder");
+assert.ok(src.includes("toggleInPanelBootstrap(page, events)"),
+    "the panel-boot capture must pass the recorder into the toggle-in helper");
+assert.ok(src.includes('openBanner("MANUAL BOOTSTRAP")'),
     "the panel-boot capture announces the bootstrap with a title");
+assert.ok(src.includes('openBanner("1 · TOGGLE IN THE 12-WORD BOOTSTRAP")'),
+    "the long switch run must be labelled with a step banner");
+assert.ok(src.includes('"Set the entry address: zero-zero-one-zero-zero-zero."'),
+    "the bootstrap must narrate the entry address it toggles in");
 assert.ok(src.includes('events.title("LUNAR LANDER  ·  VT11", 5)'),
     "the lander capture announces the clip on its title card");
 

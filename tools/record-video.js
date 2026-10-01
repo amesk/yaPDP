@@ -505,23 +505,68 @@ async function setPanelSwitches(page, value) {
 // with 001000, DEP each word (address auto-increments), then LOAD ADRS 001000
 // again, ENABLE and START. Uneven pauses between actions keep the whole
 // sequence feeling hand-operated rather than scripted.
-async function toggleInPanelBootstrap(page) {
+//
+// The run is ~45-50 s of switch work with nothing legible happening, so it is
+// narrated: every phase opens a TOP step banner and stamps a spoken phrase.
+// Banners TILE without overlapping (opening the next banner closes the
+// previous one at the real elapsed media time) — two burned drawtext banners
+// sharing a time window would render on top of each other.
+async function toggleInPanelBootstrap(page, events) {
+    let banner = null;
+    // Open a top step banner; the previous one is closed just before this one
+    // starts (real media time) so their enable windows never overlap.
+    function openBanner(text) {
+        if (!events) return;
+        const now = events.elapsed();
+        if (banner) banner.dur = Math.max(0.1, now - banner.t - 0.2);
+        // Provisional long duration — closed by the next openBanner()/hold.
+        banner = events.title(text, 30);
+    }
+    function say(text) { if (events) events.speak(text); }
+
+    // 1. HALT, then point the address switches at the entry address. The
+    //    spoken line gets room to finish before the banner changes, so two
+    //    phrases never overlap (amix would garble simultaneous speech).
+    openBanner("MANUAL BOOTSTRAP");
     await clickPanelControl(page, '[data-action="enableHalt"]'); // HALT
-    await humanPause(250, 300);
+    await humanPause(700, 400);
+    say("Set the entry address: zero-zero-one-zero-zero-zero.");
     await setPanelSwitches(page, PANEL_BOOT_ADDR);
+    await humanPause(400, 300);
     await clickPanelControl(page, '[data-action="loadAdrs"]');
-    await humanPause(200, 300);
-    for (const word of PANEL_BOOT_WORDS) {
+    await humanPause(4400, 800);
+
+    // 2. Toggle in the first half of the loader, one word at a time.
+    openBanner("1 · TOGGLE IN THE 12-WORD BOOTSTRAP");
+    say("Twelve machine instructions go in, one word at a time.");
+    for (const word of PANEL_BOOT_WORDS.slice(0, 6)) {
         await setPanelSwitches(page, word);
         await clickPanelControl(page, '[data-action="deposit"]');
         await humanPause(120, 320);
     }
+
+    // 3. ... and the second half; each DEPOSIT steps the address on.
+    openBanner("2 · DEP — DEPOSIT EACH WORD");
+    say("Each DEPOSIT writes the word and steps to the next address.");
+    for (const word of PANEL_BOOT_WORDS.slice(6)) {
+        await setPanelSwitches(page, word);
+        await clickPanelControl(page, '[data-action="deposit"]');
+        await humanPause(120, 320);
+    }
+
+    // 4. Rewind to the entry address, ENABLE and START.
+    say("Rewind to the start address.");
     await setPanelSwitches(page, PANEL_BOOT_ADDR);
     await clickPanelControl(page, '[data-action="loadAdrs"]');
+    await humanPause(2200, 600);   // let the rewind line finish before START
+    openBanner("3 · ENABLE + START");
+    say("ENABLE, and START — the loader reads the disk, and RT-11 boots.");
     await humanPause(200, 300);
     await clickPanelControl(page, '[data-action="enableHalt"]'); // ENABLE
     await humanPause(200, 300);
     await clickPanelControl(page, '[data-action="start"]');
+    // Hold the last step banner while RT-11 boots and the clip switches pages.
+    if (banner) banner.dur = 8;
 }
 
 // After switching to a VT52 page that was hidden while the guest printed
@@ -1070,9 +1115,19 @@ async function capturePanelBoot(browser, shot) {
         // 1. CONFIG: select the VT52 operator console and Apply (reloads).
         await page.evaluate(() => window.switchPage('config'));
         await sleep(1200);
+        // The console type is a <select id="config-consoleType"> since #75 (it
+        // used to be a radio group). The old radio selector matched nothing, so
+        // the form never switched to VT52, Apply saw no structural change and
+        // refused to reload — the capture then sat on the CONFIG page for the
+        // whole waitForNavigation(30 s) timeout and continued on a teletype
+        // console, leaving the VT52 console page blank for the rest of the clip.
+        // Set the select's value and fire a change event exactly like a user.
         await page.evaluate(() => {
-            const r = document.querySelector('input[name="consoleType"][value="vt52"]');
-            if (r) r.click();
+            const sel = document.getElementById('config-consoleType');
+            if (sel) {
+                sel.value = 'vt52';
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         });
         await sleep(600);
         await Promise.all([
@@ -1104,11 +1159,11 @@ async function capturePanelBoot(browser, shot) {
         await clickPanelControl(page, '#panel-sticker-btn');
         await sleep(1500);
 
-        // 3. Toggle in the bootstrap loader and START it — announce the step
-        // with a big banner while the operator works the switches.
-        events.title("MANUAL BOOTSTRAP", 6);
+        // 3. Toggle in the bootstrap loader and START it. The switch work is
+        // narrated with tiled top step banners + spoken phrases stamped inside
+        // toggleInPanelBootstrap() while the operator works the switches.
         events.markChapter("Manual bootstrap");
-        await toggleInPanelBootstrap(page);
+        await toggleInPanelBootstrap(page, events);
         await sleep(500);
 
         // 4. Switch to the VT52 console and wait for RT-11 to finish booting.
@@ -1123,6 +1178,11 @@ async function capturePanelBoot(browser, shot) {
             console.error("  WARN: console did not finish rendering the RT-11 boot");
         }
         readyAt = Date.now();
+
+        // Let the RT-11 boot banner sit for a beat, and let the "ENABLE and
+        // START" narration finish before the DUNGEON step stamps its own
+        // phrase — otherwise the two spoken phrases overlap on the audio mix.
+        await sleep(1800);
 
         // 5. Demo commands on the VT52 console.
         for (const cmd of shot.extra || []) {

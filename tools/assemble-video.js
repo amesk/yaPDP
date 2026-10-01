@@ -162,8 +162,9 @@ const CLIPS = [
         "click and scanlines, all emulated by yaPDP.",
       tags: ["VT52", "DECscope", "RT-11", "PDP-11", "terminal"] },
     { file: "rt11-panel-boot.webm", title: "MANUAL BOOTSTRAP",
-      voice: "A manual bootstrap: loading a tiny boot program with the " +
-        "front-panel switches, the way operators did it back in 1977.",
+      voice: "A manual bootstrap. The early PDP-11s had no boot ROM \u2014 DEC " +
+        "added boot boards later \u2014 so a tiny program is entered by hand " +
+        "with the front-panel switches, exactly as operators did it.",
       description: "A manual bootstrap on yaPDP: the operator toggles a tiny " +
         "boot program into memory with the PDP-11/70 front-panel switches and " +
         "deposits the start address, exactly as in 1977.",
@@ -477,9 +478,10 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
     if (music) {
         const mixed = path.join(tmp, "ind_" + base + "_mixed.mp4");
         const dur = probeDuration(concatOut);
-        // Duck the music only while each voiced card's narration is actually
-        // audible (after its lead-in, until its reverb tail), so the track
-        // starts/continues at its normal level otherwise.
+        // Duck the music only while narration is actually audible (after its
+        // lead-in, until its reverb tail), so the track starts/continues at
+        // its normal level otherwise. This covers the voiced cards AND the
+        // spoken phrases mixed into the clip itself (below).
         const voicedMeta = [];
         if (voices && voices["intro"]) {
             voicedMeta.push({ idx: 0, pre: vutil.VOICE_PRE_INTRO,
@@ -492,6 +494,12 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
         if (voices && voices["outro"]) {
             voicedMeta.push({ idx: 3, pre: vutil.VOICE_PRE,
                 dur: probeDuration(voices["outro"]) });
+        }
+        // In-clip spoken phrases (`speak` reel events) must duck the music too
+        // — otherwise the track buries them. A phrase sits `t` seconds into
+        // the clip segment (index 2) and lasts its measured narration duration.
+        for (const p of clipPhrasesNow) {
+            voicedMeta.push({ idx: 2, pre: p.t, dur: p.dur });
         }
         const duckChain = vutil.musicDuckFilters(
             vutil.speechDuckWindows([dIntro, dSlide, dClip, dOutro], voicedMeta, fade)
@@ -1107,6 +1115,19 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
         const rawIndexByBase = {};
         raw.forEach((entry, i) => { if (entry.base) rawIndexByBase[entry.base] = i; });
 
+        // In-clip spoken phrases must duck the music in the reel as well: they
+        // are mixed into the raw clip segments (not onto a card), so each one
+        // becomes a duck window starting `t` seconds into its clip segment and
+        // lasting its measured narration duration. Without this the music
+        // buries the clip narration.
+        for (const c of CLIPS) {
+            const base = path.basename(c.file, ".webm");
+            const idx = rawIndexByBase[base];
+            if (idx == null) continue;
+            const phrases = clipEvents[base] ? clipPhrases(clipEvents[base]) : [];
+            for (const p of phrases) voicedMeta.push({ idx: idx, pre: p.t, dur: p.dur });
+        }
+
         // --- Video chain: xfade -------------------------------------------------
         const filters = [];
         inputs.forEach((_, i) => {
@@ -1156,9 +1177,9 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
             console.log("Mixing background music (looped): " + music);
             const mixed = path.join(tmp, "mixed.mp4");
             const dur = probeDuration(OUT);
-            // Duck the music only while the narration of a voiced card
-            // (intro/slides/outro) is actually audible; before it starts and
-            // after it ends the track keeps its normal level.
+            // Duck the music while any narration is audible — the voiced cards
+            // (intro/slides/outro) and the phrases mixed into the clips; before
+            // it starts and after it ends the track keeps its normal level.
             const duckChain = vutil.musicDuckFilters(
                 vutil.speechDuckWindows(durs, voicedMeta, FADE)
             ).join(",");

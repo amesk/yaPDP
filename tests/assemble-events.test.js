@@ -80,4 +80,16 @@ assert.ok(src.includes("timeline.planArtifacts(clipEv, starts[2])"),
 assert.ok(src.includes("writeMediaSidecars(out, art.chapters, art.srt)"),
     "exportIndividual must write the clip's chapters/subtitle sidecars");
 
+// --- Music ducking must cover the in-clip spoken phrases ----------------------
+
+// The music is ducked only inside narration windows. The voiced CARDS were
+// always covered; the phrases mixed into the clips must be too, or the track
+// buries them (they are not cards — they sit at their own media offset).
+assert.ok(src.includes("musicDuckFilters") && src.includes("speechDuckWindows"),
+    "the assembler must duck the music via the shared windows helper");
+assert.ok(src.includes("{ idx: 2, pre: p.t, dur: p.dur }"),
+    "exportIndividual must duck the music over the clip's own spoken phrases");
+assert.ok(src.includes("voicedMeta.push({ idx: idx, pre: p.t, dur: p.dur })"),
+    "the reel must duck the music over each clip's spoken phrases");
+
 process.stdout.write("All assemble-events structural tests passed.\n");
