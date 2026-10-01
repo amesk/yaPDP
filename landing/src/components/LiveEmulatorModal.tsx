@@ -78,7 +78,7 @@ export function LiveEmulatorModal({ isOpen, onClose, lang, bootKey }: LiveEmulat
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">
-                {lang === 'en' ? 'Open pdp11.html' : 'В окне pdp11.html'}
+                {lang === 'en' ? 'Open standalone' : 'Открыть отдельно'}
               </span>
             </a>
 
