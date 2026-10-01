@@ -71,7 +71,7 @@ jobs:
       # (speeds up subsequent runs; the first is a cold build). OS is in the
       # key so ubuntu/windows never share incompatible build artifacts.
       - name: Cache Cargo (registry, git, tauri-cli, target)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -156,7 +156,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo (restore for tauri-cli, optional)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -234,7 +234,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache Cargo (restore for tauri-cli, optional)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -307,7 +307,7 @@ jobs:
       # `puppeteer` postinstall is skipped on a cache hit — the PDF build needs
       # a real browser.
       - name: Cache puppeteer Chromium
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
