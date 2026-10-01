@@ -49,7 +49,7 @@ export function PDP11Emulator({ lang, onBackToHome, onOpenManual }: PDP11Emulato
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 px-3 py-1 rounded border border-[#4a4030] bg-[#221e18] hover:bg-[#2e2820] text-[#c8a860] hover:text-[#f0e6c8] transition-colors"
-            title={lang === 'en' ? 'Open pdp11.html in new tab' : 'Открыть pdp11.html в новой вкладке'}
+            title={lang === 'en' ? 'Open in dedicated browser window' : 'Открыть в отдельном окне браузера'}
           >
             <ExternalLink className="w-3.5 h-3.5" />
             <span>{lang === 'en' ? 'Open standalone' : 'Открыть отдельно'}</span>
