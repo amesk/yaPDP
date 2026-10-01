@@ -58,7 +58,7 @@ jobs:
       # Restored before npm ci so the Chromium download behind the `puppeteer`
       # postinstall is skipped on a cache hit — the manual PDFs need a browser.
       - name: Cache puppeteer Chromium
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
