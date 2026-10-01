@@ -174,6 +174,10 @@ assert.ok(recordSrc.includes("function capturePanelBoot"),
   "a capturePanelBoot function must drive the front-panel toggle-in");
 assert.ok(recordSrc.includes("toggleInPanelBootstrap"),
   "capturePanelBoot must toggle in the loader via the panel switches");
+assert.ok(recordSrc.includes("toggleInPanelBootstrap(page, events)"),
+  "the panel-boot toggle-in must receive the event recorder to stamp its step banners");
+assert.ok(recordSrc.includes("function openBanner(text)"),
+  "the toggle-in must narrate itself with tiled top step banners");
 assert.ok(recordSrc.includes('data-action="loadAdrs"'),
   "the capture must press LOAD ADRS on the panel");
 assert.ok(recordSrc.includes('data-action="deposit"'),
@@ -182,8 +186,19 @@ assert.ok(recordSrc.includes('data-action="start"'),
   "the capture must press START on the panel");
 assert.ok(recordSrc.includes('data-action="enableHalt"'),
   "the capture must press ENABLE/HALT on the panel");
-assert.ok(recordSrc.includes('consoleType"][value="vt52"'),
-  "the capture must select the VT52 console on the CONFIG page");
+// The console type is a <select id="config-consoleType"> since #75 (the radio
+// group it used to be is gone), so the capture must drive THAT control: a stale
+// radio selector silently skipped the switch, Apply never reloaded, and the clip
+// lingered on the CONFIG page for the 30 s waitForNavigation timeout before
+// continuing on a teletype console (blank VT52 page). Pin the control and make
+// sure the id it drives really exists in pdp11.html.
+assert.ok(recordSrc.includes("getElementById('config-consoleType')") &&
+  recordSrc.includes("sel.value = 'vt52'"),
+  "the capture must select the VT52 console via the config-consoleType select");
+const pdp11Html = fs.readFileSync(
+  path.join(__dirname, "..", "pdp11.html"), "utf8");
+assert.ok(pdp11Html.includes('id="config-consoleType"'),
+  "pdp11.html must carry the config-consoleType control the capture drives");
 assert.ok(recordSrc.includes('#panel-sticker-btn'),
   "the capture must press the Help Me! button to show the bootstrap sticker");
 assert.ok(recordSrc.lastIndexOf('#panel-sticker-btn') < recordSrc.lastIndexOf('toggleInPanelBootstrap('),
@@ -195,6 +210,10 @@ assert.ok(assembleSrc.includes('"basic-tape.webm"'),
   "CLIPS must register the basic-tape.webm clip in the reel");
 assert.ok(assembleSrc.includes('"rt11-panel-boot.webm"'),
   "CLIPS must register the rt11-panel-boot.webm clip in the reel");
+// The historical nuance lives on the clip's title card (it has room to speak):
+// early PDP-11s had no boot ROM, DEC added boot boards later.
+assert.ok(assembleSrc.includes("had no boot ROM"),
+  "the panel-boot title card must explain that early PDP-11s had no boot ROM");
 
 // --- 5. Structural: individual clips explain what they demonstrate --------
 
