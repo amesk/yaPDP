@@ -4,14 +4,14 @@
 
 Use the sidebar to switch between:
 
-- [Panel](#front-panel) — the front panel with switches and LEDs.
-- [Console](#console) — the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.
-- [TTY 1 / TTY 2](#user-terminals) — user video terminals (VT52 or VT100), shown only when configured.
-- [Printer](#printer) — the LP11 line printer page, shown only when configured.
-- [Display](#vt11) — the VT11 vector-graphics CRT page, shown only when configured.
-- [Storage](#storage) — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).
-- [Config](#config) — configure the emulated peripherals (persisted between sessions).
-- Info — detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).
+- **[Panel](#front-panel)** — the front panel with switches and LEDs.
+- **[Console](#console)** — the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.
+- **[TTY 1 / TTY 2](#user-terminals)** — user video terminals (VT52 or VT100), shown only when configured.
+- **[Printer](#printer)** — the LP11 line printer page, shown only when configured.
+- **[Display](#vt11)** — the VT11 vector-graphics CRT page, shown only when configured.
+- **[Storage](#storage)** — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).
+- **[Config](#config)** — configure the emulated peripherals (persisted between sessions).
+- **Info** — detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).
 
 ### Floating controls
 

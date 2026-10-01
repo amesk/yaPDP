@@ -1,3 +1,53 @@
+# yaPDP v0.3.0 — Release Notes
+
+- **Release date:** 2026-09-30
+- **Baseline:** [releases/v0.2.0](https://github.com/amesk/yaPDP/releases/tag/releases%2Fv0.2.0) (2026-09-10)
+- **Full diff:** [releases/v0.2.0...releases/v0.3.0](https://github.com/amesk/yaPDP/compare/releases/v0.2.0...releases/v0.3.0)
+
+**yaPDP — Yet Another PDP-11/70 web emulator** with an authentic front panel,
+a Model 33 ASR teletype, DECscope VT52 and VT100 terminals and a DEC LP11 line
+printer.
+
+## What's new
+
+- **The emulator now works on phones and tablets.** Touch brings on-screen
+  keyboards for the terminals, a special-key bar for the keys a phone cannot
+  give up (CR, ESC, TAB, BACKSPACE, RUBOUT and control codes), and two-finger
+  zoom and pan on every machine page — with the operator controls kept at a
+  readable size and the frequent actions one tap away.
+- **VT100 terminals join the DECscope VT52.** A cabinet can now carry a VT100
+  with its own tube, the original white (P4) phosphor or the classic green (P1),
+  its own key click, and correct scrolling and cursor behaviour.
+- **Run any guest from the landing page.** Every operating system in the
+  galleries has a RUN button that opens the emulator and boots it in one click.
+- **Disk and tape downloads show their progress** with a thin status strip while
+  an image streams in.
+- **Pick the drive an image mounts to.** Mounted disks and tapes can be bound to
+  a chosen drive — or unbound — and the choice is remembered between sessions.
+
+## Improved
+
+- The front panel now glows in a single monochrome red, like a real 11/70, with
+  every lamp sharing one light and one dark lens.
+- BSD 2.11 boots in roughly half the time, on a leaner, networkless kernel with
+  more free memory.
+- While a guest auto-boots, a "Take control!" button returns the machine to the
+  operator instead of waiting out the sequence.
+- The startup screen no longer flashes a stand-in machine while the artwork
+  loads.
+
+## Fixed
+
+- Changes a guest OS writes to its disks are saved again, and can be exported as
+  a raw disk image.
+- A snapshot taken on a different build of a disk is refused rather than
+  silently restoring mismatched memory.
+- Typing on a Russian keyboard layout no longer turns letters into Latin.
+- The Info page and every dialog now fit a phone screen.
+- A VT100 terminal scrolls correctly under programs such as the `vi` editor.
+
+---
+
 # yaPDP v0.2.0 — Release Notes
 
 - **Release date:** 2026-09-10

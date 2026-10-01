@@ -169,10 +169,21 @@
             color: #f0e6c8;
         }
 
+        /* One rule per ROW, not per cell. Cells align to the top of the row,
+           so when one column holds a short label and another a sentence the
+           cells have different heights and a per-cell border-bottom lands at
+           its own y — a staircase down the table, most visible in the
+           Floating controls table. Collapsing the table makes a rule on the
+           row draw once across the full width at the row's own height, and
+           the cell borders are removed so the two do not double up. The
+           @media print block below repeats the idea with paper colours. */
+        .landing-page table tr {
+            border-bottom: 1px solid #3a3528;
+        }
+
         .landing-page table td,
         .landing-page table th {
             padding: 5px 10px;
-            border-bottom: 1px solid #3a3528;
             text-align: left;
             vertical-align: top;
         }
@@ -295,8 +306,8 @@
             margin: 16px 0 4px 0;
         }
 
-        .landing-page .pair > figure,
-        .landing-page .row > figure {
+        .landing-page .pair>figure,
+        .landing-page .row>figure {
             /* A pair splits the column in two; a longer chain wraps on its own,
                so four frames become two rows of two rather than four unreadable
                slivers. */
@@ -305,16 +316,16 @@
             margin: 0;
         }
 
-        .landing-page .pair > figure .shot,
-        .landing-page .row > figure .shot {
+        .landing-page .pair>figure .shot,
+        .landing-page .row>figure .shot {
             /* Override the centred standalone rule: inside a group a frame fills
                its own column. */
             width: 100%;
             margin: 0;
         }
 
-        .landing-page .pair > figure .shot-caption,
-        .landing-page .row > figure .shot-caption {
+        .landing-page .pair>figure .shot-caption,
+        .landing-page .row>figure .shot-caption {
             text-align: center;
             margin: 4px 0 0 0;
         }
@@ -407,6 +418,7 @@
            What stays: the text, the pictures with their captions, the tables,
            the contents list. Those are the manual. */
         @media print {
+
             html,
             body {
                 background: #fff !important;
@@ -531,7 +543,7 @@
                 break-before: page;
             }
 
-            .landing-page hr + h2,
+            .landing-page hr+h2,
             .landing-page h2:first-of-type {
                 page-break-before: auto;
                 break-before: auto;
@@ -595,8 +607,9 @@
         }
 
         @media (max-width: 700px) {
-            .landing-page .pair > figure,
-            .landing-page .row > figure {
+
+            .landing-page .pair>figure,
+            .landing-page .row>figure {
                 flex: 1 1 100%;
                 max-width: 100%;
             }
@@ -717,8 +730,13 @@
             padding: 10px 14px 12px 14px;
         }
 
-        .shot-viewer-prev { left: 16px; }
-        .shot-viewer-next { right: 16px; }
+        .shot-viewer-prev {
+            left: 16px;
+        }
+
+        .shot-viewer-next {
+            right: 16px;
+        }
 
         .shot-viewer-close:hover,
         .shot-viewer-nav:hover {
@@ -812,6 +830,6 @@
                 </div>
             </div>
 
-{{TOC}}
+            {{TOC}}
 
             <hr>

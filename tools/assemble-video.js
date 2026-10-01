@@ -22,6 +22,7 @@
  * Usage:
  *   node tools/assemble-video.js
  *   node tools/assemble-video.js --music assets/music/loop.mp3
+ *   node tools/assemble-video.js --no-burn-titles
  *   node tools/assemble-video.js --voice-engine kokoro --voice-regen
  *   npm run video:demo
  *
@@ -34,6 +35,8 @@
  * the clip audio at their media offsets and emitted as video/*.chapters.txt +
  * video/*.srt sidecars next to each MP4; banner titles are burned into the
  * video, and --burn-subtitles also burns the bottom subtitle lines.
+ * --no-burn-titles leaves the banner titles off the picture — they still go
+ * into the .chapters.txt/.srt sidecars, so an editor can place them later.
  *
  * Output: video/yaPDP-demo.mp4 and video/<clip>.mp4 for every clip.
  */
@@ -113,34 +116,72 @@ const OUTRO_VOICE = "Thanks for watching. y-a-PDP brings the PDP-11 back to " +
     "life: instant, immersive, always ready to run.";
 
 // --- The clips, in reel order ---------------------------------------------
+// `title`/`description`/`tags` are the publishable metadata: they are written
+// into video/youtube-manifest.json (see writeYoutubeManifest below) and used by
+// tools/youtube-publish.js, so the clip metadata lives in exactly one place.
 const CLIPS = [
     { file: "basic.webm",        title: "DEC BASIC-11",
       voice: "This demo boots DEC BASIC-11 from an RK05 disk. Type a few " +
-        "lines, and the PDP-11 answers in classic BASIC." },
+        "lines, and the PDP-11 answers in classic BASIC.",
+      description: "DEC BASIC-11 running on yaPDP, a PDP-11/70 web emulator. " +
+        "The demo boots BASIC-11 from an RK05 disk pack, types a short program " +
+        "at the Model 33 teletype and runs it.",
+      tags: ["DEC BASIC-11", "BASIC", "PDP-11", "RK05", "emulator"] },
     { file: "basic-tape.webm",   title: "DEC BASIC-11 (ASR TAPE)",
       voice: "BASIC-11, this time loading from punched tape on the " +
-        "Model 33 teletype. Watch the paper tape reader spin." },
+        "Model 33 teletype. Watch the paper tape reader spin.",
+      description: "DEC BASIC-11 loaded from a punched paper tape on the " +
+        "Model 33 ASR teletype of the yaPDP PDP-11/70: the paper tape reader " +
+        "and punch run live, exactly as they did in the machine room.",
+      tags: ["paper tape", "ASR-33", "teletype", "PDP-11", "BASIC"] },
     { file: "unix_v5.webm",      title: "BOOTING UNIX V5",
       voice: "Now we boot UNIX Version 5 — an early UNIX from 1975, running " +
-        "on the PDP-11 slash 70." },
+        "on the PDP-11 slash 70.",
+      description: "UNIX Version 5 (1975) booting on the emulated PDP-11/70 and " +
+        "logging in at the console — the operating system that grew up on " +
+        "Digital's hardware.",
+      tags: ["UNIX V5", "UNIX", "1975", "PDP-11", "emulator"] },
     { file: "bsd.webm",          title: "2.11 BSD",
       voice: "This is 2.11 BSD, the last and most polished UNIX for the " +
-        "PDP-11. Log in and explore." },
+        "PDP-11. Log in and explore.",
+      description: "2.11 BSD — the last and most complete UNIX for the PDP-11 — " +
+        "booting from disk on yaPDP and logging in at the console.",
+      tags: ["2.11 BSD", "BSD", "UNIX", "PDP-11", "emulator"] },
     { file: "rt11.webm",         title: "RT-11 v4.0",
       voice: "RT-11, Digital's single-user real-time operating system, " +
-        "booting from disk. A workhorse of the PDP-11 era." },
+        "booting from disk. A workhorse of the PDP-11 era.",
+      description: "RT-11 v4.0, Digital's single-user real-time operating " +
+        "system, booting from an RK05 disk pack and running a few commands; " +
+        "the demo closes with DUNGEON, Digital's text adventure.",
+      tags: ["RT-11", "DUNGEON", "PDP-11", "operating system", "emulator"] },
     { file: "rt11-vt52.webm",    title: "RT-11 v4.0 (VT52)",
       voice: "RT-11, this time on a VT52 terminal. Green phosphor, " +
-        "command lines, and an interactive monitor." },
+        "command lines, and an interactive monitor.",
+      description: "RT-11 v4.0 on a DECscope VT52 terminal instead of the " +
+        "teletype: canvas-rendered CRT with the authentic P4 phosphor, key " +
+        "click and scanlines, all emulated by yaPDP.",
+      tags: ["VT52", "DECscope", "RT-11", "PDP-11", "terminal"] },
     { file: "rt11-panel-boot.webm", title: "MANUAL BOOTSTRAP",
       voice: "A manual bootstrap: loading a tiny boot program with the " +
-        "front-panel switches, the way operators did it back in 1977." },
+        "front-panel switches, the way operators did it back in 1977.",
+      description: "A manual bootstrap on yaPDP: the operator toggles a tiny " +
+        "boot program into memory with the PDP-11/70 front-panel switches and " +
+        "deposits the start address, exactly as in 1977.",
+      tags: ["front panel", "bootstrap", "PDP-11/70", "switches", "emulator"] },
     { file: "xxdp.webm",         title: "XXDP DIAGNOSTICS",
       voice: "XXDP diagnostics test every board in the machine. A serious " +
-        "tool from Digital's own field service." },
+        "tool from Digital's own field service.",
+      description: "XXDP diagnostics — Digital's own field-service test suite — " +
+        "running on the emulated PDP-11/70 and exercising the machine board by " +
+        "board. A serious tool from the service engineer's toolkit.",
+      tags: ["XXDP", "diagnostics", "PDP-11", "field service", "emulator"] },
     { file: "lunar-lander.webm", title: "LUNAR LANDER  ·  VT11",
       voice: "A favourite: Lunar Lander, running on the VT11 " +
-        "vector graphics terminal. Try to set her down gently." }
+        "vector graphics terminal. Try to set her down gently.",
+      description: "Lunar Lander on the DEC VT11 vector-graphics display: the " +
+        "vector CRT is rendered on its own green-phosphor page while the " +
+        "teletype stays the operator console.",
+      tags: ["Lunar Lander", "VT11", "vector display", "PDP-11", "game"] }
 ];
 
 // --- Utilities ------------------------------------------------------------
@@ -340,11 +381,12 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
     const clipPath = srcPath || path.join(VIDEOS, clip.file);
     if (!fs.existsSync(introPath) || !fs.existsSync(clipPath)) return;
     const base = path.basename(clip.file, ".webm");
-    // ctx = { voices, reverb, clipEvents, burnSubtitles } (see main).
+    // ctx = { voices, reverb, clipEvents, burnSubtitles, burnTitles } (see main).
     const voices = (ctx && ctx.voices) || null;
     const reverb = !ctx || ctx.reverb !== false;
     const clipEv = (ctx && ctx.clipEvents && ctx.clipEvents[base]) || [];
     const burnSubtitles = !!(ctx && ctx.burnSubtitles);
+    const burnTitles = !ctx || ctx.burnTitles !== false;
     const slideKey = "slide-" + base;
 
     const nIntro = path.join(tmp, "ind_" + base + "_intro.webm");
@@ -483,9 +525,12 @@ function exportIndividual(clip, music, tmp, srcPath, ctx) {
         const starts = vutil.segmentStarts([dIntro, dSlide, dClip, dOutro], fade);
         const art = timeline.planArtifacts(clipEv, starts[2]);
         writeMediaSidecars(out, art.chapters, art.srt);
-        if (art.banners.length || (burnSubtitles && art.srt.length)) {
+        // --no-burn-titles drops the banner titles from the picture; the .srt
+        // sidecar still carries them so an editor can place them later.
+        const banners = burnTitles ? art.banners : [];
+        if (banners.length || (burnSubtitles && art.srt.length)) {
             const burned = path.join(tmp, "ind_" + base + "_burn.mp4");
-            burnOverlays(out, burned, art.banners, art.srt, burnSubtitles);
+            burnOverlays(out, burned, banners, art.srt, burnSubtitles);
             fs.copyFileSync(burned, out);
             fs.unlinkSync(burned);
         }
@@ -756,6 +801,55 @@ function writeMediaSidecars(outMp4, chapters, srt) {
     if (s) fs.writeFileSync(stem + ".srt", s + "\n");
 }
 
+// --- YouTube publish manifest ----------------------------------------------
+// tools/youtube-publish.js publishes from video/youtube-manifest.json, which
+// this assembler writes next to the artefacts: one entry per built MP4 (every
+// clip plus the reel) with its publishable title/description/tags and the paths
+// to its chapter and subtitle sidecars. Generating the manifest here keeps the
+// metadata single-sourced (CLIPS[] above + tools/youtube-meta.json) instead of
+// duplicating it in the publisher, so `npm run video:demo && npm run
+// youtube:publish` is all that is needed. The reel entry intentionally carries
+// no title/description: those live in tools/youtube-meta.json (meta.reel).
+const YOUTUBE_MANIFEST = path.join(VIDEOS, "youtube-manifest.json");
+
+function ytManifestEntry(slug, title, description, tags) {
+    const mp4 = path.join(VIDEOS, slug + ".mp4");
+    if (!fs.existsSync(mp4)) return null;
+    const rel = (p) => path.relative(ROOT, p).replace(/\\/g, "/");
+    const stem = path.join(VIDEOS, slug);
+    let durationSec = null;
+    try { durationSec = Number(probeDuration(mp4).toFixed(3)); } catch (e) { durationSec = null; }
+    return {
+        slug: slug,
+        relFile: rel(mp4),
+        title: title || "",
+        description: description || "",
+        tags: tags || [],
+        chapters: fs.existsSync(stem + ".chapters.txt") ? rel(stem + ".chapters.txt") : "",
+        srt: fs.existsSync(stem + ".srt") ? rel(stem + ".srt") : "",
+        durationSec: durationSec
+    };
+}
+
+function writeYoutubeManifest() {
+    const videos = [];
+    const reel = ytManifestEntry("yaPDP-demo", "", "", []);
+    if (reel) videos.push(reel);
+    for (const c of CLIPS) {
+        const slug = path.basename(c.file, ".webm");
+        const entry = ytManifestEntry(slug, c.title + " — yaPDP PDP-11/70 emulator",
+            c.description, c.tags);
+        if (entry) videos.push(entry);
+    }
+    if (!videos.length) return;
+    fs.writeFileSync(YOUTUBE_MANIFEST, JSON.stringify({
+        generated: new Date().toISOString(),
+        videos: videos
+    }, null, 2) + "\n");
+    console.log("YouTube manifest written to " + path.relative(ROOT, YOUTUBE_MANIFEST) +
+        " (" + videos.length + " video(s)).");
+}
+
 // Burn banner titles (and, with --burn-subtitles, the bottom subtitles) onto a
 // finished MP4, re-encoding the video while keeping the AAC audio as-is.
 // Banners use the bold display font at the top; subtitles the mono font at the
@@ -829,8 +923,11 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
         const ve = process.argv.indexOf("--voice-engine");
         const voiceEngine = ve !== -1 ? process.argv[ve + 1] : "auto";
         // --burn-subtitles also burns the bottom subtitle lines into the video;
-        // the .srt sidecar is written either way, and banner titles always burn.
+        // the .srt sidecar is written either way. Banner titles burn by default
+        // and --no-burn-titles leaves them off the picture (the sidecar keeps
+        // them for a later edit).
         const burnSubtitles = process.argv.includes("--burn-subtitles");
+        const burnTitles = !process.argv.includes("--no-burn-titles");
 
         // Narration pre-pass: make sure every card that will carry voice has
         // its WAV ready (cached under video/voice/, generated via voicer.js
@@ -872,7 +969,7 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
                 clipEvents[base] = await voiceClipEvents(ev, voiceForce, voiceEngine);
             }
         }
-        const voiceCtx = { voices, reverb, clipEvents, burnSubtitles };
+        const voiceCtx = { voices, reverb, clipEvents, burnSubtitles, burnTitles };
 
         // Intro: the canvas-rendered title card from tools/make-intro.js (amber
         // "YAPDP" glow, "YET ANOTHER PDP-11 EMULATOR" subtitle, green phosphor
@@ -947,6 +1044,7 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
             if (!clip) throw new Error("Unknown clip selector: " + selector);
             console.log("Exporting individual clip: " + clip.file);
             exportIndividual(clip, music, tmp, srcFor[clip.file], voiceCtx);
+            writeYoutubeManifest();
             console.log("Done.");
             return;
         }
@@ -1100,6 +1198,7 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
             reelSrt.push(...art.srt);
             reelBanners.push(...art.banners);
         }
+        if (!burnTitles) reelBanners.length = 0;
         writeMediaSidecars(OUT, reelChapters, reelSrt);
         if (reelBanners.length || (burnSubtitles && reelSrt.length)) {
             const burned = path.join(tmp, "reel_burn.mp4");
@@ -1112,6 +1211,7 @@ function burnOverlays(input, out, banners, subtitles, burnSubtitles) {
         console.log("Exporting individual clips...");
         CLIPS.forEach((c) =>
             exportIndividual(c, music, tmp, srcFor[c.file], voiceCtx));
+        writeYoutubeManifest();
 
         const kb = Math.round(fs.statSync(OUT).size / 1024);
         console.log("Done. Reel written to " + path.relative(ROOT, OUT) + " (" + kb + " kB).");

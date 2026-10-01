@@ -10,6 +10,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Batch YouTube publishing for the demo videos.** The assembled clips can now
+  be published to the project's playlist with one command —
+  `npm run youtube:publish` (alias `npm run youtube-public`) — each with a
+  generated description (clip summary + chapter timestamps + project links +
+  hashtags), its `.srt` attached as captions and an entry in the configured
+  playlist. The default set is the `featured` whitelist in the new
+  [`tools/youtube-meta.json`](tools/youtube-meta.json); `--all` publishes every
+  clip, `--reel` adds the full reel, and clip names/directories (`npm run
+  youtube:publish -- video/`) select a subset. Publishing is idempotent
+  (`video/youtube-state.json` records video ids and sidecar progress) and
+  quota-aware: the Data API grants 10 000 units/day while one upload with
+  captions and a playlist entry costs 2 050, so a run plans a batch (`--limit`,
+  `--budget`) and `--resume` finishes the rest after the quota resets, with
+  `--dry-run` printing the plan without calling the API. The assembler now also
+  writes `video/youtube-manifest.json` (per-clip title/description/tags plus the
+  sidecar paths), keeping the publish metadata single-sourced in
+  [`tools/assemble-video.js`](tools/assemble-video.js). Authorisation is a
+  one-time `npm run youtube:auth` (OAuth loopback flow, refresh token in the
+  gitignored `.youtube-token.json`); `--whoami` and `--list-playlists` verify
+  the channel and find the playlist id. Logic lives in
+  [`tools/youtube-util.js`](tools/youtube-util.js) /
+  [`tools/youtube-publish.js`](tools/youtube-publish.js), the setup and the
+  quota rules are documented in [`docs/YOUTUBE.md`](docs/YOUTUBE.md), and the
+  behaviour is pinned by `tests/youtube-util.test.js` +
+  `tests/youtube-publish.test.js`.
+
+- **Demo-reel voice-over narration on the title cards.** `tools/assemble-video.js`
+  now speaks the intro, every clip's title card and the outro with a generated
+  English narration (`tools/voicer.js`, Kokoro-82M or Windows SAPI);
+  the WAVs are cached in `video/voice/` (rebuilt with `--voice-regen`, and the
+  light reverb / pseudo-stereo added to the dry mono voice can be disabled with
+  `--no-voice-reverb`). The intro card waits a beat (~3 s, until its title
+  has fully faded in) before the voice starts. A card whose narration is
+  longer than its default duration is stretched — freezing the last fully
+  visible frame (just before the card's fade-out), so the speech never runs
+  on an already-blackened screen — until the narration (plus its reverb tail)
+  fits entirely, and the background music is ducked while it plays. The pure
+  timing helpers live in `tools/reel-voice-util.js` with unit tests in
+  `tests/reel-voice.test.js`.
+
+## [0.3.0] - 2026-09-30
+
+### Added
+
 - **Image downloads show their progress.** While a disk or tape image streams
   over the network — quick-boot autoload, a manual `BOOT`, or a mount — a thin
   gold strip at the bottom of the window reports "Loading N%". It reads the
@@ -1296,6 +1340,7 @@ Initial public alpha release.
 
 [0.1.0]: https://github.com/amesk/yaPDP/compare/v0.1.0-alpha2...releases/v0.1.0
 [0.2.0]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0...releases/v0.2.0
-[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.2.0...HEAD
+[0.3.0]: https://github.com/amesk/yaPDP/compare/releases/v0.2.0...releases/v0.3.0
+[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.3.0...HEAD
 [0.1.0-alpha2]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2
 [0.1.0-alpha1]: https://github.com/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1
