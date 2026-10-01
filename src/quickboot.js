@@ -411,6 +411,50 @@ var QuickBoot = (function () {
         });
     }
 
+    // --- Operator overlay handover ---------------------------------------
+    // A dialog that the SYSTEM raises on its own (a first-run hint, a refused
+    // snapshot) may land while the autoload is typing. The autoload owns the
+    // machine then, and its input gate swallows every click outside the toast —
+    // so the dialog is visible but its buttons are dead, and the toast's own
+    // way out sits underneath it. That is a trap with no exit but a reload.
+    //
+    // The rule: who raised the dialog decides. A dialog the OPERATOR opened
+    // (reboot confirm, config-leave, snapshot manager) never races the autoload
+    // because the gate blocks the click that would open it. A dialog the
+    // SYSTEM raised is different — nobody asked and nobody can dismiss it — so
+    // the autoload yields first and the operator gets the machine back.
+    //
+    // Call this BEFORE showing such a dialog. Returns true when the autoload
+    // was stopped (the caller does not need the answer; it is for tests).
+    function yieldToOperator() {
+        if (!gateOn) return false;
+        abortAutoload();
+        return true;
+    }
+
+    // Did this launch arrive on a deep link (pdp11.html?boot=<device>)?
+    // A visitor who followed a link to a specific guest OS has already chosen
+    // what to do with the emulator; the first-run hint would explain a machine
+    // they are already booting. Exposed so the hint can stand down instead of
+    // duplicating the URL parsing in a second module.
+    //
+    // Reads location.search directly rather than the value init() captured:
+    // init() may already have stripped the parameter (replaceState) and
+    // resumed through the pending key.
+    function arrivedByDeepLink() {
+        if (typeof location === "undefined") return false;
+        if (typeof bootKeyFromSearch === "function" &&
+            bootKeyFromSearch(location.search) !== null) return true;
+        // The parameter is gone (consumed), but the boot it started may be
+        // deferred through a config reload: a pending key means this launch
+        // IS that boot.
+        try {
+            if (window.localStorage &&
+                window.localStorage.getItem(PENDING_KEY) !== null) return true;
+        } catch (err) { /* ignore */ }
+        return false;
+    }
+
     // --- "No such scenario" dialog ---------------------------------------
     // A deep link asking for a key this build does not have — a stale link from
     // an article, a typo, a renamed scenario — is an explicit request that
@@ -904,6 +948,12 @@ var QuickBoot = (function () {
         hide: hide,
         launch: launch,
         abortAutoload: abortAutoload,
+        // Stop the autoload so an operator-facing dialog the SYSTEM raised is
+        // not shown into a machine that owns the input. See yieldToOperator().
+        yieldToOperator: yieldToOperator,
+        // True when this launch came from pdp11.html?boot=<device> (or resumed
+        // one through the pending key) — the first-run hint stands down then.
+        arrivedByDeepLink: arrivedByDeepLink,
         // True while the autoload toast is up and the input gate is closed.
         isAutoloading: function () { return gateOn; },
         // Resolves to the build-manifest image list (or null when absent);

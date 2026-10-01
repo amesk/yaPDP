@@ -15,6 +15,41 @@ linked docs/issues. Known emulator bugs are tracked separately in
 
 ## Backlog / ideas
 
+- **OverlayArbiter — one authority over the modal overlays.** Today every
+  dialog decides on its own how to coexist with the quick-boot autoload:
+  `imgerror` calls `window.__autoloadAbort()`, `quickboot` holds the input gate
+  and its toast, the first-run hint and the refused-snapshot dialog call
+  `QuickBoot.yieldToOperator()` (added 2026-10-01, see the fix below), and
+  every dialog added later has to remember the rule on its own. On 2026-10-01
+  the first-run hint met a running autoload and produced a **trap with no
+  exit**: the input gate swallowed the click that would dismiss the hint, and
+  the toast's "Take control!" sat underneath it — the only way out was waiting
+  out the 45 s prompt budget or reloading the page. Nothing is broken now, but
+  the mechanism is still a convention, not a structure.
+
+  What the arbiter should be:
+  - a single place that knows **who owns the machine** (a state, not a DOM
+    element — the toast being visible is a symptom, not the ownership);
+  - a distinction between **system-raised dialogs** (the autoload, an image
+    error, a refused snapshot, the first-run hint) and **operator-raised ones**
+    (reboot confirm, config-leave, the snapshot manager): the criterion is not
+    "modal or not" but **who raised it** — the input gate already makes an
+    operator dialog unreachable while the autoload runs, so only the
+    system-raised ones can collide;
+  - the rule that a system-raised dialog arriving while the autoload owns the
+    machine makes the autoload **yield automatically** — "Take control!"
+    becomes something the system does, not a button the operator has to find;
+  - `QuickBoot` split explicitly into its two states — the **wizard** (an
+    ordinary operator dialog, owns nothing) and `launch()` (system, owns the
+    machine). Today one module holds both, which is how the collision stayed
+    invisible in review.
+
+  Test the **invariant**, not the cases: "no two owners of the machine" and
+  "any system-raised dialog takes the machine back". Migration: move
+  `imgerror`, `quickboot`, `onboarding`, the snapshot dialogs, config-leave and
+  the reboot/power-off confirms onto the arbiter, and delete the ad-hoc
+  `window.__autoloadAbort()` / `yieldToOperator()` call sites.
+
 - **XXDP diagnostics as an authenticity gate.** XXDP is DEC's own field
   diagnostics OS; run actual DEC diagnostics (CPU/memory/controller) inside
   the emulator and wait for their verdict — the era's own test equipment
