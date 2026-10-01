@@ -30,13 +30,32 @@ video/youtube-state.json     generated: video ids + sidecar progress
 
 ## 1. One-time setup: OAuth desktop client
 
-Uploading needs user consent — an API key is not enough.
+### Why an API key will not do
+
+An **API key** only proves *which project* is calling, and it can only read
+public data. Uploading a video acts on **your channel**: it needs your consent,
+and consent is what OAuth grants. There is no key that uploads. If you start
+with a key and look for where to put it, you are on the wrong path — the client
+id and secret below are the credentials, and they end in a refresh token that
+the tool stores locally.
+
+The scope requested is
+`https://www.googleapis.com/auth/youtube.force-ssl` (it covers
+`youtube.upload`). You do not add it by hand anywhere: the consent URL built by
+`npm run youtube:auth` carries it, and the Google screen shows it to you for
+approval.
+
+### The four steps
 
 1. In the [Google Cloud console](https://console.cloud.google.com/) create (or
    pick) a project and **enable the YouTube Data API v3**
    (APIs & Services → Library).
 2. Configure the OAuth consent screen (External, "Testing" is fine for a single
    account; add your own Google account as a **test user**).
+   **A "Testing" app's refresh token expires after 7 days** — fine for a one-off
+   publish, annoying for a long-lived setup. Publish the app ("In production")
+   when you want the token to keep working; see
+   [the 7-day note](#2-authorise-once) below.
 3. Credentials → **Create credentials → OAuth client ID → Desktop app**.
 4. Download the JSON and save it in the repository root as
    `.youtube-client.json` (gitignored). The flat
@@ -58,6 +77,22 @@ Verify:
 ```
 npm run youtube:publish -- --whoami
 ```
+
+### The 7-day token ("Testing" apps)
+
+A Google OAuth app left in **Testing** issues refresh tokens that expire after
+**one week**. The tool keeps working during that week and then starts answering
+`invalid_grant` on every call. Two ways out, pick one deliberately:
+
+* **Publish the app** (OAuth consent screen → *Publish app* → "In production").
+  The refresh token then lives until you revoke it. This is what you want if
+  publishing is a standing capability of the repository.
+* **Stay in Testing and re-authorise** (`npm run youtube:auth`) whenever the
+  token dies. Acceptable for a one-off batch of uploads, and it keeps the app
+  unlisted — but the expiry will come as a surprise exactly once too often.
+
+Either way the credentials are local: `.youtube-token.json` is gitignored and
+never leaves the machine.
 
 ## 3. Find and configure the playlist
 
@@ -166,6 +201,8 @@ a stub service — that is exactly what
 | `Not authorised — run npm run youtube:auth` | no/expired refresh token; re-run `--auth` |
 | `invalid_grant` after the refresh | consent revoked, or the clock is far off; re-run `--auth` |
 | Google returns no refresh token | access was already granted without `prompt=consent`; revoke at <https://myaccount.google.com/permissions> and retry |
+| `invalid_grant` after a week of working | the OAuth app is in "Testing" — its refresh tokens expire after 7 days. Publish the app, or re-run `--auth` (see [The 7-day token](#the-7-day-token-testing-apps)) |
+| `invalid_client` / `unauthorized_client` | the client id/secret do not match the project that owns the consent screen, or the OAuth client is not of type **Desktop app** — recreate the credential |
 | `Playlist ID looks invalid` | a truncated id (e.g. `PLbR5Jg6Ojbn0`) — copy it from `--list-playlists` |
 | Chapters not shown on YouTube | fewer than three marks, a chapter shorter than 10 s, or the first one not at `0:00`; the block is dropped as a whole |
 | `Quota exceeded` | expected after ~5 uploads; re-run with `--resume` after the quota resets (UTC midnight) |
