@@ -311,6 +311,15 @@ var Onboarding = (function () {
     }
 
     function show() {
+        // A dialog the SYSTEM raises must not land on top of a running autoload:
+        // the input gate swallows every click outside the toast, so the hint's
+        // only button would be dead while the toast's way out sits underneath
+        // it — a trap with no exit but a reload. Hand the machine back first.
+        // (Guarded: QuickBoot loads after this module in some harnesses.)
+        if (typeof QuickBoot !== "undefined" &&
+            typeof QuickBoot.yieldToOperator === "function") {
+            QuickBoot.yieldToOperator();
+        }
         var el = ensureOverlay();
         el.innerHTML = boxHtml();
         updateBoots();
@@ -337,6 +346,20 @@ var Onboarding = (function () {
     function init() {
         if (bootTable === null) {
             bootTable = loadBootTable(document.getElementById("guest-os-table"));
+        }
+        // A visitor who arrived on a deep link (pdp11.html?boot=<device>) has
+        // already done what the hint explains: they opened the emulator, picked
+        // a guest OS and started it — the gallery tile IS the onboarding. Show
+        // nothing and record the hint as seen, so it does not appear later
+        // either; a machine that is already booting has no use for a "what is
+        // this" card, and (before the autoload yielded) the card could not even
+        // be dismissed, because the input gate swallowed every click.
+        if (typeof QuickBoot !== "undefined" &&
+            typeof QuickBoot.arrivedByDeepLink === "function" &&
+            QuickBoot.arrivedByDeepLink()) {
+            markSeen(getStorage());
+            syncHintCheckbox();
+            return;
         }
         if (shouldShowOnboarding(getStorage())) {
             show();

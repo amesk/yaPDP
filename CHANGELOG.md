@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A gallery link no longer traps a first-time visitor behind the first-run
+  hint.** Following `pdp11.html?boot=<device>` shares the machine with the
+  quick-boot autoload, whose input gate swallows every click outside its own
+  toast. The first-run hint ignored both: it appeared anyway, so its dismiss
+  button was dead while the toast's "Take control!" sat underneath it — the
+  only ways out were waiting out the prompt budget or reloading the page. A
+  deep link now stands the hint down and records it as seen (the gallery tile
+  *is* the onboarding), and any dialog the system raises on its own hands the
+  machine back to the operator before it appears, so what it shows can be
+  dismissed. (`src/onboarding.js`, `src/quickboot.js`, `src/snapshots.js`;
+  pinned by `tests/overlay-during-autoload.test.js` and
+  `tests/e2e-firstrun-deeplink.js`)
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

@@ -728,6 +728,15 @@ var SnapshotStore = (() => {
 
     function showIncompatibleImageDialog(snap, bad) {
         if (typeof document === "undefined") return;
+        // The SYSTEM raised this dialog (a refused restore), so nobody asked for
+        // it and nobody can dismiss it while the autoload owns the input — the
+        // gate swallows the click and the toast's way out sits underneath. Hand
+        // the machine back first, exactly as the first-run hint does.
+        // (Guarded: QuickBoot may be absent in a headless harness.)
+        if (typeof QuickBoot !== "undefined" &&
+            typeof QuickBoot.yieldToOperator === "function") {
+            QuickBoot.yieldToOperator();
+        }
         if (!__snapIncompatModal) {
             __snapIncompatModal = document.createElement("div");
             __snapIncompatModal.id = "snap-incompatible-overlay";
