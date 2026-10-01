@@ -95,7 +95,7 @@ export function Hero({ lang, onLaunchOnline, onOpenManual }: HeroProps) {
 
         {/* Secondary: YouTube Demo */}
         <a
-          href="https://www.youtube.com/playlist?list=PLbR5Jg6Ojbn0"
+          href="https://www.youtube.com/playlist?list=PLRt9gqJ1Bd08"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 text-xs font-bold uppercase tracking-wider rounded border border-[#c8a860] bg-gradient-to-b from-[#4a3e2a] to-[#2c261c] hover:from-[#5c4d34] hover:to-[#383124] text-[#f0e6c8] hover:text-[#fff6e0] shadow-[inset_0_1px_0_rgba(255,200,80,0.15),0_2px_4px_rgba(0,0,0,0.5)] transition-all text-center"
