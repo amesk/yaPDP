@@ -92,7 +92,7 @@ jobs:
       - name: Assemble the site (repo root + landing/dist overlay)
         run: node tools/site-preview.js site
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
 
