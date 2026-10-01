@@ -181,7 +181,7 @@ jobs:
           fi
 
       - name: Download Rust build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: rust-build-ubuntu-latest
           # upload-artifact stored the release/ CONTENT at the artifact root, so
@@ -258,7 +258,7 @@ jobs:
           fi
 
       - name: Download Rust build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: rust-build-windows-latest
           # upload-artifact stored the release/ CONTENT at the artifact root, so
@@ -345,14 +345,14 @@ jobs:
           ref: ${{ inputs.tag || github.ref }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: bundle-*
           path: bundles/
           merge-multiple: true
 
       - name: Download manual PDFs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: docs-manual
           path: docs-out/
