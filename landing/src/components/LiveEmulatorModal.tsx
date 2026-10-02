@@ -63,9 +63,6 @@ export function LiveEmulatorModal({ isOpen, onClose, lang, bootKey }: LiveEmulat
             <span className="font-mono text-xs sm:text-sm font-bold text-[#f0e6c8]">
               yaPDP Online PDP‑11/70
             </span>
-            <span className="hidden sm:inline text-xs text-[#a09278]">
-              (amesk.github.io/yaPDP/pdp11.html)
-            </span>
           </div>
 
           <div className="flex items-center gap-2">
