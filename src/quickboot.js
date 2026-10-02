@@ -421,7 +421,7 @@ var QuickBoot = (function () {
         var text = document.createElement("span");
         text.className = "quickboot-balloon-text";
         text.id = "quick-boot-preparing-text";
-        text.textContent = "Restoring the machine\u2026";
+        text.textContent = "Restoring the machine state\u2026";
 
         prepToast.appendChild(spin);
         prepToast.appendChild(text);
@@ -436,7 +436,7 @@ var QuickBoot = (function () {
         if (typeof document === "undefined") return;
         var el = ensurePrepToast();
         var text = el.querySelector("#quick-boot-preparing-text") || el.lastChild;
-        text.textContent = label || "Restoring the machine\u2026";
+        text.textContent = label || "Restoring the machine state\u2026";
         el.classList.add("visible");
         setInputGate(true);
         if (prepTimer) clearInterval(prepTimer);
@@ -444,8 +444,8 @@ var QuickBoot = (function () {
             var mp = (typeof window !== "undefined") ? window.__yapdpMediaProgress : null;
             var p = (mp && typeof mp.percent === "function") ? mp.percent() : null;
             text.textContent = (p === null)
-                ? "Restoring the machine\u2026 loading the disk image"
-                : "Restoring the machine\u2026 loading the disk image (" + p + "%)";
+                ? "Restoring the machine state\u2026"
+                : "Restoring the machine state (" + p + "%)";
         }, 200);
     }
 
@@ -716,7 +716,7 @@ var QuickBoot = (function () {
             onRestored: function (manifest) {
                 var urls = stateImageUrls(manifest);
                 if (!urls.length) return Promise.resolve();
-                showPreparing("Restoring the machine\u2026");
+                showPreparing("Restoring the machine state\u2026");
                 // ASK FOR THE IMAGE — do not wait for the guest to. The disk is
                 // fetched lazily on the first block read, and that read comes
                 // from a guest sitting in WAIT for an operator keystroke. With
@@ -1315,6 +1315,13 @@ var QuickBoot = (function () {
         // deaf, and that is the trap this gate was built to avoid.
         showPreparing: showPreparing,
         hidePreparing: hidePreparing,
+        // Resume a ?state= link after the page reloaded for its device set
+        // (Snapshots' init() calls this through window.__yapdpApplyStateLink).
+        applyStateLinkNow: applyStateLink,
+        // The hook Snapshots' init() calls after a reload-for-device-set.
+        // Exposed under this name because init() cannot reach QuickBoot's
+        // module scope directly (it only sees the global).
+        __yapdpApplyStateLink: applyStateLink,
         // True when this launch came from pdp11.html?boot=<device> (or resumed
         // one through the pending key) — the first-run hint stands down then.
         arrivedByDeepLink: arrivedByDeepLink,

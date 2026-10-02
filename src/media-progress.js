@@ -168,7 +168,32 @@ var MediaProgress = (function () {
     // Stream a fetch response while publishing progress. Resolves to
     // { bytes, response }; the caller still checks response.ok and applies
     // its own completeness assertion (assertCompleteImage in iopage.js).
+    // One file, one download.
+    //
+    // Two callers can want the same image at the same moment — the disk
+    // provider reading its first block and the "preparing" path asking for it
+    // up front — and a page reload restarts the whole sequence. Each request
+    // used to open its own fetch, so `jobs` accumulated entries and the
+    // aggregate percentage jumped around as one download overtook another
+    // (measured 2026-10-02: the bar "hopped back and forth, as if two images
+    // were loading in parallel"). In-flight requests are shared instead: the
+    // same url gets the same promise, so there is one job and one honest
+    // percentage, and the second caller simply waits for the first download.
+    var inflight = {};
+
     function fetchBytes(url) {
+        if (inflight[url]) return inflight[url];
+        var p = doFetchBytes(url);
+        inflight[url] = p;
+        // Clear the slot when the download settles, success or failure, so a
+        // later request (a re-mount, a cache drop) fetches afresh instead of
+        // receiving a settled promise forever.
+        var clear = function () { delete inflight[url]; };
+        p.then(clear, clear);
+        return p;
+    }
+
+    function doFetchBytes(url) {
         return fetch(url).then(function (response) {
             if (!response.ok) {
                 // A 404/error body is not a download worth measuring.
