@@ -391,6 +391,73 @@ var QuickBoot = (function () {
         setInputGate(false);
     }
 
+    // --- "Preparing the machine" toast -----------------------------------
+    // A shared state restores a RUNNING guest, but its disk image is still
+    // fetched lazily on the first block read. Without a word the visitor sees
+    // an idle screen, clicks, types, and only THEN watches a download strip
+    // crawl by — three indicators saying three different things (measured
+    // 2026-10-02). So when the image is not already in DataLoader, the wait is
+    // stated up front: same toast look as the autoload, same input gate, but
+    // NO "Take control!" — there is nothing to take over, the machine is
+    // already the operator's, it is the DISK that is missing. While it loads,
+    // input to the machine waits, exactly as it does during an autoload: the
+    // guest is reading a block over the network and an operator keystroke
+    // would race it in the same DL11 queue.
+    var prepToast = null;
+    var prepTimer = null;
+
+    function ensurePrepToast() {
+        if (prepToast) return prepToast;
+        prepToast = document.createElement("div");
+        prepToast.id = "quick-boot-preparing";
+        prepToast.className = "quickboot-balloon";
+        prepToast.setAttribute("role", "status");
+        prepToast.setAttribute("aria-live", "polite");
+
+        var spin = document.createElement("span");
+        spin.className = "yapdp-spin quickboot-balloon-spin";
+        spin.setAttribute("aria-hidden", "true");
+
+        var text = document.createElement("span");
+        text.className = "quickboot-balloon-text";
+        text.id = "quick-boot-preparing-text";
+        text.textContent = "Restoring the machine\u2026";
+
+        prepToast.appendChild(spin);
+        prepToast.appendChild(text);
+        document.body.appendChild(prepToast);
+        return prepToast;
+    }
+
+    // Show the toast and follow the media-progress percentage while it runs.
+    // The timer is the cheap way to keep the label live: the progress module
+    // reports through the shared bar, and one label is all we need.
+    function showPreparing(label) {
+        if (typeof document === "undefined") return;
+        var el = ensurePrepToast();
+        var text = el.querySelector("#quick-boot-preparing-text") || el.lastChild;
+        text.textContent = label || "Restoring the machine\u2026";
+        el.classList.add("visible");
+        setInputGate(true);
+        if (prepTimer) clearInterval(prepTimer);
+        prepTimer = setInterval(function () {
+            var mp = (typeof window !== "undefined") ? window.__yapdpMediaProgress : null;
+            var p = (mp && typeof mp.percent === "function") ? mp.percent() : null;
+            text.textContent = (p === null)
+                ? "Restoring the machine\u2026 loading the disk image"
+                : "Restoring the machine\u2026 loading the disk image (" + p + "%)";
+        }, 200);
+    }
+
+    // Hide the toast and RELEASE the gate. Always called from a finally, so a
+    // failed image load cannot leave the machine deaf — a stuck gate is the
+    // trap we already built once and spent an evening undoing.
+    function hidePreparing() {
+        if (prepTimer) { clearInterval(prepTimer); prepTimer = null; }
+        if (prepToast) prepToast.classList.remove("visible");
+        setInputGate(false);
+    }
+
     // Autoload abort token: bumped by every new launch() and by abortAutoload().
     // Timers capture the token they belong to and stop as soon as it no longer
     // matches, so a failed image load (imgerror.js) or a second launch can
@@ -634,15 +701,90 @@ var QuickBoot = (function () {
             showStateFailure({ url: url, reason: "not-a-state" });
             return;
         }
-        SnapshotStore.loadFromUrl(url).then(function (result) {
+        // The toast is raised from INSIDE the load, once the manifest is read:
+        // which image the guest will ask for is only known after unpacking, so
+        // checking before the fetch could not know what to wait for (measured
+        // 2026-10-02 — checking first meant the toast never came up).
+        //
+        // The gate goes up with it and comes down in a finally: a failed load
+        // must not leave the machine deaf, which is the trap this gate was
+        // built to avoid in the first place.
+        SnapshotStore.loadFromUrl(url, {
+            // Called after the container is unpacked and the machine restored,
+            // before the guest is allowed to run on: the visitor is told the
+            // disk is still coming, instead of meeting a download strip later.
+            onRestored: function (manifest) {
+                var urls = stateImageUrls(manifest);
+                if (!urls.length) return Promise.resolve();
+                showPreparing("Restoring the machine\u2026");
+                // ASK FOR THE IMAGE — do not wait for the guest to. The disk is
+                // fetched lazily on the first block read, and that read comes
+                // from a guest sitting in WAIT for an operator keystroke. With
+                // the gate closed (we are waiting!) the operator cannot type,
+                // so the guest cannot read, so the image is never requested:
+                // the toast waited forever (found 2026-10-02). Asking ourselves
+                // breaks the circle — the fetch starts, the label tracks it,
+                // and the gate opens when it lands.
+                return Promise.all(urls.map(function (u) {
+                    if (typeof window !== "undefined" &&
+                        typeof window.__yapdpLoadImage === "function") {
+                        return window.__yapdpLoadImage(u);
+                    }
+                    // No loader (legacy stack, or a harness): fall back to
+                    // watching DataLoader so the gate still opens.
+                    return waitForImages([u]);
+                }));
+            },
+        }).then(function (result) {
+            hidePreparing();
             if (result && result.ok) {
                 try {
                     history.replaceState(null, "",
                         location.pathname + location.hash);
                 } catch (err) { /* ignore: the state is already applied */ }
-            } else {
-                showStateFailure(result || { url: url });
+                return;
             }
+            showStateFailure(result || { url: url });
+        }, function () {
+            hidePreparing();
+            showStateFailure({ url: url, reason: "network" });
+        });
+    }
+
+    // The image urls a state will read, from the manifest just unpacked: the
+    // manifest names its device (states are per-scenario), and the scenario
+    // table knows the image that device boots. No manifest, no guess — an
+    // empty list simply means "no toast", never a wrong wait.
+    function stateImageUrls(manifest) {
+        var out = [];
+        try {
+            var s = manifest || null;
+            if (s && s.device && typeof OSBoot !== "undefined") {
+                var sc = (typeof OSBoot.scenarioFor === "function")
+                    ? OSBoot.scenarioFor(s.device) : null;
+                if (sc && sc.url) out.push(sc.url);
+                else if (typeof OSBoot.urlFor === "function") out.push(OSBoot.urlFor(s.device));
+            }
+        } catch (err) { /* fall through with what we have */ }
+        return out;
+    }
+
+    // Resolve when every listed image is in DataLoader, or when the wait has
+    // run long enough that something else is wrong. Polling is cheap (a Map
+    // lookup) and the alternative — hooking the loader — would couple this
+    // code to a module that may change.
+    function waitForImages(urls, timeoutMs) {
+        if (!urls || !urls.length) return Promise.resolve();
+        var deadline = Date.now() + (timeoutMs || 120000);
+        return new Promise(function (resolve) {
+            (function poll() {
+                var all = urls.every(function (u) {
+                    return typeof DataLoader !== "undefined" &&
+                        typeof DataLoader.has === "function" && DataLoader.has(u);
+                });
+                if (all || Date.now() > deadline) return resolve();
+                setTimeout(poll, 200);
+            })();
         });
     }
 
@@ -1167,6 +1309,12 @@ var QuickBoot = (function () {
         // Stop the autoload so an operator-facing dialog the SYSTEM raised is
         // not shown into a machine that owns the input. See yieldToOperator().
         yieldToOperator: yieldToOperator,
+        // "Preparing the machine" (a shared state whose disk is still being
+        // fetched): the waiting toast and the input gate that goes with it.
+        // Callers MUST drop it in a finally — a stuck gate leaves the machine
+        // deaf, and that is the trap this gate was built to avoid.
+        showPreparing: showPreparing,
+        hidePreparing: hidePreparing,
         // True when this launch came from pdp11.html?boot=<device> (or resumed
         // one through the pending key) — the first-run hint stands down then.
         arrivedByDeepLink: arrivedByDeepLink,

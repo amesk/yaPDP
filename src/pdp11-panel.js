@@ -60,18 +60,34 @@ function switchPage(page) {
     if (canvas) canvas.focus();
   }
 
-  // The floating REBOOT button is an operator action: show it on the operator
-  // console (teletype or VT52 console), the VT52 terminal (TTY 1) and the
-  // front Panel page.
+  // The floating REBOOT and STATE buttons appear on every OPERATOR page: the
+  // front Panel, the operator console (teletype or VT52 console), the VT52
+  // terminal (TTY 1), the VT11 display and the LP11 printer.
+  //
+  // They used to be limited to the first four, on the reasoning that a
+  // machine-state action belongs where the machine is operated. Time in the
+  // field disproved it: a restored state can land on the VT11 display (Lunar
+  // Lander is played there) or the printer, and from those pages the operator
+  // could not save again without first navigating away — a step nobody
+  // expects. The two displays are working screens; the buttons belong on
+  // them.
+  //
+  // CONFIG and Storage keep their own controls (Apply, Reset, Bind, the drop
+  // zones) and are not operator consoles — a machine-state button there would
+  // sit among settings. INFO is long-form help text and stays clean, the same
+  // rule the magic-wand button already follows.
+  var OPERATOR_PAGES = ['panel', 'teletype', 'vt52-console', 'vt52', 'vt11', 'printer'];
+  var onOperatorPage = OPERATOR_PAGES.indexOf(page) !== -1;
+
   var rebootBtn = document.getElementById('reboot-btn');
   if (rebootBtn) {
-    rebootBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52-console' || page === 'vt52' || page === 'panel'));
+    rebootBtn.classList.toggle('hidden', !onOperatorPage);
   }
 
   // The floating STATE button (machine-state dialog) mirrors REBOOT.
   var stateBtn = document.getElementById('state-btn');
   if (stateBtn) {
-    stateBtn.classList.toggle('hidden', !(page === 'teletype' || page === 'vt52-console' || page === 'vt52' || page === 'panel'));
+    stateBtn.classList.toggle('hidden', !onOperatorPage);
   }
 
   // The floating quick-boot (magic wand) button is a global action: show it on

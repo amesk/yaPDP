@@ -523,9 +523,17 @@ var SnapshotStore = (() => {
     // surprise. It is applied to the live machine, once.
     var MAX_STATE_BYTES = 16 * 1024 * 1024;   // a state, not an image
 
-    function loadFromUrl(url) {
+    // opts.onRestored(manifest) — called AFTER the state is applied but BEFORE
+    // the promise settles, so a caller can raise a "preparing" toast for the
+    // disk image the restored guest is about to read, and resolve when it has
+    // arrived. The manifest is passed because WHICH image only becomes known
+    // once the container is unpacked — checking earlier cannot know what to
+    // wait for (measured 2026-10-02: checking first meant the toast never came).
+    function loadFromUrl(url, opts) {
         var u = String(url || "");
         if (!u) return Promise.resolve({ ok: false, reason: "missing-url" });
+        var onRestored = (opts && typeof opts.onRestored === "function")
+            ? opts.onRestored : null;
         // A same-origin relative path resolves against the page, which is how
         // the project hosts its own states.
         var target = u;
@@ -545,7 +553,16 @@ var SnapshotStore = (() => {
                     return { ok: false, reason: "too-large", url: target,
                              size: buf.byteLength };
                 }
-                return applyStateBytes(new Uint8Array(buf), target);
+                var applied = applyStateBytes(new Uint8Array(buf), target);
+                if (!onRestored) return applied;
+                return applied.then(function (result) {
+                    if (!result || !result.ok) return result;
+                    return Promise.resolve(onRestored(lastStateManifest))
+                        .then(function () { return result; });
+                }, function (err) {
+                    return { ok: false, reason: "network", url: target,
+                             detail: String(err && err.message ? err.message : err) };
+                });
             });
         }).catch(function (err) {
             return { ok: false, reason: "network", url: target,
@@ -588,12 +605,20 @@ var SnapshotStore = (() => {
 
     // The container half: unpack, stamp the overlay's origin, hand it to
     // restore(). Split out so both the sync and the gzip path share it.
+    // The manifest of the state most recently unpacked, for callers that need
+    // to know what it will ASK FOR before it is restored — the deep-link path
+    // uses the device to learn which image the guest will read, so it can show
+    // the "preparing" toast while that image is still being fetched instead of
+    // letting the visitor meet a download strip mid-session (2026-10-02).
+    var lastStateManifest = null;
+
     function applyContainer(raw, url) {
         var parsed = (typeof StateFormat !== "undefined" &&
             typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
         if (!parsed) {
             return { ok: false, reason: "not-a-state", url: url };
         }
+        lastStateManifest = parsed.manifest || null;
         // A container state arrives as manifest + raw words; the rest of the
         // restore path wants a snapshot-shaped object (cpu/memory/devices).
         // The overlay is stamped with its origin so the Storage UI can say
@@ -1307,6 +1332,9 @@ var SnapshotStore = (() => {
         // Take the live machine's state as container bytes (the Machine-state
         // Export button and tools/export-state-browser.js both use this).
         exportBytes: exportBytes,
+        // What the last loaded state asked for (device, profile). Read by the
+        // deep-link path to show the "preparing" toast for the right image.
+        lastStateManifest: lastStateManifest,
         refreshUI: refreshUI,
         wireUI: wireUI,
         SCHEMA_VERSION: SCHEMA_VERSION,

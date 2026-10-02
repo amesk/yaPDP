@@ -542,6 +542,32 @@
     }
     window.exportDiskImage = diskImageBytes;
 
+    // loadImage(url) -> Promise<boolean> — fetch an image ON DEMAND and mount
+    // it, without waiting for the guest to read a block.
+    //
+    // Why this exists: images are fetched LAZILY, on the first block read. A
+    // restored state usually wakes up in WAIT with the disk still on the
+    // network, and the read that would pull it comes from the GUEST — which is
+    // waiting for an operator keystroke. With the input gate closed while we
+    // wait, the operator cannot type, so the guest cannot read, so the image is
+    // never requested: a deadlock (found 2026-10-02, the first "preparing"
+    // toast waited forever). Asking for the image OURSELVES breaks the circle:
+    // the fetch starts, the toast tracks it, and the gate opens when it lands.
+    async function loadImage(url) {
+        if (!url) return false;
+        if (typeof DataLoader !== "undefined" &&
+            typeof DataLoader.has === "function" && DataLoader.has(url)) {
+            return true;   // already here: nothing to wait for
+        }
+        try {
+            var bytes = await loadBaseBytes(url);
+            return !!bytes;
+        } catch (e) {
+            return false;
+        }
+    }
+    window.__yapdpLoadImage = loadImage;
+
     // ------------------------------------------------------------------
     // PTR11/PTP11 paper tape — bytes from DataLoader; punch hooks
     // ------------------------------------------------------------------
