@@ -40,6 +40,12 @@
  *   :rewind         rewind the reader tape
  *   :export <file>  save the punch output since the last export
  *   :save-disk <f>  write the whole disk image (guest writes included)
+ *   :save-state <f> write the whole machine state (.state.zst)
+ *   :load-state <f> restore a whole machine state (.state.zst)
+ *
+ * Options (the state pair works like the boot pair — a state replaces a boot):
+ *   --state <file>       restore a state instead of booting the guest
+ *   --save-state <file>  write the state once the guest is ready
  *   :wait <marker>  wait until the guest output contains <marker>
  *   :raw <hex>      send raw bytes to the guest console (e.g. :raw 03)
  *   :status         show reader tape / punch bytes / prompt marker
@@ -52,9 +58,11 @@ const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
 const vm = require("vm");
+const zlib = require("zlib");
 
 const { bootHeadless } = require("./headless-machine.js");
 const { IO_BLOCKSIZE } = require("../src/devices/disk-service.js");
+const { StateFormat } = require("../src/state-format.js");
 
 const REPO = path.resolve(__dirname, "..");
 const PREFIX = ":";
@@ -105,6 +113,13 @@ const opts = {
     urlName: null,
     bootCmd: null,
     steps: [],
+    // --state <file>: restore a saved machine state instead of booting the
+    // guest. The boot is what a state replaces; the prompt waiting still
+    // applies once the guest is alive again.
+    state: null,
+    // --save-state <file>: write the machine state as soon as the guest is
+    // ready (boot finished / prompt seen), then carry on interactively.
+    saveState: null,
 };
 
 const args = process.argv.slice(2);
@@ -125,6 +140,10 @@ for (let i = 0; i < args.length; i++) {
     else if (a.startsWith("--tape=")) opts.tapeFile = a.slice(7);
     else if (a === "--step") opts.steps.push(parseStep(next()));
     else if (a.startsWith("--step=")) opts.steps.push(parseStep(a.slice(7)));
+    else if (a === "--state") opts.state = next();
+    else if (a.startsWith("--state=")) opts.state = a.slice(8);
+    else if (a === "--save-state") opts.saveState = next();
+    else if (a.startsWith("--save-state=")) opts.saveState = a.slice(13);
     else if (a === "--help" || a === "-h") {
         console.log(fs.readFileSync(__filename, "utf8").split("\n").slice(0, 45).join("\n"));
         process.exit(0);
@@ -526,6 +545,15 @@ async function handleCommand(line) {
             if (!arg) { console.error("headless-term: usage: :save-disk <file>"); break; }
             await saveDisk(arg);
             break;
+        case "save-state":
+            if (!arg) { console.error("headless-term: usage: :save-state <file>"); break; }
+            captureMachineState(arg);
+            break;
+        case "load-state":
+            if (!arg) { console.error("headless-term: usage: :load-state <file>"); break; }
+            await loadStateFile(arg);
+            outTail = boot.getOut().slice(-MAX_TAIL);
+            break;
         case "wait": {
             if (!arg) { console.error("headless-term: usage: :wait <marker>"); break; }
             console.error("headless-term: waiting for " + JSON.stringify(arg) + " ...");
@@ -564,6 +592,8 @@ async function handleCommand(line) {
                 "  :rewind         rewind the reader tape\n" +
                 "  :export <file>  save punch output since last export, clear buffer\n" +
                 "  :save-disk <f>  write the whole disk image (guest writes included)\n" +
+                "  :save-state <f> write the whole machine state (.state.zst)\n" +
+                "  :load-state <f> restore a whole machine state (.state.zst)\n" +
                 "  :wait <marker>  wait for <marker> in guest output\n" +
                 "  :raw <hex>      send raw bytes (e.g. :raw 03 = ^C)\n" +
                 "  :status         show reader tape / punch bytes / mode\n" +
@@ -580,6 +610,83 @@ async function handleCommand(line) {
         default:
             console.error("headless-term: unknown command :" + cmd + " (try :help)");
     }
+}
+
+// ----------------------------------------------------------------------
+// Machine state: save and restore (the --state / --save-state pair, and the
+// :state / :load-state commands)
+// ----------------------------------------------------------------------
+//
+// The FORMAT belongs to src/state-format.js — the same container the browser
+// snapshot store uses — so a .state.zst written here restores there and vice
+// versa. This tool adds only the two Node ends: driving the headless machine
+// and writing/reading the file.
+//
+// Why the pairing matters: a restore without a save is half a feature. With
+// both, a session can be parked and resumed at the console prompt, which is
+// exactly what the e2e suites and a human operator both want.
+
+function zstdCompress(buf) {
+    return (typeof zlib.zstdCompressSync === "function")
+        ? zlib.zstdCompressSync(buf, { level: 19 }) : buf;
+}
+
+function zstdDecompress(buf) {
+    return (typeof zlib.zstdDecompressSync === "function")
+        ? new Uint8Array(zlib.zstdDecompressSync(buf)) : new Uint8Array(buf);
+}
+
+// Build the container from the live machine, exactly as export-state.js does.
+function captureMachineState(file) {
+    const CPU = boot.evalIn("CPU");
+    const manifest = {
+        schemaVersion: 1,
+        base: null,
+        device: opts.device || "custom",
+        label: opts.device || "custom",
+        createdAt: new Date().toISOString(),
+        cpu: StateFormat.captureCPU(CPU),
+        devices: boot.machine.bus.snapshotDevices(),
+    };
+    const packed = StateFormat.pack(manifest, CPU.memory);
+    const compressed = zstdCompress(Buffer.from(packed));
+    fs.mkdirSync(path.dirname(path.resolve(REPO, file)), { recursive: true });
+    fs.writeFileSync(path.resolve(REPO, file), compressed);
+    console.error("headless-term: state saved to " + file +
+        " (" + compressed.length + " bytes from " + packed.length + ")");
+    return compressed.length;
+}
+
+/** applyState — restore a container onto the LIVE machine (halted). */
+async function applyState(parsed) {
+    // Order matters (see restore() in src/snapshots.js): halt, memory first,
+    // then the CPU, then the devices, and resume only at the end — a machine
+    // that runs on the old memory with a restored PC traps instantly.
+    boot.evalIn("CPU.runState = CPU.STATE_HALT");
+
+    const CPU = boot.evalIn("CPU");
+    const words = parsed.memoryWords;
+    if (words) {
+        if (CPU.memory.length !== words.length) {
+            boot.evalIn("CPU.memory = new Uint16Array(" + words.length + ")");
+        }
+        boot.evalIn("CPU").memory.set(words);
+    }
+    StateFormat.restoreCPU(CPU, parsed.manifest.cpu || {}, true);
+    if (parsed.manifest.devices) {
+        boot.machine.bus.restoreDevices(parsed.manifest.devices);
+    }
+    const rs = (parsed.manifest.cpu || {}).runState;
+    boot.evalIn("CPU.runState = " + (typeof rs === "number" ? rs : 0));
+}
+
+async function loadStateFile(file) {
+    const raw = fs.readFileSync(path.resolve(REPO, file));
+    const parsed = StateFormat.unpack(zstdDecompress(raw));
+    if (!parsed) throw new Error("not a .state container: " + file);
+    await applyState(parsed);
+    console.error("headless-term: state restored from " + file +
+        " (device=" + parsed.manifest.device + ")");
 }
 
 // ----------------------------------------------------------------------
@@ -750,9 +857,9 @@ async function shutdown(code) {
     boot = await bootHeadless({
         image: image,
         urlName: urlName,
-        bootCmd: opts.steps.length ? undefined : bootCmd,
-        steps: opts.steps.length ? opts.steps : undefined,
-        waitFor: opts.prompt,
+        bootCmd: opts.state ? "" : (opts.steps.length ? undefined : bootCmd),
+        steps: (opts.state || opts.steps.length) ? undefined : undefined,
+        waitFor: opts.state ? "@" : opts.prompt,
         // Honor a per-profile boot timeout (rp* guests boot slowly to login;
         // see DEVICE_PROFILES) falling back to the default. Custom images
         // (no profile) keep DEFAULT_BOOT_TIMEOUT_MS.
@@ -761,6 +868,28 @@ async function shutdown(code) {
     consoleDev = boot.machine.findDevice("console");
     ptr = boot.machine.findDevice("ptr");
     disk = boot.machine.disk;
+
+    // --- State restore, if asked for ------------------------------------
+    // A state REPLACES the boot: the guest was already running when it was
+    // taken, so there is nothing to boot and nothing to type. The machine is
+    // up (to its bootloader prompt) and is then overwritten wholesale.
+    if (opts.state) {
+        try {
+            await loadStateFile(opts.state);
+            // The restored guest owns the console from here: re-seed the tail
+            // so :wait and the prompt engine see what is already on screen.
+            outTail = boot.getOut().slice(-MAX_TAIL);
+            process.stdout.write(boot.getOut());
+            // Let the restored system settle before the prompt engine starts
+            // (BSD resumes mid-idle; a keystroke too early is still safe, but
+            // the prompt must be allowed to appear).
+            await new Promise((r) => setTimeout(r, 500));
+        } catch (e) {
+            console.error("headless-term: state restore failed: " +
+                (e && e.message ? e.message : e));
+            process.exit(1);
+        }
+    }
 
     // Wire live output: every character the guest prints after boot
     // streams through the prompt/marker engine to stdout. The tail starts
