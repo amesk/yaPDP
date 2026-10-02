@@ -404,7 +404,6 @@ var QuickBoot = (function () {
     // guest is reading a block over the network and an operator keystroke
     // would race it in the same DL11 queue.
     var prepToast = null;
-    var prepTimer = null;
 
     function ensurePrepToast() {
         if (prepToast) return prepToast;
@@ -432,6 +431,14 @@ var QuickBoot = (function () {
     // Show the toast and follow the media-progress percentage while it runs.
     // The timer is the cheap way to keep the label live: the progress module
     // reports through the shared bar, and one label is all we need.
+    // The toast says WHAT is happening; the media-progress strip at the
+    // bottom says HOW FAR it is. Two places, two jobs — the percentage used to
+    // appear in both at once, which read as a duplicate of the same sentence
+    // rather than as two instruments (measured 2026-10-02).
+    //
+    // So this toast carries no number: it names the operation and stays until
+    // the image lands. No polling timer is needed either — nothing here
+    // changes while it is up.
     function showPreparing(label) {
         if (typeof document === "undefined") return;
         var el = ensurePrepToast();
@@ -439,21 +446,12 @@ var QuickBoot = (function () {
         text.textContent = label || "Restoring the machine state\u2026";
         el.classList.add("visible");
         setInputGate(true);
-        if (prepTimer) clearInterval(prepTimer);
-        prepTimer = setInterval(function () {
-            var mp = (typeof window !== "undefined") ? window.__yapdpMediaProgress : null;
-            var p = (mp && typeof mp.percent === "function") ? mp.percent() : null;
-            text.textContent = (p === null)
-                ? "Restoring the machine state\u2026"
-                : "Restoring the machine state (" + p + "%)";
-        }, 200);
     }
 
     // Hide the toast and RELEASE the gate. Always called from a finally, so a
     // failed image load cannot leave the machine deaf — a stuck gate is the
     // trap we already built once and spent an evening undoing.
     function hidePreparing() {
-        if (prepTimer) { clearInterval(prepTimer); prepTimer = null; }
         if (prepToast) prepToast.classList.remove("visible");
         setInputGate(false);
     }
