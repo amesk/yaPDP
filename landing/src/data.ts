@@ -4,6 +4,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'unix_v5',
     bootKey: 'rk0',
+    stateUrl: 'states/rk0-ready.state.zst',
+    stateReady: 'logged in as root',
     title: 'Unix V5',
     caption: 'Unix V5',
     image: 'assets/images/os/unix_v5.png',
@@ -13,6 +15,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'bsd',
     bootKey: 'rp1',
+    stateUrl: 'states/rp1-ready.state.zst',
+    stateReady: 'logged in as root',
     title: '2.11 BSD',
     caption: '2.11 BSD',
     image: 'assets/images/os/bsd.png',
@@ -22,6 +26,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'rt11',
     bootKey: 'rk1',
+    stateUrl: 'states/rk1-ready.state.zst',
+    stateReady: 'at the monitor prompt',
     title: 'RT-11',
     caption: 'RT-11',
     image: 'assets/images/os/rt11.png',
@@ -31,6 +37,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'rt11-vt52',
     bootKey: 'rk1vt52',
+    stateUrl: 'states/rk1vt52-ready.state.zst',
+    stateReady: 'at the monitor prompt',
     title: 'RT-11 · VT52',
     caption: 'RT-11 · VT52',
     image: 'assets/images/os/rt11-vt52.png',
@@ -40,6 +48,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'basic',
     bootKey: 'basic',
+    stateUrl: 'states/basic-ready.state.zst',
+    stateReady: 'BASIC-11 loaded, waiting for input',
     title: 'DEC BASIC-11',
     caption: 'DEC BASIC-11',
     image: 'assets/images/os/basic.png',
@@ -49,6 +59,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'lunar-lander',
     bootKey: 'lander',
+    stateUrl: 'states/lander-ready.state.zst',
+    stateReady: 'the lander on the VT11 display, ready to fly',
     title: 'Lunar Lander',
     caption: 'Lunar Lander',
     image: 'assets/images/os/lunar-lander.png',
@@ -58,6 +70,8 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   {
     id: 'xxdp',
     bootKey: 'rk3',
+    stateUrl: 'states/rk3-ready.state.zst',
+    stateReady: 'at the diagnostic monitor',
     title: 'XXDP+',
     caption: 'XXDP+',
     image: 'assets/images/os/xxdp.png',

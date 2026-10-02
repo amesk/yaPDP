@@ -56,6 +56,7 @@ const ORDER = [
     "drive-geometry.test.js",
     "compare-shots.test.js",
     "diskstore.test.js",
+    "diskstore-origin.test.js",
     "onboarding.test.js",
     "imgerror.test.js",
     "osboot.test.js",

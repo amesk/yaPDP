@@ -144,12 +144,23 @@
     }
 
     // "rp1.dsk  →  RP1" when the image is bound to a drive, url alone otherwise.
+    // An image whose saved changes came from a SHARED STATE says so: those
+    // blocks are somebody else's work, not this operator's, and the Reset
+    // control clears them like any other.
     function imageLabel(url, bindings) {
+        var base = url;
         var drives = bindings[url];
-        if (!drives || !drives.length) return url;
-        return url + "  \u2192  " + drives.map(function (d) {
-            return d.toUpperCase();
-        }).join(", ");
+        if (drives && drives.length) {
+            base = url + "  \u2192  " + drives.map(function (d) {
+                return d.toUpperCase();
+            }).join(", ");
+        }
+        if (typeof DiskStore !== "undefined" &&
+            typeof DiskStore.originOf === "function" &&
+            DiskStore.originOf(url) === "state") {
+            base += "  (from a shared state)";
+        }
+        return base;
     }
 
     // ------------------------------------------------------------------
@@ -167,6 +178,36 @@
         }
 
         list.forEach(function (file) {
+            // A dropped .state file is a MACHINE STATE, not a disk image: it is
+            // applied to the running machine instead of mounted as a drive.
+            // This is the offline path (`file://` pages cannot fetch anything,
+            // so drag & drop is the only way a state arrives there).
+            if (/\.state(\.zst)?$/i.test(file.name)) {
+                file.arrayBuffer().then(function (buffer) {
+                    var came = (typeof SnapshotStore !== "undefined" &&
+                        typeof SnapshotStore.applyStateBytes === "function");
+                    if (!came) {
+                        if (++done === list.length) finish();
+                        return;
+                    }
+                    var result = SnapshotStore.applyStateBytes(
+                        new Uint8Array(buffer), file.name);
+                    if (result && typeof result.then === "function") {
+                        result.then(function (r) {
+                            if (!r || !r.ok) {
+                                console.warn("dropped state not applied:",
+                                    r && r.reason);
+                            }
+                            if (++done === list.length) finish();
+                        });
+                    } else if (++done === list.length) {
+                        finish();
+                    }
+                }).catch(function () {
+                    if (++done === list.length) finish();
+                });
+                return;
+            }
             file.arrayBuffer().then(function (buffer) {
                 var bytes = new Uint8Array(buffer);
                 var url = canonicalName(file.name);

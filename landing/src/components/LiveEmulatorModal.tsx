@@ -11,9 +11,14 @@ interface LiveEmulatorModalProps {
   // with the whole machine profile it needs; when absent the visitor gets the
   // machine as it was left, which is what the plain "launch online" wants.
   bootKey?: string | null;
+  // Optional saved machine state (states/<name>.state.zst). When present the
+  // emulator is opened as pdp11.html?state=<url>, which fetches the state and
+  // applies it — the guest is already running, so nothing boots. The mirror of
+  // bootKey for the teleport path; a state and a boot are alternatives.
+  stateUrl?: string | null;
 }
 
-export function LiveEmulatorModal({ isOpen, onClose, lang, bootKey }: LiveEmulatorModalProps) {
+export function LiveEmulatorModal({ isOpen, onClose, lang, bootKey, stateUrl }: LiveEmulatorModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,11 +44,15 @@ export function LiveEmulatorModal({ isOpen, onClose, lang, bootKey }: LiveEmulat
 
   if (!isOpen || !mounted) return null;
 
-  // Deep link read by the emulator itself (QuickBoot.deviceFromSearch): the
-  // landing never touches the machine, it only names the scenario to boot.
-  const emulatorUrl = bootKey
-    ? `pdp11.html?boot=${encodeURIComponent(bootKey)}`
-    : 'pdp11.html';
+  // Deep link read by the emulator itself (QuickBoot.deviceFromSearch for a
+  // scenario, QuickBoot.stateUrlFromSearch for a state): the landing never
+  // touches the machine, it only names what to open. A state wins over a boot
+  // when both are somehow set — the emulator itself applies the same rule.
+  const emulatorUrl = stateUrl
+    ? `pdp11.html?state=${encodeURIComponent(stateUrl)}`
+    : bootKey
+      ? `pdp11.html?boot=${encodeURIComponent(bootKey)}`
+      : 'pdp11.html';
 
   return createPortal(
     <div

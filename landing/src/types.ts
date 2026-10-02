@@ -12,6 +12,16 @@ export interface SlideItem {
   // printer, VT11) stay in OSBoot, so the landing never duplicates hardware
   // knowledge and cannot drift out of step with the wizard.
   bootKey?: string;
+  // A saved machine state (see states/<name>.state.zst) — the guest ALREADY
+  // RUNNING, ready to type at. This is the "Teleport!" tile: instead of
+  // booting the OS and waiting, the state is fetched and applied, which for a
+  // heavy guest is the difference between ~150 s and ~2 s. It names a file the
+  // project hosts, never a scenario key: the two are different requests (see
+  // docs/ROADMAP.md — a boot key is an identifier, a state URL is a pointer).
+  stateUrl?: string;
+  // What the state IS, so the tile does not lie: a screenshot of the middle of
+  // a game and a state parked at a login prompt are different promises.
+  stateReady?: string;
 }
 
 export interface FeatureItem {

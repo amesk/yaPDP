@@ -225,6 +225,49 @@ var QuickBoot = (function () {
             .indexOf(scenario) !== -1;
     }
 
+    // The state URL carried by a deep link: ?state=<url>. This is the second
+    // kind of shareable link (see docs/ROADMAP.md): ?boot= names a scenario
+    // this build ships, while ?state= points at a machine state — a file the
+    // project hosts, or one a visitor put on their own host. The two are
+    // deliberately different: a boot key is an identifier into our allowlist,
+    // a state URL is necessarily a pointer to foreign content, so it is
+    // VALIDATED rather than trusted (scheme, length) and the loading path
+    // defends itself (size bound, version, image fingerprints).
+    //
+    // Returns the url, or null when the parameter is absent.
+    // Pure — unit-testable in Node.
+    function stateUrlFromSearch(search) {
+        var s = search || "";
+        var m = /[?&]state=([^&]*)/.exec(s);
+        if (!m) return null;
+        var raw;
+        try {
+            raw = decodeURIComponent(m[1]);
+        } catch (err) {
+            raw = m[1];
+        }
+        return raw;
+    }
+
+    // Is a state URL one we will even attempt to fetch? A deep link is given
+    // to us by whoever wrote the link, so this is the first gate: no scheme
+    // we do not understand (javascript:, data: are traps, not states), and a
+    // sane length. A relative path is resolved against the page, which is how
+    // the project hosts its own states (states/<name>.state.zst).
+    // Pure — unit-testable in Node.
+    function stateUrlAllowed(url) {
+        if (typeof url !== "string" || url.length === 0) return false;
+        if (url.length > 512) return false;                      // a URL, not a payload
+        if (/^[a-z][a-z0-9+.-]*:/i.test(url)) {                  // has a scheme
+            // http(s) only. Everything else (javascript:, data:, blob:,
+            // file:) is refused before a fetch is ever attempted.
+            return /^https?:\/\//i.test(url);
+        }
+        // No scheme: a same-origin relative path. Refuse protocol-relative
+        // (//host/...) too — that is a foreign host in disguise.
+        return !/^\/\//.test(url);
+    }
+
     // A key shown back to the visitor. A URL is not a place to trust, so the
     // text is tamed before it reaches the dialog:
     //   - control characters, line separators and bidi overrides become "?": a
@@ -453,6 +496,154 @@ var QuickBoot = (function () {
                 window.localStorage.getItem(PENDING_KEY) !== null) return true;
         } catch (err) { /* ignore */ }
         return false;
+    }
+
+    // --- "Shared state" dialogs -------------------------------------------
+    // The ?state= link has its own failure modes, and they are NOT the same as
+    // "no such scenario": the URL was refused before we fetched anything (a
+    // trap, not a state), or the fetch/parse/apply failed. Both reuse the
+    // shared error shell and name the URL as TEXT — it came from a link nobody
+    // validated.
+    var STATE_REASON = {
+        "missing-url": "the link carried no state URL",
+        "not-a-state": "the file is not a machine state (it may be a disk image or a page)",
+        "too-large": "the state is far larger than a state should be",
+        "incompatible": "the state was taken on a different build of the disks it needs",
+        "network": "the state could not be fetched",
+        "local-file": "a page opened as a local file cannot fetch other files",
+    };
+
+    // A page opened as file:// cannot fetch ANYTHING — the browser blocks the
+    // request before it leaves (origin null). imgerror already explains this
+    // for images; a state link lands in the same wall, so it gets the same
+    // explanation plus the way out that works offline: drag the file in.
+    function isLocalFilePage() {
+        return typeof window !== "undefined" && window.location &&
+            window.location.protocol === "file:";
+    }
+
+    function showStateDialog(title, nodes) {
+        if (typeof document === "undefined") return;
+        if (!linkOverlay) {
+            linkOverlay = document.createElement("div");
+            linkOverlay.id = "quickboot-link-error";
+            linkOverlay.className = "modal-overlay";
+            linkOverlay.addEventListener("click", function (e) {
+                if (e.target === linkOverlay) {
+                    hideNoScenario();
+                    return;
+                }
+                var action = e.target.getAttribute &&
+                    e.target.getAttribute("data-bootlink-action");
+                if (action === "wizard") {
+                    hideNoScenario();
+                    show();
+                } else if (action === "close" ||
+                        (e.target.closest && e.target.closest(".modal-close"))) {
+                    hideNoScenario();
+                }
+            });
+            document.body.appendChild(linkOverlay);
+        }
+
+        var box = document.createElement("div");
+        box.className = "modal-box error";
+
+        var titleEl = document.createElement("span");
+        titleEl.className = "modal-title";
+        titleEl.textContent = title;
+        box.appendChild(titleEl);
+
+        var intro = document.createElement("p");
+        intro.className = "modal-intro";
+        (nodes || []).forEach(function (n) {
+            if (typeof n === "string") {
+                intro.appendChild(document.createTextNode(n));
+            } else if (n && n.code) {
+                var code = document.createElement("code");
+                code.textContent = boundKey(n.code);
+                intro.appendChild(code);
+            }
+        });
+        box.appendChild(intro);
+
+        var gotIt = document.createElement("button");
+        gotIt.type = "button";
+        gotIt.className = "modal-close";
+        gotIt.setAttribute("data-bootlink-action", "close");
+        gotIt.textContent = "Got it";
+        box.appendChild(gotIt);
+
+        var wizardBtn = document.createElement("button");
+        wizardBtn.type = "button";
+        wizardBtn.className = "modal-close";
+        wizardBtn.setAttribute("data-bootlink-action", "wizard");
+        wizardBtn.textContent = "Choose a guest OS";
+        box.appendChild(wizardBtn);
+
+        linkOverlay.innerHTML = "";
+        linkOverlay.appendChild(box);
+        linkOverlay.classList.add("visible");
+    }
+
+    function showBadStateUrl(url) {
+        showStateDialog("Shared state refused", [
+            "The link asked for a machine state at ", { code: url },
+            ", which this page will not fetch: only http(s) URLs and paths " +
+            "relative to this site are accepted, so a link cannot make the " +
+            "browser load something else entirely. Nothing was changed — pick " +
+            "a guest OS from the quick-boot list, or ask for a corrected link."
+        ]);
+    }
+
+    function showStateFailure(result) {
+        var url = (result && result.url) || "";
+        var why = STATE_REASON[result && result.reason];
+        if (!why && result && /^http-/.test(result.reason || "")) {
+            why = "the server answered " + result.reason.slice(5);
+        }
+        // A local-file page and a genuinely unreachable URL are different
+        // problems with different fixes: name the one that actually happened,
+        // and tell the visitor the way out that works without a server.
+        if (isLocalFilePage()) {
+            showStateDialog("Shared state not restored", [
+                "This page was opened as a local file (file://), and a browser " +
+                "does not let such a page fetch other files — so the state at ",
+                { code: url },
+                " could not be read. Open the emulator through a local web " +
+                "server, or drop the .state file onto the Storage page, which " +
+                "needs no network at all."
+            ]);
+            return;
+        }
+        showStateDialog("Shared state not restored", [
+            "The machine state at ", { code: url },
+            " was not restored: " + (why || "it could not be applied") +
+            ". Nothing was booted and the machine is as it was — the link " +
+            "may be stale, or the state may have been taken on a different " +
+            "build of the emulator."
+        ]);
+    }
+
+    // Fetch and apply a ?state= link, then report. The URL is dropped from the
+    // address bar only on success: a link that could not be honoured keeps its
+    // parameter so the visitor sees what was actually asked for.
+    function applyStateLink(url) {
+        if (typeof SnapshotStore === "undefined" ||
+            typeof SnapshotStore.loadFromUrl !== "function") {
+            showStateFailure({ url: url, reason: "not-a-state" });
+            return;
+        }
+        SnapshotStore.loadFromUrl(url).then(function (result) {
+            if (result && result.ok) {
+                try {
+                    history.replaceState(null, "",
+                        location.pathname + location.hash);
+                } catch (err) { /* ignore: the state is already applied */ }
+            } else {
+                showStateFailure(result || { url: url });
+            }
+        });
     }
 
     // --- "No such scenario" dialog ---------------------------------------
@@ -826,16 +1017,38 @@ var QuickBoot = (function () {
         var search = (typeof location !== "undefined") ? location.search : "";
         var requested = bootKeyFromSearch(search);
         var linked = deviceFromSearch(search);
+        // ?state=<url> — the other shareable link (see docs/ROADMAP.md):
+        // somebody sent a machine state, not a scenario key. A state REPLACES
+        // a boot (the guest was already running when it was taken), so it wins
+        // over ?boot= when both are present — the more specific request.
+        var stateUrl = stateUrlFromSearch(search);
+        var stateLoad = stateUrl !== null && stateUrlAllowed(stateUrl);
 
-        if (pending) {
+        if (stateLoad) {
+            // A ready machine WINS over an unfinished boot. A pending resume
+            // exists to FINISH what was started; a state IS the finished
+            // thing, and it is an explicit request from a link. So the state
+            // goes first — and the pending key is dropped with it: the boot it
+            // was holding is superseded, and leaving it behind would spring a
+            // long-forgotten boot on the next plain launch.
             try {
                 if (window.localStorage) window.localStorage.removeItem(PENDING_KEY);
             } catch (err) { /* ignore */ }
-            // Defer so the page/app is fully wired before typing starts. A
-            // resume wins over a deep link: that boot was already started, and
-            // a broken link is beside the point while the machine is busy with
-            // what its operator asked for a moment ago.
+            // The parameter is dropped from the URL only once the state is
+            // APPLIED — a link that could not be honoured keeps its parameter
+            // (the visitor sees what was asked for).
+            setTimeout(function () { applyStateLink(stateUrl); }, 0);
+        } else if (pending) {
+            try {
+                if (window.localStorage) window.localStorage.removeItem(PENDING_KEY);
+            } catch (err) { /* ignore */ }
+            // Defer so the page/app is fully wired before typing starts.
             setTimeout(function () { launch(pending, true); }, 0);
+        } else if (stateUrl !== null) {
+            // A ?state= we refuse before fetching anything: a scheme that is
+            // not http(s), a protocol-relative host, or a URL long enough to
+            // be a payload. Say so instead of fetching a trap.
+            setTimeout(function () { showBadStateUrl(stateUrl); }, 0);
         } else if (linked) {
             // The visitor asked for this OS explicitly, so the wizard stays
             // shut and the scenario runs on its own. The key names a real
@@ -948,6 +1161,9 @@ var QuickBoot = (function () {
         hide: hide,
         launch: launch,
         abortAutoload: abortAutoload,
+        // The ?state= half of the deep-link contract (see docs/ROADMAP.md).
+        stateUrlFromSearch: stateUrlFromSearch,
+        stateUrlAllowed: stateUrlAllowed,
         // Stop the autoload so an operator-facing dialog the SYSTEM raised is
         // not shown into a machine that owns the input. See yieldToOperator().
         yieldToOperator: yieldToOperator,
