@@ -552,7 +552,7 @@
             if (!el) return;
             var label = {
                 "none": "No tape", "at-start": "At start",
-                "ready": "Reading", "consumed": "Consumed (end)"
+                "partially-read": "Partially read", "consumed": "Consumed (end)"
             };
             el.textContent = label[state] || state;
             el.className = "tape-state " + state;
@@ -571,11 +571,15 @@
     function mountSelectedTape() {
         var sel = document.getElementById("ptr");
         var name = sel ? sel.value : "";
-        if (name === "") { ptr.rewind(); return; }
+        // Choosing None is the operator pulling the tape OUT; it is not a
+        // rewind. The two were the same call before, which is why REWIND TAPE
+        // left the reader empty ("No tape") instead of back at the first frame.
+        if (name === "") { ptr.eject(); return; }
         var url = ptrUrlFor(name);
         machine.mountDrive(url, dataLoaderProvider(url));
         ptr.loadTape(url);
     }
+    // REWIND TAPE: back to the first frame, the tape stays in the reader.
     window.ptrRewindTape = function () { ptr.rewind(); };
     window.downloadPunchTape = function () {
         var out = ptr.punchBytes();
@@ -636,16 +640,18 @@
         poll: function () { return machine.bus.poll(); },
         reset: function () {
             var result = machine.bus.reset();
-            // iopage.js parity: boot()/reset forgets the PTR tape (the
-            // device's reset() clears ptControlblock), but the legacy PTR
-            // lazily rebuilds its control block from the Storage "#ptr"
-            // select on the next GO. QuickBoot sets select.value
-            // programmatically (no "change" event) and calls boot()
-            // afterwards, so nothing would re-mount the tape here — the
-            // boot ROM's first PTR GO would hit ERR and the guest boot
-            // would hang (BASIC-11 paper-tape boot). Re-apply the
-            // currently selected tape after every reset instead.
-            if (ptrSelect) mountSelectedTape();
+            // The PTR tape is NOT re-mounted here any more. It used to be,
+            // because the device's reset() cleared ptControlblock and only the
+            // Storage select knew which tape was loaded — so the next PTR GO
+            // hit ERR and a paper-tape boot hung (BASIC-11). That is fixed at
+            // the source now: reset() clears the REGISTERS only, and the tape a
+            // machine reset does not eject stays where it is, position and all
+            // — which is what the real PTR11 does. Re-mounting here would
+            // rewind the tape to frame 0 on every Reboot, undoing the fix.
+            // QuickBoot may set select.value programmatically (no change
+            // event) and then boot(): that path is unaffected, because the
+            // device already holds the tape the select names. When the operator
+            // changes the select, the change event calls mountSelectedTape().
             // Disks: an explicit Reboot must not keep serving blocks cached
             // by the previous boot (2.11 BSD / Unix V5 read a kernel in many
             // blocks and stall silently; RT-11 never noticed). The Reboot
@@ -676,10 +682,11 @@
         snapshotDevices: function () { return machine.bus.snapshotDevices(); },
         restoreDevices: function (state) {
             var result = machine.bus.restoreDevices(state);
-            // Device state does not include the PTR tape control block
-            // (same as iopage.js), so a restore forgets the tape. Re-apply
-            // the selected tape so the next PTR GO reads it from the start
-            // instead of raising ERR.
+            // Device state does not include the PTR tape control block, so a
+            // RESTORED snapshot has no tape in the reader while the Storage
+            // select may still name one. Re-apply the selected tape so the
+            // next PTR GO reads it from the start instead of raising ERR —
+            // this is a restore, not a reset, so a fresh mount is right here.
             if (ptrSelect) mountSelectedTape();
             return result;
         },

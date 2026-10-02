@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The PTR11 paper-tape reader behaves like the hardware: a machine reset does
+  not eject the tape, and REWIND rewinds it.** `reset()` (reached from `boot()`
+  on every Reboot) used to clear the tape control block and report "no tape",
+  while the Storage select still named one — so a guest that booted after a
+  reset read a tape the device no longer had, and a paper-tape boot (BASIC-11)
+  hung with the reader stuck on "Reading". REWIND had the same bug from the
+  other side: it FORGOT the tape instead of rewinding it, which is why the
+  indicator said "No tape" the moment the button was pressed (and why choosing
+  `None` and pressing REWIND were the same call). Now: a reset clears the
+  registers only and leaves the tape loaded, position and all; REWIND returns to
+  the first frame with the tape still in; `eject()` is the one path that empties
+  the reader, wired to choosing `None` in the tape list. The reader's state
+  label describes the MEDIUM rather than the last operation, so `ready`
+  ("Reading") became `partially-read` ("Partially read") — true while the tape
+  is being read and equally true after a reset stops with it half consumed.
+  (`src/devices/ptr11.js`, `src/browser-machine.js`, `src/iopage.js`,
+  `css/pdp11.css`; pinned by `tests/core.test.js`)
+
 - **A gallery link no longer traps a first-time visitor behind the first-run
   hint.** Following `pdp11.html?boot=<device>` shares the machine with the
   quick-boot autoload, whose input gate swallows every click outside its own

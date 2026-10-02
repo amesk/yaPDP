@@ -610,7 +610,7 @@ const p11 = (async () => {
     ptr.access(0o17777550, 0x41, 0); // IE|GO
     await sleep(20); // OP_BYTE completes on a microtask
     assert.strictEqual(ptr.access(0o17777552, -1, 0), 0x41); // PTRDB = 'A'
-    assert.ok(states.includes("ready"));
+    assert.ok(states.includes("partially-read"));
     ok("ptr: GO reads the first tape byte into PTRDB");
 
     // Next GO → second byte; then end-of-tape → ERR|DONE, consumed.
@@ -643,6 +643,69 @@ const p11 = (async () => {
     ptr.restore({ ...snap, ptrdb: 0x41 });
     assert.strictEqual(ptr.ptrdb, 0x41);
     ok("ptr: reset clears reader, snapshot/restore round-trips state");
+
+    // --- The tape is a physical medium: a machine reset must not eject it ---
+    // The regression this pins: reset() (called from boot()/power-cycle via
+    // iopage.reset()) used to clear ptControlblock and report "none", so the
+    // reader looked empty while the Storage select still named a tape — and a
+    // guest that booted after a reset read a tape the device no longer had
+    // (the BASIC-11 paper-tape hang, reported 2026-10-02).
+    {
+        const states2 = [];
+        const m2 = new Machine({}, host);
+        const p2 = new PtrPtp(m2, "ptr", {
+            regions: [{ address: 0o17777550, count: 4 }],
+            onTapeState: (s) => states2.push(s),
+        });
+        m2.addDevice(p2);
+        p2.install();
+        const tape2 = new Uint8Array([0x41, 0x42, 0x43]);
+        m2.mountDrive("t.ptap", {
+            readBlock: async (n) => (n === 0 ? tape2 : new Uint8Array(0)),
+            writeBlock: async () => {},
+            length: tape2.length,
+        });
+
+        p2.loadTape("t.ptap");
+        assert.strictEqual(p2.tapeState, "at-start");
+
+        // Read one byte, then reset (as REBOOT does).
+        p2.access(0o17777550, 0x41, 0);
+        await sleep(20);
+        assert.strictEqual(p2.access(0o17777552, -1, 0), 0x41);
+        assert.strictEqual(p2.tapeState, "partially-read");
+        const posBefore = p2.ptControlblock.position;
+
+        p2.reset();
+        assert.strictEqual(p2.ptrcs, 0, "reset clears the CSR");
+        assert.ok(p2.ptControlblock, "reset must NOT eject the tape");
+        assert.strictEqual(p2.ptControlblock.position, posBefore,
+            "reset must NOT rewind the tape");
+        assert.strictEqual(p2.tapeState, "partially-read",
+            "the label describes the medium and stays true after a reset");
+        ok("ptr: a machine reset leaves the tape loaded, position and label intact");
+
+        // REWIND: back to the first frame, tape STAYS in.
+        states2.length = 0;
+        p2.rewind();
+        assert.ok(p2.ptControlblock, "rewind must NOT eject the tape");
+        assert.strictEqual(p2.ptControlblock.position, 0, "rewind goes back to frame 0");
+        assert.strictEqual(p2.tapeState, "at-start");
+        ok("ptr: REWIND returns to the first frame and keeps the tape loaded");
+
+        // The guest can read it again from the start.
+        p2.access(0o17777550, 0x41, 0);
+        await sleep(20);
+        assert.strictEqual(p2.access(0o17777552, -1, 0), 0x41,
+            "after a rewind the guest reads the tape again from the first byte");
+        ok("ptr: after REWIND the guest reads the tape from the beginning");
+
+        // EJECT (choosing None): the only path that empties the reader.
+        p2.eject();
+        assert.strictEqual(p2.ptControlblock, undefined, "eject drops the tape");
+        assert.strictEqual(p2.tapeState, "none");
+        ok("ptr: EJECT (None) is the only path that leaves the reader empty");
+    }
 })();
 
 // ----------------------------------------------------------------------

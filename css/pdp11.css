@@ -3423,7 +3423,7 @@ body.crt-effects .vt52-crt::after {
     background: rgba(79, 122, 79, 0.15);
 }
 
-.tape-state.ready {
+.tape-state.partially-read {
     color: #7fb8d8;
     border-color: #3a6a8a;
     background: rgba(63, 106, 138, 0.15);
