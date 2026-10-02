@@ -529,6 +529,32 @@ var SnapshotStore = (() => {
     // arrived. The manifest is passed because WHICH image only becomes known
     // once the container is unpacked — checking earlier cannot know what to
     // wait for (measured 2026-10-02: checking first meant the toast never came).
+    // A deep link whose state needs a DIFFERENT device set (a different console
+    // type, user terminals the state does not carry, the printer or VT11 the
+    // other way round) must be resumed after a reload: devices are registered
+    // at page load, so a new set cannot appear in the running one.
+    //
+    // The URL is remembered in sessionStorage and the page reloads; init()
+    // reads the key and calls loadFromUrl() again, this time against the right
+    // device set. The state itself is NOT copied into the store: it is fetched
+    // again, from where its link points.
+    const PENDING_STATE_KEY = "yapdp-pending-state-url";
+
+    function pendingStateUrl() {
+        try {
+            if (typeof sessionStorage === "undefined") return null;
+            return sessionStorage.getItem(PENDING_STATE_KEY);
+        } catch (e) { return null; }
+    }
+
+    function clearPendingStateUrl() {
+        try {
+            if (typeof sessionStorage !== "undefined") {
+                sessionStorage.removeItem(PENDING_STATE_KEY);
+            }
+        } catch (e) { /* ignore */ }
+    }
+
     function loadFromUrl(url, opts) {
         var u = String(url || "");
         if (!u) return Promise.resolve({ ok: false, reason: "missing-url" });
@@ -553,6 +579,31 @@ var SnapshotStore = (() => {
                     return { ok: false, reason: "too-large", url: target,
                              size: buf.byteLength };
                 }
+                // The state's OWN device set is applied unconditionally — no
+                // comparison, no question asked. A state is a whole machine,
+                // and a machine restored onto a different device set is not
+                // "mostly working": only the parts that happened to match work
+                // (measured 2026-10-02 — a guest restored with two extra user
+                // terminals came up with BOTH terminals dead while the console
+                // was fine, because the state simply had no registers for
+                // them). Applying the profile is what makes the teleport work
+                // for someone who never ran yaPDP before, which is the whole
+                // point of the link.
+                var parsedManifest = peekManifest(new Uint8Array(buf));
+                if (parsedManifest && configNeedsReload({ config: parsedManifest.profile })) {
+                    applySnapshotConfig({ config: parsedManifest.profile });
+                    try {
+                        if (typeof sessionStorage !== "undefined") {
+                            sessionStorage.setItem(PENDING_STATE_KEY, target);
+                            sessionStorage.setItem("yapdp.restore-pending", "1");
+                        }
+                    } catch (e) { /* ignore */ }
+                    if (typeof window !== "undefined") window.__allowConfigReload = true;
+                    if (typeof location !== "undefined" && location.reload) {
+                        location.reload();
+                        return { ok: true, reloading: true, url: target };
+                    }
+                }
                 var applied = applyStateBytes(new Uint8Array(buf), target);
                 if (!onRestored) return applied;
                 return applied.then(function (result) {
@@ -568,6 +619,20 @@ var SnapshotStore = (() => {
             return { ok: false, reason: "network", url: target,
                      detail: String(err && err.message ? err.message : err) };
         });
+    }
+
+    // Read the manifest out of a container without applying anything, so the
+    // device set can be checked BEFORE the machine is touched. Returns null
+    // when the bytes are not a container.
+    function peekManifest(bytes) {
+        var raw = bytes;
+        if (typeof fzstd !== "undefined" && typeof fzstd.decompress === "function") {
+            try { raw = Uint8Array.from(fzstd.decompress(bytes)); }
+            catch (e) { raw = bytes; }
+        }
+        var parsed = (typeof StateFormat !== "undefined" &&
+            typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
+        return parsed ? parsed.manifest : null;
     }
 
     // Decompress + unpack + restore, in one place so the browser path and any
@@ -888,6 +953,26 @@ var SnapshotStore = (() => {
 
         // Even without a pending snapshot, populate the UI list.
         refreshUI();
+
+        // A deep link whose device set differed from the loaded one reloaded
+        // the page with its URL parked here (see loadFromUrl). The device set
+        // is now the state's own, so the link is fetched and applied again —
+        // this time it lands. Checked BEFORE the snapshot id: a state link is
+        // an explicit request, and it supersedes a snapshot left pending from
+        // an earlier session.
+        var pendingState = pendingStateUrl();
+        if (pendingState) {
+            clearPendingStateUrl();
+            if (typeof CPU !== "undefined") CPU.runState = STATE_HALT;
+            if (typeof window !== "undefined" &&
+                typeof window.__yapdpApplyStateLink === "function") {
+                window.__yapdpApplyStateLink(pendingState);
+            } else if (typeof QuickBoot !== "undefined" &&
+                       typeof QuickBoot.applyStateLinkNow === "function") {
+                QuickBoot.applyStateLinkNow(pendingState);
+            }
+            return Promise.resolve(true);
+        }
 
         if (!pendingId) {
             // No restore pending: drop any stale restore flag so the
