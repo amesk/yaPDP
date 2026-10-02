@@ -437,6 +437,16 @@ var SnapshotStore = (() => {
                     window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
                     window.vt52RestoreAll(snap.vt52);
                 }
+                // The TELETYPE's paper — the console screen for half the
+                // guests, and not a VT52: it is printed paper, captured as
+                // rendered rows. Without this a restored teletype guest wakes
+                // up with a BLANK screen (the boot banner and the prompt are
+                // on paper nobody put back). No-op when the printer API or the
+                // field is absent (an older state).
+                if (snap.teletypepaper && typeof window !== "undefined" &&
+                    window.g60printer && typeof window.g60printer.restore === "function") {
+                    window.g60printer.restore(snap.teletypepaper);
+                }
                 // Mounted images: DataLoader entries are re-created by
                 // dragdrop.init() from the images IDB on startup; nothing to
                 // do here (URLs are recorded in the snapshot for the UI).
@@ -495,6 +505,266 @@ var SnapshotStore = (() => {
 
     function remove(id) {
         return dbDelete(id);
+    }
+
+    // --- Loading a state from a URL (?state= deep link) ------------------
+    //
+    // The second kind of shareable link (see docs/ROADMAP.md): ?boot= names a
+    // scenario this build ships, ?state= points at a machine state — one the
+    // project hosts (states/<name>.state.zst) or one a visitor put on their own
+    // host. The URL is validated by the caller before we get here
+    // (QuickBoot.stateUrlAllowed); this function defends the LOAD: a size
+    // bound so a link cannot make the browser allocate without limit, and the
+    // container check so a page that is not a state is refused up front rather
+    // than half-applied.
+    //
+    // A state fetched here is NOT written to the store: it belongs to somebody
+    // else's link, and copying it into the user's snapshot list would be a
+    // surprise. It is applied to the live machine, once.
+    var MAX_STATE_BYTES = 16 * 1024 * 1024;   // a state, not an image
+
+    function loadFromUrl(url) {
+        var u = String(url || "");
+        if (!u) return Promise.resolve({ ok: false, reason: "missing-url" });
+        // A same-origin relative path resolves against the page, which is how
+        // the project hosts its own states.
+        var target = u;
+        if (typeof location !== "undefined" && !/^https?:\/\//i.test(u)) {
+            try { target = new URL(u, location.href).href; } catch (e) { /* keep u */ }
+        }
+        return fetch(target, { cache: "no-store" }).then(function (res) {
+            if (!res.ok) {
+                return { ok: false, reason: "http-" + res.status, url: target };
+            }
+            var len = parseInt(res.headers.get("content-length"), 10);
+            if (Number.isFinite(len) && len > MAX_STATE_BYTES) {
+                return { ok: false, reason: "too-large", url: target, size: len };
+            }
+            return res.arrayBuffer().then(function (buf) {
+                if (buf.byteLength > MAX_STATE_BYTES) {
+                    return { ok: false, reason: "too-large", url: target,
+                             size: buf.byteLength };
+                }
+                return applyStateBytes(new Uint8Array(buf), target);
+            });
+        }).catch(function (err) {
+            return { ok: false, reason: "network", url: target,
+                     detail: String(err && err.message ? err.message : err) };
+        });
+    }
+
+    // Decompress + unpack + restore, in one place so the browser path and any
+    // future caller agree. A .state file is a CONTAINER wrapped in a
+    // compression frame, and the frame can be either of the two this project
+    // uses: zstd (the file tools, and the images) or gzip (the browser's own
+    // export, which uses the built-in CompressionStream rather than shipping a
+    // zstd compressor). The container inside is identical either way, so this
+    // only has to get the wrapper off.
+    function applyStateBytes(bytes, url) {
+        var raw = bytes;
+        // Try zstd, then gzip, then take the bytes as they are (an uncompressed
+        // container — what the export writes when CompressionStream is absent).
+        var viaZstd = null;
+        if (typeof fzstd !== "undefined" && typeof fzstd.decompress === "function") {
+            try { viaZstd = Uint8Array.from(fzstd.decompress(bytes)); }
+            catch (e) { viaZstd = null; }
+        }
+        if (viaZstd && (typeof StateFormat === "undefined" ||
+                !StateFormat.isContainer || StateFormat.isContainer(viaZstd))) {
+            raw = viaZstd;
+        } else if (typeof StateFormat !== "undefined" &&
+                   StateFormat.isContainer && StateFormat.isContainer(bytes)) {
+            raw = bytes;                       // already an uncompressed container
+        } else {
+            // gzip (or anything else the platform can decode): finish async.
+            return gunzipBytes(bytes).then(function (gun) {
+                return applyContainer(gun, url);
+            }, function () {
+                return { ok: false, reason: "not-a-state", url: url };
+            });
+        }
+        return applyContainer(raw, url);
+    }
+
+    // The container half: unpack, stamp the overlay's origin, hand it to
+    // restore(). Split out so both the sync and the gzip path share it.
+    function applyContainer(raw, url) {
+        var parsed = (typeof StateFormat !== "undefined" &&
+            typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
+        if (!parsed) {
+            return { ok: false, reason: "not-a-state", url: url };
+        }
+        // A container state arrives as manifest + raw words; the rest of the
+        // restore path wants a snapshot-shaped object (cpu/memory/devices).
+        // The overlay is stamped with its origin so the Storage UI can say
+        // "changes from a shared state" — these blocks came from somebody
+        // else's link, not from this user's own work.
+        var overlay = parsed.manifest.overlay || null;
+        if (overlay && typeof overlay === "object") {
+            Object.keys(overlay).forEach(function (u) {
+                if (overlay[u] && typeof overlay[u] === "object") {
+                    overlay[u].origin = "state";
+                }
+            });
+        }
+        var snap = {
+            id: "url-state",
+            name: parsed.manifest.label || parsed.manifest.device || url,
+            schemaVersion: parsed.manifest.schemaVersion,
+            imageFingerprints: parsed.manifest.imageFingerprints || null,
+            cpu: parsed.manifest.cpu || {},
+            memory: { format: "raw", data: parsed.memoryWords
+                ? parsed.memoryWords.buffer : new ArrayBuffer(0) },
+            devices: parsed.manifest.devices || null,
+            config: parsed.manifest.profile || null,
+            overlay: overlay,
+            page: parsed.manifest.page || null,
+            // The operator's view: terminal screens and the paper in the
+            // teletype. Without these a restored guest is alive but blind —
+            // its screen is blank (measured: BASIC-11 restarted with an empty
+            // teletype). restore() already knows how to put them back.
+            punchtape: parsed.manifest.punchtape || null,
+            readertape: parsed.manifest.readertape || null,
+            vt52: parsed.manifest.vt52 || null,
+            teletypepaper: parsed.manifest.teletypepaper || null,
+        };
+        return restore(snap).then(function (applied) {
+            return applied ? { ok: true, url: url, name: snap.name }
+                           : { ok: false, reason: "incompatible", url: url };
+        });
+    }
+
+    // Export the live machine as a .state container's bytes, ready to write
+    // somewhere. This is the one path both consumers share:
+    //   - the Machine-state dialog's "Export state" button (download a file);
+    //   - tools/export-state-browser.js, which calls this through page.evaluate
+    //     and writes the bytes to states/, so a state is taken from the REAL
+    //     browser — the same configuration a visitor gets.
+    //
+    // Returns a Promise<Uint8Array> (the raw container, zstd-compressed).
+    function exportBytes(name) {
+        // Build the same manifest the file tools build, so a state taken here
+        // and one taken by tools/export-state.js are the same kind of thing.
+        var prevRunState = CPU.runState;
+        var wasRunning = prevRunState === STATE_RUN;
+        if (wasRunning) CPU.runState = STATE_HALT;
+
+        var devices = (typeof iopage !== "undefined" &&
+            typeof iopage.snapshotDevices === "function")
+            ? iopage.snapshotDevices() : null;
+
+        // Everything restore() knows how to put back, not just the machine's
+        // silicon. A state that carried only cpu/devices/memory restored a
+        // guest with a BLANK SCREEN: the terminal's own contents live in these
+        // fields (measured: BASIC-11 came back alive but the teletype paper was
+        // empty, so the login banner and the *O prompt were gone). The set
+        // mirrors capture() — if it grows there, it grows here.
+        var punchtape = null;
+        if (typeof window !== "undefined" && window.paperTape &&
+            typeof window.paperTape.snapshot === "function") {
+            punchtape = window.paperTape.snapshot();
+        }
+        var readertape = null;
+        if (typeof window !== "undefined" && window.tapeReader &&
+            typeof window.tapeReader.snapshot === "function") {
+            readertape = window.tapeReader.snapshot();
+        }
+        var vt52 = null;
+        if (typeof window !== "undefined" && window.vt52SnapshotAll &&
+            typeof window.vt52SnapshotAll === "function") {
+            vt52 = window.vt52SnapshotAll();
+        }
+        // The TELETYPE's paper — the console screen for half the guests. It is
+        // not a VT52 (no screen snapshots exist for it), so without this a
+        // restored teletype guest comes back alive but BLIND: the boot banner
+        // and the prompt were printed on paper that nobody captured (measured:
+        // BASIC-11 restored with an empty screen).
+        var teletypepaper = null;
+        if (typeof window !== "undefined" && window.g60printer &&
+            typeof window.g60printer.snapshot === "function") {
+            teletypepaper = window.g60printer.snapshot();
+        }
+
+        return captureImageFingerprintsAsync().then(function (fps) {
+            var manifest = {
+                schemaVersion: SCHEMA_VERSION,
+                base: null,
+                device: name || "live",
+                label: name || "live machine",
+                createdAt: new Date().toISOString(),
+                profile: captureConfig(),
+                imageFingerprints: fps,
+                cpu: captureCPU(),
+                devices: devices,
+                // The operator's view of the machine, not just its state:
+                // terminal screens, the paper in the teletype, the loaded
+                // reader tape (and its read position).
+                punchtape: punchtape,
+                readertape: readertape,
+                vt52: vt52,
+                teletypepaper: teletypepaper,
+                mounted: captureMounted(),
+                page: capturePage(),
+            };
+            // The CPU was frozen for the capture (stop-the-world, above), so
+            // the recorded runState is HALT. A state is a machine that was
+            // RUNNING — recording HALT would make every restored guest sit
+            // dead with a loaded memory (measured: BASIC-11 restored, runState
+            // 3, nothing happened). Same correction capture() makes.
+            if (wasRunning) manifest.cpu.runState = STATE_RUN;
+            var packed = StateFormat.pack(manifest, CPU.memory);
+            // Compress with what the BROWSER already has. fzstd is
+            // decompress-only by design, and pulling a zstd compressor into
+            // the page would cost ~1-2 MB of script for a button nobody
+            // presses daily. CompressionStream is built in and free; the
+            // container is unchanged — only the frame around it differs, and
+            // both decompressors (fzstd for zstd, DecompressionStream for
+            // gzip) are on the page already.
+            return gzipCompress(packed).then(function (bytes) {
+                if (wasRunning) CPU.runState = prevRunState;
+                return bytes;
+            }, function () {
+                if (wasRunning) CPU.runState = prevRunState;
+                return packed;   // no CompressionStream: uncompressed container
+            });
+        });
+    }
+
+    // gzip a container with the browser's own compressor. Rejects when
+    // CompressionStream is unavailable so the caller can fall back to the
+    // uncompressed container (still a valid state).
+    function gzipCompress(bytes) {
+        if (typeof CompressionStream === "undefined") {
+            return Promise.reject(new Error("no CompressionStream"));
+        }
+        var cs = new CompressionStream("gzip");
+        var writer = cs.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        return new Response(cs.readable).arrayBuffer().then(function (buf) {
+            return new Uint8Array(buf);
+        });
+    }
+
+    // The inverse, for a state that arrives gzipped (the browser's own export,
+    // and any state a visitor's browser produced).
+    function gunzipBytes(bytes) {
+        if (typeof DecompressionStream === "undefined") {
+            return Promise.resolve(bytes);
+        }
+        var ds = new DecompressionStream("gzip");
+        var writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        return new Response(ds.readable).arrayBuffer().then(function (buf) {
+            return new Uint8Array(buf);
+        });
+    }
+
+    // Fingerprints are read synchronously today; wrap for the export path so a
+    // later async source does not change the signature.
+    function captureImageFingerprintsAsync() {
+        return Promise.resolve(captureImageFingerprints());
     }
 
     function load(id) {
@@ -1030,6 +1300,13 @@ var SnapshotStore = (() => {
         remove: remove,
         load: load,
         restore: restore,
+        // The ?state= deep link: fetch a state and apply it to the live
+        // machine. Never stored — it belongs to somebody else's link.
+        loadFromUrl: loadFromUrl,
+        applyStateBytes: applyStateBytes,
+        // Take the live machine's state as container bytes (the Machine-state
+        // Export button and tools/export-state-browser.js both use this).
+        exportBytes: exportBytes,
         refreshUI: refreshUI,
         wireUI: wireUI,
         SCHEMA_VERSION: SCHEMA_VERSION,

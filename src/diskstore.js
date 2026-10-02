@@ -239,7 +239,9 @@ var DiskStore = (() => {
         writes.push(dbPut(metaKey(url), {
             v: fp,
             t: Date.now(),
-            blocks: Array.from(savedIndex.get(url) || [])
+            blocks: Array.from(savedIndex.get(url) || []),
+            // Where these blocks came from; see restoreOverlay() below.
+            origin: originOf(url)
         }));
 
         return Promise.all(writes).then(() => true);
@@ -311,6 +313,7 @@ var DiskStore = (() => {
         const entry = pending.get(url);
         if (entry) entry.dirty.clear();
         savedIndex.delete(url);
+        origins.delete(url);
         return openDB().then((d) => {
             if (!d) return;
             return dbGetAllKeys().then((keys) => {
@@ -360,11 +363,39 @@ var DiskStore = (() => {
                     if (!set) { set = new Set(); savedIndex.set(url, set); }
                     set.add(block);
                 });
+                // The origin of each image's overlay lives in its meta record,
+                // not in the block keys: read it back so "changes from a shared
+                // state" survives a reload instead of being a session-only fact.
+                return Promise.all(Array.from(savedIndex.keys()).map((url) =>
+                    dbGet(metaKey(url)).then((meta) => {
+                        if (meta && meta.origin) origins.set(url, String(meta.origin));
+                    })
+                ));
             });
         });
     }
 
-    // --- Snapshot support: disk overlay capture/rollback ---
+    // url -> origin of the blocks saved for it: "state" when they came from an
+    // imported/shared machine state, absent when the guest wrote them itself.
+    // Kept in memory and written into the per-image meta record, so the Storage
+    // UI can say "changes from a shared state" and the existing Reset offer
+    // clears them like any other.
+    const origins = new Map();
+
+    function originOf(url) {
+        const o = origins.get(url);
+        return o === undefined ? null : o;
+    }
+
+    // Mark an image's overlay as coming from a shared state. Called before
+    // restoreOverlay() writes the state's blocks.
+    function markOrigin(url, origin) {
+        if (!url) return;
+        if (origin == null) origins.delete(url);
+        else origins.set(url, String(origin));
+    }
+
+    // --- State support: disk overlay capture/rollback ---
     // A machine snapshot freezes CPU+RAM at time T; for the restored guest
     // to see a CONSISTENT filesystem, the disk overlay must also go back to
     // T. Otherwise the kernel's in-RAM superblock (T) gets written over
@@ -420,7 +451,11 @@ var DiskStore = (() => {
                 if (!matchOk(rec.v, fingerprintOf(url))) continue;
                 const entry = pending.get(url);
                 const cb = entry ? entry.controlBlock : null;
+                // clear() drops the old blocks AND their origin (Reset must
+                // clear a claim, not just data) — so the overlay's own origin
+                // is set AFTER the clear, or we would erase what we just read.
                 await clear(url);
+                markOrigin(url, rec.origin || null);
                 if (cb && cb.cache) cb.cache.length = 0;
                 const writes = [];
                 const set = new Set();
@@ -434,7 +469,13 @@ var DiskStore = (() => {
                     set.add(block);
                 }
                 writes.push(dbPut(metaKey(url), {
-                    v: fingerprintOf(url), t: Date.now(), blocks: Array.from(set)
+                    v: fingerprintOf(url), t: Date.now(), blocks: Array.from(set),
+                    // Remember where these blocks came from. A state imported
+                    // from somebody else's link leaves its writes on the user's
+                    // disk; the UI can then SAY so ("changes from a shared
+                    // state") and offer the reset that already exists. Absent
+                    // means the guest made these writes itself.
+                    origin: originOf(url)
                 }));
                 await Promise.all(writes);
                 savedIndex.set(url, set);
@@ -461,7 +502,10 @@ var DiskStore = (() => {
         init,
         // Image identity: register what was just fetched, ask what is known.
         registerImage,
-        fingerprintOf
+        fingerprintOf,
+        // Where a saved overlay came from ("state" for a shared state).
+        markOrigin,
+        originOf
     };
 })();
 

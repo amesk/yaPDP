@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar.tsx';
 import { Hero } from './components/Hero.tsx';
 import { OSCarousel } from './components/OSCarousel.tsx';
+import { InstantRun } from './components/InstantRun.tsx';
 import { FeaturesTable } from './components/FeaturesTable.tsx';
 import { WhoIsThisFor } from './components/WhoIsThisFor.tsx';
 import { PersonalNote } from './components/PersonalNote.tsx';
@@ -21,10 +22,23 @@ export default function App() {
   // key (src/osboot.js). null = show the machine as it is, which is what every
   // plain "launch online" entry point expects.
   const [bootDevice, setBootDevice] = useState<string | null>(null);
+  // Saved machine state the emulator modal must apply when it opens: a
+  // state URL (states/<name>.state.zst). The mirror of bootDevice for the
+  // teleport path — a state REPLACES a boot, so the two are never both set.
+  const [stateUrl, setStateUrl] = useState<string | null>(null);
 
   // Run on a guest-OS tile: open the emulator and let it boot that OS.
   const handleRunOS = (device: string) => {
+    setStateUrl(null);          // a boot and a state are alternatives
     setBootDevice(device);
+    setIsEmulatorOpen(true);
+  };
+
+  // Teleport on an Instant-Run tile: open the emulator and let it apply the
+  // saved state — the guest is already running, so nothing boots.
+  const handleTeleport = (url: string) => {
+    setBootDevice(null);
+    setStateUrl(url);
     setIsEmulatorOpen(true);
   };
 
@@ -129,6 +143,8 @@ export default function App() {
                 onOpenManual={() => handleSelectView('manual')}
               />
 
+              <InstantRun lang={lang} onTeleport={handleTeleport} />
+
               <OSCarousel lang={lang} onRun={handleRunOS} />
 
               <FeaturesTable lang={lang} />
@@ -230,6 +246,7 @@ export default function App() {
         }}
         lang={lang}
         bootKey={bootDevice}
+        stateUrl={stateUrl}
       />
     </div>
   );
