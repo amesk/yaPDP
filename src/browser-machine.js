@@ -576,6 +576,18 @@
         // left the reader empty ("No tape") instead of back at the first frame.
         if (name === "") { ptr.eject(); return; }
         var url = ptrUrlFor(name);
+        // Idempotent on purpose. This runs after every reset() (REBOOT, power
+        // cycle) AND at cold start, and the two need different things:
+        //
+        //   - the tape is already in the reader and it is the selected one:
+        //     leave it ALONE. A machine reset does not rewind the tape — the
+        //     guest keeps reading where it stopped. Re-mounting here is what
+        //     used to undo the fix (every Reboot rewound the tape).
+        //   - the reader is empty (cold start, or QuickBoot set select.value
+        //     programmatically with no change event and then called boot()):
+        //     mount it, or the boot ROM's first PTR GO hits ERR and a
+        //     paper-tape boot (BASIC-11) hangs.
+        if (ptr.ptControlblock && ptr.ptControlblock.url === url) return;
         machine.mountDrive(url, dataLoaderProvider(url));
         ptr.loadTape(url);
     }
@@ -640,18 +652,14 @@
         poll: function () { return machine.bus.poll(); },
         reset: function () {
             var result = machine.bus.reset();
-            // The PTR tape is NOT re-mounted here any more. It used to be,
-            // because the device's reset() cleared ptControlblock and only the
-            // Storage select knew which tape was loaded — so the next PTR GO
-            // hit ERR and a paper-tape boot hung (BASIC-11). That is fixed at
-            // the source now: reset() clears the REGISTERS only, and the tape a
-            // machine reset does not eject stays where it is, position and all
-            // — which is what the real PTR11 does. Re-mounting here would
-            // rewind the tape to frame 0 on every Reboot, undoing the fix.
-            // QuickBoot may set select.value programmatically (no change
-            // event) and then boot(): that path is unaffected, because the
-            // device already holds the tape the select names. When the operator
-            // changes the select, the change event calls mountSelectedTape().
+            // mountSelectedTape() is idempotent now: it leaves a tape that is
+            // already in the reader alone (so a Reboot keeps the tape and its
+            // position — the whole point of the fix) and mounts only when the
+            // reader is EMPTY. That second case is the cold start, and QuickBoot
+            // setting select.value programmatically with no change event before
+            // calling boot(): without the mount the boot ROM's first PTR GO
+            // hits ERR and the BASIC-11 paper-tape boot hangs.
+            if (ptrSelect) mountSelectedTape();
             // Disks: an explicit Reboot must not keep serving blocks cached
             // by the previous boot (2.11 BSD / Unix V5 read a kernel in many
             // blocks and stall silently; RT-11 never noticed). The Reboot
