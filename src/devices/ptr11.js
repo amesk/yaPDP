@@ -69,7 +69,6 @@
             this.punchBuffer = [];
             this.reset();
         }
-
         _requestInterrupt() {
             const cpu = this.machine && this.machine.host
                 ? this.machine.host.cpu : null;
@@ -97,17 +96,24 @@
             }
         }
 
-        /** reset() — initPTR: all flags cleared, tape forgotten. */
+        /**
+         * reset() — power-on state of the REGISTERS ONLY.
+         *
+         * The tape is a PHYSICAL MEDIUM: a machine reset does not eject it from
+         * the reader and does not rewind it. The guest that boots after a REBOOT
+         * keeps reading from where the tape stopped, exactly as on real
+         * hardware, until an operator presses REWIND or picks None. So this must
+         * NOT touch ptControlblock or tapeState — the constructor clears those
+         * once, before the device has ever held a tape.
+         */
         reset() {
             this.ptrcs = 0;
             this.ptrdb = 0;
             this.iMask = 0;
-            this.ptControlblock = undefined;
             this.ptpcs = PTP_DONE;
             this.ptpdb = 0;
             this.ptpIMask = 0;
             this.dbwWritten = false;
-            this._setTapeState("none");
         }
 
         /**
@@ -129,8 +135,31 @@
             return this.ptControlblock;
         }
 
-        /** rewind() — forget the current tape (position resets on next load). */
+        /**
+         * rewind() — the REWIND button: back to the FIRST frame of the tape.
+         *
+         * The tape STAYS in the reader (a rewind never ejects it) and the guest
+         * can read it again from the start. Ejecting is a different operator
+         * action: see eject(), wired to choosing None in the tape list.
+         */
         rewind() {
+            if (this.ptControlblock) {
+                this.ptControlblock.position = 0;
+                this.ptControlblock.cache = [];
+            }
+            this.ptrcs &= ~(PTR_ERR | PTR_BUSY | PTR_GO);
+            this.iMask = 0;
+            this.ptpcs &= ~(PTP_ERR | PTP_BUSY | PTP_GO);
+            this.ptpIMask = 0;
+            this._setTapeState(this.ptControlblock ? "at-start" : "none");
+        }
+
+        /**
+         * eject() — pull the tape OUT of the reader: the operator chose None in
+         * the tape list. This is the only path that leaves the device empty, and
+         * the only one that reports "none" for a loaded reader.
+         */
+        eject() {
             this.ptControlblock = undefined;
             this.ptrcs &= ~(PTR_ERR | PTR_BUSY | PTR_GO);
             this.iMask = 0;
@@ -218,7 +247,12 @@
                                     this._requestInterrupt();
                                 }
                             } else {
-                                this._setTapeState("ready");
+                                // The tape is now PARTLY READ: some of it has
+                                // gone through the reader, some has not. The
+                                // label describes the MEDIUM, not the operation,
+                                // so it stays true after a machine reset stops
+                                // reading with the tape still in the reader.
+                                this._setTapeState("partially-read");
                                 if (disk && typeof disk.io === "function") {
                                     disk.io(this.ptControlblock, 5 /* OP_BYTE */,
                                         this.ptControlblock.position, 0o17777552, 1, null);

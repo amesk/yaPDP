@@ -2801,9 +2801,11 @@ iopage.register(0o17777550, 2, (function() {
 
     // --- updateTapeState() ---
     // Update the paper tape state indicator in the Storage page. States:
-    // "none" (no tape), "at-start" (tape at the beginning), "ready" (reading
-    // in progress) and "consumed" (tape fully read). The DOM is refreshed
-    // only on an actual state change to avoid per-byte updates.
+    // "none" (no tape), "at-start" (tape at the beginning), "partially-read"
+    // (some of it has gone through the reader — true while reading AND after a
+    // reset stops with the tape still loaded) and "consumed" (tape fully
+    // read). The DOM is refreshed only on an actual state change to avoid
+    // per-byte updates.
     let tapeState = "none";
     function updateTapeState(state) {
         if (tapeState === state) return;
@@ -2813,7 +2815,7 @@ iopage.register(0o17777550, 2, (function() {
         const label = {
             "none": "No tape",
             "at-start": "At start",
-            "ready": "Reading",
+            "partially-read": "Partially read",
             "consumed": "Consumed (end)"
         };
         el.textContent = label[state] || state;
@@ -2893,7 +2895,11 @@ iopage.register(0o17777550, 2, (function() {
                                     requestInterrupt();
                                 }
                             } else {
-                                updateTapeState("ready");
+                                // The tape is now PARTLY READ — the label describes
+                                // the medium, not the operation, so it stays true
+                                // when a machine reset stops reading with the tape
+                                // still in the reader.
+                                updateTapeState("partially-read");
                                 diskIO(ptControlblock, OP_BYTE, ptControlblock.position, 0o17777552, 1, null);
                             }
                         }
