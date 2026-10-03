@@ -167,7 +167,10 @@ function mapUnibus(CPU, ba) {
 async function bootHeadless(opts = {}) {
   const image = opts.image || "media/rk1.dsk.zst";
   const urlName = opts.urlName || "rk0.dsk";
-  const bootCmd = opts.bootCmd || "BOOT RK0\r";
+  // An EMPTY string is a deliberate "send nothing": a caller that drives the
+  // console itself (tools/export-state.js replays the scenario steps) must be
+  // able to say so. Only an ABSENT value falls back to the default.
+  const bootCmd = opts.bootCmd !== undefined ? opts.bootCmd : "BOOT RK0\r";
   const waitFor = opts.waitFor || ".";
   // How the readiness marker is matched against console output:
   //   "line"      — the marker must be an entire line (optionally with
@@ -242,6 +245,13 @@ async function bootHeadless(opts = {}) {
   const io = machine.io;
 
   // --- Console DL11: output collector + bridge hook ---
+  //
+  // ONE console device, unit 0. The scenarios that ask for a VT52/VT100
+  // console PROFILE still write their output through this device in the
+  // headless stack (measured: rp1, a VT100-profile guest, boots to its
+  // kernel banner here with no second terminal installed), so a tty1 was
+  // added on a wrong guess and removed again — an unused device in the
+  // harness is a cost with no benefit.
   let out = "";
   const prevHook = sb.window.__consoleOutputHook;
   const consoleDev = new ConsoleDL11(machine, "console", {

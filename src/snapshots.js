@@ -117,33 +117,29 @@ var SnapshotStore = (() => {
     // ------------------------------------------------------------------
     // Capture (save)
     // ------------------------------------------------------------------
-    // Serialize the CPU object: numbers/strings as-is, typed arrays as
-    // plain arrays. CPU.memory is handled separately (raw bytes + gzip).
+    // The state FORMAT lives in src/state-format.js, shared with the Node
+    // tools (tools/export-state.js, tools/headless-term.js) so there is one
+    // definition of what a .state is. This module keeps only what is
+    // browser-specific: IndexedDB, field capture from the live CPU, and the
+    // gzip fallback for states written before the container existed.
     function captureCPU() {
-        const out = {};
-        Object.keys(CPU).forEach(function (k) {
-            if (k === "memory") return; // handled separately
-            const v = CPU[k];
-            if (typeof v === "number" || typeof v === "string" || typeof v === "boolean") {
-                out[k] = v;
-            } else if (v instanceof Uint16Array) {
-                out[k] = { t: "u16", d: Array.from(v) };
-            } else if (v instanceof Uint32Array) {
-                out[k] = { t: "u32", d: Array.from(v) };
-            }
-            // functions / other objects are runtime-only, not persisted
-        });
-        return out;
+        return StateFormat.captureCPU(CPU);
     }
 
-    // RAM -> gzip bytes. Uses native CompressionStream when available,
-    // otherwise stores raw bytes (still works, just bigger).
+    // RAM -> compressed bytes for storage in IndexedDB.
+    //
+    // New states are packed with the shared container (raw memory bytes, no
+    // Array.from of millions of words) and compressed with zstd — the format
+    // the images already use and the reason fzstd is on the page. The gzip
+    // path stays for reading OLD snapshots: a state saved before this change
+    // carries { format: "gzip", data }, and restoreMemory still understands
+    // it.
     function captureMemory() {
-        const words = CPU.memory;
-        const bytes = new Uint8Array(words.length * 2);
-        for (let i = 0; i < words.length; i++) {
-            bytes[i * 2] = words[i] & 0xff;
-            bytes[i * 2 + 1] = words[i] >>> 8;
+        const bytes = StateFormat.memoryToBytes(CPU.memory);
+        if (typeof fzstd !== "undefined" && typeof fzstd.compress === "function") {
+            try {
+                return Promise.resolve({ format: "zstd", data: fzstd.compress(bytes) });
+            } catch (err) { /* fall through to gzip */ }
         }
         if (typeof CompressionStream !== "undefined") {
             const cs = new CompressionStream("gzip");
@@ -288,33 +284,18 @@ var SnapshotStore = (() => {
     // Restore (load)
     // ------------------------------------------------------------------
     function restoreCPU(cpu) {
-        Object.keys(cpu || {}).forEach(function (k) {
-            if (k === "runState") return; // applied after restoreMemory (see restore())
-            const v = cpu[k];
-            if (v && typeof v === "object" && v.t === "u16") {
-                const arr = new Uint16Array(v.d);
-                if (CPU[k] instanceof Uint16Array && CPU[k].length === arr.length) {
-                    CPU[k].set(arr);
-                } else {
-                    CPU[k] = arr;
-                }
-            } else if (v && typeof v === "object" && v.t === "u32") {
-                const arr = new Uint32Array(v.d);
-                if (CPU[k] instanceof Uint32Array && CPU[k].length === arr.length) {
-                    CPU[k].set(arr);
-                } else {
-                    CPU[k] = arr;
-                }
-            } else {
-                CPU[k] = v;
-            }
-        });
+        // runState is applied by restore() AFTER memory is back: a machine that
+        // runs with the old memory traps instantly.
+        StateFormat.restoreCPU(CPU, cpu, true);
     }
 
     function restoreMemory(mem) {
         if (!mem) return Promise.resolve();
         let p;
-        if (mem.format === "gzip" && typeof DecompressionStream !== "undefined") {
+        if (mem.format === "zstd" && typeof fzstd !== "undefined" &&
+            typeof fzstd.decompress === "function") {
+            p = Promise.resolve(Uint8Array.from(fzstd.decompress(new Uint8Array(mem.data))).buffer);
+        } else if (mem.format === "gzip" && typeof DecompressionStream !== "undefined") {
             const ds = new DecompressionStream("gzip");
             const writer = ds.writable.getWriter();
             writer.write(new Uint8Array(mem.data));
@@ -324,8 +305,7 @@ var SnapshotStore = (() => {
             p = Promise.resolve(mem.data);
         }
         return p.then(function (buf) {
-            const bytes = new Uint8Array(buf);
-            const words = new Uint16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength >>> 1);
+            const words = StateFormat.bytesToMemory(new Uint8Array(buf));
             if (CPU.memory.length === words.length) {
                 CPU.memory.set(words);
             } else {

@@ -18,6 +18,8 @@ const vm = require("vm");
 const assert = require("assert");
 
 const SOURCE_PATH = path.join(__dirname, "..", "src", "snapshots.js");
+const STATE_FORMAT_PATH = path.join(__dirname, "..", "src", "state-format.js");
+const SF_SOURCE = fs.readFileSync(STATE_FORMAT_PATH, "utf8");
 
 // ------------------------------------------------------------------
 // Extract the SnapshotStore IIFE (balanced braces)
@@ -112,6 +114,9 @@ function buildSandbox() {
     setTimeout, clearTimeout, setInterval: () => 0,
     indexedDB: fakeIDB,
     CompressionStream, DecompressionStream,
+    // src/state-format.js — the shared container (loaded into the sandbox by
+    // loadSnapshotStore; declared here so captureMemory can reach it).
+    StateFormat: undefined,
     Response,
     TextEncoder, TextDecoder,
     STATE_HALT: 3,
@@ -157,6 +162,11 @@ function loadSnapshotStore(sb) {
   const src = fs.readFileSync(SOURCE_PATH, "utf8");
   const code = extractIIFE(src, "var SnapshotStore = (() => {");
   vm.createContext(sb);
+  // The shared state container first: SnapshotStore delegates the FORMAT to
+  // it (src/state-format.js), so it must be in the sandbox before the store.
+  // We also expose it on the sandbox object so the test can drive it directly.
+  vm.runInContext(SF_SOURCE, sb);
+  sb.StateFormat = vm.runInContext("StateFormat", sb);
   vm.runInContext(code, sb);
   return sb.SnapshotStore;
 }
