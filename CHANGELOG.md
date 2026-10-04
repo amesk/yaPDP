@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Snapshot steps:** after restoring a machine state, the snapshot can execute
+  one or more scenario steps (typed into the console) before the operator takes
+  control. Steps are stored in the manifest as a `steps` array, using the same
+  format as QuickBoot scenarios (`send`, `ctrlD`, `wait`, `waitFor`).
+  (`src/step-engine.js`, `src/snapshots.js`, `src/quickboot.js`)
+
+### Changed
+
+- **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
+  `stepBytes`, `consoleWorkingState`, `clearConsole`, `sendBytes`, output buffer)
+  is extracted from `src/quickboot.js` into a shared `src/step-engine.js` module.
+  Both QuickBoot and Snapshots use the same engine — no code duplication.
+  (`src/step-engine.js`, `src/quickboot.js`)
+
 ### Fixed
 
 - **The PTR11 paper-tape reader behaves like the hardware: a machine reset does

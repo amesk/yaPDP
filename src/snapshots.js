@@ -192,7 +192,7 @@ var SnapshotStore = (() => {
         return out;
     }
 
-    function capture(name) {
+    function capture(name, steps, stepsMessage) {
         // Stop-the-world: freeze the CPU for the duration of the capture so
         // RAM, device registers and the disk overlay all come from the same
         // instant. Without this the asynchronous gzip compression lets the
@@ -254,6 +254,8 @@ var SnapshotStore = (() => {
                     readertape: readertape,
                     vt52: vt52,
                     overlay: overlay,
+                    steps: steps || null,
+                    stepsMessage: stepsMessage || null,
                     cpuBytes: 0,
                     memBytes: mem.data.byteLength || 0
                 };
@@ -473,8 +475,8 @@ var SnapshotStore = (() => {
     // ------------------------------------------------------------------
     // Public API
     // ------------------------------------------------------------------
-    function save(name) {
-        return capture(name).then(function (snap) {
+    function save(name, steps, stepsMessage) {
+        return capture(name, steps, stepsMessage).then(function (snap) {
             return dbPut(snap.id, snap).then(function () {
                 // Keep the store bounded.
                 return dbGetAll().then(function (items) {
@@ -609,6 +611,17 @@ var SnapshotStore = (() => {
                 return applied.then(function (result) {
                     if (!result || !result.ok) return result;
                     return Promise.resolve(onRestored(lastStateManifest))
+                        .then(function () {
+                            // Steps run AFTER image loading, gate still ON
+                            if (lastStateManifest && lastStateManifest.steps &&
+                                Array.isArray(lastStateManifest.steps) && lastStateManifest.steps.length > 0) {
+                                return StepEngine.runSteps(lastStateManifest.steps, {
+                                    sendBytes: StepEngine.sendBytes,
+                                    outputContains: StepEngine.outputContains,
+                                    stepDelayMs: 800,
+                                });
+                            }
+                        })
                         .then(function () { return result; });
                 }, function (err) {
                     return { ok: false, reason: "network", url: target,
@@ -795,6 +808,8 @@ var SnapshotStore = (() => {
                 teletypepaper: teletypepaper,
                 mounted: captureMounted(),
                 page: capturePage(),
+                steps: null,
+                stepsMessage: null,
             };
             // The CPU was frozen for the capture (stop-the-world, above), so
             // the recorded runState is HALT. A state is a machine that was
@@ -1009,6 +1024,13 @@ var SnapshotStore = (() => {
                 // re-enable the write-back flush for future reloads.
                 if (typeof sessionStorage !== "undefined") {
                     try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
+                }
+                if (ok && snap.steps && Array.isArray(snap.steps) && snap.steps.length > 0) {
+                    StepEngine.runSteps(snap.steps, {
+                        sendBytes: StepEngine.sendBytes,
+                        outputContains: StepEngine.outputContains,
+                        stepDelayMs: 800,
+                    });
                 }
                 return ok;
             });

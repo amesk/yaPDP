@@ -20,6 +20,7 @@ const vm = require("vm");
 const assert = require("assert");
 
 const OSBOOT_PATH = path.join(__dirname, "..", "src", "osboot.js");
+const STEPENGINE_PATH = path.join(__dirname, "..", "src", "step-engine.js");
 const QUICKBOOT_PATH = path.join(__dirname, "..", "src", "quickboot.js");
 
 // Objects/arrays produced inside the VM context belong to a different realm,
@@ -32,6 +33,7 @@ function loadModules() {
     const sandbox = { console, window: {}, setTimeout: setTimeout };
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(OSBOOT_PATH, "utf8"), sandbox);
+    vm.runInContext(fs.readFileSync(STEPENGINE_PATH, "utf8"), sandbox);
     vm.runInContext(fs.readFileSync(QUICKBOOT_PATH, "utf8"), sandbox);
     return { OSBoot: sandbox.OSBoot, QuickBoot: sandbox.QuickBoot };
 }
@@ -349,6 +351,7 @@ function run() {
         };
         vm.createContext(sandbox);
         vm.runInContext(fs.readFileSync(OSBOOT_PATH, "utf8"), sandbox);
+        vm.runInContext(fs.readFileSync(STEPENGINE_PATH, "utf8"), sandbox);
         vm.runInContext(fs.readFileSync(QUICKBOOT_PATH, "utf8"), sandbox);
 
         // A real launch schedules the first step timer (the boot command).

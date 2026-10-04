@@ -42,6 +42,7 @@ const assert = require("assert");
 
 const ROOT = path.join(__dirname, "..");
 const OSBOOT_PATH = path.join(ROOT, "src", "osboot.js");
+const STEPENGINE_PATH = path.join(ROOT, "src", "step-engine.js");
 const QUICKBOOT_PATH = path.join(ROOT, "src", "quickboot.js");
 const CLASSIC_PATH = path.join(ROOT, "index.html");
 const LANDING_DATA_PATH = path.join(ROOT, "landing", "src", "data.ts");
@@ -50,6 +51,7 @@ function loadModules() {
     const sandbox = { console, window: {}, setTimeout: setTimeout };
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(OSBOOT_PATH, "utf8"), sandbox);
+    vm.runInContext(fs.readFileSync(STEPENGINE_PATH, "utf8"), sandbox);
     vm.runInContext(fs.readFileSync(QUICKBOOT_PATH, "utf8"), sandbox);
     return { OSBoot: sandbox.OSBoot, QuickBoot: sandbox.QuickBoot };
 }
