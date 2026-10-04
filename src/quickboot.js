@@ -70,12 +70,6 @@ var QuickBoot = (function () {
             });
     }
 
-    // Console output sniffer: iopage.js feeds every console character through
-    // window.__consoleOutputHook; we keep the tail so prompt-waiting steps can
-    // detect "login:" etc. instead of guessing timings.
-    var MAX_BUFFER = 4096;
-    var outputBuffer = "";
-
     // ------------------------------------------------------------------
     // Pure helpers (no DOM) — unit-testable in Node
     // ------------------------------------------------------------------
@@ -92,13 +86,6 @@ var QuickBoot = (function () {
     // it gets more time for the guest to reach the next prompt.
     function stepDelayMs(speed) {
         return (speed === "authentic") ? 1600 : 800;
-    }
-
-    // Console bytes for one scenario step: plain text + Enter, or ^D (4).
-    function stepBytes(step) {
-        if (step && step.ctrlD) return [4];
-        var text = (step && step.send) ? step.send : "";
-        return OSBoot.stringToBytes(text).concat([13]);
     }
 
     // True when the accumulated console output contains needle.
@@ -911,141 +898,6 @@ var QuickBoot = (function () {
 
     // --- Console output capture -----------------------------------------
 
-    function pushOutput(ch) {
-        outputBuffer += String.fromCharCode(ch & 0x7F);
-        if (outputBuffer.length > MAX_BUFFER) {
-            outputBuffer = outputBuffer.slice(outputBuffer.length - MAX_BUFFER);
-        }
-    }
-
-    function clearOutput() {
-        outputBuffer = "";
-    }
-
-    function outputContains(needle) {
-        return bufferContains(outputBuffer, needle);
-    }
-
-    // --- Typing / orchestration -----------------------------------------
-
-    function sendBytes(bytes) {
-        // In-page feature: use the internal bridge; the legacy window
-        // surface is ?bridge=1-gated for external tooling.
-        var bridge = window.__yapdpBridge;
-        if (bridge && bridge.dlReceiveQueue) {
-            bridge.dlReceiveQueue(0, bytes);
-        } else if (typeof window.dlReceiveQueue === "function") {
-            window.dlReceiveQueue(0, bytes);
-        }
-    }
-
-    // Wait budget for a prompt; after this the step is sent anyway so the
-    // sequence never stalls on a guest that does not print the expected text.
-    var WAIT_TIMEOUT_MS = 45000;
-    var WAIT_POLL_MS = 200;
-
-    // First step (boot) needs extra time for the @ prompt to appear.
-    function delayFor(index, base) {
-        return (index === 0) ? base * 2 : base;
-    }
-
-    function runSteps(steps, index, base, token) {
-        // A stale token means this sequence was aborted or superseded by a
-        // newer launch — stop silently (abortAutoload already hid the balloon).
-        if (token !== autoloadToken) return;
-        if (index >= steps.length) {
-            // All steps typed — the autoload is finished.
-            hideBalloon();
-            return;
-        }
-        var step = steps[index];
-        if (step.wait) {
-            // Pure delay step (no input): e.g. let a guest settle before
-            // the next prompt (BSD 2.9's getty flushes input received
-            // before it finished opening the console).
-            setTimeout(function () {
-                if (token !== autoloadToken) return; // aborted or superseded
-                runSteps(steps, index + 1, base, token);
-            }, step.wait);
-        } else if (step.waitFor) {
-            waitForPrompt(steps, index, base, step.waitFor, Date.now(), token);
-        } else {
-            setTimeout(function () {
-                if (token !== autoloadToken) return; // aborted or superseded
-                sendBytes(stepBytes(step));
-                runSteps(steps, index + 1, base, token);
-            }, delayFor(index, base));
-        }
-    }
-
-    function waitForPrompt(steps, index, base, needle, startedAt, token) {
-        if (token !== autoloadToken) return; // aborted or superseded
-        if (outputContains(needle) || Date.now() - startedAt > WAIT_TIMEOUT_MS) {
-            // Prompt seen (or timed out): optionally settle, then send the
-            // input and move on.
-            var settle = steps[index].wait || 0;
-            setTimeout(function () {
-                if (token !== autoloadToken) return; // aborted or superseded
-                sendBytes(stepBytes(steps[index]));
-                setTimeout(function () {
-                    runSteps(steps, index + 1, base, token);
-                }, base);
-            }, settle);
-            return;
-        }
-        setTimeout(function () {
-            waitForPrompt(steps, index, base, needle, startedAt, token);
-        }, WAIT_POLL_MS);
-    }
-
-    // Wipe the operator console buffers so every wizard boot starts "on a
-    // fresh page": the teletype paper and LP11 paper are cleared, and every
-    // VT52 screen (console + user terminals) is cleared.
-    function clearConsole() {
-        var g60 = (typeof window !== "undefined") ? window.g60printer : null;
-        if (g60 && typeof g60.clear === "function") g60.clear();
-        // Rewind the ASR paper tape so the boot banner punches onto a fresh
-        // tape, matching the "on a fresh page" teletype paper reset.
-        if (typeof window !== "undefined" && window.paperTape &&
-            typeof window.paperTape.clear === "function") {
-            window.paperTape.clear();
-        }
-        if (typeof window !== "undefined" && window.lp11G60Printer &&
-            typeof window.lp11G60Printer.clear === "function") {
-            window.lp11G60Printer.clear();
-        }
-        if (typeof window !== "undefined" && typeof window.vt52Get === "function") {
-            for (var u = 0; u <= 2; u++) {
-                var t = window.vt52Get(u);
-                if (t && typeof t.clearScreen === "function") t.clearScreen();
-            }
-        }
-    }
-
-    // Put the operator's console controls into the state a boot needs. The
-    // wizard types its steps straight into the MACHINE (the DL11 receive
-    // queue), but everything the machine answers is printed only on LINE: with
-    // the CCU left in OFF or LOCAL the paper stays blank and a perfectly booted
-    // guest reads as a hung machine (g60ConsoleWrite ignores output off line).
-    // A tape feeding under its own power is the other interference — in START,
-    // and in AUTO where the guest's own X-ON can start it, the reader would
-    // inject bytes into the middle of the boot. Returns the actions taken, so
-    // the contract is testable without a DOM (see tests/quickboot-console.test.js).
-    function consoleWorkingState(state, api) {
-        var done = [];
-        if (!state || !api) return done;
-        if (state.ttyMode !== "line" && typeof api.setTtyMode === "function") {
-            api.setTtyMode("line");
-            done.push("line");
-        }
-        if ((state.readerMode === "start" || state.readerMode === "auto") &&
-            typeof api.setReaderMode === "function") {
-            api.setReaderMode("stop");
-            done.push("reader-stop");
-        }
-        return done;
-    }
-
     // Type the boot sequence for a scenario. `force` skips the hardware
     // profile check — used when resuming a pending boot after a reload.
     function launch(device, force) {
@@ -1102,12 +954,12 @@ var QuickBoot = (function () {
 
         // Start "on a fresh page": clear teletype/LP11 paper and VT52 screens
         // before the reboot, so the boot banner lands on clean output.
-        clearConsole();
+        StepEngine.clearConsole();
 
         // ... and with a console able to SHOW that output at all: the teletype
         // on LINE, and no tape feeding bytes of its own while the steps are
         // typed. Both are the operator's controls, so the knob visibly turns.
-        consoleWorkingState(
+        StepEngine.consoleWorkingState(
             { ttyMode: window.ttyMode, readerMode: window.ttyReaderMode },
             {
                 setTtyMode: (typeof setTtyMode === "function") ? setTtyMode : null,
@@ -1118,7 +970,7 @@ var QuickBoot = (function () {
         if (typeof boot === "function") boot();
 
         // Forget any old console output so waitFor cannot match stale text.
-        clearOutput();
+        StepEngine.clearOutput();
 
         var base = stepDelayMs(cfg && cfg.teletypeSpeed);
         var steps = [{ send: scenario.boot }];
@@ -1129,7 +981,13 @@ var QuickBoot = (function () {
         // Own token for this run: a newer launch or an abort cancels it.
         var token = ++autoloadToken;
         showBalloon();
-        runSteps(steps, 0, base, token);
+        StepEngine.runSteps(steps, {
+            sendBytes: StepEngine.sendBytes,
+            outputContains: StepEngine.outputContains,
+            isCancelled: function () { return token !== autoloadToken; },
+            onDone: function () { hideBalloon(); },
+            stepDelayMs: base,
+        });
     }
 
     // --- Wiring: the magic-wand button lives in pdp11.html on the Panel page
@@ -1258,16 +1116,6 @@ var QuickBoot = (function () {
         // typing — the two byte streams then raced in the console.
     }
 
-    // Capture console output for prompt-waiting steps (called by iopage.js).
-    // In-page feature: install through the internal bridge; falls back to
-    // the legacy window.__consoleOutputHook surface when no bridge exists.
-    var bridge = window.__yapdpBridge;
-    if (bridge && bridge.setOutputHook) {
-        bridge.setOutputHook(pushOutput);
-    } else {
-        window.__consoleOutputHook = pushOutput;
-    }
-
     // Publish the autoload abort hook. imgerror.js is loaded BEFORE this module
     // (see pdp11.html) and calls it at runtime when an image fetch fails, so no
     // load-order coupling is needed.
@@ -1286,7 +1134,7 @@ var QuickBoot = (function () {
     return {
         consolePageFor: consolePageFor,
         stepDelayMs: stepDelayMs,
-        stepBytes: stepBytes,
+        stepBytes: StepEngine.stepBytes,
         deviceFromSearch: deviceFromSearch,
         bootKeyFromSearch: bootKeyFromSearch,
         scenarioAvailable: scenarioAvailable,

@@ -22,7 +22,8 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
-const SOURCE_PATH = path.join(__dirname, "..", "src", "quickboot.js");
+const SOURCE_PATH = path.join(__dirname, "..", "src", "step-engine.js");
+const QB_SOURCE_PATH = path.join(__dirname, "..", "src", "quickboot.js");
 
 // ------------------------------------------------------------------
 // Minimal brace-balancing extractor for a single top-level function.
@@ -162,7 +163,7 @@ function testConsoleWorkingState() {
 // is pinned too: launch() must run consoleWorkingState() with the live CCU and
 // reader state before it reboots and types.
 function testLaunchWiring() {
-  const src = loadSource();
+  const src = fs.readFileSync(QB_SOURCE_PATH, "utf8");
   const launch = extractBlock(src, "function launch(device, force)", "");
   assert.ok(/\bconsoleWorkingState\s*\(/.test(launch),
     "launch() must run consoleWorkingState() before it types the boot:\n" + launch);

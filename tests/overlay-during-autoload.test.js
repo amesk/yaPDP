@@ -99,6 +99,7 @@ function loadQuickBoot(search, pendingKeyValue) {
     sandbox.window.location = sandbox.location;
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(path.join(ROOT, "src", "osboot.js"), "utf8"), sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, "src", "step-engine.js"), "utf8"), sandbox);
     vm.runInContext(qbSrc, sandbox);
     return sandbox;
 }

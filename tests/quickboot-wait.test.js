@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 /**
- * Quick-boot autoload orchestration: the prompt wait and its timeout fallback.
+ * Step-engine autoload orchestration: the prompt wait and its timeout fallback.
  *
- * The wizard types a scenario step and can wait for the guest to print a prompt
- * first (see runSteps/waitForPrompt in src/quickboot.js). The budget matters:
- * a guest that never prints the expected text must not stall the sequence
- * forever, and the step must still be sent — with an honest count of how many
- * times it was sent, because that is what the ?boot= deep link promises.
+ * The step engine types a scenario step and can wait for the guest to print a
+ * prompt first (see StepEngine.waitForPrompt in src/step-engine.js). The budget
+ * matters: a guest that never prints the expected text must not stall the
+ * sequence forever, and the step must still be sent.
  *
  * What is pinned here:
  *
@@ -14,7 +13,7 @@
  *      and the chain moves on. The wait polls (WAIT_POLL_MS), it does not spin,
  *      and it does not give up early;
  *   2. the prompt appears -> the step goes out at once, with no polling at all;
- *   3. an abort (imgerror bumps the token mid-wait) -> nothing is sent, and no
+ *   3. an abort (isCancelled returns true mid-wait) -> nothing is sent, and no
  *      timer keeps the sequence alive;
  *   4. a step carrying both wait and waitFor -> the send is delayed by `wait`
  *      once the prompt is seen.
@@ -35,14 +34,14 @@ const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
-const SOURCE_PATH = path.join(__dirname, "..", "src", "quickboot.js");
+const SOURCE_PATH = path.join(__dirname, "..", "src", "step-engine.js");
 const SOURCE = fs.readFileSync(SOURCE_PATH, "utf8");
 
 // The budget the production code uses: read from the source rather than
 // restated, so a change there is a test failure here, not a silent drift.
 function sourceNumber(name) {
     const m = new RegExp("var " + name + "\\s*=\\s*(\\d+)").exec(SOURCE);
-    assert.ok(m, name + " not found in src/quickboot.js");
+    assert.ok(m, name + " not found in src/step-engine.js");
     return parseInt(m[1], 10);
 }
 
@@ -106,11 +105,9 @@ function loadWaitForPrompt(deps) {
         setTimeout: clock.setTimeout,
         WAIT_TIMEOUT_MS: deps.timeoutMs,
         WAIT_POLL_MS: deps.pollMs,
-        autoloadToken: 1,
         outputContains: deps.outputContains,
         sendBytes: deps.sendBytes,
         stepBytes: deps.stepBytes,
-        runSteps: deps.runSteps
     };
     vm.createContext(sandbox);
     const fn = vm.runInContext(
@@ -126,6 +123,7 @@ function harness(options) {
     const timeoutMs = sourceNumber("WAIT_TIMEOUT_MS");
     const pollMs = sourceNumber("WAIT_POLL_MS");
     let promptSeen = !!options.promptSeen;
+    let cancelled = false;
     const loaded = loadWaitForPrompt({
         clock: clock,
         timeoutMs: timeoutMs,
@@ -133,7 +131,6 @@ function harness(options) {
         outputContains: function () { return promptSeen; },
         sendBytes: function (bytes) { sent.push(bytes); },
         stepBytes: function (step) { return [step.send]; },
-        runSteps: function (steps, index, base, token) { advanced.push(index); }
     });
     return {
         clock: clock,
@@ -143,16 +140,28 @@ function harness(options) {
         pollMs: pollMs,
         prompt: function () { promptSeen = true; },
         start: function (steps, index, base) {
-            loaded.waitFor(steps, index, base, steps[index].waitFor, 0, 1);
+            var step = steps[index];
+            var ctx = {
+                isCancelled: function () { return cancelled; },
+                outputContains: function () { return promptSeen; },
+                sendBytes: function (bytes) { sent.push(bytes); },
+                stepDelayMs: base,
+                waitTimeoutMs: timeoutMs,
+                waitPollMs: pollMs,
+            };
+            loaded.waitFor(step, ctx,
+                function onDone() { advanced.push(index + 1); },
+                function onCancel() { /* cancelled */ }
+            );
         },
-        abort: function () { loaded.sandbox.autoloadToken++; },
+        abort: function () { cancelled = true; },
         wait: loaded.waitFor
     };
 }
 
 function run() {
     assert.ok(SOURCE.indexOf("function waitForPrompt") !== -1,
-        "src/quickboot.js has no waitForPrompt — the extractor marker is stale");
+        "src/step-engine.js has no waitForPrompt — the extractor marker is stale");
 
     // --- 1. the prompt never appears: send after the budget, once ---------
     {

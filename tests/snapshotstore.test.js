@@ -440,6 +440,27 @@ async function run() {
     console.log("PASS test 11: snapshots without config field restore as before");
   }
 
+  // ---- Test 12: save() with steps stores steps in the snapshot ----------
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const testSteps = [{ send: "root" }, { waitFor: "login:" }];
+    const snap = await SS.save("with steps", testSteps, "test steps");
+    assert.deepStrictEqual(snap.steps, testSteps, "steps stored in snapshot");
+    assert.strictEqual(snap.stepsMessage, "test steps", "stepsMessage stored in snapshot");
+    console.log("PASS test 12: save() with steps stores steps in snapshot");
+  }
+
+  // ---- Test 13: save() without steps leaves steps as null ---------------
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const snap = await SS.save("no steps");
+    assert.strictEqual(snap.steps, null, "steps is null when not provided");
+    assert.strictEqual(snap.stepsMessage, null, "stepsMessage is null when not provided");
+    console.log("PASS test 13: save() without steps leaves steps as null");
+  }
+
   console.log("\nAll SnapshotStore tests passed.");
 }
 
