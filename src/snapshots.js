@@ -91,7 +91,9 @@ var SnapshotStore = (() => {
                             createdAt: v.createdAt,
                             schemaVersion: v.schemaVersion,
                             cpuBytes: v.cpuBytes || 0,
-                            memBytes: v.memBytes || 0
+                            memBytes: v.memBytes || 0,
+                            hasSteps: v.steps && Array.isArray(v.steps) && v.steps.length > 0,
+                            stepsMessage: v.stepsMessage || null,
                         };
                     });
                     items.sort(function (a, b) { return a.createdAt - b.createdAt; });
@@ -144,6 +146,26 @@ var SnapshotStore = (() => {
         if (typeof CompressionStream !== "undefined") {
             const cs = new CompressionStream("gzip");
             const writer = cs.writable.getWriter();
+            writer.write(bytes);
+            writer.close();
+            return new Response(cs.readable).arrayBuffer().then(function (buf) {
+                return { format: "gzip", data: buf };
+            });
+        }
+        return Promise.resolve({ format: "raw", data: bytes.buffer });
+    }
+
+    // Compress raw memory bytes for IndexedDB storage (same logic as captureMemory
+    // but takes bytes instead of reading from CPU.memory). Used by importState().
+    function compressBytes(bytes) {
+        if (typeof fzstd !== "undefined" && typeof fzstd.compress === "function") {
+            try {
+                return Promise.resolve({ format: "zstd", data: fzstd.compress(bytes) });
+            } catch (err) { /* fall through to gzip */ }
+        }
+        if (typeof CompressionStream !== "undefined") {
+            var cs = new CompressionStream("gzip");
+            var writer = cs.writable.getWriter();
             writer.write(bytes);
             writer.close();
             return new Response(cs.readable).arrayBuffer().then(function (buf) {
@@ -292,14 +314,30 @@ var SnapshotStore = (() => {
     }
 
     function restoreMemory(mem) {
-        if (!mem) return Promise.resolve();
-        let p;
+        return decompressMemoryToWords(mem).then(function (words) {
+            if (CPU.memory.length === words.length) {
+                CPU.memory.set(words);
+            } else {
+                CPU.memory = words;
+            }
+        });
+    }
+
+    // Decompress stored memory {format, data} back to raw Uint16Array words.
+    // Shared by restoreMemory() and exportSnapshot().
+    function decompressMemoryToWords(mem) {
+        if (!mem) return Promise.resolve(new Uint16Array(0));
+        var p;
         if (mem.format === "zstd" && typeof fzstd !== "undefined" &&
             typeof fzstd.decompress === "function") {
-            p = Promise.resolve(Uint8Array.from(fzstd.decompress(new Uint8Array(mem.data))).buffer);
+            try {
+                p = Promise.resolve(Uint8Array.from(fzstd.decompress(new Uint8Array(mem.data))).buffer);
+            } catch (e) {
+                p = Promise.resolve(mem.data);
+            }
         } else if (mem.format === "gzip" && typeof DecompressionStream !== "undefined") {
-            const ds = new DecompressionStream("gzip");
-            const writer = ds.writable.getWriter();
+            var ds = new DecompressionStream("gzip");
+            var writer = ds.writable.getWriter();
             writer.write(new Uint8Array(mem.data));
             writer.close();
             p = new Response(ds.readable).arrayBuffer();
@@ -307,12 +345,7 @@ var SnapshotStore = (() => {
             p = Promise.resolve(mem.data);
         }
         return p.then(function (buf) {
-            const words = StateFormat.bytesToMemory(new Uint8Array(buf));
-            if (CPU.memory.length === words.length) {
-                CPU.memory.set(words);
-            } else {
-                CPU.memory = words;
-            }
+            return StateFormat.bytesToMemory(new Uint8Array(buf));
         });
     }
 
@@ -872,6 +905,141 @@ var SnapshotStore = (() => {
         return Promise.resolve(captureImageFingerprints());
     }
 
+    // ------------------------------------------------------------------
+    // Export a stored snapshot (from IndexedDB) as .state container bytes.
+    // Returns Promise<Uint8Array|null> — null when the id does not exist.
+    // ------------------------------------------------------------------
+    function exportSnapshot(id) {
+        return dbGet(id).then(function (snap) {
+            if (!snap) return null;
+            return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
+                var manifest = {
+                    schemaVersion: SCHEMA_VERSION,
+                    base: null,
+                    device: snap.name,
+                    label: snap.name,
+                    createdAt: new Date(snap.createdAt).toISOString(),
+                    profile: snap.config,
+                    imageFingerprints: snap.imageFingerprints,
+                    cpu: snap.cpu,
+                    devices: snap.devices,
+                    punchtape: snap.punchtape,
+                    readertape: snap.readertape,
+                    vt52: snap.vt52,
+                    teletypepaper: snap.teletypepaper,
+                    mounted: snap.mounted,
+                    page: snap.page,
+                    steps: snap.steps,
+                    stepsMessage: snap.stepsMessage,
+                    overlay: snap.overlay,
+                };
+                var packed = StateFormat.pack(manifest, memoryWords);
+                return gzipCompress(packed).then(function (bytes) {
+                    return bytes;
+                }, function () {
+                    return packed;   // uncompressed container fallback
+                });
+            });
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // Import a .state container bytes into the snapshot store.
+    // Returns Promise<{ok:true, id, name}> or {ok:false, reason, detail?}.
+    // ------------------------------------------------------------------
+    function importState(bytes) {
+        if (!bytes || bytes.byteLength > MAX_STATE_BYTES) {
+            return Promise.resolve({ ok: false, reason: "too-large" });
+        }
+        var input = (bytes instanceof Uint8Array) ? bytes : new Uint8Array(bytes);
+        return unpackContainer(input).then(function (parsed) {
+            var manifest = parsed.manifest;
+            if (!manifest || typeof manifest !== "object") {
+                return { ok: false, reason: "invalid-manifest" };
+            }
+            if (!manifest.schemaVersion || manifest.schemaVersion > SCHEMA_VERSION) {
+                return { ok: false, reason: "unsupported-version" };
+            }
+            // Compress memory for IndexedDB storage.
+            var memBytes = StateFormat.memoryToBytes(parsed.memoryWords || new Uint16Array(0));
+            return compressBytes(memBytes).then(function (mem) {
+                var baseName = manifest.label || manifest.device || "Imported state";
+                var snap = {
+                    id: "snap-" + Date.now(),
+                    name: baseName,
+                    createdAt: Date.now(),
+                    schemaVersion: SCHEMA_VERSION,
+                    imageFingerprints: manifest.imageFingerprints || null,
+                    cpu: manifest.cpu || {},
+                    memory: mem,
+                    mounted: manifest.mounted || [],
+                    config: manifest.profile || null,
+                    page: manifest.page || null,
+                    devices: manifest.devices || null,
+                    punchtape: manifest.punchtape || null,
+                    readertape: manifest.readertape || null,
+                    vt52: manifest.vt52 || null,
+                    teletypepaper: manifest.teletypepaper || null,
+                    overlay: manifest.overlay || null,
+                    steps: manifest.steps || null,
+                    stepsMessage: manifest.stepsMessage || null,
+                    cpuBytes: 0,
+                    memBytes: mem.data.byteLength || 0,
+                };
+                // If a snapshot with the same name already exists, append a
+                // number so repeated imports of the same file stay distinct:
+                // "state", "state (1)", "state (2)", ...
+                return dbGetAll().then(function (items) {
+                    var used = {};
+                    items.forEach(function (it) { used[it.name] = true; });
+                    var name = baseName;
+                    var n = 1;
+                    while (used[name]) {
+                        name = baseName + " (" + n + ")";
+                        n++;
+                    }
+                    snap.name = name;
+                    return dbPut(snap.id, snap).then(function () {
+                        return { ok: true, id: snap.id, name: snap.name };
+                    });
+                });
+            });
+        }, function (err) {
+            return { ok: false, reason: "not-a-state",
+                     detail: String(err && err.message ? err.message : err) };
+        });
+    }
+
+    // Decompress (zstd/gzip) and unpack a .state container.
+    // Returns Promise<{manifest, memoryWords}>.
+    function unpackContainer(bytes) {
+        // Try zstd first.
+        if (typeof fzstd !== "undefined" && typeof fzstd.decompress === "function") {
+            try {
+                var viaZstd = Uint8Array.from(fzstd.decompress(bytes));
+                if (StateFormat.isContainer(viaZstd)) {
+                    var p = StateFormat.unpack(viaZstd);
+                    if (p) return Promise.resolve(p);
+                }
+            } catch (e) { /* not zstd */ }
+        }
+        // Try gzip.
+        if (typeof DecompressionStream !== "undefined") {
+            return gunzipBytes(bytes).then(function (gun) {
+                if (!StateFormat.isContainer(gun)) throw new Error("not-a-state");
+                var p = StateFormat.unpack(gun);
+                if (!p) throw new Error("not-a-state");
+                return p;
+            });
+        }
+        // Try as uncompressed container.
+        if (StateFormat.isContainer(bytes)) {
+            var p2 = StateFormat.unpack(bytes);
+            if (p2) return Promise.resolve(p2);
+        }
+        return Promise.reject(new Error("not-a-state"));
+    }
+
     function load(id) {
         try {
             localStorage.setItem(PENDING_KEY, id);
@@ -1044,6 +1212,7 @@ var SnapshotStore = (() => {
         const select = document.getElementById("snap-select");
         if (!select) return;
         const loadBtn = document.getElementById("snap-load");
+        const exportBtn = document.getElementById("snap-export");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
 
@@ -1061,13 +1230,17 @@ var SnapshotStore = (() => {
                     // Keep the bare name for the rename dialog prefill —
                     // the visible label also carries the capture size.
                     opt.dataset.name = it.name;
-                    const d = new Date(it.createdAt);
-                    opt.textContent = it.name + "  (" + fmtSize(it.memBytes) + ")";
+                    var label = it.name + "  (" + fmtSize(it.memBytes) + ")";
+                    if (it.hasSteps) {
+                        label += "  \u21E8 " + (it.stepsMessage || it.steps.length + " steps");
+                    }
+                    opt.textContent = label;
                     select.appendChild(opt);
                 });
             }
             select.disabled = items.length === 0;
             if (loadBtn) loadBtn.disabled = items.length === 0;
+            if (exportBtn) exportBtn.disabled = items.length === 0;
             if (renameBtn) renameBtn.disabled = items.length === 0;
             if (deleteBtn) deleteBtn.disabled = items.length === 0;
 
@@ -1317,10 +1490,13 @@ var SnapshotStore = (() => {
                 '</select>' +
                 '<div class="modal-actions">' +
                     '<button type="button" id="snap-load" class="modal-close" disabled>Load</button>' +
+                    '<button type="button" id="snap-export" class="modal-close" disabled>Export</button>' +
                     '<button type="button" id="snap-rename" class="modal-close" disabled>Rename</button>' +
                     '<button type="button" id="snap-delete" class="modal-close" disabled>Delete</button>' +
                     '<span id="snap-count" class="snap-count"></span>' +
                 '</div>' +
+                '<input type="file" id="snap-import-input" accept=".state.zst,.state" style="display:none">' +
+                '<button type="button" class="modal-close" id="snap-import">Import state</button>' +
                 '<button type="button" class="modal-close" data-state-action="close">Close</button>' +
             '</div>';
         __snapManager.addEventListener("click", function (e) {
@@ -1365,9 +1541,12 @@ var SnapshotStore = (() => {
 
         const saveBtn = document.getElementById("snap-save");
         const loadBtn = document.getElementById("snap-load");
+        const exportBtn = document.getElementById("snap-export");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
         const select = document.getElementById("snap-select");
+        const importBtn = document.getElementById("snap-import");
+        const importInput = document.getElementById("snap-import-input");
 
         if (saveBtn) {
             saveBtn.addEventListener("click", function () {
@@ -1390,6 +1569,26 @@ var SnapshotStore = (() => {
                         "(console type, printer, terminals, VT11), it is applied automatically.",
                     confirmLabel: "Restore",
                     onConfirm: function () { load(select.value); }
+                });
+            });
+        }
+        if (exportBtn) {
+            exportBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                exportBtn.disabled = true;
+                exportSnapshot(select.value).then(function (bytes) {
+                    exportBtn.disabled = false;
+                    if (!bytes) return;
+                    var opt = select.options[select.selectedIndex];
+                    var name = sanitizeFilename(opt && opt.dataset ? (opt.dataset.name || "snapshot") : "snapshot")
+                        + ".state.zst";
+                    var blob = new Blob([bytes], { type: "application/octet-stream" });
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement("a");
+                    a.href = url;
+                    a.download = name;
+                    a.click();
+                    URL.revokeObjectURL(url);
                 });
             });
         }
@@ -1422,6 +1621,55 @@ var SnapshotStore = (() => {
                 });
             });
         }
+        if (importBtn && importInput) {
+            importBtn.addEventListener("click", function () {
+                importInput.click();
+            });
+            importInput.addEventListener("change", function () {
+                var file = importInput.files[0];
+                if (!file) return;
+                importInput.value = "";   // reset so the same file can be re-imported
+                file.arrayBuffer().then(function (buf) {
+                    return importState(new Uint8Array(buf));
+                }).then(function (result) {
+                    if (result.ok) {
+                        refreshUI();
+                    } else {
+                        showImportError(result);
+                    }
+                });
+            });
+        }
+    }
+
+    // ---- Helpers for export/import UI ------------------------------------
+    function sanitizeFilename(s) {
+        return String(s || "snapshot")
+            .replace(/[<>:"\/\\|?*]/g, "")
+            .replace(/\s+/g, "-")
+            .slice(0, 100)
+            .toLowerCase();
+    }
+
+    function showImportError(result) {
+        var msgs = {
+            "not-a-state": "The file is not a valid .state file.",
+            "too-large": "The file is too large (max 16 MB).",
+            "unsupported-version": "Unsupported state format version.",
+            "invalid-manifest": "The state manifest is invalid or missing.",
+        };
+        var msg = msgs[result.reason] || "An unknown error occurred (" + (result.reason || "unknown") + ").";
+        if (typeof document === "undefined") return;
+        if (!__snapModal) { showConfirmModal({}); __snapModalOnConfirm = null; }
+        __snapPrevFocus = document.activeElement;
+        __snapModal.innerHTML =
+            '<div class="modal-box">' +
+                '<span class="modal-title">Unable to import state</span>' +
+                '<p class="modal-intro">' + msg + '</p>' +
+                '<button type="button" class="modal-close" data-snap-action="cancel">Got it</button>' +
+            '</div>';
+        __snapModalOnConfirm = null;
+        __snapModal.classList.add("visible");
     }
 
     return {
@@ -1439,6 +1687,10 @@ var SnapshotStore = (() => {
         // Take the live machine's state as container bytes (the Machine-state
         // Export button and tools/export-state-browser.js both use this).
         exportBytes: exportBytes,
+        // Export a stored snapshot as .state container bytes.
+        exportSnapshot: exportSnapshot,
+        // Import .state container bytes into the snapshot store.
+        importState: importState,
         // What the last loaded state asked for (device, profile). Read by the
         // deep-link path to show the "preparing" toast for the right image.
         lastStateManifest: lastStateManifest,
