@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   format as QuickBoot scenarios (`send`, `ctrlD`, `wait`, `waitFor`).
   (`src/step-engine.js`, `src/snapshots.js`, `src/quickboot.js`)
 
+- **Snapshot export/import:** saved snapshots can be exported as `.state.zst`
+  files and re-imported later, preserving the full machine state including steps
+  and stepsMessage. The snapshot list shows whether a snapshot carries startup
+  actions. (`src/snapshots.js`; pinned by `tests/e2e-import-export.js`)
+
 ### Changed
 
 - **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
