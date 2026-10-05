@@ -432,6 +432,12 @@ var QuickBoot = (function () {
         desc.id = "quick-boot-preparing-desc";
         desc.style.display = "none";
 
+        // Screenshot preview — shown when the manifest carries a screenshot.
+        var screenshotImg = document.createElement("img");
+        screenshotImg.className = "quickboot-balloon-screenshot";
+        screenshotImg.id = "quick-boot-preparing-screenshot";
+        screenshotImg.style.display = "none";
+
         // OK button — only shown when the state has steps to execute.
         // The operator must acknowledge before the autopilot types commands.
         var okBtn = document.createElement("button");
@@ -450,6 +456,7 @@ var QuickBoot = (function () {
 
         prepToast.appendChild(topRow);
         prepToast.appendChild(desc);
+        prepToast.appendChild(screenshotImg);
         prepToast.appendChild(okBtn);
         document.body.appendChild(prepToast);
         return prepToast;
@@ -812,6 +819,13 @@ var QuickBoot = (function () {
                 // of which are idle from the machine's perspective.
                 var spinEl = document.querySelector(".quickboot-balloon-spin");
                 if (spinEl) spinEl.style.display = "none";
+                // Show the screenshot preview if the manifest carries one.
+                var screenshotUrl = (manifest && manifest.screenshot) || null;
+                var screenshotImg = document.getElementById("quick-boot-preparing-screenshot");
+                if (screenshotUrl && screenshotImg) {
+                    screenshotImg.src = screenshotUrl;
+                    screenshotImg.style.display = "block";
+                }
                 var urls = stateImageUrls(manifest);
                 if (!urls.length) {
                     return prepPromise;

@@ -1083,6 +1083,50 @@ textarea {
     color: #e0d8c8;
 }
 
+/* Screenshot upload area inside the Share-snapshot dialog. */
+.share-screenshot-area {
+    border: 1px dashed #5a554a;
+    border-radius: 8px;
+    padding: 12px;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: rgba(22, 18, 14, 0.4);
+    color: #8a7a5a;
+    font-size: 13px;
+    text-align: center;
+}
+
+.share-screenshot-area:hover {
+    border-color: #8a7a5a;
+    background: rgba(22, 18, 14, 0.6);
+}
+
+.share-screenshot-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 4px;
+    margin-top: 4px;
+}
+
+.share-screenshot-remove {
+    margin-top: 4px;
+    padding: 2px 12px;
+    border: 1px solid #8a5a3a;
+    border-radius: 4px;
+    background: transparent;
+    color: #c8a860;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.share-screenshot-remove:hover {
+    background: rgba(200, 168, 96, 0.2);
+}
+
 /* Context menu for the screenshot button: a small floating menu with
    save / clipboard / share options. Shown on right-click. */
 .screenshot-context-menu {
@@ -1270,6 +1314,16 @@ textarea {
 .quickboot-balloon-ok:disabled {
     opacity: 0.5;
     cursor: default;
+}
+
+/* Screenshot preview inside the preparing balloon — shown when the
+   manifest carries a screenshot of the machine state. */
+.quickboot-balloon-screenshot {
+    display: none;
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 6px;
+    margin: 4px auto 0;
 }
 
 /* Shared "work in progress" spinner. Same look and timing as the startup
