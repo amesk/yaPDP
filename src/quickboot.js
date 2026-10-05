@@ -298,10 +298,11 @@ var QuickBoot = (function () {
     var gateOn = false;
 
     function gateEvent(e) {
-        // The toast is the ONLY way out of the autoload: let clicks on it
-        // (and therefore on its button) through.
+        // The toasts are the ONLY way out of the autoload: let clicks on
+        // either balloon (autoload or preparing) through.
         if (e.target && e.target.closest &&
-            e.target.closest("#quick-boot-balloon")) return;
+            (e.target.closest("#quick-boot-balloon") ||
+             e.target.closest("#quick-boot-preparing"))) return;
         // F11 toggles fullscreen (fullscreen.js) — an app control, not
         // console input; blocking it would strand the operator in a mode
         // they cannot leave while the boot runs.
@@ -407,6 +408,10 @@ var QuickBoot = (function () {
         prepToast.setAttribute("role", "status");
         prepToast.setAttribute("aria-live", "polite");
 
+        // Top row: spinner + label, always on the same line.
+        var topRow = document.createElement("div");
+        topRow.className = "quickboot-balloon-row";
+
         var spin = document.createElement("span");
         spin.className = "yapdp-spin quickboot-balloon-spin";
         spin.setAttribute("aria-hidden", "true");
@@ -415,6 +420,9 @@ var QuickBoot = (function () {
         text.className = "quickboot-balloon-text";
         text.id = "quick-boot-preparing-text";
         text.textContent = "Restoring the machine state\u2026";
+
+        topRow.appendChild(spin);
+        topRow.appendChild(text);
 
         var desc = document.createElement("span");
         desc.className = "quickboot-balloon-desc";
@@ -432,10 +440,12 @@ var QuickBoot = (function () {
             okBtn.disabled = true;
             okBtn.textContent = "Running\u2026";
             if (_stepsOkResolve) _stepsOkResolve();
+            // No actual steps to run — close the balloon now.
+            // When there ARE steps, the step engine's onDone hides it.
+            if (!_hasSteps) hidePreparing();
         });
 
-        prepToast.appendChild(spin);
-        prepToast.appendChild(text);
+        prepToast.appendChild(topRow);
         prepToast.appendChild(desc);
         prepToast.appendChild(okBtn);
         document.body.appendChild(prepToast);
@@ -737,14 +747,14 @@ var QuickBoot = (function () {
             showStateFailure({ url: url, reason: "not-a-state" });
             return;
         }
-        // The toast is raised from INSIDE the load, once the manifest is read:
-        // which image the guest will ask for is only known after unpacking, so
-        // checking before the fetch could not know what to wait for (measured
-        // 2026-10-02 — checking first meant the toast never came up).
-        //
-        // The gate goes up with it and comes down in a finally: a failed load
-        // must not leave the machine deaf, which is the trap this gate was
-        // built to avoid in the first place.
+        // Raise the toast BEFORE the fetch so the browser has a frame to
+        // render it before the state is applied. The manifest is not yet
+        // known, so the generic label is used — onRestored will update it
+        // with steps info once the container is unpacked. The gate goes up
+        // with the toast and comes down in a finally: a failed load must not
+        // leave the machine deaf, which is the trap this gate was built to
+        // avoid in the first place.
+        showPreparing("Restoring the machine state\u2026", null, false);
         SnapshotStore.loadFromUrl(url, {
             // Called after the container is unpacked and the machine restored,
             // before the guest is allowed to run on: the visitor is told the
@@ -777,7 +787,16 @@ var QuickBoot = (function () {
                 // should always see that the machine is being restored.
                 // When hasSteps is true, showPreparing returns a Promise that
                 // resolves only after the operator clicks OK.
-                var prepPromise = showPreparing("Restoring the machine state\u2026", stepsMessage, hasSteps);
+                // When there's a description (stepsMessage) but no steps, the
+                // OK button is still shown so the operator can read the
+                // description before dismissing the toast.
+                var showOk = hasSteps || !!stepsMessage;
+                var prepPromise = showPreparing("Restoring the machine state\u2026", stepsMessage, showOk);
+                // The state is restored — stop the throbber. What remains is
+                // waiting for the operator (OK button) or loading images, both
+                // of which are idle from the machine's perspective.
+                var spinEl = document.querySelector(".quickboot-balloon-spin");
+                if (spinEl) spinEl.style.display = "none";
                 var urls = stateImageUrls(manifest);
                 if (!urls.length) {
                     return prepPromise;

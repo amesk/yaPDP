@@ -70,6 +70,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pinned by `tests/overlay-during-autoload.test.js` and
   `tests/e2e-firstrun-deeplink.js`)
 
+- **The "Restoring the machine state…" toast now appears before the snapshot is
+  fetched**, so the browser renders it even when no steps or images follow. The
+  toast was raised inside the `onRestored` callback — after the state was already
+  applied — and hidden in the same synchronous chain when there was nothing left
+  to wait for, leaving no frame for the browser to draw it.
+  (`src/quickboot.js`)
+
+- **The snapshot description (stepsMessage) is now shown in the preparing
+  balloon**, with an OK button to dismiss it. Previously the description was set
+  on the hidden element but the toast was closed before the browser could render
+  the update; now the OK button keeps the balloon open until the operator reads
+  the text and clicks. (`src/quickboot.js`)
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

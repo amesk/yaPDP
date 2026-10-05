@@ -1157,6 +1157,21 @@ textarea {
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7);
 }
 
+/* Preparing toast stacks its children vertically: top row (spinner + label),
+   then description, then OK button. The autoload toast (#quick-boot-balloon)
+   keeps the original row layout via flex-wrap. */
+#quick-boot-preparing.quickboot-balloon {
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Top row inside the preparing toast: spinner + label on the same line. */
+#quick-boot-preparing .quickboot-balloon-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .quickboot-balloon.visible {
     display: flex;
 }
@@ -1167,6 +1182,7 @@ textarea {
 .quickboot-balloon-desc {
     display: block;
     width: 100%;
+    flex-basis: 100%;
     max-width: 420px;
     margin: 4px auto 0;
     font-size: 15px;
@@ -3966,6 +3982,14 @@ button.action-more-hidden {
     .quickboot-balloon {
         padding: 10px 14px;
         font-size: 15px;
+        gap: 8px;
+    }
+
+    #quick-boot-preparing.quickboot-balloon {
+        gap: 6px;
+    }
+
+    #quick-boot-preparing .quickboot-balloon-row {
         gap: 8px;
     }
 
