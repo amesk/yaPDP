@@ -408,6 +408,24 @@
         <path class="mute-slash" d="M14.5 9.5 L18.5 14.5 M18.5 9.5 L14.5 14.5" />
       </svg>
     </button>
+    <!-- Screenshot button: round camera-icon button fixed to the bottom-left
+         corner, next to the mute button. Left-click saves a PNG screenshot of
+         the emulator view; right-click opens a context menu (save / clipboard /
+         share). Wired in src/screenshot.js. -->
+    <button type="button" id="screenshot-btn" class="screenshot-btn" title="Take screenshot"
+      aria-label="Take screenshot">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <!-- camera body (outline) -->
+        <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" fill="none" />
+        <!-- lens outer ring -->
+        <circle cx="12" cy="12" r="5" stroke="currentColor" fill="none" />
+        <!-- lens inner glass -->
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+        <!-- viewfinder / flash on top-right corner -->
+        <rect x="15" y="3" width="5" height="4" rx="1" stroke="currentColor" fill="none" />
+      </svg>
+    </button>
     <!-- Floating REBOOT toggle — round button in the top-left corner, just
          right of the navigation sidebar (mirrors the sound-mute button in the
          bottom-left corner). Wired up by src/pdp11-panel.js via
@@ -2182,6 +2200,8 @@ Hello world
   <script src='src/action-overflow.js'></script>
   <script src='src/pdp11-app.js'></script>
   <script src='src/snapshots.js'></script>
+  <script src='src/html2canvas.min.js'></script>
+  <script src='src/screenshot.js'></script>
 </body>
 
 </html>

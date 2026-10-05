@@ -299,10 +299,13 @@ var QuickBoot = (function () {
 
     function gateEvent(e) {
         // The toasts are the ONLY way out of the autoload: let clicks on
-        // either balloon (autoload or preparing) through.
+        // either balloon (autoload or preparing) through.  The screenshot
+        // button is also exempt — it is a permanent UI control, not console
+        // input, and its right-click context menu must work during a boot.
         if (e.target && e.target.closest &&
             (e.target.closest("#quick-boot-balloon") ||
-             e.target.closest("#quick-boot-preparing"))) return;
+             e.target.closest("#quick-boot-preparing") ||
+             e.target.closest("#screenshot-btn"))) return;
         // F11 toggles fullscreen (fullscreen.js) — an app control, not
         // console input; blocking it would strand the operator in a mode
         // they cannot leave while the boot runs.
