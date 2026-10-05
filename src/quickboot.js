@@ -465,11 +465,14 @@ var QuickBoot = (function () {
     // changes while it is up.
     // `stepsMessage` is an optional human-readable description shown in the
     // balloon when a shareable state is being restored.
-    // Show the preparing toast. When `hasSteps` is true, an OK button is
-    // shown and the returned Promise resolves only when the operator clicks it
-    // (or immediately when hasSteps is false). The caller should await this
-    // Promise before proceeding with step execution.
-    function showPreparing(label, stepsMessage, hasSteps) {
+    // `buttonLabel` is an optional custom label for the OK button. When set,
+    // the button is shown regardless of `hasSteps`; when absent, the button
+    // is only shown when `hasSteps` is true (with a default "OK" label).
+    // Show the preparing toast. When the button is visible, the returned
+    // Promise resolves only when the operator clicks it (or immediately when
+    // the button is hidden). The caller should await this Promise before
+    // proceeding with step execution.
+    function showPreparing(label, stepsMessage, hasSteps, buttonLabel) {
         if (typeof document === "undefined") return Promise.resolve();
         var el = ensurePrepToast();
         var text = el.querySelector("#quick-boot-preparing-text") || el.lastChild;
@@ -479,15 +482,16 @@ var QuickBoot = (function () {
             desc.textContent = stepsMessage || "";
             desc.style.display = stepsMessage ? "block" : "none";
         }
+        var showOk = hasSteps || !!buttonLabel;
         var okBtn = el.querySelector("#quick-boot-preparing-ok");
         if (okBtn) {
             okBtn.disabled = false;
-            okBtn.textContent = "OK";
-            okBtn.style.display = hasSteps ? "inline-block" : "none";
+            okBtn.textContent = buttonLabel || "OK";
+            okBtn.style.display = showOk ? "inline-block" : "none";
         }
         el.classList.add("visible");
         setInputGate(true);
-        if (hasSteps) {
+        if (showOk) {
             return new Promise(function (resolve) {
                 _stepsOkResolve = resolve;
             });
@@ -754,7 +758,7 @@ var QuickBoot = (function () {
         // with the toast and comes down in a finally: a failed load must not
         // leave the machine deaf, which is the trap this gate was built to
         // avoid in the first place.
-        showPreparing("Restoring the machine state\u2026", null, false);
+        showPreparing("Restoring the machine state\u2026", null, false, null);
         SnapshotStore.loadFromUrl(url, {
             // Called after the container is unpacked and the machine restored,
             // before the guest is allowed to run on: the visitor is told the
@@ -782,16 +786,24 @@ var QuickBoot = (function () {
                     } catch (e) { /* ignore */ }
                 }
                 _hasSteps = hasSteps;
+                // Read the optional custom button label from the manifest.
+                // When set, the OK button is shown with that label regardless
+                // of steps; when absent, the button is only shown when there
+                // are steps to execute (with a default "OK" label).
+                // Fall back to sessionStorage for config-driven reloads.
+                var buttonLabel = (manifest && manifest.buttonLabel) || null;
+                if (!buttonLabel) {
+                    try {
+                        var saved = sessionStorage.getItem("yapdp.state-button-label");
+                        if (saved) { buttonLabel = saved; }
+                    } catch (e) { /* ignore */ }
+                }
                 // Show the preparing balloon for EVERY state restore, not just
                 // when there are images to fetch or steps to run. The visitor
                 // should always see that the machine is being restored.
-                // When hasSteps is true, showPreparing returns a Promise that
-                // resolves only after the operator clicks OK.
-                // When there's a description (stepsMessage) but no steps, the
-                // OK button is still shown so the operator can read the
-                // description before dismissing the toast.
-                var showOk = hasSteps || !!stepsMessage;
-                var prepPromise = showPreparing("Restoring the machine state\u2026", stepsMessage, showOk);
+                // When the button is visible, showPreparing returns a Promise
+                // that resolves only after the operator clicks it.
+                var prepPromise = showPreparing("Restoring the machine state\u2026", stepsMessage, hasSteps, buttonLabel);
                 // The state is restored — stop the throbber. What remains is
                 // waiting for the operator (OK button) or loading images, both
                 // of which are idle from the machine's perspective.

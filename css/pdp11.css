@@ -1188,7 +1188,7 @@ textarea {
     font-size: 15px;
     font-weight: normal;
     opacity: 0.85;
-    white-space: normal;
+    white-space: pre-wrap;
     overflow-wrap: break-word;
 }
 
