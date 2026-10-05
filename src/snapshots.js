@@ -1092,6 +1092,7 @@ var SnapshotStore = (() => {
                 ? opts.title.trim() : snap.name;
             var stepsMessage = (opts && opts.description || "").trim() || null;
             var buttonLabel = (opts && opts.buttonLabel || "").trim() || null;
+            var screenshot = (opts && opts.screenshot || "").trim() || null;
             var steps = null;
             if (opts && opts.command && opts.command.trim()) {
                 steps = [{ send: opts.command.trim() }];
@@ -1121,6 +1122,7 @@ var SnapshotStore = (() => {
                     steps: steps,
                     stepsMessage: stepsMessage,
                     buttonLabel: buttonLabel,
+                    screenshot: screenshot,
                     overlay: snap.overlay,
                 };
                 var packed = StateFormat.pack(manifest, memoryWords);
@@ -1903,41 +1905,112 @@ var SnapshotStore = (() => {
                     '<label class="modal-field">Button label' +
                         '<input type="text" class="modal-input" id="share-btn" maxlength="32"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. Got it"></label>' +
+                    '<label class="modal-field">Screenshot' +
+                        '<div class="share-screenshot-area" id="share-screenshot-area">' +
+                        '<input type="file" id="share-screenshot-file" accept="image/png,image/jpeg,image/webp"' +
+                        ' style="display:none">' +
+                        '<span class="share-screenshot-placeholder" id="share-screenshot-placeholder">' +
+                        'Paste or click to add a screenshot\u2026</span>' +
+                        '<img class="share-screenshot-preview" id="share-screenshot-preview" style="display:none">' +
+                        '<button type="button" class="share-screenshot-remove" id="share-screenshot-remove"' +
+                        ' style="display:none">Remove</button>' +
+                        '</div></label>' +
                     '<label class="modal-field">Run after restore' +
                         '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
-                    '<div class="modal-preview" id="share-preview"></div>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
                     '<button type="button" class="modal-close" id="share-create">Create Shareable State</button>' +
                 '</div>';
             __snapModalOnConfirm = null;
             __snapModal.classList.add("visible");
 
-            // Live preview as the user types.
             var titleInput = document.getElementById("share-title");
             var descInput = document.getElementById("share-desc");
             var btnInput = document.getElementById("share-btn");
             var cmdInput = document.getElementById("share-cmd");
-            var preview = document.getElementById("share-preview");
-            function updatePreview() {
-                var t = (titleInput ? titleInput.value : "").trim();
-                var b = (btnInput ? btnInput.value : "").trim();
-                var c = (cmdInput ? cmdInput.value : "").trim();
-                var html = "";
-                if (t) html += '<div class="share-preview-title">' + t.replace(/&/g, "&").replace(/</g, "<") + '</div>';
-                html += '<div class="share-preview-note">The original snapshot will not be changed.</div>';
-                if (b) html += '<div class="share-preview-btn"><strong>Button:</strong> ' + b.replace(/&/g, "&").replace(/</g, "<") + '</div>';
-                html += '<div class="share-preview-cmd"><strong>After restore:</strong> ';
-                html += c ? '<code>' + c.replace(/&/g, "&").replace(/</g, "<") + '</code>'
-                          : 'No automatic command';
-                html += '</div>';
-                preview.innerHTML = html;
+            var screenshotData = null; // base64 data URL or null
+            var screenshotArea = document.getElementById("share-screenshot-area");
+            var screenshotFile = document.getElementById("share-screenshot-file");
+            var screenshotPlaceholder = document.getElementById("share-screenshot-placeholder");
+            var screenshotPreview = document.getElementById("share-screenshot-preview");
+            var screenshotRemove = document.getElementById("share-screenshot-remove");
+
+            function setScreenshot(dataUrl) {
+                screenshotData = dataUrl;
+                if (screenshotPlaceholder) screenshotPlaceholder.style.display = "none";
+                if (screenshotPreview) {
+                    screenshotPreview.src = dataUrl;
+                    screenshotPreview.style.display = "block";
+                }
+                if (screenshotRemove) screenshotRemove.style.display = "inline-block";
             }
-            if (titleInput) titleInput.addEventListener("input", updatePreview);
-            if (descInput) descInput.addEventListener("input", updatePreview);
-            if (btnInput) btnInput.addEventListener("input", updatePreview);
-            if (cmdInput) cmdInput.addEventListener("input", updatePreview);
-            updatePreview();
+
+            function clearScreenshot() {
+                screenshotData = null;
+                if (screenshotPlaceholder) screenshotPlaceholder.style.display = "";
+                if (screenshotPreview) { screenshotPreview.style.display = "none"; screenshotPreview.src = ""; }
+                if (screenshotRemove) screenshotRemove.style.display = "none";
+            }
+
+            // Helper: load an image (from blob or file), resize to thumbnail,
+            // and store as a PNG data URL in screenshotData.
+            function loadScreenshot(blob) {
+                var url = URL.createObjectURL(blob);
+                var img = document.createElement("img");
+                img.onload = function () {
+                    URL.revokeObjectURL(url);
+                    var maxW = 400;
+                    var w = img.width;
+                    var h = img.height;
+                    if (w > maxW) { h = h * maxW / w; w = maxW; }
+                    var c = document.createElement("canvas");
+                    c.width = Math.ceil(w);
+                    c.height = Math.ceil(h);
+                    var ctx = c.getContext("2d");
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0, c.width, c.height);
+                        setScreenshot(c.toDataURL("image/png"));
+                    }
+                };
+                img.onerror = function () { URL.revokeObjectURL(url); };
+                img.src = url;
+            }
+
+            // Paste handler: catch Ctrl+V on the screenshot area.
+            if (screenshotArea) {
+                screenshotArea.addEventListener("paste", function (e) {
+                    var data = e.clipboardData;
+                    if (!data || !data.items || !data.items.length) return;
+                    for (var i = 0; i < data.items.length; i++) {
+                        var item = data.items[i];
+                        if (item.type && item.type.startsWith("image/")) {
+                            e.preventDefault();
+                            var blob = item.getAsBlob();
+                            if (blob) { loadScreenshot(blob); }
+                            break;
+                        }
+                    }
+                });
+
+                // Click to open file picker.
+                screenshotArea.addEventListener("click", function () {
+                    if (screenshotFile) screenshotFile.click();
+                });
+
+                if (screenshotFile) {
+                    screenshotFile.addEventListener("change", function () {
+                        var file = screenshotFile.files[0];
+                        if (file) loadScreenshot(file);
+                    });
+                }
+
+                if (screenshotRemove) {
+                    screenshotRemove.addEventListener("click", function (e) {
+                        e.stopPropagation();
+                        clearScreenshot();
+                    });
+                }
+            }
 
             // Create button handler.
             var createBtn = document.getElementById("share-create");
@@ -1952,6 +2025,7 @@ var SnapshotStore = (() => {
                         title: title,
                         description: desc,
                         buttonLabel: btn || null,
+                        screenshot: screenshotData,
                         command: cmd,
                     }).then(function (bytes) {
                         createBtn.disabled = false;
