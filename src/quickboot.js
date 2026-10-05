@@ -392,6 +392,13 @@ var QuickBoot = (function () {
     // would race it in the same DL11 queue.
     var prepToast = null;
 
+    // Resolve function for the OK-button wait on the preparing toast.
+    // Set by showPreparing when steps are present; called by the OK button.
+    var _stepsOkResolve = null;
+    // Set by onRestored to indicate whether the state has steps to execute.
+    // Used by applyStateLink to decide whether to close the balloon automatically.
+    var _hasSteps = false;
+
     function ensurePrepToast() {
         if (prepToast) return prepToast;
         prepToast = document.createElement("div");
@@ -409,8 +416,28 @@ var QuickBoot = (function () {
         text.id = "quick-boot-preparing-text";
         text.textContent = "Restoring the machine state\u2026";
 
+        var desc = document.createElement("span");
+        desc.className = "quickboot-balloon-desc";
+        desc.id = "quick-boot-preparing-desc";
+        desc.style.display = "none";
+
+        // OK button — only shown when the state has steps to execute.
+        // The operator must acknowledge before the autopilot types commands.
+        var okBtn = document.createElement("button");
+        okBtn.className = "quickboot-balloon-ok";
+        okBtn.id = "quick-boot-preparing-ok";
+        okBtn.textContent = "OK";
+        okBtn.style.display = "none";
+        okBtn.addEventListener("click", function () {
+            okBtn.disabled = true;
+            okBtn.textContent = "Running\u2026";
+            if (_stepsOkResolve) _stepsOkResolve();
+        });
+
         prepToast.appendChild(spin);
         prepToast.appendChild(text);
+        prepToast.appendChild(desc);
+        prepToast.appendChild(okBtn);
         document.body.appendChild(prepToast);
         return prepToast;
     }
@@ -426,13 +453,36 @@ var QuickBoot = (function () {
     // So this toast carries no number: it names the operation and stays until
     // the image lands. No polling timer is needed either — nothing here
     // changes while it is up.
-    function showPreparing(label) {
-        if (typeof document === "undefined") return;
+    // `stepsMessage` is an optional human-readable description shown in the
+    // balloon when a shareable state is being restored.
+    // Show the preparing toast. When `hasSteps` is true, an OK button is
+    // shown and the returned Promise resolves only when the operator clicks it
+    // (or immediately when hasSteps is false). The caller should await this
+    // Promise before proceeding with step execution.
+    function showPreparing(label, stepsMessage, hasSteps) {
+        if (typeof document === "undefined") return Promise.resolve();
         var el = ensurePrepToast();
         var text = el.querySelector("#quick-boot-preparing-text") || el.lastChild;
         text.textContent = label || "Restoring the machine state\u2026";
+        var desc = el.querySelector("#quick-boot-preparing-desc");
+        if (desc) {
+            desc.textContent = stepsMessage || "";
+            desc.style.display = stepsMessage ? "block" : "none";
+        }
+        var okBtn = el.querySelector("#quick-boot-preparing-ok");
+        if (okBtn) {
+            okBtn.disabled = false;
+            okBtn.textContent = "OK";
+            okBtn.style.display = hasSteps ? "inline-block" : "none";
+        }
         el.classList.add("visible");
         setInputGate(true);
+        if (hasSteps) {
+            return new Promise(function (resolve) {
+                _stepsOkResolve = resolve;
+            });
+        }
+        return Promise.resolve();
     }
 
     // Hide the toast and RELEASE the gate. Always called from a finally, so a
@@ -441,6 +491,7 @@ var QuickBoot = (function () {
     function hidePreparing() {
         if (prepToast) prepToast.classList.remove("visible");
         setInputGate(false);
+        _stepsOkResolve = null;
     }
 
     // Autoload abort token: bumped by every new launch() and by abortAutoload().
@@ -699,36 +750,72 @@ var QuickBoot = (function () {
             // before the guest is allowed to run on: the visitor is told the
             // disk is still coming, instead of meeting a download strip later.
             onRestored: function (manifest) {
+                // Restore stepsMessage from sessionStorage if the manifest
+                // doesn't carry it (e.g. after a config-driven reload that
+                // persisted it in snapshots.js before calling location.reload).
+                var stepsMessage = (manifest && manifest.stepsMessage) || null;
+                if (!stepsMessage) {
+                    try {
+                        var saved = sessionStorage.getItem("yapdp.state-steps-message");
+                        if (saved) { stepsMessage = saved; }
+                    } catch (e) { /* ignore */ }
+                }
+                // Determine if there are steps to execute (from manifest or
+                // sessionStorage fallback). When steps exist, the OK button
+                // is shown and showPreparing waits for the operator to click it.
+                var hasSteps = !!(manifest && manifest.steps &&
+                    Array.isArray(manifest.steps) && manifest.steps.length > 0);
+                if (!hasSteps) {
+                    try {
+                        var saved = sessionStorage.getItem("yapdp.state-steps");
+                        if (saved) { hasSteps = true; }
+                    } catch (e) { /* ignore */ }
+                }
+                _hasSteps = hasSteps;
+                // Show the preparing balloon for EVERY state restore, not just
+                // when there are images to fetch or steps to run. The visitor
+                // should always see that the machine is being restored.
+                // When hasSteps is true, showPreparing returns a Promise that
+                // resolves only after the operator clicks OK.
+                var prepPromise = showPreparing("Restoring the machine state\u2026", stepsMessage, hasSteps);
                 var urls = stateImageUrls(manifest);
-                if (!urls.length) return Promise.resolve();
-                showPreparing("Restoring the machine state\u2026");
-                // ASK FOR THE IMAGE — do not wait for the guest to. The disk is
-                // fetched lazily on the first block read, and that read comes
-                // from a guest sitting in WAIT for an operator keystroke. With
-                // the gate closed (we are waiting!) the operator cannot type,
-                // so the guest cannot read, so the image is never requested:
-                // the toast waited forever (found 2026-10-02). Asking ourselves
-                // breaks the circle — the fetch starts, the label tracks it,
-                // and the gate opens when it lands.
-                return Promise.all(urls.map(function (u) {
-                    if (typeof window !== "undefined" &&
-                        typeof window.__yapdpLoadImage === "function") {
-                        return window.__yapdpLoadImage(u);
-                    }
-                    // No loader (legacy stack, or a harness): fall back to
-                    // watching DataLoader so the gate still opens.
-                    return waitForImages([u]);
-                }));
+                if (!urls.length) {
+                    return prepPromise;
+                }
+                return prepPromise.then(function () {
+                    // ASK FOR THE IMAGE — do not wait for the guest to. The disk is
+                    // fetched lazily on the first block read, and that read comes
+                    // from a guest sitting in WAIT for an operator keystroke. With
+                    // the gate closed (we are waiting!) the operator cannot type,
+                    // so the guest cannot read, so the image is never requested:
+                    // the toast waited forever (found 2026-10-02). Asking ourselves
+                    // breaks the circle — the fetch starts, the label tracks it,
+                    // and the gate opens when it lands.
+                    return Promise.all(urls.map(function (u) {
+                        if (typeof window !== "undefined" &&
+                            typeof window.__yapdpLoadImage === "function") {
+                            return window.__yapdpLoadImage(u);
+                        }
+                        // No loader (legacy stack, or a harness): fall back to
+                        // watching DataLoader so the gate still opens.
+                        return waitForImages([u]);
+                    }));
+                });
             },
         }).then(function (result) {
-            hidePreparing();
             if (result && result.ok) {
+                // State applied successfully. If there are no steps to
+                // execute, close the balloon now. If there are steps, the
+                // balloon stays up with the OK button — it will be closed
+                // after the operator clicks OK and steps complete.
+                if (!_hasSteps) hidePreparing();
                 try {
                     history.replaceState(null, "",
                         location.pathname + location.hash);
                 } catch (err) { /* ignore: the state is already applied */ }
                 return;
             }
+            hidePreparing();
             showStateFailure(result || { url: url });
         }, function () {
             hidePreparing();
@@ -1120,6 +1207,7 @@ var QuickBoot = (function () {
     // (see pdp11.html) and calls it at runtime when an image fetch fails, so no
     // load-order coupling is needed.
     window.__autoloadAbort = abortAutoload;
+    window.__hideStatePreparing = hidePreparing;
 
     if (typeof document !== "undefined" && document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);

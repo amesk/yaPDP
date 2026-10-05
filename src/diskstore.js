@@ -424,7 +424,10 @@ var DiskStore = (() => {
                 } else {
                     bytes = await getBlock(url, b); // undefined when stale
                 }
-                if (bytes !== undefined && bytes !== null) {
+                // Skip blocks with zero length — they would overwrite the
+                // base image's data with nothing, causing filesystem blocks
+                // (inodes, directory entries) to appear empty after restore.
+                if (bytes !== undefined && bytes !== null && bytes.length > 0) {
                     blocks[b] = bytes;
                 }
             }

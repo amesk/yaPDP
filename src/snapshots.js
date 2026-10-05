@@ -404,6 +404,47 @@ var SnapshotStore = (() => {
         return bad;
     }
 
+    // Mount disk images from a snapshot's mounted list into DataLoader and
+    // ensure their drive providers are set up. Used by restore() so that a
+    // state loaded via ?state= has its disks available — the images are not
+    // mounted by dragdrop.init() because there is no page reload.
+    function mountStateDisks(mounted) {
+        if (!mounted || !Array.isArray(mounted) || !mounted.length) {
+            if (typeof console !== "undefined") console.log("mountStateDisks: no mounted urls");
+            return Promise.resolve();
+        }
+        var urls = mounted.filter(function (u) { return u && typeof u === "string"; });
+        if (!urls.length) {
+            if (typeof console !== "undefined") console.log("mountStateDisks: no valid urls after filter");
+            return Promise.resolve();
+        }
+        if (typeof console !== "undefined") console.log("mountStateDisks: mounting", JSON.stringify(urls));
+        var promises = [];
+        for (var i = 0; i < urls.length; i++) {
+            (function (url) {
+                var p = Promise.resolve();
+                if (typeof DataLoader !== "undefined" &&
+                    typeof DataLoader.has === "function" && !DataLoader.has(url)) {
+                    if (typeof window !== "undefined" &&
+                        typeof window.__yapdpLoadImage === "function") {
+                        if (typeof console !== "undefined") console.log("mountStateDisks: loading", url);
+                        p = window.__yapdpLoadImage(url);
+                    }
+                } else {
+                    if (typeof console !== "undefined") console.log("mountStateDisks: already in DataLoader:", url);
+                }
+                promises.push(p.then(function () {
+                    if (typeof window !== "undefined" &&
+                        typeof window.__yapdpMountProvider === "function") {
+                        if (typeof console !== "undefined") console.log("mountStateDisks: mounting provider for", url);
+                        window.__yapdpMountProvider(url);
+                    }
+                }));
+            })(urls[i]);
+        }
+        return Promise.all(promises);
+    }
+
     function restore(snap) {
         if (!snap) return Promise.resolve(false);
         // Refuse BEFORE touching CPU/RAM: a snapshot whose disks changed under
@@ -424,85 +465,108 @@ var SnapshotStore = (() => {
                 typeof iopage.restoreDevices === "function") {
                 iopage.restoreDevices(snap.devices);
             }
-            // Disk write-back overlay: roll the disks back to the snapshot's
-            // generation BEFORE the CPU resumes, so the restored guest's
-            // filesystem metadata (captured in RAM) and the disk contents
-            // agree. The CPU is still halted here — runState is applied only
-            // after the overlay is in place, so no instruction can run
-            // against a mixed-generation disk.
+            // Clear ALL existing overlays from IndexedDB — a stale overlay
+            // from a previous session would corrupt the restored filesystem
+            // (blocks written by a different boot would be overlaid onto the
+            // restored base image). The snapshot's own overlay is applied
+            // AFTER the images are mounted (see below), so that the
+            // fingerprint check in restoreOverlay() can match against the
+            // freshly-registered image identity.
             var overlayPromise = Promise.resolve();
-            if (snap.overlay && typeof DiskStore !== "undefined" &&
-                typeof DiskStore.restoreOverlay === "function") {
-                overlayPromise = DiskStore.restoreOverlay(snap.overlay);
+            if (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.clearAll === "function") {
+                overlayPromise = DiskStore.clearAll();
             }
             return overlayPromise.then(function () {
+                // Mount disk images from the snapshot BEFORE the CPU resumes,
+                // so the guest OS can read its drives immediately. The images
+                // are loaded into DataLoader and their providers are set up
+                // (see mountStateDisks). Without this, a state loaded via
+                // ?state= restores CPU/RAM/devices but the disks are not
+                // accessible — fetchBlock() finds nothing in DataLoader and
+                // the guest OS hangs or fails to boot.
+                //
+                // Mount disks BEFORE applying the overlay so that the image
+                // fingerprint is registered in DiskStore — restoreOverlay()
+                // checks matchOk(rec.v, fingerprintOf(url)) and would skip
+                // the overlay when the fingerprint is still unknown (null).
+                return mountStateDisks(snap.mounted);
+            }).then(function () {
+                // Apply the overlay AFTER the images are mounted, so the
+                // fingerprint check in restoreOverlay() can match against
+                // the freshly-registered image identity.
+                if (snap.overlay && typeof DiskStore !== "undefined" &&
+                    typeof DiskStore.restoreOverlay === "function") {
+                    return DiskStore.restoreOverlay(snap.overlay);
+                }
+            }).then(function () {
                 // Resume the CPU only after RAM is back in place: running with
-                // the old memory contents (boot code / garbage) and the restored
-                // PC traps instantly, and a trap inside a trap overflows the
-                // stack. runState was deferred by restoreCPU() for this reason;
-                // the trap() recursion guard makes this safe even if the restored
-                // image is mid-garbage.
-                if (snap.cpu && typeof snap.cpu.runState === "number") {
-                    CPU.runState = snap.cpu.runState;
-                }
-                // Visual punched tape (L2) — re-render the hanging ASR tape
-                // from the captured byte array (no-op when the tape UI is
-                // absent, e.g. VT52 console).
-                if (snap.punchtape && typeof window !== "undefined" &&
-                    window.paperTape && typeof window.paperTape.restore === "function") {
-                    window.paperTape.restore(snap.punchtape.buffer);
-                }
-                // ASR reader tape (L2) — re-render the loaded tape and its read
-                // position (no-op when the tape UI is absent or no tape was
-                // loaded at capture time).
-                if (snap.readertape && typeof window !== "undefined" &&
-                    window.tapeReader && typeof window.tapeReader.restore === "function") {
-                    window.tapeReader.restore(snap.readertape);
-                    // A restored tape is paused like a freshly loaded one: the
-                    // reader switch goes to STOP so the UI never shows a
-                    // running reader with a stopped motor.
-                    if (typeof window.setReaderMode === "function") {
-                        window.setReaderMode("stop");
+                    // the old memory contents (boot code / garbage) and the restored
+                    // PC traps instantly, and a trap inside a trap overflows the
+                    // stack. runState was deferred by restoreCPU() for this reason;
+                    // the trap() recursion guard makes this safe even if the restored
+                    // image is mid-garbage.
+                    if (snap.cpu && typeof snap.cpu.runState === "number") {
+                        CPU.runState = snap.cpu.runState;
                     }
-                }
-                // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
-                // cursor, modes. Restored after RAM/devices so a repaint sees
-                // consistent state. No-op when the terminal API is absent.
-                if (snap.vt52 && typeof window !== "undefined" &&
-                    window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
-                    window.vt52RestoreAll(snap.vt52);
-                }
-                // The TELETYPE's paper — the console screen for half the
-                // guests, and not a VT52: it is printed paper, captured as
-                // rendered rows. Without this a restored teletype guest wakes
-                // up with a BLANK screen (the boot banner and the prompt are
-                // on paper nobody put back). No-op when the printer API or the
-                // field is absent (an older state).
-                if (snap.teletypepaper && typeof window !== "undefined" &&
-                    window.g60printer && typeof window.g60printer.restore === "function") {
-                    window.g60printer.restore(snap.teletypepaper);
-                }
-                // Mounted images: DataLoader entries are re-created by
-                // dragdrop.init() from the images IDB on startup; nothing to
-                // do here (URLs are recorded in the snapshot for the UI).
-                if (typeof window !== "undefined" && window.__snapshotRestored) {
-                    window.__snapshotRestored(snap);
-                }
-                // Return the operator to the page they were viewing at capture
-                // time (console, printer, storage, ...) instead of the default
-                // PANEL that the reload would otherwise show. No-op for
-                // snapshots taken before this field existed, when switchPage is
-                // unavailable, or when the page is missing from this document
-                // (device set no longer includes it).
-                if (snap.page && typeof switchPage === "function" &&
-                    typeof document !== "undefined" &&
-                    typeof document.getElementById === "function" &&
-                    document.getElementById("page-" + snap.page)) {
-                    switchPage(snap.page);
-                }
-                return true;
+                    // Visual punched tape (L2) — re-render the hanging ASR tape
+                    // from the captured byte array (no-op when the tape UI is
+                    // absent, e.g. VT52 console).
+                    if (snap.punchtape && typeof window !== "undefined" &&
+                        window.paperTape && typeof window.paperTape.restore === "function") {
+                        window.paperTape.restore(snap.punchtape.buffer);
+                    }
+                    // ASR reader tape (L2) — re-render the loaded tape and its read
+                    // position (no-op when the tape UI is absent or no tape was
+                    // loaded at capture time).
+                    if (snap.readertape && typeof window !== "undefined" &&
+                        window.tapeReader && typeof window.tapeReader.restore === "function") {
+                        window.tapeReader.restore(snap.readertape);
+                        // A restored tape is paused like a freshly loaded one: the
+                        // reader switch goes to STOP so the UI never shows a
+                        // running reader with a stopped motor.
+                        if (typeof window.setReaderMode === "function") {
+                            window.setReaderMode("stop");
+                        }
+                    }
+                    // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
+                    // cursor, modes. Restored after RAM/devices so a repaint sees
+                    // consistent state. No-op when the terminal API is absent.
+                    if (snap.vt52 && typeof window !== "undefined" &&
+                        window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
+                        window.vt52RestoreAll(snap.vt52);
+                    }
+                    // The TELETYPE's paper — the console screen for half the
+                    // guests, and not a VT52: it is printed paper, captured as
+                    // rendered rows. Without this a restored teletype guest wakes
+                    // up with a BLANK screen (the boot banner and the prompt are
+                    // on paper nobody put back). No-op when the printer API or the
+                    // field is absent (an older state).
+                    if (snap.teletypepaper && typeof window !== "undefined" &&
+                        window.g60printer && typeof window.g60printer.restore === "function") {
+                        window.g60printer.restore(snap.teletypepaper);
+                    }
+                    // Mounted images: DataLoader entries are re-created by
+                    // dragdrop.init() from the images IDB on startup; nothing to
+                    // do here (URLs are recorded in the snapshot for the UI).
+                    if (typeof window !== "undefined" && window.__snapshotRestored) {
+                        window.__snapshotRestored(snap);
+                    }
+                    // Return the operator to the page they were viewing at capture
+                    // time (console, printer, storage, ...) instead of the default
+                    // PANEL that the reload would otherwise show. No-op for
+                    // snapshots taken before this field existed, when switchPage is
+                    // unavailable, or when the page is missing from this document
+                    // (device set no longer includes it).
+                    if (snap.page && typeof switchPage === "function" &&
+                        typeof document !== "undefined" &&
+                        typeof document.getElementById === "function" &&
+                        document.getElementById("page-" + snap.page)) {
+                        switchPage(snap.page);
+                    }
+                    return true;
+                });
             });
-        });
     }
 
     // ------------------------------------------------------------------
@@ -631,6 +695,16 @@ var SnapshotStore = (() => {
                         if (typeof sessionStorage !== "undefined") {
                             sessionStorage.setItem(PENDING_STATE_KEY, target);
                             sessionStorage.setItem("yapdp.restore-pending", "1");
+                            // Persist steps and description across the reload
+                            // so they can be shown/executed on the second load.
+                            if (parsedManifest.steps) {
+                                sessionStorage.setItem("yapdp.state-steps",
+                                    JSON.stringify(parsedManifest.steps));
+                            }
+                            if (parsedManifest.stepsMessage) {
+                                sessionStorage.setItem("yapdp.state-steps-message",
+                                    parsedManifest.stepsMessage);
+                            }
                         }
                     } catch (e) { /* ignore */ }
                     if (typeof window !== "undefined") window.__allowConfigReload = true;
@@ -646,12 +720,33 @@ var SnapshotStore = (() => {
                     return Promise.resolve(onRestored(lastStateManifest))
                         .then(function () {
                             // Steps run AFTER image loading, gate still ON
-                            if (lastStateManifest && lastStateManifest.steps &&
-                                Array.isArray(lastStateManifest.steps) && lastStateManifest.steps.length > 0) {
-                                return StepEngine.runSteps(lastStateManifest.steps, {
+                            var steps = (lastStateManifest && lastStateManifest.steps &&
+                                Array.isArray(lastStateManifest.steps) && lastStateManifest.steps.length > 0)
+                                ? lastStateManifest.steps : null;
+                            // Fall back to steps persisted across a config-driven reload
+                            // (saved in sessionStorage before location.reload()).
+                            if (!steps) {
+                                try {
+                                    var saved = sessionStorage.getItem("yapdp.state-steps");
+                                    if (saved) {
+                                        steps = JSON.parse(saved);
+                                        sessionStorage.removeItem("yapdp.state-steps");
+                                    }
+                                } catch (e) { /* ignore */ }
+                            }
+                            if (steps) {
+                                return StepEngine.runSteps(steps, {
                                     sendBytes: StepEngine.sendBytes,
                                     outputContains: StepEngine.outputContains,
                                     stepDelayMs: 800,
+                                    onDone: function () {
+                                        // Close the preparing balloon after all steps
+                                        // complete (the OK button was already clicked).
+                                        if (typeof window !== "undefined" &&
+                                            typeof window.__hideStatePreparing === "function") {
+                                            window.__hideStatePreparing();
+                                        }
+                                    },
                                 });
                             }
                         })
@@ -727,9 +822,11 @@ var SnapshotStore = (() => {
         var parsed = (typeof StateFormat !== "undefined" &&
             typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
         if (!parsed) {
+            if (typeof console !== "undefined") console.log("applyContainer: unpack failed");
             return { ok: false, reason: "not-a-state", url: url };
         }
         lastStateManifest = parsed.manifest || null;
+        if (typeof console !== "undefined") console.log("applyContainer: manifest set, device=", parsed.manifest ? parsed.manifest.device : "null");
         // A container state arrives as manifest + raw words; the rest of the
         // restore path wants a snapshot-shaped object (cpu/memory/devices).
         // The overlay is stamped with its origin so the Storage UI can say
@@ -763,6 +860,7 @@ var SnapshotStore = (() => {
             readertape: parsed.manifest.readertape || null,
             vt52: parsed.manifest.vt52 || null,
             teletypepaper: parsed.manifest.teletypepaper || null,
+            mounted: parsed.manifest.mounted || [],
         };
         return restore(snap).then(function (applied) {
             return applied ? { ok: true, url: url, name: snap.name }
@@ -821,49 +919,61 @@ var SnapshotStore = (() => {
             teletypepaper = window.g60printer.snapshot();
         }
 
-        return captureImageFingerprintsAsync().then(function (fps) {
-            var manifest = {
-                schemaVersion: SCHEMA_VERSION,
-                base: null,
-                device: name || "live",
-                label: name || "live machine",
-                createdAt: new Date().toISOString(),
-                profile: captureConfig(),
-                imageFingerprints: fps,
-                cpu: captureCPU(),
-                devices: devices,
-                // The operator's view of the machine, not just its state:
-                // terminal screens, the paper in the teletype, the loaded
-                // reader tape (and its read position).
-                punchtape: punchtape,
-                readertape: readertape,
-                vt52: vt52,
-                teletypepaper: teletypepaper,
-                mounted: captureMounted(),
-                page: capturePage(),
-                steps: null,
-                stepsMessage: null,
-            };
-            // The CPU was frozen for the capture (stop-the-world, above), so
-            // the recorded runState is HALT. A state is a machine that was
-            // RUNNING — recording HALT would make every restored guest sit
-            // dead with a loaded memory (measured: BASIC-11 restored, runState
-            // 3, nothing happened). Same correction capture() makes.
-            if (wasRunning) manifest.cpu.runState = STATE_RUN;
-            var packed = StateFormat.pack(manifest, CPU.memory);
-            // Compress with what the BROWSER already has. fzstd is
-            // decompress-only by design, and pulling a zstd compressor into
-            // the page would cost ~1-2 MB of script for a button nobody
-            // presses daily. CompressionStream is built in and free; the
-            // container is unchanged — only the frame around it differs, and
-            // both decompressors (fzstd for zstd, DecompressionStream for
-            // gzip) are on the page already.
-            return gzipCompress(packed).then(function (bytes) {
-                if (wasRunning) CPU.runState = prevRunState;
-                return bytes;
-            }, function () {
-                if (wasRunning) CPU.runState = prevRunState;
-                return packed;   // no CompressionStream: uncompressed container
+        // Disk write-back overlay: the blocks that differ from the pristine
+        // base image at export time. Restoring them rolls the disks back to
+        // the same generation as the exported RAM, so the restored guest's
+        // filesystem metadata stays consistent with the disk contents.
+        // Mirror of capture() — if it grows there, it grows here.
+        var overlayPromise = (typeof DiskStore !== "undefined" &&
+            typeof DiskStore.captureOverlay === "function")
+            ? DiskStore.captureOverlay() : Promise.resolve({});
+
+        return overlayPromise.then(function (overlay) {
+            return captureImageFingerprintsAsync().then(function (fps) {
+                var manifest = {
+                    schemaVersion: SCHEMA_VERSION,
+                    base: null,
+                    device: name || "live",
+                    label: name || "live machine",
+                    createdAt: new Date().toISOString(),
+                    profile: captureConfig(),
+                    imageFingerprints: fps,
+                    cpu: captureCPU(),
+                    devices: devices,
+                    // The operator's view of the machine, not just its state:
+                    // terminal screens, the paper in the teletype, the loaded
+                    // reader tape (and its read position).
+                    punchtape: punchtape,
+                    readertape: readertape,
+                    vt52: vt52,
+                    teletypepaper: teletypepaper,
+                    mounted: captureMounted(),
+                    overlay: overlay,
+                    page: capturePage(),
+                    steps: null,
+                    stepsMessage: null,
+                };
+                // The CPU was frozen for the capture (stop-the-world, above), so
+                // the recorded runState is HALT. A state is a machine that was
+                // RUNNING — recording HALT would make every restored guest sit
+                // dead with a loaded memory (measured: BASIC-11 restored, runState
+                // 3, nothing happened). Same correction capture() makes.
+                if (wasRunning) manifest.cpu.runState = STATE_RUN;
+                var packed = StateFormat.pack(manifest, CPU.memory);
+                // Compress with what the BROWSER already has. fzstd is
+                // decompress-only by design, and pulling a zstd compressor into
+                // the page would cost ~1-2 MB of script for a button nobody
+                // presses daily. CompressionStream is built in and free; the
+                // container is unchanged — only the frame around it differs, and
+                // both decompressors (fzstd for zstd, DecompressionStream for
+                // gzip) are on the page already.
+                return gzipCompress(packed).then(function (bytes) {
+                    if (wasRunning) CPU.runState = prevRunState;
+                    return bytes;
+                }, function () {
+                    if (wasRunning) CPU.runState = prevRunState;
+                    return packed;   // no CompressionStream: uncompressed container
+                });
             });
         });
     }
@@ -912,12 +1022,18 @@ var SnapshotStore = (() => {
     function exportSnapshot(id) {
         return dbGet(id).then(function (snap) {
             if (!snap) return null;
+            // device = boot disk name from mounted images (e.g. "rp1").
+            // Only set when we can derive it; otherwise omit so ?state=
+            // does not try to pre-load a non-existent image.
+            var deviceKey = deviceKeyFromMounted(snap.mounted);
             return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
                 var manifest = {
                     schemaVersion: SCHEMA_VERSION,
                     base: null,
-                    device: snap.name,
                     label: snap.name,
+                    // device is set only when we can derive it from mounted
+                    // images; otherwise omitted to avoid wrong pre-load.
+                    device: deviceKey,
                     createdAt: new Date(snap.createdAt).toISOString(),
                     profile: snap.config,
                     imageFingerprints: snap.imageFingerprints,
@@ -938,6 +1054,74 @@ var SnapshotStore = (() => {
                     return bytes;
                 }, function () {
                     return packed;   // uncompressed container fallback
+                });
+            });
+        });
+    }
+
+    // Derive a device key from the mounted image URLs, so ?state= can
+    // look up the correct disk image via OSBoot scenarios.
+    // Takes the first mounted URL, strips directory/extension, e.g.
+    // "rp1.dsk" → "rp1",  "media/rk0.dsk.zst" → "rk0".
+    // Returns null when no mounted images or none look like a device key.
+    function deviceKeyFromMounted(mounted) {
+        if (!mounted || !Array.isArray(mounted) || !mounted.length) return null;
+        var url = String(mounted[0]);
+        // Strip directory, keep basename.
+        var base = url.split("/").pop() || url;
+        // Strip .dsk.zst, .dsk, .zst, .ptap etc.
+        base = base.replace(/\.(dsk|ptap|tap|zst)?(\.zst)?$/i, "");
+        return base.length > 0 ? base : null;
+    }
+
+    // ------------------------------------------------------------------
+    // Create a shareable .state.zst from a stored snapshot, adding
+    // human-readable description and an optional one-command handoff
+    // scenario. The original snapshot is NOT modified and is NOT saved
+    // to the snapshot store — the result is returned as bytes for download.
+    // Returns Promise<Uint8Array|null> — null when the id does not exist.
+    // ------------------------------------------------------------------
+    function createShareableState(id, opts) {
+        return dbGet(id).then(function (snap) {
+            if (!snap) return null;
+            var shareName = (opts && opts.title && opts.title.trim())
+                ? opts.title.trim() : snap.name;
+            var stepsMessage = (opts && opts.description || "").trim() || null;
+            var steps = null;
+            if (opts && opts.command && opts.command.trim()) {
+                steps = [{ send: opts.command.trim() }];
+            }
+            // Derive the device key from the first mounted image URL, so
+            // ?state= can pre-load the correct disk image via OSBoot scenarios.
+            // Only set when we can derive it; otherwise omit so ?state=
+            // does not try to pre-load a non-existent image.
+            var deviceKey = deviceKeyFromMounted(snap.mounted);
+            return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
+                var manifest = {
+                    schemaVersion: SCHEMA_VERSION,
+                    base: null,
+                    device: deviceKey,
+                    label: shareName,
+                    createdAt: new Date().toISOString(),
+                    profile: snap.config,
+                    imageFingerprints: snap.imageFingerprints,
+                    cpu: snap.cpu,
+                    devices: snap.devices,
+                    punchtape: snap.punchtape,
+                    readertape: snap.readertape,
+                    vt52: snap.vt52,
+                    teletypepaper: snap.teletypepaper,
+                    mounted: snap.mounted,
+                    page: snap.page,
+                    steps: steps,
+                    stepsMessage: stepsMessage,
+                    overlay: snap.overlay,
+                };
+                var packed = StateFormat.pack(manifest, memoryWords);
+                return gzipCompress(packed).then(function (bytes) {
+                    return bytes;
+                }, function () {
+                    return packed;
                 });
             });
         });
@@ -1051,6 +1235,11 @@ var SnapshotStore = (() => {
             // once the restore completes in init().
             if (typeof sessionStorage !== "undefined") {
                 sessionStorage.setItem("yapdp.restore-pending", "1");
+                // Clear any stale ?state= pending URL from a previous deep-link
+                // attempt — it would otherwise be handled by init() BEFORE the
+                // snapshot, causing the wrong state to be applied (or a failure
+                // dialog) while the snapshot sits ignored in localStorage.
+                sessionStorage.removeItem(PENDING_STATE_KEY);
             }
         } catch (e) {
             return Promise.resolve(false);
@@ -1213,6 +1402,7 @@ var SnapshotStore = (() => {
         if (!select) return;
         const loadBtn = document.getElementById("snap-load");
         const exportBtn = document.getElementById("snap-export");
+        const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
 
@@ -1242,6 +1432,7 @@ var SnapshotStore = (() => {
             if (loadBtn) loadBtn.disabled = items.length === 0;
             if (exportBtn) exportBtn.disabled = items.length === 0;
             if (renameBtn) renameBtn.disabled = items.length === 0;
+            if (shareBtn) shareBtn.disabled = items.length === 0;
             if (deleteBtn) deleteBtn.disabled = items.length === 0;
 
             const count = document.getElementById("snap-count");
@@ -1491,12 +1682,15 @@ var SnapshotStore = (() => {
                 '<div class="modal-actions">' +
                     '<button type="button" id="snap-load" class="modal-close" disabled>Load</button>' +
                     '<button type="button" id="snap-export" class="modal-close" disabled>Export</button>' +
+                    '<button type="button" id="snap-share" class="modal-close" disabled>Share</button>' +
+                    '<input type="file" id="snap-import-input" accept=".state.zst,.state" style="display:none">' +
+                    '<button type="button" class="modal-close" id="snap-import">Import</button>' +            
+                '</div>' +
+                '<div class="modal-actions">' +
                     '<button type="button" id="snap-rename" class="modal-close" disabled>Rename</button>' +
                     '<button type="button" id="snap-delete" class="modal-close" disabled>Delete</button>' +
                     '<span id="snap-count" class="snap-count"></span>' +
                 '</div>' +
-                '<input type="file" id="snap-import-input" accept=".state.zst,.state" style="display:none">' +
-                '<button type="button" class="modal-close" id="snap-import">Import state</button>' +
                 '<button type="button" class="modal-close" data-state-action="close">Close</button>' +
             '</div>';
         __snapManager.addEventListener("click", function (e) {
@@ -1542,6 +1736,7 @@ var SnapshotStore = (() => {
         const saveBtn = document.getElementById("snap-save");
         const loadBtn = document.getElementById("snap-load");
         const exportBtn = document.getElementById("snap-export");
+        const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
         const select = document.getElementById("snap-select");
@@ -1590,6 +1785,12 @@ var SnapshotStore = (() => {
                     a.click();
                     URL.revokeObjectURL(url);
                 });
+            });
+        }
+        if (shareBtn) {
+            shareBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                showShareDialog(select.value);
             });
         }
         if (renameBtn) {
@@ -1672,6 +1873,89 @@ var SnapshotStore = (() => {
         __snapModal.classList.add("visible");
     }
 
+    // ---- Share dialog ----------------------------------------------------
+    function showShareDialog(snapId) {
+        if (typeof document === "undefined") return;
+        // Fetch the snapshot to get its name for the preview.
+        dbGet(snapId).then(function (snap) {
+            if (!snap) return;
+            var snapName = snap.name || "";
+            if (!__snapModal) { showConfirmModal({}); __snapModalOnConfirm = null; }
+            __snapPrevFocus = document.activeElement;
+            var safeName = String(snapName).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+            __snapModal.innerHTML =
+                '<div class="modal-box">' +
+                    '<span class="modal-title">Share snapshot</span>' +
+                    '<p class="modal-intro">Create a shareable machine state from <strong>' + safeName + '</strong>.' +
+                        ' The original snapshot will not be changed.</p>' +
+                    '<label class="modal-field">Title' +
+                        '<input type="text" class="modal-input" id="share-title" value="' + safeName + '"' +
+                        ' maxlength="64" autocomplete="off" spellcheck="false"></label>' +
+                    '<label class="modal-field">Description' +
+                        '<textarea class="modal-input" id="share-desc" rows="2" maxlength="256"' +
+                        ' autocomplete="off" spellcheck="true"></textarea></label>' +
+                    '<label class="modal-field">Run after restore' +
+                        '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
+                        ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
+                    '<div class="modal-preview" id="share-preview"></div>' +
+                    '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
+                    '<button type="button" class="modal-close" id="share-create">Create Shareable State</button>' +
+                '</div>';
+            __snapModalOnConfirm = null;
+            __snapModal.classList.add("visible");
+
+            // Live preview as the user types.
+            var titleInput = document.getElementById("share-title");
+            var descInput = document.getElementById("share-desc");
+            var cmdInput = document.getElementById("share-cmd");
+            var preview = document.getElementById("share-preview");
+            function updatePreview() {
+                var t = (titleInput ? titleInput.value : "").trim();
+                var c = (cmdInput ? cmdInput.value : "").trim();
+                var html = "";
+                if (t) html += '<div class="share-preview-title">' + t.replace(/&/g, "&").replace(/</g, "<") + '</div>';
+                html += '<div class="share-preview-note">The original snapshot will not be changed.</div>';
+                html += '<div class="share-preview-cmd"><strong>After restore:</strong> ';
+                html += c ? '<code>' + c.replace(/&/g, "&").replace(/</g, "<") + '</code>'
+                          : 'No automatic command';
+                html += '</div>';
+                preview.innerHTML = html;
+            }
+            if (titleInput) titleInput.addEventListener("input", updatePreview);
+            if (descInput) descInput.addEventListener("input", updatePreview);
+            if (cmdInput) cmdInput.addEventListener("input", updatePreview);
+            updatePreview();
+
+            // Create button handler.
+            var createBtn = document.getElementById("share-create");
+            if (createBtn) {
+                createBtn.addEventListener("click", function () {
+                    var title = (titleInput ? titleInput.value : "").trim();
+                    var desc = (descInput ? descInput.value : "").trim();
+                    var cmd = (cmdInput ? cmdInput.value : "").trim();
+                    createBtn.disabled = true;
+                    createShareableState(snapId, {
+                        title: title,
+                        description: desc,
+                        command: cmd,
+                    }).then(function (bytes) {
+                        createBtn.disabled = false;
+                        snapCloseModal();
+                        if (!bytes) return;
+                        var name = sanitizeFilename(title || snapName) + ".state.zst";
+                        var blob = new Blob([bytes], { type: "application/octet-stream" });
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement("a");
+                        a.href = url;
+                        a.download = name;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    });
+                });
+            }
+        });
+    }
+
     return {
         init: init,
         save: save,
@@ -1689,6 +1973,8 @@ var SnapshotStore = (() => {
         exportBytes: exportBytes,
         // Export a stored snapshot as .state container bytes.
         exportSnapshot: exportSnapshot,
+        // Create a shareable .state.zst with description and optional command.
+        createShareableState: createShareableState,
         // Import .state container bytes into the snapshot store.
         importState: importState,
         // What the last loaded state asked for (device, profile). Read by the

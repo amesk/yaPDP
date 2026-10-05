@@ -670,6 +670,60 @@ textarea {
     border-color: #4a4438;
 }
 
+/* Label + input group inside modal dialogs (Share dialog). */
+.modal-field {
+    display: block;
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #c8a860;
+    letter-spacing: 0.3px;
+}
+
+.modal-field .modal-input {
+    margin-top: 4px;
+    margin-bottom: 0;
+}
+
+.modal-field textarea.modal-input {
+    resize: vertical;
+    min-height: 48px;
+}
+
+/* Preview section inside the Share dialog. */
+.modal-preview {
+    margin: 8px 0 14px;
+    padding: 8px 12px;
+    border: 1px solid #4a4438;
+    border-radius: 5px;
+    background: #14100e;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.share-preview-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffd27f;
+    margin-bottom: 4px;
+}
+
+.share-preview-note {
+    font-size: 12px;
+    color: #8a8478;
+    font-style: italic;
+    margin-bottom: 4px;
+}
+
+.share-preview-cmd {
+    font-size: 13px;
+    color: #e0d8c8;
+}
+
+.share-preview-cmd code {
+    color: #ffd27f;
+    font-family: inherit;
+}
+
 .modal-actions {
     display: flex;
     align-items: center;
@@ -1105,6 +1159,41 @@ textarea {
 
 .quickboot-balloon.visible {
     display: flex;
+}
+
+/* Description text inside the preparing toast (shareable state stepsMessage).
+   width:100% forces it to a new line below the main label; max-width keeps it
+   from stretching across the whole balloon. */
+.quickboot-balloon-desc {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 4px auto 0;
+    font-size: 15px;
+    font-weight: normal;
+    opacity: 0.85;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+/* OK button inside the preparing toast — only shown when the state has steps.
+   Sits below the description, styled like a modal-close button but smaller. */
+.quickboot-balloon-ok {
+    display: none;
+    margin: 8px auto 0;
+    padding: 6px 24px;
+    border: 1px solid #c8a860;
+    border-radius: 6px;
+    background: rgba(200, 168, 96, 0.25);
+    color: #e0d8c8;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.quickboot-balloon-ok:disabled {
+    opacity: 0.5;
+    cursor: default;
 }
 
 /* Shared "work in progress" spinner. Same look and timing as the startup
