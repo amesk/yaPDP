@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and stepsMessage. The snapshot list shows whether a snapshot carries startup
   actions. (`src/snapshots.js`; pinned by `tests/e2e-import-export.js`)
 
+- **Snapshot Share:** saved snapshots can be turned into shareable `.state.zst`
+  files with a human-readable description and an optional one-command handoff
+  scenario. The original snapshot is not modified. The preparing balloon shows
+  the description during `?state=` restore. A CLI tool (`tools/state-manifest.js`)
+  allows advanced manifest editing (extract/replace).
+  (`src/snapshots.js`, `src/quickboot.js`, `css/pdp11.css`,
+  `tools/state-manifest.js`; pinned by `tests/e2e-share.js`)
+
 ### Changed
 
 - **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,

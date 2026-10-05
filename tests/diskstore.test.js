@@ -354,6 +354,35 @@ async function run() {
     console.log("PASS test 7: flush with no dirty blocks resolves false");
   }
 
+  // ---- Test 8: captureOverlay skips zero-length blocks ----------------
+  {
+    const sb = buildSandbox();
+    makeContext(sb, sections);
+    const DiskStore = sb.DiskStore;
+    await DiskStore.init();
+
+    // Write a normal block (block 0) and a zero-length block (block 1).
+    const ctrl = makeCtrl("rp1.dsk", true);
+    ctrl.cache[0] = new Uint16Array(131072 >>> 1);
+    ctrl.cache[0][0] = 0xABCD;
+    // Simulate a zero-length cache block (the bug: block was marked dirty
+    // but cache has no data, e.g. due to a failed read or race condition).
+    ctrl.cache[1] = new Uint16Array(0);
+
+    DiskStore.markDirty(ctrl, 0);
+    DiskStore.markDirty(ctrl, 1);
+    await DiskStore.flush("rp1.dsk");
+
+    // captureOverlay must include block 0 but skip block 1 (zero length).
+    const overlay = await DiskStore.captureOverlay();
+    const rp1 = overlay["rp1.dsk"] || {};
+    const blockKeys = Object.keys(rp1.blocks || {});
+    assert.ok(blockKeys.indexOf("0") >= 0, "block 0 should be in overlay");
+    assert.strictEqual(blockKeys.indexOf("1"), -1, "zero-length block 1 should be skipped");
+    assert.strictEqual(blockKeys.length, 1, "only one block in overlay");
+    console.log("PASS test 8: captureOverlay skips zero-length blocks");
+  }
+
   console.log("\nAll DiskStore tests passed.");
 }
 
