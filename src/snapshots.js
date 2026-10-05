@@ -695,8 +695,8 @@ var SnapshotStore = (() => {
                         if (typeof sessionStorage !== "undefined") {
                             sessionStorage.setItem(PENDING_STATE_KEY, target);
                             sessionStorage.setItem("yapdp.restore-pending", "1");
-                            // Persist steps and description across the reload
-                            // so they can be shown/executed on the second load.
+                            // Persist steps, description and button label across
+                            // the reload so they can be shown on the second load.
                             if (parsedManifest.steps) {
                                 sessionStorage.setItem("yapdp.state-steps",
                                     JSON.stringify(parsedManifest.steps));
@@ -704,6 +704,10 @@ var SnapshotStore = (() => {
                             if (parsedManifest.stepsMessage) {
                                 sessionStorage.setItem("yapdp.state-steps-message",
                                     parsedManifest.stepsMessage);
+                            }
+                            if (parsedManifest.buttonLabel) {
+                                sessionStorage.setItem("yapdp.state-button-label",
+                                    parsedManifest.buttonLabel);
                             }
                         }
                     } catch (e) { /* ignore */ }
@@ -1087,6 +1091,7 @@ var SnapshotStore = (() => {
             var shareName = (opts && opts.title && opts.title.trim())
                 ? opts.title.trim() : snap.name;
             var stepsMessage = (opts && opts.description || "").trim() || null;
+            var buttonLabel = (opts && opts.buttonLabel || "").trim() || null;
             var steps = null;
             if (opts && opts.command && opts.command.trim()) {
                 steps = [{ send: opts.command.trim() }];
@@ -1115,6 +1120,7 @@ var SnapshotStore = (() => {
                     page: snap.page,
                     steps: steps,
                     stepsMessage: stepsMessage,
+                    buttonLabel: buttonLabel,
                     overlay: snap.overlay,
                 };
                 var packed = StateFormat.pack(manifest, memoryWords);
@@ -1894,6 +1900,9 @@ var SnapshotStore = (() => {
                     '<label class="modal-field">Description' +
                         '<textarea class="modal-input" id="share-desc" rows="2" maxlength="256"' +
                         ' autocomplete="off" spellcheck="true"></textarea></label>' +
+                    '<label class="modal-field">Button label' +
+                        '<input type="text" class="modal-input" id="share-btn" maxlength="32"' +
+                        ' autocomplete="off" spellcheck="false" placeholder="e.g. Got it"></label>' +
                     '<label class="modal-field">Run after restore' +
                         '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
@@ -1907,14 +1916,17 @@ var SnapshotStore = (() => {
             // Live preview as the user types.
             var titleInput = document.getElementById("share-title");
             var descInput = document.getElementById("share-desc");
+            var btnInput = document.getElementById("share-btn");
             var cmdInput = document.getElementById("share-cmd");
             var preview = document.getElementById("share-preview");
             function updatePreview() {
                 var t = (titleInput ? titleInput.value : "").trim();
+                var b = (btnInput ? btnInput.value : "").trim();
                 var c = (cmdInput ? cmdInput.value : "").trim();
                 var html = "";
                 if (t) html += '<div class="share-preview-title">' + t.replace(/&/g, "&").replace(/</g, "<") + '</div>';
                 html += '<div class="share-preview-note">The original snapshot will not be changed.</div>';
+                if (b) html += '<div class="share-preview-btn"><strong>Button:</strong> ' + b.replace(/&/g, "&").replace(/</g, "<") + '</div>';
                 html += '<div class="share-preview-cmd"><strong>After restore:</strong> ';
                 html += c ? '<code>' + c.replace(/&/g, "&").replace(/</g, "<") + '</code>'
                           : 'No automatic command';
@@ -1923,6 +1935,7 @@ var SnapshotStore = (() => {
             }
             if (titleInput) titleInput.addEventListener("input", updatePreview);
             if (descInput) descInput.addEventListener("input", updatePreview);
+            if (btnInput) btnInput.addEventListener("input", updatePreview);
             if (cmdInput) cmdInput.addEventListener("input", updatePreview);
             updatePreview();
 
@@ -1932,11 +1945,13 @@ var SnapshotStore = (() => {
                 createBtn.addEventListener("click", function () {
                     var title = (titleInput ? titleInput.value : "").trim();
                     var desc = (descInput ? descInput.value : "").trim();
+                    var btn = (btnInput ? btnInput.value : "").trim();
                     var cmd = (cmdInput ? cmdInput.value : "").trim();
                     createBtn.disabled = true;
                     createShareableState(snapId, {
                         title: title,
                         description: desc,
+                        buttonLabel: btn || null,
                         command: cmd,
                     }).then(function (bytes) {
                         createBtn.disabled = false;
