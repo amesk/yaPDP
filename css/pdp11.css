@@ -1055,6 +1055,66 @@ textarea {
     display: block;
 }
 
+/* Screenshot button: round camera-icon button fixed to the bottom-left
+   corner, next to the mute button. Same size and style as the mute button
+   so they sit together as a pair. Wired in src/screenshot.js. */
+.screenshot-btn {
+    position: fixed;
+    bottom: 12px;
+    left: 138px;
+    z-index: 1000;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #5a554a;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    color: #b8b0a0;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.screenshot-btn:hover {
+    background: linear-gradient(180deg, #4a453a, #3a352a);
+    border-color: #8a7a5a;
+    color: #e0d8c8;
+}
+
+/* Context menu for the screenshot button: a small floating menu with
+   save / clipboard / share options. Shown on right-click. */
+.screenshot-context-menu {
+    position: fixed;
+    z-index: 50001;
+    display: flex;
+    flex-direction: column;
+    background: rgba(22, 18, 14, 0.9);
+    border: 1px solid #5a554a;
+    border-radius: 8px;
+    padding: 4px 0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.screenshot-context-item {
+    display: block;
+    width: 100%;
+    padding: 6px 16px;
+    border: none;
+    background: transparent;
+    color: #c8c0b0;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.screenshot-context-item:hover {
+    background: rgba(200, 168, 96, 0.2);
+    color: #e0d8c8;
+}
+
 /* Quick-boot OS picker list inside the shared modal box. */
 .quickboot-box {
     max-width: 480px;
@@ -3780,6 +3840,7 @@ body.mobile-keys-on.mobile-keys-off {
 }
 
 body.mobile-keys-on .mute-btn,
+body.mobile-keys-on .screenshot-btn,
 body.mobile-keys-on .fullscreen-btn,
 body.mobile-keys-on .zoom-btn {
     bottom: calc(var(--bottom-stack-h) + 10px);
@@ -3884,6 +3945,11 @@ button.action-more-hidden {
     .mute-btn {
         bottom: 66px;
         left: 8px;
+    }
+
+    .screenshot-btn {
+        bottom: 66px;
+        left: 56px;
     }
 
     .fullscreen-btn {
