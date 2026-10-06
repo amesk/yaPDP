@@ -37,6 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   CI can hold the line. (`tools/media-zst.js`; pinned by
   `tests/media-zst.test.js`)
 
+- **Games gallery on the landing page:** a "Games" carousel beside the
+  Instant-Run (Teleport) tiles, each card opening the emulator on a saved
+  machine state with the game already running — a "Play!" button, not a boot.
+  Three RT-11 games ship it: Space Invaders (`SPCINV`), Dungeon (the MIT text
+  adventure that grew into Zork) and Colossal Cave Adventure; each description
+  is shown in the reader's language. (`landing/src/components/GamesCarousel.tsx`,
+  `landing/src/data.ts`, `landing/src/types.ts`, `landing/src/App.tsx`,
+  `states/rt-11-spcinv.state.zst`, `states/rt-11-dungeon.state.zst`,
+  `states/rt-11-adventure.state.zst`)
+
 ### Changed
 
 - **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
