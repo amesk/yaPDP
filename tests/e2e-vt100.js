@@ -346,19 +346,36 @@ async function main() {
             const crt = rig.querySelector(".vt52-crt");
             const bez = rig.querySelector(".vt52-bezel");
             const cs = getComputedStyle(crt);
+            const rigCs = getComputedStyle(rig);
             return {
                 left: cs.left, top: cs.top,
+                // The zoom walls are a FRACTION of the tube (VT52_CASE_WALL_U in
+                // src/pdp11-app.js), so the offset is not a fixed px literal; the
+                // rig publishes the value the stylesheet must consume. Comparing
+                // against a hard-coded 36px pinned the pre-proportional geometry.
+                tubeLeft: rigCs.getPropertyValue("--vt52-tube-left").trim(),
+                tubeTop: rigCs.getPropertyValue("--vt52-tube-top").trim(),
+                bezelWall: parseFloat(rigCs.getPropertyValue("--vt52-bezel-wall")) || 0,
                 inBezel: {
                     dx: Math.round(crt.getBoundingClientRect().x - bez.getBoundingClientRect().x),
                     dy: Math.round(crt.getBoundingClientRect().y - bez.getBoundingClientRect().y)
                 }
             };
         }, PAGES.console);
+        // The marker's offset is ~168px (a selector-weight bug once kept it in
+        // place while zoomed); the zoom offset is the wall sum, which is exactly
+        // what the rig published — not the marker rule.
         check("the zoomed tube uses the zoom offset, not the marker's",
-            zoomGeom.left === "36px" && zoomGeom.top === "36px",
+            zoomGeom.left === zoomGeom.tubeLeft &&
+            zoomGeom.top === zoomGeom.tubeTop &&
+            parseFloat(zoomGeom.left) > 0 && parseFloat(zoomGeom.left) < 60,
             JSON.stringify(zoomGeom));
+        // The bezel's own wall separates the tube from the case: the two gaps
+        // are equal and no wider than that wall (plus the 1px layer border).
         check("and sits inside the recessed bezel",
-            zoomGeom.inBezel.dx === 14 && zoomGeom.inBezel.dy === 14,
+            zoomGeom.inBezel.dx > 0 && zoomGeom.inBezel.dy > 0 &&
+            Math.abs(zoomGeom.inBezel.dx - zoomGeom.inBezel.dy) <= 1 &&
+            zoomGeom.inBezel.dx <= Math.ceil(zoomGeom.bezelWall) + 2,
             JSON.stringify(zoomGeom.inBezel));
 
         await page.evaluate(() => {

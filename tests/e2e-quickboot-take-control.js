@@ -28,11 +28,45 @@
 "use strict";
 
 const puppeteer = require("puppeteer");
+const path = require("path");
+const http = require("http");
+const { spawn } = require("child_process");
 
 const BASE = "http://localhost:1170/pdp11.html";
 // A scenario with a multi-step typed boot (RT-11: boot command, then a wait
 // for the monitor prompt) so the toast lives long enough to be driven here.
 const SCENARIO = "?boot=rk1";
+
+const ROOT = path.resolve(__dirname, "..");
+
+// --- shared dev server ------------------------------------------------------
+// The suite needs a server on :1170 (the page and its media come from it).
+// Start our own when nothing serves the port and stop it on the way out;
+// reuse one that is already up (the shared server tools/validate.js starts).
+const SERVE_URL = "http://localhost:1170/pdp11.html";
+function serverAlive() {
+    return new Promise((resolve) => {
+        const req = http.get(SERVE_URL, (res) => {
+            res.resume();
+            resolve(res.statusCode === 200);
+        });
+        req.on("error", () => resolve(false));
+        req.setTimeout(500, () => { req.destroy(); resolve(false); });
+    });
+}
+
+async function ensureServer() {
+    if (await serverAlive()) return null;
+    const child = spawn(process.execPath, [
+        path.join(ROOT, "tools", "serve.js"), "--port", "1170"
+    ], { cwd: ROOT, stdio: "ignore" });
+    for (let i = 0; i < 60; i++) {
+        if (await serverAlive()) return child;
+        await new Promise((r) => setTimeout(r, 200));
+    }
+    child.kill();
+    throw new Error("Static server did not start on port 1170");
+}
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -75,6 +109,7 @@ async function probeKey(page) {
 }
 
 (async () => {
+  const server = await ensureServer();
   const browser = await puppeteer.launch({
     headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -148,6 +183,7 @@ async function probeKey(page) {
     await page.close();
   } finally {
     await browser.close();
+    if (server) server.kill();
   }
 
   if (failures) {

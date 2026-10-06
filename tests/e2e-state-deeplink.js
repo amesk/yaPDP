@@ -26,10 +26,45 @@
  */
 "use strict";
 
+const path = require("path");
+const http = require("http");
+const { spawn } = require("child_process");
 const puppeteer = require("puppeteer");
 
-const BASE = "http://localhost:1170/pdp11.html";
+const ROOT = path.join(__dirname, "..");
+const PORT = 1170;
+const BASE = `http://localhost:${PORT}/pdp11.html`;
 const STATE = "states/rk1-ready.state.zst";   // RT-11, ~2 KB, committed
+
+// The suite fetches states/... over HTTP, so it needs a server on :1170. It is
+// the one e2e suite that used to ASSUME a server was already up — true under
+// CI (a shared server) and under `npm run validate` only by luck, since the
+// other suites start and stop their own. Start one when nothing serves the
+// port and kill it on the way out.
+function serverAlive() {
+    return new Promise((resolve) => {
+        const req = http.get(BASE, (res) => {
+            res.resume();
+            resolve(res.statusCode === 200);
+        });
+        req.on("error", () => resolve(false));
+        req.setTimeout(500, () => { req.destroy(); resolve(false); });
+    });
+}
+
+async function ensureServer() {
+    if (await serverAlive()) return null;
+    const child = spawn(process.execPath, [
+        path.join(ROOT, "tools", "serve.js"),
+        "--port", String(PORT)
+    ], { cwd: ROOT, stdio: "ignore" });
+    for (let i = 0; i < 60; i++) {
+        if (await serverAlive()) return child;
+        await new Promise((r) => setTimeout(r, 200));
+    }
+    child.kill();
+    throw new Error(`Static server did not start on port ${PORT}`);
+}
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -67,7 +102,7 @@ async function openPage(browser, errors, search) {
     return page;
 }
 
-function snap(page) {
+function snapshot(page) {
     return page.evaluate(() => ({
         search: location.search,
         // The refusal/failure dialog shares this overlay with the "no such
@@ -88,7 +123,24 @@ function snap(page) {
     }));
 }
 
+// The state flow can RELOAD the page (its device set or its config differs from
+// the live one) right after it drops ?state=, so a read can race a navigation.
+// Retry until the page settles instead of dying with "Execution context was
+// destroyed" — the same tolerance poll() already has.
+async function snap(page) {
+    const deadline = Date.now() + 20000;
+    for (;;) {
+        try {
+            return await snapshot(page);
+        } catch (e) {
+            if (Date.now() > deadline) throw e;
+            await new Promise((r) => setTimeout(r, 150));
+        }
+    }
+}
+
 (async () => {
+    const server = await ensureServer();
     const browser = await puppeteer.launch({
         headless: "new",
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -151,6 +203,7 @@ function snap(page) {
         }
     } finally {
         await browser.close();
+        if (server) server.kill();
     }
 
     if (failures) {
