@@ -228,17 +228,16 @@ async function testManifestCLI() {
             " replace " + statePath + " " + manifestPath + " " + outputPath, { cwd: ROOT });
         check("E2: manifest replaced", fs.existsSync(outputPath));
 
-        // Verify the output is a valid .state.zst.
+        // Verify the output is a valid .state.zst. The FRAME is whatever the
+        // CLI chose (zstd here, gzip on a Node without zstd in zlib), so it is
+        // read through the shared module rather than guessed at.
         const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
-        const zlib = require("zlib");
-        const raw = fs.readFileSync(outputPath);
-        let container = null;
-        if (typeof zlib.zstdDecompressSync === "function") {
-            try { container = zlib.zstdDecompressSync(raw); } catch (e) { /* not zstd */ }
-        }
-        if (!container) container = new Uint8Array(raw);
-        const parsed = StateFormat.unpack(container);
-        check("E3: output is a valid container", parsed !== null, JSON.stringify(parsed ? parsed.manifest.schemaVersion : null));
+        const StateIO = require(path.join(ROOT, "tools", "state-io.js"));
+        const read = StateIO.readBytes(outputPath);
+        const parsed = StateFormat.unpack(read.container);
+        check("E3: output is a valid container", parsed !== null,
+            read.frame + " / " +
+            JSON.stringify(parsed ? parsed.manifest.schemaVersion : null));
         check("E4: stepsMessage preserved",
             parsed && parsed.manifest.stepsMessage === "CLI round-trip test",
             parsed ? JSON.stringify(parsed.manifest.stepsMessage) : "null");

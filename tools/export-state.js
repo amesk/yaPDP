@@ -25,11 +25,11 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const zlib = require("zlib");
 
 const ROOT = path.join(__dirname, "..");
 const { bootHeadless } = require("./headless-machine.js");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+const StateIO = require("./state-io.js");
 
 function loadScenarios() {
     const sb = { console, window: {} };
@@ -222,12 +222,6 @@ function captureState(booted, sc) {
     return StateFormat.pack(manifest, CPU.memory);
 }
 
-function zstd(buf) {
-    return (typeof zlib.zstdCompressSync === "function")
-        ? zlib.zstdCompressSync(buf, { level: 19 })
-        : buf;   // Node 20 (CI floor): write uncompressed, and say so
-}
-
 // --- main ---------------------------------------------------------------
 async function exportState(device, outPath, opts) {
     const osboot = loadScenarios();
@@ -262,14 +256,17 @@ async function exportState(device, outPath, opts) {
 
     const packed = captureState(booted, sc);
     log("container packed: " + packed.length + " bytes");
-    const compressed = zstd(Buffer.from(packed));
     const out = outPath || path.join(ROOT, "states", sc.device + "-ready.state.zst");
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, compressed);
+    // The frame is tools/state-io.js's decision: zstd where this Node can, gzip
+    // otherwise (Node 20 has no zstd in zlib). Never a bare container — that
+    // would put the state back at its raw size on disk.
+    const frame = StateIO.writeBytes(out, Buffer.from(packed));
     if (booted.halt) booted.halt();
 
     const written = fs.statSync(out);
-    log("written: " + path.relative(ROOT, out) + "  " + written.size + " bytes");
+    log("written: " + path.relative(ROOT, out) + "  " + written.size +
+        " bytes (" + frame + ")");
 
     const kb = (n) => (n / 1024).toFixed(1) + " KB";
     log([
@@ -278,8 +275,8 @@ async function exportState(device, outPath, opts) {
         "profile=" + profileKey(sc),
         "boot=" + bootMs + "ms",
         "steps=" + stepsMs + "ms",
-        kb(compressed.length),
-        "(" + (compressed.length / packed.length * 100).toFixed(1) + "%)",
+        kb(written.size),
+        "(" + (written.size / packed.length * 100).toFixed(1) + "%)",
         "file=" + path.relative(ROOT, out),
     ].join(" "));
 
@@ -287,7 +284,7 @@ async function exportState(device, outPath, opts) {
         device: sc.device,
         profile: profileKey(sc),
         packed: packed.length,
-        compressed: compressed.length,
+        compressed: written.size,
         bootMs, stepsMs,
     };
 }

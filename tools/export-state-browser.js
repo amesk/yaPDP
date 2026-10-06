@@ -25,10 +25,10 @@
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
-const zlib = require("zlib");
 const { spawn } = require("child_process");
 const puppeteer = require("puppeteer");
-const { StateFormat } = require(path.join(__dirname, "..", "src", "state-format.js"));
+const { StateFrame } = require(path.join(__dirname, "..", "src", "state-frame.js"));
+const StateIO = require("./state-io.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const PORT = 1170;
@@ -152,27 +152,20 @@ async function exportOne(page, device) {
     const out = path.join(OUT_DIR, device + "-ready.state.zst");
     fs.mkdirSync(OUT_DIR, { recursive: true });
 
-    // The browser exports gzip (its own CompressionStream); the files in
-    // states/ are zstd, the format the images use. Re-wrap: gunzip what the
-    // browser gave us, zstd what we write. Same container either way.
-    let container = buf;
-    try {
-        container = zlib.gunzipSync(buf);
-    } catch (e) { /* not gzip: an uncompressed container, or already zstd */ }
-    let final = container;
-    if (typeof zlib.zstdCompressSync === "function" &&
-        !StateFormat.isContainer(container)) {
-        final = container;   // no container magic: leave the bytes alone
-    } else if (typeof zlib.zstdCompressSync === "function") {
-        final = zlib.zstdCompressSync(container, { level: 19 });
-    }
-    fs.writeFileSync(out, final);
+    // The browser exports gzip (its own CompressionStream); the repo's own
+    // states are zstd, the frame the images use. The CONTAINER inside is
+    // identical either way, so the frame is simply re-wrapped the way
+    // src/state-frame.js prescribes (zstd -> gzip -> bare, never bare while a
+    // compressor exists), with tools/state-io.js supplying Node's codecs.
+    const container = StateFrame.unwrap(buf, StateIO.codecs);
+    const frame = StateIO.writeBytes(out, container);
+    const written = fs.statSync(out).size;
 
     log("  browser bytes " + buf.length +
         " -> container " + container.length +
-        " -> zstd " + final.length);
-    log("  written " + path.relative(ROOT, out) + "  " + final.length + " bytes");
-    return { device, bytes: final.length, containerBytes: container.length,
+        " -> " + frame + " " + written);
+    log("  written " + path.relative(ROOT, out) + "  " + written + " bytes");
+    return { device, bytes: written, containerBytes: container.length,
              browserBytes: buf.length, readyMs };
 }
 

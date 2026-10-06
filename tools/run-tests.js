@@ -84,6 +84,8 @@ const ORDER = [
     "screenshots-os-config.test.js",
     "tape-archive.test.js",
     "media-zst.test.js",
+    "state-frame.test.js",
+    "state-manifest.test.js",
 ];
 
 function allTestFiles() {

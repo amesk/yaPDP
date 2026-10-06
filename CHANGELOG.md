@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/snapshots.js`, `src/quickboot.js`, `css/pdp11.css`,
   `tools/state-manifest.js`; pinned by `tests/e2e-share.js`)
 
+- **Snapshots can be canonicalised from the command line:**
+  `npm run media:repack -- states/unix-v5.state.zst` rewrites a `.state.zst` in
+  the frame the repo keeps (zstd), in place; a snapshot exported from the
+  browser is gzip, and gzip is the larger of the two. `node
+  tools/media-zst.js check --canonical <file>` reports such a file and fails, so
+  CI can hold the line. (`tools/media-zst.js`; pinned by
+  `tests/media-zst.test.js`)
+
 ### Changed
 
 - **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
@@ -38,6 +46,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/step-engine.js`, `src/quickboot.js`)
 
 ### Fixed
+
+- **Every state reader takes the frame the writer used.** The wrapper around a
+  `.state` container is zstd (the tools), gzip (the browser, which has only
+  `CompressionStream`) or — on a runtime with no compressor — absent, and each
+  reader had grown its own guess: `tools/restore-state.js`,
+  `tools/headless-term.js` and `tools/state-manifest.js` refused gzip
+  outright, and the page's manifest peek before a `?state=` restore did not
+  try it at all. The frames and the policy now live in `src/state-frame.js`
+  (Node's codecs in `tools/state-io.js`), and the writers — the two export
+  tools, `headless-term.js`, `state-manifest.js` — frame their output through
+  the same policy: zstd, else gzip, never bare while a compressor exists.
+  (`src/state-frame.js`, `tools/state-io.js`, `src/snapshots.js`, `pdp11.html`,
+  `tools/restore-state.js`, `tools/headless-term.js`, `tools/export-state.js`,
+  `tools/export-state-browser.js`, `tools/state-manifest.js`,
+  `tools/media-zst.js`; pinned by `tests/state-frame.test.js`,
+  `tests/state-manifest.test.js`, `tests/snapshotstore.test.js`)
+
+- **A browser-made snapshot opens in the media tool:** `tools/media-zst.js`
+  refused any gzip frame named `.zst`, which is exactly what the page writes for
+  a `.state.zst` (it compresses with the built-in `CompressionStream`), so a
+  snapshot saved in the browser could not be checked or unpacked from the repo.
+  `check`, `decompress` and `unpack` now accept either container for a
+  `.state.zst` — zstd through fzstd, gzip through zlib, the same split
+  `src/snapshots.js` reads — and `check` names the container it found. A media
+  image must still be a real zstd frame, since the image loader is fzstd.
+  (`tools/media-zst.js`; pinned by `tests/media-zst.test.js`)
 
 - **The PTR11 paper-tape reader behaves like the hardware: a machine reset does
   not eject the tape, and REWIND rewinds it.** `reset()` (reached from `boot()`

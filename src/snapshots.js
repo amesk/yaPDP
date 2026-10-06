@@ -688,77 +688,93 @@ var SnapshotStore = (() => {
                 // them). Applying the profile is what makes the teleport work
                 // for someone who never ran yaPDP before, which is the whole
                 // point of the link.
-                var parsedManifest = peekManifest(new Uint8Array(buf));
-                if (parsedManifest && configNeedsReload({ config: parsedManifest.profile })) {
-                    applySnapshotConfig({ config: parsedManifest.profile });
-                    try {
-                        if (typeof sessionStorage !== "undefined") {
-                            sessionStorage.setItem(PENDING_STATE_KEY, target);
-                            sessionStorage.setItem("yapdp.restore-pending", "1");
-                            // Persist steps, description and button label across
-                            // the reload so they can be shown on the second load.
-                            if (parsedManifest.steps) {
-                                sessionStorage.setItem("yapdp.state-steps",
-                                    JSON.stringify(parsedManifest.steps));
-                            }
-                            if (parsedManifest.stepsMessage) {
-                                sessionStorage.setItem("yapdp.state-steps-message",
-                                    parsedManifest.stepsMessage);
-                            }
-                            if (parsedManifest.buttonLabel) {
-                                sessionStorage.setItem("yapdp.state-button-label",
-                                    parsedManifest.buttonLabel);
-                            }
-                        }
-                    } catch (e) { /* ignore */ }
-                    if (typeof window !== "undefined") window.__allowConfigReload = true;
-                    if (typeof location !== "undefined" && location.reload) {
-                        location.reload();
-                        return { ok: true, reloading: true, url: target };
-                    }
+                // A state's manifest decides whether the page has to reload
+                // BEFORE the state is applied (the profile check below), and
+                // reading it may be asynchronous: zstd and a bare container are
+                // decoded on the spot, while a gzip frame — the browser's own
+                // export, and therefore every shared state — goes through the
+                // platform decoder. peekManifest() returns the manifest or a
+                // Promise for it, and this is the one place that cares which.
+                var peeked = peekManifest(new Uint8Array(buf));
+                if (peeked && typeof peeked.then === "function") {
+                    return peeked.then(finishLoad, function () { return finishLoad(null); });
                 }
-                var applied = applyStateBytes(new Uint8Array(buf), target);
-                if (!onRestored) return applied;
-                return applied.then(function (result) {
-                    if (!result || !result.ok) return result;
-                    return Promise.resolve(onRestored(lastStateManifest))
-                        .then(function () {
-                            // Steps run AFTER image loading, gate still ON
-                            var steps = (lastStateManifest && lastStateManifest.steps &&
-                                Array.isArray(lastStateManifest.steps) && lastStateManifest.steps.length > 0)
-                                ? lastStateManifest.steps : null;
-                            // Fall back to steps persisted across a config-driven reload
-                            // (saved in sessionStorage before location.reload()).
-                            if (!steps) {
-                                try {
-                                    var saved = sessionStorage.getItem("yapdp.state-steps");
-                                    if (saved) {
-                                        steps = JSON.parse(saved);
-                                        sessionStorage.removeItem("yapdp.state-steps");
-                                    }
-                                } catch (e) { /* ignore */ }
+                return finishLoad(peeked);
+
+                // Hoisted so both peek paths reach it: apply the state, or
+                // reload the page once the config it asks for is in place.
+                function finishLoad(parsedManifest) {
+                    if (parsedManifest && configNeedsReload({ config: parsedManifest.profile })) {
+                        applySnapshotConfig({ config: parsedManifest.profile });
+                        try {
+                            if (typeof sessionStorage !== "undefined") {
+                                sessionStorage.setItem(PENDING_STATE_KEY, target);
+                                sessionStorage.setItem("yapdp.restore-pending", "1");
+                                // Persist steps, description and button label across
+                                // the reload so they can be shown on the second load.
+                                if (parsedManifest.steps) {
+                                    sessionStorage.setItem("yapdp.state-steps",
+                                        JSON.stringify(parsedManifest.steps));
+                                }
+                                if (parsedManifest.stepsMessage) {
+                                    sessionStorage.setItem("yapdp.state-steps-message",
+                                        parsedManifest.stepsMessage);
+                                }
+                                if (parsedManifest.buttonLabel) {
+                                    sessionStorage.setItem("yapdp.state-button-label",
+                                        parsedManifest.buttonLabel);
+                                }
                             }
-                            if (steps) {
-                                return StepEngine.runSteps(steps, {
-                                    sendBytes: StepEngine.sendBytes,
-                                    outputContains: StepEngine.outputContains,
-                                    stepDelayMs: 800,
-                                    onDone: function () {
-                                        // Close the preparing balloon after all steps
-                                        // complete (the OK button was already clicked).
-                                        if (typeof window !== "undefined" &&
-                                            typeof window.__hideStatePreparing === "function") {
-                                            window.__hideStatePreparing();
+                        } catch (e) { /* ignore */ }
+                        if (typeof window !== "undefined") window.__allowConfigReload = true;
+                        if (typeof location !== "undefined" && location.reload) {
+                            location.reload();
+                            return { ok: true, reloading: true, url: target };
+                        }
+                    }
+                    var applied = applyStateBytes(new Uint8Array(buf), target);
+                    if (!onRestored) return applied;
+                    return applied.then(function (result) {
+                        if (!result || !result.ok) return result;
+                        return Promise.resolve(onRestored(lastStateManifest))
+                            .then(function () {
+                                // Steps run AFTER image loading, gate still ON
+                                var steps = (lastStateManifest && lastStateManifest.steps &&
+                                    Array.isArray(lastStateManifest.steps) && lastStateManifest.steps.length > 0)
+                                    ? lastStateManifest.steps : null;
+                                // Fall back to steps persisted across a config-driven
+                                // reload (saved in sessionStorage before reload()).
+                                if (!steps) {
+                                    try {
+                                        var saved = sessionStorage.getItem("yapdp.state-steps");
+                                        if (saved) {
+                                            steps = JSON.parse(saved);
+                                            sessionStorage.removeItem("yapdp.state-steps");
                                         }
-                                    },
-                                });
-                            }
-                        })
-                        .then(function () { return result; });
-                }, function (err) {
-                    return { ok: false, reason: "network", url: target,
-                             detail: String(err && err.message ? err.message : err) };
-                });
+                                    } catch (e) { /* ignore */ }
+                                }
+                                if (steps) {
+                                    return StepEngine.runSteps(steps, {
+                                        sendBytes: StepEngine.sendBytes,
+                                        outputContains: StepEngine.outputContains,
+                                        stepDelayMs: 800,
+                                        onDone: function () {
+                                            // Close the preparing balloon after all steps
+                                            // complete (the OK button was already clicked).
+                                            if (typeof window !== "undefined" &&
+                                                typeof window.__hideStatePreparing === "function") {
+                                                window.__hideStatePreparing();
+                                            }
+                                        },
+                                    });
+                                }
+                            })
+                            .then(function () { return result; });
+                    }, function (err) {
+                        return { ok: false, reason: "network", url: target,
+                                 detail: String(err && err.message ? err.message : err) };
+                    });
+                }
             });
         }).catch(function (err) {
             return { ok: false, reason: "network", url: target,
@@ -767,50 +783,77 @@ var SnapshotStore = (() => {
     }
 
     // Read the manifest out of a container without applying anything, so the
-    // device set can be checked BEFORE the machine is touched. Returns null
-    // when the bytes are not a container.
+    // device set can be checked BEFORE the machine is touched. Returns the
+    // manifest, a Promise for it (a gzip frame needs the platform decoder), or
+    // null when the bytes are not a container.
     function peekManifest(bytes) {
-        var raw = bytes;
-        if (typeof fzstd !== "undefined" && typeof fzstd.decompress === "function") {
-            try { raw = Uint8Array.from(fzstd.decompress(bytes)); }
-            catch (e) { raw = bytes; }
+        var container = readStateContainer(new Uint8Array(bytes));
+        if (container === null) return null;
+        var read = function (raw) {
+            var parsed = (typeof StateFormat !== "undefined" &&
+                typeof StateFormat.unpack === "function")
+                ? StateFormat.unpack(raw) : null;
+            return parsed ? parsed.manifest : null;
+        };
+        if (container && typeof container.then === "function") {
+            return container.then(read, function () { return null; });
         }
-        var parsed = (typeof StateFormat !== "undefined" &&
-            typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
-        return parsed ? parsed.manifest : null;
+        return read(container);
+    }
+
+    // The codecs src/state-frame.js asks for: the PAGE supplies the platform
+    // halves. fzstd decodes zstd — the frame the tools write — and gzip goes
+    // through the built-in DecompressionStream, which is ASYNCHRONOUS, so
+    // unwrap() returns a Promise for that one and the callers below accept
+    // either shape. Which frames exist and which one is preferred is NOT
+    // decided here.
+    function stateCodecs() {
+        var haveZstd = (typeof fzstd !== "undefined" &&
+            typeof fzstd.decompress === "function");
+        return {
+            isContainer: (typeof StateFormat !== "undefined" &&
+                typeof StateFormat.isContainer === "function")
+                ? StateFormat.isContainer : null,
+            zstdDecode: haveZstd ? function (b) {
+                return Uint8Array.from(fzstd.decompress(new Uint8Array(b)));
+            } : null,
+            gzipDecode: gunzipBytes
+        };
+    }
+
+    // The container under the frame, or null when there is none: no
+    // StateFrame on the page, an unrecognised frame, or bytes that are not a
+    // state at all. May return a Promise — a gzip frame needs the platform
+    // decoder — which the callers handle explicitly.
+    function readStateContainer(bytes) {
+        if (typeof StateFrame === "undefined") return null;
+        try {
+            return StateFrame.unwrap(bytes, stateCodecs());
+        } catch (e) {
+            return null;
+        }
     }
 
     // Decompress + unpack + restore, in one place so the browser path and any
-    // future caller agree. A .state file is a CONTAINER wrapped in a
-    // compression frame, and the frame can be either of the two this project
-    // uses: zstd (the file tools, and the images) or gzip (the browser's own
-    // export, which uses the built-in CompressionStream rather than shipping a
-    // zstd compressor). The container inside is identical either way, so this
-    // only has to get the wrapper off.
+    // future caller agree. A .state file is a CONTAINER (src/state-format.js)
+    // wrapped in a frame, and the frame is whatever the WRITER had: zstd from
+    // the tools and the repo's own states, gzip from the browser's own export
+    // (CompressionStream — the page ships no zstd encoder), or nothing at all
+    // when the writer had no compressor. src/state-frame.js owns that rule;
+    // the codecs above are this page's half of it.
     function applyStateBytes(bytes, url) {
-        var raw = bytes;
-        // Try zstd, then gzip, then take the bytes as they are (an uncompressed
-        // container — what the export writes when CompressionStream is absent).
-        var viaZstd = null;
-        if (typeof fzstd !== "undefined" && typeof fzstd.decompress === "function") {
-            try { viaZstd = Uint8Array.from(fzstd.decompress(bytes)); }
-            catch (e) { viaZstd = null; }
+        var container = readStateContainer(new Uint8Array(bytes));
+        if (container === null) {
+            return Promise.resolve({ ok: false, reason: "not-a-state", url: url });
         }
-        if (viaZstd && (typeof StateFormat === "undefined" ||
-                !StateFormat.isContainer || StateFormat.isContainer(viaZstd))) {
-            raw = viaZstd;
-        } else if (typeof StateFormat !== "undefined" &&
-                   StateFormat.isContainer && StateFormat.isContainer(bytes)) {
-            raw = bytes;                       // already an uncompressed container
-        } else {
-            // gzip (or anything else the platform can decode): finish async.
-            return gunzipBytes(bytes).then(function (gun) {
-                return applyContainer(gun, url);
+        if (container && typeof container.then === "function") {
+            return container.then(function (raw) {
+                return applyContainer(raw, url);
             }, function () {
                 return { ok: false, reason: "not-a-state", url: url };
             });
         }
-        return applyContainer(raw, url);
+        return Promise.resolve(applyContainer(container, url));
     }
 
     // The container half: unpack, stamp the overlay's origin, hand it to
@@ -1202,34 +1245,18 @@ var SnapshotStore = (() => {
         });
     }
 
-    // Decompress (zstd/gzip) and unpack a .state container.
+    // Decompress (zstd/gzip/bare) and unpack a .state container.
     // Returns Promise<{manifest, memoryWords}>.
     function unpackContainer(bytes) {
-        // Try zstd first.
-        if (typeof fzstd !== "undefined" && typeof fzstd.decompress === "function") {
-            try {
-                var viaZstd = Uint8Array.from(fzstd.decompress(bytes));
-                if (StateFormat.isContainer(viaZstd)) {
-                    var p = StateFormat.unpack(viaZstd);
-                    if (p) return Promise.resolve(p);
-                }
-            } catch (e) { /* not zstd */ }
-        }
-        // Try gzip.
-        if (typeof DecompressionStream !== "undefined") {
-            return gunzipBytes(bytes).then(function (gun) {
-                if (!StateFormat.isContainer(gun)) throw new Error("not-a-state");
-                var p = StateFormat.unpack(gun);
-                if (!p) throw new Error("not-a-state");
-                return p;
-            });
-        }
-        // Try as uncompressed container.
-        if (StateFormat.isContainer(bytes)) {
-            var p2 = StateFormat.unpack(bytes);
-            if (p2) return Promise.resolve(p2);
-        }
-        return Promise.reject(new Error("not-a-state"));
+        var container = readStateContainer(new Uint8Array(bytes));
+        if (container === null) return Promise.reject(new Error("not-a-state"));
+        return Promise.resolve(container).then(function (raw) {
+            var parsed = (typeof StateFormat !== "undefined" &&
+                typeof StateFormat.unpack === "function")
+                ? StateFormat.unpack(raw) : null;
+            if (!parsed) throw new Error("not-a-state");
+            return parsed;
+        });
     }
 
     function load(id) {

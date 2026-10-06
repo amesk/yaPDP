@@ -58,11 +58,11 @@ const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
 const vm = require("vm");
-const zlib = require("zlib");
 
 const { bootHeadless } = require("./headless-machine.js");
 const { IO_BLOCKSIZE } = require("../src/devices/disk-service.js");
 const { StateFormat } = require("../src/state-format.js");
+const StateIO = require("./state-io.js");
 
 const REPO = path.resolve(__dirname, "..");
 const PREFIX = ":";
@@ -619,22 +619,14 @@ async function handleCommand(line) {
 //
 // The FORMAT belongs to src/state-format.js — the same container the browser
 // snapshot store uses — so a .state.zst written here restores there and vice
-// versa. This tool adds only the two Node ends: driving the headless machine
-// and writing/reading the file.
+// versa. The FRAME around it (zstd, gzip, or none) belongs to
+// src/state-frame.js, reached through tools/state-io.js, so a gzip state
+// exported from the browser restores here too. This tool adds only the two
+// Node ends: driving the headless machine and writing/reading the file.
 //
 // Why the pairing matters: a restore without a save is half a feature. With
 // both, a session can be parked and resumed at the console prompt, which is
 // exactly what the e2e suites and a human operator both want.
-
-function zstdCompress(buf) {
-    return (typeof zlib.zstdCompressSync === "function")
-        ? zlib.zstdCompressSync(buf, { level: 19 }) : buf;
-}
-
-function zstdDecompress(buf) {
-    return (typeof zlib.zstdDecompressSync === "function")
-        ? new Uint8Array(zlib.zstdDecompressSync(buf)) : new Uint8Array(buf);
-}
 
 // Build the container from the live machine, exactly as export-state.js does.
 function captureMachineState(file) {
@@ -649,12 +641,13 @@ function captureMachineState(file) {
         devices: boot.machine.bus.snapshotDevices(),
     };
     const packed = StateFormat.pack(manifest, CPU.memory);
-    const compressed = zstdCompress(Buffer.from(packed));
-    fs.mkdirSync(path.dirname(path.resolve(REPO, file)), { recursive: true });
-    fs.writeFileSync(path.resolve(REPO, file), compressed);
+    const out = path.resolve(REPO, file);
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    const frame = StateIO.writeBytes(out, Buffer.from(packed));
+    const written = fs.statSync(out).size;
     console.error("headless-term: state saved to " + file +
-        " (" + compressed.length + " bytes from " + packed.length + ")");
-    return compressed.length;
+        " (" + written + " bytes " + frame + " from " + packed.length + ")");
+    return written;
 }
 
 /** applyState — restore a container onto the LIVE machine (halted). */
@@ -681,12 +674,12 @@ async function applyState(parsed) {
 }
 
 async function loadStateFile(file) {
-    const raw = fs.readFileSync(path.resolve(REPO, file));
-    const parsed = StateFormat.unpack(zstdDecompress(raw));
+    const read = StateIO.readBytes(path.resolve(REPO, file));
+    const parsed = StateFormat.unpack(read.container);
     if (!parsed) throw new Error("not a .state container: " + file);
     await applyState(parsed);
     console.error("headless-term: state restored from " + file +
-        " (device=" + parsed.manifest.device + ")");
+        " (device=" + parsed.manifest.device + ", " + read.frame + ")");
 }
 
 // ----------------------------------------------------------------------

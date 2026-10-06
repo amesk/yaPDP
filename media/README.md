@@ -16,13 +16,17 @@ The emulator main page lists what PDP 11 operating system is loaded on each of t
 
 ## Compressing an image
 
-The .zst files are zstd frames, and the emulator unpacks them with fzstd (assets/vendor/fzstd.js), so a .zst has to be a real zstd frame and not gzip or something else with a .zst name. No external compressor is needed - Node 22.15+/23+ ships zstd in zlib, and tools/media-zst.js decodes every frame it writes back with the same fzstd build the browser loads before it lands on disk. A Node without zstd (the CI matrix still runs 20) gets a valid but uncompressed frame instead of an error, and the tool says so:
+The .zst files are zstd frames, and the emulator unpacks them with fzstd (assets/vendor/fzstd.js), so a media .zst has to be a real zstd frame and not gzip or something else with a .zst name. Machine states are the one exception: the page has no zstd compressor, so a snapshot exported in the browser is gzip (states/\*.state.zst), which src/snapshots.js reads with the platform's own decompressor. tools/media-zst.js takes either container for a .state.zst and keeps refusing gzip for an image. No external compressor is needed - Node 22.15+/23+ ships zstd in zlib, and tools/media-zst.js decodes every frame it writes back with the same fzstd build the browser loads before it lands on disk. A Node without zstd (the CI matrix still runs 20) gets a valid but uncompressed frame instead of an error, and the tool says so:
 
 ```
 npm run media:compress -- media/ra0.tap        -> media/ra0.tap.zst
 npm run media:unpack   -- media/ra0.tap.zst    -> media/ra0.tap
 node tools/media-zst.js check media/ra0.tap.zst     decode and report, writes nothing
+node tools/media-zst.js check states/rk0-ready.state.zst    a state may be zstd or gzip
+npm run media:repack   -- states/rk0-ready.state.zst        gzip -> zstd, in place
 ```
+
+The repo keeps its states in one frame, zstd: a snapshot exported from the browser is gzip and larger, so `repack` canonicalises it in place, and `node tools/media-zst.js check --canonical <file>` fails one that has not been repacked.
 
 The compressed file keeps the whole original name (ra0.tap becomes ra0.tap.zst), because the loaders strip only the trailing .zst. An existing file is never replaced without --force. After adding or replacing an image, run `npm run manifest` so the quick-boot picker and the Info page see it.
 
