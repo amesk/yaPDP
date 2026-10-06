@@ -1613,6 +1613,21 @@ var SnapshotStore = (() => {
     var __snapModalOnConfirm = null;
     var __snapPrevFocus = null;
 
+    // Escape a string for insertion into the modal markup (innerHTML) — both
+    // as text and as a quoted attribute value. Every user-supplied name that
+    // reaches this markup must pass through here; the Share dialog used to
+    // carry its own copy of this chain with the entity values dropped, which
+    // made it a no-op and let a crafted snapshot name inject HTML.
+    function escapeHtml(str) {
+        // The entity texts are assembled from an ampersand constant; the
+        // result is the same five-character escape the Prompt dialog writes
+        // inline.
+        var amp = "&";
+        return String(str == null ? "" : str)
+            .replace(/&/g, amp + "amp;").replace(/</g, amp + "lt;").replace(/>/g, amp + "gt;")
+            .replace(/"/g, amp + "quot;").replace(/'/g, amp + "#39;");
+    }
+
     // Hide the confirm/prompt overlay and return focus to the element that
     // opened it (e.g. the manager-modal Rename button), so keyboard input
     // keeps flowing inside the right dialog.
@@ -1935,7 +1950,7 @@ var SnapshotStore = (() => {
             var snapName = snap.name || "";
             if (!__snapModal) { showConfirmModal({}); __snapModalOnConfirm = null; }
             __snapPrevFocus = document.activeElement;
-            var safeName = String(snapName).replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+            var safeName = escapeHtml(snapName);
             __snapModal.innerHTML =
                 '<div class="modal-box">' +
                     '<span class="modal-title">Share snapshot</span>' +
@@ -2117,10 +2132,12 @@ var SnapshotStore = (() => {
         refreshUI: refreshUI,
         wireUI: wireUI,
         SCHEMA_VERSION: SCHEMA_VERSION,
-        // Exposed for tests: the compatibility rule and its dialog.
+        // Exposed for tests: the compatibility rule and its dialog, and the
+        // HTML escaper the Share dialog applies to a snapshot name.
         incompatibleImages: incompatibleImages,
         showIncompatibleImageDialog: showIncompatibleImageDialog,
-        hideIncompatibleImageDialog: hideIncompatibleImageDialog
+        hideIncompatibleImageDialog: hideIncompatibleImageDialog,
+        escapeHtml: escapeHtml
     };
 })();
 

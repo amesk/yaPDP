@@ -133,6 +133,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   back to the newest snapshot. (`src/snapshots.js`; pinned by
   `tests/snapshot-ui-selection.test.js`)
 
+- **The Share dialog escapes the snapshot name before it reaches the modal
+  markup.** The escaping was a no-op — each character was replaced by itself —
+  and the name is interpolated both as text and inside the `value="…"`
+  attribute, so a snapshot named with a quote could break out of the attribute
+  and inject HTML. The name now passes through the same five-character escape
+  the Prompt dialog applies, and a crafted name renders as inert text.
+  (`src/snapshots.js`; pinned by `tests/snapshot-escape.test.js`)
+
 ## [0.3.0] - 2026-09-30
 
 ### Added
