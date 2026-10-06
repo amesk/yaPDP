@@ -20,6 +20,11 @@ const assert = require("assert");
 const SOURCE_PATH = path.join(__dirname, "..", "src", "snapshots.js");
 const STATE_FORMAT_PATH = path.join(__dirname, "..", "src", "state-format.js");
 const SF_SOURCE = fs.readFileSync(STATE_FORMAT_PATH, "utf8");
+// src/state-frame.js — the frame contract (zstd / gzip / bare) the store reads
+// its .state bytes through. Loaded into the sandbox after state-format.js, in
+// the same order the page loads them.
+const STATE_FRAME_PATH = path.join(__dirname, "..", "src", "state-frame.js");
+const FRAME_SOURCE = fs.readFileSync(STATE_FRAME_PATH, "utf8");
 
 // ------------------------------------------------------------------
 // Extract the SnapshotStore IIFE (balanced braces)
@@ -117,6 +122,8 @@ function buildSandbox() {
     // src/state-format.js — the shared container (loaded into the sandbox by
     // loadSnapshotStore; declared here so captureMemory can reach it).
     StateFormat: undefined,
+    // src/state-frame.js — the frame around that container, same treatment.
+    StateFrame: undefined,
     Response,
     TextEncoder, TextDecoder,
     STATE_HALT: 3,
@@ -167,6 +174,10 @@ function loadSnapshotStore(sb) {
   // We also expose it on the sandbox object so the test can drive it directly.
   vm.runInContext(SF_SOURCE, sb);
   sb.StateFormat = vm.runInContext("StateFormat", sb);
+  // The frame contract next: the store reads .state bytes (zstd, gzip, or a
+  // bare container) through it, so it must be there before the store.
+  vm.runInContext(FRAME_SOURCE, sb);
+  sb.StateFrame = vm.runInContext("StateFrame", sb);
   vm.runInContext(code, sb);
   return sb.SnapshotStore;
 }
@@ -459,6 +470,44 @@ async function run() {
     assert.strictEqual(snap.steps, null, "steps is null when not provided");
     assert.strictEqual(snap.stepsMessage, null, "stepsMessage is null when not provided");
     console.log("PASS test 13: save() without steps leaves steps as null");
+  }
+
+  // ---- Test 14: a GZIP state (what the page itself exports) applies -----
+  // Every state exported from the browser is gzip (it has only
+  // CompressionStream), and a shared .state.zst arrives by URL or by drop.
+  // Reading it must not depend on the frame being zstd; a bare container — a
+  // writer with no compressor at all — must keep working too.
+  {
+    const zlib = require("zlib");
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    sb.CPU.registerVal[0] = 0x7777;
+    const container = Buffer.from(sb.StateFormat.pack({
+      schemaVersion: SS.SCHEMA_VERSION,
+      label: "gzip share",
+      device: "rk1",
+      cpu: { registerVal: [0x7777] },
+    }, sb.CPU.memory));
+
+    sb.CPU.registerVal[0] = 0;
+    const viaGzip = await SS.applyStateBytes(
+      new Uint8Array(zlib.gzipSync(container)), "shared.state.zst");
+    assert.strictEqual(viaGzip.ok, true,
+      "a gzip state must apply: " + JSON.stringify(viaGzip));
+    assert.strictEqual(sb.CPU.registerVal[0], 0x7777,
+      "the gzip state's registers landed");
+
+    sb.CPU.registerVal[0] = 0;
+    const bare = await SS.applyStateBytes(new Uint8Array(container), "local.state");
+    assert.strictEqual(bare.ok, true, "a bare container must still apply");
+    assert.strictEqual(sb.CPU.registerVal[0], 0x7777,
+      "the bare state's registers landed");
+
+    const foreign = await SS.applyStateBytes(new Uint8Array([1, 2, 3, 4]), "no.state");
+    assert.strictEqual(foreign.ok, false, "a foreign file is refused");
+    assert.strictEqual(foreign.reason, "not-a-state", "and the reason says why");
+    console.log("PASS test 14: gzip and bare states apply, foreign bytes refused");
   }
 
   console.log("\nAll SnapshotStore tests passed.");

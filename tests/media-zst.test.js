@@ -4,9 +4,11 @@
  *
  * The tool exists so that media/*.zst is produced the way the emulator can read
  * it back: a real zstd frame, decoded by the very fzstd build the browser loads
- * (assets/vendor/fzstd.js). These tests hold that promise on the pure helpers
- * (frame check, naming, overwrite decision), on a round trip, and on a real
- * committed image.
+ * (assets/vendor/fzstd.js). A .state.zst is the one artefact the page can write
+ * itself, and it writes gzip (CompressionStream), so the tool takes that
+ * container for a snapshot while still refusing it for an image. These tests
+ * hold those promises on the pure helpers (frame check, naming, overwrite
+ * decision), on a round trip, and on a real committed image.
  *
  * Run with:  node tests/media-zst.test.js
  *
@@ -65,10 +67,35 @@ function run() {
         const gzip = zlib.gzipSync(sampleBytes());
         assert.strictEqual(MediaZst.isZstdFrame(gzip), false,
             "gzip output must not pass as a zstd frame");
-        assert.throws(() => MediaZst.decompressBytes(gzip),
-            /not a zstd frame/, "the tool must refuse a foreign container");
+        assert.strictEqual(MediaZst.isGzipFrame(gzip), true,
+            "gzip is recognised by its own magic");
+        assert.strictEqual(MediaZst.containerOf(gzip), "gzip");
+        assert.strictEqual(MediaZst.containerOf(Buffer.from("not a frame")), null,
+            "anything else has no container");
+        // An IMAGE may never be gzip: the image loader is fzstd, so unpacking
+        // it here would only move the litter to the guest.
+        assert.throws(() => MediaZst.decompressBytes(gzip), /gzip frame/,
+            "a gzip image must still be refused");
         assert.strictEqual(MediaZst.isZstdFrame(Buffer.alloc(0)), false);
         assert.strictEqual(MediaZst.isZstdFrame(undefined), false);
+        assert.strictEqual(MediaZst.containerOf(undefined), null);
+    }
+
+    // ---- gzip is what the BROWSER writes: a .state.zst snapshot --------
+    {
+        const raw = sampleBytes();
+        const gzip = zlib.gzipSync(raw);
+        assert.strictEqual(MediaZst.allowsGzip("states/unix-v5.state.zst"), true);
+        assert.strictEqual(MediaZst.allowsGzip("states/rk0-ready.state.zst"), true,
+            "the container, not the name, is what varies");
+        assert.strictEqual(MediaZst.allowsGzip("media/rk0.dsk.zst"), false);
+        assert.strictEqual(MediaZst.allowsGzip(undefined), false);
+
+        assert.ok(MediaZst.decompressBytes(gzip, true).equals(raw),
+            "a browser snapshot must decode through zlib gunzip");
+        // src/snapshots.js reads both containers, and so must the tool.
+        assert.ok(MediaZst.decompressBytes(MediaZst.compressBytes(raw), true)
+            .equals(raw), "a zstd snapshot keeps working");
     }
 
     // ---- round trip: the tool compresses, fzstd decodes ----------------
@@ -171,6 +198,96 @@ function run() {
             assert.strictEqual(forced.status, 0, forced.stderr);
             assert.ok(fs.readFileSync(raw).length > 10,
                 "with --force the image is really unpacked");
+        } finally {
+            fs.rmSync(tmp, { recursive: true, force: true });
+        }
+    }
+
+    // ---- the CLI itself: a browser-made (gzip) snapshot ---------------
+    {
+        const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "yapdp-mediazst-gz-"));
+        try {
+            const raw = sampleBytes();
+            const stateZst = path.join(tmp, "space-invaders.state.zst");
+            const state = path.join(tmp, "space-invaders.state");
+            fs.writeFileSync(stateZst, zlib.gzipSync(raw));
+
+            const r = spawnSync(process.execPath,
+                [TOOL, "check", path.relative(ROOT, stateZst)],
+                { cwd: ROOT, encoding: "utf8" });
+            assert.strictEqual(r.status, 0,
+                "check must accept a gzip snapshot: " + r.stderr);
+            assert.ok(/\(gzip\)/.test(r.stdout),
+                "check should report the gzip container: " + r.stdout);
+
+            const d = spawnSync(process.execPath,
+                [TOOL, "unpack", path.relative(ROOT, stateZst)],
+                { cwd: ROOT, encoding: "utf8" });
+            assert.strictEqual(d.status, 0, "unpack must accept it too: " + d.stderr);
+            assert.ok(fs.readFileSync(state).equals(raw),
+                "the snapshot must come back byte for byte");
+
+            // and a gzip IMAGE is still refused, with a message that says why
+            const imgZst = path.join(tmp, "rk9.dsk.zst");
+            fs.writeFileSync(imgZst, zlib.gzipSync(raw));
+            const bad = spawnSync(process.execPath,
+                [TOOL, "check", path.relative(ROOT, imgZst)],
+                { cwd: ROOT, encoding: "utf8" });
+            assert.notStrictEqual(bad.status, 0, "a gzip image must fail");
+            assert.ok(/gzip/.test(bad.stdout + bad.stderr),
+                "and the failure must name the container: " + bad.stdout + bad.stderr);
+
+            // ---- check --canonical and repack: the repo keeps ONE frame ----
+            // A REAL state container under a gzip frame: repack reads the
+            // container, so the fixture has to be one (an arbitrary gzip is
+            // refused by src/state-frame.js, which is the point of that check).
+            const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+            const container = Buffer.from(StateFormat.pack(
+                { schemaVersion: 1, label: "canon", device: "rk1" },
+                new Uint16Array(512).fill(0x1234)));
+            const gzState = path.join(tmp, "browser.state.zst");
+            fs.writeFileSync(gzState, zlib.gzipSync(container));
+
+            const canon = spawnSync(process.execPath,
+                [TOOL, "check", "--canonical", path.relative(ROOT, gzState)],
+                { cwd: ROOT, encoding: "utf8" });
+            assert.notStrictEqual(canon.status, 0,
+                "--canonical must fail on a state that is not zstd: " + canon.stdout);
+            assert.ok(/not canonical/.test(canon.stdout), canon.stdout);
+
+            const rep = spawnSync(process.execPath,
+                [TOOL, "repack", path.relative(ROOT, gzState)],
+                { cwd: ROOT, encoding: "utf8" });
+            if (MediaZst.hasZstd()) {
+                assert.strictEqual(rep.status, 0, rep.stderr);
+                assert.strictEqual(MediaZst.containerOf(fs.readFileSync(gzState)),
+                    "zstd", "repack must leave the canonical frame behind");
+                assert.ok(MediaZst.decompressBytes(fs.readFileSync(gzState), true)
+                    .equals(container), "and the same container inside it");
+                assert.ok(/gzip -> zstd/.test(rep.stdout),
+                    "repack should say what it did: " + rep.stdout);
+
+                const again = spawnSync(process.execPath,
+                    [TOOL, "repack", path.relative(ROOT, gzState)],
+                    { cwd: ROOT, encoding: "utf8" });
+                assert.strictEqual(again.status, 0, again.stderr);
+                assert.ok(/already zstd/.test(again.stdout),
+                    "a canonical file is left alone: " + again.stdout);
+
+                const nowOk = spawnSync(process.execPath,
+                    [TOOL, "check", "--canonical", path.relative(ROOT, gzState)],
+                    { cwd: ROOT, encoding: "utf8" });
+                assert.strictEqual(nowOk.status, 0,
+                    "canonical file passes the gate: " + nowOk.stdout);
+            } else {
+                // Node 20: no zstd encoder, so repack must refuse rather than
+                // silently rewrite the file as gzip again.
+                assert.notStrictEqual(rep.status, 0, "repack cannot canonicalise here");
+                assert.ok(/no zstd in zlib/.test(rep.stdout + rep.stderr),
+                    "and must say why: " + rep.stdout + rep.stderr);
+                assert.strictEqual(MediaZst.containerOf(fs.readFileSync(gzState)),
+                    "gzip", "the file must be left untouched");
+            }
         } finally {
             fs.rmSync(tmp, { recursive: true, force: true });
         }

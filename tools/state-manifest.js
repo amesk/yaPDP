@@ -14,48 +14,39 @@
  *   Read a .state.zst, decompress it, unpack the container, read the new
  *   manifest JSON, validate it, re-pack with the original memory words, and
  *   write a new .state.zst. The original state is not modified.
+ *
+ * The FRAME around the container is whatever the writer had: zstd (the Node
+ * tools and the repo's own states/), gzip (the browser — the page has no zstd
+ * compressor, only CompressionStream), or no frame at all on a Node without
+ * zstd. src/snapshots.js reads all three, so the frame is recognised here as
+ * well and a state exported from the browser opens exactly like a locally made
+ * one. `replace` frames its output too — zstd when this Node has an encoder,
+ * gzip otherwise — so the file never grows back to its raw size.
  */
 "use strict";
 
 const fs = require("fs");
 const path = require("path");
-const zlib = require("zlib");
 
 const ROOT = path.resolve(__dirname, "..");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+const StateIO = require("./state-io.js");
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function readState(path) {
-    const raw = fs.readFileSync(path);
-    // Try zstd decompression first.
-    let container = null;
-    if (typeof zlib.zstdDecompressSync === "function") {
-        try {
-            container = zlib.zstdDecompressSync(raw);
-        } catch (e) { /* not zstd */ }
-    }
-    if (!container) {
-        // Try as uncompressed container.
-        if (StateFormat.isContainer(new Uint8Array(raw))) {
-            container = new Uint8Array(raw);
-        } else {
-            throw new Error("not a .state.zst file (not zstd, not a container)");
-        }
-    }
-    const parsed = StateFormat.unpack(container);
+// The frame half belongs to src/state-frame.js (zstd from the tools, gzip from
+// the browser's own export, none from a writer with no compressor) and the
+// Node codecs to tools/state-io.js — shared with every other state tool.
+function readState(file) {
+    const parsed = StateFormat.unpack(StateIO.readBytes(file).container);
     if (!parsed) throw new Error("could not unpack the container");
     return parsed;
 }
 
+// Returns the frame that was written, for the caller to report.
 function writeState(manifest, memoryWords, outPath) {
-    const packed = StateFormat.pack(manifest, memoryWords);
-    let compressed = packed;
-    if (typeof zlib.zstdCompressSync === "function") {
-        compressed = zlib.zstdCompressSync(packed, { level: 19 });
-    }
-    fs.writeFileSync(outPath, compressed);
+    return StateIO.writeBytes(outPath, StateFormat.pack(manifest, memoryWords));
 }
 
 // ---------------------------------------------------------------------------
@@ -89,8 +80,9 @@ function cmdReplace(inputPath, manifestPath, outputPath) {
         throw new Error("manifest must have a numeric schemaVersion");
     }
     // Preserve the original memoryWords (they are not in the manifest).
-    writeState(newManifest, parsed.memoryWords, outputPath);
-    console.log("manifest replaced: " + path.relative(ROOT, outputPath));
+    const frame = writeState(newManifest, parsed.memoryWords, outputPath);
+    console.log("manifest replaced: " + path.relative(ROOT, outputPath) +
+        " (" + frame + ")");
     console.log("  schemaVersion: " + newManifest.schemaVersion);
     console.log("  label: " + (newManifest.label || "(none)"));
     console.log("  device: " + (newManifest.device || "(none)"));

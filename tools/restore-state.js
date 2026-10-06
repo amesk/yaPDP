@@ -14,7 +14,8 @@
  *   node tools/restore-state.js states/rk1-ready.state.zst --twice
  *
  * What it does, in order:
- *   1. decompress the file (zstd via zlib) and unpack the container;
+ *   1. decompress the file — whichever frame the writer used, zstd or gzip —
+ *      and unpack the container;
  *   2. boot a headless machine to its bootloader prompt (the machine has to
  *      exist before a state can be applied to it);
  *   3. halt the CPU, apply memory, CPU registers and device registers;
@@ -25,27 +26,25 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const zlib = require("zlib");
 
 const ROOT = path.join(__dirname, "..");
 const { bootHeadless } = require("./headless-machine.js");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+const StateIO = require("./state-io.js");
 
 const T0 = Date.now();
 const stamp = () => "[" + String(Date.now() - T0).padStart(7) + "ms] ";
 const log = (...a) => console.log(stamp() + a.join(" "));
 
+// Which frame carries the container (zstd from the tools, gzip from the
+// browser's own export, none from a writer without a compressor) is
+// src/state-frame.js's rule; tools/state-io.js supplies Node's codecs. A state
+// saved in the browser therefore restores here.
 function readContainer(file) {
-    const raw = fs.readFileSync(path.resolve(ROOT, file));
-    let bytes;
-    if (typeof zlib.zstdDecompressSync === "function") {
-        bytes = new Uint8Array(zlib.zstdDecompressSync(raw));
-    } else {
-        bytes = new Uint8Array(raw); // uncompressed container (Node 20)
-    }
-    log("file: " + file + "  " + raw.length + " bytes on disk -> " +
-        bytes.length + " bytes unpacked");
-    const parsed = StateFormat.unpack(bytes);
+    const read = StateIO.readBytes(path.resolve(ROOT, file));
+    log("file: " + file + "  " + read.size + " bytes on disk (" + read.frame +
+        ") -> " + read.container.length + " bytes unpacked");
+    const parsed = StateFormat.unpack(read.container);
     if (!parsed) throw new Error("not a .state container: " + file);
     log("manifest: device=" + parsed.manifest.device +
         " profile=" + JSON.stringify(parsed.manifest.profile) +

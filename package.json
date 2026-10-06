@@ -41,6 +41,7 @@
     "tape:unpack": "node tools/tape-archive.js unpack",
     "media:compress": "node tools/media-zst.js compress",
     "media:unpack": "node tools/media-zst.js decompress",
+    "media:repack": "node tools/media-zst.js repack",
     "media:rt11-util": "node tools/rt11-util.js",
     "e2e:os": "wireit",
     "e2e:bsd": "wireit",
