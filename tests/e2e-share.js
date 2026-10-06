@@ -18,9 +18,40 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
+const { spawn } = require("child_process");
 
-const BASE = "http://localhost:1170/pdp11.html";
+const PORT = 1170;
+const BASE = `http://localhost:${PORT}/pdp11.html`;
 const ROOT = path.resolve(__dirname, "..");
+
+// Start the repo's static server when nothing serves :1170 (the suite loads
+// the page and fetches states over HTTP); reuse one that is already up, and
+// stop only a server we started ourselves.
+function serverAlive() {
+    return new Promise((resolve) => {
+        const req = http.get(BASE, (res) => {
+            res.resume();
+            resolve(res.statusCode === 200);
+        });
+        req.on("error", () => resolve(false));
+        req.setTimeout(500, () => { req.destroy(); resolve(false); });
+    });
+}
+
+async function ensureServer() {
+    if (await serverAlive()) return null;
+    const child = spawn(process.execPath, [
+        path.join(ROOT, "tools", "serve.js"),
+        "--port", String(PORT)
+    ], { cwd: ROOT, stdio: "ignore" });
+    for (let i = 0; i < 60; i++) {
+        if (await serverAlive()) return child;
+        await new Promise((r) => setTimeout(r, 200));
+    }
+    child.kill();
+    throw new Error(`Static server did not start on port ${PORT}`);
+}
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -58,18 +89,23 @@ async function testShareNoCommand(page) {
     });
     check("A1: snapshot saved", typeof snapId === "string", String(snapId));
 
-    // Create shareable state with description but no command.
-    const bytes = await page.evaluate(async (id) => {
-        return await SnapshotStore.createShareableState(id, {
+    // Create shareable state with description but no command. Read the byte
+    // facts IN THE PAGE: a raw Uint8Array does not survive page.evaluate()
+    // (puppeteer hands back a numeric-keyed object with NO .length), which is
+    // what made A2 report "created = false" while A3 still found the magic byte.
+    const info = await page.evaluate(async (id) => {
+        const bytes = await SnapshotStore.createShareableState(id, {
             title: "Share Test",
             description: "A test shareable state",
             command: "",
         });
+        if (!bytes) return null;
+        return { len: bytes.length, first: Array.from(bytes.slice(0, 4)) };
     }, snapId);
-    check("A2: shareable state created", bytes !== null && bytes.length > 0, String(bytes ? bytes.length : "null"));
+    check("A2: shareable state created", info !== null && info.len > 0, JSON.stringify(info));
     check("A3: bytes look like a container",
-        bytes && (bytes[0] === 0x28 || bytes[0] === 0x1F || bytes[0] === 0x59),
-        bytes ? "0x" + bytes[0].toString(16) : "null");
+        info && (info.first[0] === 0x28 || info.first[0] === 0x1F || info.first[0] === 0x59),
+        info ? JSON.stringify(info.first) : "null");
 
     // Cleanup.
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
@@ -165,14 +201,19 @@ async function testBalloonStepsMessage(page) {
     });
     check("D1: snapshot saved", typeof snapId === "string", String(snapId));
 
-    const bytes = await page.evaluate(async (id) => {
-        return await SnapshotStore.createShareableState(id, {
+    const created = await page.evaluate(async (id) => {
+        const bytes = await SnapshotStore.createShareableState(id, {
             title: "Balloon Test",
             description: "Balloon description text",
             command: "RUN TEST",
         });
+        if (!bytes) return null;
+        // A plain array, because a raw Uint8Array does not survive
+        // page.evaluate() and would arrive empty on the next call (see A2).
+        return { len: bytes.length, data: Array.from(bytes) };
     }, snapId);
-    check("D2: shareable state created", bytes !== null && bytes.length > 0, String(bytes ? bytes.length : "null"));
+    check("D2: shareable state created", created !== null && created.len > 0,
+        created ? "len=" + created.len : "null");
 
     // Verify the manifest inside the bytes has stepsMessage.
     // We can't easily peek into the container from the browser, so we verify
@@ -185,7 +226,7 @@ async function testBalloonStepsMessage(page) {
         const mine = items.find((it) => it.id === imported.id);
         await SnapshotStore.remove(imported.id);
         return mine ? { stepsMessage: mine.stepsMessage, hasSteps: mine.hasSteps } : null;
-    }, Array.from(new Uint8Array(bytes)));
+    }, created ? created.data : []);
     check("D3: stepsMessage in imported state",
         manifest && manifest.stepsMessage === "Balloon description text",
         JSON.stringify(manifest));
@@ -211,10 +252,14 @@ async function testManifestCLI() {
     const outputPath = path.join(tmpDir, "modified.state.zst");
 
     try {
-        // Extract manifest.
-        const { execSync } = require("child_process");
-        execSync(process.execPath + " " + path.join(ROOT, "tools", "state-manifest.js") +
-            " extract " + statePath + " " + manifestPath, { cwd: ROOT });
+        // Extract manifest. execFile, NOT exec: a command STRING with an
+        // unquoted interpreter path breaks on Windows — process.execPath is
+        // "C:\\Program Files\\nodejs\\node.exe", so cmd.exe saw "C:\\Program".
+        // Passing argv separately skips the shell entirely.
+        const { execFileSync } = require("child_process");
+        const manifestTool = path.join(ROOT, "tools", "state-manifest.js");
+        execFileSync(process.execPath, [manifestTool, "extract", statePath, manifestPath],
+            { cwd: ROOT });
         check("E1: manifest extracted", fs.existsSync(manifestPath));
 
         // Read and modify manifest.
@@ -223,9 +268,9 @@ async function testManifestCLI() {
         manifest.steps = [{ send: "RUN SPCINV" }];
         fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
 
-        // Replace manifest.
-        execSync(process.execPath + " " + path.join(ROOT, "tools", "state-manifest.js") +
-            " replace " + statePath + " " + manifestPath + " " + outputPath, { cwd: ROOT });
+        // Replace manifest (argv form, as above — no shell).
+        execFileSync(process.execPath, [manifestTool, "replace", statePath, manifestPath, outputPath],
+            { cwd: ROOT });
         check("E2: manifest replaced", fs.existsSync(outputPath));
 
         // Verify the output is a valid .state.zst. The FRAME is whatever the
@@ -256,6 +301,7 @@ async function testManifestCLI() {
 
 // --- Main ----------------------------------------------------------------
 (async () => {
+    const server = await ensureServer();
     const browser = await puppeteer.launch({
         headless: "new",
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -282,6 +328,7 @@ async function testManifestCLI() {
         }
     } finally {
         await browser.close();
+        if (server) server.kill();
     }
 
     if (failures) {

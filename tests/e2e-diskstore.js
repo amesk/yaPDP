@@ -9,16 +9,61 @@
  *   4. reload the page (fresh JS state, same origin storage)
  *   5. fetchBlock() must return the SAVED block, not the pristine one
  *
+ * Targets the LEGACY monolith stack (?core=0): it drives the write-back loop
+ * through the page globals the legacy iopage publishes — DiskStore AND the
+ * global fetchBlock() — and calls fetchBlock() directly. The refactored core
+ * (the default since the machine-layer work) does not expose fetchBlock as a
+ * global at all (verified: typeof fetchBlock === "undefined" with the default
+ * and ?core=1, and a function only with ?core=0), so the default page can never
+ * satisfy step 1. The core stack's disk path is covered elsewhere
+ * (tests/e2e-state-disk-access.js, tests/disk-path.test.js). Explicitly ask for
+ * the legacy stack instead of relying on which one happens to be the default.
+ *
  * Run with: node tests/e2e-diskstore.js   (needs: npm i puppeteer, server on :1170)
  */
 "use strict";
 
 const puppeteer = require("puppeteer");
+const path = require("path");
+const http = require("http");
+const { spawn } = require("child_process");
 
-const URL = "http://localhost:1170/pdp11.html";
+const URL = "http://localhost:1170/pdp11.html?core=0";
 const PATTERN = 0xBEEF; // distinctive word written to block 0
 
+const ROOT = path.resolve(__dirname, "..");
+
+// --- shared dev server ------------------------------------------------------
+// The suite needs a server on :1170 (the page and its media come from it).
+// Start our own when nothing serves the port and stop it on the way out;
+// reuse one that is already up (the shared server tools/validate.js starts).
+const SERVE_URL = "http://localhost:1170/pdp11.html";
+function serverAlive() {
+    return new Promise((resolve) => {
+        const req = http.get(SERVE_URL, (res) => {
+            res.resume();
+            resolve(res.statusCode === 200);
+        });
+        req.on("error", () => resolve(false));
+        req.setTimeout(500, () => { req.destroy(); resolve(false); });
+    });
+}
+
+async function ensureServer() {
+    if (await serverAlive()) return null;
+    const child = spawn(process.execPath, [
+        path.join(ROOT, "tools", "serve.js"), "--port", "1170"
+    ], { cwd: ROOT, stdio: "ignore" });
+    for (let i = 0; i < 60; i++) {
+        if (await serverAlive()) return child;
+        await new Promise((r) => setTimeout(r, 200));
+    }
+    child.kill();
+    throw new Error("Static server did not start on port 1170");
+}
+
 (async () => {
+  const server = await ensureServer();
   const browser = await puppeteer.launch({
     headless: "new",
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -135,5 +180,6 @@ const PATTERN = 0xBEEF; // distinctive word written to block 0
     process.exit(1);
   } finally {
     await browser.close();
+    if (server) server.kill();
   }
 })();

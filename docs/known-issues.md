@@ -115,6 +115,36 @@ Or the e2e scenario: `node /tmp/ctrld-probe.js rp0` (prototype script).
 
 ---
 
+## e2e-osboot: the ULTRIX-11 (rp0) and RSX-11M v4.6 (rp3) guests are disabled
+
+**Number:** none — documented here for discoverability.
+
+**Status:** open — the scenarios are commented out in the test until the guests pass.
+
+**Symptom.** [`tests/e2e-osboot.js`](../tests/e2e-osboot.js) declares ten guest
+OSes, but two of them — ULTRIX-11 V3.1 (rp0) and RSX-11M v4.6 (rp3) — are
+COMMENTED OUT, so the suite boots eight. Neither guest reaches its ready marker
+on the current build, which is why the CI / `npm run validate` run would go red
+if they were left in.
+
+**Why they are off.**
+- ULTRIX-11 (rp0): boots to single-user `#`, but the Ctrl-D to multi-user panics
+  the kernel (`panic: trap`) — see the entry above and
+  [#15](https://github.com/amesk/yaPDP/issues/15) — so the wizard's auto-login
+  step cannot complete.
+- RSX-11M v4.6 (rp3): does not reach "PLEASE ENTER TIME AND DATE" within the
+  scenario budget (cause not yet isolated).
+
+**Reproduction.** Delete the `/* */` markers around one entry in `GUESTS` and
+run `node tests/e2e-osboot.js` — the guest fails with
+"ready marker not seen within …s".
+
+**Note.** The entries are kept commented in place (not deleted) so the intent,
+the console type and the exact config survive; uncomment them once the guests
+pass.
+
+---
+
 ## BSD 2.11 (rp1) runs on a video terminal, not a teletype
 
 **Status:** accepted limitation, not a bug.

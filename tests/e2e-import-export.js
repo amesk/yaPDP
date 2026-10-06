@@ -19,9 +19,40 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
+const http = require("http");
+const { spawn } = require("child_process");
 
-const BASE = "http://localhost:1170/pdp11.html";
+const PORT = 1170;
+const BASE = `http://localhost:${PORT}/pdp11.html`;
 const ROOT = path.resolve(__dirname, "..");
+
+// Start the repo's static server when nothing serves :1170 (the suite loads the
+// page and fetches states over HTTP); reuse one that is already up, and stop
+// only a server we started ourselves.
+function serverAlive() {
+    return new Promise((resolve) => {
+        const req = http.get(BASE, (res) => {
+            res.resume();
+            resolve(res.statusCode === 200);
+        });
+        req.on("error", () => resolve(false));
+        req.setTimeout(500, () => { req.destroy(); resolve(false); });
+    });
+}
+
+async function ensureServer() {
+    if (await serverAlive()) return null;
+    const child = spawn(process.execPath, [
+        path.join(ROOT, "tools", "serve.js"),
+        "--port", String(PORT)
+    ], { cwd: ROOT, stdio: "ignore" });
+    for (let i = 0; i < 60; i++) {
+        if (await serverAlive()) return child;
+        await new Promise((r) => setTimeout(r, 200));
+    }
+    child.kill();
+    throw new Error(`Static server did not start on port ${PORT}`);
+}
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -278,6 +309,7 @@ async function testInvalidImport(page) {
 
 // --- Main ----------------------------------------------------------------
 (async () => {
+    const server = await ensureServer();
     const browser = await puppeteer.launch({
         headless: "new",
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -321,6 +353,7 @@ async function testInvalidImport(page) {
         }
     } finally {
         await browser.close();
+        if (server) server.kill();
     }
 
     if (failures) {

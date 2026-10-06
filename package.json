@@ -48,6 +48,7 @@
     "e2e:bsd29": "wireit",
     "e2e:os:legacy": "wireit",
     "e2e:xxdp": "wireit",
+    "e2e:xxdp:kfp": "wireit",
     "e2e:panel": "wireit",
     "e2e:snapshot-image": "wireit",
     "e2e:state": "wireit",
@@ -236,6 +237,23 @@
         "package.json"
       ]
     },
+    "e2e:xxdp:kfp": {
+      "command": "node tests/e2e-xxdp-kfp.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-xxdp-kfp.js",
+        "tests/xxdp-lib.js",
+        "tests/xxdp-panel.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
     "e2e:panel": {
       "command": "node tests/e2e-panel-lamps.js",
       "dependencies": [
@@ -252,17 +270,20 @@
       ]
     },
     "validate": {
+      "command": "node tools/validate.js",
       "dependencies": [
-        "e2e:os",
-        "e2e:os:legacy",
-        "e2e:bsd",
-        "e2e:bsd29",
-        "e2e:xxdp",
-        "e2e:panel",
-        "e2e:snapshot-image",
-        "e2e:state",
-        "e2e:vt100",
-        "e2e:mobile"
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-*.js",
+        "tests/xxdp-*.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "states/**",
+        "media/**",
+        "package.json"
       ]
     },
     "e2e:snapshot-image": {

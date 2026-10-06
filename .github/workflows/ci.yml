@@ -1,30 +1,13 @@
 # ---------------------------------------------------------------------------
-# yaPDP CI — unit tests + end-to-end guest-OS checks on every push/PR.
+# yaPDP CI — unit tests + the e2e suites on every push/PR.
 #
 # Two jobs:
-#   unit  — the modular npm test suite (36+ files) on Node 20 and 22.
-#   e2e   — puppeteer + real Chromium against the dev server on :1170:
-#             * e2e-quickboot-manifest  (quick-boot wizard + media manifest)
-#             * e2e-quickboot-deeplink  (?boot= link the OS galleries use)
-#             * e2e-snapshots           (front-panel/teletype screenshot set)
-#             * e2e-osboot              (real guest OS boots: Unix V5, RT-11,
-#                                        BSD 2.11, BASIC-11)
-#             * e2e-teletype            (Model 33 ASR console mechanics: paper
-#                                        render, punch, BREAK, CCU, and the
-#                                        Force PDP Output Uppercase fold)
-#             * e2e-teletype-tape       (ASR tape reader/punch: tape-to-tape
-#                                        copy, DC2/DC4, X-ON/X-OFF, HERE IS,
-#                                        keyboard layout, byte-exact .ptap)
-#           plus the headless full-machine shakeouts (no browser needed):
-#             * e2e-bsd-boot            (BSD 2.11 headless boot to login:)
-#             * e2e-bsd29-boot          (BSD 2.9 headless boot to a root shell)
-#             * e2e-xxdp-ekbbf0         (XXDP+ EKBBF0 field diagnostic: the real
-#                                        DEC 11/70 CPU check, driven through the
-#                                        operator console to a clean END PASS)
-#             * e2e-startup-cls         (the loading gate on a throttled cold
-#                                        visit: the artwork swap must not move
-#                                        anything — strict CLS 0.01, CWV 0.1 —
-#                                        and a warm visit must not flash)
+#   unit  — the modular npm test suite (every tests/*.test.js) on Node 20 and
+#           22, driven by tools/run-tests.js (npm test).
+#   e2e   — every e2e suite, run by tools/validate.js: ONE shared static server
+#           on :1170 and the suites in sequence. This is the SAME file the local
+#           `npm run validate` runs, so CI and local can never drift — the suite
+#           list lives in the SUITES array of tools/validate.js, not here.
 #
 # E2E failure artifacts (screenshots + console tails) are uploaded so a red
 # run can be diagnosed without re-running locally.
@@ -63,7 +46,7 @@ jobs:
         run: npm test
 
   e2e:
-    name: E2E (quickboot / snapshots / osboot / teletype)
+    name: E2E (every suite, via tools/validate.js)
     runs-on: ubuntu-latest
     needs: unit
     steps:
@@ -83,45 +66,11 @@ jobs:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      - name: Start dev server on :1170
-        run: |
-          node tools/serve.js > serve-ci.log 2>&1 &
-          for i in $(seq 1 30); do
-            curl -sf -o /dev/null http://localhost:1170/pdp11.html && break
-            sleep 1
-          done
-          curl -sf -o /dev/null http://localhost:1170/pdp11.html \
-            || { echo "dev server did not come up"; cat serve-ci.log; exit 1; }
-
-      - name: e2e — quick-boot wizard + manifest
-        run: node tests/e2e-quickboot-manifest.js
-
-      - name: e2e — guest-OS gallery deep link (pdp11.html?boot=)
-        run: node tests/e2e-quickboot-deeplink.js
-
-      - name: e2e — front-panel screenshots
-        run: node tests/e2e-snapshots.js
-
-      - name: e2e — guest OS boots (Unix V5, RT-11, BSD 2.11, BASIC-11)
-        run: node tests/e2e-osboot.js
-
-      - name: e2e — Model 33 ASR teletype mechanics (paper, punch, CCU)
-        run: node tests/e2e-teletype.js
-
-      - name: e2e — Model 33 ASR paper tape (reader/punch, DC2/DC4, X-ON/X-OFF)
-        run: node tests/e2e-teletype-tape.js
-
-      - name: e2e — startup layout shift on a throttled link (loading gate)
-        run: node tests/e2e-startup-cls.js
-
-      - name: e2e — BSD 2.11 headless boot (full-machine shakeout)
-        run: node tests/e2e-bsd-boot.js
-
-      - name: e2e — BSD 2.9 headless boot (full-machine shakeout)
-        run: node tests/e2e-bsd29-boot.js
-
-      - name: e2e — XXDP+ EKBBF0 field diagnostic (11/70 CPU, headless)
-        run: node tests/e2e-xxdp-ekbbf0.js
+      # One shared server on :1170 plus the suites in sequence — the SAME file
+      # the local `npm run validate` runs (the suite list lives in its SUITES
+      # array, so CI and local cannot drift).
+      - name: Run every e2e suite (one server, sequential)
+        run: node tools/validate.js
 
       - name: Upload failure artifacts
         if: failure()
