@@ -123,6 +123,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   composite now fills with black, matching the dark colour scheme.
   (`src/screenshot.js`)
 
+- **The snapshot manager keeps the selection across a refresh, and selects the
+  snapshot just saved or imported.** `refreshUI()` rebuilt the `<select>` from
+  scratch, dropping the operator's choice back to the first (oldest) entry, and
+  the freshly created entry was never in the stale options, so `save()`'s
+  `select.value = snap.id` could not survive the rebuild. `refreshUI(preferId)`
+  now restores the current selection when it still exists and takes the id of a
+  just-saved or just-imported snapshot explicitly; a vanished selection falls
+  back to the newest snapshot. (`src/snapshots.js`; pinned by
+  `tests/snapshot-ui-selection.test.js`)
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

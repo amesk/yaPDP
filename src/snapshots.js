@@ -1432,7 +1432,11 @@ var SnapshotStore = (() => {
     // ------------------------------------------------------------------
     // UI
     // ------------------------------------------------------------------
-    function refreshUI() {
+    // preferId — an explicit request for what stays selected after the
+    // rebuild. The Save/Import flows pass the snapshot they just created:
+    // it is not in the (stale) options yet, so select.value cannot carry it.
+    // Without it, the caller's current selection is preserved.
+    function refreshUI(preferId) {
         const select = document.getElementById("snap-select");
         if (!select) return;
         const loadBtn = document.getElementById("snap-load");
@@ -1440,6 +1444,9 @@ var SnapshotStore = (() => {
         const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
+
+        // Read the selection synchronously, before the async list() below.
+        const keepId = preferId || select.value;
 
         list().then(function (items) {
             select.innerHTML = "";
@@ -1463,12 +1470,21 @@ var SnapshotStore = (() => {
                     select.appendChild(opt);
                 });
             }
+            // Restore the requested selection when it still exists; otherwise
+            // fall back to the newest snapshot (list() is oldest-first).
+            if (keepId && items.some(function (i) { return i.id === keepId; })) {
+                select.value = keepId;
+            } else if (items.length > 0) {
+                select.selectedIndex = items.length - 1;
+            }
+
+            const hasSelection = !!select.value;
             select.disabled = items.length === 0;
-            if (loadBtn) loadBtn.disabled = items.length === 0;
-            if (exportBtn) exportBtn.disabled = items.length === 0;
-            if (renameBtn) renameBtn.disabled = items.length === 0;
-            if (shareBtn) shareBtn.disabled = items.length === 0;
-            if (deleteBtn) deleteBtn.disabled = items.length === 0;
+            if (loadBtn) loadBtn.disabled = !hasSelection;
+            if (exportBtn) exportBtn.disabled = !hasSelection;
+            if (renameBtn) renameBtn.disabled = !hasSelection;
+            if (shareBtn) shareBtn.disabled = !hasSelection;
+            if (deleteBtn) deleteBtn.disabled = !hasSelection;
 
             const count = document.getElementById("snap-count");
             if (count) {
@@ -1528,7 +1544,7 @@ var SnapshotStore = (() => {
                 if (action === "remove") {
                     var id = __snapIncompatModal.getAttribute("data-snap-id");
                     hideIncompatibleImageDialog();
-                    if (id) remove(id).then(refreshUI);
+                    if (id) remove(id).then(function () { refreshUI(); });
                 } else if (action === "close" || e.target === __snapIncompatModal ||
                         (e.target.closest && e.target.closest(".modal-close"))) {
                     hideIncompatibleImageDialog();
@@ -1782,8 +1798,9 @@ var SnapshotStore = (() => {
             saveBtn.addEventListener("click", function () {
                 saveBtn.disabled = true;
                 save().then(function (snap) {
-                    if (select) select.value = snap.id;
-                    refreshUI();
+                    // Select the snapshot just saved: an explicit request,
+                    // since the fresh entry is not in the stale options yet.
+                    refreshUI(snap.id);
                     saveBtn.disabled = false;
                 });
             });
@@ -1841,7 +1858,7 @@ var SnapshotStore = (() => {
                     onConfirm: function (name) {
                         name = (name || "").trim();
                         if (!name || name === currentName) return;
-                        rename(select.value, name).then(refreshUI);
+                        rename(select.value, name).then(function () { refreshUI(); });
                     }
                 });
             });
@@ -1853,7 +1870,7 @@ var SnapshotStore = (() => {
                     title: "Delete snapshot?",
                     intro: "The snapshot will be permanently removed from the store.",
                     confirmLabel: "Delete",
-                    onConfirm: function () { remove(select.value).then(refreshUI); }
+                    onConfirm: function () { remove(select.value).then(function () { refreshUI(); }); }
                 });
             });
         }
@@ -1869,7 +1886,8 @@ var SnapshotStore = (() => {
                     return importState(new Uint8Array(buf));
                 }).then(function (result) {
                     if (result.ok) {
-                        refreshUI();
+                        // Select the snapshot just imported.
+                        refreshUI(result.id);
                     } else {
                         showImportError(result);
                     }
