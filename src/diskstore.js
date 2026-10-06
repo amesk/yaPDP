@@ -438,6 +438,25 @@ var DiskStore = (() => {
         return out;
     }
 
+    // Block bytes reach us in one of three shapes, and only one of them is a
+    // Uint8Array:
+    //   - Uint8Array   from IndexedDB's structured clone (a snapshot taken and
+    //                  restored in the same browser);
+    //   - Array        from a .state container written by this build (the
+    //                  serialiser stores blocks as plain byte arrays);
+    //   - plain object from an OLDER .state container, where JSON.stringify
+    //                  turned a Uint8Array into {"0":..,"1":..}.
+    // new Uint8Array(obj) reads an OBJECT as a length and yields an EMPTY
+    // block — silently zeroing every restored sector (the "disk fell off"
+    // after export/import). Convert by shape instead.
+    function overlayBlockBytes(v) {
+        if (v instanceof Uint8Array) return new Uint8Array(v);
+        if (v instanceof ArrayBuffer) return new Uint8Array(v.slice(0));
+        if (Array.isArray(v)) return Uint8Array.from(v);
+        if (v && typeof v === "object") return new Uint8Array(Object.values(v));
+        return new Uint8Array(0);
+    }
+
     // Roll the disk overlay back to a captured snapshot's generation:
     // discard every block saved since the snapshot and write the snapshot's
     // own blocks instead. Live device caches are invalidated so the next
@@ -465,7 +484,7 @@ var DiskStore = (() => {
                 for (const b of Object.keys(rec.blocks)) {
                     const block = parseInt(b, 10);
                     if (!isFinite(block)) continue;
-                    const bytes = new Uint8Array(rec.blocks[b]); // copy
+                    const bytes = overlayBlockBytes(rec.blocks[b]); // copy
                     writes.push(dbPut(blockKey(url, block), {
                         v: fingerprintOf(url), b: bytes.buffer, t: Date.now()
                     }));

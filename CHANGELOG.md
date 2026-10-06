@@ -47,6 +47,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Snapshots keep the disk's write-back overlay across export/import.** The
+  overlay blocks — the sectors a guest wrote, e.g. `COPY` onto a disk — were
+  serialised into the `.state` manifest as JSON, which turned each block's
+  `Uint8Array` into a plain object; the restore then read that object as an
+  empty block and zeroed the restored sectors, so a snapshot exported to a
+  file, imported back and loaded came up with the disk's file system corrupted
+  (`DIR` hung). Overlay blocks are now written as byte arrays and read back
+  into `Uint8Array`, and `DiskStore.restoreOverlay` accepts all three shapes so
+  states written before this fix keep working. (`src/snapshots.js`,
+  `src/diskstore.js`; pinned by `tests/e2e-import-export.js` and
+  `tests/snapshotstore.test.js`)
+
 - **Every state reader takes the frame the writer used.** The wrapper around a
   `.state` container is zstd (the tools), gzip (the browser, which has only
   `CompressionStream`) or — on a runtime with no compressor — absent, and each

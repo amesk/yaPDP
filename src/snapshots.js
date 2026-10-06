@@ -879,7 +879,7 @@ var SnapshotStore = (() => {
         // The overlay is stamped with its origin so the Storage UI can say
         // "changes from a shared state" — these blocks came from somebody
         // else's link, not from this user's own work.
-        var overlay = parsed.manifest.overlay || null;
+        var overlay = deserializeOverlay(parsed.manifest.overlay);
         if (overlay && typeof overlay === "object") {
             Object.keys(overlay).forEach(function (u) {
                 if (overlay[u] && typeof overlay[u] === "object") {
@@ -995,7 +995,7 @@ var SnapshotStore = (() => {
                     vt52: vt52,
                     teletypepaper: teletypepaper,
                     mounted: captureMounted(),
-                    overlay: overlay,
+                    overlay: serializeOverlay(overlay),
                     page: capturePage(),
                     steps: null,
                     stepsMessage: null,
@@ -1062,6 +1062,63 @@ var SnapshotStore = (() => {
         return Promise.resolve(captureImageFingerprints());
     }
 
+    // ---- Overlay (write-back disk blocks) serialisation ------------------
+    // The overlay is url -> { v, blocks: { blockNo: <bytes> } }. IndexedDB
+    // stores the bytes as Uint8Array (structured clone), but a .state
+    // container is JSON: JSON.stringify turns a Uint8Array into
+    // {"0":..,"1":..} — a shape no reader expects, and one that
+    // DiskStore.restoreOverlay used to read as an empty block, zeroing every
+    // restored sector (the "disk fell off" after export/import). A state is
+    // therefore written with plain ARRAYS of byte values and read back into
+    // Uint8Array, so the format does not depend on how JSON stringifies a
+    // typed array. DiskStore.restoreOverlay still normalises all three shapes
+    // for OLD states written before this change.
+    function serializeOverlay(overlay) {
+        if (!overlay || typeof overlay !== "object") return null;
+        var out = {};
+        Object.keys(overlay).forEach(function (url) {
+            var rec = overlay[url];
+            if (!rec || typeof rec !== "object" ||
+                !rec.blocks || typeof rec.blocks !== "object") {
+                out[url] = rec;
+                return;
+            }
+            var blocks = {};
+            Object.keys(rec.blocks).forEach(function (b) {
+                var v = rec.blocks[b];
+                blocks[b] = (v instanceof Uint8Array) ? Array.from(v)
+                    : Array.isArray(v) ? v.slice()
+                    : (v && typeof v === "object") ? Object.values(v)
+                    : v;
+            });
+            out[url] = Object.assign({}, rec, { blocks: blocks });
+        });
+        return out;
+    }
+
+    function deserializeOverlay(overlay) {
+        if (!overlay || typeof overlay !== "object") return null;
+        var out = {};
+        Object.keys(overlay).forEach(function (url) {
+            var rec = overlay[url];
+            if (!rec || typeof rec !== "object" ||
+                !rec.blocks || typeof rec.blocks !== "object") {
+                out[url] = rec;
+                return;
+            }
+            var blocks = {};
+            Object.keys(rec.blocks).forEach(function (b) {
+                var v = rec.blocks[b];
+                blocks[b] = (v instanceof Uint8Array) ? new Uint8Array(v)
+                    : Array.isArray(v) ? Uint8Array.from(v)
+                    : (v && typeof v === "object") ? new Uint8Array(Object.values(v))
+                    : new Uint8Array(0);
+            });
+            out[url] = Object.assign({}, rec, { blocks: blocks });
+        });
+        return out;
+    }
+
     // ------------------------------------------------------------------
     // Export a stored snapshot (from IndexedDB) as .state container bytes.
     // Returns Promise<Uint8Array|null> — null when the id does not exist.
@@ -1094,7 +1151,7 @@ var SnapshotStore = (() => {
                     page: snap.page,
                     steps: snap.steps,
                     stepsMessage: snap.stepsMessage,
-                    overlay: snap.overlay,
+                    overlay: serializeOverlay(snap.overlay),
                 };
                 var packed = StateFormat.pack(manifest, memoryWords);
                 return gzipCompress(packed).then(function (bytes) {
@@ -1166,7 +1223,7 @@ var SnapshotStore = (() => {
                     stepsMessage: stepsMessage,
                     buttonLabel: buttonLabel,
                     screenshot: screenshot,
-                    overlay: snap.overlay,
+                    overlay: serializeOverlay(snap.overlay),
                 };
                 var packed = StateFormat.pack(manifest, memoryWords);
                 return gzipCompress(packed).then(function (bytes) {
@@ -1215,7 +1272,7 @@ var SnapshotStore = (() => {
                     readertape: manifest.readertape || null,
                     vt52: manifest.vt52 || null,
                     teletypepaper: manifest.teletypepaper || null,
-                    overlay: manifest.overlay || null,
+                    overlay: deserializeOverlay(manifest.overlay),
                     steps: manifest.steps || null,
                     stepsMessage: manifest.stepsMessage || null,
                     cpuBytes: 0,

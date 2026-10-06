@@ -26,6 +26,10 @@ const PORT = 1170;
 const BASE = `http://localhost:${PORT}/pdp11.html`;
 const ROOT = path.resolve(__dirname, "..");
 
+// Node-side readers for the .state container the browser writes to disk.
+const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+const StateIO = require(path.join(ROOT, "tools", "state-io.js"));
+
 // Start the repo's static server when nothing serves :1170 (the suite loads the
 // page and fetches states over HTTP); reuse one that is already up, and stop
 // only a server we started ourselves.
@@ -307,6 +311,131 @@ async function testInvalidImport(page) {
     console.log("  E: passed");
 }
 
+// --- F. Overlay disk round-trip -----------------------------------------
+// The regression this pins: a guest wrote blocks to a disk (COPY onto RK1),
+// a snapshot carried them in the write-back overlay, the snapshot was
+// EXPORTED to a file and IMPORTED back — and the overlay block bytes were
+// lost (Uint8Array -> JSON object -> "new Uint8Array(obj)" = empty block), so
+// the restored machine saw a zeroed file system and DIR hung. This drives the
+// REAL Export button, reads the file off disk, and checks the bytes survive
+// all the way back onto the disk after restore.
+
+function downloadDir() {
+    const dir = path.join(ROOT, "tests", "artifacts", "dl-" + Date.now());
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+}
+
+async function enableDownloads(browser, page, dir) {
+    const args = { behavior: "allow", downloadPath: dir, eventsEnabled: true };
+    try {
+        const c = await browser.createCDPSession();
+        await c.send("Browser.setDownloadBehavior", args);
+        return c;
+    } catch (e) {
+        const c = await page.createCDPSession();
+        await c.send("Page.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
+        return c;
+    }
+}
+
+async function waitForDownload(dir, timeoutMs) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeoutMs) {
+        const files = fs.readdirSync(dir).filter((f) => !f.endsWith(".crdownload"));
+        if (files.length) return path.join(dir, files[0]);
+        await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error("no download appeared in " + dir);
+}
+
+async function testOverlayDiskRoundTrip(browser, page) {
+    console.log("\n=== F. Overlay disk round-trip (export -> file -> import -> restore) ===");
+
+    const url = "rk5-e2e.dsk";
+    const block = 42;
+    const words = [0xDEAD, 0xBEEF, 0x1234, 0x5678, 0x9ABC, 0xDEF0, 0x1111, 0x2222];
+    // Little-endian bytes of the seeded words (blockToBytes in src/diskstore.js).
+    const expected = [];
+    words.forEach((w) => { expected.push(w & 0xff, (w >>> 8) & 0xff); });
+
+    // Seed a REAL write-back overlay through the production API — exactly what
+    // a guest write (COPY onto a disk) leaves behind.
+    await page.evaluate((url, block, words) => {
+        DiskStore.registerImage(url, "fp-e2e");
+        const cb = { url: url, cache: [] };
+        cb.cache[block] = Uint16Array.from(words);
+        DiskStore.markDirty(cb, block);
+    }, url, block, words);
+
+    const snapId = await page.evaluate(async () => (await SnapshotStore.save("overlay e2e")).id);
+    check("F1: snapshot saved", typeof snapId === "string", String(snapId));
+
+    // Export through the REAL button so a file actually lands on disk.
+    const dir = downloadDir();
+    const client = await enableDownloads(browser, page, dir);
+    await page.evaluate(() => {
+        const open = document.getElementById("state-btn");
+        if (open) open.click();   // reveal the manager modal so the button is clickable
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    await page.click("#snap-export");
+    const file = await waitForDownload(dir, 20000);
+    check("F2: Export wrote a .state file to disk",
+        fs.existsSync(file) && fs.statSync(file).size > 0, file);
+
+    // The file's container must carry the overlay block bytes as plain arrays.
+    const { container } = StateIO.readBytes(file);
+    const parsed = StateFormat.unpack(container);
+    const wire = parsed && parsed.manifest && parsed.manifest.overlay &&
+        parsed.manifest.overlay[url] && parsed.manifest.overlay[url].blocks;
+    check("F3: file carries the overlay block", !!(wire && wire[block]),
+        JSON.stringify(wire && Object.keys(wire)));
+    const fileBytes = wire && wire[block] ? Array.from(wire[block]) : [];
+    check("F4: file's overlay block bytes match the seeded write",
+        JSON.stringify(fileBytes) === JSON.stringify(expected),
+        JSON.stringify(fileBytes.slice(0, 8)) + " vs " + JSON.stringify(expected.slice(0, 8)));
+
+    // Drop the local snapshot, import the file from disk, then LOAD it (reload
+    // path — the same one a user takes after Import).
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
+    const importArr = Array.from(fs.readFileSync(file));
+    const imported = await page.evaluate(async (arr) => {
+        return await SnapshotStore.importState(new Uint8Array(arr));
+    }, importArr);
+    check("F5: import from disk succeeded", imported.ok === true, JSON.stringify(imported));
+
+    await page.evaluate(async (id) => { await SnapshotStore.load(id); }, imported.id);
+    await page.waitForFunction(
+        () => typeof SnapshotStore !== "undefined" && typeof CPU !== "undefined",
+        { timeout: 30000 });
+    // init()/restore() writes the overlay to IndexedDB asynchronously.
+    await page.waitForFunction(async (url, block) => {
+        if (typeof DiskStore === "undefined") return false;
+        const b = await DiskStore.getBlock(url, block);
+        return !!b && b.length > 0;
+    }, { timeout: 20000 }, url, block);
+
+    const restored = await page.evaluate(async (url, block) => {
+        const b = await DiskStore.getBlock(url, block);
+        return b ? Array.from(new Uint8Array(b)) : null;
+    }, url, block);
+    check("F6: restored disk block present", Array.isArray(restored),
+        String(restored && restored.length));
+    check("F7: restored disk block bytes match (disk survived export/import)",
+        JSON.stringify(restored) === JSON.stringify(expected),
+        JSON.stringify(restored && restored.slice(0, 8)) + " vs " + JSON.stringify(expected.slice(0, 8)));
+
+    // Cleanup.
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, imported.id);
+    await page.evaluate(async (u) => {
+        if (DiskStore.clear) await DiskStore.clear(u);
+    }, url);
+    try { await client.detach(); } catch (e) { /* ignore */ }
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
+    console.log("  F: done");
+}
+
 // --- Main ----------------------------------------------------------------
 (async () => {
     const server = await ensureServer();
@@ -343,6 +472,13 @@ async function testInvalidImport(page) {
             const p4 = await openPage(browser, errors);
             await testInvalidImport(p4);
             await p4.close();
+        }
+
+        // F. Overlay disk round-trip (needs a page reload, so a fresh page).
+        {
+            const p5 = await openPage(browser, errors);
+            await testOverlayDiskRoundTrip(browser, p5);
+            await p5.close();
         }
 
         // Check for page errors across all pages.

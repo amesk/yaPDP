@@ -93,6 +93,65 @@ function makeFakeIndexedDB() {
   return indexedDB;
 }
 
+// Minimal in-memory DiskStore: enough of the production surface for the
+// machine-state tests to exercise the write-back OVERLAY (the blocks a guest
+// wrote, e.g. COPY onto a disk) through save/export/import/restore. The real
+// module normalises block bytes on restore (src/diskstore.js); this double
+// mirrors that so a broken serialisation in src/snapshots.js is what a test
+// failure points at.
+function makeFakeDiskStore() {
+  const images = new Map(); // url -> { fp, blocks: Map(block -> Uint8Array) }
+  function image(url) {
+    let im = images.get(url);
+    if (!im) { im = { fp: null, blocks: new Map() }; images.set(url, im); }
+    return im;
+  }
+  function normalizeBytes(v) {
+    if (v instanceof Uint8Array) return new Uint8Array(v);
+    if (Array.isArray(v)) return Uint8Array.from(v);
+    if (v && typeof v === "object") return new Uint8Array(Object.values(v));
+    return new Uint8Array(0);
+  }
+  return {
+    IMAGE_VERSION: "0.1.0",
+    // test helpers
+    setBlock(url, block, bytes) { image(url).blocks.set(block, Uint8Array.from(bytes)); },
+    getBlockBytes(url, block) {
+      const im = images.get(url);
+      const b = im && im.blocks.get(block);
+      return b ? Uint8Array.from(b) : undefined;
+    },
+    setFingerprint(url, fp) { image(url).fp = fp; },
+    // production-facing API
+    fingerprintOf(url) { const im = images.get(url); return im ? im.fp : null; },
+    captureOverlay() {
+      const out = {};
+      images.forEach((im, url) => {
+        if (im.blocks.size === 0) return;
+        const blocks = {};
+        im.blocks.forEach((bytes, b) => { blocks[b] = Uint8Array.from(bytes); });
+        out[url] = { v: im.fp, blocks: blocks };
+      });
+      return Promise.resolve(out);
+    },
+    restoreOverlay(overlay) {
+      if (!overlay || typeof overlay !== "object") return Promise.resolve();
+      Object.keys(overlay).forEach((url) => {
+        const rec = overlay[url] || {};
+        const im = image(url);
+        im.blocks = new Map();
+        const raw = rec.blocks || {};
+        Object.keys(raw).forEach((b) => {
+          im.blocks.set(parseInt(b, 10), normalizeBytes(raw[b]));
+        });
+        if (rec.v !== undefined) im.fp = rec.v;
+      });
+      return Promise.resolve();
+    },
+    clearAll() { images.forEach((im) => { im.blocks = new Map(); }); return Promise.resolve(); },
+  };
+}
+
 function buildSandbox() {
   const fakeIDB = makeFakeIndexedDB();
   const cpu = {
@@ -137,7 +196,7 @@ function buildSandbox() {
       snapshotDevices() { return JSON.parse(JSON.stringify(this._devices)); },
       restoreDevices(state) { this._devices = JSON.parse(JSON.stringify(state)); },
     },
-    DiskStore: { IMAGE_VERSION: "0.1.0" },
+    DiskStore: makeFakeDiskStore(),
     Config: {
       _cfg: { consoleType: "teletype", userTerminals: 0, printer: false, vt11: false },
       get() { return Object.assign({}, this._cfg); },
@@ -508,6 +567,43 @@ async function run() {
     assert.strictEqual(foreign.ok, false, "a foreign file is refused");
     assert.strictEqual(foreign.reason, "not-a-state", "and the reason says why");
     console.log("PASS test 14: gzip and bare states apply, foreign bytes refused");
+  }
+
+  // ---- Test 15: overlay (write-back disk blocks) survives export/import --
+  // The bug this pins: overlay.blocks held Uint8Array, JSON.stringify (inside
+  // StateFormat.pack) turned it into a plain object, and restoreOverlay read
+  // that object as an empty block — the exported/imported snapshot "lost its
+  // disk" (guest writes on RK1 vanished, DIR hung). The bytes must survive
+  // save -> exportSnapshot -> importState -> restore unchanged.
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const url = "rk5.dsk";
+    const sentinel = [0xDE, 0xAD, 0xBE, 0xEF, 0x11, 0x22, 0x33, 0x44];
+    sb.DiskStore.setFingerprint(url, "fp-rk5");
+    sb.DiskStore.setBlock(url, 42, sentinel);
+
+    const snap = await SS.save("overlay test");
+    assert.ok(snap.overlay && snap.overlay[url], "overlay captured at save");
+
+    const bytes = await SS.exportSnapshot(snap.id);
+    assert.ok(bytes && bytes.length > 0, "snapshot exported");
+
+    // Import the exported file, then restore it onto a wiped disk.
+    const imported = await SS.importState(new Uint8Array(bytes));
+    assert.strictEqual(imported.ok, true, "import ok: " + JSON.stringify(imported));
+
+    const stored = sb.indexedDB._store.get(imported.id);
+    assert.ok(stored && stored.overlay && stored.overlay[url], "imported overlay present");
+    assert.deepStrictEqual(Array.from(stored.overlay[url].blocks[42]), sentinel,
+      "imported overlay block bytes match the original");
+
+    sb.DiskStore.setBlock(url, 42, [0, 0, 0, 0, 0, 0, 0, 0]);
+    const ok = await SS.restore(stored);
+    assert.strictEqual(ok, true, "restore ok");
+    assert.deepStrictEqual(Array.from(sb.DiskStore.getBlockBytes(url, 42)), sentinel,
+      "restored disk block bytes match the original");
+    console.log("PASS test 15: overlay survives export/import/restore");
   }
 
   console.log("\nAll SnapshotStore tests passed.");
