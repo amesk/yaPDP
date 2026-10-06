@@ -117,6 +117,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the update; now the OK button keeps the balloon open until the operator reads
   the text and clicks. (`src/quickboot.js`)
 
+- **Screenshots are saved on a black background.** The captured PNG composites
+  the active page with `html2canvas`, whose canvas fill defaulted to white while
+  the page itself is transparent — the emulator was framed on white. The
+  composite now fills with black, matching the dark colour scheme.
+  (`src/screenshot.js`)
+
 ## [0.3.0] - 2026-09-30
 
 ### Added
