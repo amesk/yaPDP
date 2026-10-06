@@ -67,6 +67,10 @@
                 scale: 1,
                 width: target.clientWidth,
                 height: target.clientHeight,
+                // .page is transparent (the body photo backdrop shows
+                // through), so html2canvas falls back to its default white
+                // canvas fill. Match the emulator's dark colour scheme instead.
+                backgroundColor: "#000",
             });
         }
 
