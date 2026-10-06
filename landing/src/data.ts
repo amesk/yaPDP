@@ -80,6 +80,47 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
   },
 ];
 
+// Games that run on the emulated PDP-11 — the "Play!" gallery beside the
+// Instant-Run (Teleport) carousel. Each tile carries a saved machine state
+// (states/<name>.state.zst) with the game ALREADY RUNNING, so its button is
+// Play, not Run: there is nothing to boot, only a state to apply.
+export const GAME_SLIDES: SlideItem[] = [
+  {
+    id: 'spcinv',
+    stateUrl: 'states/rt-11-spcinv.state.zst',
+    stateReady: 'SPCINV running under RT-11, waiting for a key',
+    title: 'Space Invaders',
+    caption: 'Space Invaders',
+    image: 'assets/images/games/rt-11-spcinv.png',
+    alt: 'Space Invaders (SPCINV) running on yaPDP',
+    description: 'The arcade classic running on the PDP-11 under RT-11, played interactively in the emulator.',
+    descriptionRu: 'Аркадная классика на PDP-11 под RT-11 — играйте прямо в эмуляторе.',
+  },
+  {
+    id: 'dungeon',
+    stateUrl: 'states/rt-11-dungeon.state.zst',
+    stateReady: 'Dungeon running under RT-11, waiting for a command',
+    title: 'Dungeon',
+    caption: 'Dungeon (Zork)',
+    image: 'assets/images/games/rt-11-dungeon.png',
+    alt: 'Dungeon (the MIT text adventure) running on yaPDP',
+    description: 'The MIT text adventure that grew into Zork — a FORTRAN IV dungeon crawl under RT-11, billed by its authors as "a game of adventure, danger and low cunning": it starts at the boarded white house.',
+    descriptionRu: 'Текстовое приключение из MIT, из которого вырос Zork, — версия Dungeon на FORTRAN IV под RT-11: по словам авторов, «игра приключений, опасности и низкого коварства». Начинается у белого дома с заколоченной дверью.',
+  },
+  {
+    id: 'adventure',
+    stateUrl: 'states/rt-11-adventure.state.zst',
+    stateReady: 'Adventure running under RT-11, waiting for a command',
+    title: 'Adventure',
+    caption: 'Adventure (Colossal Cave)',
+    image: 'assets/images/games/rt-11-adventure.png',
+    alt: 'Colossal Cave Adventure running on yaPDP',
+    // Double-quoted: the description carries an apostrophe (Woods').
+    description: "Colossal Cave — Will Crowther and Don Woods' original text adventure, the cave crawl that started the genre (and inspired Dungeon): it opens at the end of a road before a small brick building.",
+    descriptionRu: 'Colossal Cave — самое первое текстовое приключение Уилла Краутера и Дона Вудса, с которого начался жанр (и которое вдохновило Dungeon): дорога, а в конце — маленький кирпичный домик.',
+  },
+];
+
 export const FEATURES_EN: FeatureItem[] = [
   {
     id: 'front-panel',

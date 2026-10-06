@@ -6,6 +6,9 @@ export interface SlideItem {
   caption: string;
   tag?: string;
   description?: string;
+  // Russian text for `description`, shown to a Russian reader. Absent means
+  // "no translation yet" and the English `description` is used instead.
+  descriptionRu?: string;
   // QuickBoot scenario key (see src/osboot.js) — the guest OS this tile boots
   // when the visitor presses Run. The key names a SCENARIO, not a disk: the
   // boot command, the typed steps and the whole machine profile (console,

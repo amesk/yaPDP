@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar.tsx';
 import { Hero } from './components/Hero.tsx';
 import { OSCarousel } from './components/OSCarousel.tsx';
 import { InstantRun } from './components/InstantRun.tsx';
+import { GamesCarousel } from './components/GamesCarousel.tsx';
 import { FeaturesTable } from './components/FeaturesTable.tsx';
 import { WhoIsThisFor } from './components/WhoIsThisFor.tsx';
 import { PersonalNote } from './components/PersonalNote.tsx';
@@ -144,6 +145,11 @@ export default function App() {
               />
 
               <InstantRun lang={lang} onTeleport={handleTeleport} />
+
+              {/* Games sit beside the Instant-Run (Teleport) carousel: same
+                  saved-state mechanism, a "Play!" button — the game is already
+                  running, so there is nothing to boot. */}
+              <GamesCarousel lang={lang} onPlay={handleTeleport} />
 
               <OSCarousel lang={lang} onRun={handleRunOS} />
 
