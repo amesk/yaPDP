@@ -167,6 +167,35 @@ of the 1980s guests in the same table.
 
 ---
 
+## A VT52-only program (RT-11 `TIME52`) garbles on a VT100 console
+
+**Status:** accepted limitation, not a bug.
+
+**Symptom.** RT-11's `TIME52` clock draws correctly on a VT52 (DECscope)
+console, but on a VT100 operator console the large digits break up into stray
+asterisks and control-character frays instead of a readable clock.
+
+**Reproduction.**
+1. `node tools/serve.js` (port 1170), open `pdp11.html?boot=rk1`.
+2. In CONFIG set the operator console to VT100, boot RT-11 and run `R TIME52`.
+3. Repeat with the console set to VT52 — the clock draws.
+
+**Why.** `TIME52` is a DECscope VT52 program: it positions the cursor with
+`ESC Y <row+32> <col+32>` and clears with `ESC H` / `ESC J` / `ESC K`. A VT100
+in its default ANSI mode has none of those — its grammar starts with `CSI`
+(`ESC [`), so `ESC Y` is undefined there and `ESC H`/`ESC J`/`ESC K` are not
+CUP/ED/EL without the `[`. The bytes therefore fall through to the screen as
+characters, which is exactly what a real VT100 would do unless software switched
+it into VT52 compatibility mode (`ESC [ ? 2 h`, DECANM — `TIME52` does not).
+
+**Note.** The VT52/VT100 split is authentic, so this is not an emulator bug: run
+VT52-only guests and utilities on a VT52 console. The per-machine dialect is
+chosen in CONFIG (`Config.consoleType`); the compatibility sub-mode a VT100
+*can* be put into is implemented in
+[`src/dialect/vt100.js`](../src/dialect/vt100.js).
+
+---
+
 ## (History) BSD 2.9 (rl0): input after `login:` was lost
 
 **Status:** resolved — not an emulator bug.
