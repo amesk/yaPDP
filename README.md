@@ -1,6 +1,6 @@
-# yaPDP — Yet Another PDP‑11/70 Web Emulator with an Authentic Front Panel & Model 33 ASR Teletype
+# yaPDP — An Interactive Virtual Retro-Museum & Immersive PDP‑11 Ecosystem
 
-> **An immersive PDP-11 in the browser.** Features an authentic working front panel, Teletype Model 33 ASR, paper tapes, crisp VT52/VT100 terminals, VT11 vector display, and a clattering LP11 line printer. Built to bring back the machine room.
+> **Preserving digital heritage through living interaction.** yaPDP is not just another hardware emulator; it is an open-access web-based museum designed for everyone—including visitors with zero background in 1970s computing. Through intuitive, hands-on experimentation, users explore how the architectural choices and constraints of the past still silently govern the modern digital world we live in today.
 
 [![CI](https://github.com/amesk/yaPDP/actions/workflows/ci.yml/badge.svg)](https://github.com/amesk/yaPDP/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -8,17 +8,13 @@
 
 ---
 
-## Live Experience
+## The Strategy: Educational Gamification & Public Accessibility
 
-<p align="center">
-  <img src="assets/pdp11-animated-panel.gif" alt="Animated PDP-11/70 front panel — the DEC light chaser running"/>
-</p>
+Most historic computer emulators require dense technical knowledge just to boot up. **yaPDP breaks this barrier.** Our mission is public engagement with the history of technology. 
 
-<p align="center">
-  <b>▸ <a href="https://amesk.github.io/yaPDP/pdp11.html">Launch the live PDP-11/70 emulator directly in your browser</a> ◂</b>
-  <br/>
-  <sub><a href="https://amesk.github.io/yaPDP/">Project site</a> · <a href="https://github.com/amesk/yaPDP">Source on GitHub</a> · Desktop builds for Windows & Linux</sub>
-</p>
+Even if a visitor has never heard of a PDP-11, the project's gamified environment invites them to interact, flick switches, and watch historical software come alive. We bridge the gap between generations, revealing how early operating systems (like Unix V5) and programming languages (like C) established foundations that still impact modern smartphones, cloud servers, and consumer software.
+
+*   **100% Free & Open (MIT):** Free tools for universities, history of science courses, and digital museums worldwide.
 
 ---
 
@@ -42,6 +38,8 @@ This repository is the result: **yaPDP**. Welcome to the machine.
 * **Guest Operating Systems & Quick Boot:** Single-click magic wand boots any guest OS from the preloaded images — Unix V5, BSD 2.9 & 2.11, ULTRIX‑11, RSX‑11M (3.2 & 4.6), RSTS/E (4B‑17 through 10.1), RT‑11 and XXDP diagnostics — applying the machine profile and typing the boot command, prompt-aware. The OS galleries on the landing pages link straight into it: every tile has a **RUN** button that opens the emulator and boots that system (`pdp11.html?boot=<device>`).
 * **Persistent Browser Storage:** Disk and tape changes persist across sessions using local browser storage.
 * **Touch & Mobile Optimized:** Responsive layout with custom on-screen keyboards for VT52/VT100/Model 33, special-key bars (`CTRL`, `ESC`, `TAB`, `RUBOUT`, control codes), and two-finger pan/zoom for small devices.
+* **Shareable Machine States & Deep Linking:** Save, export, and share exact machine states as `.state.zst` files. Teleport directly into a running historical moment via `?state=` links—no boot procedure, no disk hunting required.
+* **Instant Play & Hardware Demos Galleries:** Curated carousels on the landing page featuring historical games (Space Invaders, Adventure, Dungeon) and peripheral demos (Lunar Lander on VT11, Teletype paper tape reading) that launch instantly into the exact context intended by the author.
 
 ---
 
@@ -133,6 +131,7 @@ Building **yaPDP** involved implementing low-level computer architecture and rea
 * **Application & State Glue (`src/pdp11-app.js`, `src/config.js`):** Connects the emulation engine to browser DOM elements, sound players, and state synchronization.
 * **Bootstrap Loader & OS Wizard (`src/bootcode.js`, `src/osboot.js`, `src/quickboot.js`):** Bootloader injection logic and prompt-aware automated OS startup scripts.
 * **Automation & Video Pipeline:** Automated screenshot generation via [`tools/screenshots-manual.js`](tools/screenshots-manual.js) and headless promo video assembly via [`tools/record-video.js`](tools/record-video.js) / [`tools/assemble-video.js`](tools/assemble-video.js). The assembled clips are published to the project's YouTube playlist in one command (`npm run youtube:publish`) — setup and quota rules in [`docs/YOUTUBE.md`](docs/YOUTUBE.md).
+* **State Serialization & Video Pipeline (`src/state-format.js`, `src/step-engine.js`):** Platform-free container format for machine states (zstd-compressed RAM, CPU, and disk overlays). The shared StepEngine drives both interactive post-restore scenarios and the headless Puppeteer video recording pipeline.
 
 Full directory structure and module descriptions are detailed in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); the Unibus machine layer has its own deep dive in [`docs/machine-layer.md`](docs/machine-layer.md) and the XXDP diagnostics in [`docs/xxdp-diagnostics.md`](docs/xxdp-diagnostics.md).
 
