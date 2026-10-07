@@ -58,6 +58,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A restored VT11 display keeps running.** A state saved while the Lunar
+  Lander display processor was mid-pass restored the vector picture but the
+  display itself was dead — the lander never moved until the guest crashed it
+  and started the next frame. The picture refresh runs on a timer that a page
+  reload tears down, and the restored status register still said "running", so
+  nothing re-armed it and the guest waited for a frame that never came.
+  Restoring a state now restarts the display processor (with its blink timer
+  and light-pen tracking) whenever the saved status says it was running, so
+  Lunar Lander resumes flying right after a load. (`src/vt11.js`; pinned by
+  `tests/vt11.test.js`)
+
 - **Snapshots keep the disk's write-back overlay across export/import.** The
   overlay blocks — the sectors a guest wrote, e.g. `COPY` onto a disk — were
   serialised into the `.state` manifest as JSON, which turned each block's

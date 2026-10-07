@@ -953,7 +953,21 @@ iopage.register(0o17772000, 4, (function () {
     // -------------------------------------------------------------------------
 
     const cpu = (function () {
+        // The processor loop is a self-rescheduling setTimeout chain. A page
+        // reload tears the chain down but leaves the saved DSR untouched, so
+        // the loop has to be (re)armed from snapshot restore as well as from a
+        // guest DPC write. `scheduled` keeps arming idempotent: two live
+        // chains would double the display refresh rate.
+        let scheduled = false;
+
+        function schedule() {
+            if (scheduled) return;
+            scheduled = true;
+            setTimeout(processorTimeslice, PROCESSOR_RESCHEDULE_MS);
+        }
+
         function processorTimeslice() {
+            scheduled = false; // this tick has consumed its schedule
             renderer.beginFramePath();
 
             let deadline = timing.getTimesliceDeadline();
@@ -1023,20 +1037,33 @@ iopage.register(0o17772000, 4, (function () {
             statsPanel.update(stats);
 
             if (!state.isStopped()) {
-                setTimeout(processorTimeslice, PROCESSOR_RESCHEDULE_MS);
+                schedule();
             }
         }
 
+        // A guest write to the DPC register starts a STOPPED display processor
+        // (the guest is handing it the next pass).
         function startIfStopped() {
             if (state.isStopped()) {
                 state.clearStopBit();
-                setTimeout(processorTimeslice, PROCESSOR_RESCHEDULE_MS);
+                schedule();
+            }
+        }
+
+        // State restore: DSR bit 15 says whether the display processor was
+        // running when the state was saved. The reload dropped the timer
+        // chain, so re-arm it for a display that was mid-pass; a stopped one
+        // waits for the guest's next DPC write, exactly like real hardware.
+        function startIfRunning() {
+            if (!state.isStopped()) {
+                schedule();
             }
         }
 
         return {
             processorTimeslice,
-            startIfStopped
+            startIfStopped,
+            startIfRunning
         };
     })();
 
@@ -1141,14 +1168,27 @@ iopage.register(0o17772000, 4, (function () {
                 window.__vt11RestoreTrace.push({ t: Date.now(), regs: snap.regs, hasImage: !!snap.image });
             }
             state.restore(snap.regs);
-            // The renderer is created lazily on the first DPC write; after a
-            // page reload nothing has written DPC yet, so initialize the DOM
-            // before redrawing the captured picture. Guarded for headless
-            // contexts (no document).
-            if (snap.image && typeof document !== "undefined") {
+
+            // The renderer, the blink/refresh timers and the light-pen tracking
+            // are created lazily on the first DPC write. A page reload never
+            // writes DPC before restoring, so they are all dead here even though
+            // the register file is back: bring them up explicitly. Guarded for
+            // headless contexts (no document).
+            if (typeof document !== "undefined") {
                 renderer.initDOM();
-                renderer.restoreImage(snap.image);
+                timing.startBlinkTimer();
+                lightPen.attachMouseTracking(renderer.getCanvasFG());
+                if (snap.image) {
+                    renderer.restoreImage(snap.image);
+                }
             }
+
+            // The display-processor loop is a self-scheduling setTimeout chain
+            // that a reload destroys but that the saved DSR still describes as
+            // running (bit 15 = 0). Re-arm it: without this the picture stays
+            // frozen and the guest waits forever for a stop interrupt the
+            // (never-started) display never raises.
+            cpu.startIfRunning();
         }
     };
 
