@@ -61,6 +61,7 @@ const ORDER = [
     "imgerror.test.js",
     "osboot.test.js",
     "os-gallery-run.test.js",
+    "games-gallery.test.js",
     "quickboot-wait.test.js",
     "overlay-during-autoload.test.js",
     "media-manifest.test.js",

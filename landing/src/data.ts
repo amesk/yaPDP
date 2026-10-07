@@ -119,6 +119,17 @@ export const GAME_SLIDES: SlideItem[] = [
     description: "Colossal Cave — Will Crowther and Don Woods' original text adventure, the cave crawl that started the genre (and inspired Dungeon): it opens at the end of a road before a small brick building.",
     descriptionRu: 'Colossal Cave — самое первое текстовое приключение Уилла Краутера и Дона Вудса, с которого начался жанр (и которое вдохновило Dungeon): дорога, а в конце — маленький кирпичный домик.',
   },
+  {
+    id: 'time52',
+    stateUrl: 'states/rt-11-time52.state.zst',
+    stateReady: 'Time52 clock running under RT-11 on the VT52 DECScope',
+    title: 'Time52',
+    caption: 'Time52 (Digital Clock)',
+    image: 'assets/images/games/rt-11-time52.png',
+    alt: 'Time52 clock running on a VT52 DECScope terminal on yaPDP',
+    description: 'The $100,000 Digital Timepiece from 1975: Why settle for a cheap wristwatch when you can track the relentless passage of time using a legendary DEC PDP-11/70 minicomputer and a VT52 DECScope terminal?',
+    descriptionRu: 'Цифровой хронометр за $100 000 из 1975 года: зачем довольствоваться дешёвыми наручными часами, если можно следить за неумолимым бегом времени на легендарном мини-компьютере DEC PDP-11/70 с терминалом VT52 DECScope?',
+  },
 ];
 
 export const FEATURES_EN: FeatureItem[] = [
