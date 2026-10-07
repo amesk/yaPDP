@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Toast notifications:** a DOM-independent toast subsystem (`src/toasts.js`)
+  that shows transient status messages (info/warning/error) at the bottom
+  centre of the emulator window; screenshot copy results and save failures
+  report through it, and a runaway-trap CPU halt raises an error toast via an
+  injectable core slot. (`src/toasts.js`, `src/screenshot.js`, `src/pdp11.js`,
+  `src/pdp11-app.js`, `css/pdp11.css`)
+
 - **Snapshot steps:** after restoring a machine state, the snapshot can execute
   one or more scenario steps (typed into the console) before the operator takes
   control. Steps are stored in the manifest as a `steps` array, using the same
@@ -183,6 +190,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and inject HTML. The name now passes through the same five-character escape
   the Prompt dialog applies, and a crafted name renders as inert text.
   (`src/snapshots.js`; pinned by `tests/snapshot-escape.test.js`)
+
+- **Toast notifications sit between the bottom round buttons, on their height.**
+ The toast used to float well above the corner buttons; it now rests at the
+ buttons' bottom offset on every layout — desktop, narrow screen and above the
+ mobile keys stack — so it occupies the gap between the left and right button
+ groups instead of hovering over them. (`css/pdp11.css`)
 
 ## [0.3.0] - 2026-09-30
 
