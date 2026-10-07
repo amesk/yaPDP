@@ -141,8 +141,10 @@ function loadVT11(opts) {
         createElement: function () { return makeEl(opts.trackContexts); },
         createTextNode: function (t) { return { textContent: t }; },
     };
-    // Timers must NOT actually run the VT11 processor loop.
-    sandbox.setTimeout = function () { return 1; };
+    // Timers must NOT actually run the VT11 processor loop; the callbacks are
+    // recorded so a test can assert that the loop was (re)armed.
+    const timers = [];
+    sandbox.setTimeout = function (fn) { timers.push(fn); return timers.length; };
     sandbox.setInterval = function () { return 1; };
 
     vm.createContext(sandbox);
@@ -150,7 +152,7 @@ function loadVT11(opts) {
         insertData + "\n" + requestInterrupt + "\n" + src,
         sandbox
     );
-    return { sandbox: sandbox, registrations: registrations };
+    return { sandbox: sandbox, registrations: registrations, timers: timers };
 }
 
 function run() {
@@ -256,6 +258,44 @@ function run() {
             "compositing context (FG) must stay untransformed");
         assert.strictEqual(ctxFG.scaleCalls, 0,
             "compositing context (FG) must stay unscaled");
+    }
+
+    // ------------------------------------------------------------------
+    // Test 8: restore() re-arms the processor loop for a RUNNING display.
+    // Regression guard for the Lunar Lander "frozen picture" bug: the state
+    // was saved with the display processor mid-pass (DSR stop bit 15 clear),
+    // the picture was restored from its PNG, but the setTimeout chain that
+    // drives the display was lost to the page reload — and startIfStopped()
+    // refused to start it because the (correctly restored) DSR said
+    // "running". The guest then waited forever for a stop interrupt the
+    // never-started display never raised.
+    // ------------------------------------------------------------------
+    {
+        const running = loadVT11({ vt11: true });
+        const runDev = running.registrations[0].device;
+        const before = running.timers.length;
+        // 0o1400 is the DSR a real Lunar Lander snapshot carries (stop bit 0).
+        runDev.restore({ regs: { DSR: 0o1400, DPC: 0o33610 }, image: null });
+        assert.ok(running.timers.length > before,
+            "restore() with a running DSR must re-arm the processor loop");
+        assert.strictEqual(runDev.access(DSR, -1, false) & 0x8000, 0,
+            "the restored running DSR keeps the stop bit clear");
+    }
+
+    // ------------------------------------------------------------------
+    // Test 9: restore() must NOT start a STOPPED display; the guest's next
+    // DPC write is what starts it (unchanged hardware contract).
+    // ------------------------------------------------------------------
+    {
+        const stopped = loadVT11({ vt11: true });
+        const stopDev = stopped.registrations[0].device;
+        const before = stopped.timers.length;
+        stopDev.restore({ regs: { DSR: 0x8000, DPC: 0 }, image: null });
+        assert.strictEqual(stopped.timers.length, before,
+            "restore() with a stopped DSR must not start the loop");
+        stopDev.access(DPC, 0o1000, false); // guest hands over the next pass
+        assert.ok(stopped.timers.length > before,
+            "a guest DPC write still starts the stopped processor");
     }
 
     console.log("vt11 tests: all passed");
