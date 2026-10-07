@@ -40,11 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Games gallery on the landing page:** a "Games" carousel beside the
   Instant-Run (Teleport) tiles, each card opening the emulator on a saved
   machine state with the game already running — a "Play!" button, not a boot.
-  Four RT-11 titles ship it: Space Invaders (`SPCINV`), Dungeon (the MIT text
-  adventure that grew into Zork), Colossal Cave Adventure and Time52, the
-  "$100,000 Digital Timepiece" of 1975; each description is shown in the
-  reader's language. (`landing/src/components/GamesCarousel.tsx`,
-  `landing/src/data.ts`, `landing/src/types.ts`, `landing/src/App.tsx`,
+  Five titles ship it, Lunar Lander first — played with the mouse as a light
+  pen on the VT11 vector display — then four RT-11 titles: Space Invaders
+  (`SPCINV`), Dungeon (the MIT text adventure that grew into Zork), Colossal
+  Cave Adventure and Time52, the "$100,000 Digital Timepiece" of 1975; each
+  description is shown in the reader's language.
+  (`landing/src/components/GamesCarousel.tsx`, `landing/src/data.ts`,
+  `landing/src/types.ts`, `landing/src/App.tsx`, `states/lander-ready.state.zst`,
   `states/rt-11-spcinv.state.zst`, `states/rt-11-dungeon.state.zst`,
   `states/rt-11-adventure.state.zst`, `states/rt-11-time52.state.zst`)
 
@@ -55,6 +57,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is extracted from `src/quickboot.js` into a shared `src/step-engine.js` module.
   Both QuickBoot and Snapshots use the same engine — no code duplication.
   (`src/step-engine.js`, `src/quickboot.js`)
+
+- **Lunar Lander moves from the guest-OS gallery to Games.** The lander is a
+  game, not a system, so its tile now lives in the Games carousel — first tile,
+  with the light-pen how-to as its description — and is gone from the
+  Instant-Run and Guest-OS galleries; the classic landing page drops its Lunar
+  Lander card to match. (`landing/src/data.ts`, `index.html`; pinned by
+  `tests/games-gallery.test.js`, `tests/os-gallery-run.test.js`)
 
 ### Fixed
 
