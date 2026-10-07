@@ -127,6 +127,35 @@ function run() {
         "the two guest-OS galleries must offer the same scenarios " +
         "(index.html vs landing/src/data.ts)");
 
+    // --- 3b. the saved-state tiles agree too -------------------------------
+    // The classic page mirrors the SPA's Instant-Run (Teleport) and Games
+    // galleries: every saved state the SPA advertises must also be offered by
+    // the classic page, and vice versa. PLAY/TELEPORT are ?state= links, so a
+    // tile added on one side and forgotten on the other is caught here.
+    function classicStateUrls(html) {
+        return [...html.matchAll(/<a\b[^>]*class="play-btn"[^>]*>/g)].map(function (m) {
+            const href = /href="pdp11\.html\?state=([^"]+)"/.exec(m[0]);
+            assert.ok(href, "a .play-btn without a pdp11.html?state= href: " + m[0]);
+            return decodeURIComponent(href[1]);
+        });
+    }
+    function spaStateUrls(src) {
+        return [...src.matchAll(/stateUrl:\s*'([^']+)'/g)].map(function (m) {
+            return m[1];
+        });
+    }
+
+    const classicStates = classicStateUrls(classic);
+    const spaStates = spaStateUrls(landing);
+    assert.ok(classicStates.length > 0,
+        "the classic page offers no Instant-Run/Games state tiles");
+    assert.strictEqual(new Set(classicStates).size, classicStates.length,
+        "two classic tiles point at the same state: " + classicStates.join(", "));
+    assert.deepStrictEqual(classicStates.slice().sort(), spaStates.slice().sort(),
+        "the classic page and the SPA must offer the same saved states " +
+        "(Instant-Run + Games): " + classicStates.join(", ") +
+        " vs " + spaStates.join(", "));
+
     // --- 4. the classic carousel guard -------------------------------------
     // The card itself opens the lightbox on click, so a RUN click must bail out
     // before that. Without the guard every RUN click also opens the lightbox.

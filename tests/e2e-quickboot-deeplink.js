@@ -440,7 +440,8 @@ async function seededPage(browser, errors) {
     // run of this case proved it by navigating out from under the test — so a
     // capture listener cancels the navigation and leaves the guard as the only
     // thing under observation. The keys are compared as a set: the raw count of
-    // .run-btn elements is not seven, because the carousel clones its cards.
+    // .run-btn elements is not the card count, because the carousel clones its
+    // cards.
     {
       const page = await browser.newPage();
       page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
@@ -451,9 +452,14 @@ async function seededPage(browser, errors) {
       const hrefs = await page.$$eval(".carousel-item.os-card-link .run-btn",
         (els) => els.map((e) => e.getAttribute("href")));
       const uniqueHrefs = Array.from(new Set(hrefs));
+      // The classic gallery offers the same guest OSes as the SPA's
+      // GUEST_OS_SLIDES (Lunar Lander now lives in the Games carousel), so
+      // pin the exact key set rather than a bare count.
+      const EXPECTED_KEYS = ["rk0", "rp1", "rk1", "rk1vt52", "basic", "rk3"];
       check("classic gallery: every card carries a ?boot= link",
-        uniqueHrefs.length === 7 &&
-        hrefs.every((h) => /^pdp11\.html\?boot=[a-z0-9]+$/.test(h)),
+        uniqueHrefs.length === EXPECTED_KEYS.length &&
+        hrefs.every((h) => /^pdp11\.html\?boot=[a-z0-9]+$/.test(h)) &&
+        EXPECTED_KEYS.every((k) => hrefs.indexOf("pdp11.html?boot=" + k) !== -1),
         uniqueHrefs.join(", "));
 
       const lightboxAfterRun = await page.evaluate(() => {
@@ -472,6 +478,18 @@ async function seededPage(browser, errors) {
       });
       check("classic gallery: clicking the screenshot still enlarges it",
         lightboxAfterShot === false);
+
+      // The classic page now mirrors the SPA's Instant-Run (Teleport) and Games
+      // galleries: each tile opens ?state=<url> with the guest already running.
+      // Counted as a set too — these carousels clone their cards as well.
+      const playHrefs = await page.$$eval(
+        "#instant-carousel .play-btn, #games-carousel .play-btn",
+        (els) => els.map((e) => e.getAttribute("href")));
+      const uniquePlay = Array.from(new Set(playHrefs));
+      check("classic gallery: Instant Run and Games tiles carry ?state= links",
+        uniquePlay.length === 11 &&
+        uniquePlay.every((h) => /^pdp11\.html\?state=states%2F[a-z0-9.-]+$/.test(h)),
+        uniquePlay.join(", "));
       await page.close();
     }
   } finally {
