@@ -57,6 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `states/rt-11-spcinv.state.zst`, `states/rt-11-dungeon.state.zst`,
   `states/rt-11-adventure.state.zst`, `states/rt-11-time52.state.zst`)
 
+- **Instant Run and Games on the classic landing page:** the root `index.html`
+  now mirrors the SPA's new carousels in English — an Instant-Run (Teleport)
+  gallery of saved machine states and a Games gallery with Lunar Lander, Space
+  Invaders, Dungeon, Adventure and Time52, each opening the emulator on a saved
+  state (`?state=`) with the guest already running. One shared carousel script
+  now drives all three galleries (guest OS, Instant Run, Games). (`index.html`;
+  pinned by `tests/os-gallery-run.test.js`, `tests/e2e-quickboot-deeplink.js`)
+
 ### Changed
 
 - **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,

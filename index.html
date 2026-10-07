@@ -363,8 +363,10 @@
             }
         }
 
-        /* Guest OS Card Container (the figure element) */
-        figure.carousel-item.os-card-link {
+        /* Carousel card container: the shared chrome for the guest-OS figure
+           and the Instant-Run / Games figures. */
+        figure.carousel-item.os-card-link,
+        figure.carousel-item.card-link {
             margin: 0;
             /* Resets default browser figure margins */
             background: #1a1815;
@@ -385,7 +387,8 @@
         }
 
         /* Hover State: Applies rich amber neon glow and highlights the border */
-        figure.carousel-item.os-card-link:hover {
+        figure.carousel-item.os-card-link:hover,
+        figure.carousel-item.card-link:hover {
             border-color: #c8a860;
             /* Amber/gold border matching site buttons */
             background-color: #24201a;
@@ -399,7 +402,8 @@
         }
 
         /* Image inside the card */
-        figure.carousel-item.os-card-link img {
+        figure.carousel-item.os-card-link img,
+        figure.carousel-item.card-link img {
             display: block;
             border-radius: 4px;
             border: 1px solid #2a2722;
@@ -407,12 +411,14 @@
         }
 
         /* Slight brightness boost for the screenshot on hover */
-        figure.carousel-item.os-card-link:hover img {
+        figure.carousel-item.os-card-link:hover img,
+        figure.carousel-item.card-link:hover img {
             filter: brightness(1.08);
         }
 
         /* Caption text styling at the bottom */
-        figure.carousel-item.os-card-link figcaption {
+        figure.carousel-item.os-card-link figcaption,
+        figure.carousel-item.card-link figcaption {
             margin-top: 10px;
             font-family: arial, helvetica, sans-serif;
             font-size: 13px;
@@ -424,7 +430,8 @@
         }
 
         /* Highlights the text in pure amber when the card is hovered */
-        figure.carousel-item.os-card-link:hover figcaption {
+        figure.carousel-item.os-card-link:hover figcaption,
+        figure.carousel-item.card-link:hover figcaption {
             color: #ffd27f;
             /* Bright amber text color used in active states */
         }
@@ -434,7 +441,8 @@
            with the right console, printer and display — this page never learns
            about hardware. It sits inside the clickable card, so it must read as
            a control rather than as part of the screenshot. */
-        figure.carousel-item.os-card-link .run-btn {
+        figure.carousel-item.os-card-link .run-btn,
+        figure.carousel-item.card-link .run-btn {
             display: block;
             margin-top: 8px;
             padding: 5px 10px;
@@ -452,18 +460,22 @@
         }
 
         figure.carousel-item.os-card-link .run-btn:hover,
-        figure.carousel-item.os-card-link .run-btn:focus-visible {
+        figure.carousel-item.os-card-link .run-btn:focus-visible,
+        figure.carousel-item.card-link .run-btn:hover,
+        figure.carousel-item.card-link .run-btn:focus-visible {
             background: linear-gradient(to bottom, #6a5838, #4a4030);
             color: #ffd27f;
             outline: none;
         }
 
-        figure.carousel-item.os-card-link .run-btn:active {
+        figure.carousel-item.os-card-link .run-btn:active,
+        figure.carousel-item.card-link .run-btn:active {
             background: linear-gradient(to bottom, #7a6848, #5a5038);
         }
 
         /* Base style for the enlarge hint (hidden by default) */
-        figure.carousel-item.os-card-link figcaption .enlarge-hint {
+        figure.carousel-item.os-card-link figcaption .enlarge-hint,
+        figure.carousel-item.card-link figcaption .enlarge-hint {
             display: block;
             font-size: 11px;
             font-weight: normal;
@@ -475,10 +487,52 @@
         }
 
         /* Smoothly displays the hint in amber when the card is hovered */
-        figure.carousel-item.os-card-link:hover figcaption .enlarge-hint {
+        figure.carousel-item.os-card-link:hover figcaption .enlarge-hint,
+        figure.carousel-item.card-link:hover figcaption .enlarge-hint {
             opacity: 1;
             color: #c8a860;
             /* Amber/gold color matching the active theme */
+        }
+
+        /* What a saved machine state IS ("already running"), so a Teleport or
+           Play tile does not lie about what the visitor will find. */
+        figure.carousel-item.card-link .state-ready {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            font-weight: normal;
+            color: #8a857a;
+        }
+
+        /* PLAY / TELEPORT button: opens the emulator on a saved state
+           (?state=<url>) with the guest already running — green, unlike RUN,
+           because nothing boots. Shared by the Instant-Run and Games tiles. */
+        figure.carousel-item.card-link .play-btn {
+            display: block;
+            margin-top: 8px;
+            padding: 5px 10px;
+            font-family: arial, helvetica, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-align: center;
+            text-decoration: none;
+            color: #e8f0d8;
+            background: linear-gradient(to bottom, #3a4a30, #27331f);
+            border: 1px solid #7a9a5a;
+            border-radius: 4px;
+            transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        figure.carousel-item.card-link .play-btn:hover,
+        figure.carousel-item.card-link .play-btn:focus-visible {
+            background: linear-gradient(to bottom, #4a5c3a, #33422a);
+            color: #ffffff;
+            outline: none;
+        }
+
+        figure.carousel-item.card-link .play-btn:active {
+            background: linear-gradient(to bottom, #5a6e48, #3d4d33);
         }
     </style>
 </head>
@@ -554,6 +608,136 @@
                 </div>
             </div>
 
+
+            <hr>
+
+            <h2>Instant Run</h2>
+
+            <p>
+                These tiles do not boot an operating system — they teleport you into one
+                that is already running. Each carries a saved machine state, so a guest
+                that takes two and a half minutes to come up from cold opens in about a
+                second. Press <b>TELEPORT!</b> to open the emulator with that state
+                applied: the caption says where the state was parked.
+            </p>
+
+            <div class="carousel" id="instant-carousel">
+                <button class="carousel-arrow prev" type="button" aria-label="Previous">◀</button>
+                <div class="carousel-viewport">
+                    <div class="carousel-track">
+                        <!-- TELEPORT links carry a saved machine state
+                             (states/<name>.state.zst): the emulator fetches it and
+                             applies it, so nothing boots. -->
+                        <figure class="carousel-item instant-card-link card-link">
+                            <img src="assets/images/os/unix_v5.png" alt="Unix V5" width="200" height="150">
+                            <figcaption>Unix V5<span class="state-ready">logged in as root</span><span
+                                    class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frk0-ready.state.zst"
+                                title="Open Unix V5 already running">TELEPORT!</a>
+                        </figure>
+                        <figure class="carousel-item instant-card-link card-link">
+                            <img src="assets/images/os/bsd.png" alt="2.11 BSD" width="200" height="150">
+                            <figcaption>2.11 BSD<span class="state-ready">logged in as root</span><span
+                                    class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frp1-ready.state.zst"
+                                title="Open 2.11 BSD already running">TELEPORT!</a>
+                        </figure>
+                        <figure class="carousel-item instant-card-link card-link">
+                            <img src="assets/images/os/rt11.png" alt="RT-11" width="200" height="150">
+                            <figcaption>RT-11<span class="state-ready">at the monitor prompt</span><span
+                                    class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frk1-ready.state.zst"
+                                title="Open RT-11 already running">TELEPORT!</a>
+                        </figure>
+                        <figure class="carousel-item instant-card-link card-link">
+                            <img src="assets/images/os/rt11-vt52.png" alt="RT-11 on VT52" width="200" height="150">
+                            <figcaption>RT-11 · VT52<span class="state-ready">at the monitor prompt</span><span
+                                    class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frk1vt52-ready.state.zst"
+                                title="Open RT-11 on a VT52 already running">TELEPORT!</a>
+                        </figure>
+                        <figure class="carousel-item instant-card-link card-link">
+                            <img src="assets/images/os/basic.png" alt="DEC BASIC-11" width="200" height="150">
+                            <figcaption>DEC BASIC-11<span class="state-ready">BASIC-11 loaded, waiting for
+                                    input</span><span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Fbasic-ready.state.zst"
+                                title="Open BASIC-11 already loaded">TELEPORT!</a>
+                        </figure>
+                        <figure class="carousel-item instant-card-link card-link">
+                            <img src="assets/images/os/xxdp.png" alt="XXDP+ diagnostics" width="200" height="150">
+                            <figcaption>XXDP+<span class="state-ready">at the diagnostic monitor</span><span
+                                    class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frk3-ready.state.zst"
+                                title="Open XXDP+ already running">TELEPORT!</a>
+                        </figure>
+                    </div>
+                </div>
+                <button class="carousel-arrow next" type="button" aria-label="Next">▶</button>
+            </div>
+
+            <hr>
+
+            <h2>Games</h2>
+
+            <p>
+                Games that ran on the PDP-11, each parked in a saved machine state so you
+                can play immediately — no boot, no waiting. Press <b>PLAY!</b> and the
+                emulator opens with the game already running.
+            </p>
+
+            <div class="carousel" id="games-carousel">
+                <button class="carousel-arrow prev" type="button" aria-label="Previous">◀</button>
+                <div class="carousel-viewport">
+                    <div class="carousel-track">
+                        <!-- PLAY links carry a saved machine state
+                             (states/<name>.state.zst) with the game ALREADY
+                             RUNNING, so there is nothing to boot. -->
+                        <figure class="carousel-item game-card-link card-link">
+                            <img src="assets/images/games/lunar-lander.png"
+                                alt="Lunar Lander on the VT11 vector display" width="200" height="150">
+                            <figcaption>Lunar Lander<span class="state-ready">the lander on the VT11 display, ready to
+                                    fly</span><span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Flander-ready.state.zst"
+                                title="Play Lunar Lander already running">PLAY!</a>
+                        </figure>
+                        <figure class="carousel-item game-card-link card-link">
+                            <img src="assets/images/games/rt-11-spcinv.png"
+                                alt="Space Invaders (SPCINV) running on yaPDP" width="200" height="150">
+                            <figcaption>Space Invaders<span class="state-ready">SPCINV running under RT-11, waiting for
+                                    a key</span><span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frt-11-spcinv.state.zst"
+                                title="Play Space Invaders already running">PLAY!</a>
+                        </figure>
+                        <figure class="carousel-item game-card-link card-link">
+                            <img src="assets/images/games/rt-11-dungeon.png"
+                                alt="Dungeon (the MIT text adventure) running on yaPDP" width="200" height="150">
+                            <figcaption>Dungeon (Zork)<span class="state-ready">Dungeon running under RT-11, waiting for
+                                    a command</span><span class="enlarge-hint">Click to enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frt-11-dungeon.state.zst"
+                                title="Play Dungeon already running">PLAY!</a>
+                        </figure>
+                        <figure class="carousel-item game-card-link card-link">
+                            <img src="assets/images/games/rt-11-adventure.png"
+                                alt="Colossal Cave Adventure running on yaPDP" width="200" height="150">
+                            <figcaption>Adventure (Colossal Cave)<span class="state-ready">Adventure running under
+                                    RT-11, waiting for a command</span><span class="enlarge-hint">Click to
+                                    enlarge</span></figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frt-11-adventure.state.zst"
+                                title="Play Adventure already running">PLAY!</a>
+                        </figure>
+                        <figure class="carousel-item game-card-link card-link">
+                            <img src="assets/images/games/rt-11-time52.png"
+                                alt="Time52 clock running on a VT52 DECScope terminal" width="200" height="150">
+                            <figcaption>Time52 (Digital Clock)<span class="state-ready">Time52 clock running under RT-11
+                                    on the VT52 DECScope</span><span class="enlarge-hint">Click to enlarge</span>
+                            </figcaption>
+                            <a class="play-btn" href="pdp11.html?state=states%2Frt-11-time52.state.zst"
+                                title="Play Time52 already running">PLAY!</a>
+                        </figure>
+                    </div>
+                </div>
+                <button class="carousel-arrow next" type="button" aria-label="Next">▶</button>
+            </div>
 
             <hr>
 
@@ -994,20 +1178,21 @@
     </div>
 
     <script>
-        // Guest-OS screenshot carousel + lightbox — plain CSS/JS, no libraries.
-        // The carousel is a circular buffer driven by a virtual "start" index
-        // — the index of the first visible real slide. Each step increments or
-        // decrements it modulo the slide count; when it crosses zero the window
-        // unrolls through the end (leading/trailing clones make the wrap
-        // smooth), then snaps to the mirrored real slide. Clicking a thumbnail
-        // opens the full-size image in the lightbox.
-        (function () {
-            var carousel = document.getElementById('os-carousel');
+        // Screenshot carousels + shared lightbox — plain CSS/JS, no libraries.
+        // Every .carousel (guest-OS, Instant Run, Games) is a circular buffer
+        // driven by a virtual "start" index — the index of the first visible
+        // real slide. Each step increments or decrements it modulo the slide
+        // count; when it crosses zero the window unrolls through the end
+        // (leading/trailing clones make the wrap smooth), then snaps to the
+        // mirrored real slide. Clicking a thumbnail opens the full-size image
+        // in the shared lightbox.
+        function initCarousel(carousel) {
             if (!carousel) return;
 
             var track = carousel.querySelector('.carousel-track');
             var originals = Array.prototype.slice.call(
                 carousel.querySelectorAll('.carousel-item'));
+            if (!track || !originals.length) return;
             var viewport = carousel.querySelector('.carousel-viewport');
             var prevBtn = carousel.querySelector('.carousel-arrow.prev');
             var nextBtn = carousel.querySelector('.carousel-arrow.next');
@@ -1040,9 +1225,13 @@
 
             function wire(item) {
                 item.addEventListener('click', function (e) {
-                    // RUN is a link, not an enlarge affordance: let the browser
-                    // follow it instead of opening the lightbox on the way.
-                    if (e.target.closest && e.target.closest('.run-btn')) return;
+                    // RUN / PLAY / TELEPORT are links, not enlarge affordances:
+                    // let the browser follow them instead of opening the
+                    // lightbox on the way. The .run-btn token stays in the
+                    // selector so the guard remains greppable by
+                    // tests/os-gallery-run.test.js.
+                    if (e.target.closest &&
+                        e.target.closest('.run-btn, .play-btn')) return;
                     openLightbox(item);
                 });
             }
@@ -1133,22 +1322,28 @@
             prevBtn.addEventListener('click', function () { step(-1); });
             nextBtn.addEventListener('click', function () { step(1); });
 
-            var lightbox = document.getElementById('os-lightbox');
-            if (lightbox) {
-                lightbox.addEventListener('click', function (e) {
-                    if (e.target === lightbox) lightbox.hidden = true;
-                });
-                lightbox.querySelector('.lightbox-close')
-                    .addEventListener('click', function () {
-                        lightbox.hidden = true;
-                    });
-                document.addEventListener('keydown', function (e) {
-                    if (e.key === 'Escape') lightbox.hidden = true;
-                });
-            }
-
             window.addEventListener('resize', rebuild);
             rebuild();
+        }
+
+        Array.prototype.forEach.call(
+            document.querySelectorAll('.carousel'), initCarousel);
+
+        // A single lightbox serves every carousel: it closes on Esc, a backdrop
+        // click or the × button.
+        (function () {
+            var lightbox = document.getElementById('os-lightbox');
+            if (!lightbox) return;
+            lightbox.addEventListener('click', function (e) {
+                if (e.target === lightbox) lightbox.hidden = true;
+            });
+            lightbox.querySelector('.lightbox-close')
+                .addEventListener('click', function () {
+                    lightbox.hidden = true;
+                });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') lightbox.hidden = true;
+            });
         })();
     </script>
 </body>
