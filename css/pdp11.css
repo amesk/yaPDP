@@ -1261,6 +1261,50 @@ textarea {
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7);
 }
 
+/* Toast notifications (src/toasts.js) — bottom-centre between the round corner
+   buttons, wearing the same dark-warm panel + gold-accent palette as the
+   quickboot balloon above. Categories tint the border: info (gold), warning
+   (amber), error (red). */
+.yapdp-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 12px;
+    /* on the height of the bottom round buttons, between them */
+    transform: translateX(-50%);
+    z-index: 50000;
+    display: none;
+    align-items: center;
+    max-width: calc(100% - 16px);
+    box-sizing: border-box;
+    padding: 10px 22px;
+    border: 2px solid #c8a860;
+    border-radius: 10px;
+    background: rgba(22, 18, 14, 0.72);
+    color: #e0d8c8;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: break-word;
+    text-align: center;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7);
+}
+
+.yapdp-toast.visible {
+    display: flex;
+}
+
+.yapdp-toast--warning {
+    border-color: #d9a520;
+}
+
+.yapdp-toast--error {
+    border-color: #c05a4a;
+    color: #ffd9d0;
+}
+
 /* Preparing toast stacks its children vertically: top row (spinner + label),
    then description, then OK button. The autoload toast (#quick-boot-balloon)
    keeps the original row layout via flex-wrap. */
@@ -3896,7 +3940,8 @@ body.mobile-keys-on.mobile-keys-off {
 body.mobile-keys-on .mute-btn,
 body.mobile-keys-on .screenshot-btn,
 body.mobile-keys-on .fullscreen-btn,
-body.mobile-keys-on .zoom-btn {
+body.mobile-keys-on .zoom-btn,
+body.mobile-keys-on .yapdp-toast {
     bottom: calc(var(--bottom-stack-h) + 10px);
 }
 
@@ -4103,6 +4148,12 @@ button.action-more-hidden {
         padding: 10px 14px;
         font-size: 15px;
         gap: 8px;
+    }
+
+    /* Toast notifications sit on the height of the raised round buttons
+       (66px above the navigation bar), between them. */
+    .yapdp-toast {
+        bottom: 66px;
     }
 
     #quick-boot-preparing.quickboot-balloon {

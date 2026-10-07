@@ -4292,3 +4292,38 @@ Onboarding.init();
         });
     });
 })();
+
+// Toast DOM adapter: the Toasts subsystem (src/toasts.js) owns only the queue,
+// timing and categories; every DOM and CSS manipulation lives here. The window
+// injects these callbacks at startup, as required by the subsystem's contract.
+(function initToasts() {
+    if (typeof Toasts === "undefined" || !Toasts.configure) return;
+    var el = null;
+    Toasts.configure({
+        mount: function () {
+            el = document.createElement("div");
+            el.className = "yapdp-toast";
+            el.setAttribute("role", "status");
+            el.setAttribute("aria-live", "polite");
+            document.body.appendChild(el);
+        },
+        update: function (state) {
+            if (!el) return;
+            el.textContent = state.text;
+            el.className = "yapdp-toast yapdp-toast--" + state.category;
+        },
+        show: function () { if (el) el.classList.add("visible"); },
+        hide: function () { if (el) el.classList.remove("visible"); }
+    });
+})();
+
+// CPU runaway-halt notifier: the core (src/pdp11.js) only raises an injectable
+// slot when it force-halts on trap recursion; this UI layer decides the reaction
+// — a transient error toast. Same inversion as __consoleOutputHook.
+(function initCpuHaltToast() {
+    window.__yapdpCpuHaltHook = function (reason) {
+        if (typeof Toasts !== "undefined" && Toasts.show) {
+            Toasts.show({ text: "CPU halted: runaway trap", category: "error" });
+        }
+    };
+})();

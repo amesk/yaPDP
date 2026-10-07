@@ -2199,6 +2199,9 @@ Hello world
        and the front panel). Built only on a coarse pointer and installed by
        src/pdp11-app.js, so it must load before it. -->
   <script src='src/action-overflow.js'></script>
+  <!-- Toast notifications: DOM-independent queue/timing only; the window wires
+       its DOM/CSS adapter from src/pdp11-app.js via Toasts.configure(). -->
+  <script src='src/toasts.js'></script>
   <script src='src/pdp11-app.js'></script>
   <script src='src/snapshots.js'></script>
   <script src='src/html2canvas.min.js'></script>

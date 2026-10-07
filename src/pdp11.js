@@ -567,6 +567,13 @@ function trap(vector, errorMask) {
             if ((CPU.trapDepth = (CPU.trapDepth || 0) + 1) > 8) {
                 CPU.trapDepth = 0;
                 CPU.runState = STATE_HALT;
+                // The core only signals the event through an injectable slot;
+                // it knows nothing about who listens (see pdp11-app.js, which
+                // wires this to the toast subsystem). Mirrors __consoleOutputHook.
+                if (typeof window !== "undefined" &&
+                    typeof window.__yapdpCpuHaltHook === "function") {
+                    window.__yapdpCpuHaltHook("runaway-trap");
+                }
                 return -1;
             }
         }

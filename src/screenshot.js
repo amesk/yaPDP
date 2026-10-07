@@ -52,6 +52,14 @@
         return "yapdp-" + ts + ".png";
     }
 
+    // Fire-and-forget toast helper: the Toasts subsystem (src/toasts.js) owns
+    // the queue/timing; a missing subsystem is a silent no-op.
+    function toast(opts) {
+        if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+            Toasts.show(opts);
+        }
+    }
+
     // ── Capture ────────────────────────────────────────────────────────
     // Capture the active page as a canvas.  Returns a Promise<HTMLCanvasElement|null>.
     // Uses html2canvas (when available) to render the entire page (cabinet,
@@ -98,23 +106,28 @@
     // ── Save as file ───────────────────────────────────────────────────
     function saveScreenshot(canvas) {
         if (!canvas) return;
+        var name = stampName();
         canvasToBlob(canvas).then(function (blob) {
             try {
                 var url = URL.createObjectURL(blob);
                 var a = document.createElement("a");
                 a.href = url;
-                a.download = stampName();
+                a.download = name;
                 a.click();
                 URL.revokeObjectURL(url);
+                // Saving succeeds silently: the browser's own download UI is
+                // feedback enough. Only a real failure raises a toast.
             } catch (e) {
                 // Fallback: data-URL.
                 try {
                     var dataUrl = canvas.toDataURL("image/png");
                     var a = document.createElement("a");
                     a.href = dataUrl;
-                    a.download = stampName();
+                    a.download = name;
                     a.click();
-                } catch (e2) { /* give up */ }
+                } catch (e2) {
+                    toast({ text: "Could not save screenshot", category: "error" });
+                }
             }
         });
     }
@@ -124,38 +137,35 @@
         if (!canvas) return;
         if (typeof navigator === "undefined" || !navigator.clipboard) return;
         
-        // Диагностика
-        console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
-        console.log('Canvas context:', !!canvas.getContext);
         
         if (canvas.width === 0 || canvas.height === 0) {
-            console.error('Canvas has zero dimensions');
             return;
         }
         
         canvasToBlob(canvas, "image/png").then(function (blob) {
-            if (!blob) {
-                console.error('toBlob returned null - canvas may be empty or tainted');
-                return;
-            }
+            if (!blob) return;
 
             if (typeof ClipboardItem !== "undefined" &&
                 typeof navigator.clipboard.write === "function") {
                 navigator.clipboard.write([
                     new ClipboardItem({ "image/png": blob })
-                ]).catch(function (err) {
-                    console.warn('Clipboard write failed:', err);
+                ]).then(function () {
+                    toast({ text: "Copied to clipboard", category: "info" });
+                }).catch(function () {
+                    toast({ text: "Could not copy screenshot", category: "error" });
                 });
             } 
             else if (typeof navigator.clipboard.writeText === "function") {
                 navigator.clipboard.writeText(
                     canvas.toDataURL("image/png")
-                ).catch(function (err) {
-                    console.warn('Clipboard writeText failed:', err);
+                ).then(function () {
+                    toast({ text: "Copied to clipboard", category: "info" });
+                }).catch(function () {
+                    toast({ text: "Could not copy screenshot", category: "error" });
                 });
             }
-        }).catch(function(err) {
-            console.error('Canvas to blob conversion failed:', err);
+        }).catch(function () {
+            toast({ text: "Could not copy screenshot", category: "error" });
         });
     }
     
