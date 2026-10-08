@@ -119,6 +119,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **Feature Deep-Dive:** Walkthrough of hardware pages, panel tricks, and peripheral controls: [`docs/FEATURES.md`](docs/FEATURES.md).
 * **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+* **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
 
 ---
 

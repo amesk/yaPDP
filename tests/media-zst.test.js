@@ -243,7 +243,7 @@ function run() {
             // refused by src/state-frame.js, which is the point of that check).
             const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
             const container = Buffer.from(StateFormat.pack(
-                { schemaVersion: 1, label: "canon", device: "rk1" },
+                { schemaVersion: StateFormat.SCHEMA_VERSION, label: "canon", device: "rk1" },
                 new Uint16Array(512).fill(0x1234)));
             const gzState = path.join(tmp, "browser.state.zst");
             fs.writeFileSync(gzState, zlib.gzipSync(container));

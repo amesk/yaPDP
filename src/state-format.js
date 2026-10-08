@@ -38,6 +38,25 @@
  * chain yet: the field is written so that thin deltas can be added without a
  * format change (the same `.state` file, a different `base`).
  *
+ * ## Versioning
+ *
+ * Two different versions travel with a state, and they answer different
+ * questions:
+ *
+ *   CONTAINER_VERSION (number)  how the BYTES are laid out — the magic, the
+ *                               manifest length, what follows the manifest.
+ *                               Changes only with the byte layout (a second
+ *                               binary segment). 1 today.
+ *   schemaVersion (semver)      the SHAPE of the manifest JSON. MAJOR means a
+ *                               reader that does not understand it cannot read
+ *                               the state; MINOR is additive fields an older
+ *                               reader ignores; PATCH is cosmetic.
+ *   yaPDPVersion (semver)       the application that wrote the state, for the
+ *                               "this snapshot came from a newer yaPDP" warning.
+ *
+ * Legacy states carry a bare numeric schemaVersion (1); normalizeSchemaVersion
+ * maps it onto the semver string so those states keep reading.
+ *
  * Public surface: window.__yapdpStateFormat (browser) and
  * module.exports { StateFormat } (Node tools and tests). Pure.
  */
@@ -49,7 +68,26 @@ var StateFormat = (function () {
     // Container format version — NOT the snapshot's own schemaVersion, which
     // describes the fields inside the manifest. This one describes how the
     // bytes are laid out, so a future container layout can be told apart.
+    //
+    // Evolution rule: this number changes only when the byte LAYOUT after the
+    // header changes — a second binary segment (a binary disk overlay, large
+    // tapes) next to the raw memory, or the memory section replaced by a
+    // descriptor-driven one. Adding fields to the manifest does NOT touch it
+    // (that is schemaVersion's MINOR). When a second segment does arrive this
+    // becomes 2 and the segments get an explicit descriptor; until then memory
+    // is simply "everything after the manifest", and an offset/length pair in
+    // the manifest would be redundant and could drift.
     var CONTAINER_VERSION = 1;
+
+    // Snapshot manifest schema version — semver, and NOT the container layout
+    // above. It describes the SHAPE of the manifest's JSON:
+    //   MAJOR  a reader that does not understand it cannot read the state
+    //          (readers branch on MAJOR — see schemaMajor below);
+    //   MINOR  new fields an older reader simply ignores;
+    //   PATCH  corrections with no structural change.
+    // Legacy states wrote a bare number (1); normalizeSchemaVersion maps it to
+    // this string, so a state saved before the field became semver still reads.
+    var SCHEMA_VERSION = "1.0.0";
 
     var MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x41]; // "YAPDPSTA"
     var MAGIC_LEN = MAGIC.length;
@@ -202,8 +240,73 @@ var StateFormat = (function () {
         return true;
     }
 
+    // --- Versioning helpers ----------------------------------------------
+    // A tiny MAJOR.MINOR.PATCH parser. Returns null for anything else, so a
+    // caller can decide whether an unparsable version is a refusal or just a
+    // field it cannot judge — both are real cases here (a state written by a
+    // fork, a hand-edited manifest). Injected into stateCodecs-style callers
+    // that live in the page or the Node tools.
+    function parseSemver(v) {
+        if (typeof v !== "string") return null;
+        var m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v.trim());
+        if (!m) return null;
+        return { major: +m[1], minor: +m[2], patch: +m[3] };
+    }
+
+    function compareSemver(a, b) {
+        if (a.major !== b.major) return a.major < b.major ? -1 : 1;
+        if (a.minor !== b.minor) return a.minor < b.minor ? -1 : 1;
+        if (a.patch !== b.patch) return a.patch < b.patch ? -1 : 1;
+        return 0;
+    }
+
+    // The manifest's schemaVersion as a semver string, whatever the writer
+    // used. Legacy states wrote a number (1 -> "1.0.0", 2 -> "2.0.0"); a
+    // state so old it has no field at all is treated as the current base
+    // schema ("1.0.0"), because such a state's manifest IS the 1.x shape.
+    function normalizeSchemaVersion(manifest) {
+        var s = manifest ? manifest.schemaVersion : undefined;
+        if (typeof s === "number" && isFinite(s)) return String(s) + ".0.0";
+        if (typeof s === "string" && s.trim()) return s.trim();
+        return SCHEMA_VERSION;
+    }
+
+    // The MAJOR of the manifest's schema — the number readers branch on. 1
+    // means "the shape this module's readers understand"; anything else is a
+    // schema a reader must refuse rather than half-apply.
+    function schemaMajor(manifest) {
+        var p = parseSemver(normalizeSchemaVersion(manifest));
+        return p ? p.major : 0;
+    }
+
+    // Is a state written by CURRENT_VERSION usable here? A snapshot from a
+    // NEWER app (MAJOR ahead, or same MAJOR and MINOR ahead) is not refused —
+    // it may still restore — but it earns a warning the caller shows the
+    // operator: "some features may not work". A PATCH difference never warns
+    // (fixes with no structure change). A state with no yaPDPVersion, or an
+    // unparsable one, cannot contradict anything and is treated as compatible.
+    function checkVersionCompatibility(manifest, currentVersion) {
+        var snap = manifest ? manifest.yaPDPVersion : undefined;
+        if (!snap) return { compatible: true, warning: null };
+        var s = parseSemver(snap);
+        var c = parseSemver(currentVersion);
+        if (!s || !c) return { compatible: true, warning: null };
+        var newer = (s.major > c.major) ||
+                    (s.major === c.major && s.minor > c.minor);
+        if (!newer) return { compatible: true, warning: null };
+        return {
+            compatible: false,
+            warning: {
+                type: "newer_version",
+                snapshotVersion: snap,
+                currentVersion: String(currentVersion),
+            },
+        };
+    }
+
     return {
         CONTAINER_VERSION: CONTAINER_VERSION,
+        SCHEMA_VERSION: SCHEMA_VERSION,
         MAGIC: MAGIC,
         HEADER_LEN: HEADER_LEN,
         captureCPU: captureCPU,
@@ -213,6 +316,11 @@ var StateFormat = (function () {
         pack: pack,
         unpack: unpack,
         isContainer: isContainer,
+        parseSemver: parseSemver,
+        compareSemver: compareSemver,
+        normalizeSchemaVersion: normalizeSchemaVersion,
+        schemaMajor: schemaMajor,
+        checkVersionCompatibility: checkVersionCompatibility,
     };
 })();
 

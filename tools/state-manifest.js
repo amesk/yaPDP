@@ -76,8 +76,12 @@ function cmdReplace(inputPath, manifestPath, outputPath) {
     if (!newManifest || typeof newManifest !== "object") {
         throw new Error("manifest must be a JSON object");
     }
-    if (!newManifest.schemaVersion || typeof newManifest.schemaVersion !== "number") {
-        throw new Error("manifest must have a numeric schemaVersion");
+    // schemaVersion is semver (a string) since 1.0.0; a legacy state may still
+    // carry the bare number 1, so both shapes are accepted here.
+    var sv = newManifest.schemaVersion;
+    if (!sv || (typeof sv !== "number" && typeof sv !== "string")) {
+        throw new Error("manifest must have a schemaVersion " +
+            "(a semver string; the legacy numeric form is accepted)");
     }
     // Preserve the original memoryWords (they are not in the manifest).
     const frame = writeState(newManifest, parsed.memoryWords, outputPath);

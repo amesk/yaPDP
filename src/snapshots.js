@@ -24,9 +24,15 @@ var SnapshotStore = (() => {
 
     const DB_NAME = "yapdp-snapshots";
     const DB_STORE = "snapshots";
-    const SCHEMA_VERSION = 1;
+    // The manifest SCHEMA_VERSION is semver and lives in the shared format
+    // module (src/state-format.js) so the browser store and the Node tools
+    // agree on it. Legacy states wrote a bare 1; StateFormat normalises it.
+    const SCHEMA_VERSION = (typeof StateFormat !== "undefined" &&
+        StateFormat.SCHEMA_VERSION) ? StateFormat.SCHEMA_VERSION : "1.0.0";
     const PENDING_KEY = "yapdp-pending-snapshot";
     const MAX_SNAPSHOTS = 10;
+    // Where the newer-snapshot warning's "Update to Latest" points.
+    const LATEST_URL = "https://amesk.github.io/yaPDP";
 
     let dbPromise = null;
     let db = null;
@@ -261,6 +267,9 @@ var SnapshotStore = (() => {
                     name: name || defaultName(),
                     createdAt: Date.now(),
                     schemaVersion: SCHEMA_VERSION,
+                    // The app that took this snapshot, for the newer-version
+                    // warning when it is restored by an older build.
+                    yaPDPVersion: currentYaPDPVersion(),
                     // Identity of every image the snapshot's disks belong to:
                     // { "rk0.dsk": "a1b2c3d4", ... }. A null/absent value
                     // means the identity was never learned (file://, desktop
@@ -447,6 +456,22 @@ var SnapshotStore = (() => {
 
     function restore(snap) {
         if (!snap) return Promise.resolve(false);
+        // A snapshot written by a NEWER yaPDP may not restore cleanly; the
+        // operator is warned first and may proceed ("Open anyway") or back out.
+        // Headless callers (no DOM) proceed silently — there is nobody to ask.
+        var compat = (typeof StateFormat !== "undefined" &&
+            typeof StateFormat.checkVersionCompatibility === "function")
+            ? StateFormat.checkVersionCompatibility(snap, currentYaPDPVersion())
+            : { compatible: true };
+        if (!compat.compatible) {
+            return confirmNewerVersion(compat.warning).then(function (proceed) {
+                return proceed ? restoreApply(snap) : false;
+            });
+        }
+        return restoreApply(snap);
+    }
+
+    function restoreApply(snap) {
         // Refuse BEFORE touching CPU/RAM: a snapshot whose disks changed under
         // it cannot be restored consistently, and a half-applied restore
         // (new RAM on an old disk) is worse than no restore at all. The same
@@ -891,6 +916,9 @@ var SnapshotStore = (() => {
             id: "url-state",
             name: parsed.manifest.label || parsed.manifest.device || url,
             schemaVersion: parsed.manifest.schemaVersion,
+            // Carried through so restore() can raise the newer-version warning
+            // for a state fetched from somebody else's link.
+            yaPDPVersion: parsed.manifest.yaPDPVersion || null,
             imageFingerprints: parsed.manifest.imageFingerprints || null,
             cpu: parsed.manifest.cpu || {},
             memory: { format: "raw", data: parsed.memoryWords
@@ -979,6 +1007,7 @@ var SnapshotStore = (() => {
             return captureImageFingerprintsAsync().then(function (fps) {
                 var manifest = {
                     schemaVersion: SCHEMA_VERSION,
+                    yaPDPVersion: currentYaPDPVersion(),
                     base: null,
                     device: name || "live",
                     label: name || "live machine",
@@ -1133,6 +1162,7 @@ var SnapshotStore = (() => {
             return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
                 var manifest = {
                     schemaVersion: SCHEMA_VERSION,
+                    yaPDPVersion: currentYaPDPVersion(),
                     base: null,
                     label: snap.name,
                     // device is set only when we can derive it from mounted
@@ -1205,6 +1235,7 @@ var SnapshotStore = (() => {
             return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
                 var manifest = {
                     schemaVersion: SCHEMA_VERSION,
+                    yaPDPVersion: currentYaPDPVersion(),
                     base: null,
                     device: deviceKey,
                     label: shareName,
@@ -1249,53 +1280,72 @@ var SnapshotStore = (() => {
             if (!manifest || typeof manifest !== "object") {
                 return { ok: false, reason: "invalid-manifest" };
             }
-            if (!manifest.schemaVersion || manifest.schemaVersion > SCHEMA_VERSION) {
+            // A MAJOR schema this reader does not understand cannot be read at
+            // all — refuse it. Legacy states carry a bare numeric schemaVersion
+            // (1), which StateFormat.schemaMajor normalises to "1.0.0".
+            if (typeof StateFormat === "undefined" ||
+                StateFormat.schemaMajor(manifest) !== 1) {
                 return { ok: false, reason: "unsupported-version" };
             }
-            // Compress memory for IndexedDB storage.
-            var memBytes = StateFormat.memoryToBytes(parsed.memoryWords || new Uint16Array(0));
-            return compressBytes(memBytes).then(function (mem) {
-                var baseName = manifest.label || manifest.device || "Imported state";
-                var snap = {
-                    id: "snap-" + Date.now(),
-                    name: baseName,
-                    createdAt: Date.now(),
-                    schemaVersion: SCHEMA_VERSION,
-                    imageFingerprints: manifest.imageFingerprints || null,
-                    cpu: manifest.cpu || {},
-                    memory: mem,
-                    mounted: manifest.mounted || [],
-                    config: manifest.profile || null,
-                    page: manifest.page || null,
-                    devices: manifest.devices || null,
-                    punchtape: manifest.punchtape || null,
-                    readertape: manifest.readertape || null,
-                    vt52: manifest.vt52 || null,
-                    teletypepaper: manifest.teletypepaper || null,
-                    overlay: deserializeOverlay(manifest.overlay),
-                    steps: manifest.steps || null,
-                    stepsMessage: manifest.stepsMessage || null,
-                    cpuBytes: 0,
-                    memBytes: mem.data.byteLength || 0,
-                };
-                // If a snapshot with the same name already exists, append a
-                // number so repeated imports of the same file stay distinct:
-                // "state", "state (1)", "state (2)", ...
-                return dbGetAll().then(function (items) {
-                    var used = {};
-                    items.forEach(function (it) { used[it.name] = true; });
-                    var name = baseName;
-                    var n = 1;
-                    while (used[name]) {
-                        name = baseName + " (" + n + ")";
-                        n++;
-                    }
-                    snap.name = name;
-                    return dbPut(snap.id, snap).then(function () {
-                        return { ok: true, id: snap.id, name: snap.name };
+            var doImport = function () {
+                // Compress memory for IndexedDB storage.
+                var memBytes = StateFormat.memoryToBytes(parsed.memoryWords || new Uint16Array(0));
+                return compressBytes(memBytes).then(function (mem) {
+                    var baseName = manifest.label || manifest.device || "Imported state";
+                    var snap = {
+                        id: "snap-" + Date.now(),
+                        name: baseName,
+                        createdAt: Date.now(),
+                        schemaVersion: SCHEMA_VERSION,
+                        // Remember which app wrote the imported file, so a
+                        // later restore by an older build can warn.
+                        yaPDPVersion: manifest.yaPDPVersion || null,
+                        imageFingerprints: manifest.imageFingerprints || null,
+                        cpu: manifest.cpu || {},
+                        memory: mem,
+                        mounted: manifest.mounted || [],
+                        config: manifest.profile || null,
+                        page: manifest.page || null,
+                        devices: manifest.devices || null,
+                        punchtape: manifest.punchtape || null,
+                        readertape: manifest.readertape || null,
+                        vt52: manifest.vt52 || null,
+                        teletypepaper: manifest.teletypepaper || null,
+                        overlay: deserializeOverlay(manifest.overlay),
+                        steps: manifest.steps || null,
+                        stepsMessage: manifest.stepsMessage || null,
+                        cpuBytes: 0,
+                        memBytes: mem.data.byteLength || 0,
+                    };
+                    // If a snapshot with the same name already exists, append a
+                    // number so repeated imports of the same file stay distinct:
+                    // "state", "state (1)", "state (2)", ...
+                    return dbGetAll().then(function (items) {
+                        var used = {};
+                        items.forEach(function (it) { used[it.name] = true; });
+                        var name = baseName;
+                        var n = 1;
+                        while (used[name]) {
+                            name = baseName + " (" + n + ")";
+                            n++;
+                        }
+                        snap.name = name;
+                        return dbPut(snap.id, snap).then(function () {
+                            return { ok: true, id: snap.id, name: snap.name };
+                        });
                     });
                 });
-            });
+            };
+            // A state from a NEWER yaPDP is only a warning: ask first, and let
+            // "Open anyway" through. "Cancel" aborts the import ("cancelled").
+            var compat = StateFormat.checkVersionCompatibility(
+                manifest, currentYaPDPVersion());
+            if (!compat.compatible) {
+                return confirmNewerVersion(compat.warning).then(function (proceed) {
+                    return proceed ? doImport() : { ok: false, reason: "cancelled" };
+                });
+            }
+            return doImport();
         }, function (err) {
             return { ok: false, reason: "not-a-state",
                      detail: String(err && err.message ? err.message : err) };
@@ -1662,6 +1712,125 @@ var SnapshotStore = (() => {
         }
     }
 
+    // The application version THIS page runs, for the manifest's yaPDPVersion
+    // and for the newer-snapshot warning. src/version.js sets
+    // window.YAPDP_VERSION from package.json (npm run version:sync). Unknown
+    // is honest: the warning rule treats a missing value as "cannot judge".
+    function currentYaPDPVersion() {
+        return (typeof window !== "undefined" && window.YAPDP_VERSION) || null;
+    }
+
+    // --- "Snapshot from a newer yaPDP" dialog -----------------------------
+    // NOT a refusal: a state written by a newer build usually restores, but its
+    // manifest may carry fields this build does not know, so the operator is
+    // warned before the machine is touched and may proceed ("Open anyway") or
+    // back out. Built with createElement/textContent — a version string can
+    // come from a foreign file — the way showIncompatibleImageDialog is.
+    var __snapVersionModal = null;
+    var __snapVersionResolve = null;
+
+    function hideNewerVersionDialog(proceed) {
+        if (__snapVersionModal) __snapVersionModal.classList.remove("visible");
+        var resolve = __snapVersionResolve;
+        __snapVersionResolve = null;
+        if (resolve) resolve(!!proceed);
+    }
+
+    // Resolve to true ("Open anyway") or false ("Cancel"). Without a DOM — a
+    // headless caller — there is nobody to ask, so proceed.
+    function confirmNewerVersion(warning) {
+        if (typeof document === "undefined" || !warning) {
+            return Promise.resolve(true);
+        }
+        return new Promise(function (resolve) {
+            // The system raised this dialog: hand the machine back first, as
+            // the refused-snapshot dialog does (guarded: QuickBoot may be
+            // absent in a headless harness).
+            if (typeof QuickBoot !== "undefined" &&
+                typeof QuickBoot.yieldToOperator === "function") {
+                QuickBoot.yieldToOperator();
+            }
+            showNewerVersionDialog(warning, resolve);
+        });
+    }
+
+    function showNewerVersionDialog(warning, resolve) {
+        if (typeof document === "undefined") { if (resolve) resolve(true); return; }
+        __snapVersionResolve = resolve || null;
+        if (!__snapVersionModal) {
+            __snapVersionModal = document.createElement("div");
+            __snapVersionModal.id = "snap-version-overlay";
+            __snapVersionModal.className = "modal-overlay";
+            __snapVersionModal.addEventListener("click", function (e) {
+                var action = e.target.getAttribute &&
+                    e.target.getAttribute("data-snap-action");
+                if (action === "open") {
+                    hideNewerVersionDialog(true);
+                } else if (action === "latest") {
+                    // Open the project site in a new tab, but keep the dialog
+                    // so the operator can still choose Open anyway / Cancel.
+                    if (typeof window !== "undefined" && window.open) {
+                        window.open(LATEST_URL, "_blank");
+                    }
+                } else if (action === "cancel" || e.target === __snapVersionModal) {
+                    hideNewerVersionDialog(false);
+                }
+            });
+            document.body.appendChild(__snapVersionModal);
+        }
+
+        var box = document.createElement("div");
+        box.className = "modal-box";
+
+        var title = document.createElement("span");
+        title.className = "modal-title";
+        title.textContent = "Snapshot Compatibility Warning";
+        box.appendChild(title);
+
+        var intro = document.createElement("p");
+        intro.className = "modal-intro";
+        intro.appendChild(document.createTextNode("This snapshot was created with yaPDP "));
+        var vSnap = document.createElement("code");
+        vSnap.textContent = String(warning.snapshotVersion || "?");
+        intro.appendChild(vSnap);
+        intro.appendChild(document.createTextNode(", but you are using version "));
+        var vCur = document.createElement("code");
+        vCur.textContent = String(warning.currentVersion || "?");
+        intro.appendChild(vCur);
+        intro.appendChild(document.createTextNode(
+            ". Restoring may work incorrectly or lose data. We recommend " +
+            "updating to the latest version: "));
+        var site = document.createElement("code");
+        site.textContent = LATEST_URL;
+        intro.appendChild(site);
+        box.appendChild(intro);
+
+        var latestBtn = document.createElement("button");
+        latestBtn.type = "button";
+        latestBtn.className = "modal-close";
+        latestBtn.setAttribute("data-snap-action", "latest");
+        latestBtn.textContent = "Update to Latest";
+        box.appendChild(latestBtn);
+
+        var openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "modal-close";
+        openBtn.setAttribute("data-snap-action", "open");
+        openBtn.textContent = "Open Anyway";
+        box.appendChild(openBtn);
+
+        var cancelBtn = document.createElement("button");
+        cancelBtn.type = "button";
+        cancelBtn.className = "modal-close";
+        cancelBtn.setAttribute("data-snap-action", "cancel");
+        cancelBtn.textContent = "Cancel";
+        box.appendChild(cancelBtn);
+
+        __snapVersionModal.innerHTML = "";
+        __snapVersionModal.appendChild(box);
+        __snapVersionModal.classList.add("visible");
+    }
+
     // ---- Styled confirmation modal ----
     // Reuses the shared modal-overlay style (modal-* classes, css/pdp11.css)
     // so it matches the reboot confirmation and the config leave dialog
@@ -1960,7 +2129,9 @@ var SnapshotStore = (() => {
                     if (result.ok) {
                         // Select the snapshot just imported.
                         refreshUI(result.id);
-                    } else {
+                    } else if (result.reason !== "cancelled") {
+                        // "cancelled" is the operator backing out of the
+                        // newer-version warning — not an error to report.
                         showImportError(result);
                     }
                 });
@@ -2170,6 +2341,7 @@ var SnapshotStore = (() => {
         remove: remove,
         load: load,
         restore: restore,
+        restoreApply: restoreApply,
         // The ?state= deep link: fetch a state and apply it to the live
         // machine. Never stored — it belongs to somebody else's link.
         loadFromUrl: loadFromUrl,
@@ -2194,6 +2366,10 @@ var SnapshotStore = (() => {
         incompatibleImages: incompatibleImages,
         showIncompatibleImageDialog: showIncompatibleImageDialog,
         hideIncompatibleImageDialog: hideIncompatibleImageDialog,
+        currentYaPDPVersion: currentYaPDPVersion,
+        showNewerVersionDialog: showNewerVersionDialog,
+        hideNewerVersionDialog: hideNewerVersionDialog,
+        confirmNewerVersion: confirmNewerVersion,
         escapeHtml: escapeHtml
     };
 })();

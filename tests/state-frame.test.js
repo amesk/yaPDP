@@ -28,7 +28,7 @@ function container() {
     const words = new Uint16Array(1024);
     for (let i = 0; i < words.length; i++) words[i] = (i * 3) & 0xffff;
     return Buffer.from(StateFormat.pack(
-        { schemaVersion: 1, label: "frame", device: "rk1" }, words));
+        { schemaVersion: StateFormat.SCHEMA_VERSION, label: "frame", device: "rk1" }, words));
 }
 
 // Node's codecs, written out here rather than imported, so the module is

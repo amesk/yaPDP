@@ -606,6 +606,29 @@ async function run() {
     console.log("PASS test 15: overlay survives export/import/restore");
   }
 
+  // ---- Test 16: schema MAJOR branching on import ------------------------
+  // A state whose manifest schema is a later MAJOR (e.g. 2.0.0 — a binary
+  // overlay this reader does not understand) must be REFUSED, not
+  // half-applied; a legacy numeric schemaVersion (1) must still import.
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+
+    const future = Buffer.from(sb.StateFormat.pack(
+      { schemaVersion: "2.0.0", label: "future", device: "rk1" }, sb.CPU.memory));
+    const refused = await SS.importState(new Uint8Array(future));
+    assert.strictEqual(refused.ok, false, "a future MAJOR schema is refused");
+    assert.strictEqual(refused.reason, "unsupported-version",
+      "and the reason is unsupported-version");
+
+    const legacy = Buffer.from(sb.StateFormat.pack(
+      { schemaVersion: 1, label: "legacy", device: "rk1" }, sb.CPU.memory));
+    const accepted = await SS.importState(new Uint8Array(legacy));
+    assert.strictEqual(accepted.ok, true,
+      "a legacy numeric schemaVersion imports: " + JSON.stringify(accepted));
+    console.log("PASS test 16: schema MAJOR branching on import");
+  }
+
   console.log("\nAll SnapshotStore tests passed.");
 }
 
