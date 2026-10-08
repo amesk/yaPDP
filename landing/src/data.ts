@@ -76,14 +76,14 @@ export const GUEST_OS_SLIDES: SlideItem[] = [
 export const GAME_SLIDES: SlideItem[] = [
   {
     id: 'lunar-lander',
-    stateUrl: 'states/lander-ready.state.zst',
-    stateReady: 'the lander on the VT11 display, ready to fly',
+    stateUrl: 'states/lunar-lander.state.zst',
+    stateReady: 'the landing in progress on the VT11 display',
     title: 'Lunar Lander',
     caption: 'Lunar Lander',
     image: 'assets/images/games/lunar-lander.png',
     alt: 'Lunar Lander on the VT11 vector display in yaPDP',
-    description: 'Lunar Lander on the VT11 display — one of the earliest graphical computer games — ready to fly. Use the mouse as a light pen: hover over the on-screen controls to steer and set thrust — no clicking.',
-    descriptionRu: 'Lunar Lander на векторном дисплее VT11 — одна из самых ранних графических игр. Световое перо — это указатель мыши: наводите его на элементы управления, чтобы поворачивать модуль и задавать тягу, кликать не нужно.',
+    description: 'Lunar Lander on the VT11 display — one of the earliest graphical computer games — the landing in progress. Use the mouse as a light pen: hover over the on-screen controls to steer and set thrust — no clicking.',
+    descriptionRu: 'Lunar Lander на векторном дисплее VT11 — одна из самых ранних графических игр; посадка в процессе. Световое перо — это указатель мыши: наводите его на элементы управления, чтобы поворачивать модуль и задавать тягу; кликать не нужно.',
   },
   {
     id: 'spcinv',
