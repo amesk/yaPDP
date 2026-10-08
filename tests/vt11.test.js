@@ -298,6 +298,26 @@ function run() {
             "a guest DPC write still starts the stopped processor");
     }
 
+    // ------------------------------------------------------------------
+    // Test 10: the tube never hides the mouse pointer.
+    // Regression guard: the canvas cursor was set to "none" (the light pen
+    // "off"), so the pointer vanished over the Display page and reappeared
+    // only outside the canvas; and restore() re-initialised the renderer
+    // without re-applying the crosshair a restored (pen-enabled) Lunar
+    // Lander needs. The canvas must always carry a visible cursor style.
+    // ------------------------------------------------------------------
+    {
+        const src = fs.readFileSync(VT11_SOURCE, "utf8");
+        assert.ok(src.indexOf('cursor = "none"') === -1,
+            'src/vt11.js must not set the canvas cursor to "none"');
+        assert.ok(src.indexOf('setCursorStyle("none")') === -1,
+            'src/vt11.js must not call setCursorStyle("none")');
+        assert.ok(/setCursorStyle\([^;]*"crosshair"/.test(src),
+            "an enabled light pen must show a crosshair");
+        assert.ok(/setCursorStyle\([^;]*"default"/.test(src),
+            "a disabled light pen must still show a visible pointer");
+    }
+
     console.log("vt11 tests: all passed");
 }
 
