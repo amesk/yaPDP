@@ -30,7 +30,7 @@ const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
 const { StateFrame } = require(path.join(ROOT, "src", "state-frame.js"));
 
 const MANIFEST = {
-    schemaVersion: 1,
+    schemaVersion: StateFormat.SCHEMA_VERSION,
     label: "fixture",
     device: "rk1",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -121,6 +121,17 @@ function run() {
         assert.strictEqual(parsed.manifest.stepsMessage, "from the CLI");
         assert.deepStrictEqual(Array.from(parsed.memoryWords),
             Array.from(sampleMemory()), "memory must survive the edit");
+
+        // ---- replace accepts a LEGACY numeric schemaVersion ---------------
+        // States written before schemaVersion became semver carry the bare
+        // number 1; the tool must still accept them.
+        const legacy = Object.assign({}, MANIFEST, { schemaVersion: 1 });
+        const legacyPath = path.join(tmp, "legacy.json");
+        fs.writeFileSync(legacyPath, JSON.stringify(legacy, null, 2));
+        const legacyOut = path.join(tmp, "legacy-out.state.zst");
+        const lrep = cli(["replace", gzipFile, legacyPath, legacyOut]);
+        assert.strictEqual(lrep.status, 0,
+            "replace must accept the legacy numeric schemaVersion: " + lrep.stderr);
     } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
     }

@@ -65,6 +65,9 @@ const { StateFormat } = require("../src/state-format.js");
 const StateIO = require("./state-io.js");
 
 const REPO = path.resolve(__dirname, "..");
+// The application version this bridge speaks for (package.json) — stamped as
+// yaPDPVersion so a state saved here warns on an older build.
+const YA_PDP_VERSION = require(path.join(REPO, "package.json")).version;
 const PREFIX = ":";
 const MAX_TAIL = 65536;
 
@@ -632,7 +635,8 @@ async function handleCommand(line) {
 function captureMachineState(file) {
     const CPU = boot.evalIn("CPU");
     const manifest = {
-        schemaVersion: 1,
+        schemaVersion: (StateFormat.SCHEMA_VERSION || "1.0.0"),
+        yaPDPVersion: YA_PDP_VERSION,
         base: null,
         device: opts.device || "custom",
         label: opts.device || "custom",

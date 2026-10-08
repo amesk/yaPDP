@@ -31,6 +31,11 @@ const { bootHeadless } = require("./headless-machine.js");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
 const StateIO = require("./state-io.js");
 
+// The application version this tool speaks for — the same source the page uses
+// (package.json, which src/version.js mirrors on the browser side). Stamped
+// into every state as yaPDPVersion for the newer-snapshot warning.
+const YA_PDP_VERSION = require(path.join(ROOT, "package.json")).version;
+
 function loadScenarios() {
     const sb = { console, window: {} };
     vm.createContext(sb);
@@ -206,7 +211,8 @@ function makeEchoer(booted) {
 function captureState(booted, sc) {
     const CPU = booted.evalIn("CPU");
     const manifest = {
-        schemaVersion: 1,
+        schemaVersion: (StateFormat.SCHEMA_VERSION || "1.0.0"),
+        yaPDPVersion: YA_PDP_VERSION,
         base: null,                       // rests directly on the disk image
         device: sc.device,
         label: sc.label || sc.device,
