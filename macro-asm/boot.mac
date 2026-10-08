@@ -32,6 +32,13 @@
 psw     = 177776        ; Processor Status Word
 pir     = 177772        ; Programmable Interrupt Register
 consol  = 177570        ; Display Register (front-panel console)
+bootsel = 1000          ; Boot-device name cell (device-specific PROM preset);
+                        ; shared with the emulator's boot() in src/pdp11.js
+bootmail = 177520       ; Boot-ROM mailbox (I/O page, matches src/boot-mailbox.js):
+                        ; boot writes the device it boots here (2-char code +
+                        ; unit) so the emulator can remember a manual "BOOT"
+                        ; for the CONFIG 'last' option. Not RAM — the guest
+                        ; would overwrite a memory cell.
 
 ; console terminal
 ttks    = 177560        ; keyboard status
@@ -52,6 +59,15 @@ start:
         lda     #start, sp
         add     #20000, sp         ; stack at end of current page
 
+; Boot-device socket: a device-specific PROM (M9312) boots the medium it is
+; wired for with no '@' prompt. The emulator presets the device name at bootsel
+; ("RK1", "TM0", "PR0" ...); when the cell is zero the interactive loader below
+; runs unchanged.
+        tstb    @#bootsel
+        beq     nopreset
+        mov     #bootsel, r2       ; r2 -> device name token
+        jsr     pc, boot           ; loads the medium and jumps (no return)
+nopreset:
         lda     #banner, r0
         jsr     pc, print          ; print banner
 
@@ -462,6 +478,12 @@ boot:
         add     r2, r0
         cmp     r3, (r0)        ; validate maximum unit
         bgt     90$
+
+; Record the device being booted (2-char code in r4, unit in r3) in the Boot
+; ROM mailbox so the emulator can remember a manual "BOOT <dev>" for the
+; CONFIG 'last' option.
+        mov     r4, @#bootmail
+        mov     r3, @#bootmail+2
 
         reset
 

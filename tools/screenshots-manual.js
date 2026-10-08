@@ -64,7 +64,7 @@ const CFG_TTY = {
     vt11: true,
     teletypeSpeed: "fast", // accelerate the console echo for the boot banner
     powerOn: true,         // machine powered on at startup
-    autoBoot: true         // start the default bootstrap -> prints the "@" prompt
+    bootDevice: "interactive@"  // start the default bootstrap -> prints the "@" prompt
 };
 // Run B: DECscope VT52 as the operator console.
 const CFG_VT52 = Object.assign({}, CFG_TTY, { consoleType: "vt52" });
@@ -83,7 +83,7 @@ const CFG_LANDER = Object.assign({}, CFG_TTY, {
     consoleType: "teletype",
     printer: false,
     vt11: true,
-    autoBoot: false
+    bootDevice: "none"
 });
 
 // --- Sample content injected so the illustrations look alive -------------
@@ -454,7 +454,7 @@ async function captureButtons(browser, wants) {
 // so the overlay state is deterministic.
 async function captureDialogs(browser, wants) {
     // Powered-off variant for the Bootstrap now! power-off guard.
-    const CFG_POWEROFF = Object.assign({}, CFG_TTY, { powerOn: false, autoBoot: false });
+    const CFG_POWEROFF = Object.assign({}, CFG_TTY, { powerOn: false, bootDevice: "none" });
 
     // Open a fresh emulator page with the given config; seeds the onboarding
     // "seen" flag unless opts.firstRun is set (so the welcome overlay shows).

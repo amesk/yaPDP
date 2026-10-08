@@ -359,8 +359,8 @@ is active.
 The **REBOOT** button is a round button with a restart icon, pinned to the
 top-left corner of the window just right of the navigation sidebar (mirroring
 the sound-mute button in the bottom-left corner; a tooltip describes it).
-Pressing it restarts the machine; when Auto-boot is enabled it also boots the
-built-in default loader. By default a confirmation dialog asks first, with a
+Pressing it restarts the machine; when a Boot device is configured (see CONFIG)
+it also boots. By default a confirmation dialog asks first, with a
 "Don't show this warning
 anymore" option. The warning can be restored at any time from the Config
 page's **Behaviour** tab.

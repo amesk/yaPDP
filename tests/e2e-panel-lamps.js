@@ -46,7 +46,7 @@ const CFG = {
     vt11: false,
     teletypeSpeed: "fast",
     powerOn: true,
-    autoBoot: false
+    bootDevice: "none"
 };
 
 // The three lamp groups, in the order initPanel() wires them (src/pdp11.js).

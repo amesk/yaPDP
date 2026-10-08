@@ -541,12 +541,14 @@ function examineDeposit(data) {
     }
 
     resetPanelControls();
-    // The default bootstrap is started only when the operator explicitly
-    // asks for it (Bootstrap now! passes forceBoot) or when the auto-boot
-    // option is set — otherwise the machine reboots into a halted state and
-    // the operator boots it manually.
+    // The default bootstrap is started when the operator explicitly asks for
+    // it (Bootstrap now! passes forceBoot) or when a Boot ROM is configured
+    // (bootDevice is anything but 'none') — otherwise the machine reboots
+    // into a halted state and the operator boots it manually. What the ROM
+    // then does (interactive @ or replay the last medium) is decided inside
+    // boot() itself.
     if (forceBoot ||
-        (typeof Config !== 'undefined' && Config.get().autoBoot)) {
+        (typeof Config !== 'undefined' && Config.get().bootDevice !== 'none')) {
       boot();
     } else if (typeof CPU !== 'undefined') {
       // No bootstrap: halt the CPU so the machine really rests. Without this,
@@ -567,27 +569,31 @@ function examineDeposit(data) {
     rebootConfirmOverlay.innerHTML =
       '<div class="modal-box">' +
         '<span class="modal-title">Reboot the machine?</span>' +
-        '<p class="modal-intro">This restarts the emulated PDP-11. Tick the option ' +
-        'below to also run the built-in default loader after the reboot.</p>' +
-        '<label class="modal-dontask"><input type="checkbox" id="reboot-autoboot"> ' +
-        'Start the default bootstrap automatically after reboot</label>' +
+        '<p class="modal-intro">This restarts the emulated PDP-11. Choose what the ' +
+        'Boot ROM does after the reboot — nothing, the interactive loader (@), or ' +
+        'reload the medium that was loaded last.</p>' +
+        '<label class="modal-field">Boot device' +
+          '<select class="modal-select" id="reboot-bootDevice">' +
+            '<option value="none">None</option>' +
+            '<option value="interactive@">Interactive loader (@)</option>' +
+            '<option value="last">Last medium</option>' +
+          '</select></label>' +
         '<label class="modal-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
         'Don\'t show this warning anymore</label>' +
         '<button type="button" class="modal-close" data-reboot-action="cancel">Cancel</button>' +
         '<button type="button" class="modal-close" data-reboot-action="reboot">Reboot</button>' +
       '</div>';
-    // The new checkbox is a shortcut to the CONFIG|BEHAVIOUR Auto-boot option:
-    // persist it immediately and keep the Config form checkbox in sync so it
-    // never shows a stale value (autoBoot is not part of isDirty(), so the
-    // dirty marker stays untouched either way).
-    var rebootAutobootEl = rebootConfirmOverlay.querySelector('#reboot-autoboot');
-    if (rebootAutobootEl) {
-      rebootAutobootEl.addEventListener('change', function () {
+    // The select is a shortcut to the CONFIG Boot device option: persist it
+    // immediately and keep the Config form select in sync so it never shows a
+    // stale value (bootDevice is a live option, not part of isDirty()).
+    var rebootBootDeviceEl = rebootConfirmOverlay.querySelector('#reboot-bootDevice');
+    if (rebootBootDeviceEl) {
+      rebootBootDeviceEl.addEventListener('change', function () {
         if (typeof Config !== 'undefined' && Config.set) {
-          Config.set({ autoBoot: this.checked });
+          Config.set({ bootDevice: this.value });
         }
-        var cfgEl = document.getElementById('config-autoBoot');
-        if (cfgEl) cfgEl.checked = this.checked;
+        var cfgEl = document.getElementById('config-bootDevice');
+        if (cfgEl) cfgEl.value = this.value;
       });
     }
     rebootConfirmOverlay.addEventListener('click', function (e) {
@@ -606,12 +612,11 @@ function examineDeposit(data) {
           var confirmRebootEl = document.getElementById('config-confirmReboot');
           if (confirmRebootEl) confirmRebootEl.checked = false;
         }
-        // This reboot follows the dialog's Auto-boot checkbox (a live mirror
-        // of the CONFIG|BEHAVIOUR option, persisted on change above).
-        var rebootAutoboot = document.getElementById('reboot-autoboot');
-        var autoboot = rebootAutoboot ? rebootAutoboot.checked : false;
+        // The boot after the reboot follows the CONFIG Boot device option
+        // (the dialog's select is a live mirror, persisted on change above):
+        // doReboot() without forceBoot boots exactly when a Boot ROM is set.
         rebootConfirmOverlay.classList.remove('visible');
-        doReboot(autoboot);
+        doReboot();
       }
     });
     document.body.appendChild(rebootConfirmOverlay);
@@ -622,12 +627,12 @@ function examineDeposit(data) {
     var overlay = ensureRebootConfirm();
     var dontAsk = document.getElementById('reboot-dont-ask');
     if (dontAsk) dontAsk.checked = false; // never carry a stale "don't ask" tick
-    // Mirror the persisted Auto-boot choice every time the dialog opens, so
-    // the checkbox always reflects the config (it can change on the CONFIG
-    // page or via a snapshot restore while the dialog exists).
-    var autobootEl = document.getElementById('reboot-autoboot');
-    if (autobootEl && typeof Config !== 'undefined' && Config.get) {
-      autobootEl.checked = !!Config.get().autoBoot;
+    // Mirror the persisted Boot device choice every time the dialog opens, so
+    // the select always reflects the config (it can change on the CONFIG page
+    // or via a snapshot restore while the dialog exists).
+    var bootDeviceEl = document.getElementById('reboot-bootDevice');
+    if (bootDeviceEl && typeof Config !== 'undefined' && Config.get) {
+      bootDeviceEl.value = Config.get().bootDevice;
     }
     overlay.classList.add('visible');
   }
@@ -685,23 +690,26 @@ function examineDeposit(data) {
           'panel to <b>POWER</b> (or click the POWER label) to power the machine ' +
           'on, then press <b>Bootstrap now!</b> again — or let the panel do it ' +
           'for you below.</p>' +
-        '<label class="modal-dontask"><input type="checkbox" id="power-off-autoboot"> ' +
-          'Start the default bootstrap automatically when the machine is powered on</label>' +
+        '<label class="modal-field">Boot device' +
+          '<select class="modal-select" id="power-off-bootDevice">' +
+            '<option value="none">None</option>' +
+            '<option value="interactive@">Interactive loader (@)</option>' +
+            '<option value="last">Last medium</option>' +
+          '</select></label>' +
         '<button type="button" class="modal-close" data-power-off-action="ok">Got it</button>' +
         '<button type="button" class="modal-close" data-power-off-action="power-on-boot">Power on & Bootstrap</button>' +
       '</div>';
-    // The checkbox is a shortcut to the CONFIG|BEHAVIOUR Auto-boot option:
-    // persist it immediately and keep the Config form checkbox in sync so it
-    // never shows a stale value (autoBoot is not part of isDirty(), so the
-    // dirty marker stays untouched either way).
-    var autobootEl = powerOffOverlay.querySelector('#power-off-autoboot');
-    if (autobootEl) {
-      autobootEl.addEventListener('change', function () {
+    // The select is a shortcut to the CONFIG Boot device option: persist it
+    // immediately and keep the Config form select in sync so it never shows a
+    // stale value (bootDevice is a live option, not part of isDirty()).
+    var powerOffBootDeviceEl = powerOffOverlay.querySelector('#power-off-bootDevice');
+    if (powerOffBootDeviceEl) {
+      powerOffBootDeviceEl.addEventListener('change', function () {
         if (typeof Config !== 'undefined' && Config.set) {
-          Config.set({ autoBoot: this.checked });
+          Config.set({ bootDevice: this.value });
         }
-        var cfgEl = document.getElementById('config-autoBoot');
-        if (cfgEl) cfgEl.checked = this.checked;
+        var cfgEl = document.getElementById('config-bootDevice');
+        if (cfgEl) cfgEl.value = this.value;
       });
     }
     powerOffOverlay.addEventListener('click', function (e) {
@@ -731,12 +739,12 @@ function examineDeposit(data) {
 
   function showPowerOffDialog() {
     var el = ensurePowerOffDialog();
-    // Mirror the persisted Auto-boot choice every time the dialog opens, so
-    // the checkbox always reflects the config (it can change on the CONFIG
-    // page or via a snapshot restore while the dialog exists).
-    var autobootEl = el.querySelector('#power-off-autoboot');
-    if (autobootEl && typeof Config !== 'undefined' && Config.get) {
-      autobootEl.checked = !!Config.get().autoBoot;
+    // Mirror the persisted Boot device choice every time the dialog opens, so
+    // the select always reflects the config (it can change on the CONFIG page
+    // or via a snapshot restore while the dialog exists).
+    var bootDeviceEl = el.querySelector('#power-off-bootDevice');
+    if (bootDeviceEl && typeof Config !== 'undefined' && Config.get) {
+      bootDeviceEl.value = Config.get().bootDevice;
     }
     el.classList.add('visible');
   }

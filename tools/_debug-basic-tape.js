@@ -39,7 +39,7 @@ const CFG = {
     teletypeSpeed: "authentic",
     upperCaseOnly: false,
     powerOn: true,
-    autoBoot: false
+    bootDevice: "none"
 };
 
 // The heart program + tape-byte builder — mirrored from tools/record-video.js.

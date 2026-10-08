@@ -446,7 +446,7 @@ async function bootHeadless(opts = {}) {
     access: (pa, d, b) => machine.bus.access(pa, d, b),
     poll: () => machine.bus.poll(),
     reset: () => machine.bus.reset(),
-    register: () => {}, // devices register via their classes
+    register: (addr, count, dev) => machine.bus.register(addr, count, dev),
     scheduleCallback: (fn, ...args) => pendingCallbacks.push({ fn, args }),
     processPendingCallbacks: () => {
       while (pendingCallbacks.length) {
@@ -455,6 +455,11 @@ async function bootHeadless(opts = {}) {
       }
     },
   };
+
+  // The Boot ROM records the device it boots in the mailbox register; the
+  // module self-registers through the adapter above (its register() delegates
+  // to the bus). Without it the ROM's I/O write would trap.
+  load(sb, "src/boot-mailbox.js");
 
   // --- Start: load bootcode, PC=BOOTBASE, run (pdp11.js boot()) ---
   const t0 = Date.now();

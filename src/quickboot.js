@@ -1040,6 +1040,15 @@ var QuickBoot = (function () {
             ? OSBoot.scenarioFor(device) : null;
         if (!scenario) return;
 
+        // Remember this medium: the CONFIG 'last' boot device replays exactly
+        // this scenario on the next power-on. Recorded before the possible
+        // config-driven reload below, so it survives the reload too. The
+        // scenario's own key is stored, not the raw argument — a console
+        // variant (rk1vt52, rk1tty) keeps its profile on the replay.
+        if (typeof LastBoot !== "undefined" && LastBoot.remember) {
+            LastBoot.remember(scenario.device);
+        }
+
         var cfg = (typeof Config !== "undefined" && Config.get)
             ? Config.get() : null;
         var profile = profileOf(scenario);
@@ -1101,8 +1110,10 @@ var QuickBoot = (function () {
                 setReaderMode: (typeof setReaderMode === "function") ? setReaderMode : null
             });
 
-        // Reboot the machine so the boot loader reaches the @ prompt.
-        if (typeof boot === "function") boot();
+        // Reboot the machine so the boot loader reaches the @ prompt. The
+        // wizard types the boot command itself, so it forces the interactive
+        // loader — the CONFIG 'last' preset must not fire here.
+        if (typeof boot === "function") boot({ interactive: true });
 
         // Forget any old console output so waitFor cannot match stale text.
         StepEngine.clearOutput();

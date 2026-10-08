@@ -2463,8 +2463,63 @@ function updateLights() {
 
 // Reset processor, copy bootcode into memory, jump to start of bootcode
 
-function boot() {
+function boot(opts) {
     "use strict";
+
+    // A wizard (QuickBoot.launch) drives the interactive ROM itself — it types
+    // the boot command — so it must NOT trigger the 'last' preset.
+    var forceInteractive = !!(opts && opts.interactive);
+
+    // Remember whatever the ROM booted last. The ROM writes the device it
+    // boots (2-char code + unit) to the BootMailbox register in the I/O page
+    // (src/boot-mailbox.js) — NOT to RAM, which the guest overwrites. This
+    // catches a MANUAL "BOOT RK1" typed at the '@' prompt, which never goes
+    // through the wizard. Read ONCE per start — no console monitoring.
+    if (typeof BootMailbox !== "undefined" && BootMailbox.take &&
+        typeof LastBoot !== "undefined" && LastBoot.remember) {
+        var recorded = BootMailbox.take();
+        if (recorded) LastBoot.remember(recorded);
+    }
+
+    // Emulated Boot ROM socket. With bootDevice 'last' the board in the socket
+    // is a device-specific PROM: it boots the medium the operator loaded most
+    // recently (from the OS gallery, the Games carousel, a teleport link or a
+    // manual BOOT at the '@' prompt) with no '@' prompt. The emulator presets
+    // the device NAME at the fixed cell 0o1000, and boot.mac
+    // (macro-asm/boot.mac: bootsel) calls its own boot routine when that cell
+    // is non-zero. Any other setting, a missing board or a medium that is not
+    // a real scenario leaves the cell zero, so the same ROM prints '@' and
+    // waits — the interactive loader (which the wizard forces with
+    // opts.interactive).
+    var bootToken = "";
+    var bootTape = null;
+    if (!forceInteractive &&
+        typeof Config !== "undefined" && Config.get &&
+        Config.get().bootDevice === "last" &&
+        typeof LastBoot !== "undefined" && LastBoot.get &&
+        typeof OSBoot !== "undefined" && OSBoot.scenarioFor) {
+        var lastKey = LastBoot.get();
+        var scenario = lastKey ? OSBoot.scenarioFor(lastKey) : null;
+        if (scenario) {
+            if (scenario.paperTape) {
+                // A PR boot reads whatever tape is loaded; the scenario names
+                // which one — selected and rewound below.
+                bootToken = "PR0";
+                bootTape = scenario.paperTape;
+            } else {
+                // The scenario's medium ("rk1", "tm0", ...), upper-cased for
+                // the ROM's device-name parser.
+                bootToken = String(scenario.bootDev || scenario.device).toUpperCase();
+            }
+        } else {
+            // A raw device key the ROM recorded for a manual boot ("rk1",
+            // "pr0"): scenarioFor() has no entry, but the ROM can boot it.
+            var dev = String(lastKey || "").toUpperCase();
+            if (/^[A-Z]{2}[0-7]?$/.test(dev)) {
+                bootToken = dev.length === 2 ? dev + "0" : dev;
+            }
+        }
+    }
 
     // Virtual power cycle: every piece of processor state returns to the
     // value it has when the machine is switched on, and main memory alone is
@@ -2529,6 +2584,31 @@ function boot() {
     for (let i = 0; i < bootcode.length; i++) {
         CPU.memory[(BOOTBASE >>> 1) + i] = bootcode[i];
     }
+
+    // Preset (or clear) the ROM's boot-device cell (macro-asm/boot.mac:
+    // bootsel = 1000): two words hold the ASCII name little-endian. The cell is
+    // zeroed for the interactive loader so a stale preset cannot survive a
+    // reboot into '@'.
+    var bootCell = 0o1000 >>> 1;
+    if (bootToken.length >= 3) {
+        CPU.memory[bootCell] = (bootToken.charCodeAt(0) & 0xff) |
+            ((bootToken.charCodeAt(1) & 0xff) << 8);
+        CPU.memory[bootCell + 1] = bootToken.charCodeAt(2) & 0xff;
+    } else {
+        CPU.memory[bootCell] = 0;
+        CPU.memory[bootCell + 1] = 0;
+    }
+
+    // Paper-tape medium: select and rewind the tape the scenario names, so a
+    // PR boot reads it from the start (no-op headless or without a tape UI).
+    if (bootTape && typeof document !== "undefined" && document.getElementById) {
+        var ptrSelect = document.getElementById("ptr");
+        if (ptrSelect) ptrSelect.value = bootTape;
+        if (typeof window !== "undefined" && typeof window.ptrRewindTape === "function") {
+            window.ptrRewindTape();
+        }
+    }
+
     CPU.registerVal[7] = CPU.registerVal[6] = BOOTBASE;
     iopage.reset();
     CPU.runState = STATE_RUN;

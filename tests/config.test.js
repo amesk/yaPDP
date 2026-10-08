@@ -19,8 +19,8 @@
  *   mute), photoBackdrop (bool),
  *   confirmReboot (bool, reboot confirmation dialog),
  *   panelSticker (bool, Help Me! sticky note on the Panel page),
- *   powerOn (bool, machine powered on at startup), autoBoot (bool, start the
- *   default bootstrap on power-on).
+ *   powerOn (bool, machine powered on at startup), bootDevice (string, the
+ *   emulated Boot ROM socket: none / interactive@ / last).
  *
  * Run with:  node tests/config.test.js
  *
@@ -93,7 +93,7 @@ function run() {
             confirmReboot: true,
             panelSticker: false,
             powerOn: false,
-            autoBoot: false,
+            bootDevice: "none",
         }, "defaults should match the documented values");
     }
 
@@ -211,11 +211,29 @@ function run() {
         assert.strictEqual(C.validate({ powerOn: 1 }).powerOn, true);
         assert.strictEqual(C.validate({ powerOn: 0 }).powerOn, false);
 
-        // autoBoot: absent -> false (no automatic bootstrap), otherwise
-        // coerced to boolean.
-        assert.strictEqual(C.validate({}).autoBoot, false);
-        assert.strictEqual(C.validate({ autoBoot: 1 }).autoBoot, true);
-        assert.strictEqual(C.validate({ autoBoot: 0 }).autoBoot, false);
+        // bootDevice: exactly one of the three legal values; absent or garbage
+        // -> "none". Exported list agrees with the accepted values.
+        assert.strictEqual(C.validate({}).bootDevice, "none");
+        assert.strictEqual(C.validate({ bootDevice: "none" }).bootDevice, "none");
+        assert.strictEqual(C.validate({ bootDevice: "interactive@" }).bootDevice, "interactive@");
+        assert.strictEqual(C.validate({ bootDevice: "last" }).bootDevice, "last");
+        assert.strictEqual(C.validate({ bootDevice: "garbage" }).bootDevice, "none");
+        assert.deepStrictEqual(plain(C.BOOT_DEVICES), ["none", "interactive@", "last"],
+            "boot device list");
+
+        // Legacy migration: a config saved before bootDevice carried the
+        // boolean autoBoot — true meant "start the interactive bootstrap",
+        // false "do nothing". Migrated one-for-one, with the same truthiness
+        // the old option used.
+        assert.strictEqual(C.validate({ autoBoot: true }).bootDevice, "interactive@");
+        assert.strictEqual(C.validate({ autoBoot: false }).bootDevice, "none");
+        assert.strictEqual(C.validate({ autoBoot: 1 }).bootDevice, "interactive@");
+        assert.strictEqual(C.validate({ autoBoot: 0 }).bootDevice, "none");
+        assert.strictEqual(C.validate({}).bootDevice, "none");
+        // An explicit bootDevice wins over the legacy key.
+        assert.strictEqual(C.validate({ autoBoot: true, bootDevice: "last" }).bootDevice, "last");
+        // A legacy key is not emitted in the validated shape any more.
+        assert.strictEqual(C.validate({ autoBoot: true }).autoBoot, undefined);
     }
 
     // ---- load / save round-trip ------------------------------------
@@ -244,7 +262,7 @@ function run() {
             confirmReboot: false,
             panelSticker: true,
             powerOn: true,
-            autoBoot: true,
+            bootDevice: "interactive@",
         };
         C.save(cfg, s);
         assert.deepStrictEqual(plain(C.load(s)), cfg,

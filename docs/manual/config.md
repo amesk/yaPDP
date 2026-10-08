@@ -37,7 +37,7 @@ into four tabs, with the **Apply** and **Restore defaults** actions in a bar bel
 - **Reboot confirmation** — ask before rebooting the machine; the "Don't show this warning anymore" option can be restored here at any time.
 - **Help Me! sticker** — show the operator's hand-written bootstrap sticky note on the Panel page.
 - **Machine power** — the machine is powered on; switching it off powers down the PDP-11 (POWER LOCK in the off position).
-- **Auto-boot** — start the default bootstrap automatically when the machine is powered on or rebooted. The reboot confirmation dialog offers a shortcut to this option (its "Start the default bootstrap automatically after reboot" checkbox).
+- **Boot device** — the emulated Boot ROM socket: what the machine does on its own after power-on. **None** leaves it idle (use **Bootstrap now!** on the Panel page); **Interactive loader** starts the built-in loader (the `@` prompt); **Last medium** boots the device directly with no `@` prompt — the guest OS or disc loaded most recently from the gallery, Games, a teleport link or a manual `BOOT` at the `@` prompt. The reboot and power-off dialogs offer the same three-way choice as a shortcut.
 - **First-run hint** — replay the first-run welcome overlay with quick-start boot suggestions on the next launch.
 :::
 
@@ -59,7 +59,7 @@ widths, teletype speed, the Upper Case Only and Force PDP Output Uppercase flags
 video, CRT effects, VT52 text mode, machine hum and the photo backdrop apply immediately.
 **Restore defaults** fills the form with
 factory values (committed by **Apply**); the four live BEHAVIOUR options — **Reboot
-confirmation**, **Help Me! sticker**, **Machine power** and **Auto-boot** — are reset
+confirmation**, **Help Me! sticker**, **Machine power** and **Boot device** — are reset
 to their factory values immediately, without waiting for Apply (the machine powers down, since the
 factory state is off).
 

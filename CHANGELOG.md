@@ -80,6 +80,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
+  offers the emulated Boot ROM socket as a three-way choice — `none` (the
+  machine waits after power-on), `interactive@` (the built-in loader, the `@`
+  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
+  most recently — from the gallery, Games, a teleport link or a manual `BOOT`
+  at the `@` prompt — directly, with no `@` prompt) — and the reboot and
+  power-off dialogs offer the same three-way select. The Boot ROM learns a
+  device preset (`macro-asm/boot.mac`, cell `bootsel`) and records the device
+  it boots in an I/O mailbox (`src/boot-mailbox.js`), so `last` needs no typed
+  command and remembers a hand-booted device too. A config saved with the old
+  boolean `autoBoot` migrates one-for-one (`false` → `none`,
+  `true` → `interactive@`), so an upgrade changes no behaviour.
+  (`src/config.js`, `src/last-boot.js`, `src/boot-mailbox.js`, `src/pdp11.js`,
+  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`,
+  `src/snapshots.js`, `macro-asm/boot.mac`, `src/bootcode.js`, `pdp11.html`;
+  pinned by `tests/config.test.js`, `tests/last-boot.test.js`,
+  `tests/boot-preset.test.js`)
+
 - **Lunar Lander's saved state now opens mid-descent.** The Games tile plays a
   state captured with the landing already in progress — the vector scene on the
   VT11 display with the light pen live — and its caption says so instead of

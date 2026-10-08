@@ -358,7 +358,7 @@ async function openPage(browser, shot) {
         // installTeletypeKeyFeeder) and must be known up front per device.
         upperCaseOnly: false,
         powerOn: true,         // machine powered on at startup
-        autoBoot: false        // the wizard issues the boot itself
+        bootDevice: "none"     // the wizard issues the boot itself
     }, OS_CFG[shot.device] || {});
 
     await page.evaluateOnNewDocument((seed) => {

@@ -56,7 +56,7 @@ const CFG = {
     vt11: false,
     teletypeSpeed: "fast",
     powerOn: true,
-    autoBoot: false,
+    bootDevice: "none",
     vt100Phosphor: "p4",
     keyClick: false
 };

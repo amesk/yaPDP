@@ -141,11 +141,16 @@ async function bootRT11(opts = {}) {
   load(sb, "src/dataloader.js"); // DataLoader moved out of iopage.js (refactor)
   load(sb, "src/diskstore.js");  // DiskStore moved out of iopage.js (refactor)
   load(sb, "src/iopage.js");
+  load(sb, "src/boot-mailbox.js"); // Boot ROM's booted-device register
 
   // Mount the image straight from the file system — no fetch, no UI.
   const zst = fs.readFileSync(path.join(REPO, image));
   const raw = sb.fzstd.decompress(new Uint8Array(zst));
   sb.DataLoader.mount(urlName, raw);
+
+  // A caller may preset sandbox globals before the machine starts — e.g. the
+  // Config/LastBoot/OSBoot the emulated Boot ROM reads for bootDevice 'last'.
+  if (typeof opts.onSandbox === "function") opts.onSandbox(sb);
 
   // Capture console output through the machine bridge. The sandbox has no
   // ?bridge=1 URL flag, so iopage.js exposes the internal __yapdpBridge
@@ -171,15 +176,21 @@ async function bootRT11(opts = {}) {
   // Start the machine: load bootcode, PC=BOOTBASE, run.
   sb.boot();
 
-  // The bootloader banner is empty ("@" only); wait for the "@" prompt.
-  while (out.indexOf("@") === -1) {
-    if (Date.now() - t0 > timeoutMs) throw new Error("timeout waiting for bootloader prompt\n" + out);
-    await sleep(50);
+  if (opts.preset) {
+    // A device-specific PROM (bootDevice 'last'): the ROM boots its preset
+    // medium on its own — no '@' prompt and no typed command.
+    bootPromptMs = Date.now() - t0;
+  } else {
+    // The bootloader banner is empty ("@" only); wait for the "@" prompt.
+    while (out.indexOf("@") === -1) {
+      if (Date.now() - t0 > timeoutMs) throw new Error("timeout waiting for bootloader prompt\n" + out);
+      await sleep(50);
+    }
+    bootPromptMs = Date.now() - t0;
+    const inject = (sb.window.__yapdpBridge && sb.window.__yapdpBridge.dlReceiveQueue) ||
+      sb.window.dlReceiveQueue;
+    inject(0, bytes(bootCmd));
   }
-  bootPromptMs = Date.now() - t0;
-  const inject = (sb.window.__yapdpBridge && sb.window.__yapdpBridge.dlReceiveQueue) ||
-    sb.window.dlReceiveQueue;
-  inject(0, bytes(bootCmd));
 
   // Wait for the guest prompt marker at line start.
   const re = new RegExp("^" + waitFor.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[\\s]*$", "m");

@@ -1877,10 +1877,11 @@ function applyMachinePower(powerOn, skipAutoBoot) {
   // Persist the live power state so it survives reloads and stays in sync
   // with the Behaviour checkbox.
   if (typeof Config !== 'undefined') Config.set({ powerOn: powerOn });
-  // Start the default bootstrap when the machine is turned on, unless the
-  // caller already reboots (skipAutoBoot) — gated on the auto-boot option.
+  // Start the Boot ROM path when the machine is turned on, unless the caller
+  // already reboots (skipAutoBoot) — gated on the boot-device option. What
+  // the ROM does (interactive @ or replay the last medium) is decided in boot().
   if (powerOn && !skipAutoBoot && !wasOn &&
-      typeof Config !== 'undefined' && Config.get().autoBoot) {
+      typeof Config !== 'undefined' && Config.get().bootDevice !== 'none') {
     boot();
   }
 }
@@ -1938,7 +1939,7 @@ function initConfigForm() {
   var confirmRebootEl = document.getElementById('config-confirmReboot');
   var panelStickerEl = document.getElementById('config-panelSticker');
   var powerOnEl = document.getElementById('config-powerOn');
-  var autoBootEl = document.getElementById('config-autoBoot');
+  var bootDeviceEl = document.getElementById('config-bootDevice');
   var firstRunEl = document.getElementById('config-showFirstRunHint');
   var applyBtn = document.getElementById('config-apply');
   var resetBtn = document.getElementById('config-reset');
@@ -1996,7 +1997,7 @@ function initConfigForm() {
   if (confirmRebootEl) confirmRebootEl.checked = cfg.confirmReboot;
   if (panelStickerEl) panelStickerEl.checked = cfg.panelSticker;
   if (powerOnEl) powerOnEl.checked = cfg.powerOn;
-  if (autoBootEl) autoBootEl.checked = cfg.autoBoot;
+  if (bootDeviceEl) bootDeviceEl.value = cfg.bootDevice;
   // The first-run hint is not part of the persisted Config: its state lives in
   // the onboarding flag, so read it straight from the Onboarding module.
   if (firstRunEl && typeof Onboarding !== 'undefined') {
@@ -2059,9 +2060,9 @@ function initConfigForm() {
       powerOn: (typeof Config !== 'undefined')
           ? Config.get().powerOn
           : cfg.powerOn,
-      autoBoot: (typeof Config !== 'undefined')
-          ? Config.get().autoBoot
-          : cfg.autoBoot
+      bootDevice: (typeof Config !== 'undefined')
+          ? Config.get().bootDevice
+          : cfg.bootDevice
     };
   }
 
@@ -2418,19 +2419,19 @@ function initConfigForm() {
     });
   }
   // Machine power applies immediately (no reload): power the PDP-11 on/off
-  // (the front-panel POWER LOCK persists the same option). With auto-boot
-  // set, turning it on starts the default bootstrap.
+  // (the front-panel POWER LOCK persists the same option). With a Boot ROM
+  // configured, turning it on starts the boot.
   if (powerOnEl) {
     powerOnEl.addEventListener('change', function () {
       applyMachinePower(this.checked, false);
       updateDirtyUI();
     });
   }
-  // Auto-boot applies immediately (no reload): it only affects the next
+  // Boot device applies immediately (no reload): it only affects the next
   // power-on, so just persist the choice.
-  if (autoBootEl) {
-    autoBootEl.addEventListener('change', function () {
-      if (typeof Config !== 'undefined') Config.set({ autoBoot: this.checked });
+  if (bootDeviceEl) {
+    bootDeviceEl.addEventListener('change', function () {
+      if (typeof Config !== 'undefined') Config.set({ bootDevice: this.value });
       updateDirtyUI();
     });
   }
@@ -2471,13 +2472,13 @@ function initConfigForm() {
       if (confirmRebootEl) confirmRebootEl.checked = d.confirmReboot;
       if (panelStickerEl) panelStickerEl.checked = d.panelSticker;
       if (powerOnEl) powerOnEl.checked = d.powerOn;
-      if (autoBootEl) autoBootEl.checked = d.autoBoot;
+      if (bootDeviceEl) bootDeviceEl.value = d.bootDevice;
       // The four BEHAVIOUR settings above are live options: they persist the
-      // moment their checkboxes change and can be toggled outside this form
+      // moment their controls change and can be changed outside this form
       // (the reboot dialog, the Help Me! button, the front-panel POWER LOCK),
-      // so readForm() never reads them from the checkboxes. Restore defaults
-      // therefore resets them for real, exactly as if each checkbox had been
-      // toggled to the factory value: confirmReboot and autoBoot are
+      // so readForm() never reads them from the controls. Restore defaults
+      // therefore resets them for real, exactly as if each control had been
+      // set to the factory value: confirmReboot and bootDevice are
       // persisted, the sticker is re-applied, and the machine powers down to
       // the factory "off" state.
       if (confirmRebootEl && typeof Config !== 'undefined') {
@@ -2488,8 +2489,8 @@ function initConfigForm() {
         applyPanelSticker(d.panelSticker);
       }
       if (powerOnEl) applyMachinePower(d.powerOn, false);
-      if (autoBootEl && typeof Config !== 'undefined') {
-        Config.set({ autoBoot: d.autoBoot });
+      if (bootDeviceEl && typeof Config !== 'undefined') {
+        Config.set({ bootDevice: d.bootDevice });
       }
       // The rest of the form now shows factory values; nothing is persisted
       // until Apply.

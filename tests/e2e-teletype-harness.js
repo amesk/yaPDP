@@ -54,7 +54,7 @@ const CFG = {
     vt11: false,             // rk1tty requires no VT11
     teletypeSpeed: "fast",   // ~30ms/char instead of authentic ~100ms
     powerOn: true,
-    autoBoot: false          // the wizard issues the boot itself
+    bootDevice: "none"       // the wizard issues the boot itself
 };
 
 // --- failure accounting ----------------------------------------------------
