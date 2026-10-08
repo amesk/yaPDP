@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Versioned state manifests:** a machine state now carries `schemaVersion` as
+  a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that
+  wrote it. Legacy snapshots (a bare numeric `schemaVersion` of 1) keep reading,
+  and a state whose manifest schema is a later MAJOR is refused with a clear
+  reason instead of being half-applied. (`src/state-format.js`, `src/snapshots.js`,
+  `tools/export-state.js`, `tools/headless-term.js`, `tools/state-manifest.js`;
+  pinned by `tests/state-format.test.js`)
+
+- **Newer-snapshot compatibility warning:** restoring or importing a snapshot
+  taken by a **newer** yaPDP now shows a warning — Update to Latest / Open
+  Anyway / Cancel — instead of failing or silently proceeding. (`src/snapshots.js`;
+  the format is documented in [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md))
+
 - **Toast notifications:** a DOM-independent toast subsystem (`src/toasts.js`)
   that shows transient status messages (info/warning/error) at the bottom
   centre of the emulator window; screenshot copy results and save failures
@@ -53,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Cave Adventure and Time52, the "$100,000 Digital Timepiece" of 1975; each
   description is shown in the reader's language.
   (`landing/src/components/GamesCarousel.tsx`, `landing/src/data.ts`,
-  `landing/src/types.ts`, `landing/src/App.tsx`, `states/lander-ready.state.zst`,
+  `landing/src/types.ts`, `landing/src/App.tsx`, `states/lunar-lander.state.zst`,
   `states/rt-11-spcinv.state.zst`, `states/rt-11-dungeon.state.zst`,
   `states/rt-11-adventure.state.zst`, `states/rt-11-time52.state.zst`)
 
@@ -66,6 +79,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pinned by `tests/os-gallery-run.test.js`, `tests/e2e-quickboot-deeplink.js`)
 
 ### Changed
+
+- **Lunar Lander's saved state now opens mid-descent.** The Games tile plays a
+  state captured with the landing already in progress — the vector scene on the
+  VT11 display with the light pen live — and its caption says so instead of
+  "ready to fly". (`states/lunar-lander.state.zst`, `index.html`,
+  `landing/src/data.ts`)
 
 - **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
   `stepBytes`, `consoleWorkingState`, `clearConsole`, `sendBytes`, output buffer)
@@ -81,6 +100,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/games-gallery.test.js`, `tests/os-gallery-run.test.js`)
 
 ### Fixed
+
+- **The VT11 light pen no longer drifts by the canvas border.** The
+  mouse-to-VT mapping scaled by the canvas's *border* box while the drawing
+  surface is its *content* box, so the inline 1px CSS border put every hover a
+  fraction of a pixel out — a linear error, largest at the edges. The border is
+  now removed from the mapping, so a hover reads exactly where the pointer is.
+  (`src/vt11.js`)
+
+- **The VT11 Display page no longer hides the mouse pointer.** The vector
+  canvas set `cursor: none` whenever the light pen was "off", so the pointer
+  vanished over the tube and reappeared only outside the canvas; and a
+  restored Lunar Lander — whose saved state has the light pen enabled — was
+  left with no pointer because the restore re-initialised the renderer without
+  re-applying the cursor. The canvas now always shows a visible pointer (a
+  crosshair while the pen is live), and restoring a state re-applies the style
+  the restored status register asks for. (`src/vt11.js`; pinned by
+  `tests/vt11.test.js`)
 
 - **A restored VT11 display keeps running.** A state saved while the Lunar
   Lander display processor was mid-pass restored the vector picture but the
