@@ -76,7 +76,7 @@ async function newPage(browser, mode) {
     try {
       localStorage.setItem("yapdp.config.v1", JSON.stringify({
         consoleType: "teletype", printer: true, vt11: false,
-        teletypeSpeed: "fast", powerOn: true, autoBoot: false,
+        teletypeSpeed: "fast", powerOn: true, bootDevice: "none",
         upperCaseOnly: true, hum: false, mute: false
       }));
       localStorage.setItem("yapdp.onboarding.v1", "done");

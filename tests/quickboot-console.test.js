@@ -176,7 +176,7 @@ function testLaunchWiring() {
 
   // The preparation has to happen BEFORE the reboot and the typed steps.
   const prepareAt = launch.indexOf("consoleWorkingState(");
-  const bootAt = launch.indexOf("boot()");
+  const bootAt = launch.search(/\bboot\s*\(/);
   assert.ok(bootAt !== -1 && prepareAt < bootAt,
     "the console must be prepared before the machine is rebooted");
   const runAt = launch.indexOf("runSteps(");

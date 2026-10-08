@@ -577,6 +577,16 @@ var SnapshotStore = (() => {
                     if (typeof window !== "undefined" && window.__snapshotRestored) {
                         window.__snapshotRestored(snap);
                     }
+                    // Remember which medium this machine was made from, so the
+                    // CONFIG 'last' boot device can replay it on the next
+                    // power-on. A state carries its device key; a saved snapshot
+                    // only names its mounted images, derived here.
+                    var lastKey = snap.bootDeviceKey
+                        || deviceKeyFromMounted(snap.mounted);
+                    if (lastKey && typeof LastBoot !== "undefined" &&
+                        LastBoot.remember) {
+                        LastBoot.remember(lastKey);
+                    }
                     // Return the operator to the page they were viewing at capture
                     // time (console, printer, storage, ...) instead of the default
                     // PANEL that the reload would otherwise show. No-op for
@@ -915,6 +925,10 @@ var SnapshotStore = (() => {
         var snap = {
             id: "url-state",
             name: parsed.manifest.label || parsed.manifest.device || url,
+            // The medium this state belongs to, for the CONFIG 'last' boot
+            // device (the mounted list can be empty for a paper-tape guest,
+            // so the manifest's own device key is the one to keep).
+            bootDeviceKey: parsed.manifest.device || null,
             schemaVersion: parsed.manifest.schemaVersion,
             // Carried through so restore() can raise the newer-version warning
             // for a state fetched from somebody else's link.

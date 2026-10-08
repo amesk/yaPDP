@@ -39,7 +39,7 @@ const ROOT = path.join(__dirname, "..");
 const PDP = path.join(ROOT, "src", "pdp11.js");
 
 const src = fs.readFileSync(PDP, "utf8");
-const m = src.match(/function boot\(\)\s*\{[\s\S]*?\n\}/);
+const m = src.match(/function boot\([^)]*\)\s*\{[\s\S]*?\n\}/);
 assert.ok(m, "boot() found in src/pdp11.js");
 
 // The state a running kernel leaves behind, plus guest RAM to preserve.

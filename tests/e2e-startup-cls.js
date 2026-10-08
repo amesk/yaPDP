@@ -68,7 +68,7 @@ const CFG = {
     // (offsetWidth 0) — --tty-scale is then never set, and asserting it there
     // would demand a scale the page is not supposed to have.
     powerOn: true,
-    autoBoot: false
+    bootDevice: "none"
 };
 
 let failures = 0;

@@ -97,11 +97,12 @@ async function ensureServer() {
 
     // --- 2. Power on and let the machine run (CPU executes instructions) ---
     await page.evaluate(() => {
-      // Force auto-boot on and power the machine on so the CPU actually
-      // executes code (boot() copies the bootstrap into memory and RUNs).
+      // Force the interactive Boot ROM and power the machine on so the CPU
+      // actually executes code (boot() copies the bootstrap into memory and
+      // RUNs).
       if (typeof Config !== "undefined" && typeof Config.set === "function") {
         var cfg = Config.get() || {};
-        cfg.autoBoot = true;
+        cfg.bootDevice = "interactive@";
         Config.set(cfg);
       }
       if (typeof boot === "function") {

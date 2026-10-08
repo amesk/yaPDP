@@ -63,7 +63,7 @@ const CFG_TEXT_MODE = {
     vt11: false,
     teletypeSpeed: "fast",
     powerOn: true,
-    autoBoot: false,
+    bootDevice: "none",
     vt52TextMode: true
 };
 

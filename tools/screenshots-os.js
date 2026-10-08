@@ -232,7 +232,7 @@ async function openPage(browser, shot) {
         // shots generate faster. The screenshot still shows a normal teletype.
         teletypeSpeed: "fast",
         powerOn: true,         // machine powered on at startup
-        autoBoot: false        // the wizard issues the boot itself
+        bootDevice: "none"     // the wizard issues the boot itself
     }, OS_CFG[shot.device] || {});
 
     await page.evaluateOnNewDocument((seed) => {

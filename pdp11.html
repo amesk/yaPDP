@@ -1439,12 +1439,18 @@
             </div>
 
             <div class="config-field">
-              <span class="config-label">Auto-boot</span>
+              <span class="config-label">Boot device</span>
               <div class="config-control">
-                <label><input type="checkbox" id="config-autoBoot"> Start the default bootstrap automatically when the
-                  machine is powered on</label>
-                <span class="config-hint">When enabled, powering the machine on starts the default bootstrap;
-                  otherwise use the Bootstrap now! button on the Panel page.</span>
+                <select id="config-bootDevice">
+                  <option value="none">None — the machine waits after power-on</option>
+                  <option value="interactive@">Interactive loader — prints the @ prompt</option>
+                  <option value="last">Last medium — reload what was loaded last</option>
+                </select>
+                <span class="config-hint">The emulated Boot ROM socket: what the machine does on its own after
+                  power-on. None leaves it idle (use the Bootstrap now! button on the Panel page);
+                  Interactive loader starts the built-in loader (the @ prompt); Last medium repeats
+                  the guest OS or disc loaded most recently from the gallery, Games or a teleport
+                  link. Applied on the next power-on.</span>
               </div>
             </div>
 
@@ -2135,6 +2141,7 @@ Hello world
   <script src='src/vt52.js'></script>
   <!-- The VT100 dialect extends the VT52 dialect, so it must load last. -->
   <script src='src/dialect/vt100.js'></script>
+  <script src='src/last-boot.js'></script>
   <script src='src/pdp11.js'></script>
   <script src='src/fpp.js'></script>
   <script src='src/pasteutil.js'></script>
@@ -2176,6 +2183,10 @@ Hello world
       document.write("<script src='src/iopage.js'><\/script>");
     }
   </script>
+  <!-- The Boot ROM's "booted device" mailbox: a one-register I/O device the
+       ROM writes so a manual "BOOT <dev>" can be remembered for 'last'. Loads
+       after the machine layer (needs iopage.register). -->
+  <script src='src/boot-mailbox.js'></script>
   <script src='src/hum.js'></script>
   <script src='src/panel-led.js'></script>
   <script src='src/vt11.js'></script>

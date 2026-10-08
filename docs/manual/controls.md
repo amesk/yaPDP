@@ -18,7 +18,7 @@ Use the sidebar to switch between:
 | Control | Where | What it does |
 |---|---|---|
 | {.disk .control-cell} ![Magic wand](assets/images/manual/btn-magicwand.png){.control-btn} Magic wand{.control-name} | Top-right corner (every page except Info) | Quick-boot picker — chooses a guest OS, reconfigures, reboots and types the boot/login. See [Quick Start](#quick-start). |
-| {.disk .control-cell} ![Reboot](assets/images/manual/btn-reboot.png){.control-btn} Reboot{.control-name} | Top-left corner, just right of the sidebar (Panel, Console and TTY pages) | Round button with a restart icon. Restarts the machine; when Auto-boot is enabled it also boots the built-in default loader. By default a confirmation dialog asks first, with a "Don't show this warning anymore" option. The dialog also carries an Auto-boot shortcut: tick Start the default bootstrap automatically after reboot to run the default loader after this reboot — it is the CONFIG Auto-boot option itself, persists, and stays in sync with the CONFIG page checkbox. Without Auto-boot the machine halts after the reboot. The confirmation dialog is shown below. |
+| {.disk .control-cell} ![Reboot](assets/images/manual/btn-reboot.png){.control-btn} Reboot{.control-name} | Top-left corner, just right of the sidebar (Panel, Console and TTY pages) | Round button with a restart icon. Restarts the machine; when a Boot device is configured (see CONFIG) it also boots. By default a confirmation dialog asks first, with a "Don't show this warning anymore" option. The dialog also carries a Boot device shortcut — pick None, Interactive loader (@) or Last medium: it is the CONFIG Boot device option itself, persists, and stays in sync with the CONFIG page. With None the machine halts after the reboot. The confirmation dialog is shown below. |
 | {.disk .control-cell} ![Mute](assets/images/manual/btn-mute.png){.control-btn} Mute{.control-name} | Bottom-left corner, just right of the sidebar | Round button that toggles *all* sounds at once — hum, teletype/LP11, paper feed/tear, key clicks and the bell. State is persisted with the rest of the configuration. |
 | {.disk .control-cell} ![Fullscreen](assets/images/manual/btn-fullscreen.png){.control-btn} Fullscreen{.control-name} | Bottom-right corner of the window | Floating button that hides the browser/system chrome (address bar, OS window frame, taskbar) while leaving the emulator UI untouched. Press again or Esc to return. |
 | {.disk .control-cell} ![Terminal zoom](assets/images/manual/btn-zoom.png){.control-btn} Terminal zoom{.control-name} | Bottom-right corner, left of the fullscreen button | Floating button that hides the terminal cabinet and grows the tube to the largest 4:3 box the window allows. The state is remembered per terminal. |
@@ -26,7 +26,7 @@ Use the sidebar to switch between:
 ![Reboot confirmation dialog](assets/images/manual/dialog-reboot.png){.shot}
 
 The REBOOT button asks for confirmation by default: the dialog carries the
-[Auto-boot](#config) shortcut (**Start the default bootstrap automatically after reboot**) and the
+[Boot device](#config) shortcut (None / Interactive loader / Last medium) and the
 "Don't show this warning anymore" option.{.shot-caption}
 
 ### Sidebar activity lamps

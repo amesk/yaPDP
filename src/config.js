@@ -118,7 +118,11 @@ var Config = (function () {
         confirmReboot: true,     // boolean (ask before rebooting the machine)
         panelSticker: false,     // boolean (Help Me! sticker on the Panel page)
         powerOn: false,          // boolean (machine powered on at startup)
-        autoBoot: false          // boolean (start default bootstrap on power-on)
+        // The emulated Boot ROM socket — what the machine does on its own
+        // after power-on: 'none' (no board: the machine waits), 'interactive@'
+        // (ODT/BOOT ROM: prints the @ prompt) or 'last' (a ROM that reloads
+        // the medium the operator loaded last).
+        bootDevice: "none"
     });
 
     // Normalize the per-terminal zoom flags into exactly three booleans.
@@ -132,6 +136,10 @@ var Config = (function () {
     // Terminal dialects a user terminal may be built as. 'vt52' is the
     // historical DECscope; 'vt100' is the ANSI terminal (a superset of it).
     var TERMINAL_TYPES = Object.freeze(["vt52", "vt100"]);
+
+    // The emulated Boot ROM socket. Three legal values, three distinct
+    // behaviours after power-on (see DEFAULTS.bootDevice).
+    var BOOT_DEVICES = Object.freeze(["none", "interactive@", "last"]);
 
     /**
      * Normalize the per-terminal dialect array into two legal entries.
@@ -257,11 +265,17 @@ var Config = (function () {
             powerOn: typeof o.powerOn === "undefined"
                 ? DEFAULTS.powerOn
                 : Boolean(o.powerOn),
-            // Absent key falls back to false (no automatic bootstrap; the
-            // operator presses Bootstrap now! or types a boot command).
-            autoBoot: typeof o.autoBoot === "undefined"
-                ? DEFAULTS.autoBoot
-                : Boolean(o.autoBoot)
+            // What the machine does on its own after power-on (the emulated
+            // Boot ROM socket). A config saved before this option existed
+            // carries the legacy boolean autoBoot: true meant "start the
+            // interactive bootstrap", false — "do nothing". Migrated
+            // one-for-one, so an upgrade changes no behaviour; 'last' only
+            // ever results from an explicit choice.
+            bootDevice: isOneOf(o.bootDevice, BOOT_DEVICES)
+                ? o.bootDevice
+                : (typeof o.bootDevice === "undefined"
+                    ? (o.autoBoot ? "interactive@" : "none")
+                    : DEFAULTS.bootDevice)
         };
     }
 
@@ -304,6 +318,7 @@ var Config = (function () {
         PRINT_WIDTHS: PRINT_WIDTHS,
         PRINT_WIDTHS_TTY: PRINT_WIDTHS_TTY,
         TELETYPE_SPEEDS: TELETYPE_SPEEDS,
+        BOOT_DEVICES: BOOT_DEVICES,
         getStorage: getStorage,
         validate: validate,
         load: load,

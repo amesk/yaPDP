@@ -35,7 +35,7 @@ const CFG = {
     teletypeSpeed: "authentic",
     upperCaseOnly: false,
     powerOn: true,
-    autoBoot: false
+    bootDevice: "none"
 };
 
 const DUNGEON_STEPS = ["R DUNGEON\r", "OPEN MAILBOX\r", "LOOK\r", "TAKE LEAFLET\r"];

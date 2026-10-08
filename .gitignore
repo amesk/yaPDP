@@ -64,3 +64,9 @@ landing/src/data/devlogData.ts.generated
 /manual_ru.pdf
 landing/src/data/manualData.ts
 landing/src/data/devlogData.ts
+
+# ---- Boot ROM rebuild byproducts (tools/rebuild-bootcode.js) ----
+# The paper-tape source and the linked .SAV an in-emulator build produces;
+# only src/bootcode.js (the octal dump) is kept.
+macro-asm/boot.mac.ptap
+macro-asm/boot.sav

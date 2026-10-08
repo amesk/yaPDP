@@ -169,7 +169,7 @@ async function openPage(browser, guest) {
         vt11: false,
         teletypeSpeed: "fast",   // ~30ms/char instead of authentic ~100ms
         powerOn: true,
-        autoBoot: false          // the wizard issues the boot itself
+        bootDevice: "none"       // the wizard issues the boot itself
     }, guest.cfg);
 
     await page.evaluateOnNewDocument((seed) => {

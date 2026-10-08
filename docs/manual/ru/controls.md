@@ -18,14 +18,14 @@
 | Элемент | Где | Что делает |
 |---|---|---|
 | {.disk .control-cell} ![Кнопка magic wand](assets/images/manual/btn-magicwand.png){.control-btn} Волшебная палочка{.control-name} | Правый верхний угол (все страницы, кроме Info) | Список быстрого запуска — выбирает гостевую ОС, перенастраивает, перезагружает и вводит загрузку/логин. См. [Быстрый старт](#quick-start). |
-| {.disk .control-cell} ![Кнопка перезагрузки](assets/images/manual/btn-reboot.png){.control-btn} Перезагрузка{.control-name} | Левый верхний угол, справа от боковой панели | Круглая кнопка со значком рестарта. Перезапускает машину; при включённом Auto-boot загружает и встроенный загрузчик по умолчанию. По умолчанию сначала запрашивается подтверждение, с опцией «Don't show this warning anymore». Без Auto-boot после перезагрузки машина останавливается. |
+| {.disk .control-cell} ![Кнопка перезагрузки](assets/images/manual/btn-reboot.png){.control-btn} Перезагрузка{.control-name} | Левый верхний угол, справа от боковой панели | Круглая кнопка со значком рестарта. Перезапускает машину; при заданном Boot device (см. CONFIG) загружает и встроенный загрузчик. По умолчанию сначала запрашивается подтверждение, с опцией «Don't show this warning anymore». В диалоге есть ярлык Boot device — выберите None, Interactive loader (@) или Last medium: это сама опция CONFIG Boot device, она сохраняется и синхронизирована со страницей CONFIG. При None после перезагрузки машина останавливается. |
 | {.disk .control-cell} ![Кнопка Mute](assets/images/manual/btn-mute.png){.control-btn} Без звука (Mute){.control-name} | Левый нижний угол, справа от боковой панели | Круглая кнопка, выключающая все звуки разом — гул, телетайп/LP11, подача и отрыв бумаги, щелчки клавиш и звонок. Состояние сохраняется вместе с остальной конфигурацией. |
 | {.disk .control-cell} ![Кнопка Fullscreen](assets/images/manual/btn-fullscreen.png){.control-btn} Полноэкранный режим{.control-name} | Правый нижний угол окна | Плавающая кнопка, скрывающая интерфейс браузера и системы (адресную строку, рамку окна ОС, панель задач), не трогая интерфейс эмулятора. Нажмите ещё раз или Esc, чтобы вернуться. |
 | {.disk .control-cell} ![Кнопка зума](assets/images/manual/btn-zoom.png){.control-btn} Масштаб терминала{.control-name} | Правый нижний угол, слева от кнопки полного экрана | Плавающая кнопка, скрывающая корпус терминала и увеличивающая экран до максимального размера 4:3, какой позволяет окно. Состояние запоминается для каждого терминала. |
 
 ![Диалог подтверждения перезагрузки](assets/images/manual/dialog-reboot.png)
 
-Кнопка REBOOT по умолчанию запрашивает подтверждение: в диалоге есть ярлык [Auto-boot](#config) (**Start the default bootstrap automatically after reboot**) и опция «Don't show this warning anymore».
+Кнопка REBOOT по умолчанию запрашивает подтверждение: в диалоге есть ярлык [Boot device](#config) (None / Interactive loader / Last medium) и опция «Don't show this warning anymore».
 
 ### Индикаторы активности на боковой панели
 

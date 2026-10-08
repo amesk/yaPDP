@@ -33,7 +33,7 @@ const CFG = {
     vt11: true,
     teletypeSpeed: "fast",
     powerOn: true,
-    autoBoot: false
+    bootDevice: "none"
 };
 
 function sleep(ms) {

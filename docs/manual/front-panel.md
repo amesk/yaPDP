@@ -33,6 +33,6 @@ The **Bootstrap now!** button refuses to start the machine while it is powered o
 
 Bootstrap now! requires the machine to be powered on first.{.shot-caption}
 
-The dialog also offers a shortcut to the CONFIG **Auto-boot** option: tick the checkbox to start
-the default bootstrap automatically on every future power-on, without visiting the Config page. The
-choice persists and stays in sync with the CONFIG page checkbox.
+The dialog also offers a shortcut to the CONFIG **Boot device** option: choose **None**, **Interactive
+loader (@)** or **Last medium** to set what the machine does on every future power-on, without
+visiting the Config page. The choice persists and stays in sync with the CONFIG page.

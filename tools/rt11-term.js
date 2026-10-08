@@ -207,7 +207,7 @@ async function seedConfig(device) {
         vt11: false,
         teletypeSpeed: "fast",   // generation hook is pacing-independent anyway
         powerOn: true,
-        autoBoot: false,         // the wizard issues the boot itself
+        bootDevice: "none",      // the wizard issues the boot itself
     }, hw);
     await page.evaluateOnNewDocument((seed) => {
         try {
