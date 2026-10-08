@@ -433,7 +433,12 @@ iopage.register(0o17772000, 4, (function () {
             canvasFG.width = WIDTH;
             canvasFG.height = HEIGHT;
             canvasFG.style.border = "1px solid #406040";
-            canvasFG.style.cursor = "none";
+            // The light pen IS the mouse, so the tube must always show a
+            // visible pointer. It used to start at "none", which left the
+            // operator with no cursor over the canvas (it reappeared only
+            // outside it); the pen's own crosshair is applied when the guest
+            // enables the pen (see restore() and the SRA path).
+            canvasFG.style.cursor = "default";
             canvasFG.style.backgroundColor = "#001000"; // deep green-black CRT look
 
             let container = document.getElementById('vt11') || document.body;
@@ -595,15 +600,31 @@ iopage.register(0o17772000, 4, (function () {
             if (!canvasFG || initializedMouse) return;
             initializedMouse = true;
 
+            // getBoundingClientRect() returns the BORDER box, but canvas.width/
+            // height describe the CONTENT box the renderer draws into. The
+            // inline 1px CSS border would therefore skew the CSS->canvas scale
+            // (a linear error, largest at the edges). Read it once — it is set
+            // inline and never changes — and remove it from the mapping.
+            let borderL = 0, borderT = 0, borderR = 0, borderB = 0;
+            if (typeof getComputedStyle === "function") {
+                let cs = getComputedStyle(canvasFG);
+                borderL = parseFloat(cs.borderLeftWidth) || 0;
+                borderT = parseFloat(cs.borderTopWidth) || 0;
+                borderR = parseFloat(cs.borderRightWidth) || 0;
+                borderB = parseFloat(cs.borderBottomWidth) || 0;
+            }
+
             canvasFG.addEventListener('mousemove', function vt11TrackMouse(evt) {
                 // The tube is CSS-scaled to fit the viewport (css/pdp11.css),
                 // so map pointer coordinates back into the internal 1024x768
-                // canvas space used by light-pen hit testing.
+                // CONTENT space used by light-pen hit testing.
                 let rect = canvasFG.getBoundingClientRect();
-                let scaleX = rect.width > 0 ? canvasFG.width / rect.width : 1;
-                let scaleY = rect.height > 0 ? canvasFG.height / rect.height : 1;
-                let rawX = (evt.clientX - rect.left) * scaleX;
-                let rawY = (evt.clientY - rect.top) * scaleY;
+                let contentW = rect.width - borderL - borderR;
+                let contentH = rect.height - borderT - borderB;
+                let scaleX = contentW > 0 ? canvasFG.width / contentW : 1;
+                let scaleY = contentH > 0 ? canvasFG.height / contentH : 1;
+                let rawX = (evt.clientX - rect.left - borderL) * scaleX;
+                let rawY = (evt.clientY - rect.top - borderT) * scaleY;
 
                 // Invert the render view transform (translate + uniform scale)
                 // to recover the emulated VT coordinates (top-left origin),
@@ -745,7 +766,7 @@ iopage.register(0o17772000, 4, (function () {
             let newLightPenEnabled = state.isLightPenEnabled();
 
             if (oldLightPenEnabled !== newLightPenEnabled) {
-                renderer.setCursorStyle(newLightPenEnabled ? "crosshair" : "none");
+                renderer.setCursorStyle(newLightPenEnabled ? "crosshair" : "default");
             }
 
             // Stop VT11 if requested
@@ -1095,7 +1116,7 @@ iopage.register(0o17772000, 4, (function () {
                         if (state.isLightPenEnabled()) {
                             renderer.setCursorStyle("crosshair");
                         } else {
-                            renderer.setCursorStyle("none");
+                            renderer.setCursorStyle("default");
                         }
 
                         if (!(result & 1)) {
@@ -1178,6 +1199,12 @@ iopage.register(0o17772000, 4, (function () {
                 renderer.initDOM();
                 timing.startBlinkTimer();
                 lightPen.attachMouseTracking(renderer.getCanvasFG());
+                // The restored DSR says whether the pen was live; re-apply the
+                // matching cursor. initDOM() left the neutral one, so a
+                // restored Lunar Lander (DSR light pen enabled) used to show
+                // NO pointer at all.
+                renderer.setCursorStyle(state.isLightPenEnabled()
+                    ? "crosshair" : "default");
                 if (snap.image) {
                     renderer.restoreImage(snap.image);
                 }
