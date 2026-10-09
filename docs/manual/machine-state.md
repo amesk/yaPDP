@@ -14,7 +14,7 @@ The machine-state dialog with one freshly saved state.{.shot-caption}
 - **Save state** — captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring it re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.
 - **Load** — restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working.
 - **Export / Import** — take a state out as a `.state` file, or bring one in from a file somebody sent you. An imported file joins the list like any other state.
-- **Share** — turn a state into a file you can hand to somebody else (see [Sharing a state](#sharing-a-state)).
+- **Share** — turn a state into a file you can hand to somebody else; the Sharing a state subsection below explains what the file needs to work.
 - **Rename / Delete** — organise the list or remove states; the counter next to the list shows how many states you have.
 
 The STATE button mirrors [REBOOT](#controls) and is available on the **Panel**, **Console** (teletype, VT52 or
