@@ -372,9 +372,18 @@ paper-tape reader/punch), the paper in the teletype and LP11, the VT52 screen
 contents and the VT11 vector picture. **Save state** captures the machine as
 it is now under an auto-generated name; **Load** restores a state (re-applying
 its hardware configuration and restarting the machine, with a confirmation
-first), and **Rename / Delete** organise the list. States live in the
+first); **Export / Import** moves a state through a `.state` file; **Share**
+turns one into a file to hand to somebody else, with the words they will read
+and a command that types itself once the machine is back; and
+**Rename / Delete** organise the list. States live in the
 browser's IndexedDB, survive reloads and sessions, and states saved by older
-emulator versions keep working. Both buttons appear on the Panel, Console
+emulator versions keep working. A state can also be opened from a link
+(`pdp11.html?state=<url>`), which is how the Games tiles teleport into a
+running guest — the host serving the file must allow the read
+(`Access-Control-Allow-Origin`), and the receiver needs the same disk images,
+because a state carries their fingerprints rather than the images themselves;
+when either is missing the restore is refused and the visitor is told.
+Both buttons appear on the Panel, Console
 (teletype or VT52) and TTY pages.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
