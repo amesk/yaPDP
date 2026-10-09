@@ -10,6 +10,12 @@
  *   D. Steps round-trip: create snapshot with steps → export → import → restore,
  *      verify steps are preserved and the scenario runs.
  *   E. Invalid import: try to import a corrupted file, verify error shown.
+ *   F. Overlay disk round-trip: export to a file, import it back, restore (the
+ *      write-back blocks must survive).
+ *   G. A FOREIGN state file: the repo's committed zstd state, which this page
+ *      never wrote, imported and LOADED — the one share path that works
+ *      regardless of hosting or CORS. G2 pins the version gate on it: an
+ *      unsupported manifest MAJOR is refused, never half-applied.
  *
  * Run with: node tests/e2e-import-export.js
  * (needs puppeteer, server on :1170 — see tools/serve.js)
@@ -441,6 +447,86 @@ async function testOverlayDiskRoundTrip(browser, page) {
     console.log("  F: done");
 }
 
+// --- G. Import a FOREIGN state file --------------------------------------
+// The only share path that works everywhere: a file the visitor was given.
+// Everything above round-trips the page's OWN export; this drives a file the
+// page has never seen — the repo's committed zstd state (states/<name>.state.zst,
+// exactly what a contributor would hand over) — through the real import path,
+// and then LOADS it, so a foreign machine state is proven to come up.
+//
+// It also pins the version gate on the same path: a state whose manifest MAJOR
+// the reader does not understand is REFUSED (unsupported-version), never
+// half-applied.
+async function testForeignImport(page) {
+    console.log("\n=== G. Import a foreign state file ===");
+
+    const foreignPath = path.join(ROOT, "states", "rk1-ready.state.zst");
+    const foreign = Array.from(fs.readFileSync(foreignPath));
+    check("G1: the foreign file exists on disk", foreign.length > 0, String(foreign.length));
+
+    // Import the file we did not write in this session — no export, no
+    // round-trip: bytes straight off disk, as a visitor would hand them over.
+    const imported = await page.evaluate(async (arr) => {
+        return await SnapshotStore.importState(new Uint8Array(arr));
+    }, foreign);
+    check("G2: foreign import succeeded", imported.ok === true, JSON.stringify(imported));
+    check("G3: foreign import returned an id",
+        typeof imported.id === "string" && imported.id.length > 0, String(imported.id));
+
+    // It must appear in the list, named from the file's own manifest label.
+    const listed = await page.evaluate(async (id) => {
+        const items = await SnapshotStore.list();
+        const mine = items.find((it) => it.id === id);
+        return mine ? { name: mine.name, hasSteps: mine.hasSteps } : null;
+    }, imported.id);
+    check("G4: the imported state appears in the list", listed !== null, JSON.stringify(listed));
+
+    // LOAD it: the foreign machine state must actually come up. A state carries
+    // its OWN hardware profile, so this also proves the imported config is
+    // applied rather than fought with.
+    await page.evaluate(async (id) => { await SnapshotStore.load(id); }, imported.id);
+    await page.waitForFunction(
+        () => typeof SnapshotStore !== "undefined" && typeof CPU !== "undefined",
+        { timeout: 30000 });
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const after = await page.evaluate(() => {
+        const c = document.querySelector("#page-teletype");
+        return { runState: CPU.runState, consoleText: c ? c.innerText.slice(-200) : "" };
+    });
+    check("G5: the restored machine is not halted", after.runState !== 3, JSON.stringify(after));
+    check("G6: the foreign guest is on the console",
+        after.consoleText.length > 0, JSON.stringify(after.consoleText));
+
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, imported.id);
+    console.log("  G: done");
+}
+
+// A manifest MAJOR the reader does not understand must be REFUSED, not
+// half-applied. Built here by wrapping an existing container with a doctored
+// schemaVersion, so the bytes are otherwise a valid state.
+async function testForeignVersionGate(page) {
+    console.log("\n=== G2. A foreign state from an unsupported schema ===");
+
+    const foreignPath = path.join(ROOT, "states", "rk1-ready.state.zst");
+    const { container } = StateIO.readBytes(foreignPath);
+    const parsed = StateFormat.unpack(container);
+    parsed.manifest.schemaVersion = "2.0.0";   // MAJOR ahead of this reader
+    const doctored = StateFormat.pack(parsed.manifest, parsed.memoryWords);
+    const bytes = Array.from(StateIO.zstdEncode(doctored));
+
+    const result = await page.evaluate(async (arr) => {
+        return await SnapshotStore.importState(new Uint8Array(arr));
+    }, bytes);
+    check("G7: an unsupported MAJOR is refused", result.ok === false, JSON.stringify(result));
+    check("G8: the refusal names the version",
+        result.reason === "unsupported-version", String(result.reason));
+
+    const count = await page.evaluate(async () => (await SnapshotStore.list()).length);
+    check("G9: nothing was added by the refused import", count === 0, String(count));
+    console.log("  G2: done");
+}
+
 // --- Main ----------------------------------------------------------------
 (async () => {
     const server = await ensureServer();
@@ -484,6 +570,19 @@ async function testOverlayDiskRoundTrip(browser, page) {
             const p5 = await openPage(browser, errors);
             await testOverlayDiskRoundTrip(browser, p5);
             await p5.close();
+        }
+
+        // G. Import a foreign state file (the path that always works), then the
+        // version gate on the same path. Both need a fresh page; G loads.
+        {
+            const p6 = await openPage(browser, errors);
+            await testForeignImport(p6);
+            await p6.close();
+        }
+        {
+            const p7 = await openPage(browser, errors);
+            await testForeignVersionGate(p7);
+            await p7.close();
         }
 
         // Check for page errors across all pages.
