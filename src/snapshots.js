@@ -30,6 +30,10 @@ var SnapshotStore = (() => {
     const SCHEMA_VERSION = (typeof StateFormat !== "undefined" &&
         StateFormat.SCHEMA_VERSION) ? StateFormat.SCHEMA_VERSION : "1.0.0";
     const PENDING_KEY = "yapdp-pending-snapshot";
+    // The operation (a reboot / a Bootstrap now!) parked across the config
+    // rollback reload: written by offerConfigRollback, consumed by
+    // pdp11-panel.js. Shared literal — both files name the same key.
+    const PENDING_REBOOT_KEY = "yapdp.pending-reboot";
     const MAX_SNAPSHOTS = 10;
     // Where the newer-snapshot warning's "Update to Latest" points.
     const LATEST_URL = "https://amesk.github.io/yaPDP";
@@ -207,14 +211,28 @@ var SnapshotStore = (() => {
     // userTerminalTypes is structural too: it decides which cabinet each user
     // terminal is built as, so a snapshot taken with VT100 terminals must not be
     // restored onto a machine whose terminals are DECscopes.
+    //
+    // This list answers ONE question only — "does restoring this snapshot need
+    // a page reload to re-register the devices?" (configNeedsReload). The
+    // PROFILE a snapshot carries is the WHOLE config minus the sound settings
+    // (see CONFIG_APPLY_EXCLUDE): zoom, glow, widths and the rest apply live,
+    // so they must never trigger a reload.
     var STRUCTURAL_CONFIG = ["consoleType", "userTerminals", "userTerminalTypes",
                              "printer", "vt11"];
+
+    // Config fields no state ever applies: the viewer's sound settings. The
+    // tones do not describe the emulated machine — hushing them is a preference
+    // of the person at the keyboard, not a property of the guest — so no state
+    // (a teleport link, an imported file) may switch them. They are excluded
+    // both from what a snapshot records and from what it applies.
+    var CONFIG_APPLY_EXCLUDE = ["mute", "hum"];
 
     function captureConfig() {
         if (typeof Config === "undefined" || typeof Config.get !== "function") return null;
         var c = Config.get();
         var out = {};
-        STRUCTURAL_CONFIG.forEach(function (k) {
+        Object.keys(c).forEach(function (k) {
+            if (CONFIG_APPLY_EXCLUDE.indexOf(k) !== -1) return;
             out[k] = c[k];
         });
         return out;
@@ -739,8 +757,17 @@ var SnapshotStore = (() => {
                 // Hoisted so both peek paths reach it: apply the state, or
                 // reload the page once the config it asks for is in place.
                 function finishLoad(parsedManifest) {
-                    if (parsedManifest && configNeedsReload({ config: parsedManifest.profile })) {
+                    // The state's whole profile is applied — ALWAYS. A device-set
+                    // change additionally needs the reload below; everything else
+                    // (zoom, glow, widths, speeds) takes effect live. The reload
+                    // decision is taken BEFORE applying, against the config the
+                    // page has right now.
+                    var needsReload = !!parsedManifest &&
+                        configNeedsReload({ config: parsedManifest.profile });
+                    if (parsedManifest) {
                         applySnapshotConfig({ config: parsedManifest.profile });
+                    }
+                    if (needsReload) {
                         try {
                             if (typeof sessionStorage !== "undefined") {
                                 sessionStorage.setItem(PENDING_STATE_KEY, target);
@@ -768,7 +795,12 @@ var SnapshotStore = (() => {
                         }
                     }
                     var applied = applyStateBytes(new Uint8Array(buf), target);
-                    if (!onRestored) return applied;
+                    if (!onRestored) {
+                        return applied.then(function (r) {
+                            if (r && r.ok) maybeOfferConfigRestore();
+                            return r;
+                        });
+                    }
                     return applied.then(function (result) {
                         if (!result || !result.ok) return result;
                         return Promise.resolve(onRestored(lastStateManifest))
@@ -804,7 +836,12 @@ var SnapshotStore = (() => {
                                     });
                                 }
                             })
-                            .then(function () { return result; });
+                            .then(function () {
+                                // The state replaced the viewer's configuration:
+                                // offer to bring the remembered one back.
+                                maybeOfferConfigRestore();
+                                return result;
+                            });
                     }, function (err) {
                         return { ok: false, reason: "network", url: target,
                                  detail: String(err && err.message ? err.message : err) };
@@ -1400,13 +1437,12 @@ var SnapshotStore = (() => {
         } catch (e) {
             return Promise.resolve(false);
         }
-        // If the snapshot needs a different hardware configuration (device
-        // set), apply it NOW so the single reload boots with the right
-        // devices and init() can restore directly.
+        // A snapshot restore ALWAYS reloads (load() writes the pending id and
+        // reloads unconditionally), so the state's whole profile is applied NOW
+        // — the single reload boots with the right devices, and init() can
+        // restore directly. applySnapshotConfig() no-ops on a missing snapshot.
         return dbGet(id).then(function (snap) {
-            if (configNeedsReload(snap)) {
-                applySnapshotConfig(snap);
-            }
+            applySnapshotConfig(snap);
             if (typeof location !== "undefined" && location.reload) {
                 // applySnapshotConfig() just rewrote the persisted config
                 // behind the Config form's back, so isConfigDirty() would
@@ -1455,17 +1491,205 @@ var SnapshotStore = (() => {
         return false;
     }
 
-    // Apply the snapshot's structural config (device set) to the persisted
-    // config. Only the STRUCTURAL_CONFIG fields are touched — the operator's
-    // sound/behaviour preferences are never overridden by a snapshot.
+    // Apply the snapshot's configuration profile to the live config: everything
+    // the state carries except the sound settings (CONFIG_APPLY_EXCLUDE), so a
+    // teleport brings the WHOLE setup — device set, zoom, glow, widths, speeds.
+    // The reload decision is NOT taken here: configNeedsReload() looks only at
+    // the device set, and the caller decides. The viewer's own configuration is
+    // remembered ONCE — before the first state of a chain replaces it — so it
+    // can be offered back later; a baseline already present is NOT overwritten
+    // by the next state (that is what keeps a run of applied states from losing
+    // the viewer's setup).
     function applySnapshotConfig(snap) {
+        if (!snap || !snap.config) return;
+        if (typeof ViewerConfig !== "undefined" && ViewerConfig.get() === null &&
+            typeof Config !== "undefined" && typeof Config.get === "function") {
+            ViewerConfig.remember(Config.get());
+        }
         var patch = {};
-        STRUCTURAL_CONFIG.forEach(function (k) {
-            if (snap.config[k] !== undefined) patch[k] = snap.config[k];
+        Object.keys(snap.config).forEach(function (k) {
+            if (CONFIG_APPLY_EXCLUDE.indexOf(k) !== -1) return;
+            if (snap.config[k] === undefined) return;
+            patch[k] = snap.config[k];
         });
         if (typeof Config !== "undefined" && typeof Config.set === "function") {
             Config.set(patch);
         }
+        // Re-tune the live instances (zoom, glow, widths, speeds ...) so the
+        // fields that need no reload take effect at once.
+        if (typeof window !== "undefined" &&
+            typeof window.__yapdpApplyConfigLive === "function") {
+            window.__yapdpApplyConfigLive();
+        }
+    }
+
+    // True when two full configs differ in any field a state may carry. The
+    // sound settings are skipped: no state changes them, so they must not make
+    // the viewer's baseline look "different" (see CONFIG_APPLY_EXCLUDE).
+    // Arrays (userTerminalTypes, vt52Zoom) compare element by element.
+    function configDiffers(a, b) {
+        if (!a || !b) return false;
+        var keys = Object.keys(a);
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            if (CONFIG_APPLY_EXCLUDE.indexOf(k) !== -1) continue;
+            if (!sameStructuralValue(a[k], b[k])) return true;
+        }
+        return false;
+    }
+
+    // Bring back the viewer's remembered configuration. Everything is restored:
+    // the baseline is a full config, sound settings included (they were never
+    // changed, so restoring them is a no-op in practice). A page reload happens
+    // ONLY when the device set differs — reloading re-registers the devices; a
+    // live-only difference is applied through the pdp11-app hook. Returns
+    // "reloading" when the caller must not continue (a reload is in flight),
+    // "proceed" when the caller may carry on, "none" when there was no baseline.
+    function rollbackToBaseline() {
+        if (typeof ViewerConfig === "undefined") return "none";
+        var base = ViewerConfig.get();
+        if (!base) return "none";
+        // Decide against the config the page has RIGHT NOW, before applying:
+        // applying makes the config match the baseline.
+        var needsReload = configNeedsReload({ config: base });
+        if (typeof Config !== "undefined" && typeof Config.set === "function") {
+            Config.set(base);
+        }
+        if (typeof window !== "undefined" &&
+            typeof window.__yapdpApplyConfigLive === "function") {
+            window.__yapdpApplyConfigLive();
+        }
+        ViewerConfig.clear();
+        if (needsReload && typeof location !== "undefined" && location.reload) {
+            // The persisted config changed behind the Config form's back:
+            // suppress the beforeunload "Reload site?" prompt.
+            if (typeof window !== "undefined") window.__allowConfigReload = true;
+            location.reload();
+            return "reloading";
+        }
+        return "proceed";
+    }
+
+    // Offer to bring the viewer's configuration back. `action` is the operation
+    // the caller wants to run AFTER the offer ("reboot" | "boot" | null); when
+    // "Return my configuration" needs a reload, the action is parked in
+    // sessionStorage so the operation is not lost across the reload (consumed
+    // by pdp11-panel.js). `onProceed` runs when the caller may continue — no
+    // offer at all, "Keep", or a live-only rollback (no reload).
+    function offerConfigRollback(action, onProceed) {
+        var proceed = (typeof onProceed === "function") ? onProceed : function () {};
+        if (typeof ViewerConfig === "undefined") { proceed(); return; }
+        var base = ViewerConfig.get();
+        if (!base) { proceed(); return; }
+        var cur = (typeof Config !== "undefined" && typeof Config.get === "function")
+            ? Config.get() : null;
+        if (cur && !configDiffers(base, cur)) {
+            // Nothing to offer: the state's config equals the viewer's own.
+            ViewerConfig.clear();
+            proceed();
+            return;
+        }
+        showConfigRestoreDialog(function (decision) {
+            if (decision !== "rollback") {
+                // Keep the state's configuration: this chain is over.
+                ViewerConfig.clear();
+                proceed();
+                return;
+            }
+            var result = rollbackToBaseline();
+            if (result === "reloading") {
+                if (action && typeof sessionStorage !== "undefined") {
+                    try {
+                        sessionStorage.setItem(PENDING_REBOOT_KEY, action);
+                    } catch (e) { /* ignore */ }
+                }
+                return;   // the reload resumes the operation
+            }
+            proceed();
+        });
+    }
+
+    // After a config-driven reload (a state restored): offer the viewer's
+    // configuration back. No operation to resume, so the action is null.
+    function maybeOfferConfigRestore() {
+        offerConfigRollback(null, function () {});
+    }
+
+    // --- "Return my configuration" dialog --------------------------------
+    // Shown before Reboot / Bootstrap now! and after a state restore. The
+    // SYSTEM raised it, so it hands the machine back first (like the
+    // refused-snapshot dialog). Built with createElement/textContent, the way
+    // the other modals here are.
+    var __snapConfigRestoreModal = null;
+    var __snapConfigRestoreResolve = null;
+
+    function hideConfigRestoreDialog(decision) {
+        if (__snapConfigRestoreModal) __snapConfigRestoreModal.classList.remove("visible");
+        var resolve = __snapConfigRestoreResolve;
+        __snapConfigRestoreResolve = null;
+        if (resolve) resolve(decision || "keep");
+    }
+
+    function showConfigRestoreDialog(onDecision) {
+        if (typeof document === "undefined") {
+            // No DOM (headless): nobody to ask — keep the state's config.
+            if (onDecision) onDecision("keep");
+            return;
+        }
+        __snapConfigRestoreResolve = onDecision || null;
+        if (typeof QuickBoot !== "undefined" &&
+            typeof QuickBoot.yieldToOperator === "function") {
+            QuickBoot.yieldToOperator();
+        }
+        if (!__snapConfigRestoreModal) {
+            __snapConfigRestoreModal = document.createElement("div");
+            __snapConfigRestoreModal.id = "snap-config-restore-overlay";
+            __snapConfigRestoreModal.className = "modal-overlay";
+            __snapConfigRestoreModal.addEventListener("click", function (e) {
+                var action = e.target.getAttribute &&
+                    e.target.getAttribute("data-snap-action");
+                if (action === "rollback") {
+                    hideConfigRestoreDialog("rollback");
+                } else if (action === "keep" || e.target === __snapConfigRestoreModal ||
+                        (e.target.closest && e.target.closest(".modal-close"))) {
+                    hideConfigRestoreDialog("keep");
+                }
+            });
+            document.body.appendChild(__snapConfigRestoreModal);
+        }
+
+        var box = document.createElement("div");
+        box.className = "modal-box";
+
+        var title = document.createElement("span");
+        title.className = "modal-title";
+        title.textContent = "This machine came from a saved state";
+        box.appendChild(title);
+
+        var intro = document.createElement("p");
+        intro.className = "modal-intro";
+        intro.textContent =
+            "The saved state also applied its own configuration (terminals, " +
+            "printer, zoom, display). Return your own configuration?";
+        box.appendChild(intro);
+
+        var rollbackBtn = document.createElement("button");
+        rollbackBtn.type = "button";
+        rollbackBtn.className = "modal-close";
+        rollbackBtn.setAttribute("data-snap-action", "rollback");
+        rollbackBtn.textContent = "Return my configuration";
+        box.appendChild(rollbackBtn);
+
+        var keepBtn = document.createElement("button");
+        keepBtn.type = "button";
+        keepBtn.className = "modal-close";
+        keepBtn.setAttribute("data-snap-action", "keep");
+        keepBtn.textContent = "Keep the state's configuration";
+        box.appendChild(keepBtn);
+
+        __snapConfigRestoreModal.innerHTML = "";
+        __snapConfigRestoreModal.appendChild(box);
+        __snapConfigRestoreModal.classList.add("visible");
     }
 
     // Pending-snapshot application at startup. Halts the CPU synchronously
@@ -1518,8 +1742,12 @@ var SnapshotStore = (() => {
 
         return dbGet(pendingId).then(function (snap) {
             if (!snap) return false;
-            if (configNeedsReload(snap)) {
-                applySnapshotConfig(snap);
+            // Apply the whole profile; reload only when the device set differs.
+            // Decide BEFORE applying: applySnapshotConfig makes the config match,
+            // so a check afterwards would always say "no reload".
+            var needsReload = configNeedsReload(snap);
+            applySnapshotConfig(snap);
+            if (needsReload) {
                 if (typeof location !== "undefined" && location.reload) {
                     // Same as in load(): the persisted config changed behind
                     // the Config form's back — suppress the beforeunload
@@ -1545,6 +1773,9 @@ var SnapshotStore = (() => {
                         stepDelayMs: 800,
                     });
                 }
+                // The state replaced the viewer's configuration: offer to bring
+                // the remembered one back (a no-op when nothing changed).
+                if (ok) maybeOfferConfigRestore();
                 return ok;
             });
         });
@@ -2373,6 +2604,15 @@ var SnapshotStore = (() => {
         // deep-link path to show the "preparing" toast for the right image.
         lastStateManifest: lastStateManifest,
         refreshUI: refreshUI,
+        // The configuration-rollback flow (see offerConfigRollback) and the
+        // profile rules it rests on: exposed for the panel's Reboot /
+        // Bootstrap now! handlers and for tests.
+        captureConfig: captureConfig,
+        applySnapshotConfig: applySnapshotConfig,
+        configNeedsReload: configNeedsReload,
+        offerConfigRollback: offerConfigRollback,
+        rollbackToBaseline: rollbackToBaseline,
+        configDiffers: configDiffers,
         wireUI: wireUI,
         SCHEMA_VERSION: SCHEMA_VERSION,
         // Exposed for tests: the compatibility rule and its dialog, and the
@@ -2387,6 +2627,13 @@ var SnapshotStore = (() => {
         escapeHtml: escapeHtml
     };
 })();
+
+// Expose the configuration-rollback offer so the panel (Reboot / Bootstrap
+// now!) can raise it before restarting the machine. Same function as
+// SnapshotStore.offerConfigRollback.
+if (typeof window !== "undefined") {
+    window.__yapdpOfferConfigRollback = SnapshotStore.offerConfigRollback;
+}
 
 // Startup: restore pending snapshot (if any) and wire UI after the DOM is
 // ready. All scripts have already executed by DOMContentLoaded; the CPU

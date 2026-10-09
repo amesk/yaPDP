@@ -27,6 +27,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 
+- **A machine state now carries the whole configuration — except the sound.**
+  Restoring a state (a teleport link, an imported file, a snapshot) applies the
+  full configuration profile it was saved with — console, user terminals, LP11
+  printer, VT11, widths, teletype speed, zoom, glow, phosphor, backdrop and the
+  rest — instead of only the device set. The two sound settings (`mute`, `hum`)
+  are never touched: they belong to the person at the keyboard, not to the
+  guest. A page reload now happens only when the device set differs (everything
+  else applies live); when a state has replaced the viewer's configuration the
+  viewer is offered their own remembered configuration back — after such a
+  reload, and before **Reboot** / **Bootstrap now!**. Returning it restores every
+  field (a further reload only when the device set differs), and a Reboot /
+  Bootstrap parked across that reload runs as soon as the page is back, so the
+  operation is not lost.
+  (`src/viewer-config.js`, `src/snapshots.js`, `src/pdp11-app.js`,
+  `src/pdp11-panel.js`, `pdp11.html`; pinned by `tests/viewer-config.test.js`,
+  `tests/snapshot-config.test.js`)
+
 - **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
   offers the emulated Boot ROM socket as a three-way choice — `none` (the
   machine waits after power-on), `interactive@` (the built-in loader, the `@`  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded

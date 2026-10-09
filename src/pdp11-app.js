@@ -2507,6 +2507,15 @@ function initConfigForm() {
   // beforeunload guard below can warn about uncommitted changes.
   window.isConfigDirty = isDirty;
 
+  // Re-apply every live setting from the persisted config (zoom, glow, widths,
+  // speeds ...). Called by src/snapshots.js after it applies a state's profile
+  // or rolls the viewer's configuration back, so the fields that need no reload
+  // take effect at once.
+  window.__yapdpApplyConfigLive = function () {
+    if (typeof Config === 'undefined' || typeof Config.get !== 'function') return;
+    applyLive(Config.get());
+  };
+
   // Diagnostics: the form fields whose value differs from the persisted config
   // (an empty array means clean). Handy when an "uncommitted changes" prompt
   // appears without an obvious edit — run configDiff() in the browser console
