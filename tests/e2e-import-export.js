@@ -166,6 +166,11 @@ async function testRoundTrip(page) {
 
     // Save a snapshot with known CPU state.
     const { snapId, before } = await page.evaluate(async () => {
+        // Freeze the CPU first. The restored PC (0o1234) lands on a zero word,
+        // which is a HALT instruction: a RUNNING machine executes it and moves
+        // the PC by 2 before the check — a race that made C5 flap. A halted
+        // machine keeps the PC exactly, and the snapshot then captures HALT.
+        CPU.runState = STATE_HALT;
         // Mutate some CPU state so we can verify it after restore.
         CPU.registerVal[7] = 0o1234;
         CPU.registerVal[6] = 0o567;
