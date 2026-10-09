@@ -22,7 +22,7 @@ sections:
   - id: storage
     ru: Хранилище (перфолента, образы дисков и лент)
   - id: machine-state
-    ru: Состояние машины (кнопка STATE)
+    ru: Управление состоянием машины (кнопка STATE)
   - id: config
     ru: Конфигурация (страница Config)
   - id: guest-oses
