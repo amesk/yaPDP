@@ -1147,7 +1147,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
             <span className="font-mono text-[#c8a860] text-lg">§8</span>
-            {lang === 'en' ? 'Machine State (STATE button)' : 'Состояние машины (кнопка STATE)'}
+            {lang === 'en' ? 'Machine State' : 'Управление состоянием машины'}
           </h2>
         </div>
 
@@ -1187,12 +1187,76 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               ? 'organise the list or remove states; the counter next to the list shows how many states you have.'
               : 'приводят список в порядок или удаляют состояния; счётчик рядом со списком показывает их количество.'}
           </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Export / Import' : 'Export / Import'}</strong>{' '}
+            {lang === 'en'
+              ? 'take a state out as a .state file, or bring one in from a file somebody sent you. An imported file joins the list like any other state.'
+              : 'выгружают состояние в файл .state или принимают состояние из файла, который вам прислали. Импортированный файл встаёт в список как обычное состояние.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Share' : 'Share'}</strong>{' '}
+            {lang === 'en'
+              ? 'turns a state into a file you can hand to somebody else — see Sharing a state below.'
+              : 'превращает состояние в файл, который можно передать другому человеку — см. «Передача состояния» ниже.'}
+          </li>
         </ul>
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
             ? 'The STATE button mirrors REBOOT and is available on the Panel, Console (teletype, VT52 or VT100) and TTY pages. States are stored in the browser IndexedDB and survive reloads and sessions.'
             : 'Кнопка STATE зеркалит REBOOT и доступна на страницах Panel, Console (телетайп, VT52 или VT100) и TTY. Состояния хранятся в IndexedDB браузера и переживают перезагрузки и сеансы.'}
+        </p>
+
+        <h3 id="sharing-a-state" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Sharing a state' : 'Передача состояния'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A state is a file of a whole machine, and a link can open it for somebody else. The link form is pdp11.html?state=<url>, where <url> is wherever the file lives: a path next to the emulator (states/lander.state.zst — this is how the Games tiles work) or a full http(s) URL on your own host.'
+            : 'Состояние — это файл целой машины, и ссылка может открыть его для другого человека. Форма ссылки — pdp11.html?state=<url>, где <url> — место, где лежит файл: путь рядом с эмулятором (states/lander.state.zst — так работают плитки в разделе «Игры») или полный http(s)-адрес на вашем хостинге.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'To share your own state: open the machine-state dialog, pick a state and press Share. The dialog asks for the words the receiver will see — a Title, a Description, a Button label (for the message they read before they get control), a Screenshot, and a Run after restore command that types itself into the guest once the machine is back (e.g. RUN SPCINV). Create Shareable State then saves a .state.zst file to your computer.'
+            : 'Чтобы передать своё состояние: откройте диалог состояния машины, выберите состояние и нажмите Share. Диалог спросит слова, которые увидит получатель: Title (заголовок), Description (описание), Button label (подпись на кнопке в сообщении перед получением управления), Screenshot (снимок экрана) и Run after restore — команду, которая сама наберётся в госте после возврата машины (например, RUN SPCINV). Кнопка Create Shareable State сохраняет файл .state.zst на ваш компьютер.'}
+        </p>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+          <img
+            src="assets/images/manual/dialog-share.png"
+            alt="The Share dialog"
+            className="w-full h-auto rounded cursor-pointer"
+            onClick={() =>
+              openImage('assets/images/manual/dialog-share.png', lang === 'en' ? 'The Share dialog: give the state a title, a description and the keys the receiver needs' : 'Диалог Share: задайте состоянию заголовок, описание и подсказку по клавишам')
+            }
+          />
+        </div>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Host that file anywhere reachable by a URL, then send the link. Two things decide whether it works:'
+            : 'Выложите этот файл туда, где он будет доступен по URL, и отправьте ссылку. На успех влияют две вещи:'}
+        </p>
+
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+          <li>
+            {lang === 'en'
+              ? 'The host must allow the file to be read from another site (the Access-Control-Allow-Origin header). A browser refuses to let this page read a file on another host that does not say so, and the visitor then sees a “Shared state not restored” message naming the URL. Static hosts often do not send that header by default. The surest way to avoid the problem is to keep the file next to the emulator — on the same site — exactly as the states under states/ are served.'
+              : 'Хостинг должен разрешать чтение файла с другого сайта (заголовок Access-Control-Allow-Origin). Браузер не позволит этой странице прочитать файл на чужом хосте, который такого разрешения не даёт, и посетитель увидит сообщение «Shared state not restored» с указанием URL. Статические хостинги часто не отдают этот заголовок по умолчанию. Надёжнее всего положить файл рядом с эмулятором — на том же сайте, — ровно как отдаются состояния в каталоге states/.'}
+          </li>
+          <li>
+            {lang === 'en'
+              ? 'The receiver needs the same disk images. A state does not carry its images, only a record of which ones it needs and their fingerprints. If the image differs from the one the state was taken on, the restore is refused rather than half-applied: a machine with new memory and an old disk is worse than no restore at all.'
+              : 'Получателю нужны те же образы дисков. Состояние не несёт свои образы: только запись о том, какие образы ему нужны, и их отпечатки. Если образ отличается от того, на котором состояние снималось, восстановление отклоняется, а не применяется наполовину: машина с новой памятью и старым диском хуже, чем отсутствие восстановления.'}
+          </li>
+        </ul>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'When either condition fails the visitor is told in a dialog that names the URL, and the address bar keeps the ?state= parameter so what was asked for stays visible. If a link cannot work at all — the state lives somewhere that cannot be fetched — the file itself is still the fallback: Import takes any .state or .state.zst file from disk, with no server and no CORS involved.'
+            : 'Если не выполнено любое из условий, посетителю показывается диалог с указанием URL, а в адресной строке остаётся параметр ?state=, чтобы было видно, что именно запрашивалось. Если ссылка не может работать вовсе — состояние лежит там, откуда его не получить, — остаётся сам файл: Import принимает любой файл .state или .state.zst с диска, без сервера и без CORS.'}
         </p>
       </section>
 
