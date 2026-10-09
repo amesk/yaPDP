@@ -613,6 +613,38 @@ async function captureDialogs(browser, wants) {
         });
         await snap(page, "dialog-state.png", 900);
     }
+
+    // 9. Share dialog — the same manager, one snapshot selected, then Share.
+    // This is the dialog that turns a state into a file to hand to somebody
+    // else, so the manual illustrates it rather than describing five fields in
+    // prose. Save first (the button is disabled with no snapshot selected).
+    if (wants("dialog-share")) {
+        const page = await open(CFG_TTY);
+        await page.evaluate(() => {
+            const btn = document.getElementById("state-btn");
+            if (btn) btn.click();
+        });
+        await sleep(400);
+        await page.evaluate(() => {
+            const save = document.getElementById("snap-save");
+            if (save) save.click();
+        });
+        await sleep(1200);   // let the saved entry land in the list
+        // Select the freshly saved snapshot so Share (and Export) enable.
+        await page.evaluate(() => {
+            const sel = document.getElementById("snap-select");
+            if (sel && sel.options.length) {
+                sel.selectedIndex = sel.options.length - 1;
+                sel.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+        });
+        await sleep(300);
+        await page.evaluate(() => {
+            const share = document.getElementById("snap-share");
+            if (share && !share.disabled) share.click();
+        });
+        await snap(page, "dialog-share.png", 900);
+    }
 }
 
 // Capture the VT11 Display page with Lunar Lander running. The quick-boot
@@ -726,7 +758,8 @@ async function captureVt11Lander(browser) {
             wants("dialog-autoload") || wants("dialog-imgerror") ||
             wants("dialog-snapshot-incompatible") ||
             wants("dialog-poweroff") || wants("dialog-config-leave") ||
-            wants("dialog-reboot") || wants("dialog-state")) {
+            wants("dialog-reboot") || wants("dialog-state") ||
+            wants("dialog-share")) {
             await captureDialogs(browser, wants);
         }
         if (wants("vt11")) {
