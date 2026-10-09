@@ -213,6 +213,7 @@ const BUTTON_SHOTS = [
     { id: "#reboot-btn",     file: "btn-reboot.png" },
     { id: "#state-btn",      file: "btn-state.png" },
     { id: "#mute-btn",       file: "btn-mute.png" },
+    { id: "#screenshot-btn", file: "btn-screenshot.png" },
     { id: "#zoom-btn",       file: "btn-zoom.png", page: "vt52" },
     { id: "#fullscreen-btn", file: "btn-fullscreen.png" }
 ];

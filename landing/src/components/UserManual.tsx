@@ -28,6 +28,15 @@ import {
 import { Lightbox } from './Lightbox.tsx';
 import { SlideItem } from '../types.ts';
 
+// Names of the floating controls, taken from the manual data (generated from
+// docs/manual(+ru)/controls.md). They are folded into the controls section's
+// search terms, so a query like "screenshot", "zoom" or "magic wand" jumps to
+// that section instead of filtering a table the user cannot reach — and the
+// names can never drift from the manual.
+const FLOATING_CONTROL_NAMES: string[] = FLOATING_CONTROLS_DATA.flatMap(
+  (b) => [b.nameEn, b.nameRu]
+);
+
 interface UserManualProps {
   lang: 'en' | 'ru';
   onBackToHome: () => void;
@@ -95,7 +104,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     if (!q) return [];
     const out: { id: string; titleEn: string; titleRu: string }[] = [];
     for (const sec of MANUAL_SECTIONS) {
-      const kw = (SECTION_KEYWORDS[sec.id] || []).join(' ').toLowerCase();
+      const names = sec.id === 'controls' ? FLOATING_CONTROL_NAMES : [];
+      const kw = (SECTION_KEYWORDS[sec.id] || []).concat(names).join(' ').toLowerCase();
       const sub = (sec.subsections || []).map((x) => x.titleEn + ' ' + x.titleRu).join(' ').toLowerCase();
       const hay = (sec.titleEn + ' ' + sec.titleRu + ' ' + sub + ' ' + kw).toLowerCase();
       if (hay.includes(q)) {

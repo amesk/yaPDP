@@ -117,6 +117,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Lander card to match. (`landing/src/data.ts`, `index.html`; pinned by
   `tests/games-gallery.test.js`, `tests/os-gallery-run.test.js`)
 
+- **The screenshot (camera) button is documented.** The floating camera button —
+  bottom-left, next to Mute — now has its own row in the user manual's
+  floating-controls table (EN and RU) with a fresh close-up of the button, and
+  the page shots in which it is visible were regenerated. The diff helper keeps
+  only the shots that actually changed. (`docs/manual/controls.md`,
+  `docs/manual/ru/controls.md`, `tools/screenshots-manual.js`)
+
+- **The manual search finds the floating controls.** On the landing page's user
+  manual, a query matching a floating-control name — Magic wand, Reboot, Mute,
+  Screenshot, Fullscreen or Terminal zoom — now jumps to the controls section.
+  The names are read from the generated manual data, so they cannot drift from
+  the documentation. (`landing/src/components/UserManual.tsx`)
+
 ### Fixed
 
 - **The VT11 light pen no longer drifts by the canvas border.** The
