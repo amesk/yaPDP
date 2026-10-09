@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Sharing a state, and the manual that explains it.** The machine-state dialog's
+  Share button is now documented end to end — what the dialog asks for (title,
+  description, button label, screenshot, a command that types itself after the
+  restore), how the file gets to somebody else, and the two conditions a link
+  depends on: the host must allow the read (`Access-Control-Allow-Origin`), and
+  the receiver needs the same disk images, because a state carries their
+  fingerprints rather than the images themselves. The manual states both plainly
+  and names the fallback — **Import** takes any `.state` or `.state.zst` file
+  with no server and no CORS — so a shared state never depends on a host that
+  may not cooperate. (`docs/manual/machine-state.md`, `docs/manual/ru/machine-state.md`,
+  `docs/FEATURES.md`, `landing/src/components/UserManual.tsx`,
+  `tools/screenshots-manual.js`, `assets/images/manual/dialog-share.png`)
+
+### Fixed
+
 - **Versioned state manifests:** a machine state now carries `schemaVersion` as
   a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that
   wrote it. Legacy snapshots (a bare numeric `schemaVersion` of 1) keep reading,
