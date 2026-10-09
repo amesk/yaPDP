@@ -558,6 +558,27 @@ function examineDeposit(data) {
     }
   }
 
+  // The operator console page for the given config (VT52 and VT100 share the
+  // graphical page; the teletype has its own).
+  function consolePageFor(cfg) {
+    var t = cfg && cfg.consoleType;
+    return (t === 'vt52' || t === 'vt100') ? 'vt52-console' : 'teletype';
+  }
+
+  // Run a Reboot / Bootstrap now! action, first offering the viewer's own
+  // configuration back when the machine is running on one imported from a saved
+  // state. `action` ("reboot" | "boot") is parked across a rollback reload by
+  // src/snapshots.js offerConfigRollback, so the operation is not lost — the
+  // DOMContentLoaded handler at the end of this file replays it.
+  function withRollbackOffer(action, proceed) {
+    if (typeof window !== 'undefined' &&
+        typeof window.__yapdpOfferConfigRollback === 'function') {
+      window.__yapdpOfferConfigRollback(action, proceed);
+    } else {
+      proceed();
+    }
+  }
+
   // Confirmation overlay (reuses the shared modal style, see css/pdp11.css).
   var rebootConfirmOverlay = null;
 
@@ -639,12 +660,17 @@ function examineDeposit(data) {
 
   document.querySelectorAll('[data-action="reboot"]').forEach(function (reboot) {
     reboot.addEventListener('click', function () {
-      var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-      if (!cfg || cfg.confirmReboot === false) {
-        doReboot();
-        return;
-      }
-      showRebootConfirm();
+      // The configuration-rollback offer runs first; "Return my
+      // configuration" may reload the page, in which case the parked
+      // "reboot" action replays after the reload instead of running now.
+      withRollbackOffer('reboot', function () {
+        var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
+        if (!cfg || cfg.confirmReboot === false) {
+          doReboot();
+          return;
+        }
+        showRebootConfirm();
+      });
     });
   });
 
@@ -721,14 +747,11 @@ function examineDeposit(data) {
       if (action === 'power-on-boot') {
         // Power the machine on and start the default bootstrap: doReboot(true)
         // powers on via resetPanelControls and then boots with forceBoot.
-        var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-        // VT52 and VT100 share the graphical console page.
-        var consoleType = cfg && cfg.consoleType;
-        var consolePage = (consoleType === 'vt52' || consoleType === 'vt100')
-            ? 'vt52-console' : 'teletype';
         powerOffOverlay.classList.remove('visible');
-        doReboot(true);
-        switchPage(consolePage);
+        withRollbackOffer('boot', function () {
+          doReboot(true);
+          switchPage(consolePageFor(Config.get()));
+        });
       } else if (action === 'ok') {
         powerOffOverlay.classList.remove('visible');
       }
@@ -756,15 +779,29 @@ function examineDeposit(data) {
         showPowerOffDialog();
         return;
       }
-      var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-      // VT52 and VT100 share the graphical console page.
-      var consoleType = cfg && cfg.consoleType;
-      var consolePage = (consoleType === 'vt52' || consoleType === 'vt100')
-          ? 'vt52-console' : 'teletype';
       // Bootstrap now! always starts the default bootstrap (unlike the generic
       // REBOOT button, which does so only when the auto-boot option is set).
-      doReboot(true);
-      switchPage(consolePage);
+      withRollbackOffer('boot', function () {
+        doReboot(true);
+        switchPage(consolePageFor(Config.get()));
+      });
     });
   }
+
+  // A Reboot / Bootstrap now! parked across the configuration-rollback reload
+  // (see withRollbackOffer and src/snapshots.js offerConfigRollback): run it
+  // now that the page is back with the viewer's own configuration.
+  document.addEventListener('DOMContentLoaded', function () {
+    var pending = null;
+    try {
+      pending = sessionStorage.getItem('yapdp.pending-reboot');
+      sessionStorage.removeItem('yapdp.pending-reboot');
+    } catch (e) { /* ignore */ }
+    if (pending === 'boot') {
+      doReboot(true);
+      switchPage(consolePageFor(typeof Config !== 'undefined' ? Config.get() : null));
+    } else if (pending === 'reboot') {
+      doReboot();
+    }
+  });
 })();
