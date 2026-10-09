@@ -35,6 +35,10 @@ const { spawn } = require("child_process");
 const puppeteer = require("puppeteer");
 
 const ROOT = path.resolve(__dirname, "..");
+// The version the manual documents — package.json is the single source of
+// truth for it (see tools/sync-version.js), so the cover cannot drift from the
+// build it describes.
+const VERSION = require(path.join(ROOT, "package.json")).version;
 // The PDFs are written to the repository ROOT rather than to a private build
 // directory. An earlier revision put them under dist-docs/, which nothing ever
 // read: the landing links to `manual.pdf` / `manual_ru.pdf` beside manual.html
@@ -89,20 +93,23 @@ function startServer() {
 // It carries a page break after it so the body starts on a fresh page, and it
 // is hidden with @media screen rules injected alongside: this markup only ever
 // exists for the PDF run, because the script injects it into the loaded page.
-function coverHtml(lang, title, subtitle, date) {
-  // A title page carries four things, and each says something the others do
-  // not: the brand, the artwork, the title, the date. The version before this
-  // printed seven lines and repeated itself — "User Manual" twice, "yaPDP"
-  // three times, "Yet Another PDP-11/70 Emulator" twice with one of them
-  // word-for-word identical to the line above it. Repetition on a cover does
-  // not reinforce; it reads as an accident.
+function coverHtml(lang, title, subtitle, date, version) {
+  // A title page carries five things, and each says something the others do
+  // not: the brand, the artwork, the title, the version of yaPDP the manual
+  // documents, and the date. The version sits under the subtitle and the date
+  // under the version — the reader learns WHAT this manual is for before WHEN
+  // it was built, which is the order the two facts are useful in. The version
+  // before this printed seven lines and repeated itself — "User Manual" twice,
+  // "yaPDP" three times, "Yet Another PDP-11/70 Emulator" twice with one of
+  // them word-for-word identical to the line above it. Repetition on a cover
+  // does not reinforce; it reads as an accident.
   //
   // The attribution to pdp11-js and mass:werk belongs in the colophon, which
   // will be added when the colophon exists. It is not lost meanwhile: the
   // landing page's acknowledgements and README both carry it.
   const t = {
-    en: { machine: "DEC PDP-11/70 in the browser" },
-    ru: { machine: "DEC PDP-11/70 в браузере" },
+    en: { machine: "DEC PDP-11/70 in the browser", version: "Version" },
+    ru: { machine: "DEC PDP-11/70 в браузере", version: "Версия" },
   }[lang];
   return `
 <div class="pdf-cover">
@@ -117,8 +124,9 @@ function coverHtml(lang, title, subtitle, date) {
   <div class="pdf-cover-mid">
     <h1 class="pdf-cover-title">${title}</h1>
     <p class="pdf-cover-subtitle">${t.machine}</p>
+    <p class="pdf-cover-version">${t.version} ${version}</p>
   </div>
-  <div class="pdf-cover-meta">Date: ${date}</div>
+  <div class="pdf-cover-meta">${date}</div>
 </div>`;
 }
 
@@ -151,7 +159,8 @@ const COVER_CSS = `
 .pdf-cover-model { font-size: 20pt; color: #8a7650; }
 .pdf-cover-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; }
 .pdf-cover-title { font-size: 28pt; line-height: 1.25; margin: 0 0 6mm 0; color: #1a1815; }
-.pdf-cover-subtitle { font-size: 13pt; color: #4a453a; margin: 0 0 10mm 0; }
+.pdf-cover-subtitle { font-size: 13pt; color: #4a453a; margin: 0 0 4mm 0; }
+.pdf-cover-version { font-size: 11pt; color: #6a5f4a; margin: 0 0 10mm 0; }
 .pdf-cover-machine { font-size: 11pt; color: #6a5f4a; margin: 0; }
 
 /* The cover illustration sits directly under the brand rule, at the top of the
@@ -295,7 +304,7 @@ async function buildOne(browser, key, stamp) {
     const wrap = document.createElement("div");
     wrap.innerHTML = markup;
     document.body.appendChild(wrap.firstElementChild);
-  }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp));
+  }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp, VERSION));
   const coverPdf = await cover.pdf({
     format: "A4", printBackground: true, displayHeaderFooter: false,
     margin: { top: "18mm", right: "18mm", bottom: "18mm", left: "18mm" },
@@ -308,7 +317,7 @@ async function buildOne(browser, key, stamp) {
     // The body is the manual with its screen chrome removed by @media print; the
     // illustration viewer has nothing to click on paper.
     document.querySelectorAll(".shot-viewer").forEach((el) => el.remove());
-  }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp));
+  }, coverHtml(key, title, "DEC PDP-11/70 in the browser", stamp, VERSION));
 
   // --- page numbers in the table of contents -------------------------------
   //
