@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+
 - **Sharing a state, and the manual that explains it.** The machine-state dialog's
   Share button is now documented end to end — what the dialog asks for (title,
   description, button label, screenshot, a command that types itself after the
@@ -23,7 +24,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/FEATURES.md`, `landing/src/components/UserManual.tsx`,
   `tools/screenshots-manual.js`, `assets/images/manual/dialog-share.png`)
 
+### Changed
+
+
+- **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
+  offers the emulated Boot ROM socket as a three-way choice — `none` (the
+  machine waits after power-on), `interactive@` (the built-in loader, the `@`  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
+  most recently — from the gallery, Games, a teleport link or a manual `BOOT`
+  at the `@` prompt — directly, with no `@` prompt) — and the reboot and
+  power-off dialogs offer the same three-way select. The Boot ROM learns a
+  device preset (`macro-asm/boot.mac`, cell `bootsel`) and records the device
+  it boots in an I/O mailbox (`src/boot-mailbox.js`), so `last` needs no typed
+  command and remembers a hand-booted device too. A config saved with the old
+  boolean `autoBoot` migrates one-for-one (`false` → `none`,
+  `true` → `interactive@`), so an upgrade changes no behaviour.
+  (`src/config.js`, `src/last-boot.js`, `src/boot-mailbox.js`, `src/pdp11.js`,
+  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`,
+  `src/snapshots.js`, `macro-asm/boot.mac`, `src/bootcode.js`, `pdp11.html`;
+  pinned by `tests/config.test.js`, `tests/last-boot.test.js`,
+  `tests/boot-preset.test.js`)
+
+- **Lunar Lander's saved state now opens mid-descent.** The Games tile plays a
+  state captured with the landing already in progress — the vector scene on the
+  VT11 display with the light pen live — and its caption says so instead of
+  "ready to fly". (`states/lunar-lander.state.zst`, `index.html`,
+  `landing/src/data.ts`)
+
+- **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
+  `stepBytes`, `consoleWorkingState`, `clearConsole`, `sendBytes`, output buffer)
+  is extracted from `src/quickboot.js` into a shared `src/step-engine.js` module.
+  Both QuickBoot and Snapshots use the same engine — no code duplication.
+  (`src/step-engine.js`, `src/quickboot.js`)
+
+- **Lunar Lander moves from the guest-OS gallery to Games.** The lander is a
+  game, not a system, so its tile now lives in the Games carousel — first tile,
+  with the light-pen how-to as its description — and is gone from the
+  Instant-Run and Guest-OS galleries; the classic landing page drops its Lunar
+  Lander card to match. (`landing/src/data.ts`, `index.html`; pinned by
+  `tests/games-gallery.test.js`, `tests/os-gallery-run.test.js`)
+
+- **The screenshot (camera) button is documented.** The floating camera button —
+  bottom-left, next to Mute — now has its own row in the user manual's
+  floating-controls table (EN and RU) with a fresh close-up of the button, and
+  the page shots in which it is visible were regenerated. The diff helper keeps
+  only the shots that actually changed. (`docs/manual/controls.md`,
+  `docs/manual/ru/controls.md`, `tools/screenshots-manual.js`)
+
+- **The manual search finds the floating controls.** On the landing page's user
+  manual, a query matching a floating-control name — Magic wand, Reboot, Mute,
+  Screenshot, Fullscreen or Terminal zoom — now jumps to the controls section.
+  The names are read from the generated manual data, so they cannot drift from
+  the documentation. (`landing/src/components/UserManual.tsx`)
+
 ### Fixed
+
 
 - **Versioned state manifests:** a machine state now carries `schemaVersion` as
   a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that
@@ -92,60 +146,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   state (`?state=`) with the guest already running. One shared carousel script
   now drives all three galleries (guest OS, Instant Run, Games). (`index.html`;
   pinned by `tests/os-gallery-run.test.js`, `tests/e2e-quickboot-deeplink.js`)
-
-### Changed
-
-- **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
-  offers the emulated Boot ROM socket as a three-way choice — `none` (the
-  machine waits after power-on), `interactive@` (the built-in loader, the `@`
-  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
-  most recently — from the gallery, Games, a teleport link or a manual `BOOT`
-  at the `@` prompt — directly, with no `@` prompt) — and the reboot and
-  power-off dialogs offer the same three-way select. The Boot ROM learns a
-  device preset (`macro-asm/boot.mac`, cell `bootsel`) and records the device
-  it boots in an I/O mailbox (`src/boot-mailbox.js`), so `last` needs no typed
-  command and remembers a hand-booted device too. A config saved with the old
-  boolean `autoBoot` migrates one-for-one (`false` → `none`,
-  `true` → `interactive@`), so an upgrade changes no behaviour.
-  (`src/config.js`, `src/last-boot.js`, `src/boot-mailbox.js`, `src/pdp11.js`,
-  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`,
-  `src/snapshots.js`, `macro-asm/boot.mac`, `src/bootcode.js`, `pdp11.html`;
-  pinned by `tests/config.test.js`, `tests/last-boot.test.js`,
-  `tests/boot-preset.test.js`)
-
-- **Lunar Lander's saved state now opens mid-descent.** The Games tile plays a
-  state captured with the landing already in progress — the vector scene on the
-  VT11 display with the light pen live — and its caption says so instead of
-  "ready to fly". (`states/lunar-lander.state.zst`, `index.html`,
-  `landing/src/data.ts`)
-
-- **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
-  `stepBytes`, `consoleWorkingState`, `clearConsole`, `sendBytes`, output buffer)
-  is extracted from `src/quickboot.js` into a shared `src/step-engine.js` module.
-  Both QuickBoot and Snapshots use the same engine — no code duplication.
-  (`src/step-engine.js`, `src/quickboot.js`)
-
-- **Lunar Lander moves from the guest-OS gallery to Games.** The lander is a
-  game, not a system, so its tile now lives in the Games carousel — first tile,
-  with the light-pen how-to as its description — and is gone from the
-  Instant-Run and Guest-OS galleries; the classic landing page drops its Lunar
-  Lander card to match. (`landing/src/data.ts`, `index.html`; pinned by
-  `tests/games-gallery.test.js`, `tests/os-gallery-run.test.js`)
-
-- **The screenshot (camera) button is documented.** The floating camera button —
-  bottom-left, next to Mute — now has its own row in the user manual's
-  floating-controls table (EN and RU) with a fresh close-up of the button, and
-  the page shots in which it is visible were regenerated. The diff helper keeps
-  only the shots that actually changed. (`docs/manual/controls.md`,
-  `docs/manual/ru/controls.md`, `tools/screenshots-manual.js`)
-
-- **The manual search finds the floating controls.** On the landing page's user
-  manual, a query matching a floating-control name — Magic wand, Reboot, Mute,
-  Screenshot, Fullscreen or Terminal zoom — now jumps to the controls section.
-  The names are read from the generated manual data, so they cannot drift from
-  the documentation. (`landing/src/components/UserManual.tsx`)
-
-### Fixed
 
 - **The VT11 light pen no longer drifts by the canvas border.** The
   mouse-to-VT mapping scaled by the canvas's *border* box while the drawing
@@ -286,6 +286,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  buttons' bottom offset on every layout — desktop, narrow screen and above the
  mobile keys stack — so it occupies the gap between the left and right button
  groups instead of hovering over them. (`css/pdp11.css`)
+
 
 ## [0.3.0] - 2026-09-30
 
