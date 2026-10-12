@@ -150,6 +150,9 @@ function snapshot(page) {
             const c = document.querySelector("#page-teletype");
             return c ? c.innerText.slice(-200) : "";
         })(),
+        // The "return my configuration" offer must NOT appear during a
+        // teleport — the state is the point of the link.
+        configRestoreVisible: !!document.querySelector("#snap-config-restore-overlay.visible"),
     }));
 }
 
@@ -190,6 +193,8 @@ async function snap(page) {
                 applied, JSON.stringify(state));
             check("?state=: no failure dialog was shown",
                 state.dialogTitle === null, String(state.dialogTitle));
+            check("?state=: a teleport asks nothing about the configuration",
+                state.configRestoreVisible === false, String(state.configRestoreVisible));
             check("?state=: the machine is running the restored guest",
                 state.consoleText.length > 0, JSON.stringify(state.consoleText));
             await page.close();
@@ -277,6 +282,32 @@ async function snap(page) {
             } finally {
                 ext.server.close();
             }
+        }
+
+        // --- 6. After a teleport, a plain reload offers the config back ----
+        // A fresh page WITHOUT the localStorage-clearing hook, so the baseline
+        // saved by the teleport survives the reload.
+        {
+            const page = await browser.newPage();
+            page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
+            await page.goto(BASE + "?state=" + encodeURIComponent(STATE),
+                { waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.waitForFunction(
+                () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
+                { timeout: 60000 });
+            // Wait for the state to be applied (parameter dropped).
+            await poll(page, () => location.search.indexOf("state=") === -1, 45000);
+            // Give the state a moment to settle, then reload plain.
+            await new Promise((r) => setTimeout(r, 1000));
+            await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.waitForFunction(
+                () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
+                { timeout: 60000 });
+            await new Promise((r) => setTimeout(r, 2000));
+            const state = await snap(page);
+            check("plain reload after teleport: the config-restore offer appears",
+                state.configRestoreVisible === true, String(state.configRestoreVisible));
+            await page.close();
         }
     } finally {
         await browser.close();

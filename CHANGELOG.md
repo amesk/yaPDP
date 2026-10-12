@@ -34,15 +34,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rest — instead of only the device set. The two sound settings (`mute`, `hum`)
   are never touched: they belong to the person at the keyboard, not to the
   guest. A page reload now happens only when the device set differs (everything
-  else applies live); when a state has replaced the viewer's configuration the
-  viewer is offered their own remembered configuration back — after such a
-  reload, and before **Reboot** / **Bootstrap now!**. Returning it restores every
-  field (a further reload only when the device set differs), and a Reboot /
-  Bootstrap parked across that reload runs as soon as the page is back, so the
-  operation is not lost.
-  (`src/viewer-config.js`, `src/snapshots.js`, `src/pdp11-app.js`,
-  `src/pdp11-panel.js`, `pdp11.html`; pinned by `tests/viewer-config.test.js`,
-  `tests/snapshot-config.test.js`)
+  else applies live). A teleport asks nothing — the state is the point of the
+  link; the offer to bring the viewer's own configuration back, remembered once
+  and kept, comes later, on the operator's terms: a plain page reload, or the
+  single **Reboot** / **Bootstrap now!** dialog, which now carries that choice
+  beside the reboot it already asked about. Returning it restores every field (a
+  further reload only when the device set differs), and a Reboot / Bootstrap
+  parked across that reload runs as soon as the page is back. The live re-tune
+  reaches the page through an explicit seam (`src/config-apply.js`) rather than a
+  page global; and a system dialog's buttons stay operable even while the
+  autoload owns the machine.
+  (`src/viewer-config.js`, `src/config-apply.js`, `src/snapshots.js`,
+  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`, `pdp11.html`;
+  pinned by `tests/viewer-config.test.js`, `tests/config-apply.test.js`,
+  `tests/snapshot-config.test.js`, `tests/quickboot-input-gate.test.js`)
 
 - **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
   offers the emulated Boot ROM socket as a three-way choice — `none` (the

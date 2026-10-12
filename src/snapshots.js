@@ -30,10 +30,6 @@ var SnapshotStore = (() => {
     const SCHEMA_VERSION = (typeof StateFormat !== "undefined" &&
         StateFormat.SCHEMA_VERSION) ? StateFormat.SCHEMA_VERSION : "1.0.0";
     const PENDING_KEY = "yapdp-pending-snapshot";
-    // The operation (a reboot / a Bootstrap now!) parked across the config
-    // rollback reload: written by offerConfigRollback, consumed by
-    // pdp11-panel.js. Shared literal — both files name the same key.
-    const PENDING_REBOOT_KEY = "yapdp.pending-reboot";
     const MAX_SNAPSHOTS = 10;
     // Where the newer-snapshot warning's "Update to Latest" points.
     const LATEST_URL = "https://amesk.github.io/yaPDP";
@@ -795,12 +791,7 @@ var SnapshotStore = (() => {
                         }
                     }
                     var applied = applyStateBytes(new Uint8Array(buf), target);
-                    if (!onRestored) {
-                        return applied.then(function (r) {
-                            if (r && r.ok) maybeOfferConfigRestore();
-                            return r;
-                        });
-                    }
+                    if (!onRestored) return applied;
                     return applied.then(function (result) {
                         if (!result || !result.ok) return result;
                         return Promise.resolve(onRestored(lastStateManifest))
@@ -836,12 +827,7 @@ var SnapshotStore = (() => {
                                     });
                                 }
                             })
-                            .then(function () {
-                                // The state replaced the viewer's configuration:
-                                // offer to bring the remembered one back.
-                                maybeOfferConfigRestore();
-                                return result;
-                            });
+                            .then(function () { return result; });
                     }, function (err) {
                         return { ok: false, reason: "network", url: target,
                                  detail: String(err && err.message ? err.message : err) };
@@ -1515,11 +1501,11 @@ var SnapshotStore = (() => {
         if (typeof Config !== "undefined" && typeof Config.set === "function") {
             Config.set(patch);
         }
-        // Re-tune the live instances (zoom, glow, widths, speeds ...) so the
-        // fields that need no reload take effect at once.
-        if (typeof window !== "undefined" &&
-            typeof window.__yapdpApplyConfigLive === "function") {
-            window.__yapdpApplyConfigLive();
+        // Re-tune the live instances (zoom, glow, widths, speeds ...) through
+        // the ConfigApply seam, so the fields that need no reload take effect
+        // at once. See src/config-apply.js.
+        if (typeof ConfigApply !== "undefined" && typeof ConfigApply.applyLive === "function") {
+            ConfigApply.applyLive();
         }
     }
 
@@ -1538,13 +1524,31 @@ var SnapshotStore = (() => {
         return false;
     }
 
-    // Bring back the viewer's remembered configuration. Everything is restored:
-    // the baseline is a full config, sound settings included (they were never
-    // changed, so restoring them is a no-op in practice). A page reload happens
-    // ONLY when the device set differs — reloading re-registers the devices; a
-    // live-only difference is applied through the pdp11-app hook. Returns
-    // "reloading" when the caller must not continue (a reload is in flight),
-    // "proceed" when the caller may carry on, "none" when there was no baseline.
+    // Is there a viewer baseline that differs from the live configuration? The
+    // Reboot / Bootstrap dialog (src/pdp11-panel.js) and the post-reload offer
+    // use this to decide whether to ask about a rollback at all.
+    function configRollbackAvailable() {
+        if (typeof ViewerConfig === "undefined") return false;
+        var base = ViewerConfig.get();
+        if (!base) return false;
+        var cur = (typeof Config !== "undefined" && typeof Config.get === "function")
+            ? Config.get() : null;
+        return !!cur && configDiffers(base, cur);
+    }
+
+    // Forget the viewer's baseline: the viewer chose to keep the state's
+    // configuration, so this chain of applied states is over.
+    function clearConfigBaseline() {
+        if (typeof ViewerConfig !== "undefined") ViewerConfig.clear();
+    }
+
+    // Bring back the viewer's remembered configuration. Applies EVERY field
+    // (the baseline is a full config; the sound settings were never changed, so
+    // restoring them is a no-op). It does NOT reload: a device-set change
+    // returns "reload" and the CALLER reloads — the Reboot flow parks its
+    // operation first (src/pdp11-panel.js), and the post-reload offer reloads
+    // itself. Returns "none" (no baseline), "applied" (took effect live) or
+    // "reload" (the device set differs).
     function rollbackToBaseline() {
         if (typeof ViewerConfig === "undefined") return "none";
         var base = ViewerConfig.get();
@@ -1555,64 +1559,29 @@ var SnapshotStore = (() => {
         if (typeof Config !== "undefined" && typeof Config.set === "function") {
             Config.set(base);
         }
-        if (typeof window !== "undefined" &&
-            typeof window.__yapdpApplyConfigLive === "function") {
-            window.__yapdpApplyConfigLive();
+        if (typeof ConfigApply !== "undefined" && typeof ConfigApply.applyLive === "function") {
+            ConfigApply.applyLive();
         }
         ViewerConfig.clear();
-        if (needsReload && typeof location !== "undefined" && location.reload) {
-            // The persisted config changed behind the Config form's back:
-            // suppress the beforeunload "Reload site?" prompt.
-            if (typeof window !== "undefined") window.__allowConfigReload = true;
-            location.reload();
-            return "reloading";
-        }
-        return "proceed";
+        return needsReload ? "reload" : "applied";
     }
 
-    // Offer to bring the viewer's configuration back. `action` is the operation
-    // the caller wants to run AFTER the offer ("reboot" | "boot" | null); when
-    // "Return my configuration" needs a reload, the action is parked in
-    // sessionStorage so the operation is not lost across the reload (consumed
-    // by pdp11-panel.js). `onProceed` runs when the caller may continue — no
-    // offer at all, "Keep", or a live-only rollback (no reload).
-    function offerConfigRollback(action, onProceed) {
-        var proceed = (typeof onProceed === "function") ? onProceed : function () {};
-        if (typeof ViewerConfig === "undefined") { proceed(); return; }
-        var base = ViewerConfig.get();
-        if (!base) { proceed(); return; }
-        var cur = (typeof Config !== "undefined" && typeof Config.get === "function")
-            ? Config.get() : null;
-        if (cur && !configDiffers(base, cur)) {
-            // Nothing to offer: the state's config equals the viewer's own.
-            ViewerConfig.clear();
-            proceed();
-            return;
-        }
-        showConfigRestoreDialog(function (decision) {
-            if (decision !== "rollback") {
-                // Keep the state's configuration: this chain is over.
-                ViewerConfig.clear();
-                proceed();
-                return;
-            }
-            var result = rollbackToBaseline();
-            if (result === "reloading") {
-                if (action && typeof sessionStorage !== "undefined") {
-                    try {
-                        sessionStorage.setItem(PENDING_REBOOT_KEY, action);
-                    } catch (e) { /* ignore */ }
-                }
-                return;   // the reload resumes the operation
-            }
-            proceed();
-        });
+    // Reload the page for a configuration change, suppressing the beforeunload
+    // "Reload site?" prompt (the persisted config changed behind the form).
+    function reloadForConfig() {
+        if (typeof window !== "undefined") window.__allowConfigReload = true;
+        if (typeof location !== "undefined" && location.reload) location.reload();
     }
 
     // After a config-driven reload (a state restored): offer the viewer's
-    // configuration back. No operation to resume, so the action is null.
+    // configuration back. A standalone dialog — it never races the Reboot /
+    // Bootstrap dialog, which is raised on a click.
     function maybeOfferConfigRestore() {
-        offerConfigRollback(null, function () {});
+        if (!configRollbackAvailable()) return;
+        showConfigRestoreDialog(function (decision) {
+            if (decision !== "rollback") { clearConfigBaseline(); return; }
+            if (rollbackToBaseline() === "reload") reloadForConfig();
+        });
     }
 
     // --- "Return my configuration" dialog --------------------------------
@@ -1732,6 +1701,24 @@ var SnapshotStore = (() => {
             if (typeof sessionStorage !== "undefined") {
                 try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
             }
+            // A PLAIN load (no state is being applied): if the machine still
+            // runs a configuration imported from an earlier state, offer to
+            // return the viewer's own. This is the "I am back, and I want my
+            // machine" moment. Applying a state (a teleport link, a snapshot)
+            // handles its own branch above and never reaches here — a teleport
+            // asks NOTHING: the state is the point.
+            // A ?state= deep link is handled by QuickBoot's init (which runs
+            // before this handler), but the state application is deferred via
+            // setTimeout — it has not started yet. The URL is still in the
+            // address bar, so check for it and stand down: the state is the
+            // point, and asking about a config rollback before the state has
+            // even been applied would be wrong.
+            if (typeof QuickBoot !== "undefined" &&
+                typeof QuickBoot.stateUrlFromSearch === "function" &&
+                QuickBoot.stateUrlFromSearch(typeof location !== "undefined" ? location.search : "") !== null) {
+                return Promise.resolve(false);
+            }
+            maybeOfferConfigRestore();
             return Promise.resolve(false);
         }
 
@@ -1773,9 +1760,6 @@ var SnapshotStore = (() => {
                         stepDelayMs: 800,
                     });
                 }
-                // The state replaced the viewer's configuration: offer to bring
-                // the remembered one back (a no-op when nothing changed).
-                if (ok) maybeOfferConfigRestore();
                 return ok;
             });
         });
@@ -2610,8 +2594,12 @@ var SnapshotStore = (() => {
         captureConfig: captureConfig,
         applySnapshotConfig: applySnapshotConfig,
         configNeedsReload: configNeedsReload,
-        offerConfigRollback: offerConfigRollback,
+        // The configuration-rollback flow (see rollbackToBaseline), exposed for
+        // the Reboot / Bootstrap dialog and for tests.
+        configRollbackAvailable: configRollbackAvailable,
+        clearConfigBaseline: clearConfigBaseline,
         rollbackToBaseline: rollbackToBaseline,
+        reloadForConfig: reloadForConfig,
         configDiffers: configDiffers,
         wireUI: wireUI,
         SCHEMA_VERSION: SCHEMA_VERSION,
@@ -2627,13 +2615,6 @@ var SnapshotStore = (() => {
         escapeHtml: escapeHtml
     };
 })();
-
-// Expose the configuration-rollback offer so the panel (Reboot / Bootstrap
-// now!) can raise it before restarting the machine. Same function as
-// SnapshotStore.offerConfigRollback.
-if (typeof window !== "undefined") {
-    window.__yapdpOfferConfigRollback = SnapshotStore.offerConfigRollback;
-}
 
 // Startup: restore pending snapshot (if any) and wire UI after the DOM is
 // ready. All scripts have already executed by DOMContentLoaded; the CPU

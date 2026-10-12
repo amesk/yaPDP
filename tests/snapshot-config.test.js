@@ -6,15 +6,19 @@
  * configuration MINUS the sound settings.
  *   - captureConfig()  records everything except mute/hum;
  *   - applySnapshotConfig() applies the profile (sound untouched), remembers
- *     the viewer's configuration ONCE, and re-tunes live instances;
+ *     the viewer's configuration ONCE, and re-tunes live instances through the
+ *     ConfigApply seam (src/config-apply.js);
  *   - configNeedsReload() fires only on the device set (zoom/glow never reload);
  *   - configDiffers() ignores mute/hum;
- *   - rollbackToBaseline() returns the viewer's remembered configuration and
- *     reloads only when the device set differs.
+ *   - configRollbackAvailable()/clearConfigBaseline() gate the offer;
+ *   - rollbackToBaseline() returns the viewer's remembered configuration as
+ *     "applied" (live) or "reload" (the device set differs) — it does NOT reload
+ *     itself; reloadForConfig() does.
  *
  * Loads the REAL modules (src/config.js, src/viewer-config.js,
- * src/state-format.js, src/state-frame.js) plus the SnapshotStore IIFE into one
- * VM context, with a Map-backed localStorage and a headless (no-document) page.
+ * src/config-apply.js, src/state-format.js, src/state-frame.js) plus the
+ * SnapshotStore IIFE into one VM context, with a Map-backed localStorage and a
+ * headless (no-document) page.
  *
  * Run with:  node tests/snapshot-config.test.js
  * Exit code 0 = all tests passed, non-zero = failure.
@@ -30,6 +34,7 @@ const ROOT = path.join(__dirname, "..");
 const SNAP_PATH = path.join(ROOT, "src", "snapshots.js");
 const CONFIG_PATH = path.join(ROOT, "src", "config.js");
 const VIEWER_PATH = path.join(ROOT, "src", "viewer-config.js");
+const APPLY_PATH = path.join(ROOT, "src", "config-apply.js");
 const SF_PATH = path.join(ROOT, "src", "state-format.js");
 const FRAME_PATH = path.join(ROOT, "src", "state-frame.js");
 
@@ -70,22 +75,25 @@ function build() {
         TextEncoder, TextDecoder,
     };
     sb.localStorage = makeStorage();
-    sb.window = {
-        localStorage: sb.localStorage,
-        __yapdpApplyConfigLive: () => { state.hookCalls++; },
-    };
+    sb.window = { localStorage: sb.localStorage };
     sb.location = { reload: () => { state.reloads++; } };
     vm.createContext(sb);
-    // Order mirrors the page: config, the viewer's baseline store, then the
-    // shared state format the store delegates its bytes to.
+    // Order mirrors the page: config, the viewer's baseline store, the
+    // ConfigApply seam, then the shared state format the store delegates to.
     vm.runInContext(fs.readFileSync(CONFIG_PATH, "utf8"), sb);
     vm.runInContext(fs.readFileSync(VIEWER_PATH, "utf8"), sb);
+    vm.runInContext(fs.readFileSync(APPLY_PATH, "utf8"), sb);
     vm.runInContext(fs.readFileSync(SF_PATH, "utf8"), sb);
     vm.runInContext(fs.readFileSync(FRAME_PATH, "utf8"), sb);
+    // Stand in for pdp11-app.js: register a live applier.
+    sb.ConfigApply.register(function () { state.hookCalls++; });
     const code = extractIIFE(fs.readFileSync(SNAP_PATH, "utf8"),
         "var SnapshotStore = (() => {");
     vm.runInContext(code, sb);
-    return { sb, SS: sb.SnapshotStore, Config: sb.Config, ViewerConfig: sb.ViewerConfig, state };
+    return {
+        sb, SS: sb.SnapshotStore, Config: sb.Config,
+        ViewerConfig: sb.ViewerConfig, ConfigApply: sb.ConfigApply, state,
+    };
 }
 
 function run() {
@@ -128,7 +136,7 @@ function run() {
         assert.deepStrictEqual(plain(cur.vt52Zoom), [true, true, true]);
         assert.strictEqual(cur.mute, true, "viewer's mute untouched");
         assert.strictEqual(cur.hum, true, "viewer's hum untouched");
-        assert.ok(state.hookCalls >= 1, "live re-tune hook called");
+        assert.ok(state.hookCalls >= 1, "live re-tune applier called through ConfigApply");
 
         // The baseline is the viewer's PRE-state configuration.
         const base = ViewerConfig.get();
@@ -172,7 +180,22 @@ function run() {
         console.log("PASS configDiffers: ignores mute/hum");
     }
 
-    // ---- rollbackToBaseline: reload only on a structural change ------
+    // ---- configRollbackAvailable / clearConfigBaseline ---------------
+    {
+        const { SS, Config, ViewerConfig } = build();
+        ViewerConfig.clear();
+        assert.strictEqual(SS.configRollbackAvailable(), false, "no baseline -> not available");
+        Config.set({ consoleType: "teletype", vt52Zoom: [false, false, false] });
+        ViewerConfig.remember(Config.get());
+        assert.strictEqual(SS.configRollbackAvailable(), false, "baseline equals live -> not available");
+        Config.set({ vt52Zoom: [true, true, true] });
+        assert.strictEqual(SS.configRollbackAvailable(), true, "baseline differs -> available");
+        SS.clearConfigBaseline();
+        assert.strictEqual(SS.configRollbackAvailable(), false, "cleared -> not available");
+        console.log("PASS configRollbackAvailable / clearConfigBaseline");
+    }
+
+    // ---- rollbackToBaseline: reload decided, not performed -----------
     {
         const { SS, Config, ViewerConfig, state } = build();
         // Baseline differs structurally (console teletype vs vt52).
@@ -183,8 +206,10 @@ function run() {
         state.reloads = 0;
 
         const r1 = SS.rollbackToBaseline();
-        assert.strictEqual(r1, "reloading", "structural rollback reloads");
-        assert.strictEqual(state.reloads, 1, "one reload");
+        assert.strictEqual(r1, "reload", "structural rollback asks the caller to reload");
+        assert.strictEqual(state.reloads, 0, "rollbackToBaseline itself does not reload");
+        SS.reloadForConfig();
+        assert.strictEqual(state.reloads, 1, "reloadForConfig reloads");
         assert.strictEqual(Config.get().consoleType, "teletype", "baseline applied");
         assert.strictEqual(Config.get().printerWidth, 132);
         assert.strictEqual(ViewerConfig.get(), null, "baseline cleared");
@@ -196,10 +221,13 @@ function run() {
         state.reloads = 0;
 
         const r2 = SS.rollbackToBaseline();
-        assert.strictEqual(r2, "proceed", "live-only rollback needs no reload");
+        assert.strictEqual(r2, "applied", "live-only rollback needs no reload");
         assert.strictEqual(state.reloads, 0, "no reload");
         assert.deepStrictEqual(plain(Config.get().vt52Zoom), [false, false, false]);
-        console.log("PASS rollbackToBaseline: reload only on a device-set change");
+
+        // No baseline -> "none".
+        assert.strictEqual(SS.rollbackToBaseline(), "none");
+        console.log("PASS rollbackToBaseline: returns applied/reload/none, never reloads itself");
     }
 
     console.log("snapshot-config.test.js: all tests passed");
