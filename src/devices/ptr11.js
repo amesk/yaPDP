@@ -126,7 +126,7 @@
                 callback: (cb, code, position, address, count, options) =>
                     this.ptCallback(cb, code, position, address, count, options),
                 url: url,
-                compressed: true, // bundled tapes ship as .zst
+                compressed: false, // try raw .ptap first; .zst is tried as fallback
                 position: 0,
             };
             this.ptrcs &= ~(PTR_ERR | PTR_BUSY | PTR_GO);

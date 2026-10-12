@@ -101,6 +101,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 
+- **"Last medium" boot device loads uncompressed paper tapes correctly.** The
+  PTR11 paper-tape reader marked every tape as `compressed: true`, so a reboot
+  with `bootDevice: 'last'` after Lunar Lander (whose `lander.ptap` is raw, not
+  `.zst`) tried `media/lander.ptap.zst` first, got a 404, and the machine hung.
+  Paper tapes now try the raw file first and fall back to `.zst` — matching the
+  actual file on disk. (`src/devices/ptr11.js`, `src/iopage.js`,
+  `src/browser-machine.js`)
+
 - **Versioned state manifests:** a machine state now carries `schemaVersion` as
   a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that
   wrote it. Legacy snapshots (a bare numeric `schemaVersion` of 1) keep reading,
