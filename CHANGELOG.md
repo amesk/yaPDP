@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 
+- **User-facing failures now surface as toasts.** Real, user-relevant errors and
+  warnings — a bundled image that failed to load, a dropped state that did not
+  apply, a disk overlay that could not be restored, a fullscreen toggle that
+  failed — are now shown through the toast subsystem instead of being lost in
+  the browser console. The toast queue gained key-based deduplication, so a
+  repeated identical failure extends one toast instead of spamming.
+  (`src/toasts.js`, `src/pdp11-app.js`, `src/tauri-bundled.js`, `src/diskstore.js`,
+  `src/dragdrop.js`, `src/fullscreen.js`; pinned by `tests/toasts.test.js` and
+  `tests/toasts-adapter.test.js`)
+
 - **Sharing a state, and the manual that explains it.** The machine-state dialog's
   Share button is now documented end to end — what the dialog asks for (title,
   description, button label, screenshot, a command that types itself after the

@@ -68,6 +68,25 @@ var Toasts = (function () {
             : DEFAULTS[category];
         var now = clock.now();
 
+        // Deduplication by key: a toast with the same key already active or
+        // queued is not shown again — its deadline is simply extended. This
+        // keeps repeated failures (e.g. a dropped state that fails to apply)
+        // from spamming the user with identical toasts.
+        if (opts.key) {
+            if (current && current.key === opts.key) {
+                clock.clear(current.timer);
+                current.deadline = now + duration;
+                current.timer = clock.set(step, duration);
+                return current;
+            }
+            for (var i = 0; i < queue.length; i++) {
+                if (queue[i].key === opts.key) {
+                    queue[i].deadline = now + duration;
+                    return queue[i];
+                }
+            }
+        }
+
         // Preempt the active toast: it goes to the FRONT of the queue (stack
         // of preemptions — the most recently preempted is restored first).
         if (current) {
@@ -75,11 +94,12 @@ var Toasts = (function () {
             queue.unshift({
                 text: current.text,
                 category: current.category,
-                deadline: current.deadline
+                deadline: current.deadline,
+                key: current.key
             });
         }
 
-        current = { text: opts.text, category: category, deadline: now + duration, timer: null };
+        current = { text: opts.text, category: category, deadline: now + duration, timer: null, key: opts.key || null };
         adapter.update(current);
         adapter.show();
         current.timer = clock.set(step, duration);

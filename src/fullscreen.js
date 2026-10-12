@@ -121,6 +121,9 @@ var Fullscreen = (function () {
         btn.addEventListener("click", function () {
             toggle().then(updateUI).catch(function (err) {
                 console.warn("Fullscreen toggle failed:", err);
+                if (typeof window.__yapdpReportWarning === "function") {
+                    window.__yapdpReportWarning("Could not toggle fullscreen", "fullscreen-toggle");
+                }
             });
         });
 
@@ -148,6 +151,9 @@ var Fullscreen = (function () {
                 e.preventDefault();
                 toggle().then(updateUI).catch(function (err) {
                     console.warn("Fullscreen toggle failed:", err);
+                    if (typeof window.__yapdpReportWarning === "function") {
+                        window.__yapdpReportWarning("Could not toggle fullscreen", "fullscreen-toggle");
+                    }
                 });
             }
         });

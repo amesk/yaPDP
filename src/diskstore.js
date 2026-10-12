@@ -503,6 +503,9 @@ var DiskStore = (() => {
                 savedIndex.set(url, set);
             } catch (err) {
                 console.warn("DiskStore.restoreOverlay: failed for " + url, err);
+                if (typeof window.__yapdpReportWarning === "function") {
+                    window.__yapdpReportWarning("Could not restore disk overlay for " + url, "restore-overlay");
+                }
             }
         }
     }

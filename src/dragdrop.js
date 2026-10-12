@@ -197,6 +197,9 @@
                             if (!r || !r.ok) {
                                 console.warn("dropped state not applied:",
                                     r && r.reason);
+                                if (typeof window.__yapdpReportWarning === "function") {
+                                    window.__yapdpReportWarning("Dropped state was not applied", "state-apply-failed");
+                                }
                             }
                             if (++done === list.length) finish();
                         });

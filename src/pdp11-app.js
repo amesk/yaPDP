@@ -4343,3 +4343,22 @@ Onboarding.init();
         }
     };
 })();
+
+// User-facing error/warning reporter: modules that hit a real, user-relevant
+// failure (a bundled image that failed to load, a dropped state that did not
+// apply, a fullscreen toggle that failed) call these hooks instead of relying
+// on console alone. The Toasts subsystem owns the queue/timing/dedup; a missing
+// subsystem is a silent no-op, so the same code path serves browser and tests.
+// The optional key lets repeated identical failures extend one toast instead of
+// spamming (see toasts.js dedup).
+(function initErrorReporter() {
+    function report(category) {
+        return function (text, key) {
+            if (typeof Toasts !== "undefined" && Toasts.show) {
+                Toasts.show({ text: text, category: category, key: key });
+            }
+        };
+    }
+    window.__yapdpReportError = report("error");
+    window.__yapdpReportWarning = report("warning");
+})();
