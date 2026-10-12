@@ -126,6 +126,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   actual file on disk. (`src/devices/ptr11.js`, `src/iopage.js`,
   `src/browser-machine.js`)
 
+- **Legacy stack (?core=0) paper-tape fallback no longer crashes on
+  ReferenceError.** The `fetchBlock()` fallback path (tried when a paper tape
+  ships only as `.zst` and the raw `.ptap` probe gets a 404) referenced
+  `zstResponse`, a variable defined only in the compressed path — the fallback
+  used `got` instead. Every paper tape that exists only as `.ptap.zst`
+  (BASIC-11, ODT-11, ED-11, Lunar Lander) failed to load on the legacy stack,
+  hanging the bootstrap loader at `@BOOT PR`. (`src/iopage.js`)
+
 - **Versioned state manifests:** a machine state now carries `schemaVersion` as
   a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that
   wrote it. Legacy snapshots (a bare numeric `schemaVersion` of 1) keep reading,
