@@ -2235,6 +2235,13 @@ function initConfigForm() {
     Config.set(form);
     // Re-tune live instances; harmless if we are about to reload anyway.
     applyLive(readForm());
+    // The operator explicitly applied their own configuration — the baseline
+    // saved from a previous state is no longer relevant. Clear it so the
+    // "return my configuration" offer does not appear after the reload.
+    if (typeof SnapshotStore !== 'undefined' &&
+        typeof SnapshotStore.clearConfigBaseline === 'function') {
+      SnapshotStore.clearConfigBaseline();
+    }
     if (structuralChanged) {
       // The form now equals the saved config, so the beforeunload guard
       // (registered below) won't intercept this intentional reload.
