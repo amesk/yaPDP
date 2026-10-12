@@ -2443,7 +2443,7 @@ async function fetchBlock(controlBlock, block) {
     // Register cache for download/export
     downLoadAdd(controlBlock.url, controlBlock.cache);
 
-    return zstResponse.status;
+    return got.response.status;
 }
 
 /// --- diskIO() ---
