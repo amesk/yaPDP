@@ -347,13 +347,14 @@ var Onboarding = (function () {
         if (bootTable === null) {
             bootTable = loadBootTable(document.getElementById("guest-os-table"));
         }
-        // A visitor who arrived on a deep link (pdp11.html?boot=<device>) has
-        // already done what the hint explains: they opened the emulator, picked
-        // a guest OS and started it — the gallery tile IS the onboarding. Show
-        // nothing and record the hint as seen, so it does not appear later
-        // either; a machine that is already booting has no use for a "what is
-        // this" card, and (before the autoload yielded) the card could not even
-        // be dismissed, because the input gate swallowed every click.
+        // A visitor who arrived on a deep link (pdp11.html?boot=<device> or
+        // pdp11.html?state=<url>) has already done what the hint explains:
+        // they opened the emulator, picked a guest OS and started it — the
+        // gallery tile IS the onboarding. Show nothing and record the hint as
+        // seen, so it does not appear later either; a machine that is already
+        // booting has no use for a "what is this" card, and (before the
+        // autoload yielded) the card could not even be dismissed, because the
+        // input gate swallowed every click.
         if (typeof QuickBoot !== "undefined" &&
             typeof QuickBoot.arrivedByDeepLink === "function" &&
             QuickBoot.arrivedByDeepLink()) {
@@ -361,6 +362,24 @@ var Onboarding = (function () {
             syncHintCheckbox();
             return;
         }
+        // A ?state= deep link is the same: the visitor came for a specific
+        // machine state, not to learn what the emulator is. Suppress the
+        // onboarding even when the state is still pending (a config-driven
+        // reload has parked it in sessionStorage).
+        if (typeof location !== "undefined" && typeof location.search === "string" &&
+            /[?&]state=/.test(location.search)) {
+            markSeen(getStorage());
+            syncHintCheckbox();
+            return;
+        }
+        try {
+            if (typeof sessionStorage !== "undefined" &&
+                sessionStorage.getItem("yapdp-pending-state-url") !== null) {
+                markSeen(getStorage());
+                syncHintCheckbox();
+                return;
+            }
+        } catch (e) { /* ignore */ }
         if (shouldShowOnboarding(getStorage())) {
             show();
         }
