@@ -87,12 +87,35 @@ contract, the bridge and the write-back storage split.
 | [`src/navactivity.js`](../src/navactivity.js) | Sidebar activity lamps — `pulse()` lights a blinking green LED in the top-right corner of the matching sidebar button while the PDP-11 writes output to a console / terminal (auto-off 0.5s after the output stops); `set()` drives the Printer lamp from the LP11 busy ticker so it blinks for the whole print job |
 | [`src/panel-led.js`](../src/panel-led.js) | Panel nav-button status indicators — polls the machine power + CPU run state; the green power lamp lights while powered on, and a pause/play glyph in the button's top-left corner shows whether the CPU is halted or running (hidden while the machine is off) |
 | [`src/loading-gate.js`](../src/loading-gate.js) | Startup loading gate (issue #77) — decides when the inline first-paint overlay may be lifted. It waits for the Model 33 artwork markers, the terminal artwork markers, the first-screen webfonts and `media/manifest.json`, keeps sounds/the room photo/the images themselves loading behind it, and a 15 s ceiling lifts it regardless |
+| [`src/toasts.js`](../src/toasts.js) | Toast notifications — a DOM-independent subsystem owning the queue, the timing and the categories (`info`/`warning`/`error`). The window injects a DOM/CSS adapter; `show()` supports key-based deduplication so a repeated identical failure extends one toast instead of spamming. The UI layer exposes `window.__yapdpReportError`/`__yapdpReportWarning` (in `src/pdp11-app.js`) that modules call for user-relevant failures (see [User-facing errors](#user-facing-errors)) |
 | [`src/state-format.js`](../src/state-format.js) | The `.state` container and its versioning — magic + manifest + raw memory; `CONTAINER_VERSION` (byte layout) and `schemaVersion` (manifest semver), the legacy-number normalisation and the compatibility rule (see the [state format](STATE-FORMAT.md) deep-dive) |
 | [`src/state-frame.js`](../src/state-frame.js) | The compression FRAME around the container (zstd / gzip / bare) and the policy for which one a writer uses |
 | [`css/pdp11.css`](../css/pdp11.css) | Front panel and application styles |
 | [`css/landing.css`](../css/landing.css) | Landing-page (index.html) styles |
 | [`css/g60printer.css`](../css/g60printer.css) | Teletype printer styles — including the "SVG art layer" block: the `--tty-*` marker variables, the backdrop and the marker-anchored overlay rules |
 | [`assets/Model-33-ASR.svg`](../assets/Model-33-ASR.svg) | Model 33 ASR artwork — the console teletype cabinet used as the page backdrop. Its markers layer (`Keyboard`, `Apron`, `PuncherControl`, `PuncherTape`, `ReaderControl`, `ReaderTape`, `Paper`, `Caret`, each rect `display: none`) carries the rects the HTML controls are anchored to: the page reads them at load (`ttyMarkerVars` in `src/pdp11-app.js`) and writes them into the rig's `--tty-*` variables, so editing the artwork moves the controls (a marker rectangle carrying its own `rotate()`/`matrix()` counts as a four-point quad and is projected with a `matrix3d()`). Two layers are NOT part of the backdrop: `Foreground` is inlined (with `<defs>`, for its gradients) into `#tty-foreground`, which stacks above every overlay — that is how parts of the drawing cover the keys, the printed sheet and the tapes — while `Middle` goes into `#tty-foreground-back`, stacked BETWEEN the two hanging tapes (10 < 11 < 12), so the punched tape comes out OVER the punch tongue there while the reader tape still slips UNDER its own (layer lookup: `ttyArtLayerId`, Inkscape label first). `css/g60printer.css` keeps the same numbers as a fallback; `tests/teletype-svg-backdrop.test.js` pins parser, numbers, both layers and the never-paint rule |
+
+## User-facing errors
+
+Most `console.*` output in the emulator is **debug tracing** — CPU/MMU/UDA/disk
+traces under `DEBUG_*` flags, NXM reports, "Unknown" terminal escapes, and
+informational mount/apply logs. Those stay in the console for developers and are
+never shown to the user.
+
+A small set of **user-relevant failures** is surfaced as toasts instead of being
+lost in the console. The UI layer (`src/pdp11-app.js`) exposes two hooks:
+
+- `window.__yapdpReportError(text, key)` → `Toasts.show({ category: "error" })`
+- `window.__yapdpReportWarning(text, key)` → `Toasts.show({ category: "warning" })`
+
+Modules call these (with a `console` fallback) when a real, user-relevant
+failure happens: a bundled image that failed to load (`src/tauri-bundled.js`), a
+disk overlay that could not be restored (`src/diskstore.js`), a dropped state
+that did not apply (`src/dragdrop.js`), a fullscreen toggle that failed
+(`src/fullscreen.js`). The optional `key` feeds the toast subsystem's
+deduplication: a repeated identical failure extends one toast instead of
+spamming. A missing `Toasts` subsystem is a silent no-op, so the same code path
+serves the browser and the Node tests.
 
 ## Tests
 
