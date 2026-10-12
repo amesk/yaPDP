@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 
+- The **Boot device** select is now present in every **Reboot** / **Bootstrap
+  now!** dialog. It used to be hidden whenever the dialog was opened by the
+  configuration-rollback offer alone (a saved state whose configuration
+  differs, with the reboot confirmation off) or by **Bootstrap now!**, even
+  though the dialog still described the three-way choice.
+  (`src/pdp11-panel.js`; pinned by `tests/reboot-dialog-bootdev.test.js`)
+
 - **A machine state now carries the whole configuration — except the sound.**
   Restoring a state (a teleport link, an imported file, a snapshot) applies the
   full configuration profile it was saved with — console, user terminals, LP11

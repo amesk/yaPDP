@@ -728,7 +728,7 @@ function examineDeposit(data) {
     if (titleEl) titleEl.textContent = (action === 'boot') ? 'Bootstrap now?' : 'Reboot the machine?';
     var primary = document.getElementById('machine-action-primary');
     if (primary) primary.textContent = (action === 'boot') ? 'Bootstrap' : 'Reboot';
-    toggleDialogPart('machine-action-bootDevice-row', confirm);
+    toggleDialogPart('machine-action-bootDevice-row', true);
     toggleDialogPart('machine-action-dontask-row', confirm);
     toggleDialogPart('machine-action-return-row', rollback);
     el.classList.add('visible');
