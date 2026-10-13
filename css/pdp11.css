@@ -576,6 +576,91 @@ textarea {
     cursor: pointer;
 }
 
+.modal-close:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.split-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+}
+
+.split-btn-main {
+    /* Inherits .modal-close styles; remove the standalone border-radius so the
+       main button blends with the arrow button into one visual unit. */
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.split-btn-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2em;
+    padding: 8px 6px;
+    border: 1px solid #c8a860;
+    border-left: none;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background: #2c261c;
+    color: #ffd27f;
+    font-size: 14px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+}
+
+.split-btn-arrow:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.split-btn-arrow:hover:not(:disabled) {
+    background: #3a3224;
+}
+
+.split-btn-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    background: #2c261c;
+    border: 1px solid #c8a860;
+    border-radius: 5px;
+    min-width: 100%;
+    white-space: nowrap;
+    margin-top: 2px;
+}
+
+.split-btn-menu.visible {
+    display: block;
+}
+
+.split-btn-item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #ffd27f;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.split-btn-item:hover:not(:disabled) {
+    background: #3a3224;
+}
+
+.split-btn-item:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
 .modal-close:hover {
     background: #3a3224;
 }

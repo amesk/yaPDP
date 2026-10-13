@@ -115,6 +115,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The names are read from the generated manual data, so they cannot drift from
   the documentation. (`landing/src/components/UserManual.tsx`)
 
+- **Restoring a snapshot now comes in two flavours.** The Machine-state dialog's
+  **Load** button turned into a split button: **Load** restores the saved state
+  and hands the machine back to the keyboard at once, while the new **Load as
+  shared state** item — enabled only for snapshots that carry a guide (steps, a
+  button label or a screenshot) — replays the guided restore the same way a
+  shared-state link does. Existing callers keep the guided behaviour.
+  (`src/snapshots.js`, `css/pdp11.css`)
+
 ### Fixed
 
 
