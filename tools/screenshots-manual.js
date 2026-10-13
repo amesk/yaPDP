@@ -649,7 +649,6 @@ async function captureDialogs(browser, wants) {
     // 10. Gist dialog — opened from the Share dialog's split-button menu.
     if (wants("dialog-gist")) {
         const page = await open(CFG_TTY);
-        // Open the state dialog and save a snapshot first.
         await page.evaluate(() => {
             const btn = document.getElementById("state-btn");
             if (btn) btn.click();
@@ -660,7 +659,6 @@ async function captureDialogs(browser, wants) {
             if (save) save.click();
         });
         await sleep(1200);
-        // Select the snapshot and open the Share dialog.
         await page.evaluate(() => {
             const sel = document.getElementById("snap-select");
             if (sel && sel.options.length) {
@@ -674,7 +672,6 @@ async function captureDialogs(browser, wants) {
             if (share && !share.disabled) share.click();
         });
         await sleep(500);
-        // Open the split-button menu and click "Create GitHub Gist…"
         await page.evaluate(() => {
             const moreBtn = document.getElementById("share-create-more");
             if (moreBtn) moreBtn.click();
@@ -685,6 +682,50 @@ async function captureDialogs(browser, wants) {
             if (gistBtn) gistBtn.click();
         });
         await snap(page, "dialog-gist.png", 1200);
+    }
+
+    // 11. About GitHub PAT dialog — opened from the Gist dialog's info button.
+    if (wants("dialog-gist-about-pat")) {
+        const page = await open(CFG_TTY);
+        await page.evaluate(() => {
+            const btn = document.getElementById("state-btn");
+            if (btn) btn.click();
+        });
+        await sleep(400);
+        await page.evaluate(() => {
+            const save = document.getElementById("snap-save");
+            if (save) save.click();
+        });
+        await sleep(1200);
+        await page.evaluate(() => {
+            const sel = document.getElementById("snap-select");
+            if (sel && sel.options.length) {
+                sel.selectedIndex = sel.options.length - 1;
+                sel.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+        });
+        await sleep(300);
+        await page.evaluate(() => {
+            const share = document.getElementById("snap-share");
+            if (share && !share.disabled) share.click();
+        });
+        await sleep(500);
+        await page.evaluate(() => {
+            const moreBtn = document.getElementById("share-create-more");
+            if (moreBtn) moreBtn.click();
+        });
+        await sleep(200);
+        await page.evaluate(() => {
+            const gistBtn = document.getElementById("share-create-gist");
+            if (gistBtn) gistBtn.click();
+        });
+        await sleep(600);
+        // Click the info (i) button to open the About PAT dialog.
+        await page.evaluate(() => {
+            const infoBtn = document.getElementById("gist-pat-info");
+            if (infoBtn) infoBtn.click();
+        });
+        await snap(page, "dialog-gist-about-pat.png", 800);
     }
 }
 
@@ -800,7 +841,8 @@ async function captureVt11Lander(browser) {
             wants("dialog-snapshot-incompatible") ||
             wants("dialog-poweroff") || wants("dialog-config-leave") ||
             wants("dialog-reboot") || wants("dialog-state") ||
-            wants("dialog-share") || wants("dialog-gist")) {
+            wants("dialog-share") || wants("dialog-gist") ||
+            wants("dialog-gist-about-pat")) {
             await captureDialogs(browser, wants);
         }
         if (wants("vt11")) {

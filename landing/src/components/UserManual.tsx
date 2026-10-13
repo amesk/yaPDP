@@ -91,7 +91,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     'printer': ['lp11', 'print', 'paper feed'],
     'vt11': ['display', 'vector', 'graphics', 'lander', 'crv'],
     'storage': ['disk', 'tape', 'ptap', 'image', 'dsk', 'mount', 'unmount', 'reader', 'punch', 'drop', 'zst', 'zstd', 'export', 'write-back', 'indexeddb', 'rk', 'rl', 'rp', 'ra', 'tm'],
-    'machine-state': ['save', 'load', 'snapshot', 'state', 'restore'],
+    'machine-state': ['save', 'load', 'snapshot', 'state', 'restore', 'share', 'gist', 'github', 'pat', 'token', 'export', 'import', 'clipboard', 'envelope'],
     'config': ['settings', 'options', 'equipment', 'tabs', 'speed', 'sound'],
     'guest-oses': ['os', 'operating system', 'boot rk', 'boot rp', 'boot rl', 'unix', 'rt-11', 'rsx', 'rsts', 'bsd', 'xxdp', 'basic'],
     'controls': ['button', 'shortcut', 'indicator', 'reboot', 'mute', 'fullscreen', 'magic'],
@@ -1232,6 +1232,50 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               openImage('assets/images/manual/dialog-share.png', lang === 'en' ? 'The Share dialog: give the state a title, a description and the keys the receiver needs' : 'Диалог Share: задайте состоянию заголовок, описание и подсказку по клавишам')
             }
           />
+        </div>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The Create Shareable State button is a split-button with additional options: Copy text to clipboard, Save as text file, Share via platform, and Create GitHub Gist — which opens a dialog for creating a secret Gist on GitHub with the machine state. You need a GitHub Personal Access Token with the gist scope.'
+            : 'Кнопка Create Shareable State — это сплит-кнопка с дополнительными опциями: Copy text to clipboard, Save as text file, Share via platform и Create GitHub Gist — открывает диалог создания секретного Gist на GitHub с состоянием машины. Потребуется GitHub Personal Access Token с областью gist.'}
+        </p>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+          <img
+            src="assets/images/manual/dialog-gist.png"
+            alt="The Gist dialog"
+            className="w-full h-auto rounded cursor-pointer"
+            onClick={() =>
+              openImage('assets/images/manual/dialog-gist.png', lang === 'en' ? 'The Gist dialog: enter your GitHub token and generate a shareable link' : 'Диалог Gist: введите токен GitHub и создайте ссылку для публикации')
+            }
+          />
+          <p className="mt-1.5 text-center text-xs text-[#8a7650] italic">
+            {lang === 'en'
+              ? 'The Gist dialog: enter your GitHub token and generate a shareable link.'
+              : 'Диалог Gist: введите токен GitHub и создайте ссылку для публикации.'}
+          </p>
+        </div>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The Gist dialog provides a PAT input field (masked by default), show/hide toggle, clear saved token button, and an info button (i) that opens the About GitHub Personal Access Token dialog — explaining the security model: the PAT is used only to create a Gist via the GitHub API, is never sent anywhere else, and is stored in encrypted form in localStorage. It also provides step-by-step instructions for creating a PAT with the gist scope.'
+            : 'Диалог Gist предоставляет поле ввода PAT (скрыто по умолчанию), кнопку показать/скрыть, кнопку очистки сохранённого токена и кнопку info (i), которая открывает диалог About GitHub Personal Access Token — с объяснением модели безопасности: PAT используется только для создания Gist через GitHub API, никуда больше не отправляется и хранится в зашифрованном виде в localStorage. Диалог также содержит пошаговую инструкцию по созданию PAT с областью gist.'}
+        </p>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
+          <img
+            src="assets/images/manual/dialog-gist-about-pat.png"
+            alt="The About PAT dialog"
+            className="w-full h-auto rounded cursor-pointer"
+            onClick={() =>
+              openImage('assets/images/manual/dialog-gist-about-pat.png', lang === 'en' ? 'The About PAT dialog: security policy and PAT creation instructions' : 'Диалог About PAT: политика безопасности и инструкция по созданию PAT')
+            }
+          />
+          <p className="mt-1.5 text-center text-xs text-[#8a7650] italic">
+            {lang === 'en'
+              ? 'The About PAT dialog: security policy and PAT creation instructions.'
+              : 'Диалог About PAT: политика безопасности и инструкция по созданию PAT.'}
+          </p>
         </div>
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
