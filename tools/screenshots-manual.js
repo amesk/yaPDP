@@ -645,6 +645,47 @@ async function captureDialogs(browser, wants) {
         });
         await snap(page, "dialog-share.png", 900);
     }
+
+    // 10. Gist dialog — opened from the Share dialog's split-button menu.
+    if (wants("dialog-gist")) {
+        const page = await open(CFG_TTY);
+        // Open the state dialog and save a snapshot first.
+        await page.evaluate(() => {
+            const btn = document.getElementById("state-btn");
+            if (btn) btn.click();
+        });
+        await sleep(400);
+        await page.evaluate(() => {
+            const save = document.getElementById("snap-save");
+            if (save) save.click();
+        });
+        await sleep(1200);
+        // Select the snapshot and open the Share dialog.
+        await page.evaluate(() => {
+            const sel = document.getElementById("snap-select");
+            if (sel && sel.options.length) {
+                sel.selectedIndex = sel.options.length - 1;
+                sel.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+        });
+        await sleep(300);
+        await page.evaluate(() => {
+            const share = document.getElementById("snap-share");
+            if (share && !share.disabled) share.click();
+        });
+        await sleep(500);
+        // Open the split-button menu and click "Create GitHub Gist…"
+        await page.evaluate(() => {
+            const moreBtn = document.getElementById("share-create-more");
+            if (moreBtn) moreBtn.click();
+        });
+        await sleep(200);
+        await page.evaluate(() => {
+            const gistBtn = document.getElementById("share-create-gist");
+            if (gistBtn) gistBtn.click();
+        });
+        await snap(page, "dialog-gist.png", 1200);
+    }
 }
 
 // Capture the VT11 Display page with Lunar Lander running. The quick-boot
@@ -759,7 +800,7 @@ async function captureVt11Lander(browser) {
             wants("dialog-snapshot-incompatible") ||
             wants("dialog-poweroff") || wants("dialog-config-leave") ||
             wants("dialog-reboot") || wants("dialog-state") ||
-            wants("dialog-share")) {
+            wants("dialog-share") || wants("dialog-gist")) {
             await captureDialogs(browser, wants);
         }
         if (wants("vt11")) {
