@@ -2858,16 +2858,30 @@ var SnapshotStore = (() => {
                 '<span class="modal-title">Share via GitHub Gist</span>' +
                 '<p class="modal-intro">Create a <strong>secret</strong> Gist on GitHub with the machine state.</p>' +
                 '<label class="modal-field">GitHub Personal Access Token (gist scope)' +
-                    '<div style="display:flex;align-items:center;gap:6px">' +
+                    '<div style="display:flex;align-items:stretch;gap:6px">' +
                         '<input type="password" class="modal-input" id="gist-pat-input" ' +
                             'placeholder="ghp_... or github_pat_..." autocomplete="off" spellcheck="false" ' +
                             'style="flex:1;font-family:monospace" value="' + escapeHtml(savedPat) + '">' +
                         '<button type="button" id="gist-pat-toggle" class="modal-close" ' +
-                            'style="padding:8px 10px;min-width:auto;font-size:16px" title="Show/hide token">&#9679;</button>' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Show/hide token">' +
+                            '<svg viewBox="0 0 20 14" width="20" height="14" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                                '<ellipse cx="10" cy="7" rx="8" ry="5"/>' +
+                                '<circle cx="10" cy="7" r="2.5" fill="currentColor"/>' +
+                                '<circle cx="10" cy="7" r="1" fill="#c8a860"/>' +
+                            '</svg></button>' +
                         '<button type="button" id="gist-pat-forget" class="modal-close" ' +
-                            'style="padding:8px 10px;min-width:auto;font-size:16px" title="Clear saved token">&#10005;</button>' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Clear saved token">' +
+                            '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                                '<rect x="2" y="2" width="12" height="10" rx="2"/>' +
+                                '<path d="M4 14 L8 10 L12 14" stroke="currentColor" fill="none"/>' +
+                                '<circle cx="8" cy="4" r="1.5" fill="currentColor"/>' +
+                            '</svg></button>' +
                         '<button type="button" id="gist-pat-info" class="modal-close" ' +
-                            'style="padding:8px 12px;min-width:auto;border-radius:50%;font-size:14px;font-weight:bold;font-style:italic" title="About token">i</button>' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="About token">' +
+                            '<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                                '<circle cx="9" cy="9" r="8"/>' +
+                                '<text x="9" y="13" text-anchor="middle" font-size="13" font-weight="bold" fill="currentColor">i</text>' +
+                            '</svg></button>' +
                     '</div>' +
                 '</label>' +
                 '<div class="modal-actions">' +
