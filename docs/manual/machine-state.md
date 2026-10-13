@@ -66,6 +66,15 @@ The **Create Shareable State** button is a split-button with additional options:
   - A **Generate** button that posts the state to GitHub and returns a shareable link.
   - The generated link can be **copied**, **tested** in a new tab, or **shared** via the platform.
 
+  Clicking the **info** button (i) opens the **About GitHub Personal Access Token** dialog,
+  which explains the security model: the PAT is used only to create a Gist via the GitHub
+  API, is never sent anywhere else, and is stored in encrypted form in localStorage. It
+  also provides step-by-step instructions for creating a PAT with the `gist` scope.
+
+  ![The About PAT dialog](assets/images/manual/dialog-gist-about-pat.png){.shot}
+
+  The About PAT dialog: security policy and PAT creation instructions.{.shot-caption}
+
 A **Cancel** button is placed separately from the action buttons.
 
 Host that file anywhere reachable by a URL, then send the link. Two things decide whether it works:
