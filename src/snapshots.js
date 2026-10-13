@@ -2863,25 +2863,17 @@ var SnapshotStore = (() => {
                             'placeholder="ghp_... or github_pat_..." autocomplete="off" spellcheck="false" ' +
                             'style="flex:1;font-family:monospace" value="' + escapeHtml(savedPat) + '">' +
                         '<button type="button" id="gist-pat-toggle" class="modal-close" ' +
-                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Show/hide token">' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Show token">' +
                             '<svg viewBox="0 0 20 14" width="20" height="14" fill="none" stroke="currentColor" stroke-width="1.5">' +
                                 '<ellipse cx="10" cy="7" rx="8" ry="5"/>' +
                                 '<circle cx="10" cy="7" r="2.5" fill="currentColor"/>' +
                                 '<circle cx="10" cy="7" r="1" fill="#c8a860"/>' +
                             '</svg></button>' +
                         '<button type="button" id="gist-pat-forget" class="modal-close" ' +
-                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Clear saved token">' +
-                            '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                                '<rect x="2" y="2" width="12" height="10" rx="2"/>' +
-                                '<path d="M4 14 L8 10 L12 14" stroke="currentColor" fill="none"/>' +
-                                '<circle cx="8" cy="4" r="1.5" fill="currentColor"/>' +
-                            '</svg></button>' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1" title="Clear saved token">' +
+                            '&#10005;</button>' +
                         '<button type="button" id="gist-pat-info" class="modal-close" ' +
-                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="About token">' +
-                            '<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">' +
-                                '<circle cx="9" cy="9" r="8"/>' +
-                                '<text x="9" y="13" text-anchor="middle" font-size="13" font-weight="bold" fill="currentColor">i</text>' +
-                            '</svg></button>' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:16px;font-weight:bold;font-style:italic;line-height:1" title="About token">i</button>' +
                     '</div>' +
                 '</label>' +
                 '<div class="modal-actions">' +
@@ -2894,7 +2886,11 @@ var SnapshotStore = (() => {
                             '<input type="text" class="modal-input" id="gist-result-input" readonly ' +
                                 'style="flex:1;user-select:all;font-family:monospace" autocomplete="off" spellcheck="false">' +
                             '<button type="button" id="gist-copy-btn" class="modal-close" ' +
-                                'style="padding:8px 10px;min-width:auto" title="Copy to clipboard">c</button>' +
+                                'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Copy to clipboard">' +
+                                '<svg viewBox="0 0 16 18" width="16" height="18" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                                    '<rect x="3" y="1" width="10" height="13" rx="2"/>' +
+                                    '<rect x="1" y="3" width="10" height="13" rx="2" fill="none"/>' +
+                                '</svg></button>' +
                         '</div>' +
                     '</label>' +
                     '<div class="modal-actions">' +
@@ -2904,8 +2900,8 @@ var SnapshotStore = (() => {
                 '</div>' +
                 '<div class="modal-actions" id="gist-actions-bottom">' +
                     '<button type="button" class="modal-close" id="gist-share-btn" style="display:none">Share via platform</button>' +
-                    '<a href="https://gist.github.com" target="_blank" class="modal-close" ' +
-                        'id="gist-open-link" style="text-decoration:none;display:inline-block;box-sizing:border-box">Open GitHub Gist</a>' +
+                    '<button type="button" class="modal-close" ' +
+                        'id="gist-open-link" style="display:none">Open GitHub Gist</button>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Close</button>' +
                 '</div>' +
             '</div>';
@@ -2938,11 +2934,12 @@ var SnapshotStore = (() => {
             var c2 = document.getElementById("gist-copy-btn");
             var s2 = document.getElementById("gist-share-btn");
 
-            // PAT toggle: show/hide.
+            // PAT toggle: show/hide.  Keep the SVG eye icon in both states;
+            // only the tooltip and the input type change.
             if (t2 && p2) {
                 t2.addEventListener("click", function () {
                     p2.type = (p2.type === "password") ? "text" : "password";
-                    t2.textContent = (p2.type === "password") ? "*" : "#";
+                    t2.title = (p2.type === "password") ? "Show token" : "Hide token";
                 });
             }
 
@@ -3034,11 +3031,12 @@ var SnapshotStore = (() => {
                         var link = pageUrl + "?state=" + encodeURIComponent(gu);
                         ri2.value = link;
                         r2.style.display = "";
-                        // Update the Open GitHub Gist link to point to the actual Gist.
+                        // Update the Open GitHub Gist button to open the actual Gist.
                         var gistPageUrl = data.html_url || "";
                         var openLink = document.getElementById("gist-open-link");
                         if (openLink && gistPageUrl) {
-                            openLink.href = gistPageUrl;
+                            openLink.style.display = "";
+                            openLink.onclick = function () { window.open(gistPageUrl, "_blank"); };
                         }
                         var sb = document.getElementById("gist-share-btn");
                         if (sb) sb.style.display = "";
