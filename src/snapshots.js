@@ -100,6 +100,7 @@ var SnapshotStore = (() => {
                             memBytes: v.memBytes || 0,
                             hasSteps: v.steps && Array.isArray(v.steps) && v.steps.length > 0,
                             stepsMessage: v.stepsMessage || null,
+                            hasGuide: !!(v.steps || v.stepsMessage || v.buttonLabel || v.screenshot),
                         };
                     });
                     items.sort(function (a, b) { return a.createdAt - b.createdAt; });
@@ -1351,6 +1352,8 @@ var SnapshotStore = (() => {
                         overlay: deserializeOverlay(manifest.overlay),
                         steps: manifest.steps || null,
                         stepsMessage: manifest.stepsMessage || null,
+                        buttonLabel: manifest.buttonLabel || null,
+                        screenshot: manifest.screenshot || null,
                         cpuBytes: 0,
                         memBytes: mem.data.byteLength || 0,
                     };
@@ -1403,7 +1406,8 @@ var SnapshotStore = (() => {
         });
     }
 
-    function load(id) {
+    function load(id, mode) {
+        mode = mode || "shared";   // backward compat: existing callers get guided UX
         try {
             localStorage.setItem(PENDING_KEY, id);
             // A restore reload must NOT flush the write-back overlay on the
@@ -1414,6 +1418,7 @@ var SnapshotStore = (() => {
             // once the restore completes in init().
             if (typeof sessionStorage !== "undefined") {
                 sessionStorage.setItem("yapdp.restore-pending", "1");
+                sessionStorage.setItem("yapdp.load-mode", mode);
                 // Clear any stale ?state= pending URL from a previous deep-link
                 // attempt — it would otherwise be handled by init() BEFORE the
                 // snapshot, causing the wrong state to be applied (or a failure
@@ -1428,6 +1433,27 @@ var SnapshotStore = (() => {
         // — the single reload boots with the right devices, and init() can
         // restore directly. applySnapshotConfig() no-ops on a missing snapshot.
         return dbGet(id).then(function (snap) {
+            // Persist steps metadata across reload for "shared" mode.
+            if (mode === "shared" && snap && typeof sessionStorage !== "undefined") {
+                try {
+                    if (snap.steps) {
+                        sessionStorage.setItem("yapdp.state-steps",
+                            JSON.stringify(snap.steps));
+                    }
+                    if (snap.stepsMessage) {
+                        sessionStorage.setItem("yapdp.state-steps-message",
+                            snap.stepsMessage);
+                    }
+                    if (snap.buttonLabel) {
+                        sessionStorage.setItem("yapdp.state-button-label",
+                            snap.buttonLabel);
+                    }
+                    if (snap.screenshot) {
+                        sessionStorage.setItem("yapdp.state-screenshot",
+                            snap.screenshot);
+                    }
+                } catch (e) { /* ignore */ }
+            }
             applySnapshotConfig(snap);
             if (typeof location !== "undefined" && location.reload) {
                 // applySnapshotConfig() just rewrote the persisted config
@@ -1753,12 +1779,92 @@ var SnapshotStore = (() => {
                 if (typeof sessionStorage !== "undefined") {
                     try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
                 }
-                if (ok && snap.steps && Array.isArray(snap.steps) && snap.steps.length > 0) {
-                    StepEngine.runSteps(snap.steps, {
-                        sendBytes: StepEngine.sendBytes,
-                        outputContains: StepEngine.outputContains,
-                        stepDelayMs: 800,
-                    });
+                // Read the load mode persisted by load() before the reload.
+                // "plain" → just restore, skip steps, hand control to the user.
+                // "shared" → show the preparing balloon with steps info,
+                //            wait for the OK button, then run steps.
+                var loadMode = "shared";
+                if (typeof sessionStorage !== "undefined") {
+                    try { loadMode = sessionStorage.getItem("yapdp.load-mode") || "shared"; } catch (e) { /* ignore */ }
+                }
+                if (ok && loadMode === "shared") {
+                    // Read steps metadata persisted by load() across the reload.
+                    var steps = snap.steps;
+                    var stepsMessage = snap.stepsMessage || null;
+                    var buttonLabel = snap.buttonLabel || null;
+                    if (typeof sessionStorage !== "undefined") {
+                        try {
+                            var saved = sessionStorage.getItem("yapdp.state-steps");
+                            if (saved) { steps = JSON.parse(saved); }
+                        } catch (e) { /* ignore */ }
+                        try {
+                            var savedMsg = sessionStorage.getItem("yapdp.state-steps-message");
+                            if (savedMsg) { stepsMessage = savedMsg; }
+                        } catch (e) { /* ignore */ }
+                        try {
+                            var savedBtn = sessionStorage.getItem("yapdp.state-button-label");
+                            if (savedBtn) { buttonLabel = savedBtn; }
+                        } catch (e) { /* ignore */ }
+                    }
+                    var hasSteps = !!(steps && Array.isArray(steps) && steps.length > 0);
+                    // Read screenshot persisted by load() across the reload.
+                    var screenshotUrl = null;
+                    if (typeof sessionStorage !== "undefined") {
+                        try {
+                            var savedSs = sessionStorage.getItem("yapdp.state-screenshot");
+                            if (savedSs) { screenshotUrl = savedSs; }
+                        } catch (e) { /* ignore */ }
+                    }
+                    // Show the preparing balloon via QuickBoot (no code dup).
+                    // Falls back to running steps directly when QuickBoot is absent.
+                    if (typeof QuickBoot !== "undefined" &&
+                        typeof QuickBoot.showPreparing === "function") {
+                        var prepPromise = QuickBoot.showPreparing(
+                            "Restoring the machine state\u2026",
+                            stepsMessage, hasSteps, buttonLabel);
+                        // Show the screenshot preview if the state carries one.
+                        if (screenshotUrl) {
+                            var screenshotImg = document.getElementById("quick-boot-preparing-screenshot");
+                            if (screenshotImg) {
+                                screenshotImg.src = screenshotUrl;
+                                screenshotImg.style.display = "block";
+                            }
+                        }
+                        if (hasSteps) {
+                            prepPromise.then(function () {
+                                StepEngine.runSteps(steps, {
+                                    sendBytes: StepEngine.sendBytes,
+                                    outputContains: StepEngine.outputContains,
+                                    stepDelayMs: 800,
+                                    onDone: function () {
+                                        if (typeof QuickBoot !== "undefined" &&
+                                            typeof QuickBoot.hidePreparing === "function") {
+                                            QuickBoot.hidePreparing();
+                                        }
+                                    },
+                                });
+                            });
+                        } else {
+                            // No steps — hide the balloon after the OK click.
+                            prepPromise.then(function () {
+                                if (typeof QuickBoot !== "undefined" &&
+                                    typeof QuickBoot.hidePreparing === "function") {
+                                    QuickBoot.hidePreparing();
+                                }
+                            });
+                        }
+                    } else if (hasSteps) {
+                        // Fallback: no QuickBoot — run steps directly.
+                        StepEngine.runSteps(steps, {
+                            sendBytes: StepEngine.sendBytes,
+                            outputContains: StepEngine.outputContains,
+                            stepDelayMs: 800,
+                        });
+                    }
+                }
+                // Clean up the load-mode marker regardless of mode.
+                if (typeof sessionStorage !== "undefined") {
+                    try { sessionStorage.removeItem("yapdp.load-mode"); } catch (e) { /* ignore */ }
                 }
                 return ok;
             });
@@ -1776,6 +1882,8 @@ var SnapshotStore = (() => {
         const select = document.getElementById("snap-select");
         if (!select) return;
         const loadBtn = document.getElementById("snap-load");
+        const loadMoreBtn = document.getElementById("snap-load-more");
+        const loadSharedBtn = document.getElementById("snap-load-shared");
         const exportBtn = document.getElementById("snap-export");
         const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
@@ -1798,6 +1906,7 @@ var SnapshotStore = (() => {
                     // Keep the bare name for the rename dialog prefill —
                     // the visible label also carries the capture size.
                     opt.dataset.name = it.name;
+                    opt.dataset.hasGuide = it.hasGuide ? "1" : "";
                     var label = it.name + "  (" + fmtSize(it.memBytes) + ")";
                     if (it.hasSteps) {
                         label += "  \u21E8 " + (it.stepsMessage || it.steps.length + " steps");
@@ -1815,8 +1924,16 @@ var SnapshotStore = (() => {
             }
 
             const hasSelection = !!select.value;
+            // Determine if the selected snapshot has guide metadata.
+            var hasGuide = false;
+            if (hasSelection) {
+                var opt = select.options[select.selectedIndex];
+                hasGuide = opt && opt.dataset && opt.dataset.hasGuide === "1";
+            }
             select.disabled = items.length === 0;
             if (loadBtn) loadBtn.disabled = !hasSelection;
+            if (loadMoreBtn) loadMoreBtn.disabled = !hasSelection;
+            if (loadSharedBtn) loadSharedBtn.disabled = !hasSelection || !hasGuide;
             if (exportBtn) exportBtn.disabled = !hasSelection;
             if (renameBtn) renameBtn.disabled = !hasSelection;
             if (shareBtn) shareBtn.disabled = !hasSelection;
@@ -2201,11 +2318,17 @@ var SnapshotStore = (() => {
                     '<option value="">--no snapshots--</option>' +
                 '</select>' +
                 '<div class="modal-actions">' +
-                    '<button type="button" id="snap-load" class="modal-close" disabled>Load</button>' +
+                    '<div class="split-btn">' +
+                        '<button type="button" id="snap-load" class="modal-close split-btn-main" disabled>Load</button>' +
+                        '<button type="button" id="snap-load-more" class="split-btn-arrow" disabled aria-label="More load options">&#9662;</button>' +
+                        '<div class="split-btn-menu" id="snap-load-menu">' +
+                            '<button type="button" id="snap-load-shared" class="split-btn-item" disabled>Load as shared state</button>' +
+                        '</div>' +
+                    '</div>' +
                     '<button type="button" id="snap-export" class="modal-close" disabled>Export</button>' +
                     '<button type="button" id="snap-share" class="modal-close" disabled>Share</button>' +
                     '<input type="file" id="snap-import-input" accept=".state.zst,.state" style="display:none">' +
-                    '<button type="button" class="modal-close" id="snap-import">Import</button>' +            
+                    '<button type="button" class="modal-close" id="snap-import">Import</button>' +
                 '</div>' +
                 '<div class="modal-actions">' +
                     '<button type="button" id="snap-rename" class="modal-close" disabled>Rename</button>' +
@@ -2256,6 +2379,9 @@ var SnapshotStore = (() => {
 
         const saveBtn = document.getElementById("snap-save");
         const loadBtn = document.getElementById("snap-load");
+        const loadMoreBtn = document.getElementById("snap-load-more");
+        const loadSharedBtn = document.getElementById("snap-load-shared");
+        const loadMenu = document.getElementById("snap-load-menu");
         const exportBtn = document.getElementById("snap-export");
         const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
@@ -2285,7 +2411,37 @@ var SnapshotStore = (() => {
                         "If the snapshot was saved with a different hardware configuration " +
                         "(console type, printer, terminals, VT11), it is applied automatically.",
                     confirmLabel: "Restore",
-                    onConfirm: function () { load(select.value); }
+                    onConfirm: function () { load(select.value, "plain"); }
+                });
+            });
+        }
+        // Split-button: toggle the dropdown menu.
+        if (loadMoreBtn && loadMenu) {
+            loadMoreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                loadMenu.classList.toggle("visible");
+            });
+            // Close the menu when clicking outside.
+            document.addEventListener("click", function (e) {
+                if (!loadMenu.contains(e.target) && e.target !== loadMoreBtn) {
+                    loadMenu.classList.remove("visible");
+                }
+            });
+        }
+        // Split-button: "Load as shared state" — guided restore with steps.
+        if (loadSharedBtn) {
+            loadSharedBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                // Close the dropdown.
+                if (loadMenu) loadMenu.classList.remove("visible");
+                showConfirmModal({
+                    title: "Restore snapshot?",
+                    intro: "The current machine state will be lost. The machine — including " +
+                        "disk writes made after the snapshot — rolls back to the saved state. " +
+                        "If the snapshot was saved with a different hardware configuration " +
+                        "(console type, printer, terminals, VT11), it is applied automatically.",
+                    confirmLabel: "Restore",
+                    onConfirm: function () { load(select.value, "shared"); }
                 });
             });
         }
