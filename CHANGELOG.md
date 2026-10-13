@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Text envelope format for sharing states via GitHub Gist.** A new
+  `yapdp-text-envelope-v1` format wraps a `.state.zst` file in base64 text
+  that can be pasted into any text pastebin. The envelope is handled by
+  [`src/state-envelope.js`](src/state-envelope.js), shared between browser
+  and Node tools. (`docs/STATE-FORMAT.md`, `src/state-envelope.js`)
+
+- **Import/Export split-buttons.** The Import and Export buttons in the
+  Machine-state dialog are now split-buttons. Import offers file picker,
+  clipboard import, and URL import with auto-detection of binary vs text
+  envelope. Export offers `.state.zst` download, text file save, and
+  clipboard copy. (`src/snapshots.js`)
+
+- **Share dialog extended with text and Gist output.** The "Create Shareable
+  State" button in the Share dialog is now a split-button offering: download
+  `.state.zst`, copy text envelope to clipboard, save as text file, and
+  create a GitHub Gist (opens a helper dialog with instructions, URL input,
+  and a share-link generator). (`src/snapshots.js`)
 
 - **User-facing failures now surface as toasts.** Real, user-relevant errors and
   warnings — a bundled image that failed to load, a dropped state that did not
@@ -125,6 +142,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Share-dialog screenshot paste now works.** The "Paste or click to add a
+  screenshot" field in the Share-snapshot dialog accepts Ctrl+V from the native
+  clipboard (e.g. an image copied from mspaint). The global keyboard handler no
+  longer intercepts Ctrl+V when a modal overlay is visible, and the paste
+  handler reads the clipboard directly when the paste event does not fire on
+  non-editable elements. (`src/snapshots.js`, `src/pdp11-app.js`)
 
 - **"Last medium" boot device loads uncompressed paper tapes correctly.** The
   PTR11 paper-tape reader marked every tape as `compressed: true`, so a reboot

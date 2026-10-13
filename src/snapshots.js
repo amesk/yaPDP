@@ -728,6 +728,22 @@ var SnapshotStore = (() => {
                     return { ok: false, reason: "too-large", url: target,
                              size: buf.byteLength };
                 }
+                // The fetched bytes may be a text envelope (GitHub Gist raw URL)
+                // or a binary .state container. Auto-detect and decode.
+                var raw = new Uint8Array(buf);
+                var text = null;
+                try {
+                    text = new TextDecoder("utf-8").decode(raw);
+                } catch (e) { /* not valid UTF-8, treat as binary */ }
+                var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                if (text && env && env.isEnvelope(text)) {
+                    var decoded = env.decode(text);
+                    if (decoded) {
+                        raw = decoded;
+                    } else {
+                        return { ok: false, reason: "not-a-state", url: target };
+                    }
+                }
                 // The state's OWN device set is applied unconditionally — no
                 // comparison, no question asked. A state is a whole machine,
                 // and a machine restored onto a different device set is not
@@ -745,7 +761,7 @@ var SnapshotStore = (() => {
                 // export, and therefore every shared state — goes through the
                 // platform decoder. peekManifest() returns the manifest or a
                 // Promise for it, and this is the one place that cares which.
-                var peeked = peekManifest(new Uint8Array(buf));
+                var peeked = peekManifest(raw);
                 if (peeked && typeof peeked.then === "function") {
                     return peeked.then(finishLoad, function () { return finishLoad(null); });
                 }
@@ -791,7 +807,7 @@ var SnapshotStore = (() => {
                             return { ok: true, reloading: true, url: target };
                         }
                     }
-                    var applied = applyStateBytes(new Uint8Array(buf), target);
+                    var applied = applyStateBytes(raw, target);
                     if (!onRestored) return applied;
                     return applied.then(function (result) {
                         if (!result || !result.ok) return result;
@@ -1672,14 +1688,14 @@ var SnapshotStore = (() => {
         rollbackBtn.type = "button";
         rollbackBtn.className = "modal-close";
         rollbackBtn.setAttribute("data-snap-action", "rollback");
-        rollbackBtn.textContent = "Return my configuration";
+        rollbackBtn.textContent = "Reset";
         box.appendChild(rollbackBtn);
 
         var keepBtn = document.createElement("button");
         keepBtn.type = "button";
         keepBtn.className = "modal-close";
         keepBtn.setAttribute("data-snap-action", "keep");
-        keepBtn.textContent = "Keep the state's configuration";
+        keepBtn.textContent = "Keep";
         box.appendChild(keepBtn);
 
         __snapConfigRestoreModal.innerHTML = "";
@@ -1935,6 +1951,11 @@ var SnapshotStore = (() => {
             if (loadMoreBtn) loadMoreBtn.disabled = !hasSelection;
             if (loadSharedBtn) loadSharedBtn.disabled = !hasSelection || !hasGuide;
             if (exportBtn) exportBtn.disabled = !hasSelection;
+            // Enable the export dropdown items (text file, clipboard) too.
+            var exportTextBtn = document.getElementById("snap-export-text");
+            var exportClipboardBtn = document.getElementById("snap-export-clipboard");
+            if (exportTextBtn) exportTextBtn.disabled = !hasSelection;
+            if (exportClipboardBtn) exportClipboardBtn.disabled = !hasSelection;
             if (renameBtn) renameBtn.disabled = !hasSelection;
             if (shareBtn) shareBtn.disabled = !hasSelection;
             if (deleteBtn) deleteBtn.disabled = !hasSelection;
@@ -2256,12 +2277,13 @@ var SnapshotStore = (() => {
         var safeValue = String(opts.value == null ? "" : opts.value)
             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        var maxlen = (opts.maxlength && opts.maxlength > 0) ? opts.maxlength : 64;
         __snapModal.innerHTML =
             '<div class="modal-box">' +
                 '<span class="modal-title">' + opts.title + '</span>' +
                 '<p class="modal-intro">' + opts.intro + '</p>' +
                 '<input type="text" class="modal-input" id="snap-prompt-input" ' +
-                    'value="' + safeValue + '" maxlength="64" autocomplete="off" spellcheck="false">' +
+                    'value="' + safeValue + '" maxlength="' + maxlen + '" autocomplete="off" spellcheck="false">' +
                 '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
                 '<button type="button" class="modal-close" data-snap-action="confirm">' + opts.confirmLabel + '</button>' +
             '</div>';
@@ -2325,10 +2347,24 @@ var SnapshotStore = (() => {
                             '<button type="button" id="snap-load-shared" class="split-btn-item" disabled>Load as shared state</button>' +
                         '</div>' +
                     '</div>' +
-                    '<button type="button" id="snap-export" class="modal-close" disabled>Export</button>' +
+                    '<div class="split-btn">' +
+                        '<button type="button" id="snap-export" class="modal-close split-btn-main" disabled>Export</button>' +
+                        '<button type="button" id="snap-export-more" class="split-btn-arrow" disabled aria-label="More export options">&#9662;</button>' +
+                        '<div class="split-btn-menu" id="snap-export-menu">' +
+                            '<button type="button" id="snap-export-text" class="split-btn-item" disabled>Save as text file</button>' +
+                            '<button type="button" id="snap-export-clipboard" class="split-btn-item" disabled>Copy text to clipboard</button>' +
+                        '</div>' +
+                    '</div>' +
                     '<button type="button" id="snap-share" class="modal-close" disabled>Share</button>' +
-                    '<input type="file" id="snap-import-input" accept=".state.zst,.state" style="display:none">' +
-                    '<button type="button" class="modal-close" id="snap-import">Import</button>' +
+                    '<input type="file" id="snap-import-input" accept=".state.zst,.state,.txt" style="display:none">' +
+                    '<div class="split-btn">' +
+                        '<button type="button" class="modal-close split-btn-main" id="snap-import">Import</button>' +
+                        '<button type="button" id="snap-import-more" class="split-btn-arrow" aria-label="More import options">&#9662;</button>' +
+                        '<div class="split-btn-menu" id="snap-import-menu">' +
+                            '<button type="button" id="snap-import-clipboard" class="split-btn-item">Import from clipboard</button>' +
+                            '<button type="button" id="snap-import-url" class="split-btn-item">Import from URL</button>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="modal-actions">' +
                     '<button type="button" id="snap-rename" class="modal-close" disabled>Rename</button>' +
@@ -2383,11 +2419,19 @@ var SnapshotStore = (() => {
         const loadSharedBtn = document.getElementById("snap-load-shared");
         const loadMenu = document.getElementById("snap-load-menu");
         const exportBtn = document.getElementById("snap-export");
+        const exportMoreBtn = document.getElementById("snap-export-more");
+        const exportMenu = document.getElementById("snap-export-menu");
+        const exportTextBtn = document.getElementById("snap-export-text");
+        const exportClipboardBtn = document.getElementById("snap-export-clipboard");
         const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
         const select = document.getElementById("snap-select");
         const importBtn = document.getElementById("snap-import");
+        const importMoreBtn = document.getElementById("snap-import-more");
+        const importMenu = document.getElementById("snap-import-menu");
+        const importClipboardBtn = document.getElementById("snap-import-clipboard");
+        const importUrlBtn = document.getElementById("snap-import-url");
         const importInput = document.getElementById("snap-import-input");
 
         if (saveBtn) {
@@ -2445,6 +2489,7 @@ var SnapshotStore = (() => {
                 });
             });
         }
+        // Export split-button: main action — download .state.zst
         if (exportBtn) {
             exportBtn.addEventListener("click", function () {
                 if (!select || !select.value) return;
@@ -2455,14 +2500,31 @@ var SnapshotStore = (() => {
                     var opt = select.options[select.selectedIndex];
                     var name = sanitizeFilename(opt && opt.dataset ? (opt.dataset.name || "snapshot") : "snapshot")
                         + ".state.zst";
-                    var blob = new Blob([bytes], { type: "application/octet-stream" });
-                    var url = URL.createObjectURL(blob);
-                    var a = document.createElement("a");
-                    a.href = url;
-                    a.download = name;
-                    a.click();
-                    URL.revokeObjectURL(url);
+                    downloadBytes(bytes, name, "application/octet-stream");
                 });
+            });
+        }
+        // Export split-button: toggle dropdown.
+        if (exportMoreBtn && exportMenu) {
+            exportMoreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                exportMenu.classList.toggle("visible");
+            });
+        }
+        // Export split-button: save as text envelope file.
+        if (exportTextBtn) {
+            exportTextBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                if (exportMenu) exportMenu.classList.remove("visible");
+                exportAsTextEnvelope(select.value);
+            });
+        }
+        // Export split-button: copy text envelope to clipboard.
+        if (exportClipboardBtn) {
+            exportClipboardBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                if (exportMenu) exportMenu.classList.remove("visible");
+                copyTextEnvelope(select.value);
             });
         }
         if (shareBtn) {
@@ -2500,6 +2562,7 @@ var SnapshotStore = (() => {
                 });
             });
         }
+        // Import split-button: main action — file picker.
         if (importBtn && importInput) {
             importBtn.addEventListener("click", function () {
                 importInput.click();
@@ -2509,19 +2572,46 @@ var SnapshotStore = (() => {
                 if (!file) return;
                 importInput.value = "";   // reset so the same file can be re-imported
                 file.arrayBuffer().then(function (buf) {
-                    return importState(new Uint8Array(buf));
+                    return importOrDecode(new Uint8Array(buf));
                 }).then(function (result) {
                     if (result.ok) {
-                        // Select the snapshot just imported.
                         refreshUI(result.id);
                     } else if (result.reason !== "cancelled") {
-                        // "cancelled" is the operator backing out of the
-                        // newer-version warning — not an error to report.
                         showImportError(result);
                     }
                 });
             });
         }
+        // Import split-button: toggle dropdown.
+        if (importMoreBtn && importMenu) {
+            importMoreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                importMenu.classList.toggle("visible");
+            });
+        }
+        // Import split-button: import from clipboard.
+        if (importClipboardBtn) {
+            importClipboardBtn.addEventListener("click", function () {
+                if (importMenu) importMenu.classList.remove("visible");
+                importFromClipboard();
+            });
+        }
+        // Import split-button: import from URL.
+        if (importUrlBtn) {
+            importUrlBtn.addEventListener("click", function () {
+                if (importMenu) importMenu.classList.remove("visible");
+                importFromUrl();
+            });
+        }
+        // Close export/import menus when clicking outside.
+        document.addEventListener("click", function (e) {
+            if (exportMenu && !exportMenu.contains(e.target) && e.target !== exportMoreBtn) {
+                exportMenu.classList.remove("visible");
+            }
+            if (importMenu && !importMenu.contains(e.target) && e.target !== importMoreBtn) {
+                importMenu.classList.remove("visible");
+            }
+        });
     }
 
     // ---- Helpers for export/import UI ------------------------------------
@@ -2539,6 +2629,10 @@ var SnapshotStore = (() => {
             "too-large": "The file is too large (max 16 MB).",
             "unsupported-version": "Unsupported state format version.",
             "invalid-manifest": "The state manifest is invalid or missing.",
+            "clipboard-unavailable": "Clipboard access is not available. Please paste the text into a file and import that instead.",
+            "clipboard-empty": "The clipboard is empty or does not contain a valid state.",
+            "invalid-url": "The URL is not valid. Please enter a full http:// or https:// URL.",
+            "fetch-failed": "Could not fetch the URL. The server may be unreachable or may not support CORS.",
         };
         var msg = msgs[result.reason] || "An unknown error occurred (" + (result.reason || "unknown") + ").";
         if (typeof document === "undefined") return;
@@ -2552,6 +2646,445 @@ var SnapshotStore = (() => {
             '</div>';
         __snapModalOnConfirm = null;
         __snapModal.classList.add("visible");
+    }
+
+    // ---- Helpers for import/export UI ------------------------------------
+
+    // Download bytes as a file via the browser's download mechanism.
+    function downloadBytes(bytes, filename, mimeType) {
+        var blob = new Blob([bytes], { type: mimeType || "application/octet-stream" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Auto-detect and decode input: binary .state container or text envelope.
+    // Returns a Promise resolving to Uint8Array of the container bytes, or null.
+    function autoDecodeInput(data) {
+        // data is either a Uint8Array (from file/URL) or a string (from clipboard).
+        if (typeof data === "string") {
+            // Text input: check for envelope marker.
+            var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+            if (env && env.isEnvelope(data)) {
+                var decoded = env.decode(data);
+                if (decoded) return Promise.resolve(decoded);
+            }
+            return Promise.resolve(null);
+        }
+        // Binary input: check if it is already a .state container (zstd/gzip/bare).
+        if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
+            var bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+            // Try to decode as text envelope first (in case a .txt file was loaded).
+            var text = null;
+            try {
+                text = new TextDecoder("utf-8").decode(bytes);
+            } catch (e) { /* not valid UTF-8, treat as binary */ }
+            if (text) {
+                var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                if (env && env.isEnvelope(text)) {
+                    var decoded = env.decode(text);
+                    if (decoded) return Promise.resolve(decoded);
+                }
+            }
+            // Not a text envelope — treat as binary .state container.
+            return Promise.resolve(bytes);
+        }
+        return Promise.resolve(null);
+    }
+
+    // Import from clipboard: read text, auto-decode, import.
+    function importFromClipboard() {
+        if (typeof navigator === "undefined" || !navigator.clipboard ||
+            typeof navigator.clipboard.readText !== "function") {
+            showImportError({ reason: "clipboard-unavailable" });
+            return;
+        }
+        navigator.clipboard.readText().then(function (text) {
+            if (!text || !text.trim()) {
+                showImportError({ reason: "clipboard-empty" });
+                return;
+            }
+            return autoDecodeInput(text).then(function (containerBytes) {
+                if (!containerBytes) {
+                    showImportError({ reason: "not-a-state" });
+                    return;
+                }
+                return importState(containerBytes).then(function (result) {
+                    if (result.ok) {
+                        refreshUI(result.id);
+                    } else if (result.reason !== "cancelled") {
+                        showImportError(result);
+                    }
+                });
+            });
+        }).catch(function () {
+            showImportError({ reason: "clipboard-unavailable" });
+        });
+    }
+
+    // Import from URL: prompt for URL, fetch, auto-decode, import.
+    function importFromUrl() {
+        if (typeof document === "undefined") return;
+        showPromptModal({
+            title: "Import state from URL",
+            intro: "Enter the URL of a .state file or a text envelope (GitHub Gist raw URL).",
+            value: "",
+            maxlength: 1024,
+            confirmLabel: "Fetch & Import",
+            onConfirm: function (url) {
+                url = (url || "").trim();
+                if (!url) return;
+                // Validate URL.
+                if (!/^https?:\/\//i.test(url)) {
+                    showImportError({ reason: "invalid-url" });
+                    return;
+                }
+                fetch(url, { cache: "no-store" }).then(function (res) {
+                    if (!res.ok) {
+                        showImportError({ reason: "http-" + res.status });
+                        return;
+                    }
+                    return res.arrayBuffer().then(function (buf) {
+                        if (buf.byteLength > MAX_STATE_BYTES) {
+                            showImportError({ reason: "too-large" });
+                            return;
+                        }
+                        return autoDecodeInput(new Uint8Array(buf)).then(function (containerBytes) {
+                            if (!containerBytes) {
+                                showImportError({ reason: "not-a-state" });
+                                return;
+                            }
+                            return importState(containerBytes).then(function (result) {
+                                if (result.ok) {
+                                    refreshUI(result.id);
+                                } else if (result.reason !== "cancelled") {
+                                    showImportError(result);
+                                }
+                            });
+                        });
+                    });
+                }).catch(function () {
+                    showImportError({ reason: "fetch-failed" });
+                });
+            }
+        });
+    }
+
+    // Export a snapshot as a text envelope file (.txt).
+    function exportAsTextEnvelope(snapId) {
+        exportSnapshot(snapId).then(function (bytes) {
+            if (!bytes) return;
+            var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+            if (!env) return;
+            var text = env.encode(bytes);
+            var name = sanitizeFilename(snapId) + ".state.txt";
+            // Encode the text as bytes for download.
+            var textBytes = new TextEncoder().encode(text);
+            downloadBytes(textBytes, name, "text/plain");
+        });
+    }
+
+    // Copy a snapshot's text envelope to the clipboard.
+    function copyTextEnvelope(snapId) {
+        exportSnapshot(snapId).then(function (bytes) {
+            if (!bytes) return;
+            var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+            if (!env) return;
+            var text = env.encode(bytes);
+            if (typeof navigator !== "undefined" && navigator.clipboard &&
+                typeof navigator.clipboard.writeText === "function") {
+                navigator.clipboard.writeText(text).then(function () {
+                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                        Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                    }
+                }).catch(function () {
+                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                        Toasts.show({ text: "Could not copy to clipboard", category: "error" });
+                    }
+                });
+            }
+        });
+    }
+
+    // ---- PAT obfuscation helpers ---------------------------------------
+    // Simple XOR + base64 to avoid storing the token in plain text in
+    // localStorage. Not cryptographic — the key lives in the source code.
+    var _PAT_KEY = [0x79, 0x61, 0x50, 0x44, 0x50, 0x2D, 0x31, 0x31]; // "yaPDP-11"
+
+    function _obfuscatePAT(plain) {
+        if (!plain) return "";
+        var bytes = [];
+        for (var i = 0; i < plain.length; i++) {
+            bytes.push(plain.charCodeAt(i) ^ _PAT_KEY[i % _PAT_KEY.length]);
+        }
+        return btoa(String.fromCharCode.apply(null, bytes));
+    }
+
+    function _deobfuscatePAT(obfuscated) {
+        if (!obfuscated) return "";
+        try {
+            var raw = atob(obfuscated);
+            var chars = [];
+            for (var i = 0; i < raw.length; i++) {
+                chars.push(raw.charCodeAt(i) ^ _PAT_KEY[i % _PAT_KEY.length]);
+            }
+            return String.fromCharCode.apply(null, chars);
+        } catch (e) {
+            return ""; // not obfuscated or corrupted
+        }
+    }
+
+    // ---- Gist dialog (GitHub API integration) ---------------------------
+    // Creates a secret Gist via the GitHub API using a Personal Access Token.
+    // The PAT must have the `gist` scope. The token is never stored.
+    function showGistDialog(envelopeText) {
+        if (typeof document === "undefined") return;
+        if (!__snapModal) { showConfirmModal({}); __snapModalOnConfirm = null; }
+        __snapPrevFocus = document.activeElement;
+        var safeEnv = escapeHtml(String(envelopeText || ""));
+        // Load saved PAT from localStorage (persists across browser sessions).
+        var savedPat = "";
+        try {
+            if (typeof localStorage !== "undefined") {
+                savedPat = _deobfuscatePAT(localStorage.getItem("yapdp.github-pat") || "");
+            }
+        } catch (e) { /* ignore */ }
+
+        __snapModal.innerHTML =
+            '<div class="modal-box gist-dialog">' +
+                '<span class="modal-title">Share via GitHub Gist</span>' +
+                '<p class="modal-intro">Create a <strong>secret</strong> Gist on GitHub with the machine state.</p>' +
+                '<label class="modal-field">GitHub Personal Access Token (gist scope)' +
+                    '<div style="display:flex;align-items:center;gap:6px">' +
+                        '<input type="password" class="modal-input" id="gist-pat-input" ' +
+                            'placeholder="ghp_... or github_pat_..." autocomplete="off" spellcheck="false" ' +
+                            'style="flex:1;font-family:monospace" value="' + escapeHtml(savedPat) + '">' +
+                        '<button type="button" id="gist-pat-toggle" class="modal-close" ' +
+                            'style="padding:8px 10px;min-width:auto;font-size:16px" title="Show/hide token">&#9679;</button>' +
+                        '<button type="button" id="gist-pat-forget" class="modal-close" ' +
+                            'style="padding:8px 10px;min-width:auto;font-size:16px" title="Clear saved token">&#10005;</button>' +
+                        '<button type="button" id="gist-pat-info" class="modal-close" ' +
+                            'style="padding:8px 12px;min-width:auto;border-radius:50%;font-size:14px;font-weight:bold;font-style:italic" title="About token">i</button>' +
+                    '</div>' +
+                '</label>' +
+                '<div class="modal-actions">' +
+                    '<button type="button" class="modal-close" id="gist-generate-btn" disabled>Generate</button>' +
+                '</div>' +
+                '<div id="gist-error" class="modal-intro" style="display:none;color:#d06050"></div>' +
+                '<div id="gist-result-block" style="display:none">' +
+                    '<label class="modal-field">Share link (paste into browser)' +
+                        '<div style="display:flex;align-items:center;gap:6px">' +
+                            '<input type="text" class="modal-input" id="gist-result-input" readonly ' +
+                                'style="flex:1;user-select:all;font-family:monospace" autocomplete="off" spellcheck="false">' +
+                            '<button type="button" id="gist-copy-btn" class="modal-close" ' +
+                                'style="padding:8px 10px;min-width:auto" title="Copy to clipboard">c</button>' +
+                        '</div>' +
+                    '</label>' +
+                    '<div class="modal-actions">' +
+                        '<button type="button" class="modal-close" id="gist-test-btn" ' +
+                            'style="display:none">Test in new browser page</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-actions" id="gist-actions-bottom">' +
+                    '<button type="button" class="modal-close" id="gist-share-btn" style="display:none">Share via platform</button>' +
+                    '<a href="https://gist.github.com" target="_blank" class="modal-close" ' +
+                        'id="gist-open-link" style="text-decoration:none;display:inline-block;box-sizing:border-box">Open GitHub Gist</a>' +
+                    '<button type="button" class="modal-close" data-snap-action="cancel">Close</button>' +
+                '</div>' +
+            '</div>';
+        __snapModalOnConfirm = null;
+        __snapModal.classList.add("visible");
+
+        var patInput = document.getElementById("gist-pat-input");
+        var patToggle = document.getElementById("gist-pat-toggle");
+        var generateBtn = document.getElementById("gist-generate-btn");
+        var errorDiv = document.getElementById("gist-error");
+        var resultBlock = document.getElementById("gist-result-block");
+        var resultInput = document.getElementById("gist-result-input");
+        var copyBtn = document.getElementById("gist-copy-btn");
+        var shareBtn = document.getElementById("gist-share-btn");
+
+        // Enable Generate if a saved PAT was loaded.
+        if (generateBtn && patInput && savedPat) {
+            generateBtn.disabled = false;
+        }
+
+        // Wire all Gist dialog handlers. Defined as a function so it can be
+        // re-called after restoring the dialog from the info overlay.
+        function wireGistDialog() {
+            var p2 = document.getElementById("gist-pat-input");
+            var t2 = document.getElementById("gist-pat-toggle");
+            var g2 = document.getElementById("gist-generate-btn");
+            var e2 = document.getElementById("gist-error");
+            var r2 = document.getElementById("gist-result-block");
+            var ri2 = document.getElementById("gist-result-input");
+            var c2 = document.getElementById("gist-copy-btn");
+            var s2 = document.getElementById("gist-share-btn");
+
+            // PAT toggle: show/hide.
+            if (t2 && p2) {
+                t2.addEventListener("click", function () {
+                    p2.type = (p2.type === "password") ? "text" : "password";
+                    t2.textContent = (p2.type === "password") ? "*" : "#";
+                });
+            }
+
+            // PAT info: show instructions.
+            var pi2 = document.getElementById("gist-pat-info");
+            if (pi2) {
+                pi2.addEventListener("click", function () {
+                    var savedHTML = __snapModal.innerHTML;
+                    var savedOnConfirm = __snapModalOnConfirm;
+                    __snapModal.innerHTML =
+                        '<div class="modal-box">' +
+                            '<span class="modal-title">About GitHub Personal Access Token</span>' +
+                            '<p class="modal-intro">' +
+                                "Your PAT is used only to create a Gist via the GitHub API. " +
+                                "It is never sent anywhere else." +
+                                "<br><br>In your browser the token is stored in <strong>encrypted form</strong> " +
+                                "in localStorage (persists across sessions)." +
+                                "<br>You can clear it anytime with the <strong>x</strong> button." +
+                                "<br><br>To create a PAT:" +
+                                "<br>1. Go to GitHub Settings, Tokens page" +
+                                "<br>2. Click Generate new token (classic)" +
+                                "<br>3. Give it a name (e.g. 'yaPDP Gist')" +
+                                "<br>4. Select scope: <strong>gist</strong> only" +
+                                "<br>5. Click Generate token and copy it here" +
+                            '</p>' +
+                            '<button type="button" class="modal-close" id="gist-info-gotit">Got it</button>' +
+                        '</div>';
+                    var gotItBtn = document.getElementById("gist-info-gotit");
+                    if (gotItBtn) {
+                        gotItBtn.addEventListener("click", function () {
+                            __snapModal.innerHTML = savedHTML;
+                            __snapModalOnConfirm = savedOnConfirm;
+                            __snapModal.classList.add("visible");
+                            wireGistDialog();
+                        });
+                    }
+                });
+            }
+
+            // PAT forget: clear saved token.
+            var pf2 = document.getElementById("gist-pat-forget");
+            if (pf2 && p2 && g2) {
+                pf2.addEventListener("click", function () {
+                    p2.value = "";
+                    g2.disabled = true;
+                    try { if (typeof localStorage !== "undefined") localStorage.removeItem("yapdp.github-pat"); } catch (x) {}
+                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                        Toasts.show({ text: "Saved token cleared", category: "info" });
+                    }
+                });
+            }
+
+            // PAT input: enable Generate and save to localStorage.
+            if (p2 && g2) {
+                p2.addEventListener("input", function () {
+                    g2.disabled = !p2.value.trim();
+                    try { if (typeof localStorage !== "undefined") localStorage.setItem("yapdp.github-pat", _obfuscatePAT(p2.value)); } catch (x) {}
+                });
+            }
+
+            // Generate: call GitHub API.
+            if (g2 && p2 && e2 && r2 && ri2) {
+                g2.addEventListener("click", function () {
+                    var pat = (p2.value || "").trim();
+                    if (!pat) return;
+                    g2.disabled = true;
+                    g2.textContent = "Creating...";
+                    e2.style.display = "none";
+                    var body = JSON.stringify({
+                        description: "yaPDP PDP-11/70 machine state",
+                        public: false,
+                        files: { "machine-state.txt": { content: envelopeText || "" } }
+                    });
+                    fetch("https://api.github.com/gists", {
+                        method: "POST",
+                        headers: { "Authorization": "Bearer " + pat, "Content-Type": "application/json", "Accept": "application/vnd.github.v3+json" },
+                        body: body,
+                    }).then(function (res) {
+                        if (!res.ok) {
+                            return res.json().then(function (err) { throw new Error(err && err.message ? err.message : "HTTP " + res.status); }, function () { throw new Error("HTTP " + res.status); });
+                        }
+                        return res.json();
+                    }).then(function (data) {
+                        var gu = (data.files && data.files["machine-state.txt"] && data.files["machine-state.txt"].raw_url) || "";
+                        if (!gu) throw new Error("No raw URL in response");
+                        var pageUrl = "";
+                        try { pageUrl = location.origin + location.pathname; } catch (e) { pageUrl = ""; }
+                        if (!pageUrl) pageUrl = "http://localhost:3000/pdp11.html";
+                        var link = pageUrl + "?state=" + encodeURIComponent(gu);
+                        ri2.value = link;
+                        r2.style.display = "";
+                        // Update the Open GitHub Gist link to point to the actual Gist.
+                        var gistPageUrl = data.html_url || "";
+                        var openLink = document.getElementById("gist-open-link");
+                        if (openLink && gistPageUrl) {
+                            openLink.href = gistPageUrl;
+                        }
+                        var sb = document.getElementById("gist-share-btn");
+                        if (sb) sb.style.display = "";
+                        var isTauri = typeof window !== "undefined" && window.__TAURI__ && typeof window.__TAURI__.core !== "undefined";
+                        var tb = document.getElementById("gist-test-btn");
+                        if (tb && !isTauri) tb.style.display = "";
+                        g2.style.display = "none";
+                        if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+                            navigator.clipboard.writeText(link).then(function () {
+                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") Toasts.show({ text: "Share link copied to clipboard", category: "info" });
+                            }).catch(function () {});
+                        }
+                    }).catch(function (err) {
+                        e2.textContent = "Error: " + (err && err.message ? err.message : "Unknown error");
+                        e2.style.display = "";
+                        g2.disabled = false;
+                        g2.textContent = "Generate";
+                    });
+                });
+            }
+
+            // Copy button.
+            if (c2 && ri2) {
+                c2.addEventListener("click", function () {
+                    ri2.select();
+                    if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+                        navigator.clipboard.writeText(ri2.value).then(function () {
+                            if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") Toasts.show({ text: "Share link copied to clipboard", category: "info" });
+                        }).catch(function () {});
+                    }
+                });
+            }
+
+            // Share via platform.
+            if (s2 && ri2) {
+                s2.addEventListener("click", function () {
+                    var link = ri2.value;
+                    if (!link) return;
+                    if (typeof navigator !== "undefined" && navigator.share && typeof navigator.share === "function") {
+                        navigator.share({ title: "yaPDP - PDP-11/70 machine state", text: link, url: link }).catch(function () {});
+                    }
+                });
+            }
+
+            // Test in new browser page.
+            var tb2 = document.getElementById("gist-test-btn");
+            if (tb2 && ri2) {
+                tb2.addEventListener("click", function () {
+                    var link = ri2.value;
+                    if (!link) return;
+                    if (typeof window !== "undefined" && window.open) {
+                        window.open(link, "_blank");
+                    }
+                });
+            }
+        }
+
+        // Wire handlers once.
+        wireGistDialog();
+
     }
 
     // ---- Share dialog ----------------------------------------------------
@@ -2592,7 +3125,16 @@ var SnapshotStore = (() => {
                         '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
-                    '<button type="button" class="modal-close" id="share-create">Create Shareable State</button>' +
+                    '<div class="split-btn">' +
+                        '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
+                        '<button type="button" id="share-create-more" class="split-btn-arrow" aria-label="More share options">&#9662;</button>' +
+                        '<div class="split-btn-menu open-up" id="share-create-menu">' +
+                            '<button type="button" id="share-create-clipboard" class="split-btn-item">Copy text to clipboard</button>' +
+                            '<button type="button" id="share-create-textfile" class="split-btn-item">Save as text file</button>' +
+                            '<button type="button" id="share-create-share" class="split-btn-item">Share via platform\u2026</button>' +
+                            '<button type="button" id="share-create-gist" class="split-btn-item">Create GitHub Gist\u2026</button>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>';
             __snapModalOnConfirm = null;
             __snapModal.classList.add("visible");
@@ -2649,20 +3191,28 @@ var SnapshotStore = (() => {
                 img.src = url;
             }
 
+            // Helper: extract image from clipboard data and load as screenshot.
+            function pasteImageFromClipboard(e) {
+                var data = e.clipboardData;
+                if (!data || !data.items || !data.items.length) return false;
+                for (var i = 0; i < data.items.length; i++) {
+                    var item = data.items[i];
+                    if (item.type && item.type.startsWith("image/")) {
+                        e.preventDefault();
+                        // Use getAsFile() — it is widely supported and returns a
+                        // File (a subclass of Blob), so loadScreenshot works with it.
+                        var file = item.getAsFile();
+                        if (file) { loadScreenshot(file); }
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             // Paste handler: catch Ctrl+V on the screenshot area.
             if (screenshotArea) {
                 screenshotArea.addEventListener("paste", function (e) {
-                    var data = e.clipboardData;
-                    if (!data || !data.items || !data.items.length) return;
-                    for (var i = 0; i < data.items.length; i++) {
-                        var item = data.items[i];
-                        if (item.type && item.type.startsWith("image/")) {
-                            e.preventDefault();
-                            var blob = item.getAsBlob();
-                            if (blob) { loadScreenshot(blob); }
-                            break;
-                        }
-                    }
+                    pasteImageFromClipboard(e);
                 });
 
                 // Click to open file picker.
@@ -2685,33 +3235,216 @@ var SnapshotStore = (() => {
                 }
             }
 
-            // Create button handler.
+            // Also catch paste anywhere in the modal (clicking the area opens the
+            // file picker, so the user cannot focus it for paste).  Only intercept
+            // when the clipboard holds an image — text paste into inputs is unaffected.
+            if (__snapModal) {
+                // The paste event may not fire on non-editable elements (e.g. a focused
+                // button), so also intercept Ctrl+V at the keydown level and read the
+                // clipboard directly.
+                __snapModal.addEventListener("keydown", function (e) {
+                    if (!e.ctrlKey || (e.key !== 'v' && e.key !== 'V')) return;
+                    var tag = e.target && e.target.tagName;
+                    if (tag === "INPUT" || tag === "TEXTAREA") return;
+                    e.preventDefault();
+                    if (typeof navigator === "undefined" || !navigator.clipboard ||
+                        typeof navigator.clipboard.read !== "function") return;
+                    navigator.clipboard.read().then(function (items) {
+                        for (var i = 0; i < items.length; i++) {
+                            var item = items[i];
+                            if (item.type && item.type.startsWith("image/")) {
+                                item.getType(item.type).then(function (blob) {
+                                    if (blob) loadScreenshot(blob);
+                                }).catch(function () {});
+                                break;
+                            }
+                        }
+                    }).catch(function () {});
+                });
+                // Also catch the native paste event for editable elements (INPUT/TEXTAREA)
+                // that hold only image data.
+                __snapModal.addEventListener("paste", function (e) {
+                    var tag = e.target && e.target.tagName;
+                    if (tag === "INPUT" || tag === "TEXTAREA") {
+                        var data = e.clipboardData;
+                        var hasText = false;
+                        if (data && data.items) {
+                            for (var i = 0; i < data.items.length; i++) {
+                                if (data.items[i].type === "text/plain") {
+                                    hasText = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!hasText) { pasteImageFromClipboard(e); }
+                        return;
+                    }
+                    pasteImageFromClipboard(e);
+                });
+            }
+
+            // Helper: gather share options from the dialog fields.
+            function gatherShareOpts() {
+                var title = (titleInput ? titleInput.value : "").trim();
+                var desc = (descInput ? descInput.value : "").trim();
+                var btn = (btnInput ? btnInput.value : "").trim();
+                var cmd = (cmdInput ? cmdInput.value : "").trim();
+                return {
+                    title: title,
+                    description: desc,
+                    buttonLabel: btn || null,
+                    screenshot: screenshotData,
+                    command: cmd,
+                };
+            }
+
+            // Helper: create shareable state and return bytes.
+            function doCreateShareable(opts) {
+                return createShareableState(snapId, opts);
+            }
+
+            // Helper: download shareable state as .state.zst.
+            function downloadShareable(bytes, title) {
+                if (!bytes) return;
+                var name = sanitizeFilename(title || snapName) + ".state.zst";
+                downloadBytes(bytes, name, "application/octet-stream");
+            }
+
+            // Create button (main action): download .state.zst.
             var createBtn = document.getElementById("share-create");
             if (createBtn) {
                 createBtn.addEventListener("click", function () {
-                    var title = (titleInput ? titleInput.value : "").trim();
-                    var desc = (descInput ? descInput.value : "").trim();
-                    var btn = (btnInput ? btnInput.value : "").trim();
-                    var cmd = (cmdInput ? cmdInput.value : "").trim();
+                    var opts = gatherShareOpts();
                     createBtn.disabled = true;
-                    createShareableState(snapId, {
-                        title: title,
-                        description: desc,
-                        buttonLabel: btn || null,
-                        screenshot: screenshotData,
-                        command: cmd,
-                    }).then(function (bytes) {
+                    doCreateShareable(opts).then(function (bytes) {
                         createBtn.disabled = false;
                         snapCloseModal();
+                        downloadShareable(bytes, opts.title);
+                    });
+                });
+            }
+
+            // Split-button: toggle the dropdown menu.
+            var createMoreBtn = document.getElementById("share-create-more");
+            var createMenu = document.getElementById("share-create-menu");
+            if (createMoreBtn && createMenu) {
+                createMoreBtn.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    createMenu.classList.toggle("visible");
+                });
+                // Close the menu when clicking outside.
+                document.addEventListener("click", function (e) {
+                    if (!createMenu.contains(e.target) && e.target !== createMoreBtn) {
+                        createMenu.classList.remove("visible");
+                    }
+                });
+            }
+
+            // Split-button: copy text envelope to clipboard.
+            var createClipboardBtn = document.getElementById("share-create-clipboard");
+            if (createClipboardBtn) {
+                createClipboardBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
                         if (!bytes) return;
-                        var name = sanitizeFilename(title || snapName) + ".state.zst";
-                        var blob = new Blob([bytes], { type: "application/octet-stream" });
-                        var url = URL.createObjectURL(blob);
-                        var a = document.createElement("a");
-                        a.href = url;
-                        a.download = name;
-                        a.click();
-                        URL.revokeObjectURL(url);
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        if (typeof navigator !== "undefined" && navigator.clipboard &&
+                            typeof navigator.clipboard.writeText === "function") {
+                            navigator.clipboard.writeText(text).then(function () {
+                                snapCloseModal();
+                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                    Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                                }
+                            }).catch(function () { /* ignore */ });
+                        }
+                    });
+                });
+            }
+
+            // Split-button: save as text file.
+            var createTextFileBtn = document.getElementById("share-create-textfile");
+            if (createTextFileBtn) {
+                createTextFileBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
+                        if (!bytes) return;
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        var name = sanitizeFilename(opts.title || snapName) + ".state.txt";
+                        var textBytes = new TextEncoder().encode(text);
+                        snapCloseModal();
+                        downloadBytes(textBytes, name, "text/plain");
+                    });
+                });
+            }
+
+            // Split-button: share via platform API (navigator.share).
+            var createShareBtn = document.getElementById("share-create-share");
+            if (createShareBtn) {
+                createShareBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
+                        if (!bytes) return;
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        // Copy to clipboard first.
+                        var clipboardPromise = Promise.resolve();
+                        if (typeof navigator !== "undefined" && navigator.clipboard &&
+                            typeof navigator.clipboard.writeText === "function") {
+                            clipboardPromise = navigator.clipboard.writeText(text);
+                        }
+                        clipboardPromise.then(function () {
+                            // Try platform share API.
+                            if (typeof navigator !== "undefined" && navigator.share &&
+                                typeof navigator.share === "function") {
+                                snapCloseModal();
+                                navigator.share({
+                                    title: "yaPDP — PDP-11/70 machine state: " + (opts.title || snapName),
+                                    text: text.slice(0, 2048), // share a preview (platforms limit share text)
+                                }).catch(function () {
+                                    // Share failed or dismissed — clipboard already has the full text.
+                                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                        Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                                    }
+                                });
+                            } else {
+                                // No platform share — clipboard is enough.
+                                snapCloseModal();
+                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                    Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                                }
+                            }
+                        }).catch(function () {
+                            snapCloseModal();
+                            if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                Toasts.show({ text: "Could not copy to clipboard", category: "error" });
+                            }
+                        });
+                    });
+                });
+            }
+
+            // Split-button: create GitHub Gist.
+            var createGistBtn = document.getElementById("share-create-gist");
+            if (createGistBtn) {
+                createGistBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
+                        if (!bytes) return;
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        snapCloseModal();
+                        // Show the Gist dialog with the envelope text.
+                        showGistDialog(text);
                     });
                 });
             }

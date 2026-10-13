@@ -585,14 +585,19 @@ textarea {
     position: relative;
     display: inline-flex;
     align-items: stretch;
+    /* Wrapper border keeps the outline continuous when child buttons are
+       disabled (their individual borders are removed). The background
+       matches the child buttons so the border-radius corners are solid. */
+    border: 1px solid #c8a860;
+    border-radius: 5px;
+    background: #2c261c;
 }
 
 .split-btn-main {
-    /* Inherits .modal-close styles; remove the standalone border-radius so the
-       main button blends with the arrow button into one visual unit. */
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    border-right: none;
+    /* Inherits .modal-close styles; rounded on the left, square on the right
+       where the arrow button sits. */
+    border: none;
+    border-radius: 5px 0 0 5px;
 }
 
 .split-btn-arrow {
@@ -601,10 +606,8 @@ textarea {
     justify-content: center;
     min-width: 2em;
     padding: 8px 6px;
-    border: 1px solid #c8a860;
-    border-left: none;
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
+    border: none;
+    border-radius: 0 5px 5px 0;
     background: #2c261c;
     color: #ffd27f;
     font-size: 14px;
@@ -637,6 +640,13 @@ textarea {
 
 .split-btn-menu.visible {
     display: block;
+}
+
+/* When the split button is near the bottom of a modal, open the menu upward
+   so it does not extend past the dialog edge and cause a scrollbar. */
+.split-btn-menu.open-up {
+    top: auto;
+    bottom: 100%;
 }
 
 .split-btn-item {
@@ -704,7 +714,8 @@ textarea {
 }
 
 /* Modal dialogs: even side-by-side spacing between action buttons. */
-.modal-box .modal-close+.modal-close {
+.modal-box .modal-close+.modal-close,
+.modal-box .modal-close+.split-btn {
     margin-left: 10px;
 }
 
@@ -811,6 +822,7 @@ textarea {
 
 .modal-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     margin: 0 0 18px;
