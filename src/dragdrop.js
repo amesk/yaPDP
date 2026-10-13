@@ -182,7 +182,8 @@
             // applied to the running machine instead of mounted as a drive.
             // This is the offline path (`file://` pages cannot fetch anything,
             // so drag & drop is the only way a state arrives there).
-            if (/\.state(\.zst)?$/i.test(file.name)) {
+            // Both binary (.state.zst) and text envelope (.state.txt) are accepted.
+            if (/\.state(\.(zst|txt))?$/i.test(file.name)) {
                 file.arrayBuffer().then(function (buffer) {
                     var came = (typeof SnapshotStore !== "undefined" &&
                         typeof SnapshotStore.applyStateBytes === "function");
@@ -190,8 +191,18 @@
                         if (++done === list.length) finish();
                         return;
                     }
-                    var result = SnapshotStore.applyStateBytes(
-                        new Uint8Array(buffer), file.name);
+                    // Auto-detect text envelope and decode to binary.
+                    var raw = new Uint8Array(buffer);
+                    var text = null;
+                    try {
+                        text = new TextDecoder("utf-8").decode(raw);
+                    } catch (e) { /* not valid UTF-8, treat as binary */ }
+                    var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                    if (text && env && env.isEnvelope(text)) {
+                        var decoded = env.decode(text);
+                        if (decoded) raw = decoded;
+                    }
+                    var result = SnapshotStore.applyStateBytes(raw, file.name);
                     if (result && typeof result.then === "function") {
                         result.then(function (r) {
                             if (!r || !r.ok) {

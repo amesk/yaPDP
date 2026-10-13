@@ -700,6 +700,16 @@ var g60Keyboard = (function () {
   function installPhysicalKeyboard() {
     document.addEventListener('keydown', function (e) {
       if (/^(input|textarea)$/i.test(e.target.tagName)) return;
+      // Let native keyboard events through when a modal overlay is visible
+      // (e.g. the Share-snapshot dialog, which needs Ctrl+V for image paste).
+      // The focus may be on the BODY behind the modal, so check the document
+      // for any visible .modal-overlay rather than relying on e.target.closest().
+      if (typeof document.querySelectorAll === "function") {
+        var overlays = document.querySelectorAll('.modal-overlay');
+        for (var i = 0; i < overlays.length; i++) {
+          if (overlays[i].classList.contains('visible')) return;
+        }
+      }
 
       // Only intercept keyboard when the Teletype page is active —
       // on Panel and Info pages browser shortcuts (Ctrl+F etc.) must work normally.

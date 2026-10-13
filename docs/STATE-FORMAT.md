@@ -115,3 +115,51 @@ So: `memory.offset`/`memory.length` are **not** written today, and there is no
 blob registry. The rule is recorded here and at `CONTAINER_VERSION` in
 [`src/state-format.js`](../src/state-format.js) so the next change starts from a
 known point.
+
+## Text envelope for GitHub Gist
+
+A `.state.zst` file can be wrapped in a text envelope for sharing via
+GitHub Gist (or any text pastebin). The format is:
+
+```
+yapdp-text-envelope-v1
+<base64-encoded content of .state.zst, wrapped at 76 characters>
+```
+
+The marker `yapdp-text-envelope-v1` on the first line identifies the format.
+The rest is standard base64 with lines wrapped at 76 characters (MIME style).
+
+### Encoding (export)
+
+1. Take the binary `.state.zst` bytes
+2. Base64-encode them (chunked for large files)
+3. Wrap at 76 characters per line
+4. Prepend the marker line
+
+### Decoding (import)
+
+1. Check the first line for the marker
+2. Strip the marker line
+3. Concatenate remaining lines
+4. Base64-decode to get the original `.state.zst` bytes
+
+### Auto-detection
+
+When importing, the system auto-detects the format:
+- Bytes starting with zstd magic (`0x28 0xB5 0x2F 0xFD`), gzip magic (`0x1F 0x8B`),
+  or the container magic (`YAPDPSTA`) are treated as binary `.state` containers.
+- Text starting with `yapdp-text-envelope-v1` is treated as a text envelope
+  and decoded to binary before import.
+
+### UI integration
+
+- **Import** split-button: file picker (binary `.state.zst` or `.txt` envelope),
+  clipboard import, URL import. All inputs are auto-detected.
+- **Export** split-button: download `.state.zst`, save as text file (`.txt`),
+  copy text envelope to clipboard.
+- **Share** dialog: create a shareable state with metadata, then choose output:
+  download `.state.zst`, copy text envelope, save text file, or create a
+  GitHub Gist (opens a helper dialog with instructions and link generator).
+
+The envelope is handled by [`src/state-envelope.js`](../src/state-envelope.js),
+shared between the browser and Node tools.
