@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Historical Fidelity & Limitations chapter in the user manual.** A new
+  manual chapter explaining what yaPDP reproduces accurately, where
+  emulation differs from the original hardware, and how to use the
+  emulator as a historical learning tool.
+  (`docs/manual/fidelity.md`, `docs/manual/ru/fidelity.md`)
+
 - **Text envelope format for sharing states via GitHub Gist.** A new
   `yapdp-text-envelope-v1` format wraps a `.state.zst` file in base64 text
   that can be pasted into any text pastebin. The envelope is handled by
@@ -85,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
   offers the emulated Boot ROM socket as a three-way choice — `none` (the
-  machine waits after power-on), `interactive@` (the built-in loader, the `@`  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
+  machine waits after power-on), `interactive@` (the built-in loader, the `@`
+  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
   most recently — from the gallery, Games, a teleport link or a manual `BOOT`
   at the `@` prompt — directly, with no `@` prompt) — and the reboot and
   power-off dialogs offer the same three-way select. The Boot ROM learns a
