@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **About yaPDP chapter in the user manual.** A new introductory chapter
+  describing the project's goals, key features, and guidance for museums
+  and educators, including embedding and interactive exhibit creation.
+  (`docs/manual/about.md`, `docs/manual/ru/about.md`)
+
 - **Historical Fidelity & Limitations chapter in the user manual.** A new
   manual chapter explaining what yaPDP reproduces accurately, where
   emulation differs from the original hardware, and how to use the
