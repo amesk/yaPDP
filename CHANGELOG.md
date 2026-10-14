@@ -10,48 +10,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Glossary chapter in the user manual.** A new reference chapter
+  defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
+  for quick lookup. (`docs/manual/glossary.md`,
+  `docs/manual/ru/glossary.md`)
+- **Keyboard shortcuts table in the Controls chapter.** A complete list
+  of keyboard shortcuts (F11, Ctrl+Shift+S, Page Up/Down, Ctrl+C/Z,
+  etc.) with their effects. (`docs/manual/controls.md`,
+  `docs/manual/ru/controls.md`)
+- **All-options-at-a-glance table in the Config chapter.** A single
+  reference table listing every CONFIG option, its tab, values and
+  whether it applies immediately or on restart.
+  (`docs/manual/config.md`, `docs/manual/ru/config.md`)
+- **New troubleshooting sections.** Added guidance for: guest OS does
+  not boot, keyboard does not type, no sound, poor performance, blank
+  screen, and CORS errors in the browser version.
+  (`docs/manual/troubleshooting.md`,
+  `docs/manual/ru/troubleshooting.md`)
 - **About yaPDP chapter in the user manual.** A new introductory chapter
   describing the project's goals, key features, and guidance for museums
   and educators, including embedding and interactive exhibit creation.
   (`docs/manual/about.md`, `docs/manual/ru/about.md`)
-
 - **Historical Fidelity & Limitations chapter in the user manual.** A new
   manual chapter explaining what yaPDP reproduces accurately, where
   emulation differs from the original hardware, and how to use the
   emulator as a historical learning tool.
   (`docs/manual/fidelity.md`, `docs/manual/ru/fidelity.md`)
-
 - **Internal links in PDF manual now resolve correctly.** The
   named-destination catalog (/Dests) is rebuilt after pdf-lib merge,
   so every internal link — TOC entries and in-text cross-references
   alike — jumps to the correct page in the PDF.
   (`tools/build-manual-pdf.js`)
-
 - **Embedding documentation for museums and educators.** A new
   "Embedding the emulator" subsection in the Machine State chapter
   describes how to embed yaPDP in external sites via `<iframe>` with
   `?boot=` and `?state=` parameters, including CORS bypass through
   GitHub Gist. (`docs/manual/machine-state.md`,
   `docs/manual/ru/machine-state.md`)
-
 - **Text envelope format for sharing states via GitHub Gist.** A new
   `yapdp-text-envelope-v1` format wraps a `.state.zst` file in base64 text
   that can be pasted into any text pastebin. The envelope is handled by
   [`src/state-envelope.js`](src/state-envelope.js), shared between browser
   and Node tools. (`docs/STATE-FORMAT.md`, `src/state-envelope.js`)
-
 - **Import/Export split-buttons.** The Import and Export buttons in the
   Machine-state dialog are now split-buttons. Import offers file picker,
   clipboard import, and URL import with auto-detection of binary vs text
   envelope. Export offers `.state.zst` download, text file save, and
   clipboard copy. (`src/snapshots.js`)
-
 - **Share dialog extended with text and Gist output.** The "Create Shareable
   State" button in the Share dialog is now a split-button offering: download
   `.state.zst`, copy text envelope to clipboard, save as text file, and
   create a GitHub Gist (opens a helper dialog with instructions, URL input,
   and a share-link generator). (`src/snapshots.js`)
-
 - **User-facing failures now surface as toasts.** Real, user-relevant errors and
   warnings — a bundled image that failed to load, a dropped state that did not
   apply, a disk overlay that could not be restored, a fullscreen toggle that
@@ -61,7 +71,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/toasts.js`, `src/pdp11-app.js`, `src/tauri-bundled.js`, `src/diskstore.js`,
   `src/dragdrop.js`, `src/fullscreen.js`; pinned by `tests/toasts.test.js` and
   `tests/toasts-adapter.test.js`)
-
 - **Sharing a state, and the manual that explains it.** The machine-state dialog's
   Share button is now documented end to end — what the dialog asks for (title,
   description, button label, screenshot, a command that types itself after the
@@ -77,14 +86,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-
+- **Quick Start chapter restyled.** Long paragraphs split into shorter
+  ones for better readability. (`docs/manual/quick-start.md`,
+  `docs/manual/ru/quick-start.md`)
+- **Link underlines removed in PDF manual.** Added `text-decoration:
+  none` to links in `@media print` to prevent Chromium from rendering
+  spaces inside link text as underscores in the PDF text layer.
+  (`tools/manual-template-head.html`)
 - The **Boot device** select is now present in every **Reboot** / **Bootstrap
   now!** dialog. It used to be hidden whenever the dialog was opened by the
   configuration-rollback offer alone (a saved state whose configuration
   differs, with the reboot confirmation off) or by **Bootstrap now!**, even
   though the dialog still described the three-way choice.
   (`src/pdp11-panel.js`; pinned by `tests/reboot-dialog-bootdev.test.js`)
-
 - **A machine state now carries the whole configuration — except the sound.**
   Restoring a state (a teleport link, an imported file, a snapshot) applies the
   full configuration profile it was saved with — console, user terminals, LP11

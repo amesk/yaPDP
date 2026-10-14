@@ -47,6 +47,33 @@
 :::
 - **Plain text input instead of the canvas CRT** — выводить терминал как текстовое поле вместо canvas CRT, что даёт нативное выделение текста и Windows Clipboard (Ctrl+C / Ctrl+V / вставка правой кнопкой) для быстрого ввода исходного кода; при этом теряются атрибуты SGR (жирный/подчёркивание/инверсия). Действует на страницу, поэтому так выводятся и VT52, и VT100.
 
+#### Все опции на одной странице
+
+| Опция                      | Вкладка      | Значения                                | Применение                   |
+| -------------------------- | ------------ | --------------------------------------- | ---------------------------- |
+| Console terminal           | Equipment    | Teletype / VT52 / VT100                 | По Apply (перезапуск машины) |
+| User terminals (TTY 1)     | Equipment    | None / VT52 / VT100                     | По Apply (перезапуск машины) |
+| User terminals (TTY 2)     | Equipment    | None / VT52 / VT100                     | По Apply (перезапуск машины) |
+| Line printer (LP11)        | Equipment    | Off / On                                | По Apply (перезапуск машины) |
+| VT11 graphics display      | Equipment    | Off / On                                | По Apply (перезапуск машины) |
+| Teletype print width       | Equipment    | 72 / 80 columns                         | Немедленно                   |
+| Printer width              | Equipment    | 72 / 80 / 100 / 132 columns             | Немедленно                   |
+| Teletype speed             | Equipment    | Authentic / Fast                        | Немедленно                   |
+| Upper Case Only            | Equipment    | Off / On                                | Немедленно                   |
+| Force PDP Output Uppercase | Equipment    | Off / On                                | Немедленно                   |
+| VT100 key click            | Look & sound | Off / On                                | Немедленно                   |
+| VT100 phosphor             | Look & sound | P4 white / P1 green                     | Немедленно                   |
+| VT52 reverse video         | Look & sound | Off / On                                | Немедленно                   |
+| CRT effects                | Look & sound | Off / On                                | Немедленно                   |
+| Machine hum                | Look & sound | Off / On                                | Немедленно                   |
+| Photo backdrop             | Look & sound | Off / On                                | Немедленно                   |
+| Reboot confirmation        | Behaviour    | Off / On                                | Немедленно                   |
+| Help Me! sticker           | Behaviour    | Off / On                                | Немедленно                   |
+| Machine power              | Behaviour    | Off / On                                | Немедленно                   |
+| Boot device                | Behaviour    | None / Interactive loader / Last medium | Немедленно                   |
+| First-run hint             | Behaviour    | Off / On                                | Немедленно                   |
+| Plain text input           | Development  | Off / On                                | Немедленно                   |
+
 Уход со страницы Config с неприменёнными изменениями запрашивает подтверждение, так что ничего не теряется молча:
 
 ![Предупреждение о неприменённой конфигурации](assets/images/manual/dialog-config-leave.png)

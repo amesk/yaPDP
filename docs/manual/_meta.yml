@@ -11,6 +11,8 @@ sections:
     ru: О проекте yaPDP
   - id: quick-start
     ru: Быстрый старт
+  - id: glossary
+    ru: Глоссарий
   - id: front-panel
     ru: Пультовая панель (страница Panel)
   - id: console
