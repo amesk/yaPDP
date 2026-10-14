@@ -196,6 +196,63 @@ const COVER_CSS = `
 // guessed at from the flow. Titles are matched longest-first, because a short
 // heading can be a prefix of a longer one — "Storage" inside "Storage (paper
 // tape, disk & tape images)" — and the longer candidate must win that race.
+// Collect all anchor targets (elements with id referenced by a[href^='#'])
+// from the live DOM, including h2 sections and h3 subsections.
+async function collectAnchorTargets(page) {
+  return page.evaluate(() => {
+    const refs = new Set();
+    document.querySelectorAll("a[href^='#']").forEach((a) => refs.add(a.getAttribute("href").slice(1)));
+    const out = [];
+    document.querySelectorAll("[id]").forEach((el) => {
+      if (!refs.has(el.id)) return;
+      const tag = el.tagName.toLowerCase();
+      if (!["h1", "h2", "h3", "h4", "h5", "h6"].includes(tag)) return;
+      const style = window.getComputedStyle(el);
+      const fontSizePt = parseFloat(style.fontSize) * 72 / 96; // px → pt
+      out.push({ id: el.id, title: el.textContent.trim(), fontSizePt });
+    });
+    return out;
+  });
+}
+
+// Find page numbers for a list of anchor targets by matching heading text
+// in the PDF text layer. Each target uses its own fontSizePt as the height
+// threshold, so h2 (large) and h3 (smaller) are both found reliably.
+async function findTargetPages(pdfBuffer, targets) {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const worker = require("url").pathToFileURL(
+    require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")).href;
+  pdfjs.GlobalWorkerOptions.workerSrc = worker;
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(pdfBuffer),
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    useSystemFonts: false,
+    disableFontFace: true,
+  }).promise;
+
+  const found = {};
+  const sorted = targets.slice().sort((a, b) => b.title.length - a.title.length);
+  for (let pageNo = 1; pageNo <= doc.numPages && sorted.length; pageNo++) {
+    const page = await doc.getPage(pageNo);
+    const content = await page.getTextContent();
+    // Group runs by height so we can match each target at its own threshold.
+    for (const t of sorted.slice()) {
+      if (found[t.id] !== undefined) continue;
+      const needle = t.title.replace(/\s+/g, " ");
+      const threshold = t.fontSizePt * 0.85; // allow slight render variation
+      const match = content.items.find((it) =>
+        it.height >= threshold && it.str.indexOf(needle) !== -1);
+      if (match) {
+        found[t.id] = pageNo;
+        sorted.splice(sorted.indexOf(t), 1);
+      }
+    }
+  }
+  if (doc.cleanup) await doc.cleanup();
+  return found;
+}
+
 //
 async function pageNumbersFor(pdfBuffer, candidates) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -463,9 +520,15 @@ async function buildOne(browser, key, stamp) {
     if (!applied) break;
     pdf = await renderPdf();
   }
+  // Collect all anchor targets (h2 sections + h3 subsections + any heading
+  // with an id that is referenced by an internal link) and find their page
+  // numbers. This map is used later to rebuild the /Dests catalog so that
+  // every internal link in the PDF — TOC and in-text — resolves correctly.
+  const allTargets = await collectAnchorTargets(page);
+  const destMap = await findTargetPages(pdf, allTargets);
   await page.close();
 
-  return { pdf: pdf, cover: coverPdf, out: spec.out, pages: written, passes: pass };
+  return { pdf: pdf, cover: coverPdf, out: spec.out, pages: written, passes: pass, destMap: destMap };
 }
 
 
@@ -509,9 +572,9 @@ async function buildOne(browser, key, stamp) {
   const stamp = new Date().toISOString().slice(0, 10);
 
   try {
-    const { PDFDocument, rgb } = await import("pdf-lib");
+    const { PDFDocument, PDFName, rgb } = await import("pdf-lib");
     for (const k of keys) {
-      const { pdf, cover, out } = await buildOne(browser, k, stamp);
+      const { pdf, cover, out, destMap } = await buildOne(browser, k, stamp);
       // The cover and the body are joined with pdf-lib, which understands the
       // format. An earlier attempt did this by hand — renumbering objects and
       // splicing the page tree with regexes — and produced a file with no page
@@ -523,6 +586,24 @@ async function buildOne(browser, key, stamp) {
       for (const p of coverPages) merged.addPage(p);
       const bodyPages = await merged.copyPages(bodyDoc, bodyDoc.getPageIndices());
       for (const p of bodyPages) merged.addPage(p);
+
+      // --- rebuild the /Dests catalog so every internal link resolves -------------
+      //
+      // Chromium emits Link annotations with named destinations (e.g.
+      // "quick-start") for every internal anchor. pdf-lib's copyPages keeps
+      // the annotation shells but drops the source document's /Dests catalog,
+      // so the names resolve to nothing. We rebuild the catalog here, mapping
+      // each name to the correct merged page index (body page + 1 for the cover.
+      const mergedPages = merged.getPages();
+      const destsObj = {};
+      for (const [name, bodyPage] of Object.entries(destMap)) {
+        const mergedIdx = bodyPage; // body page 1 → merged page index 1 (cover at 0)
+        if (mergedIdx >= mergedPages.length) continue;
+        destsObj[name] = [mergedPages[mergedIdx].ref, PDFName.of("Fit")];
+      }
+      if (Object.keys(destsObj).length) {
+        merged.catalog.set(PDFName.of("Dests"), merged.context.obj(destsObj));
+      }
 
       // --- the rules under the header and over the footer --------------------
       //
