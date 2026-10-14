@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   emulator as a historical learning tool.
   (`docs/manual/fidelity.md`, `docs/manual/ru/fidelity.md`)
 
+- **Internal links in PDF manual now resolve correctly.** The
+  named-destination catalog (/Dests) is rebuilt after pdf-lib merge,
+  so every internal link — TOC entries and in-text cross-references
+  alike — jumps to the correct page in the PDF.
+  (`tools/build-manual-pdf.js`)
+
 - **Embedding documentation for museums and educators.** A new
   "Embedding the emulator" subsection in the Machine State chapter
   describes how to embed yaPDP in external sites via `<iframe>` with
