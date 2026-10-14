@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   emulator as a historical learning tool.
   (`docs/manual/fidelity.md`, `docs/manual/ru/fidelity.md`)
 
+- **Embedding documentation for museums and educators.** A new
+  "Embedding the emulator" subsection in the Machine State chapter
+  describes how to embed yaPDP in external sites via `<iframe>` with
+  `?boot=` and `?state=` parameters, including CORS bypass through
+  GitHub Gist. (`docs/manual/machine-state.md`,
+  `docs/manual/ru/machine-state.md`)
+
 - **Text envelope format for sharing states via GitHub Gist.** A new
   `yapdp-text-envelope-v1` format wraps a `.state.zst` file in base64 text
   that can be pasted into any text pastebin. The envelope is handled by

@@ -104,10 +104,15 @@ function checkPage(html, label, meta) {
   assert.deepStrictEqual(ids.slice().sort(), meta.slice().sort(),
     label + " does not carry every section from _meta.yml");
 
+  // collect h3 subsection ids too — internal links may point to subsections
+  const subIds = (html.match(/<h3 id="([^"]+)"/g) || [])
+    .map((s) => s.replace(/<h3 id="|"/g, ""));
+  const allIds = new Set([...meta, ...subIds]);
+
   // the section a link points at must exist — a dangling #anchor is a dead link
   for (const m of html.matchAll(/<a href="#([^"]+)"/g)) {
     if (m[1] === "toc") continue;
-    assert.ok(meta.indexOf(m[1]) !== -1,
+    assert.ok(allIds.has(m[1]),
       label + ": internal link points at a section that does not exist: #" + m[1]);
   }
 

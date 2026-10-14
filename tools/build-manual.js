@@ -286,7 +286,13 @@ function blocksToHtml(blocks, level = 2, headings = null) {
       case "pre":
         // <pre> keeps the alignment verbatim; the source's own indentation is
         // what the reference page shows, so no re-indenting here.
-        out.push("  <pre>" + b.text + "</pre>");
+        // HTML-escape the content so that <iframe> and similar tags inside
+        // fenced code blocks are displayed as text, not executed by the browser.
+        out.push("  <pre>" + b.text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&#34;") + "</pre>");
         break;
       case "table": {
         // Wrapped in a scroll container, exactly as the devlog's renderer does

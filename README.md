@@ -73,23 +73,23 @@ This repository is the result: **yaPDP**. Welcome to the machine.
 
 The emulator ships with preloaded disk and tape images. To manual boot, type the boot command at the `@` prompt:
 
-| Disk | Operating System | How to Boot |
-|------|-----------------|-------------|
-| **RK0** | Unix V5 | `boot rk0` → `unix` → login as `root` |
-| **RK1** | RT‑11 v4.0 | `BOOT RK1` |
-| **RK2** | RSTS V06C‑03 | `BOOT RK2` — login `11,70` password `PDP` |
-| **RK3** | XXDP (diagnostics) | `BOOT RK3` |
-| **RK4** | RT‑11 3B Distribution | `BOOT RK4` |
-| **TM0** | RSTS 4B‑17 (tape) | `BOOT TM0` — follow ROLLIN restore procedure |
-| **RL0** | BSD 2.9 | `boot rl0` → `rl(0,0)rlunix` → CTRL/D → login `root` |
-| **RL1** | RSX‑11M v3.2 | `BOOT RL1` — login `1,2` password `SYSTEM` |
-| **RL2** | RSTS/E v7.0 | `BOOT RL2` — login `11,70` password `PDP` |
-| **RL3** | XXDP (extended) | `BOOT RL3` |
-| **RP0** | ULTRIX‑11 V3.1 | `boot rp0` → CTRL/D → login `root` |
-| **RP1** | BSD 2.11 | `boot rp1` — autoboots to multiuser, login `root` |
-| **RP2** | RSTS/E v9.6 | `BOOT RP2` — answer prompts, login `11,70` |
-| **RP3** | RSX‑11M v4.6 | `BOOT RP3` — auto-logs `1,2` SYSTEM |
-| **RP4** | RSTS/E v10.1 | `BOOT RP4` — answer prompts, login `11,70` |
+| Disk    | Operating System      | How to Boot                                          |
+| ------- | --------------------- | ---------------------------------------------------- |
+| **RK0** | Unix V5               | `boot rk0` → `unix` → login as `root`                |
+| **RK1** | RT‑11 v4.0            | `BOOT RK1`                                           |
+| **RK2** | RSTS V06C‑03          | `BOOT RK2` — login `11,70` password `PDP`            |
+| **RK3** | XXDP (diagnostics)    | `BOOT RK3`                                           |
+| **RK4** | RT‑11 3B Distribution | `BOOT RK4`                                           |
+| **TM0** | RSTS 4B‑17 (tape)     | `BOOT TM0` — follow ROLLIN restore procedure         |
+| **RL0** | BSD 2.9               | `boot rl0` → `rl(0,0)rlunix` → CTRL/D → login `root` |
+| **RL1** | RSX‑11M v3.2          | `BOOT RL1` — login `1,2` password `SYSTEM`           |
+| **RL2** | RSTS/E v7.0           | `BOOT RL2` — login `11,70` password `PDP`            |
+| **RL3** | XXDP (extended)       | `BOOT RL3`                                           |
+| **RP0** | ULTRIX‑11 V3.1        | `boot rp0` → CTRL/D → login `root`                   |
+| **RP1** | BSD 2.11              | `boot rp1` — autoboots to multiuser, login `root`    |
+| **RP2** | RSTS/E v9.6           | `BOOT RP2` — answer prompts, login `11,70`           |
+| **RP3** | RSX‑11M v4.6          | `BOOT RP3` — auto-logs `1,2` SYSTEM                  |
+| **RP4** | RSTS/E v10.1          | `BOOT RP4` — answer prompts, login `11,70`           |
 
 > Full boot session logs for every OS are available in [`docs/ExampleBoots.md`](docs/ExampleBoots.md).
 
@@ -121,6 +121,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
+* **Embedding the Emulator:** For museums and educators — embed yaPDP in any HTML page via `<iframe>`: [`docs/manual/machine-state.md`](docs/manual/machine-state.md) (see the Embedding subsection).
 
 ---
 
@@ -156,9 +157,9 @@ This project stands on the shoulders of giants:
 This project is licensed under the **[MIT License](LICENSE)**.
 *Copyright (c) 2026 Alexei Eskenazi*
 
-| Resource | Link |
-|----------|------|
-| **Original pdp11-js** | [github.com/paulnank/pdp11-js](https://github.com/paulnank/pdp11-js/) |
-| **Google60 (mass:werk)** | [mass.werk.at/google60](https://www.masswerk.at/google60/) |
-| **Bitsavers Documentation** | [bitsavers.org/pdf/dec/pdp11](http://bitsavers.org/pdf/dec/pdp11/) |
-| **TUHS Archives** | [tuhs.org](https://www.tuhs.org/) |
+| Resource                    | Link                                                                  |
+| --------------------------- | --------------------------------------------------------------------- |
+| **Original pdp11-js**       | [github.com/paulnank/pdp11-js](https://github.com/paulnank/pdp11-js/) |
+| **Google60 (mass:werk)**    | [mass.werk.at/google60](https://www.masswerk.at/google60/)            |
+| **Bitsavers Documentation** | [bitsavers.org/pdf/dec/pdp11](http://bitsavers.org/pdf/dec/pdp11/)    |
+| **TUHS Archives**           | [tuhs.org](https://www.tuhs.org/)                                     |
