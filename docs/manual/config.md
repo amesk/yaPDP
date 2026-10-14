@@ -48,6 +48,33 @@ into four tabs, with the **Apply** and **Restore defaults** actions in a bar bel
 - **Plain text input instead of the canvas CRT** — render the terminal as a text field instead of the canvas CRT, giving native text selection and Windows Clipboard (Ctrl+C / Ctrl+V / right-click paste) for fast source-code entry; loses SGR attributes (bold/underline/reverse). It acts on the page, so a VT52 and a VT100 terminal are both rendered this way.
 :::
 
+#### All options at a glance
+
+| Option                     | Tab          | Values                                  | Applies                     |
+| -------------------------- | ------------ | --------------------------------------- | --------------------------- |
+| Console terminal           | Equipment    | Teletype / VT52 / VT100                 | On Apply (machine restarts) |
+| User terminals (TTY 1)     | Equipment    | None / VT52 / VT100                     | On Apply (machine restarts) |
+| User terminals (TTY 2)     | Equipment    | None / VT52 / VT100                     | On Apply (machine restarts) |
+| Line printer (LP11)        | Equipment    | Off / On                                | On Apply (machine restarts) |
+| VT11 graphics display      | Equipment    | Off / On                                | On Apply (machine restarts) |
+| Teletype print width       | Equipment    | 72 / 80 columns                         | Immediately                 |
+| Printer width              | Equipment    | 72 / 80 / 100 / 132 columns             | Immediately                 |
+| Teletype speed             | Equipment    | Authentic / Fast                        | Immediately                 |
+| Upper Case Only            | Equipment    | Off / On                                | Immediately                 |
+| Force PDP Output Uppercase | Equipment    | Off / On                                | Immediately                 |
+| VT100 key click            | Look & sound | Off / On                                | Immediately                 |
+| VT100 phosphor             | Look & sound | P4 white / P1 green                     | Immediately                 |
+| VT52 reverse video         | Look & sound | Off / On                                | Immediately                 |
+| CRT effects                | Look & sound | Off / On                                | Immediately                 |
+| Machine hum                | Look & sound | Off / On                                | Immediately                 |
+| Photo backdrop             | Look & sound | Off / On                                | Immediately                 |
+| Reboot confirmation        | Behaviour    | Off / On                                | Immediately                 |
+| Help Me! sticker           | Behaviour    | Off / On                                | Immediately                 |
+| Machine power              | Behaviour    | Off / On                                | Immediately                 |
+| Boot device                | Behaviour    | None / Interactive loader / Last medium | Immediately                 |
+| First-run hint             | Behaviour    | Off / On                                | Immediately                 |
+| Plain text input           | Development  | Off / On                                | Immediately                 |
+
 Leaving the Config page with uncommitted changes asks for confirmation, so nothing is lost silently:
 
 ![Unapplied configuration warning](assets/images/manual/dialog-config-leave.png){.shot}
