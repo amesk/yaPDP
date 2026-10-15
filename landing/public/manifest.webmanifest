@@ -8,18 +8,15 @@
   "display": "standalone",
   "background_color": "#1c1915",
   "theme_color": "#1c1915",
-  "categories": ["education", "entertainment"],
+  "categories": [
+    "education",
+    "entertainment"
+  ],
   "icons": [
     {
-      "src": "src-tauri/icons/android/mipmap-xxxhdpi/ic_launcher.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "src-tauri/icons/ios/AppIcon-512@2x.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
+      "src": "assets/pdp11-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]
