@@ -208,6 +208,24 @@
             color: inherit;
         }
 
+        /* Glossary terms and definitions. The section is a semantic
+           description list (<dl>): the term leads in a gold-tinted face, the
+           definition indents under it, and a pair never breaks between pages. */
+        .landing-page dl {
+            margin: 12px 0;
+        }
+
+        .landing-page dl dt {
+            color: #e8d080;
+            font-weight: bold;
+            margin: 10px 0 2px 0;
+        }
+
+        .landing-page dl dd {
+            margin: 0 0 6px 18px;
+            color: inherit;
+        }
+
         /* Hero block */
         .hero {
             text-align: center;
@@ -539,8 +557,10 @@
                partway down somebody else's. It costs pages — the manual grows —
                and that is the trade a reference book makes.
 
-               The first heading is the exception: it would otherwise push a
-               blank page between the contents list and the opening section. */
+               The contents list is the first h2 and the opening chapter the
+               first h2 after the contents list's <hr>; both start their own
+               sheet just like every later chapter — the hero, the contents and
+               the body are three separate stops for the eye. */
             .landing-page h2 {
                 page-break-before: always;
                 break-before: page;
@@ -552,10 +572,74 @@
                 break-before: page;
             }
 
-            .landing-page hr+h2,
-            .landing-page h2:first-of-type {
-                page-break-before: auto;
-                break-before: auto;
+            /* The term list of the index is set in two columns, like the back
+               of a book. Only the index is columned — the body text keeps its
+               full measure. The alphabet headings and the term lists live in
+               the wrapper, so the "Index" heading itself spans the page.
+
+               column-count balances the columns per page: the fragmenter fills
+               the first column to the page box, then the second, then moves on
+               to the next sheet — a long index keeps its two-column look
+               across page breaks. */
+            .landing-page .manual-index-cols {
+                column-count: 2;
+                column-gap: 8mm;
+            }
+
+            /* One entry is one printed line: the term, a dotted leader and the
+               page numbers. A term must never be split between the columns —
+               break-inside on the li keeps term and numbers together. The
+               flex row aligns the term baseline with the numbers, and the
+               leader (a dotted bottom rule on a stretchy span) guides the eye
+               across the gap. */
+            .landing-page .manual-index-cols li {
+                display: flex;
+                align-items: baseline;
+                margin: 0;
+                padding: 0;
+            }
+
+            .landing-page .manual-index-cols .index-dots {
+                flex: 1 1 auto;
+                min-width: 4mm;
+                margin: 0 1.5mm;
+                border-bottom: 1px dotted #8a8278;
+            }
+
+            .landing-page .manual-index-cols .index-pages {
+                flex: 0 0 auto;
+                white-space: nowrap;
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* A short English term leaves a wide dotted gap; a long Russian
+               one leaves almost none — that is fine, the rule only keeps the
+               two edges of the line visually connected. */
+            .landing-page .manual-index-cols ul {
+                margin: 0 0 4mm 0;
+                padding: 0 0 0 6mm;
+                list-style: none;
+            }
+
+            /* An entry whose sections were never found in the finished PDF
+               carries no numbers; a bare dotted leader would dangle to the
+               column edge, so term-only entries hide the tail. */
+            .landing-page .manual-index-cols li:not(.has-pages) .index-dots,
+            .landing-page .manual-index-cols li:not(.has-pages) .index-pages {
+                display: none;
+            }
+
+            /* A glossary term and its definition belong to each other: the
+               term must not be stranded at the foot of a page while its
+               definition starts on the next sheet. */
+            .landing-page dl dd {
+                margin: 0 0 3mm 6mm;
+            }
+
+            .landing-page dl dt {
+                page-break-after: avoid;
+                break-after: avoid;
+                margin: 2mm 0 0 0;
             }
 
             /* A heading must not sit alone at the foot of a page, and a

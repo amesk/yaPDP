@@ -103,6 +103,16 @@ function parseBlocks(md) {
   let table = null;
   let fence = null;   // inside a ``` block
 
+  // A definition list, written Pandoc-style:
+  //
+  //     **Term**
+  //     :   The definition.
+  //
+  // The term is a plain paragraph line, the definition is the line indented
+  // under it and started with ":  ". The structure — not the formatting of the
+  // term — is what makes the pair a definition, so **bold** stays optional.
+  // Consecutive pairs share one <dl> because blank lines between them do not
+  // flush the list, only the current paragraph.
   const flushPara = () => {
     if (para.length) { blocks.push({ type: "p", text: para.join(" ").trim() }); para = []; }
   };
@@ -193,6 +203,22 @@ function parseBlocks(md) {
       continue;
     }
 
+    // A definition line, Pandoc-style: ":   text" under a term line. The term
+    // is the paragraph that has been accumulating; on its own (no definition
+    // line following) it stays a plain paragraph. The check must run BEFORE
+    // the paragraph appends the line, so the term's own line is not merged
+    // with the definition.
+    const dd = /^:\s{1,}(.*)$/.exec(line);
+    if (dd) {
+      const term = para.join(" ").trim();
+      para = [];
+      if (term) {
+        blocks.push({ type: "dl", term: term, def: dd[1].trim() });
+        continue;
+      }
+      // No pending term — a stray ":   " is prose, not a definition.
+    }
+
     // an indented continuation belongs to the paragraph we are in
     para.push(line.trim());
   }
@@ -236,6 +262,17 @@ function blocksToHtml(blocks, level = 2, headings = null) {
         for (const it of b.items) out.push("    <li>" + inline(it) + "</li>");
         out.push("  </" + b.type + ">");
         break;
+      case "dl": {
+        // Consecutive glossary entries share one <dl>: a description list is
+        // a single container for every term/definition pair of the glossary.
+        out.push("  <dl>");
+        for (let i = bi; i < blocks.length && blocks[i].type === "dl"; i++, bi++) {
+          out.push("    <dt>" + inline(blocks[i].term) + "</dt>");
+          out.push("    <dd>" + inline(blocks[i].def) + "</dd>");
+        }
+        out.push("  </dl>");
+        break;
+      }
       case "img": {
         // Inside a CONFIG card the image is a grid cell, not a standalone
         // picture: no <p> wrapper, or the grid breaks.
@@ -615,7 +652,7 @@ function buildHtml(sections, page) {
 
   const toc = sections.map((s) =>
     "                <li><a href=\"#" + s.id + "\">" + inline(s[page.titleField]) +
-    "</a></li>").join("\n");
+    "</a><span class=\"toc-dots\"></span></li>").join("\n");
   const bodies = sections.map((s) =>
     '            <h2 id="' + s.id + '">' + inline(s[page.titleField]) + "</h2>\n\n" +
     blocksToHtml(s[page.bodyField], 2,
@@ -767,13 +804,17 @@ function readIndex() {
     throw new Error("manual subject index must be a non-empty array: docs/manual/_index.json");
   }
   for (const entry of entries) {
-    if (!entry.termEn || !entry.termRu || !entry.section) {
+    if (!entry.termEn || !entry.termRu || !Array.isArray(entry.sections) ||
+        !entry.sections.length || entry.sections.some((s) => !s)) {
       throw new Error("incomplete manual index entry: " + JSON.stringify(entry));
     }
   }
   return entries;
 }
 
+// A term may be discussed in more than one section; the printed index then
+// lists every page. Each entry is one line: the term, a dotted leader and the
+// page numbers, written by build-manual-pdf.js once pagination has stabilized.
 function buildIndexHtml(entries, page, sectionIds) {
   const locale = page.lang === "ru" ? "ru" : "en";
   const field = page.lang === "ru" ? "termRu" : "termEn";
@@ -781,13 +822,16 @@ function buildIndexHtml(entries, page, sectionIds) {
     a[field].localeCompare(b[field], locale, { sensitivity: "base", numeric: true }));
   const out = [
     '            <section class="manual-index" aria-label="' + CHROME[page.lang].index + '">',
-    "              <h2>" + CHROME[page.lang].index + "</h2>"
+    "              <h2>" + CHROME[page.lang].index + "</h2>",
+    '              <div class="manual-index-cols">'
   ];
   let lastLetter = "";
   for (const entry of sorted) {
-    if (!sectionIds.has(entry.section)) {
-      throw new Error('manual index entry "' + entry[field] +
-        '" points to missing section: ' + entry.section);
+    for (const section of entry.sections) {
+      if (!sectionIds.has(section)) {
+        throw new Error('manual index entry "' + entry[field] +
+          '" points to missing section: ' + section);
+      }
     }
     const letter = Array.from(entry[field].trim())[0].toLocaleUpperCase(locale);
     if (letter !== lastLetter) {
@@ -795,10 +839,15 @@ function buildIndexHtml(entries, page, sectionIds) {
       out.push("              <h3>" + inline(letter) + "</h3>", "              <ul>");
       lastLetter = letter;
     }
-    out.push('                <li><a href="#' + entry.section + '">' +
-      inline(entry[field]) + "</a></li>");
+    // data-sections carries every section the term appears in; the printed
+    // number list derives from it, while the link itself points at the first
+    // section (the term's primary location).
+    const refs = entry.sections.join(" ");
+    out.push('                <li data-sections="' + refs + '"><a href="#' +
+      entry.sections[0] + '">' + inline(entry[field]) + "</a>" +
+      '<span class="index-dots"></span><span class="index-pages"></span></li>');
   }
-  out.push("              </ul>", "            </section>");
+  out.push("              </ul>", "              </div>", "            </section>");
   return out.join("\n");
 }
 

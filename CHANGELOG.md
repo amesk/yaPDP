@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Glossary chapter in the user manual.** A new reference chapter
   defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
-  for quick lookup. (`docs/manual/glossary.md`,
-  `docs/manual/ru/glossary.md`)
+  for quick lookup. Entries are written as Pandoc-style definition
+  lists and rendered as semantic `<dl>` markup (`docs/manual/glossary.md`,
+  `docs/manual/ru/glossary.md`, `tools/build-manual.js`)
 - **Keyboard shortcuts table in the Controls chapter.** A complete list
   of keyboard shortcuts (F11, Ctrl+Shift+S, Page Up/Down, Ctrl+C/Z,
   etc.) with their effects. (`docs/manual/controls.md`,
@@ -83,6 +84,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   may not cooperate. (`docs/manual/machine-state.md`, `docs/manual/ru/machine-state.md`,
   `docs/FEATURES.md`, `landing/src/components/UserManual.tsx`,
   `tools/screenshots-manual.js`, `assets/images/manual/dialog-share.png`)
+- **Two-column subject index in the PDF manual.** The printed index is now
+  laid out as a classic two-column back-of-the-book index with a dotted
+  leader per entry and real page numbers (a term may reference several
+  sections, listed as "12, 18"). The manual's web page is unchanged; the
+  index exists only in the PDF. The table of contents gets the same dotted
+  leaders between a chapter title and its page number.
+  (`docs/manual/_index.json`, `tools/build-manual.js`,
+  `tools/build-manual-pdf.js`, `tools/manual-template-head.html`)
 
 ### Changed
 

@@ -161,16 +161,32 @@ function run() {
   const indexEntries = JSON.parse(fs.readFileSync(path.join(SRC, "_index.json"), "utf8"));
   assert.ok(!html.includes('class="manual-index"'), "English HTML must not contain the subject index");
   assert.ok(!htmlRu.includes('class="manual-index"'), "Russian HTML must not contain the subject index");
+  for (const entry of indexEntries) {
+    assert.ok(Array.isArray(entry.sections) && entry.sections.length > 0,
+      "each index entry must carry a non-empty sections array: " + JSON.stringify(entry));
+  }
   for (const [indexHtml, title] of [
     [built.indexHtml, "Index"],
     [built.indexHtmlRu, "Предметный указатель"],
   ]) {
     assert.ok(indexHtml.includes('<section class="manual-index"'), "generated subject index is missing");
     assert.ok(indexHtml.includes("<h2>" + title + "</h2>"), "translated index title is missing: " + title);
+    // The term list must sit in the two-column wrapper, and each entry carries
+    // the term link, the dotted leader and the page-number span the PDF run
+    // fills in after pagination.
+    assert.ok(indexHtml.includes('class="manual-index-cols"'),
+      title + " index is missing the two-column term-list wrapper");
     for (const entry of indexEntries) {
-      assert.ok(indexHtml.includes('href="#' + entry.section + '"'),
-        "index link missing for " + entry.section + " on " + title + " index");
+      assert.ok(indexHtml.includes('href="#' + entry.sections[0] + '"'),
+        "index link missing for " + entry.sections[0] + " on " + title + " index");
+      assert.ok(indexHtml.includes('data-sections="' + entry.sections.join(" ") + '"'),
+        "index entry missing its full section list on " + title + " index: " +
+        JSON.stringify(entry));
     }
+    assert.ok(indexHtml.includes('<span class="index-dots"></span>'),
+      title + " index entries must carry the dotted leader span");
+    assert.ok(indexHtml.includes('<span class="index-pages"></span>'),
+      title + " index entries must carry the page-number span");
   }
 
   const meta = metaSections();
@@ -325,6 +341,25 @@ function run() {
   assert.ok(anchors >= linksInSource,
     "internal links were lost on the way: " + linksInSource +
     " in the source, " + anchors + " in the page");
+
+  // --- 4a. the Glossary is a semantic description list ---------------------
+  // The glossary source is Pandoc-style definition lists ("**Term** / :   def"),
+  // and the page must render them as <dl><dt>/<dd>, not as bold paragraphs: a
+  // reader and an assistive tool both need the term/definition structure.
+  const glossarySrc = fs.readFileSync(path.join(SRC, "glossary.md"), "utf8");
+  const glossaryRu = fs.readFileSync(path.join(SRC_RU, "glossary.md"), "utf8");
+  const termsIn = (src) => (src.match(/^:\s+\S/gm) || []).length;
+  for (const [pageHtml, label, src] of [
+    [html, "manual.html", glossarySrc],
+    [htmlRu, "manual_ru.html", glossaryRu],
+  ]) {
+    assert.ok(count(pageHtml, /<dl>/g) > 0, label + " renders no <dl> for the Glossary");
+    const dt = count(pageHtml, /<dt>/g);
+    const dd = count(pageHtml, /<dd>/g);
+    assert.strictEqual(dt, dd, label + ": <dt> and <dd> counts differ (" + dt + " vs " + dd + ")");
+    assert.strictEqual(dt, termsIn(src),
+      label + ": glossary terms (" + termsIn(src) + ") do not match <dt> count (" + dt + ")");
+  }
 
   // --- 4b. the TypeScript output carries DATA, not markup ------------------
   // manualData.ts is consumed by React as plain strings. A marker or a
