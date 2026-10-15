@@ -33,6 +33,7 @@ const path = require("path");
 const http = require("http");
 const { spawn } = require("child_process");
 const puppeteer = require("puppeteer");
+const manualBuild = require("./build-manual").generate();
 
 const ROOT = path.resolve(__dirname, "..");
 // The version the manual documents — package.json is the single source of
@@ -269,6 +270,16 @@ async function buildOne(browser, key, stamp) {
 
   const page = await browser.newPage();
   await page.goto(url, { waitUntil: "load" });
+  // The subject index belongs to the printed edition, not the web manual.
+  // Inject the shared generated fragment only into this PDF rendering session.
+  const indexHtml = key === "ru" ? manualBuild.indexHtmlRu : manualBuild.indexHtml;
+  await page.evaluate((markup) => {
+    const container = document.querySelector(".landing-page");
+    if (!container) throw new Error("manual content container .landing-page not found");
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = markup;
+    container.appendChild(wrapper.firstElementChild);
+  }, indexHtml);
   await page.evaluateHandle("document.fonts.ready");
 
   // --- the cover, printed on its own ---------------------------------------

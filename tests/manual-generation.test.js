@@ -152,14 +152,19 @@ function run() {
   const html = built.html;
   const htmlRu = built.htmlRu;
   const ts = built.ts;
-  // The subject index is generated in both languages and points to real sections.
+  // The subject index is generated separately for PDF and must not be in HTML.
   const indexEntries = JSON.parse(fs.readFileSync(path.join(SRC, "_index.json"), "utf8"));
-  for (const [page, title] of [[html, "Index"], [htmlRu, "Предметный указатель"]]) {
-    assert.ok(page.includes('<section class="manual-index"'), "generated subject index is missing");
-    assert.ok(page.includes("<h2>" + title + "</h2>"), "translated index title is missing: " + title);
+  assert.ok(!html.includes('class="manual-index"'), "English HTML must not contain the subject index");
+  assert.ok(!htmlRu.includes('class="manual-index"'), "Russian HTML must not contain the subject index");
+  for (const [indexHtml, title] of [
+    [built.indexHtml, "Index"],
+    [built.indexHtmlRu, "Предметный указатель"],
+  ]) {
+    assert.ok(indexHtml.includes('<section class="manual-index"'), "generated subject index is missing");
+    assert.ok(indexHtml.includes("<h2>" + title + "</h2>"), "translated index title is missing: " + title);
     for (const entry of indexEntries) {
-      assert.ok(page.includes('href="#' + entry.section + '"'),
-        "index link missing for " + entry.section + " on " + title + " page");
+      assert.ok(indexHtml.includes('href="#' + entry.section + '"'),
+        "index link missing for " + entry.section + " on " + title + " index");
     }
   }
 
