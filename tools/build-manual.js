@@ -594,7 +594,7 @@ function langSwitch(c) {
     '">' + en + '<span class="lang-sep">/</span>' + ru + "</span>";
 }
 
-function buildHtml(sections, page, indexEntries) {
+function buildHtml(sections, page) {
   const headFile = path.join(__dirname, "manual-template-head.html");
   const tailFile = path.join(__dirname, "manual-template-tail.html");
   if (!fs.existsSync(headFile) || !fs.existsSync(tailFile)) {
@@ -616,8 +616,8 @@ function buildHtml(sections, page, indexEntries) {
       page.lang === "en" ? null : headingIds(s.blocksEn).slice())
       .replace(/^ {2}/gm, "            ")).join("\n\n");
 
-  const indexHtml = buildIndexHtml(indexEntries, page, new Set(sections.map((s) => s.id)));\n\n  return head + "\n\n            <h2>" + CHROME[page.lang].toc + "</h2>\n\n            <ol>\n" +
-    toc + "\n            </ol>\n\n            <hr>\n\n" + bodies + "\n\n" + indexHtml + "\n" + tail + "\n";
+  return head + "\n\n            <h2>" + CHROME[page.lang].toc + "</h2>\n\n            <ol>\n" +
+    toc + "\n            </ol>\n\n            <hr>\n\n" + bodies + "\n" + tail + "\n";
 }
 
 function tsString(s) {
@@ -887,8 +887,10 @@ function generate() {
   const CONFIG_TABS_DATA = configTabs(secById["config"].blocksEn, secById["config"].blocksRu);
 
   return {
-    html: buildHtml(sections, PAGES[0], indexEntries),
-    htmlRu: buildHtml(sections, PAGES[1], indexEntries),
+    html: buildHtml(sections, PAGES[0]),
+    htmlRu: buildHtml(sections, PAGES[1]),
+    indexHtml: buildIndexHtml(indexEntries, PAGES[0], new Set(sections.map((s) => s.id))),
+    indexHtmlRu: buildIndexHtml(indexEntries, PAGES[1], new Set(sections.map((s) => s.id))),
     ts: buildTs(sections, { GUEST_OS_TABLE, FLOATING_CONTROLS_DATA, CONFIG_TABS_DATA }),
     sections,
   };
