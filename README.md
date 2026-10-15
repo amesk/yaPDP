@@ -120,6 +120,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
+* **Progressive Web App:** Installation scope, current limitations, and verification steps: [`docs/PWA.md`](docs/PWA.md).
 
 ---
 

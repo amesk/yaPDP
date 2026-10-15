@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "yaPDP — Interactive PDP-11/70 Retro-Museum",
+  "short_name": "yaPDP",
+  "description": "Explore a historical PDP-11/70 computer and its operating systems in your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1c1915",
+  "theme_color": "#1c1915",
+  "categories": [
+    "education",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "assets/pdp11-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

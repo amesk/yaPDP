@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The landing page and emulator can be installed as PWAs.** Added separate manifests so the installed app can open either the museum landing page or `pdp11.html`; offline use is not yet provided. (`landing/public/manifest.webmanifest`, `pdp11.webmanifest`, `landing/index.html`, `pdp11.html`)
+
 
 - **User-facing failures now surface as toasts.** Real, user-relevant errors and
   warnings — a bundled image that failed to load, a dropped state that did not
