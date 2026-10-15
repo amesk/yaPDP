@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The landing page can be installed as a PWA.** Added a web app manifest, app icons, and browser theme metadata; offline use is not yet provided. (`landing/public/manifest.webmanifest`, `landing/index.html`)
+
 
 - **User-facing failures now surface as toasts.** Real, user-relevant errors and
   warnings — a bundled image that failed to load, a dropped state that did not
