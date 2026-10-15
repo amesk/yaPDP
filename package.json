@@ -36,6 +36,7 @@
     "video:demo": "node tools/assemble-video.js",
     "clean": "node tools/build-desktop.js --clean",
     "version:sync": "node tools/sync-version.js",
+    "state-manifest": "wireit",
     "manifest": "wireit",
     "tape:pack": "node tools/tape-archive.js pack",
     "tape:unpack": "node tools/tape-archive.js unpack",
@@ -92,6 +93,19 @@
       ],
       "output": [
         "media/manifest.json"
+      ]
+    },
+    "state-manifest": {
+      "command": "node tools/gen-state-manifest.js",
+      "files": [
+        "states/**",
+        "tools/gen-state-manifest.js",
+        "tools/state-io.js",
+        "src/state-format.js",
+        "src/state-frame.js"
+      ],
+      "output": [
+        "states/manifest.json"
       ]
     },
     "manual:build": {

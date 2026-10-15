@@ -1262,6 +1262,43 @@ textarea {
     color: #e0d8c8;
 }
 
+/* Quick-boot tab bar inside the shared modal box. */
+.quickboot-tabs {
+    display: flex;
+    gap: 0;
+    margin: 0 0 8px;
+    border-bottom: 1px solid #4a453a;
+}
+
+.quickboot-tab {
+    flex: 0 1 auto;
+    padding: 6px 16px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: #9a9488;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.quickboot-tab:hover {
+    color: #c8c0b0;
+}
+
+.quickboot-tab.active {
+    color: #c8a860;
+    border-bottom-color: #c8a860;
+}
+
+.quickboot-empty {
+    display: block;
+    padding: 12px 0;
+    color: #9a9488;
+    font-style: italic;
+    text-align: center;
+}
+
 /* Quick-boot OS picker list inside the shared modal box. */
 .quickboot-box {
     max-width: 480px;
@@ -1272,7 +1309,9 @@ textarea {
     flex-direction: column;
     gap: 6px;
     margin: 4px 0 16px;
-    max-height: 60vh;
+    height: 50vh;
+    min-height: 300px;
+    max-height: 70vh;
     overflow-y: auto;
 }
 
@@ -1291,6 +1330,8 @@ textarea {
     font-size: 13px;
     text-align: left;
     cursor: pointer;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .quickboot-option:hover {
@@ -1314,6 +1355,58 @@ textarea {
     flex-basis: 100%;
     color: #8f8878;
     font-size: 11px;
+}
+
+/* Scenario list item: screenshot thumbnail + text side by side. */
+.quickboot-scenario-option {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #4a4438;
+    border-radius: 5px;
+    background: #241f18;
+    color: #e0d8c8;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.quickboot-scenario-option:hover {
+    border-color: #c8a860;
+    background: #2f2820;
+}
+
+.quickboot-scenario-preview {
+    flex: 0 0 auto;
+    width: 80px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #4a4438;
+}
+
+.quickboot-scenario-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.quickboot-scenario-desc {
+    display: block;
+    color: #9a9488;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 2px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    /* Clamp to 3 lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* "Autoloading in progress" toast (quickboot.js) — pinned to the top centre

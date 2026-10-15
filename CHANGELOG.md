@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Scenario tab in the Quick Boot wizard.** The magic-wand dialog now has
+  two tabs — "Boot" (existing OS boot scenarios) and "Scenario" (pre-built
+  machine states from `states/`). Picking a scenario restores the machine
+  instantly, the same way a `?state=` deep link does. A new build step
+  (`tools/gen-state-manifest.js`) generates `states/manifest.json` from the
+  actual state files, so the list is always in sync.
+  (`src/quickboot.js`, `css/pdp11.css`, `tools/gen-state-manifest.js`,
+  `package.json`)
 - **Glossary chapter in the user manual.** A new reference chapter
   defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
   for quick lookup. Entries are written as Pandoc-style definition
