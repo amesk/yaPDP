@@ -1,5 +1,35 @@
 [
   {
+    "termEn": "2.11 BSD",
+    "termRu": "2.11 BSD",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "ASR-33",
+    "termRu": "ASR-33",
+    "section": "console"
+  },
+  {
+    "termEn": "Autoload",
+    "termRu": "Автозагрузка",
+    "section": "quick-start"
+  },
+  {
+    "termEn": "Boot command",
+    "termRu": "Команда загрузки",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "Boot device",
+    "termRu": "Boot device",
+    "section": "config"
+  },
+  {
+    "termEn": "Bootstrap loader",
+    "termRu": "Загрузчик",
+    "section": "front-panel"
+  },
+  {
     "termEn": "Booting",
     "termRu": "Загрузка",
     "section": "guest-oses"
@@ -15,9 +45,29 @@
     "section": "machine-state"
   },
   {
+    "termEn": "CRT effects",
+    "termRu": "Эффекты ЭЛТ",
+    "section": "config"
+  },
+  {
+    "termEn": "DECscope VT52",
+    "termRu": "DECscope VT52",
+    "section": "user-terminals"
+  },
+  {
+    "termEn": "Desktop app",
+    "termRu": "Настольное приложение",
+    "section": "desktop"
+  },
+  {
     "termEn": "Disk images",
     "termRu": "Образы дисков",
     "section": "storage"
+  },
+  {
+    "termEn": "DL11",
+    "termRu": "DL11",
+    "section": "console"
   },
   {
     "termEn": "Exporting a state",
@@ -30,9 +80,29 @@
     "section": "front-panel"
   },
   {
+    "termEn": "Fullscreen",
+    "termRu": "Полноэкранный режим",
+    "section": "controls"
+  },
+  {
     "termEn": "GitHub Gist",
     "termRu": "GitHub Gist",
     "section": "machine-state"
+  },
+  {
+    "termEn": "Glossary",
+    "termRu": "Глоссарий",
+    "section": "glossary"
+  },
+  {
+    "termEn": "Guest OS",
+    "termRu": "Гостевая ОС",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "Historical fidelity",
+    "termRu": "Историческая достоверность",
+    "section": "fidelity"
   },
   {
     "termEn": "Importing a state",
@@ -40,9 +110,24 @@
     "section": "machine-state"
   },
   {
+    "termEn": "Keyboard shortcuts",
+    "termRu": "Сочетания клавиш",
+    "section": "controls"
+  },
+  {
     "termEn": "LP11 line printer",
     "termRu": "Построчный принтер LP11",
     "section": "printer"
+  },
+  {
+    "termEn": "Lunar Lander",
+    "termRu": "Lunar Lander",
+    "section": "vt11"
+  },
+  {
+    "termEn": "Magic wand",
+    "termRu": "Волшебная палочка",
+    "section": "quick-start"
   },
   {
     "termEn": "Model 33 ASR",
@@ -50,14 +135,54 @@
     "section": "console"
   },
   {
+    "termEn": "Mute",
+    "termRu": "Без звука",
+    "section": "controls"
+  },
+  {
     "termEn": "Operating systems",
     "termRu": "Операционные системы",
     "section": "guest-oses"
   },
   {
-    "termEn": "Quick start",
+    "termEn": "Paper tape",
+    "termRu": "Перфолента",
+    "section": "storage"
+  },
+  {
+    "termEn": "PAT (Personal Access Token)",
+    "termRu": "PAT (Personal Access Token)",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "PDP-11/70",
+    "termRu": "PDP-11/70",
+    "section": "about"
+  },
+  {
+    "termEn": "Quick boot",
     "termRu": "Быстрый запуск",
     "section": "quick-start"
+  },
+  {
+    "termEn": "Quick start",
+    "termRu": "Быстрый старт",
+    "section": "quick-start"
+  },
+  {
+    "termEn": "RT-11",
+    "termRu": "RT-11",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "RSX-11M",
+    "termRu": "RSX-11M",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "RSTS/E",
+    "termRu": "RSTS/E",
+    "section": "guest-oses"
   },
   {
     "termEn": "Saving a state",
@@ -65,9 +190,19 @@
     "section": "machine-state"
   },
   {
+    "termEn": "Screenshot",
+    "termRu": "Снимок экрана",
+    "section": "controls"
+  },
+  {
     "termEn": "Sharing a state",
     "termRu": "Обмен состояниями",
     "section": "machine-state"
+  },
+  {
+    "termEn": "Sidebar",
+    "termRu": "Боковая панель",
+    "section": "controls"
   },
   {
     "termEn": "Snapshots",
@@ -80,9 +215,19 @@
     "section": "storage"
   },
   {
+    "termEn": "Tape image",
+    "termRu": "Образ ленты",
+    "section": "storage"
+  },
+  {
     "termEn": "Tauri desktop app",
     "termRu": "Настольное приложение Tauri",
     "section": "desktop"
+  },
+  {
+    "termEn": "Teleport link",
+    "termRu": "Teleport-ссылка",
+    "section": "machine-state"
   },
   {
     "termEn": "Teletype",
@@ -90,9 +235,29 @@
     "section": "console"
   },
   {
+    "termEn": "Terminal zoom",
+    "termRu": "Масштаб терминала",
+    "section": "controls"
+  },
+  {
     "termEn": "Troubleshooting",
     "termRu": "Устранение неполадок",
     "section": "troubleshooting"
+  },
+  {
+    "termEn": "TTY",
+    "termRu": "TTY",
+    "section": "user-terminals"
+  },
+  {
+    "termEn": "Unix V5",
+    "termRu": "Unix V5",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "Upper Case Only",
+    "termRu": "Upper Case Only",
+    "section": "config"
   },
   {
     "termEn": "VT100",
@@ -103,6 +268,16 @@
     "termEn": "VT11",
     "termRu": "VT11",
     "section": "vt11"
+  },
+  {
+    "termEn": "XXDP",
+    "termRu": "XXDP",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "yaPDP",
+    "termRu": "yaPDP",
+    "section": "about"
   },
   {
     "termEn": "Zstandard (zstd)",
