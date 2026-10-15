@@ -286,7 +286,13 @@ function blocksToHtml(blocks, level = 2, headings = null) {
       case "pre":
         // <pre> keeps the alignment verbatim; the source's own indentation is
         // what the reference page shows, so no re-indenting here.
-        out.push("  <pre>" + b.text + "</pre>");
+        // HTML-escape the content so that <iframe> and similar tags inside
+        // fenced code blocks are displayed as text, not executed by the browser.
+        out.push("  <pre>" + b.text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&#34;") + "</pre>");
         break;
       case "table": {
         // Wrapped in a scroll container, exactly as the devlog's renderer does
@@ -496,6 +502,7 @@ const CHROME = {
     altLabel: "Русская версия",
     langSwitchTitle: "Switch language",
     toc: "Table of Contents",
+    index: "Index",
   },
   ru: {
     lang: "ru",
@@ -516,6 +523,7 @@ const CHROME = {
     altLabel: "English version",
     langSwitchTitle: "Переключить язык",
     toc: "Оглавление",
+    index: "Предметный указатель",
   },
 };
 
@@ -751,10 +759,54 @@ function buildTs(sections, tables) {
   return out.join("\n");
 }
 
+
+function readIndex() {
+  const file = path.join(SRC, "_index.json");
+  const entries = JSON.parse(fs.readFileSync(file, "utf8"));
+  if (!Array.isArray(entries) || !entries.length) {
+    throw new Error("manual subject index must be a non-empty array: docs/manual/_index.json");
+  }
+  for (const entry of entries) {
+    if (!entry.termEn || !entry.termRu || !entry.section) {
+      throw new Error("incomplete manual index entry: " + JSON.stringify(entry));
+    }
+  }
+  return entries;
+}
+
+function buildIndexHtml(entries, page, sectionIds) {
+  const locale = page.lang === "ru" ? "ru" : "en";
+  const field = page.lang === "ru" ? "termRu" : "termEn";
+  const sorted = entries.slice().sort((a, b) =>
+    a[field].localeCompare(b[field], locale, { sensitivity: "base", numeric: true }));
+  const out = [
+    '            <section class="manual-index" aria-label="' + CHROME[page.lang].index + '">',
+    "              <h2>" + CHROME[page.lang].index + "</h2>"
+  ];
+  let lastLetter = "";
+  for (const entry of sorted) {
+    if (!sectionIds.has(entry.section)) {
+      throw new Error('manual index entry "' + entry[field] +
+        '" points to missing section: ' + entry.section);
+    }
+    const letter = Array.from(entry[field].trim())[0].toLocaleUpperCase(locale);
+    if (letter !== lastLetter) {
+      if (lastLetter) out.push("              </ul>");
+      out.push("              <h3>" + inline(letter) + "</h3>", "              <ul>");
+      lastLetter = letter;
+    }
+    out.push('                <li><a href="#' + entry.section + '">' +
+      inline(entry[field]) + "</a></li>");
+  }
+  out.push("              </ul>", "            </section>");
+  return out.join("\n");
+}
+
 // --- main --------------------------------------------------------------------
 
 function generate() {
   const meta = readMeta();
+  const indexEntries = readIndex();
   if (!meta.length) throw new Error("no sections found in " + SRC);
 
   const sections = meta.map((m, i) => {
@@ -843,6 +895,8 @@ function generate() {
   return {
     html: buildHtml(sections, PAGES[0]),
     htmlRu: buildHtml(sections, PAGES[1]),
+    indexHtml: buildIndexHtml(indexEntries, PAGES[0], new Set(sections.map((s) => s.id))),
+    indexHtmlRu: buildIndexHtml(indexEntries, PAGES[1], new Set(sections.map((s) => s.id))),
     ts: buildTs(sections, { GUEST_OS_TABLE, FLOATING_CONTROLS_DATA, CONFIG_TABS_DATA }),
     sections,
   };

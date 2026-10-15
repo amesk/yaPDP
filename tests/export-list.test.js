@@ -132,6 +132,20 @@ function run() {
             "bundled media stays out while the operator's own image stays in");
         assert.deepStrictEqual(rule(page, ["rp1.dsk", "rp1.dsk"], ["rp1.dsk"], {}),
             ["rp1.dsk"], "the list is deduplicated");
+
+        assert.deepStrictEqual(
+            rule(page, ["rp1.dsk", "hello.ptap"], [], { "hello.ptap": true }),
+            [],
+            "paper tapes must never appear in Export image");
+        assert.deepStrictEqual(
+            rule(page, ["rp1.dsk"], ["hello.ptap"], {}),
+            [],
+            "paper-tape entries must be excluded even if reported as changed");
+
+        assert.deepStrictEqual(
+            Array.from(page.api.diskImageUrls(["hello.ptap", "rp1.dsk", "BOOT.PTAP", "tm0.tap"])),
+            ["rp1.dsk", "tm0.tap"],
+            "the mounted disk list excludes paper tapes case-insensitively but keeps .tap images");
         console.log("PASS: export rule — guest writes or an operator-mounted image, " +
             "never pristine bundled media");
     }

@@ -206,6 +206,66 @@ function testClearCancelsEverything() {
     assert.strictEqual(adapter.hideCalls, 1, "no extra hide after clear");
 }
 
+function testDedupExtendsActiveToast() {
+    const toasts = loadToasts();
+    const adapter = fakeAdapter();
+    const clock = fakeTimers();
+    toasts.__setTimers(clock);
+    toasts.configure(adapter);
+
+    // First show with a key: visible for 3000ms (info default).
+    toasts.show({ text: "x", category: "info", key: "k" });
+    clock.advance(1000);
+
+    // Same key again: must NOT create a second toast or preempt — it just
+    // extends the deadline of the active one.
+    toasts.show({ text: "x", category: "info", key: "k" });
+    assert.strictEqual(adapter.showCalls, 1, "same key does not re-show");
+    assert.strictEqual(adapter.updates.length, 1, "same key does not re-update");
+
+    // The deadline was extended by another 3000ms from the second call, so the
+    // toast is still visible well past the original 3000ms deadline.
+    clock.advance(2999);
+    assert.strictEqual(adapter.hideCalls, 0, "extended toast still visible");
+    clock.advance(1);
+    assert.strictEqual(adapter.hideCalls, 1, "extended toast hidden at the new deadline");
+}
+
+function testDedupExtendsQueuedToast() {
+    const toasts = loadToasts();
+    const adapter = fakeAdapter();
+    const clock = fakeTimers();
+    toasts.__setTimers(clock);
+    toasts.configure(adapter);
+
+    // A (key "a") is active; B (key "b") preempts it into the queue.
+    toasts.show({ text: "A", key: "a", duration: 10000 });
+    toasts.show({ text: "B", key: "b", duration: 3000 });
+
+    // Re-showing "a" while it is queued must not add a duplicate — it extends
+    // the queued entry's deadline instead.
+    toasts.show({ text: "A", key: "a", duration: 10000 });
+    assert.strictEqual(adapter.updates.length, 2, "no duplicate update for a queued key");
+
+    // B finishes at t=3000; A is restored (still owed time).
+    clock.advance(3000);
+    assert.deepStrictEqual(adapter.updates.map(function (u) { return u.text; }), ["A", "B", "A"],
+        "queued toast restored once, not duplicated");
+}
+
+function testDedupDifferentKeysPreempt() {
+    const toasts = loadToasts();
+    const adapter = fakeAdapter();
+    const clock = fakeTimers();
+    toasts.__setTimers(clock);
+    toasts.configure(adapter);
+
+    toasts.show({ text: "A", key: "a", duration: 10000 });
+    toasts.show({ text: "B", key: "b", duration: 3000 });
+    assert.deepStrictEqual(adapter.updates.map(function (u) { return u.text; }), ["A", "B"],
+        "different keys preempt normally");
+}
+
 // ------------------------------------------------------------------
 function main() {
     testNoAdapterIsNoop();
@@ -216,6 +276,9 @@ function main() {
     testDefaultDurationsByCategory();
     testExplicitDurationOverridesDefault();
     testClearCancelsEverything();
+    testDedupExtendsActiveToast();
+    testDedupExtendsQueuedToast();
+    testDedupDifferentKeysPreempt();
     console.log("toasts: all tests passed");
 }
 

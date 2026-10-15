@@ -182,7 +182,8 @@
             // applied to the running machine instead of mounted as a drive.
             // This is the offline path (`file://` pages cannot fetch anything,
             // so drag & drop is the only way a state arrives there).
-            if (/\.state(\.zst)?$/i.test(file.name)) {
+            // Both binary (.state.zst) and text envelope (.state.txt) are accepted.
+            if (/\.state(\.(zst|txt))?$/i.test(file.name)) {
                 file.arrayBuffer().then(function (buffer) {
                     var came = (typeof SnapshotStore !== "undefined" &&
                         typeof SnapshotStore.applyStateBytes === "function");
@@ -190,13 +191,26 @@
                         if (++done === list.length) finish();
                         return;
                     }
-                    var result = SnapshotStore.applyStateBytes(
-                        new Uint8Array(buffer), file.name);
+                    // Auto-detect text envelope and decode to binary.
+                    var raw = new Uint8Array(buffer);
+                    var text = null;
+                    try {
+                        text = new TextDecoder("utf-8").decode(raw);
+                    } catch (e) { /* not valid UTF-8, treat as binary */ }
+                    var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                    if (text && env && env.isEnvelope(text)) {
+                        var decoded = env.decode(text);
+                        if (decoded) raw = decoded;
+                    }
+                    var result = SnapshotStore.applyStateBytes(raw, file.name);
                     if (result && typeof result.then === "function") {
                         result.then(function (r) {
                             if (!r || !r.ok) {
                                 console.warn("dropped state not applied:",
                                     r && r.reason);
+                                if (typeof window.__yapdpReportWarning === "function") {
+                                    window.__yapdpReportWarning("Dropped state was not applied", "state-apply-failed");
+                                }
                             }
                             if (++done === list.length) finish();
                         });
@@ -250,13 +264,19 @@
     // ------------------------------------------------------------------
     // Mounted-image management (unmount UI)
     // ------------------------------------------------------------------
+    // Paper-tape images share DataLoader with disk images, but belong in the
+    // Paper Tapes selector, not in Storage's mounted-disk list.
+    function diskImageUrls(urls) {
+        return urls.filter(function (url) { return !isPtap(url); });
+    }
+
     function refreshMountedList() {
         var select = document.getElementById("mounted-select");
         if (!select) return;
         var remove = document.getElementById("mounted-remove");
         var prev = select.value; // keep the operator's selection across rebuilds
 
-        var urls = DataLoader.list().sort();
+        var urls = diskImageUrls(DataLoader.list()).sort();
         var bindings = bindingsByUrl();
         select.innerHTML = "";
         if (!urls.length) {
@@ -283,7 +303,7 @@
         // images), mirroring the "EXPORT PAPER TAPE" size indicator style.
         var count = document.getElementById("mounted-count");
         if (count) {
-            var n = Object.keys(userImages).length;
+            var n = diskImageUrls(Object.keys(userImages)).length;
             count.textContent = n + " " + plural(n);
         }
 
@@ -466,7 +486,7 @@
         var have = {};
         var out = [];
         mounted.concat(changed).forEach(function (url) {
-            if (!url || have[url]) return;
+            if (!url || have[url] || /\.ptap$/i.test(url)) return;
             var written = changed.indexOf(url) !== -1;
             var mine = !!(user && user[url]);
             if (!written && !mine) return;
@@ -499,9 +519,9 @@
         var prev = select.value;
         // Which images may be exported — see exportableUrls(): guest writes, or
         // an image the operator mounted themselves.
-        var mounted = (typeof DataLoader !== "undefined") ? DataLoader.list() : [];
+        var mounted = (typeof DataLoader !== "undefined") ? diskImageUrls(DataLoader.list()) : [];
         var changed = (typeof DiskStore !== "undefined" && typeof DiskStore.listDirty === "function")
-            ? DiskStore.listDirty() : [];
+            ? diskImageUrls(DiskStore.listDirty()) : [];
         var urls = exportableUrls(mounted, changed, userImages);
         var bindings = bindingsByUrl();
         select.innerHTML = "";
@@ -800,6 +820,7 @@
     if (typeof window !== "undefined") {
         window.yapdpExportList = {
             exportableUrls: exportableUrls,
+            diskImageUrls: diskImageUrls,
             refreshExportList: refreshExportList,
             userImages: userImages
         };

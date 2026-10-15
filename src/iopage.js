@@ -2443,7 +2443,7 @@ async function fetchBlock(controlBlock, block) {
     // Register cache for download/export
     downLoadAdd(controlBlock.url, controlBlock.cache);
 
-    return zstResponse.status;
+    return got.response.status;
 }
 
 /// --- diskIO() ---
@@ -2873,7 +2873,7 @@ iopage.register(0o17777550, 2, (function() {
                                     // cache with garbage that never raises a load error —
                                     // the boot would hang silently instead of showing the
                                     // "Image load interrupted" overlay.
-                                    compressed: true,
+                                    compressed: false,
                                     position: 0
                                 };
                             }

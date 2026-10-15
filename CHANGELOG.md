@@ -10,7 +10,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-
+- **Glossary chapter in the user manual.** A new reference chapter
+  defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
+  for quick lookup. (`docs/manual/glossary.md`,
+  `docs/manual/ru/glossary.md`)
+- **Keyboard shortcuts table in the Controls chapter.** A complete list
+  of keyboard shortcuts (F11, Ctrl+Shift+S, Page Up/Down, Ctrl+C/Z,
+  etc.) with their effects. (`docs/manual/controls.md`,
+  `docs/manual/ru/controls.md`)
+- **All-options-at-a-glance table in the Config chapter.** A single
+  reference table listing every CONFIG option, its tab, values and
+  whether it applies immediately or on restart.
+  (`docs/manual/config.md`, `docs/manual/ru/config.md`)
+- **New troubleshooting sections.** Added guidance for: guest OS does
+  not boot, keyboard does not type, no sound, poor performance, blank
+  screen, and CORS errors in the browser version.
+  (`docs/manual/troubleshooting.md`,
+  `docs/manual/ru/troubleshooting.md`)
+- **About yaPDP chapter in the user manual.** A new introductory chapter
+  describing the project's goals, key features, and guidance for museums
+  and educators, including embedding and interactive exhibit creation.
+  (`docs/manual/about.md`, `docs/manual/ru/about.md`)
+- **Historical Fidelity & Limitations chapter in the user manual.** A new
+  manual chapter explaining what yaPDP reproduces accurately, where
+  emulation differs from the original hardware, and how to use the
+  emulator as a historical learning tool.
+  (`docs/manual/fidelity.md`, `docs/manual/ru/fidelity.md`)
+- **Internal links in PDF manual now resolve correctly.** The
+  named-destination catalog (/Dests) is rebuilt after pdf-lib merge,
+  so every internal link — TOC entries and in-text cross-references
+  alike — jumps to the correct page in the PDF.
+  (`tools/build-manual-pdf.js`)
+- **Embedding documentation for museums and educators.** A new
+  "Embedding the emulator" subsection in the Machine State chapter
+  describes how to embed yaPDP in external sites via `<iframe>` with
+  `?boot=` and `?state=` parameters, including CORS bypass through
+  GitHub Gist. (`docs/manual/machine-state.md`,
+  `docs/manual/ru/machine-state.md`)
+- **Text envelope format for sharing states via GitHub Gist.** A new
+  `yapdp-text-envelope-v1` format wraps a `.state.zst` file in base64 text
+  that can be pasted into any text pastebin. The envelope is handled by
+  [`src/state-envelope.js`](src/state-envelope.js), shared between browser
+  and Node tools. (`docs/STATE-FORMAT.md`, `src/state-envelope.js`)
+- **Import/Export split-buttons.** The Import and Export buttons in the
+  Machine-state dialog are now split-buttons. Import offers file picker,
+  clipboard import, and URL import with auto-detection of binary vs text
+  envelope. Export offers `.state.zst` download, text file save, and
+  clipboard copy. (`src/snapshots.js`)
+- **Share dialog extended with text and Gist output.** The "Create Shareable
+  State" button in the Share dialog is now a split-button offering: download
+  `.state.zst`, copy text envelope to clipboard, save as text file, and
+  create a GitHub Gist (opens a helper dialog with instructions, URL input,
+  and a share-link generator). (`src/snapshots.js`)
+- **User-facing failures now surface as toasts.** Real, user-relevant errors and
+  warnings — a bundled image that failed to load, a dropped state that did not
+  apply, a disk overlay that could not be restored, a fullscreen toggle that
+  failed — are now shown through the toast subsystem instead of being lost in
+  the browser console. The toast queue gained key-based deduplication, so a
+  repeated identical failure extends one toast instead of spamming.
+  (`src/toasts.js`, `src/pdp11-app.js`, `src/tauri-bundled.js`, `src/diskstore.js`,
+  `src/dragdrop.js`, `src/fullscreen.js`; pinned by `tests/toasts.test.js` and
+  `tests/toasts-adapter.test.js`)
 - **Sharing a state, and the manual that explains it.** The machine-state dialog's
   Share button is now documented end to end — what the dialog asks for (title,
   description, button label, screenshot, a command that types itself after the
@@ -26,10 +86,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Quick Start chapter restyled.** Long paragraphs split into shorter
+  ones for better readability. (`docs/manual/quick-start.md`,
+  `docs/manual/ru/quick-start.md`)
+- **Link underlines removed in PDF manual.** Added `text-decoration:
+  none` to links in `@media print` to prevent Chromium from rendering
+  spaces inside link text as underscores in the PDF text layer.
+  (`tools/manual-template-head.html`)
+- The **Boot device** select is now present in every **Reboot** / **Bootstrap
+  now!** dialog. It used to be hidden whenever the dialog was opened by the
+  configuration-rollback offer alone (a saved state whose configuration
+  differs, with the reboot confirmation off) or by **Bootstrap now!**, even
+  though the dialog still described the three-way choice.
+  (`src/pdp11-panel.js`; pinned by `tests/reboot-dialog-bootdev.test.js`)
+- **A machine state now carries the whole configuration — except the sound.**
+  Restoring a state (a teleport link, an imported file, a snapshot) applies the
+  full configuration profile it was saved with — console, user terminals, LP11
+  printer, VT11, widths, teletype speed, zoom, glow, phosphor, backdrop and the
+  rest — instead of only the device set. The two sound settings (`mute`, `hum`)
+  are never touched: they belong to the person at the keyboard, not to the
+  guest. A page reload now happens only when the device set differs (everything
+  else applies live). A teleport asks nothing — the state is the point of the
+  link; the offer to bring the viewer's own configuration back, remembered once
+  and kept, comes later, on the operator's terms: a plain page reload, or the
+  single **Reboot** / **Bootstrap now!** dialog, which now carries that choice
+  beside the reboot it already asked about. Returning it restores every field (a
+  further reload only when the device set differs), and a Reboot / Bootstrap
+  parked across that reload runs as soon as the page is back. The live re-tune
+  reaches the page through an explicit seam (`src/config-apply.js`) rather than a
+  page global; and a system dialog's buttons stay operable even while the
+  autoload owns the machine.
+  (`src/viewer-config.js`, `src/config-apply.js`, `src/snapshots.js`,
+  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`, `pdp11.html`;
+  pinned by `tests/viewer-config.test.js`, `tests/config-apply.test.js`,
+  `tests/snapshot-config.test.js`, `tests/quickboot-input-gate.test.js`)
 
 - **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
   offers the emulated Boot ROM socket as a three-way choice — `none` (the
-  machine waits after power-on), `interactive@` (the built-in loader, the `@`  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
+  machine waits after power-on), `interactive@` (the built-in loader, the `@`
+  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
   most recently — from the gallery, Games, a teleport link or a manual `BOOT`
   at the `@` prompt — directly, with no `@` prompt) — and the reboot and
   power-off dialogs offer the same three-way select. The Boot ROM learns a
@@ -76,8 +171,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The names are read from the generated manual data, so they cannot drift from
   the documentation. (`landing/src/components/UserManual.tsx`)
 
+- **Restoring a snapshot now comes in two flavours.** The Machine-state dialog's
+  **Load** button turned into a split button: **Load** restores the saved state
+  and hands the machine back to the keyboard at once, while the new **Load as
+  shared state** item — enabled only for snapshots that carry a guide (steps, a
+  button label or a screenshot) — replays the guided restore the same way a
+  shared-state link does. Existing callers keep the guided behaviour.
+  (`src/snapshots.js`, `css/pdp11.css`)
+
 ### Fixed
 
+- **Share-dialog screenshot paste now works.** The "Paste or click to add a
+  screenshot" field in the Share-snapshot dialog accepts Ctrl+V from the native
+  clipboard (e.g. an image copied from mspaint). The global keyboard handler no
+  longer intercepts Ctrl+V when a modal overlay is visible, and the paste
+  handler reads the clipboard directly when the paste event does not fire on
+  non-editable elements. (`src/snapshots.js`, `src/pdp11-app.js`)
+
+- **"Last medium" boot device loads uncompressed paper tapes correctly.** The
+  PTR11 paper-tape reader marked every tape as `compressed: true`, so a reboot
+  with `bootDevice: 'last'` after Lunar Lander (whose `lander.ptap` is raw, not
+  `.zst`) tried `media/lander.ptap.zst` first, got a 404, and the machine hung.
+  Paper tapes now try the raw file first and fall back to `.zst` — matching the
+  actual file on disk. (`src/devices/ptr11.js`, `src/iopage.js`,
+  `src/browser-machine.js`)
+
+- **Legacy stack (?core=0) paper-tape fallback no longer crashes on
+  ReferenceError.** The `fetchBlock()` fallback path (tried when a paper tape
+  ships only as `.zst` and the raw `.ptap` probe gets a 404) referenced
+  `zstResponse`, a variable defined only in the compressed path — the fallback
+  used `got` instead. Every paper tape that exists only as `.ptap.zst`
+  (BASIC-11, ODT-11, ED-11, Lunar Lander) failed to load on the legacy stack,
+  hanging the bootstrap loader at `@BOOT PR`. (`src/iopage.js`)
 
 - **Versioned state manifests:** a machine state now carries `schemaVersion` as
   a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that

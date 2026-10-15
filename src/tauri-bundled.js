@@ -87,6 +87,9 @@
                 // Loud, named: a silently skipped image is how a missing
                 // bundled resource (or a slow one) went unnoticed.
                 console.error("Bundled image load failed:", item.resource, err);
+                if (typeof window.__yapdpReportError === "function") {
+                    window.__yapdpReportError("Bundled image load failed: " + item.resource, "bundled-image-load");
+                }
                 return null;
             });
     }
@@ -96,6 +99,9 @@
 
         if (typeof DataLoader === "undefined") {
             console.warn("DataLoader not available; skipping bundled images");
+            if (typeof window.__yapdpReportWarning === "function") {
+                window.__yapdpReportWarning("DataLoader not available; skipping bundled images", "dataloader-missing");
+            }
             return;
         }
         // Mount every bundled image in PARALLEL, not as a strict chain.

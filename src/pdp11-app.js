@@ -700,6 +700,16 @@ var g60Keyboard = (function () {
   function installPhysicalKeyboard() {
     document.addEventListener('keydown', function (e) {
       if (/^(input|textarea)$/i.test(e.target.tagName)) return;
+      // Let native keyboard events through when a modal overlay is visible
+      // (e.g. the Share-snapshot dialog, which needs Ctrl+V for image paste).
+      // The focus may be on the BODY behind the modal, so check the document
+      // for any visible .modal-overlay rather than relying on e.target.closest().
+      if (typeof document.querySelectorAll === "function") {
+        var overlays = document.querySelectorAll('.modal-overlay');
+        for (var i = 0; i < overlays.length; i++) {
+          if (overlays[i].classList.contains('visible')) return;
+        }
+      }
 
       // Only intercept keyboard when the Teletype page is active —
       // on Panel and Info pages browser shortcuts (Ctrl+F etc.) must work normally.
@@ -2235,6 +2245,13 @@ function initConfigForm() {
     Config.set(form);
     // Re-tune live instances; harmless if we are about to reload anyway.
     applyLive(readForm());
+    // The operator explicitly applied their own configuration — the baseline
+    // saved from a previous state is no longer relevant. Clear it so the
+    // "return my configuration" offer does not appear after the reload.
+    if (typeof SnapshotStore !== 'undefined' &&
+        typeof SnapshotStore.clearConfigBaseline === 'function') {
+      SnapshotStore.clearConfigBaseline();
+    }
     if (structuralChanged) {
       // The form now equals the saved config, so the beforeunload guard
       // (registered below) won't intercept this intentional reload.
@@ -2506,6 +2523,14 @@ function initConfigForm() {
   // Expose the dirty state so sidebar navigation (pdp11-panel.js) and the
   // beforeunload guard below can warn about uncommitted changes.
   window.isConfigDirty = isDirty;
+
+  // Hand the live applier to the ConfigApply seam (src/config-apply.js), so
+  // src/snapshots.js can re-tune the console/printer/terminals from a fresh
+  // config without reaching for a page global. Explicit registration instead
+  // of a magic window hook.
+  if (typeof ConfigApply !== 'undefined' && typeof ConfigApply.register === 'function') {
+    ConfigApply.register(applyLive);
+  }
 
   // Diagnostics: the form fields whose value differs from the persisted config
   // (an empty array means clean). Handy when an "uncommitted changes" prompt
@@ -4327,4 +4352,23 @@ Onboarding.init();
             Toasts.show({ text: "CPU halted: runaway trap", category: "error" });
         }
     };
+})();
+
+// User-facing error/warning reporter: modules that hit a real, user-relevant
+// failure (a bundled image that failed to load, a dropped state that did not
+// apply, a fullscreen toggle that failed) call these hooks instead of relying
+// on console alone. The Toasts subsystem owns the queue/timing/dedup; a missing
+// subsystem is a silent no-op, so the same code path serves browser and tests.
+// The optional key lets repeated identical failures extend one toast instead of
+// spamming (see toasts.js dedup).
+(function initErrorReporter() {
+    function report(category) {
+        return function (text, key) {
+            if (typeof Toasts !== "undefined" && Toasts.show) {
+                Toasts.show({ text: text, category: category, key: key });
+            }
+        };
+    }
+    window.__yapdpReportError = report("error");
+    window.__yapdpReportWarning = report("warning");
 })();

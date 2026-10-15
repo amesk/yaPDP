@@ -100,6 +100,7 @@ var SnapshotStore = (() => {
                             memBytes: v.memBytes || 0,
                             hasSteps: v.steps && Array.isArray(v.steps) && v.steps.length > 0,
                             stepsMessage: v.stepsMessage || null,
+                            hasGuide: !!(v.steps || v.stepsMessage || v.buttonLabel || v.screenshot),
                         };
                     });
                     items.sort(function (a, b) { return a.createdAt - b.createdAt; });
@@ -207,14 +208,28 @@ var SnapshotStore = (() => {
     // userTerminalTypes is structural too: it decides which cabinet each user
     // terminal is built as, so a snapshot taken with VT100 terminals must not be
     // restored onto a machine whose terminals are DECscopes.
+    //
+    // This list answers ONE question only — "does restoring this snapshot need
+    // a page reload to re-register the devices?" (configNeedsReload). The
+    // PROFILE a snapshot carries is the WHOLE config minus the sound settings
+    // (see CONFIG_APPLY_EXCLUDE): zoom, glow, widths and the rest apply live,
+    // so they must never trigger a reload.
     var STRUCTURAL_CONFIG = ["consoleType", "userTerminals", "userTerminalTypes",
                              "printer", "vt11"];
+
+    // Config fields no state ever applies: the viewer's sound settings. The
+    // tones do not describe the emulated machine — hushing them is a preference
+    // of the person at the keyboard, not a property of the guest — so no state
+    // (a teleport link, an imported file) may switch them. They are excluded
+    // both from what a snapshot records and from what it applies.
+    var CONFIG_APPLY_EXCLUDE = ["mute", "hum"];
 
     function captureConfig() {
         if (typeof Config === "undefined" || typeof Config.get !== "function") return null;
         var c = Config.get();
         var out = {};
-        STRUCTURAL_CONFIG.forEach(function (k) {
+        Object.keys(c).forEach(function (k) {
+            if (CONFIG_APPLY_EXCLUDE.indexOf(k) !== -1) return;
             out[k] = c[k];
         });
         return out;
@@ -713,6 +728,22 @@ var SnapshotStore = (() => {
                     return { ok: false, reason: "too-large", url: target,
                              size: buf.byteLength };
                 }
+                // The fetched bytes may be a text envelope (GitHub Gist raw URL)
+                // or a binary .state container. Auto-detect and decode.
+                var raw = new Uint8Array(buf);
+                var text = null;
+                try {
+                    text = new TextDecoder("utf-8").decode(raw);
+                } catch (e) { /* not valid UTF-8, treat as binary */ }
+                var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                if (text && env && env.isEnvelope(text)) {
+                    var decoded = env.decode(text);
+                    if (decoded) {
+                        raw = decoded;
+                    } else {
+                        return { ok: false, reason: "not-a-state", url: target };
+                    }
+                }
                 // The state's OWN device set is applied unconditionally — no
                 // comparison, no question asked. A state is a whole machine,
                 // and a machine restored onto a different device set is not
@@ -730,7 +761,7 @@ var SnapshotStore = (() => {
                 // export, and therefore every shared state — goes through the
                 // platform decoder. peekManifest() returns the manifest or a
                 // Promise for it, and this is the one place that cares which.
-                var peeked = peekManifest(new Uint8Array(buf));
+                var peeked = peekManifest(raw);
                 if (peeked && typeof peeked.then === "function") {
                     return peeked.then(finishLoad, function () { return finishLoad(null); });
                 }
@@ -739,8 +770,17 @@ var SnapshotStore = (() => {
                 // Hoisted so both peek paths reach it: apply the state, or
                 // reload the page once the config it asks for is in place.
                 function finishLoad(parsedManifest) {
-                    if (parsedManifest && configNeedsReload({ config: parsedManifest.profile })) {
+                    // The state's whole profile is applied — ALWAYS. A device-set
+                    // change additionally needs the reload below; everything else
+                    // (zoom, glow, widths, speeds) takes effect live. The reload
+                    // decision is taken BEFORE applying, against the config the
+                    // page has right now.
+                    var needsReload = !!parsedManifest &&
+                        configNeedsReload({ config: parsedManifest.profile });
+                    if (parsedManifest) {
                         applySnapshotConfig({ config: parsedManifest.profile });
+                    }
+                    if (needsReload) {
                         try {
                             if (typeof sessionStorage !== "undefined") {
                                 sessionStorage.setItem(PENDING_STATE_KEY, target);
@@ -767,7 +807,7 @@ var SnapshotStore = (() => {
                             return { ok: true, reloading: true, url: target };
                         }
                     }
-                    var applied = applyStateBytes(new Uint8Array(buf), target);
+                    var applied = applyStateBytes(raw, target);
                     if (!onRestored) return applied;
                     return applied.then(function (result) {
                         if (!result || !result.ok) return result;
@@ -1328,6 +1368,8 @@ var SnapshotStore = (() => {
                         overlay: deserializeOverlay(manifest.overlay),
                         steps: manifest.steps || null,
                         stepsMessage: manifest.stepsMessage || null,
+                        buttonLabel: manifest.buttonLabel || null,
+                        screenshot: manifest.screenshot || null,
                         cpuBytes: 0,
                         memBytes: mem.data.byteLength || 0,
                     };
@@ -1380,7 +1422,8 @@ var SnapshotStore = (() => {
         });
     }
 
-    function load(id) {
+    function load(id, mode) {
+        mode = mode || "shared";   // backward compat: existing callers get guided UX
         try {
             localStorage.setItem(PENDING_KEY, id);
             // A restore reload must NOT flush the write-back overlay on the
@@ -1391,6 +1434,7 @@ var SnapshotStore = (() => {
             // once the restore completes in init().
             if (typeof sessionStorage !== "undefined") {
                 sessionStorage.setItem("yapdp.restore-pending", "1");
+                sessionStorage.setItem("yapdp.load-mode", mode);
                 // Clear any stale ?state= pending URL from a previous deep-link
                 // attempt — it would otherwise be handled by init() BEFORE the
                 // snapshot, causing the wrong state to be applied (or a failure
@@ -1400,13 +1444,33 @@ var SnapshotStore = (() => {
         } catch (e) {
             return Promise.resolve(false);
         }
-        // If the snapshot needs a different hardware configuration (device
-        // set), apply it NOW so the single reload boots with the right
-        // devices and init() can restore directly.
+        // A snapshot restore ALWAYS reloads (load() writes the pending id and
+        // reloads unconditionally), so the state's whole profile is applied NOW
+        // — the single reload boots with the right devices, and init() can
+        // restore directly. applySnapshotConfig() no-ops on a missing snapshot.
         return dbGet(id).then(function (snap) {
-            if (configNeedsReload(snap)) {
-                applySnapshotConfig(snap);
+            // Persist steps metadata across reload for "shared" mode.
+            if (mode === "shared" && snap && typeof sessionStorage !== "undefined") {
+                try {
+                    if (snap.steps) {
+                        sessionStorage.setItem("yapdp.state-steps",
+                            JSON.stringify(snap.steps));
+                    }
+                    if (snap.stepsMessage) {
+                        sessionStorage.setItem("yapdp.state-steps-message",
+                            snap.stepsMessage);
+                    }
+                    if (snap.buttonLabel) {
+                        sessionStorage.setItem("yapdp.state-button-label",
+                            snap.buttonLabel);
+                    }
+                    if (snap.screenshot) {
+                        sessionStorage.setItem("yapdp.state-screenshot",
+                            snap.screenshot);
+                    }
+                } catch (e) { /* ignore */ }
             }
+            applySnapshotConfig(snap);
             if (typeof location !== "undefined" && location.reload) {
                 // applySnapshotConfig() just rewrote the persisted config
                 // behind the Config form's back, so isConfigDirty() would
@@ -1455,17 +1519,188 @@ var SnapshotStore = (() => {
         return false;
     }
 
-    // Apply the snapshot's structural config (device set) to the persisted
-    // config. Only the STRUCTURAL_CONFIG fields are touched — the operator's
-    // sound/behaviour preferences are never overridden by a snapshot.
+    // Apply the snapshot's configuration profile to the live config: everything
+    // the state carries except the sound settings (CONFIG_APPLY_EXCLUDE), so a
+    // teleport brings the WHOLE setup — device set, zoom, glow, widths, speeds.
+    // The reload decision is NOT taken here: configNeedsReload() looks only at
+    // the device set, and the caller decides. The viewer's own configuration is
+    // remembered ONCE — before the first state of a chain replaces it — so it
+    // can be offered back later; a baseline already present is NOT overwritten
+    // by the next state (that is what keeps a run of applied states from losing
+    // the viewer's setup).
     function applySnapshotConfig(snap) {
+        if (!snap || !snap.config) return;
+        if (typeof ViewerConfig !== "undefined" && ViewerConfig.get() === null &&
+            typeof Config !== "undefined" && typeof Config.get === "function") {
+            ViewerConfig.remember(Config.get());
+        }
         var patch = {};
-        STRUCTURAL_CONFIG.forEach(function (k) {
-            if (snap.config[k] !== undefined) patch[k] = snap.config[k];
+        Object.keys(snap.config).forEach(function (k) {
+            if (CONFIG_APPLY_EXCLUDE.indexOf(k) !== -1) return;
+            if (snap.config[k] === undefined) return;
+            patch[k] = snap.config[k];
         });
         if (typeof Config !== "undefined" && typeof Config.set === "function") {
             Config.set(patch);
         }
+        // Re-tune the live instances (zoom, glow, widths, speeds ...) through
+        // the ConfigApply seam, so the fields that need no reload take effect
+        // at once. See src/config-apply.js.
+        if (typeof ConfigApply !== "undefined" && typeof ConfigApply.applyLive === "function") {
+            ConfigApply.applyLive();
+        }
+    }
+
+    // True when two full configs differ in any field a state may carry. The
+    // sound settings are skipped: no state changes them, so they must not make
+    // the viewer's baseline look "different" (see CONFIG_APPLY_EXCLUDE).
+    // Arrays (userTerminalTypes, vt52Zoom) compare element by element.
+    function configDiffers(a, b) {
+        if (!a || !b) return false;
+        var keys = Object.keys(a);
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            if (CONFIG_APPLY_EXCLUDE.indexOf(k) !== -1) continue;
+            if (!sameStructuralValue(a[k], b[k])) return true;
+        }
+        return false;
+    }
+
+    // Is there a viewer baseline that differs from the live configuration? The
+    // Reboot / Bootstrap dialog (src/pdp11-panel.js) and the post-reload offer
+    // use this to decide whether to ask about a rollback at all.
+    function configRollbackAvailable() {
+        if (typeof ViewerConfig === "undefined") return false;
+        var base = ViewerConfig.get();
+        if (!base) return false;
+        var cur = (typeof Config !== "undefined" && typeof Config.get === "function")
+            ? Config.get() : null;
+        return !!cur && configDiffers(base, cur);
+    }
+
+    // Forget the viewer's baseline: the viewer chose to keep the state's
+    // configuration, so this chain of applied states is over.
+    function clearConfigBaseline() {
+        if (typeof ViewerConfig !== "undefined") ViewerConfig.clear();
+    }
+
+    // Bring back the viewer's remembered configuration. Applies EVERY field
+    // (the baseline is a full config; the sound settings were never changed, so
+    // restoring them is a no-op). It does NOT reload: a device-set change
+    // returns "reload" and the CALLER reloads — the Reboot flow parks its
+    // operation first (src/pdp11-panel.js), and the post-reload offer reloads
+    // itself. Returns "none" (no baseline), "applied" (took effect live) or
+    // "reload" (the device set differs).
+    function rollbackToBaseline() {
+        if (typeof ViewerConfig === "undefined") return "none";
+        var base = ViewerConfig.get();
+        if (!base) return "none";
+        // Decide against the config the page has RIGHT NOW, before applying:
+        // applying makes the config match the baseline.
+        var needsReload = configNeedsReload({ config: base });
+        if (typeof Config !== "undefined" && typeof Config.set === "function") {
+            Config.set(base);
+        }
+        if (typeof ConfigApply !== "undefined" && typeof ConfigApply.applyLive === "function") {
+            ConfigApply.applyLive();
+        }
+        ViewerConfig.clear();
+        return needsReload ? "reload" : "applied";
+    }
+
+    // Reload the page for a configuration change, suppressing the beforeunload
+    // "Reload site?" prompt (the persisted config changed behind the form).
+    function reloadForConfig() {
+        if (typeof window !== "undefined") window.__allowConfigReload = true;
+        if (typeof location !== "undefined" && location.reload) location.reload();
+    }
+
+    // After a config-driven reload (a state restored): offer the viewer's
+    // configuration back. A standalone dialog — it never races the Reboot /
+    // Bootstrap dialog, which is raised on a click.
+    function maybeOfferConfigRestore() {
+        if (!configRollbackAvailable()) return;
+        showConfigRestoreDialog(function (decision) {
+            if (decision !== "rollback") { clearConfigBaseline(); return; }
+            if (rollbackToBaseline() === "reload") reloadForConfig();
+        });
+    }
+
+    // --- "Return my configuration" dialog --------------------------------
+    // Shown before Reboot / Bootstrap now! and after a state restore. The
+    // SYSTEM raised it, so it hands the machine back first (like the
+    // refused-snapshot dialog). Built with createElement/textContent, the way
+    // the other modals here are.
+    var __snapConfigRestoreModal = null;
+    var __snapConfigRestoreResolve = null;
+
+    function hideConfigRestoreDialog(decision) {
+        if (__snapConfigRestoreModal) __snapConfigRestoreModal.classList.remove("visible");
+        var resolve = __snapConfigRestoreResolve;
+        __snapConfigRestoreResolve = null;
+        if (resolve) resolve(decision || "keep");
+    }
+
+    function showConfigRestoreDialog(onDecision) {
+        if (typeof document === "undefined") {
+            // No DOM (headless): nobody to ask — keep the state's config.
+            if (onDecision) onDecision("keep");
+            return;
+        }
+        __snapConfigRestoreResolve = onDecision || null;
+        if (typeof QuickBoot !== "undefined" &&
+            typeof QuickBoot.yieldToOperator === "function") {
+            QuickBoot.yieldToOperator();
+        }
+        if (!__snapConfigRestoreModal) {
+            __snapConfigRestoreModal = document.createElement("div");
+            __snapConfigRestoreModal.id = "snap-config-restore-overlay";
+            __snapConfigRestoreModal.className = "modal-overlay";
+            __snapConfigRestoreModal.addEventListener("click", function (e) {
+                var action = e.target.getAttribute &&
+                    e.target.getAttribute("data-snap-action");
+                if (action === "rollback") {
+                    hideConfigRestoreDialog("rollback");
+                } else if (action === "keep" || e.target === __snapConfigRestoreModal ||
+                        (e.target.closest && e.target.closest(".modal-close"))) {
+                    hideConfigRestoreDialog("keep");
+                }
+            });
+            document.body.appendChild(__snapConfigRestoreModal);
+        }
+
+        var box = document.createElement("div");
+        box.className = "modal-box";
+
+        var title = document.createElement("span");
+        title.className = "modal-title";
+        title.textContent = "This machine came from a saved state";
+        box.appendChild(title);
+
+        var intro = document.createElement("p");
+        intro.className = "modal-intro";
+        intro.textContent =
+            "The saved state also applied its own configuration (terminals, " +
+            "printer, zoom, display). Return your own configuration?";
+        box.appendChild(intro);
+
+        var rollbackBtn = document.createElement("button");
+        rollbackBtn.type = "button";
+        rollbackBtn.className = "modal-close";
+        rollbackBtn.setAttribute("data-snap-action", "rollback");
+        rollbackBtn.textContent = "Reset";
+        box.appendChild(rollbackBtn);
+
+        var keepBtn = document.createElement("button");
+        keepBtn.type = "button";
+        keepBtn.className = "modal-close";
+        keepBtn.setAttribute("data-snap-action", "keep");
+        keepBtn.textContent = "Keep";
+        box.appendChild(keepBtn);
+
+        __snapConfigRestoreModal.innerHTML = "";
+        __snapConfigRestoreModal.appendChild(box);
+        __snapConfigRestoreModal.classList.add("visible");
     }
 
     // Pending-snapshot application at startup. Halts the CPU synchronously
@@ -1508,6 +1743,24 @@ var SnapshotStore = (() => {
             if (typeof sessionStorage !== "undefined") {
                 try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
             }
+            // A PLAIN load (no state is being applied): if the machine still
+            // runs a configuration imported from an earlier state, offer to
+            // return the viewer's own. This is the "I am back, and I want my
+            // machine" moment. Applying a state (a teleport link, a snapshot)
+            // handles its own branch above and never reaches here — a teleport
+            // asks NOTHING: the state is the point.
+            // A ?state= deep link is handled by QuickBoot's init (which runs
+            // before this handler), but the state application is deferred via
+            // setTimeout — it has not started yet. The URL is still in the
+            // address bar, so check for it and stand down: the state is the
+            // point, and asking about a config rollback before the state has
+            // even been applied would be wrong.
+            if (typeof QuickBoot !== "undefined" &&
+                typeof QuickBoot.stateUrlFromSearch === "function" &&
+                QuickBoot.stateUrlFromSearch(typeof location !== "undefined" ? location.search : "") !== null) {
+                return Promise.resolve(false);
+            }
+            maybeOfferConfigRestore();
             return Promise.resolve(false);
         }
 
@@ -1518,8 +1771,12 @@ var SnapshotStore = (() => {
 
         return dbGet(pendingId).then(function (snap) {
             if (!snap) return false;
-            if (configNeedsReload(snap)) {
-                applySnapshotConfig(snap);
+            // Apply the whole profile; reload only when the device set differs.
+            // Decide BEFORE applying: applySnapshotConfig makes the config match,
+            // so a check afterwards would always say "no reload".
+            var needsReload = configNeedsReload(snap);
+            applySnapshotConfig(snap);
+            if (needsReload) {
                 if (typeof location !== "undefined" && location.reload) {
                     // Same as in load(): the persisted config changed behind
                     // the Config form's back — suppress the beforeunload
@@ -1538,12 +1795,92 @@ var SnapshotStore = (() => {
                 if (typeof sessionStorage !== "undefined") {
                     try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
                 }
-                if (ok && snap.steps && Array.isArray(snap.steps) && snap.steps.length > 0) {
-                    StepEngine.runSteps(snap.steps, {
-                        sendBytes: StepEngine.sendBytes,
-                        outputContains: StepEngine.outputContains,
-                        stepDelayMs: 800,
-                    });
+                // Read the load mode persisted by load() before the reload.
+                // "plain" → just restore, skip steps, hand control to the user.
+                // "shared" → show the preparing balloon with steps info,
+                //            wait for the OK button, then run steps.
+                var loadMode = "shared";
+                if (typeof sessionStorage !== "undefined") {
+                    try { loadMode = sessionStorage.getItem("yapdp.load-mode") || "shared"; } catch (e) { /* ignore */ }
+                }
+                if (ok && loadMode === "shared") {
+                    // Read steps metadata persisted by load() across the reload.
+                    var steps = snap.steps;
+                    var stepsMessage = snap.stepsMessage || null;
+                    var buttonLabel = snap.buttonLabel || null;
+                    if (typeof sessionStorage !== "undefined") {
+                        try {
+                            var saved = sessionStorage.getItem("yapdp.state-steps");
+                            if (saved) { steps = JSON.parse(saved); }
+                        } catch (e) { /* ignore */ }
+                        try {
+                            var savedMsg = sessionStorage.getItem("yapdp.state-steps-message");
+                            if (savedMsg) { stepsMessage = savedMsg; }
+                        } catch (e) { /* ignore */ }
+                        try {
+                            var savedBtn = sessionStorage.getItem("yapdp.state-button-label");
+                            if (savedBtn) { buttonLabel = savedBtn; }
+                        } catch (e) { /* ignore */ }
+                    }
+                    var hasSteps = !!(steps && Array.isArray(steps) && steps.length > 0);
+                    // Read screenshot persisted by load() across the reload.
+                    var screenshotUrl = null;
+                    if (typeof sessionStorage !== "undefined") {
+                        try {
+                            var savedSs = sessionStorage.getItem("yapdp.state-screenshot");
+                            if (savedSs) { screenshotUrl = savedSs; }
+                        } catch (e) { /* ignore */ }
+                    }
+                    // Show the preparing balloon via QuickBoot (no code dup).
+                    // Falls back to running steps directly when QuickBoot is absent.
+                    if (typeof QuickBoot !== "undefined" &&
+                        typeof QuickBoot.showPreparing === "function") {
+                        var prepPromise = QuickBoot.showPreparing(
+                            "Restoring the machine state\u2026",
+                            stepsMessage, hasSteps, buttonLabel);
+                        // Show the screenshot preview if the state carries one.
+                        if (screenshotUrl) {
+                            var screenshotImg = document.getElementById("quick-boot-preparing-screenshot");
+                            if (screenshotImg) {
+                                screenshotImg.src = screenshotUrl;
+                                screenshotImg.style.display = "block";
+                            }
+                        }
+                        if (hasSteps) {
+                            prepPromise.then(function () {
+                                StepEngine.runSteps(steps, {
+                                    sendBytes: StepEngine.sendBytes,
+                                    outputContains: StepEngine.outputContains,
+                                    stepDelayMs: 800,
+                                    onDone: function () {
+                                        if (typeof QuickBoot !== "undefined" &&
+                                            typeof QuickBoot.hidePreparing === "function") {
+                                            QuickBoot.hidePreparing();
+                                        }
+                                    },
+                                });
+                            });
+                        } else {
+                            // No steps — hide the balloon after the OK click.
+                            prepPromise.then(function () {
+                                if (typeof QuickBoot !== "undefined" &&
+                                    typeof QuickBoot.hidePreparing === "function") {
+                                    QuickBoot.hidePreparing();
+                                }
+                            });
+                        }
+                    } else if (hasSteps) {
+                        // Fallback: no QuickBoot — run steps directly.
+                        StepEngine.runSteps(steps, {
+                            sendBytes: StepEngine.sendBytes,
+                            outputContains: StepEngine.outputContains,
+                            stepDelayMs: 800,
+                        });
+                    }
+                }
+                // Clean up the load-mode marker regardless of mode.
+                if (typeof sessionStorage !== "undefined") {
+                    try { sessionStorage.removeItem("yapdp.load-mode"); } catch (e) { /* ignore */ }
                 }
                 return ok;
             });
@@ -1561,6 +1898,8 @@ var SnapshotStore = (() => {
         const select = document.getElementById("snap-select");
         if (!select) return;
         const loadBtn = document.getElementById("snap-load");
+        const loadMoreBtn = document.getElementById("snap-load-more");
+        const loadSharedBtn = document.getElementById("snap-load-shared");
         const exportBtn = document.getElementById("snap-export");
         const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
@@ -1583,6 +1922,7 @@ var SnapshotStore = (() => {
                     // Keep the bare name for the rename dialog prefill —
                     // the visible label also carries the capture size.
                     opt.dataset.name = it.name;
+                    opt.dataset.hasGuide = it.hasGuide ? "1" : "";
                     var label = it.name + "  (" + fmtSize(it.memBytes) + ")";
                     if (it.hasSteps) {
                         label += "  \u21E8 " + (it.stepsMessage || it.steps.length + " steps");
@@ -1600,9 +1940,22 @@ var SnapshotStore = (() => {
             }
 
             const hasSelection = !!select.value;
+            // Determine if the selected snapshot has guide metadata.
+            var hasGuide = false;
+            if (hasSelection) {
+                var opt = select.options[select.selectedIndex];
+                hasGuide = opt && opt.dataset && opt.dataset.hasGuide === "1";
+            }
             select.disabled = items.length === 0;
             if (loadBtn) loadBtn.disabled = !hasSelection;
+            if (loadMoreBtn) loadMoreBtn.disabled = !hasSelection;
+            if (loadSharedBtn) loadSharedBtn.disabled = !hasSelection || !hasGuide;
             if (exportBtn) exportBtn.disabled = !hasSelection;
+            // Enable the export dropdown items (text file, clipboard) too.
+            var exportTextBtn = document.getElementById("snap-export-text");
+            var exportClipboardBtn = document.getElementById("snap-export-clipboard");
+            if (exportTextBtn) exportTextBtn.disabled = !hasSelection;
+            if (exportClipboardBtn) exportClipboardBtn.disabled = !hasSelection;
             if (renameBtn) renameBtn.disabled = !hasSelection;
             if (shareBtn) shareBtn.disabled = !hasSelection;
             if (deleteBtn) deleteBtn.disabled = !hasSelection;
@@ -1924,12 +2277,13 @@ var SnapshotStore = (() => {
         var safeValue = String(opts.value == null ? "" : opts.value)
             .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        var maxlen = (opts.maxlength && opts.maxlength > 0) ? opts.maxlength : 64;
         __snapModal.innerHTML =
             '<div class="modal-box">' +
                 '<span class="modal-title">' + opts.title + '</span>' +
                 '<p class="modal-intro">' + opts.intro + '</p>' +
                 '<input type="text" class="modal-input" id="snap-prompt-input" ' +
-                    'value="' + safeValue + '" maxlength="64" autocomplete="off" spellcheck="false">' +
+                    'value="' + safeValue + '" maxlength="' + maxlen + '" autocomplete="off" spellcheck="false">' +
                 '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
                 '<button type="button" class="modal-close" data-snap-action="confirm">' + opts.confirmLabel + '</button>' +
             '</div>';
@@ -1986,11 +2340,31 @@ var SnapshotStore = (() => {
                     '<option value="">--no snapshots--</option>' +
                 '</select>' +
                 '<div class="modal-actions">' +
-                    '<button type="button" id="snap-load" class="modal-close" disabled>Load</button>' +
-                    '<button type="button" id="snap-export" class="modal-close" disabled>Export</button>' +
+                    '<div class="split-btn">' +
+                        '<button type="button" id="snap-load" class="modal-close split-btn-main" disabled>Load</button>' +
+                        '<button type="button" id="snap-load-more" class="split-btn-arrow" disabled aria-label="More load options">&#9662;</button>' +
+                        '<div class="split-btn-menu" id="snap-load-menu">' +
+                            '<button type="button" id="snap-load-shared" class="split-btn-item" disabled>Load as shared state</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="split-btn">' +
+                        '<button type="button" id="snap-export" class="modal-close split-btn-main" disabled>Export</button>' +
+                        '<button type="button" id="snap-export-more" class="split-btn-arrow" disabled aria-label="More export options">&#9662;</button>' +
+                        '<div class="split-btn-menu" id="snap-export-menu">' +
+                            '<button type="button" id="snap-export-text" class="split-btn-item" disabled>Save as text file</button>' +
+                            '<button type="button" id="snap-export-clipboard" class="split-btn-item" disabled>Copy text to clipboard</button>' +
+                        '</div>' +
+                    '</div>' +
                     '<button type="button" id="snap-share" class="modal-close" disabled>Share</button>' +
-                    '<input type="file" id="snap-import-input" accept=".state.zst,.state" style="display:none">' +
-                    '<button type="button" class="modal-close" id="snap-import">Import</button>' +            
+                    '<input type="file" id="snap-import-input" accept=".state.zst,.state,.txt" style="display:none">' +
+                    '<div class="split-btn">' +
+                        '<button type="button" class="modal-close split-btn-main" id="snap-import">Import</button>' +
+                        '<button type="button" id="snap-import-more" class="split-btn-arrow" aria-label="More import options">&#9662;</button>' +
+                        '<div class="split-btn-menu" id="snap-import-menu">' +
+                            '<button type="button" id="snap-import-clipboard" class="split-btn-item">Import from clipboard</button>' +
+                            '<button type="button" id="snap-import-url" class="split-btn-item">Import from URL</button>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>' +
                 '<div class="modal-actions">' +
                     '<button type="button" id="snap-rename" class="modal-close" disabled>Rename</button>' +
@@ -2041,12 +2415,23 @@ var SnapshotStore = (() => {
 
         const saveBtn = document.getElementById("snap-save");
         const loadBtn = document.getElementById("snap-load");
+        const loadMoreBtn = document.getElementById("snap-load-more");
+        const loadSharedBtn = document.getElementById("snap-load-shared");
+        const loadMenu = document.getElementById("snap-load-menu");
         const exportBtn = document.getElementById("snap-export");
+        const exportMoreBtn = document.getElementById("snap-export-more");
+        const exportMenu = document.getElementById("snap-export-menu");
+        const exportTextBtn = document.getElementById("snap-export-text");
+        const exportClipboardBtn = document.getElementById("snap-export-clipboard");
         const shareBtn = document.getElementById("snap-share");
         const renameBtn = document.getElementById("snap-rename");
         const deleteBtn = document.getElementById("snap-delete");
         const select = document.getElementById("snap-select");
         const importBtn = document.getElementById("snap-import");
+        const importMoreBtn = document.getElementById("snap-import-more");
+        const importMenu = document.getElementById("snap-import-menu");
+        const importClipboardBtn = document.getElementById("snap-import-clipboard");
+        const importUrlBtn = document.getElementById("snap-import-url");
         const importInput = document.getElementById("snap-import-input");
 
         if (saveBtn) {
@@ -2070,10 +2455,41 @@ var SnapshotStore = (() => {
                         "If the snapshot was saved with a different hardware configuration " +
                         "(console type, printer, terminals, VT11), it is applied automatically.",
                     confirmLabel: "Restore",
-                    onConfirm: function () { load(select.value); }
+                    onConfirm: function () { load(select.value, "plain"); }
                 });
             });
         }
+        // Split-button: toggle the dropdown menu.
+        if (loadMoreBtn && loadMenu) {
+            loadMoreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                loadMenu.classList.toggle("visible");
+            });
+            // Close the menu when clicking outside.
+            document.addEventListener("click", function (e) {
+                if (!loadMenu.contains(e.target) && e.target !== loadMoreBtn) {
+                    loadMenu.classList.remove("visible");
+                }
+            });
+        }
+        // Split-button: "Load as shared state" — guided restore with steps.
+        if (loadSharedBtn) {
+            loadSharedBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                // Close the dropdown.
+                if (loadMenu) loadMenu.classList.remove("visible");
+                showConfirmModal({
+                    title: "Restore snapshot?",
+                    intro: "The current machine state will be lost. The machine — including " +
+                        "disk writes made after the snapshot — rolls back to the saved state. " +
+                        "If the snapshot was saved with a different hardware configuration " +
+                        "(console type, printer, terminals, VT11), it is applied automatically.",
+                    confirmLabel: "Restore",
+                    onConfirm: function () { load(select.value, "shared"); }
+                });
+            });
+        }
+        // Export split-button: main action — download .state.zst
         if (exportBtn) {
             exportBtn.addEventListener("click", function () {
                 if (!select || !select.value) return;
@@ -2084,14 +2500,31 @@ var SnapshotStore = (() => {
                     var opt = select.options[select.selectedIndex];
                     var name = sanitizeFilename(opt && opt.dataset ? (opt.dataset.name || "snapshot") : "snapshot")
                         + ".state.zst";
-                    var blob = new Blob([bytes], { type: "application/octet-stream" });
-                    var url = URL.createObjectURL(blob);
-                    var a = document.createElement("a");
-                    a.href = url;
-                    a.download = name;
-                    a.click();
-                    URL.revokeObjectURL(url);
+                    downloadBytes(bytes, name, "application/octet-stream");
                 });
+            });
+        }
+        // Export split-button: toggle dropdown.
+        if (exportMoreBtn && exportMenu) {
+            exportMoreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                exportMenu.classList.toggle("visible");
+            });
+        }
+        // Export split-button: save as text envelope file.
+        if (exportTextBtn) {
+            exportTextBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                if (exportMenu) exportMenu.classList.remove("visible");
+                exportAsTextEnvelope(select.value);
+            });
+        }
+        // Export split-button: copy text envelope to clipboard.
+        if (exportClipboardBtn) {
+            exportClipboardBtn.addEventListener("click", function () {
+                if (!select || !select.value) return;
+                if (exportMenu) exportMenu.classList.remove("visible");
+                copyTextEnvelope(select.value);
             });
         }
         if (shareBtn) {
@@ -2129,6 +2562,7 @@ var SnapshotStore = (() => {
                 });
             });
         }
+        // Import split-button: main action — file picker.
         if (importBtn && importInput) {
             importBtn.addEventListener("click", function () {
                 importInput.click();
@@ -2138,19 +2572,46 @@ var SnapshotStore = (() => {
                 if (!file) return;
                 importInput.value = "";   // reset so the same file can be re-imported
                 file.arrayBuffer().then(function (buf) {
-                    return importState(new Uint8Array(buf));
+                    return importOrDecode(new Uint8Array(buf));
                 }).then(function (result) {
                     if (result.ok) {
-                        // Select the snapshot just imported.
                         refreshUI(result.id);
                     } else if (result.reason !== "cancelled") {
-                        // "cancelled" is the operator backing out of the
-                        // newer-version warning — not an error to report.
                         showImportError(result);
                     }
                 });
             });
         }
+        // Import split-button: toggle dropdown.
+        if (importMoreBtn && importMenu) {
+            importMoreBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                importMenu.classList.toggle("visible");
+            });
+        }
+        // Import split-button: import from clipboard.
+        if (importClipboardBtn) {
+            importClipboardBtn.addEventListener("click", function () {
+                if (importMenu) importMenu.classList.remove("visible");
+                importFromClipboard();
+            });
+        }
+        // Import split-button: import from URL.
+        if (importUrlBtn) {
+            importUrlBtn.addEventListener("click", function () {
+                if (importMenu) importMenu.classList.remove("visible");
+                importFromUrl();
+            });
+        }
+        // Close export/import menus when clicking outside.
+        document.addEventListener("click", function (e) {
+            if (exportMenu && !exportMenu.contains(e.target) && e.target !== exportMoreBtn) {
+                exportMenu.classList.remove("visible");
+            }
+            if (importMenu && !importMenu.contains(e.target) && e.target !== importMoreBtn) {
+                importMenu.classList.remove("visible");
+            }
+        });
     }
 
     // ---- Helpers for export/import UI ------------------------------------
@@ -2168,6 +2629,10 @@ var SnapshotStore = (() => {
             "too-large": "The file is too large (max 16 MB).",
             "unsupported-version": "Unsupported state format version.",
             "invalid-manifest": "The state manifest is invalid or missing.",
+            "clipboard-unavailable": "Clipboard access is not available. Please paste the text into a file and import that instead.",
+            "clipboard-empty": "The clipboard is empty or does not contain a valid state.",
+            "invalid-url": "The URL is not valid. Please enter a full http:// or https:// URL.",
+            "fetch-failed": "Could not fetch the URL. The server may be unreachable or may not support CORS.",
         };
         var msg = msgs[result.reason] || "An unknown error occurred (" + (result.reason || "unknown") + ").";
         if (typeof document === "undefined") return;
@@ -2181,6 +2646,457 @@ var SnapshotStore = (() => {
             '</div>';
         __snapModalOnConfirm = null;
         __snapModal.classList.add("visible");
+    }
+
+    // ---- Helpers for import/export UI ------------------------------------
+
+    // Download bytes as a file via the browser's download mechanism.
+    function downloadBytes(bytes, filename, mimeType) {
+        var blob = new Blob([bytes], { type: mimeType || "application/octet-stream" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Auto-detect and decode input: binary .state container or text envelope.
+    // Returns a Promise resolving to Uint8Array of the container bytes, or null.
+    function autoDecodeInput(data) {
+        // data is either a Uint8Array (from file/URL) or a string (from clipboard).
+        if (typeof data === "string") {
+            // Text input: check for envelope marker.
+            var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+            if (env && env.isEnvelope(data)) {
+                var decoded = env.decode(data);
+                if (decoded) return Promise.resolve(decoded);
+            }
+            return Promise.resolve(null);
+        }
+        // Binary input: check if it is already a .state container (zstd/gzip/bare).
+        if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
+            var bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+            // Try to decode as text envelope first (in case a .txt file was loaded).
+            var text = null;
+            try {
+                text = new TextDecoder("utf-8").decode(bytes);
+            } catch (e) { /* not valid UTF-8, treat as binary */ }
+            if (text) {
+                var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                if (env && env.isEnvelope(text)) {
+                    var decoded = env.decode(text);
+                    if (decoded) return Promise.resolve(decoded);
+                }
+            }
+            // Not a text envelope — treat as binary .state container.
+            return Promise.resolve(bytes);
+        }
+        return Promise.resolve(null);
+    }
+
+    // Import from clipboard: read text, auto-decode, import.
+    function importFromClipboard() {
+        if (typeof navigator === "undefined" || !navigator.clipboard ||
+            typeof navigator.clipboard.readText !== "function") {
+            showImportError({ reason: "clipboard-unavailable" });
+            return;
+        }
+        navigator.clipboard.readText().then(function (text) {
+            if (!text || !text.trim()) {
+                showImportError({ reason: "clipboard-empty" });
+                return;
+            }
+            return autoDecodeInput(text).then(function (containerBytes) {
+                if (!containerBytes) {
+                    showImportError({ reason: "not-a-state" });
+                    return;
+                }
+                return importState(containerBytes).then(function (result) {
+                    if (result.ok) {
+                        refreshUI(result.id);
+                    } else if (result.reason !== "cancelled") {
+                        showImportError(result);
+                    }
+                });
+            });
+        }).catch(function () {
+            showImportError({ reason: "clipboard-unavailable" });
+        });
+    }
+
+    // Import from URL: prompt for URL, fetch, auto-decode, import.
+    function importFromUrl() {
+        if (typeof document === "undefined") return;
+        showPromptModal({
+            title: "Import state from URL",
+            intro: "Enter the URL of a .state file or a text envelope (GitHub Gist raw URL).",
+            value: "",
+            maxlength: 1024,
+            confirmLabel: "Fetch & Import",
+            onConfirm: function (url) {
+                url = (url || "").trim();
+                if (!url) return;
+                // Validate URL.
+                if (!/^https?:\/\//i.test(url)) {
+                    showImportError({ reason: "invalid-url" });
+                    return;
+                }
+                fetch(url, { cache: "no-store" }).then(function (res) {
+                    if (!res.ok) {
+                        showImportError({ reason: "http-" + res.status });
+                        return;
+                    }
+                    return res.arrayBuffer().then(function (buf) {
+                        if (buf.byteLength > MAX_STATE_BYTES) {
+                            showImportError({ reason: "too-large" });
+                            return;
+                        }
+                        return autoDecodeInput(new Uint8Array(buf)).then(function (containerBytes) {
+                            if (!containerBytes) {
+                                showImportError({ reason: "not-a-state" });
+                                return;
+                            }
+                            return importState(containerBytes).then(function (result) {
+                                if (result.ok) {
+                                    refreshUI(result.id);
+                                } else if (result.reason !== "cancelled") {
+                                    showImportError(result);
+                                }
+                            });
+                        });
+                    });
+                }).catch(function () {
+                    showImportError({ reason: "fetch-failed" });
+                });
+            }
+        });
+    }
+
+    // Export a snapshot as a text envelope file (.txt).
+    function exportAsTextEnvelope(snapId) {
+        exportSnapshot(snapId).then(function (bytes) {
+            if (!bytes) return;
+            var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+            if (!env) return;
+            var text = env.encode(bytes);
+            var name = sanitizeFilename(snapId) + ".state.txt";
+            // Encode the text as bytes for download.
+            var textBytes = new TextEncoder().encode(text);
+            downloadBytes(textBytes, name, "text/plain");
+        });
+    }
+
+    // Copy a snapshot's text envelope to the clipboard.
+    function copyTextEnvelope(snapId) {
+        exportSnapshot(snapId).then(function (bytes) {
+            if (!bytes) return;
+            var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+            if (!env) return;
+            var text = env.encode(bytes);
+            if (typeof navigator !== "undefined" && navigator.clipboard &&
+                typeof navigator.clipboard.writeText === "function") {
+                navigator.clipboard.writeText(text).then(function () {
+                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                        Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                    }
+                }).catch(function () {
+                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                        Toasts.show({ text: "Could not copy to clipboard", category: "error" });
+                    }
+                });
+            }
+        });
+    }
+
+    // ---- PAT obfuscation helpers ---------------------------------------
+    // Simple XOR + base64 to avoid storing the token in plain text in
+    // localStorage. Not cryptographic — the key lives in the source code.
+    var _PAT_KEY = [0x79, 0x61, 0x50, 0x44, 0x50, 0x2D, 0x31, 0x31]; // "yaPDP-11"
+
+    function _obfuscatePAT(plain) {
+        if (!plain) return "";
+        var bytes = [];
+        for (var i = 0; i < plain.length; i++) {
+            bytes.push(plain.charCodeAt(i) ^ _PAT_KEY[i % _PAT_KEY.length]);
+        }
+        return btoa(String.fromCharCode.apply(null, bytes));
+    }
+
+    function _deobfuscatePAT(obfuscated) {
+        if (!obfuscated) return "";
+        try {
+            var raw = atob(obfuscated);
+            var chars = [];
+            for (var i = 0; i < raw.length; i++) {
+                chars.push(raw.charCodeAt(i) ^ _PAT_KEY[i % _PAT_KEY.length]);
+            }
+            return String.fromCharCode.apply(null, chars);
+        } catch (e) {
+            return ""; // not obfuscated or corrupted
+        }
+    }
+
+    // ---- Gist dialog (GitHub API integration) ---------------------------
+    // Creates a secret Gist via the GitHub API using a Personal Access Token.
+    // The PAT must have the `gist` scope. The token is never stored.
+    function showGistDialog(envelopeText) {
+        if (typeof document === "undefined") return;
+        if (!__snapModal) { showConfirmModal({}); __snapModalOnConfirm = null; }
+        __snapPrevFocus = document.activeElement;
+        var safeEnv = escapeHtml(String(envelopeText || ""));
+        // Load saved PAT from localStorage (persists across browser sessions).
+        var savedPat = "";
+        try {
+            if (typeof localStorage !== "undefined") {
+                savedPat = _deobfuscatePAT(localStorage.getItem("yapdp.github-pat") || "");
+            }
+        } catch (e) { /* ignore */ }
+
+        __snapModal.innerHTML =
+            '<div class="modal-box gist-dialog">' +
+                '<span class="modal-title">Share via GitHub Gist</span>' +
+                '<p class="modal-intro">Create a <strong>secret</strong> Gist on GitHub with the machine state.</p>' +
+                '<label class="modal-field">GitHub Personal Access Token (gist scope)' +
+                    '<div style="display:flex;align-items:stretch;gap:6px">' +
+                        '<input type="password" class="modal-input" id="gist-pat-input" ' +
+                            'placeholder="ghp_... or github_pat_..." autocomplete="off" spellcheck="false" ' +
+                            'style="flex:1;font-family:monospace" value="' + escapeHtml(savedPat) + '">' +
+                        '<button type="button" id="gist-pat-toggle" class="modal-close" ' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Show token">' +
+                            '<svg viewBox="0 0 20 14" width="20" height="14" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                                '<ellipse cx="10" cy="7" rx="8" ry="5"/>' +
+                                '<circle cx="10" cy="7" r="2.5" fill="currentColor"/>' +
+                                '<circle cx="10" cy="7" r="1" fill="#c8a860"/>' +
+                            '</svg></button>' +
+                        '<button type="button" id="gist-pat-forget" class="modal-close" ' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1" title="Clear saved token">' +
+                            '&#10005;</button>' +
+                        '<button type="button" id="gist-pat-info" class="modal-close" ' +
+                            'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:16px;font-weight:bold;font-style:italic;line-height:1" title="About token">i</button>' +
+                    '</div>' +
+                '</label>' +
+                '<div class="modal-actions">' +
+                    '<button type="button" class="modal-close" id="gist-generate-btn" disabled>Generate</button>' +
+                '</div>' +
+                '<div id="gist-error" class="modal-intro" style="display:none;color:#d06050"></div>' +
+                '<div id="gist-result-block" style="display:none">' +
+                    '<label class="modal-field">Share link (paste into browser)' +
+                        '<div style="display:flex;align-items:center;gap:6px">' +
+                            '<input type="text" class="modal-input" id="gist-result-input" readonly ' +
+                                'style="flex:1;user-select:all;font-family:monospace" autocomplete="off" spellcheck="false">' +
+                            '<button type="button" id="gist-copy-btn" class="modal-close" ' +
+                                'style="padding:6px 8px;min-width:36px;display:inline-flex;align-items:center;justify-content:center" title="Copy to clipboard">' +
+                                '<svg viewBox="0 0 16 18" width="16" height="18" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                                    '<rect x="3" y="1" width="10" height="13" rx="2"/>' +
+                                    '<rect x="1" y="3" width="10" height="13" rx="2" fill="none"/>' +
+                                '</svg></button>' +
+                        '</div>' +
+                    '</label>' +
+                    '<div class="modal-actions">' +
+                        '<button type="button" class="modal-close" id="gist-test-btn" ' +
+                            'style="display:none">Test in new browser page</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="modal-actions" id="gist-actions-bottom">' +
+                    '<button type="button" class="modal-close" id="gist-share-btn" style="display:none">Share via platform</button>' +
+                    '<button type="button" class="modal-close" ' +
+                        'id="gist-open-link" style="display:none">Open GitHub Gist</button>' +
+                    '<button type="button" class="modal-close" data-snap-action="cancel">Close</button>' +
+                '</div>' +
+            '</div>';
+        __snapModalOnConfirm = null;
+        __snapModal.classList.add("visible");
+
+        var patInput = document.getElementById("gist-pat-input");
+        var patToggle = document.getElementById("gist-pat-toggle");
+        var generateBtn = document.getElementById("gist-generate-btn");
+        var errorDiv = document.getElementById("gist-error");
+        var resultBlock = document.getElementById("gist-result-block");
+        var resultInput = document.getElementById("gist-result-input");
+        var copyBtn = document.getElementById("gist-copy-btn");
+        var shareBtn = document.getElementById("gist-share-btn");
+
+        // Enable Generate if a saved PAT was loaded.
+        if (generateBtn && patInput && savedPat) {
+            generateBtn.disabled = false;
+        }
+
+        // Wire all Gist dialog handlers. Defined as a function so it can be
+        // re-called after restoring the dialog from the info overlay.
+        function wireGistDialog() {
+            var p2 = document.getElementById("gist-pat-input");
+            var t2 = document.getElementById("gist-pat-toggle");
+            var g2 = document.getElementById("gist-generate-btn");
+            var e2 = document.getElementById("gist-error");
+            var r2 = document.getElementById("gist-result-block");
+            var ri2 = document.getElementById("gist-result-input");
+            var c2 = document.getElementById("gist-copy-btn");
+            var s2 = document.getElementById("gist-share-btn");
+
+            // PAT toggle: show/hide.  Keep the SVG eye icon in both states;
+            // only the tooltip and the input type change.
+            if (t2 && p2) {
+                t2.addEventListener("click", function () {
+                    p2.type = (p2.type === "password") ? "text" : "password";
+                    t2.title = (p2.type === "password") ? "Show token" : "Hide token";
+                });
+            }
+
+            // PAT info: show instructions.
+            var pi2 = document.getElementById("gist-pat-info");
+            if (pi2) {
+                pi2.addEventListener("click", function () {
+                    var savedHTML = __snapModal.innerHTML;
+                    var savedOnConfirm = __snapModalOnConfirm;
+                    __snapModal.innerHTML =
+                        '<div class="modal-box">' +
+                            '<span class="modal-title">About GitHub Personal Access Token</span>' +
+                            '<p class="modal-intro">' +
+                                "Your PAT is used only to create a Gist via the GitHub API. " +
+                                "It is never sent anywhere else." +
+                                "<br><br>In your browser the token is stored in <strong>encrypted form</strong> " +
+                                "in localStorage (persists across sessions)." +
+                                "<br>You can clear it anytime with the <strong>x</strong> button." +
+                                "<br><br>To create a PAT:" +
+                                "<br>1. Go to GitHub Settings, Tokens page" +
+                                "<br>2. Click Generate new token (classic)" +
+                                "<br>3. Give it a name (e.g. 'yaPDP Gist')" +
+                                "<br>4. Select scope: <strong>gist</strong> only" +
+                                "<br>5. Click Generate token and copy it here" +
+                            '</p>' +
+                            '<button type="button" class="modal-close" id="gist-info-gotit">Got it</button>' +
+                        '</div>';
+                    var gotItBtn = document.getElementById("gist-info-gotit");
+                    if (gotItBtn) {
+                        gotItBtn.addEventListener("click", function () {
+                            __snapModal.innerHTML = savedHTML;
+                            __snapModalOnConfirm = savedOnConfirm;
+                            __snapModal.classList.add("visible");
+                            wireGistDialog();
+                        });
+                    }
+                });
+            }
+
+            // PAT forget: clear saved token.
+            var pf2 = document.getElementById("gist-pat-forget");
+            if (pf2 && p2 && g2) {
+                pf2.addEventListener("click", function () {
+                    p2.value = "";
+                    g2.disabled = true;
+                    try { if (typeof localStorage !== "undefined") localStorage.removeItem("yapdp.github-pat"); } catch (x) {}
+                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                        Toasts.show({ text: "Saved token cleared", category: "info" });
+                    }
+                });
+            }
+
+            // PAT input: enable Generate and save to localStorage.
+            if (p2 && g2) {
+                p2.addEventListener("input", function () {
+                    g2.disabled = !p2.value.trim();
+                    try { if (typeof localStorage !== "undefined") localStorage.setItem("yapdp.github-pat", _obfuscatePAT(p2.value)); } catch (x) {}
+                });
+            }
+
+            // Generate: call GitHub API.
+            if (g2 && p2 && e2 && r2 && ri2) {
+                g2.addEventListener("click", function () {
+                    var pat = (p2.value || "").trim();
+                    if (!pat) return;
+                    g2.disabled = true;
+                    g2.textContent = "Creating...";
+                    e2.style.display = "none";
+                    var body = JSON.stringify({
+                        description: "yaPDP PDP-11/70 machine state",
+                        public: false,
+                        files: { "machine-state.txt": { content: envelopeText || "" } }
+                    });
+                    fetch("https://api.github.com/gists", {
+                        method: "POST",
+                        headers: { "Authorization": "Bearer " + pat, "Content-Type": "application/json", "Accept": "application/vnd.github.v3+json" },
+                        body: body,
+                    }).then(function (res) {
+                        if (!res.ok) {
+                            return res.json().then(function (err) { throw new Error(err && err.message ? err.message : "HTTP " + res.status); }, function () { throw new Error("HTTP " + res.status); });
+                        }
+                        return res.json();
+                    }).then(function (data) {
+                        var gu = (data.files && data.files["machine-state.txt"] && data.files["machine-state.txt"].raw_url) || "";
+                        if (!gu) throw new Error("No raw URL in response");
+                        var pageUrl = "";
+                        try { pageUrl = location.origin + location.pathname; } catch (e) { pageUrl = ""; }
+                        if (!pageUrl) pageUrl = "http://localhost:3000/pdp11.html";
+                        var link = pageUrl + "?state=" + encodeURIComponent(gu);
+                        ri2.value = link;
+                        r2.style.display = "";
+                        // Update the Open GitHub Gist button to open the actual Gist.
+                        var gistPageUrl = data.html_url || "";
+                        var openLink = document.getElementById("gist-open-link");
+                        if (openLink && gistPageUrl) {
+                            openLink.style.display = "";
+                            openLink.onclick = function () { window.open(gistPageUrl, "_blank"); };
+                        }
+                        var sb = document.getElementById("gist-share-btn");
+                        if (sb) sb.style.display = "";
+                        var isTauri = typeof window !== "undefined" && window.__TAURI__ && typeof window.__TAURI__.core !== "undefined";
+                        var tb = document.getElementById("gist-test-btn");
+                        if (tb && !isTauri) tb.style.display = "";
+                        g2.style.display = "none";
+                        if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+                            navigator.clipboard.writeText(link).then(function () {
+                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") Toasts.show({ text: "Share link copied to clipboard", category: "info" });
+                            }).catch(function () {});
+                        }
+                    }).catch(function (err) {
+                        e2.textContent = "Error: " + (err && err.message ? err.message : "Unknown error");
+                        e2.style.display = "";
+                        g2.disabled = false;
+                        g2.textContent = "Generate";
+                    });
+                });
+            }
+
+            // Copy button.
+            if (c2 && ri2) {
+                c2.addEventListener("click", function () {
+                    ri2.select();
+                    if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+                        navigator.clipboard.writeText(ri2.value).then(function () {
+                            if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") Toasts.show({ text: "Share link copied to clipboard", category: "info" });
+                        }).catch(function () {});
+                    }
+                });
+            }
+
+            // Share via platform.
+            if (s2 && ri2) {
+                s2.addEventListener("click", function () {
+                    var link = ri2.value;
+                    if (!link) return;
+                    if (typeof navigator !== "undefined" && navigator.share && typeof navigator.share === "function") {
+                        navigator.share({ title: "yaPDP - PDP-11/70 machine state", text: link, url: link }).catch(function () {});
+                    }
+                });
+            }
+
+            // Test in new browser page.
+            var tb2 = document.getElementById("gist-test-btn");
+            if (tb2 && ri2) {
+                tb2.addEventListener("click", function () {
+                    var link = ri2.value;
+                    if (!link) return;
+                    if (typeof window !== "undefined" && window.open) {
+                        window.open(link, "_blank");
+                    }
+                });
+            }
+        }
+
+        // Wire handlers once.
+        wireGistDialog();
+
     }
 
     // ---- Share dialog ----------------------------------------------------
@@ -2221,7 +3137,16 @@ var SnapshotStore = (() => {
                         '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
-                    '<button type="button" class="modal-close" id="share-create">Create Shareable State</button>' +
+                    '<div class="split-btn">' +
+                        '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
+                        '<button type="button" id="share-create-more" class="split-btn-arrow" aria-label="More share options">&#9662;</button>' +
+                        '<div class="split-btn-menu open-up" id="share-create-menu">' +
+                            '<button type="button" id="share-create-clipboard" class="split-btn-item">Copy text to clipboard</button>' +
+                            '<button type="button" id="share-create-textfile" class="split-btn-item">Save as text file</button>' +
+                            '<button type="button" id="share-create-share" class="split-btn-item">Share via platform\u2026</button>' +
+                            '<button type="button" id="share-create-gist" class="split-btn-item">Create GitHub Gist\u2026</button>' +
+                        '</div>' +
+                    '</div>' +
                 '</div>';
             __snapModalOnConfirm = null;
             __snapModal.classList.add("visible");
@@ -2278,20 +3203,28 @@ var SnapshotStore = (() => {
                 img.src = url;
             }
 
+            // Helper: extract image from clipboard data and load as screenshot.
+            function pasteImageFromClipboard(e) {
+                var data = e.clipboardData;
+                if (!data || !data.items || !data.items.length) return false;
+                for (var i = 0; i < data.items.length; i++) {
+                    var item = data.items[i];
+                    if (item.type && item.type.startsWith("image/")) {
+                        e.preventDefault();
+                        // Use getAsFile() — it is widely supported and returns a
+                        // File (a subclass of Blob), so loadScreenshot works with it.
+                        var file = item.getAsFile();
+                        if (file) { loadScreenshot(file); }
+                        return true;
+                    }
+                }
+                return false;
+            }
+
             // Paste handler: catch Ctrl+V on the screenshot area.
             if (screenshotArea) {
                 screenshotArea.addEventListener("paste", function (e) {
-                    var data = e.clipboardData;
-                    if (!data || !data.items || !data.items.length) return;
-                    for (var i = 0; i < data.items.length; i++) {
-                        var item = data.items[i];
-                        if (item.type && item.type.startsWith("image/")) {
-                            e.preventDefault();
-                            var blob = item.getAsBlob();
-                            if (blob) { loadScreenshot(blob); }
-                            break;
-                        }
-                    }
+                    pasteImageFromClipboard(e);
                 });
 
                 // Click to open file picker.
@@ -2314,33 +3247,216 @@ var SnapshotStore = (() => {
                 }
             }
 
-            // Create button handler.
+            // Also catch paste anywhere in the modal (clicking the area opens the
+            // file picker, so the user cannot focus it for paste).  Only intercept
+            // when the clipboard holds an image — text paste into inputs is unaffected.
+            if (__snapModal) {
+                // The paste event may not fire on non-editable elements (e.g. a focused
+                // button), so also intercept Ctrl+V at the keydown level and read the
+                // clipboard directly.
+                __snapModal.addEventListener("keydown", function (e) {
+                    if (!e.ctrlKey || (e.key !== 'v' && e.key !== 'V')) return;
+                    var tag = e.target && e.target.tagName;
+                    if (tag === "INPUT" || tag === "TEXTAREA") return;
+                    e.preventDefault();
+                    if (typeof navigator === "undefined" || !navigator.clipboard ||
+                        typeof navigator.clipboard.read !== "function") return;
+                    navigator.clipboard.read().then(function (items) {
+                        for (var i = 0; i < items.length; i++) {
+                            var item = items[i];
+                            if (item.type && item.type.startsWith("image/")) {
+                                item.getType(item.type).then(function (blob) {
+                                    if (blob) loadScreenshot(blob);
+                                }).catch(function () {});
+                                break;
+                            }
+                        }
+                    }).catch(function () {});
+                });
+                // Also catch the native paste event for editable elements (INPUT/TEXTAREA)
+                // that hold only image data.
+                __snapModal.addEventListener("paste", function (e) {
+                    var tag = e.target && e.target.tagName;
+                    if (tag === "INPUT" || tag === "TEXTAREA") {
+                        var data = e.clipboardData;
+                        var hasText = false;
+                        if (data && data.items) {
+                            for (var i = 0; i < data.items.length; i++) {
+                                if (data.items[i].type === "text/plain") {
+                                    hasText = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!hasText) { pasteImageFromClipboard(e); }
+                        return;
+                    }
+                    pasteImageFromClipboard(e);
+                });
+            }
+
+            // Helper: gather share options from the dialog fields.
+            function gatherShareOpts() {
+                var title = (titleInput ? titleInput.value : "").trim();
+                var desc = (descInput ? descInput.value : "").trim();
+                var btn = (btnInput ? btnInput.value : "").trim();
+                var cmd = (cmdInput ? cmdInput.value : "").trim();
+                return {
+                    title: title,
+                    description: desc,
+                    buttonLabel: btn || null,
+                    screenshot: screenshotData,
+                    command: cmd,
+                };
+            }
+
+            // Helper: create shareable state and return bytes.
+            function doCreateShareable(opts) {
+                return createShareableState(snapId, opts);
+            }
+
+            // Helper: download shareable state as .state.zst.
+            function downloadShareable(bytes, title) {
+                if (!bytes) return;
+                var name = sanitizeFilename(title || snapName) + ".state.zst";
+                downloadBytes(bytes, name, "application/octet-stream");
+            }
+
+            // Create button (main action): download .state.zst.
             var createBtn = document.getElementById("share-create");
             if (createBtn) {
                 createBtn.addEventListener("click", function () {
-                    var title = (titleInput ? titleInput.value : "").trim();
-                    var desc = (descInput ? descInput.value : "").trim();
-                    var btn = (btnInput ? btnInput.value : "").trim();
-                    var cmd = (cmdInput ? cmdInput.value : "").trim();
+                    var opts = gatherShareOpts();
                     createBtn.disabled = true;
-                    createShareableState(snapId, {
-                        title: title,
-                        description: desc,
-                        buttonLabel: btn || null,
-                        screenshot: screenshotData,
-                        command: cmd,
-                    }).then(function (bytes) {
+                    doCreateShareable(opts).then(function (bytes) {
                         createBtn.disabled = false;
                         snapCloseModal();
+                        downloadShareable(bytes, opts.title);
+                    });
+                });
+            }
+
+            // Split-button: toggle the dropdown menu.
+            var createMoreBtn = document.getElementById("share-create-more");
+            var createMenu = document.getElementById("share-create-menu");
+            if (createMoreBtn && createMenu) {
+                createMoreBtn.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    createMenu.classList.toggle("visible");
+                });
+                // Close the menu when clicking outside.
+                document.addEventListener("click", function (e) {
+                    if (!createMenu.contains(e.target) && e.target !== createMoreBtn) {
+                        createMenu.classList.remove("visible");
+                    }
+                });
+            }
+
+            // Split-button: copy text envelope to clipboard.
+            var createClipboardBtn = document.getElementById("share-create-clipboard");
+            if (createClipboardBtn) {
+                createClipboardBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
                         if (!bytes) return;
-                        var name = sanitizeFilename(title || snapName) + ".state.zst";
-                        var blob = new Blob([bytes], { type: "application/octet-stream" });
-                        var url = URL.createObjectURL(blob);
-                        var a = document.createElement("a");
-                        a.href = url;
-                        a.download = name;
-                        a.click();
-                        URL.revokeObjectURL(url);
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        if (typeof navigator !== "undefined" && navigator.clipboard &&
+                            typeof navigator.clipboard.writeText === "function") {
+                            navigator.clipboard.writeText(text).then(function () {
+                                snapCloseModal();
+                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                    Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                                }
+                            }).catch(function () { /* ignore */ });
+                        }
+                    });
+                });
+            }
+
+            // Split-button: save as text file.
+            var createTextFileBtn = document.getElementById("share-create-textfile");
+            if (createTextFileBtn) {
+                createTextFileBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
+                        if (!bytes) return;
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        var name = sanitizeFilename(opts.title || snapName) + ".state.txt";
+                        var textBytes = new TextEncoder().encode(text);
+                        snapCloseModal();
+                        downloadBytes(textBytes, name, "text/plain");
+                    });
+                });
+            }
+
+            // Split-button: share via platform API (navigator.share).
+            var createShareBtn = document.getElementById("share-create-share");
+            if (createShareBtn) {
+                createShareBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
+                        if (!bytes) return;
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        // Copy to clipboard first.
+                        var clipboardPromise = Promise.resolve();
+                        if (typeof navigator !== "undefined" && navigator.clipboard &&
+                            typeof navigator.clipboard.writeText === "function") {
+                            clipboardPromise = navigator.clipboard.writeText(text);
+                        }
+                        clipboardPromise.then(function () {
+                            // Try platform share API.
+                            if (typeof navigator !== "undefined" && navigator.share &&
+                                typeof navigator.share === "function") {
+                                snapCloseModal();
+                                navigator.share({
+                                    title: "yaPDP — PDP-11/70 machine state: " + (opts.title || snapName),
+                                    text: text.slice(0, 2048), // share a preview (platforms limit share text)
+                                }).catch(function () {
+                                    // Share failed or dismissed — clipboard already has the full text.
+                                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                        Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                                    }
+                                });
+                            } else {
+                                // No platform share — clipboard is enough.
+                                snapCloseModal();
+                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                    Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
+                                }
+                            }
+                        }).catch(function () {
+                            snapCloseModal();
+                            if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                                Toasts.show({ text: "Could not copy to clipboard", category: "error" });
+                            }
+                        });
+                    });
+                });
+            }
+
+            // Split-button: create GitHub Gist.
+            var createGistBtn = document.getElementById("share-create-gist");
+            if (createGistBtn) {
+                createGistBtn.addEventListener("click", function () {
+                    if (createMenu) createMenu.classList.remove("visible");
+                    var opts = gatherShareOpts();
+                    doCreateShareable(opts).then(function (bytes) {
+                        if (!bytes) return;
+                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
+                        if (!env) return;
+                        var text = env.encode(bytes);
+                        snapCloseModal();
+                        // Show the Gist dialog with the envelope text.
+                        showGistDialog(text);
                     });
                 });
             }
@@ -2373,6 +3489,19 @@ var SnapshotStore = (() => {
         // deep-link path to show the "preparing" toast for the right image.
         lastStateManifest: lastStateManifest,
         refreshUI: refreshUI,
+        // The configuration-rollback flow (see offerConfigRollback) and the
+        // profile rules it rests on: exposed for the panel's Reboot /
+        // Bootstrap now! handlers and for tests.
+        captureConfig: captureConfig,
+        applySnapshotConfig: applySnapshotConfig,
+        configNeedsReload: configNeedsReload,
+        // The configuration-rollback flow (see rollbackToBaseline), exposed for
+        // the Reboot / Bootstrap dialog and for tests.
+        configRollbackAvailable: configRollbackAvailable,
+        clearConfigBaseline: clearConfigBaseline,
+        rollbackToBaseline: rollbackToBaseline,
+        reloadForConfig: reloadForConfig,
+        configDiffers: configDiffers,
         wireUI: wireUI,
         SCHEMA_VERSION: SCHEMA_VERSION,
         // Exposed for tests: the compatibility rule and its dialog, and the

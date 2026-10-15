@@ -12,8 +12,15 @@ picture are all captured. Think of it as a save file of the whole machine.
 The machine-state dialog with one freshly saved state.{.shot-caption}
 
 - **Save state** — captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring it re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.
-- **Load** — restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working.
-- **Export / Import** — take a state out as a `.state` file, or bring one in from a file somebody sent you. An imported file joins the list like any other state.
+- **Load** — restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working. The **Load** button has a dropdown with **Load as shared state** for loading a `.state.txt` envelope file.
+- **Export** — a split-button with three options:
+  - **Export** (main action) — downloads the selected state as a `.state.zst` binary file.
+  - **Save as text file** — encodes the state as a text envelope (`.state.txt`) that can be copied through channels that reject binary attachments.
+  - **Copy text to clipboard** — places the text envelope directly on the system clipboard.
+- **Import** — a split-button with three options:
+  - **Import** (main action) — opens a file picker for `.state.zst`, `.state` or `.state.txt` files from disk.
+  - **Import from clipboard** — reads a text envelope from the clipboard and decodes it.
+  - **Import from URL** — prompts for a URL, fetches the state file from the network and imports it.
 - **Share** — turn a state into a file you can hand to somebody else; the Sharing a state subsection below explains what the file needs to work.
 - **Rename / Delete** — organise the list or remove states; the counter next to the list shows how many states you have.
 
@@ -31,18 +38,50 @@ on your own host.
 **To share your own state:** open the machine-state dialog, pick a state and press **Share**. The
 dialog asks for the words the receiver will see — a **Title**, a **Description**, a **Button label**
 (for the message they read before they get control), a **Screenshot**, and a **Run after restore**
-command that types itself into the guest once the machine is back (e.g. `RUN SPCINV`). **Create
-Shareable State** then saves a `.state.zst` file to your computer.
+command that types itself into the guest once the machine is back (e.g. `RUN SPCINV`).
+
+The **Screenshot** field accepts an image pasted from the clipboard (**Ctrl+V**) or selected via a
+file picker. A preview is shown once an image is attached; a **Remove** button clears it.
 
 ![The Share dialog](assets/images/manual/dialog-share.png){.shot}
 
-The Share dialog: give the state a title, a description and the keys the receiver needs.{.shot-caption}
+The Share dialog: give the state a title, a description, a screenshot and optional post-restore command.{.shot-caption}
+
+The **Create Shareable State** button is a split-button with additional options:
+- **Copy text to clipboard** — copies the text envelope of the shareable state.
+- **Save as text file** — downloads the text envelope as a `.state.txt` file.
+- **Share via platform…** — uses the browser's native sharing mechanism (Web Share API).
+- **Create GitHub Gist…** — opens a Gist dialog that creates a **secret** Gist on GitHub with the
+  machine state. You need a GitHub Personal Access Token with the `gist` scope.
+
+  ![The Gist dialog](assets/images/manual/dialog-gist.png){.shot}
+
+  The Gist dialog: enter your GitHub token and generate a shareable link.{.shot-caption}
+
+  The Gist dialog provides:
+  - A **PAT input** field (masked by default) for your token.
+  - **Show/hide** toggle (&#9679; / #) to reveal or mask the token.
+  - **Clear saved token** button to remove the token from local storage.
+  - **Info** button (i) with instructions on creating a PAT.
+  - A **Generate** button that posts the state to GitHub and returns a shareable link.
+  - The generated link can be **copied**, **tested** in a new tab, or **shared** via the platform.
+
+  Clicking the **info** button (i) opens the **About GitHub Personal Access Token** dialog,
+  which explains the security model: the PAT is used only to create a Gist via the GitHub
+  API, is never sent anywhere else, and is stored in obfuscated form in localStorage. It
+  also provides step-by-step instructions for creating a PAT with the `gist` scope.
+
+  ![The About PAT dialog](assets/images/manual/dialog-gist-about-pat.png){.shot}
+
+  The About PAT dialog: security policy and PAT creation instructions.{.shot-caption}
+
+A **Cancel** button is placed separately from the action buttons.
 
 Host that file anywhere reachable by a URL, then send the link. Two things decide whether it works:
 
 - **The host must allow the file to be read from another site** (the `Access-Control-Allow-Origin`
   header). A browser refuses to let this page read a file on another host that does not say so, and
-  the visitor then sees a “Shared state not restored” message naming the URL. Static hosts often do
+  the visitor then sees a "Shared state not restored" message naming the URL. Static hosts often do
   not send that header by default. The surest way to avoid the problem is to keep the file **next to
   the emulator** — on the same site — exactly as the states under `states/` are served.
 - **The receiver needs the same disk images.** A state does not carry its images, only a record of
@@ -54,3 +93,83 @@ When either condition fails the visitor is told in a dialog that names the URL, 
 keeps the `?state=` parameter so what was asked for stays visible. If a link cannot work at all — the
 state lives somewhere that cannot be fetched — the file itself is still the fallback: **Import** it
 takes any `.state` or `.state.zst` file from disk, with no server and no CORS involved.
+
+### Embedding the emulator
+
+The emulator can be embedded into any HTML page as an `<iframe>`. This
+makes it suitable for museum exhibits, educational websites, and online
+articles — visitors interact with a live PDP-11 without leaving your
+site.
+
+**Basic OS boot**
+
+```html
+<iframe src="https://amesk.github.io/yaPDP/pdp11.html?boot=rk1"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>
+```
+
+The `?boot=` parameter starts the quick-boot wizard for the specified
+disk. The wizard types the boot command and, where credentials are
+known, the login — the visitor sees a running operating system
+immediately.
+
+**Loading a machine state**
+
+```html
+<iframe src="https://amesk.github.io/yaPDP/pdp11.html?state=states/lunar-lander.state.zst"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>
+```
+
+The `?state=` parameter loads a saved machine state. The state file must
+be reachable from the browser — see the CORS discussion above.
+
+**Using a GitHub Gist to bypass CORS**
+
+If you cannot place the state file on the same host as the emulator, the
+GitHub Gist workflow (see [Sharing a state](#sharing-a-state)) solves
+the CORS problem: GitHub serves Gist raw files with the correct
+`Access-Control-Allow-Origin` header. The link generated by the **Create
+GitHub Gist** dialog works directly in an iframe:
+
+```html
+<iframe src="https://amesk.github.io/yaPDP/pdp11.html?state=https://gist.githubusercontent.com/.../raw/.../demo.state.txt"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>
+```
+
+**Guided restore for museum exhibits**
+
+When you create a shareable state, the **Title**, **Description**,
+**Screenshot** and **Run after restore** fields (see [Sharing a
+state](#sharing-a-state) above) let you prepare a self-contained
+exhibit. The visitor sees a welcome message with your description and a
+screenshot before the machine starts; after they click the button, the
+emulator boots and types the post-restore command automatically. No
+server configuration, no disk hunting — the state carries everything
+except the disk images, which are bundled with the emulator.
+
+**Recommendations for museums and educators**
+
+- Use `?boot=` for a quick OS demonstration — no state file needed.
+- Use `?state=` with a GitHub Gist for a curated exhibit that survives
+  hosting changes.
+- Set `allow="clipboard-read; clipboard-write"` on the iframe so the
+  emulator's clipboard features (Import from clipboard, Copy text to
+  clipboard) work inside the embedded page.
+- The emulator is responsive: on narrow viewports it adapts to a
+  mobile-friendly layout automatically.
+
+### Configuration restore dialog
+
+When a saved state carries its own hardware configuration (console type, terminals, printer, VT11
+display), restoring it asks whether you want to **Reset** your configuration to the state's own, or
+**Keep** your current settings. This dialog appears automatically after a state restore or before a
+reboot that would apply a state's configuration.

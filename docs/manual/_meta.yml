@@ -7,8 +7,12 @@
 #
 # `ru` is the Russian title, taken from the landing's existing translation.
 sections:
+  - id: about
+    ru: О проекте yaPDP
   - id: quick-start
     ru: Быстрый старт
+  - id: glossary
+    ru: Глоссарий
   - id: front-panel
     ru: Пультовая панель (страница Panel)
   - id: console
@@ -31,5 +35,7 @@ sections:
     ru: Кнопки, сочетания клавиш и индикаторы
   - id: troubleshooting
     ru: Устранение неполадок
+  - id: fidelity
+    ru: Историческая достоверность и ограничения
   - id: desktop
     ru: Настольное приложение

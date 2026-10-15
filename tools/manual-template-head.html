@@ -460,12 +460,15 @@
             .landing-page .hero .tagline,
             .landing-page .zero-setup {
                 color: #000;
+                text-decoration: none;
             }
 
             .landing-page pre {
                 color: #000;
                 background: #f4f4f4;
                 border: 1px solid #bbb;
+                white-space: pre-wrap;
+                word-break: break-word;
             }
 
             .landing-page blockquote {
@@ -539,6 +542,12 @@
                The first heading is the exception: it would otherwise push a
                blank page between the contents list and the opening section. */
             .landing-page h2 {
+                page-break-before: always;
+                break-before: page;
+            }
+
+            /* The subject index is a separate reference section in the PDF. */
+            .landing-page .manual-index {
                 page-break-before: always;
                 break-before: page;
             }

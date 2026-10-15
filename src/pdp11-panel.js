@@ -558,37 +558,99 @@ function examineDeposit(data) {
     }
   }
 
-  // Confirmation overlay (reuses the shared modal style, see css/pdp11.css).
-  var rebootConfirmOverlay = null;
+  // The operator console page for the given config (VT52 and VT100 share the
+  // graphical page; the teletype has its own).
+  function consolePageFor(cfg) {
+    var t = cfg && cfg.consoleType;
+    return (t === 'vt52' || t === 'vt100') ? 'vt52-console' : 'teletype';
+  }
 
-  function ensureRebootConfirm() {
-    if (rebootConfirmOverlay) return rebootConfirmOverlay;
-    rebootConfirmOverlay = document.createElement('div');
-    rebootConfirmOverlay.id = 'reboot-confirm-overlay';
-    rebootConfirmOverlay.className = 'modal-overlay';
-    rebootConfirmOverlay.innerHTML =
+  // A Reboot / Bootstrap now! parked across the configuration-rollback reload
+  // (see the dialog below): written before location.reload(), consumed on
+  // DOMContentLoaded, so the operation is never lost.
+  var PENDING_REBOOT_KEY = 'yapdp.pending-reboot';
+
+  // The raw machine operation, no questions asked. "boot" is "Bootstrap now!"
+  // — a reboot that starts the default bootstrap and switches to the operator
+  // console; anything else is the plain REBOOT.
+  function performMachineAction(action) {
+    if (action === 'boot') {
+      doReboot(true);
+      switchPage(consolePageFor(typeof Config !== 'undefined' ? Config.get() : null));
+    } else {
+      doReboot();
+    }
+  }
+
+  // Ask before the operation when there is something to ask: the reboot
+  // confirmation (CONFIG confirmReboot) and/or the configuration-rollback offer
+  // (the machine runs a configuration imported from a saved state). Both live
+  // in ONE dialog — a rollback prompt stacked on a reboot prompt was two modals
+  // for a single decision.
+  function requestMachineAction(action) {
+    var cfg = (typeof Config !== 'undefined' && Config.get) ? Config.get() : null;
+    var confirm = (action === 'reboot') && !!cfg && cfg.confirmReboot !== false;
+    var rollback = (typeof SnapshotStore !== 'undefined' &&
+        typeof SnapshotStore.configRollbackAvailable === 'function')
+        ? SnapshotStore.configRollbackAvailable() : false;
+    if (!confirm && !rollback) {
+      performMachineAction(action);
+      return;
+    }
+    showMachineDialog(action, confirm, rollback);
+  }
+
+  // Machine-action dialog (reuses the shared modal style, see css/pdp11.css).
+  // It carries up to three optional parts: the Boot-device select and the
+  // "Don't show this warning" tick (the reboot confirmation), and the
+  // "Return my own configuration" choice (the rollback offer). Only the parts
+  // that apply are shown, so a reboot on an imported configuration is a SINGLE
+  // dialog, not two.
+  var machineDialog = null;
+  var machineDialogAction = 'reboot';
+  var machineDialogConfirm = false;
+  var machineDialogRollback = false;
+
+  // Hide/show a dialog part without depending on a CSS class. An empty inline
+  // display restores whatever the stylesheet says.
+  function toggleDialogPart(id, show) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  }
+
+  function ensureMachineDialog() {
+    if (machineDialog) return machineDialog;
+    machineDialog = document.createElement('div');
+    machineDialog.id = 'machine-action-overlay';
+    machineDialog.className = 'modal-overlay';
+    machineDialog.innerHTML =
       '<div class="modal-box">' +
-        '<span class="modal-title">Reboot the machine?</span>' +
-        '<p class="modal-intro">This restarts the emulated PDP-11. Choose what the ' +
-        'Boot ROM does after the reboot — nothing, the interactive loader (@), or ' +
-        'reload the medium that was loaded last.</p>' +
-        '<label class="modal-field">Boot device' +
-          '<select class="modal-select" id="reboot-bootDevice">' +
+        '<span class="modal-title" id="machine-action-title">Reboot the machine?</span>' +
+        '<p class="modal-intro" id="machine-action-intro">This restarts the emulated ' +
+        'PDP-11. Choose what the Boot ROM does after the reboot — nothing, the ' +
+        'interactive loader (@), or reload the medium that was loaded last.</p>' +
+        '<label class="modal-field" id="machine-action-bootDevice-row">Boot device' +
+          '<select class="modal-select" id="machine-action-bootDevice">' +
             '<option value="none">None</option>' +
             '<option value="interactive@">Interactive loader (@)</option>' +
             '<option value="last">Last medium</option>' +
           '</select></label>' +
-        '<label class="modal-dontask"><input type="checkbox" id="reboot-dont-ask"> ' +
-        'Don\'t show this warning anymore</label>' +
-        '<button type="button" class="modal-close" data-reboot-action="cancel">Cancel</button>' +
-        '<button type="button" class="modal-close" data-reboot-action="reboot">Reboot</button>' +
+        '<label class="modal-dontask" id="machine-action-dontask-row">' +
+          '<input type="checkbox" id="machine-action-dontask"> ' +
+          'Don\'t show this warning anymore</label>' +
+        '<label class="modal-dontask" id="machine-action-return-row">' +
+          '<input type="checkbox" id="machine-action-return"> ' +
+          'Return my own configuration</label>' +
+        '<button type="button" class="modal-close" data-machine-action="cancel">Cancel</button>' +
+        '<button type="button" class="modal-close" id="machine-action-primary" ' +
+          'data-machine-action="confirm">Reboot</button>' +
       '</div>';
     // The select is a shortcut to the CONFIG Boot device option: persist it
     // immediately and keep the Config form select in sync so it never shows a
     // stale value (bootDevice is a live option, not part of isDirty()).
-    var rebootBootDeviceEl = rebootConfirmOverlay.querySelector('#reboot-bootDevice');
-    if (rebootBootDeviceEl) {
-      rebootBootDeviceEl.addEventListener('change', function () {
+    var bootDeviceEl = machineDialog.querySelector('#machine-action-bootDevice');
+    if (bootDeviceEl) {
+      bootDeviceEl.addEventListener('change', function () {
         if (typeof Config !== 'undefined' && Config.set) {
           Config.set({ bootDevice: this.value });
         }
@@ -596,14 +658,16 @@ function examineDeposit(data) {
         if (cfgEl) cfgEl.value = this.value;
       });
     }
-    rebootConfirmOverlay.addEventListener('click', function (e) {
-      var action = e.target.getAttribute && e.target.getAttribute('data-reboot-action');
-      if (action === 'cancel' || e.target === rebootConfirmOverlay) {
-        rebootConfirmOverlay.classList.remove('visible');
+    machineDialog.addEventListener('click', function (e) {
+      var action = e.target.getAttribute && e.target.getAttribute('data-machine-action');
+      if (action === 'cancel' || e.target === machineDialog) {
+        machineDialog.classList.remove('visible');
         return;
       }
-      if (action === 'reboot') {
-        var dontAsk = document.getElementById('reboot-dont-ask');
+      if (action !== 'confirm') return;
+      // "Don't show this warning anymore" only exists in the reboot confirm.
+      if (machineDialogConfirm) {
+        var dontAsk = document.getElementById('machine-action-dontask');
         if (dontAsk && dontAsk.checked && typeof Config !== 'undefined') {
           Config.set({ confirmReboot: false });
           // Keep the CONFIG page checkbox in sync: confirmReboot is a live
@@ -612,39 +676,67 @@ function examineDeposit(data) {
           var confirmRebootEl = document.getElementById('config-confirmReboot');
           if (confirmRebootEl) confirmRebootEl.checked = false;
         }
-        // The boot after the reboot follows the CONFIG Boot device option
-        // (the dialog's select is a live mirror, persisted on change above):
-        // doReboot() without forceBoot boots exactly when a Boot ROM is set.
-        rebootConfirmOverlay.classList.remove('visible');
-        doReboot();
       }
+      var returnEl = document.getElementById('machine-action-return');
+      var wantReturn = machineDialogRollback && returnEl && returnEl.checked;
+      var actionToRun = machineDialogAction;
+      machineDialog.classList.remove('visible');
+      if (wantReturn) {
+        // Return the viewer's configuration. A device-set change needs a page
+        // reload: park the operation so it runs once the page is back.
+        var result = (typeof SnapshotStore !== 'undefined' &&
+            typeof SnapshotStore.rollbackToBaseline === 'function')
+            ? SnapshotStore.rollbackToBaseline() : 'none';
+        if (result === 'reload') {
+          try { sessionStorage.setItem(PENDING_REBOOT_KEY, actionToRun); } catch (err) { /* ignore */ }
+          if (typeof SnapshotStore !== 'undefined' && SnapshotStore.reloadForConfig) {
+            SnapshotStore.reloadForConfig();
+          }
+          return;
+        }
+      } else if (machineDialogRollback && typeof SnapshotStore !== 'undefined' &&
+                 SnapshotStore.clearConfigBaseline) {
+        // Keep the state's configuration: this chain is over.
+        SnapshotStore.clearConfigBaseline();
+      }
+      // The boot after the reboot follows the CONFIG Boot device option (the
+      // dialog's select is a live mirror, persisted on change above).
+      performMachineAction(actionToRun);
     });
-    document.body.appendChild(rebootConfirmOverlay);
-    return rebootConfirmOverlay;
+    document.body.appendChild(machineDialog);
+    return machineDialog;
   }
 
-  function showRebootConfirm() {
-    var overlay = ensureRebootConfirm();
-    var dontAsk = document.getElementById('reboot-dont-ask');
-    if (dontAsk) dontAsk.checked = false; // never carry a stale "don't ask" tick
+  function showMachineDialog(action, confirm, rollback) {
+    var el = ensureMachineDialog();
+    machineDialogAction = action;
+    machineDialogConfirm = !!confirm;
+    machineDialogRollback = !!rollback;
+    // Never carry a stale tick across openings; prompt to return by default.
+    var dontAsk = document.getElementById('machine-action-dontask');
+    if (dontAsk) dontAsk.checked = false;
+    var returnEl = document.getElementById('machine-action-return');
+    if (returnEl) returnEl.checked = !!rollback;
     // Mirror the persisted Boot device choice every time the dialog opens, so
     // the select always reflects the config (it can change on the CONFIG page
     // or via a snapshot restore while the dialog exists).
-    var bootDeviceEl = document.getElementById('reboot-bootDevice');
+    var bootDeviceEl = document.getElementById('machine-action-bootDevice');
     if (bootDeviceEl && typeof Config !== 'undefined' && Config.get) {
       bootDeviceEl.value = Config.get().bootDevice;
     }
-    overlay.classList.add('visible');
+    var titleEl = document.getElementById('machine-action-title');
+    if (titleEl) titleEl.textContent = (action === 'boot') ? 'Bootstrap now?' : 'Reboot the machine?';
+    var primary = document.getElementById('machine-action-primary');
+    if (primary) primary.textContent = (action === 'boot') ? 'Bootstrap' : 'Reboot';
+    toggleDialogPart('machine-action-bootDevice-row', true);
+    toggleDialogPart('machine-action-dontask-row', confirm);
+    toggleDialogPart('machine-action-return-row', rollback);
+    el.classList.add('visible');
   }
 
   document.querySelectorAll('[data-action="reboot"]').forEach(function (reboot) {
     reboot.addEventListener('click', function () {
-      var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-      if (!cfg || cfg.confirmReboot === false) {
-        doReboot();
-        return;
-      }
-      showRebootConfirm();
+      requestMachineAction('reboot');
     });
   });
 
@@ -719,16 +811,10 @@ function examineDeposit(data) {
       }
       var action = e.target.getAttribute && e.target.getAttribute('data-power-off-action');
       if (action === 'power-on-boot') {
-        // Power the machine on and start the default bootstrap: doReboot(true)
+        // Power the machine on and start the default bootstrap: the action
         // powers on via resetPanelControls and then boots with forceBoot.
-        var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-        // VT52 and VT100 share the graphical console page.
-        var consoleType = cfg && cfg.consoleType;
-        var consolePage = (consoleType === 'vt52' || consoleType === 'vt100')
-            ? 'vt52-console' : 'teletype';
         powerOffOverlay.classList.remove('visible');
-        doReboot(true);
-        switchPage(consolePage);
+        requestMachineAction('boot');
       } else if (action === 'ok') {
         powerOffOverlay.classList.remove('visible');
       }
@@ -756,15 +842,24 @@ function examineDeposit(data) {
         showPowerOffDialog();
         return;
       }
-      var cfg = (typeof Config !== 'undefined') ? Config.get() : null;
-      // VT52 and VT100 share the graphical console page.
-      var consoleType = cfg && cfg.consoleType;
-      var consolePage = (consoleType === 'vt52' || consoleType === 'vt100')
-          ? 'vt52-console' : 'teletype';
       // Bootstrap now! always starts the default bootstrap (unlike the generic
       // REBOOT button, which does so only when the auto-boot option is set).
-      doReboot(true);
-      switchPage(consolePage);
+      requestMachineAction('boot');
     });
   }
+
+  // A Reboot / Bootstrap now! parked across the configuration-rollback reload
+  // (see the dialog above): run it now that the page is back with the viewer's
+  // own configuration. The RAW action, not requestMachineAction — the operator
+  // already confirmed before the reload, so no prompt again.
+  document.addEventListener('DOMContentLoaded', function () {
+    var pending = null;
+    try {
+      pending = sessionStorage.getItem(PENDING_REBOOT_KEY);
+      sessionStorage.removeItem(PENDING_REBOOT_KEY);
+    } catch (e) { /* ignore */ }
+    if (pending === 'boot' || pending === 'reboot') {
+      performMachineAction(pending);
+    }
+  });
 })();

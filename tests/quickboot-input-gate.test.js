@@ -152,6 +152,17 @@ function testGate() {
     assert.ok(!inToast.defaultPrevented && !inToast.stopped,
         "a click on the autoload toast must reach its button");
 
+    // A modal overlay is a question the SYSTEM is asking (a reboot
+    // confirmation, a configuration-rollback offer): its buttons must work
+    // during the autoload too, or the operator is stranded with a dead dialog.
+    const inModal = fakeEvent({
+        type: "click",
+        target: { closest: function (sel) { return sel === ".modal-overlay" ? {} : null; } }
+    });
+    gate.gateEvent(inModal);
+    assert.ok(!inModal.defaultPrevented && !inModal.stopped,
+        "a click inside a modal must reach its button during the autoload");
+
     // F11 is the app's fullscreen toggle, not console input.
     const f11 = fakeEvent({ key: "F11" });
     gate.gateEvent(f11);

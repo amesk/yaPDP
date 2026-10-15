@@ -283,13 +283,40 @@
                     });
                 });
             };
+        var isPaperTape = /\.ptap$/i.test(url);
+        if (isPaperTape) {
+            // Paper tapes: try the raw file first, then .zst as fallback.
+            // Some paper tapes ship compressed (.ptap.zst) and some are raw
+            // (.ptap), so the order that avoids a spurious 404 is raw first.
+            try {
+                var rawGot = await progress("media/" + url);
+                if (rawGot.response.ok) {
+                    DataLoader.mount(url, rawGot.bytes);
+                    return rawGot.bytes;
+                }
+            } catch (e) { /* fall through to .zst */ }
+            try {
+                var got = await progress("media/" + url + ".zst");
+                if (got.response.ok) {
+                    if (typeof DiskStore !== "undefined" &&
+                        typeof DiskStore.registerImage === "function" &&
+                        typeof ImageFingerprint !== "undefined" &&
+                        typeof ImageFingerprint.ofBytes === "function") {
+                        try {
+                            DiskStore.registerImage(url, ImageFingerprint.ofBytes(got.bytes));
+                        } catch (e) { /* identity unknown: stay permissive */ }
+                    }
+                    var raw = fzstd.decompress(got.bytes);
+                    DataLoader.mount(url, raw);
+                    return raw;
+                }
+            } catch (e) { /* .zst also missing */ }
+            return undefined;
+        }
+        // Disk/tape images: always ship as .zst, so try compressed first.
         try {
             var got = await progress("media/" + url + ".zst");
             if (got.response.ok) {
-                // Record the identity of the bytes just received, so a block
-                // saved from a different build of this disk can be told apart
-                // (see DiskStore.registerImage). Unknown module or unknown
-                // bytes simply leave it unset, which never invalidates.
                 if (typeof DiskStore !== "undefined" &&
                     typeof DiskStore.registerImage === "function" &&
                     typeof ImageFingerprint !== "undefined" &&
@@ -303,8 +330,7 @@
                 return raw;
             }
         } catch (e) {
-            // Paper tapes may ship compressed (.ptap.zst) or raw (.ptap), so a
-            // failed .zst probe is not fatal — fall through to the raw file.
+            // Network error on .zst — fall through to the raw file probe.
         }
         try {
             var rawGot = await progress("media/" + url);

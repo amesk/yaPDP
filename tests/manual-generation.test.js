@@ -104,10 +104,15 @@ function checkPage(html, label, meta) {
   assert.deepStrictEqual(ids.slice().sort(), meta.slice().sort(),
     label + " does not carry every section from _meta.yml");
 
+  // collect h3 subsection ids too — internal links may point to subsections
+  const subIds = (html.match(/<h3 id="([^"]+)"/g) || [])
+    .map((s) => s.replace(/<h3 id="|"/g, ""));
+  const allIds = new Set([...meta, ...subIds]);
+
   // the section a link points at must exist — a dangling #anchor is a dead link
   for (const m of html.matchAll(/<a href="#([^"]+)"/g)) {
     if (m[1] === "toc") continue;
-    assert.ok(meta.indexOf(m[1]) !== -1,
+    assert.ok(allIds.has(m[1]),
       label + ": internal link points at a section that does not exist: #" + m[1]);
   }
 
@@ -152,6 +157,22 @@ function run() {
   const html = built.html;
   const htmlRu = built.htmlRu;
   const ts = built.ts;
+  // The subject index is generated separately for PDF and must not be in HTML.
+  const indexEntries = JSON.parse(fs.readFileSync(path.join(SRC, "_index.json"), "utf8"));
+  assert.ok(!html.includes('class="manual-index"'), "English HTML must not contain the subject index");
+  assert.ok(!htmlRu.includes('class="manual-index"'), "Russian HTML must not contain the subject index");
+  for (const [indexHtml, title] of [
+    [built.indexHtml, "Index"],
+    [built.indexHtmlRu, "Предметный указатель"],
+  ]) {
+    assert.ok(indexHtml.includes('<section class="manual-index"'), "generated subject index is missing");
+    assert.ok(indexHtml.includes("<h2>" + title + "</h2>"), "translated index title is missing: " + title);
+    for (const entry of indexEntries) {
+      assert.ok(indexHtml.includes('href="#' + entry.section + '"'),
+        "index link missing for " + entry.section + " on " + title + " index");
+    }
+  }
+
   const meta = metaSections();
   const en = sectionFiles(SRC);
   const ru = sectionFiles(SRC_RU);
