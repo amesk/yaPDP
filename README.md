@@ -121,6 +121,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
 * **Contributing:** How to propose code, documentation, historical material, and reproducible machine states: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+* **DevLog publishing workflow:** How to publish articles from a release-based Support branch without deploying untested emulator changes: [`docs/DEVLOG.md`](docs/DEVLOG.md).
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
 * **Embedding the Emulator:** For museums and educators — embed yaPDP in any HTML page via `<iframe>`: [`docs/manual/machine-state.md`](docs/manual/machine-state.md) (see the Embedding subsection).
 
