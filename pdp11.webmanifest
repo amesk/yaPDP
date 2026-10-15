@@ -1,0 +1,23 @@
+{
+  "id": "./pdp11.html",
+  "name": "yaPDP — PDP-11/70 Virtual Machine",
+  "short_name": "yaPDP Machine",
+  "description": "Launch the interactive PDP-11/70 virtual machine.",
+  "start_url": "./pdp11.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1c1915",
+  "theme_color": "#1c1915",
+  "categories": [
+    "education",
+    "entertainment"
+  ],
+  "icons": [
+    {
+      "src": "assets/pdp11-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
