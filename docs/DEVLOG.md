@@ -20,6 +20,8 @@ title: "A descriptive title"
 date: 2026-10-15
 lang: en
 summary: "One or two sentences used in the DevLog index and Atom feed."
+# Optional: keep this source out of all generated/public DevLog outputs while drafting.
+draft: true
 ---
 ```
 
@@ -34,6 +36,33 @@ less common Markdown syntax.
 The Markdown file is the source of truth. The generator creates the static
 article pages, the newest-first index, the Atom feed and the landing-page data.
 Do not hand-edit generated DevLog output.
+
+### Draft articles
+
+Use the optional `draft` front-matter field while an article is still being
+written:
+
+```yaml
+draft: true
+```
+
+Only the literal string `true` marks a post as a draft. The generator still
+loads and parses draft files, so their front matter and supported Markdown are
+checked during development. It omits draft posts from generated article pages,
+the DevLog index, the Atom feed and the landing-page data. Drafts can therefore
+remain alongside publishable sources in `docs/devlog/` without appearing in
+the generated DevLog.
+
+When the article is ready, remove `draft: true` or change it to `draft: false`,
+then run `npm run devlog:check` and preview the complete site before publishing.
+An absent `draft` field, `false`, or any value other than the literal `true`
+does **not** mark the post as a draft.
+
+**This flag is not an access-control mechanism.** The Markdown source and its
+assets remain visible to anyone who can access the GitHub repository, and
+publishing a Support branch still deploys the entire site. Do not put secrets
+in a draft or assume that `draft: true` prevents unrelated unreleased emulator
+changes on the selected publishing branch from going live.
 
 ## After a release: create a Support branch
 
