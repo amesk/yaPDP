@@ -215,9 +215,13 @@ async function collectAnchorTargets(page) {
   });
 }
 
-// Find page numbers for a list of anchor targets by matching heading text
-// in the PDF text layer. Each target uses its own fontSizePt as the height
-// threshold, so h2 (large) and h3 (smaller) are both found reliably.
+// Match heading text against the PDF text layer. PDF.js sometimes splits a
+// heading into several runs and pads the gaps with spaces (Cyrillic headings
+// render as separate runs around punctuation: "Хранилище ( перфолента , …)"),
+// so matching exact strings silently misses every such heading. Both sides
+// are therefore compared free of whitespace, over the page's runs joined for
+// the target's own height threshold — h2 (large) and h3 (smaller) are both
+// found reliably, in either language.
 async function findTargetPages(pdfBuffer, targets) {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const worker = require("url").pathToFileURL(
@@ -239,11 +243,12 @@ async function findTargetPages(pdfBuffer, targets) {
     // Group runs by height so we can match each target at its own threshold.
     for (const t of sorted.slice()) {
       if (found[t.id] !== undefined) continue;
-      const needle = t.title.replace(/\s+/g, " ");
+      const needle = t.title.replace(/\s+/g, "");
       const threshold = t.fontSizePt * 0.85; // allow slight render variation
-      const match = content.items.find((it) =>
-        it.height >= threshold && it.str.indexOf(needle) !== -1);
-      if (match) {
+      const pageText = content.items
+        .filter((it) => it.height >= threshold)
+        .map((it) => it.str).join("").replace(/\s+/g, "");
+      if (pageText.indexOf(needle) !== -1) {
         found[t.id] = pageNo;
         sorted.splice(sorted.indexOf(t), 1);
       }
@@ -296,14 +301,15 @@ async function pageNumbersFor(pdfBuffer, candidates) {
     const content = await page.getTextContent();
     // Only items set large enough to be a heading take part; the rest of the
     // page is still joined into `text` for nothing — the needle search below
-    // runs against the heading runs alone.
+    // runs against the heading runs alone. Both sides drop whitespace so a
+    // heading that PDF.js splits into runs still matches (see findTargetPages).
     const headingText = content.items
       .filter((it) => it.height >= HEADING_MIN_HEIGHT)
-      .map((it) => it.str).join(" ").replace(/\s+/g, " ");
+      .map((it) => it.str).join("").replace(/\s+/g, "");
     if (!headingText) continue;
     for (const c of candidates.slice()) {
       if (found[c.id] !== undefined) continue;
-      const needle = c.title.replace(/\s+/g, " ");
+      const needle = c.title.replace(/\s+/g, "");
       if (headingText.indexOf(needle) !== -1) {
         found[c.id] = pageNo;
         candidates.splice(candidates.indexOf(c), 1);
@@ -416,12 +422,15 @@ async function buildOne(browser, key, stamp) {
   await page.addStyleTag({ content:
     "@media print {" +
     ".landing-page ol { list-style: none; padding-left: 0; }" +
-    ".landing-page ol li { position: relative; page-break-inside: avoid;" +
-    " break-inside: avoid; padding-right: 12mm; }" +
-    /* Reserved for the number, written into the list by the caller. Absolute
-       positioning keeps a long title from wrapping around it. */
-    ".landing-page ol li .toc-page { position: absolute; right: 0;" +
-    " color: #000; font-variant-numeric: tabular-nums; }" +
+    ".landing-page ol li { display: flex; align-items: baseline;" +
+    " page-break-inside: avoid; break-inside: avoid; }" +
+    /* The dotted leader between a contents entry and its page number, the
+       same visual device the subject index uses. The stretchy span draws the
+       rule; the number (written by the caller) stays pinned to the right. */
+    ".landing-page ol li .toc-dots { flex: 1 1 auto; min-width: 4mm;" +
+    " margin: 0 1.5mm; border-bottom: 1px dotted #8a8278; }" +
+    ".landing-page ol li .toc-page { flex: 0 0 auto; color: #000;" +
+    " font-variant-numeric: tabular-nums; }" +
     "}" });
 
   // Header and footer. Chromium prints these outside the content box, in the
@@ -514,6 +523,20 @@ async function buildOne(browser, key, stamp) {
         }
         span.textContent = String(num);
         n++;
+      });
+      // The subject index: each entry lists the page of every section it
+      // appears in (data-sections), the numbers joined with a comma, the way
+      // a book index prints them.
+      document.querySelectorAll(".landing-page .manual-index li").forEach((li) => {
+        const sections = (li.getAttribute("data-sections") || "").split(" ").filter(Boolean);
+        const nums = sections.map((s) => numbers[s]).filter((x) => x !== undefined);
+        if (!nums.length) return;
+        const pages = li.querySelector(".index-pages");
+        if (pages) {
+          pages.textContent = nums.join(", ");
+          li.classList.add("has-pages");
+          n++;
+        }
       });
       return n;
     }, written);

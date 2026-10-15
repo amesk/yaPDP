@@ -2,286 +2,400 @@
   {
     "termEn": "2.11 BSD",
     "termRu": "2.11 BSD",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "ASR-33",
     "termRu": "ASR-33",
-    "section": "console"
+    "sections": [
+      "console"
+    ]
   },
   {
     "termEn": "Autoload",
     "termRu": "Автозагрузка",
-    "section": "quick-start"
+    "sections": [
+      "quick-start"
+    ]
   },
   {
     "termEn": "Boot command",
     "termRu": "Команда загрузки",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "Boot device",
     "termRu": "Boot device",
-    "section": "config"
+    "sections": [
+      "config"
+    ]
   },
   {
     "termEn": "Bootstrap loader",
     "termRu": "Загрузчик",
-    "section": "front-panel"
+    "sections": [
+      "front-panel"
+    ]
   },
   {
     "termEn": "Booting",
     "termRu": "Загрузка",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "Configuration",
     "termRu": "Конфигурация",
-    "section": "config"
+    "sections": [
+      "config"
+    ]
   },
   {
     "termEn": "CORS",
     "termRu": "CORS",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "CRT effects",
     "termRu": "Эффекты ЭЛТ",
-    "section": "config"
+    "sections": [
+      "config"
+    ]
   },
   {
     "termEn": "DECscope VT52",
     "termRu": "DECscope VT52",
-    "section": "user-terminals"
+    "sections": [
+      "user-terminals"
+    ]
   },
   {
     "termEn": "Desktop app",
     "termRu": "Настольное приложение",
-    "section": "desktop"
+    "sections": [
+      "desktop"
+    ]
   },
   {
     "termEn": "Disk images",
     "termRu": "Образы дисков",
-    "section": "storage"
+    "sections": [
+      "storage"
+    ]
   },
   {
     "termEn": "DL11",
     "termRu": "DL11",
-    "section": "console"
+    "sections": [
+      "console"
+    ]
   },
   {
     "termEn": "Exporting a state",
     "termRu": "Экспорт состояния",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Front panel",
     "termRu": "Пультовая панель",
-    "section": "front-panel"
+    "sections": [
+      "front-panel"
+    ]
   },
   {
     "termEn": "Fullscreen",
     "termRu": "Полноэкранный режим",
-    "section": "controls"
+    "sections": [
+      "controls"
+    ]
   },
   {
     "termEn": "GitHub Gist",
     "termRu": "GitHub Gist",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Glossary",
     "termRu": "Глоссарий",
-    "section": "glossary"
+    "sections": [
+      "glossary"
+    ]
   },
   {
     "termEn": "Guest OS",
     "termRu": "Гостевая ОС",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "Historical fidelity",
     "termRu": "Историческая достоверность",
-    "section": "fidelity"
+    "sections": [
+      "fidelity"
+    ]
   },
   {
     "termEn": "Importing a state",
     "termRu": "Импорт состояния",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Keyboard shortcuts",
     "termRu": "Сочетания клавиш",
-    "section": "controls"
+    "sections": [
+      "controls"
+    ]
   },
   {
     "termEn": "LP11 line printer",
     "termRu": "Построчный принтер LP11",
-    "section": "printer"
+    "sections": [
+      "printer"
+    ]
   },
   {
     "termEn": "Lunar Lander",
     "termRu": "Lunar Lander",
-    "section": "vt11"
+    "sections": [
+      "vt11"
+    ]
   },
   {
     "termEn": "Magic wand",
     "termRu": "Волшебная палочка",
-    "section": "quick-start"
+    "sections": [
+      "quick-start"
+    ]
   },
   {
     "termEn": "Model 33 ASR",
     "termRu": "Model 33 ASR",
-    "section": "console"
+    "sections": [
+      "console"
+    ]
   },
   {
     "termEn": "Mute",
     "termRu": "Без звука",
-    "section": "controls"
+    "sections": [
+      "controls"
+    ]
   },
   {
     "termEn": "Operating systems",
     "termRu": "Операционные системы",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "Paper tape",
     "termRu": "Перфолента",
-    "section": "storage"
+    "sections": [
+      "storage"
+    ]
   },
   {
     "termEn": "PAT (Personal Access Token)",
     "termRu": "PAT (Personal Access Token)",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "PDP-11/70",
     "termRu": "PDP-11/70",
-    "section": "about"
+    "sections": [
+      "about"
+    ]
   },
   {
     "termEn": "Quick boot",
     "termRu": "Быстрый запуск",
-    "section": "quick-start"
+    "sections": [
+      "quick-start"
+    ]
   },
   {
     "termEn": "Quick start",
     "termRu": "Быстрый старт",
-    "section": "quick-start"
+    "sections": [
+      "quick-start"
+    ]
   },
   {
     "termEn": "RT-11",
     "termRu": "RT-11",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "RSX-11M",
     "termRu": "RSX-11M",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "RSTS/E",
     "termRu": "RSTS/E",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "Saving a state",
     "termRu": "Сохранение состояния",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Screenshot",
     "termRu": "Снимок экрана",
-    "section": "controls"
+    "sections": [
+      "controls"
+    ]
   },
   {
     "termEn": "Sharing a state",
     "termRu": "Обмен состояниями",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Sidebar",
     "termRu": "Боковая панель",
-    "section": "controls"
+    "sections": [
+      "controls"
+    ]
   },
   {
     "termEn": "Snapshots",
     "termRu": "Снимки состояния",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Storage",
     "termRu": "Накопители",
-    "section": "storage"
+    "sections": [
+      "storage"
+    ]
   },
   {
     "termEn": "Tape image",
     "termRu": "Образ ленты",
-    "section": "storage"
+    "sections": [
+      "storage"
+    ]
   },
   {
     "termEn": "Tauri desktop app",
     "termRu": "Настольное приложение Tauri",
-    "section": "desktop"
+    "sections": [
+      "desktop"
+    ]
   },
   {
     "termEn": "Teleport link",
     "termRu": "Teleport-ссылка",
-    "section": "machine-state"
+    "sections": [
+      "machine-state"
+    ]
   },
   {
     "termEn": "Teletype",
     "termRu": "Телетайп",
-    "section": "console"
+    "sections": [
+      "console"
+    ]
   },
   {
     "termEn": "Terminal zoom",
     "termRu": "Масштаб терминала",
-    "section": "controls"
+    "sections": [
+      "controls"
+    ]
   },
   {
     "termEn": "Troubleshooting",
     "termRu": "Устранение неполадок",
-    "section": "troubleshooting"
+    "sections": [
+      "troubleshooting"
+    ]
   },
   {
     "termEn": "TTY",
     "termRu": "TTY",
-    "section": "user-terminals"
+    "sections": [
+      "user-terminals"
+    ]
   },
   {
     "termEn": "Unix V5",
     "termRu": "Unix V5",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "Upper Case Only",
     "termRu": "Upper Case Only",
-    "section": "config"
+    "sections": [
+      "config"
+    ]
   },
   {
     "termEn": "VT100",
     "termRu": "VT100",
-    "section": "user-terminals"
+    "sections": [
+      "user-terminals"
+    ]
   },
   {
     "termEn": "VT11",
     "termRu": "VT11",
-    "section": "vt11"
+    "sections": [
+      "vt11"
+    ]
   },
   {
     "termEn": "XXDP",
     "termRu": "XXDP",
-    "section": "guest-oses"
+    "sections": [
+      "guest-oses"
+    ]
   },
   {
     "termEn": "yaPDP",
     "termRu": "yaPDP",
-    "section": "about"
+    "sections": [
+      "about"
+    ]
   },
   {
     "termEn": "Zstandard (zstd)",
     "termRu": "Zstandard (zstd)",
-    "section": "storage"
+    "sections": [
+      "storage"
+    ]
   }
 ]

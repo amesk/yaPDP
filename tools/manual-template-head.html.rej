@@ -1,0 +1,12 @@
+--- tools/manual-template-head.html
++++ tools/manual-template-head.html
+@@ -1,4 +1,9 @@
+             .landing-page h2 {
+                 page-break-before: always;
+                 break-before: page;
+             }
++
++            /* The subject index is a separate reference section in the PDF. */
++            .landing-page .manual-index {
++                page-break-before: always;
++                break-before: page;
