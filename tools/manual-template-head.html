@@ -546,6 +546,12 @@
                 break-before: page;
             }
 
+            /* The subject index is a separate reference section in the PDF. */
+            .landing-page .manual-index {
+                page-break-before: always;
+                break-before: page;
+            }
+
             .landing-page hr+h2,
             .landing-page h2:first-of-type {
                 page-break-before: auto;
