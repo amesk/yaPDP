@@ -152,6 +152,17 @@ function run() {
   const html = built.html;
   const htmlRu = built.htmlRu;
   const ts = built.ts;
+  // The subject index is generated in both languages and points to real sections.
+  const indexEntries = JSON.parse(fs.readFileSync(path.join(SRC, "_index.json"), "utf8"));
+  for (const [page, title] of [[html, "Index"], [htmlRu, "Предметный указатель"]]) {
+    assert.ok(page.includes('<section class="manual-index"'), "generated subject index is missing");
+    assert.ok(page.includes("<h2>" + title + "</h2>"), "translated index title is missing: " + title);
+    for (const entry of indexEntries) {
+      assert.ok(page.includes('href="#' + entry.section + '"'),
+        "index link missing for " + entry.section + " on " + title + " page");
+    }
+  }
+
   const meta = metaSections();
   const en = sectionFiles(SRC);
   const ru = sectionFiles(SRC_RU);

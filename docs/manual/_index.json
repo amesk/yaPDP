@@ -1,0 +1,112 @@
+[
+  {
+    "termEn": "Booting",
+    "termRu": "Загрузка",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "Configuration",
+    "termRu": "Конфигурация",
+    "section": "config"
+  },
+  {
+    "termEn": "CORS",
+    "termRu": "CORS",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "Disk images",
+    "termRu": "Образы дисков",
+    "section": "storage"
+  },
+  {
+    "termEn": "Exporting a state",
+    "termRu": "Экспорт состояния",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "Front panel",
+    "termRu": "Пультовая панель",
+    "section": "front-panel"
+  },
+  {
+    "termEn": "GitHub Gist",
+    "termRu": "GitHub Gist",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "Importing a state",
+    "termRu": "Импорт состояния",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "LP11 line printer",
+    "termRu": "Построчный принтер LP11",
+    "section": "printer"
+  },
+  {
+    "termEn": "Model 33 ASR",
+    "termRu": "Model 33 ASR",
+    "section": "console"
+  },
+  {
+    "termEn": "Operating systems",
+    "termRu": "Операционные системы",
+    "section": "guest-oses"
+  },
+  {
+    "termEn": "Quick start",
+    "termRu": "Быстрый запуск",
+    "section": "quick-start"
+  },
+  {
+    "termEn": "Saving a state",
+    "termRu": "Сохранение состояния",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "Sharing a state",
+    "termRu": "Обмен состояниями",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "Snapshots",
+    "termRu": "Снимки состояния",
+    "section": "machine-state"
+  },
+  {
+    "termEn": "Storage",
+    "termRu": "Накопители",
+    "section": "storage"
+  },
+  {
+    "termEn": "Tauri desktop app",
+    "termRu": "Настольное приложение Tauri",
+    "section": "desktop"
+  },
+  {
+    "termEn": "Teletype",
+    "termRu": "Телетайп",
+    "section": "console"
+  },
+  {
+    "termEn": "Troubleshooting",
+    "termRu": "Устранение неполадок",
+    "section": "troubleshooting"
+  },
+  {
+    "termEn": "VT100",
+    "termRu": "VT100",
+    "section": "user-terminals"
+  },
+  {
+    "termEn": "VT11",
+    "termRu": "VT11",
+    "section": "vt11"
+  },
+  {
+    "termEn": "Zstandard (zstd)",
+    "termRu": "Zstandard (zstd)",
+    "section": "storage"
+  }
+]
