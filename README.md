@@ -118,6 +118,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **User Manual:** Step-by-step user guide with DEC-styled layout and live screenshots: [`manual.html`](https://amesk.github.io/yaPDP/manual.html).
 * **Feature Deep-Dive:** Walkthrough of hardware pages, panel tricks, and peripheral controls: [`docs/FEATURES.md`](docs/FEATURES.md).
 * **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
+* **Contributing:** How to propose code, documentation, historical material, and reproducible machine states: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
 
