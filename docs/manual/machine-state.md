@@ -68,7 +68,7 @@ The **Create Shareable State** button is a split-button with additional options:
 
   Clicking the **info** button (i) opens the **About GitHub Personal Access Token** dialog,
   which explains the security model: the PAT is used only to create a Gist via the GitHub
-  API, is never sent anywhere else, and is stored in encrypted form in localStorage. It
+  API, is never sent anywhere else, and is stored in obfuscated form in localStorage. It
   also provides step-by-step instructions for creating a PAT with the `gist` scope.
 
   ![The About PAT dialog](assets/images/manual/dialog-gist-about-pat.png){.shot}
