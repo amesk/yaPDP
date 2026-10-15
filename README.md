@@ -119,6 +119,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **Feature Deep-Dive:** Walkthrough of hardware pages, panel tricks, and peripheral controls: [`docs/FEATURES.md`](docs/FEATURES.md).
 * **Historical Fidelity & Limitations:** What yaPDP reproduces accurately and where to be cautious: [`docs/manual/fidelity.md`](docs/manual/fidelity.md).
 * **Known Issues:** Bugs and their workarounds, honestly listed: [`docs/known-issues.md`](docs/known-issues.md).
+* **Contributing:** How to propose code, documentation, historical material, and reproducible machine states: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
 * **Embedding the Emulator:** For museums and educators — embed yaPDP in any HTML page via `<iframe>`: [`docs/manual/machine-state.md`](docs/manual/machine-state.md) (see the Embedding subsection).
