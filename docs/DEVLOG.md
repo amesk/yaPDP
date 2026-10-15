@@ -20,8 +20,8 @@ title: "A descriptive title"
 date: 2026-10-15
 lang: en
 summary: "One or two sentences used in the DevLog index and Atom feed."
-# Optional: keep this source out of all generated/public DevLog outputs while drafting.
-draft: true
+# Optional: uncomment while drafting to exclude this post from generated output.
+# draft: true
 ---
 ```
 
