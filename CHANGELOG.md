@@ -190,6 +190,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **QuickBoot and guided snapshot steps now pause with emulation.** Scheduled
+  console input and prompt-wait timeouts suspend during a host-level pause and
+  resume with their remaining delay, so the autoload gate does not strand the
+  operator. (`src/step-engine.js`; pinned by
+  `tests/step-engine-pause.test.js`)
+
 - **Share-dialog screenshot paste now works.** The "Paste or click to add a
   screenshot" field in the Share-snapshot dialog accepts Ctrl+V from the native
   clipboard (e.g. an image copied from mspaint). The global keyboard handler no

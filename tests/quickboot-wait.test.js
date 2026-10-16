@@ -103,6 +103,8 @@ function loadWaitForPrompt(deps) {
         console,
         Date: { now: function () { return clock.now(); } },
         setTimeout: clock.setTimeout,
+        scheduleTimeout: clock.setTimeout,
+        logicalNow: clock.now,
         WAIT_TIMEOUT_MS: deps.timeoutMs,
         WAIT_POLL_MS: deps.pollMs,
         outputContains: deps.outputContains,
