@@ -312,8 +312,13 @@ var QuickBoot = (function () {
              e.target.closest("#quick-boot-preparing") ||
              e.target.closest("#screenshot-btn") ||
              e.target.closest("#pause-btn") ||
-             e.target.closest("#reboot-btn") ||
-             e.target.closest(".modal-overlay"))) return;
+             e.target.closest("#reboot-btn"))) return;
+        // Only a visible modal may bypass the gate. QuickBoot hides its chooser
+        // without moving focus, so the focused option can remain inside a
+        // hidden .modal-overlay while the autoload toast owns the machine.
+        var modal = e.target && e.target.closest
+            ? e.target.closest(".modal-overlay") : null;
+        if (modal && modal.classList && modal.classList.contains("visible")) return;
         // F11 toggles fullscreen (fullscreen.js) — an app control, not
         // console input; blocking it would strand the operator in a mode
         // they cannot leave while the boot runs.
