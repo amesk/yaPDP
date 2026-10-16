@@ -289,7 +289,7 @@ async function main() {
                 await cards[0].click();
                 // Wait for the shared-state error dialog.
                 const imgerror = await page.waitForSelector(
-                    ".imgerror-overlay.visible", { timeout: 15000 }).catch(() => null);
+                    "#quickboot-link-error.visible", { timeout: 15000 }).catch(() => null);
                 check("load error: state error dialog appears",
                     !!imgerror, "state error dialog did not appear after a failed state load");
 
