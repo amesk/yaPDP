@@ -214,9 +214,9 @@ function testToastMarkup() {
         "the button must abort the autoload");
 
     assert.ok(src.indexOf('classList.add("visible")') !== -1 &&
-        src.indexOf("setInputGate(true)") !== -1,
+        src.indexOf('setInputGate(true, "autoload")') !== -1,
         "showing the toast must open the input gate");
-    assert.ok(src.indexOf("setInputGate(false)") !== -1,
+    assert.ok(src.indexOf('setInputGate(false, "autoload")') !== -1,
         "hiding the toast must close the input gate");
     assert.ok(src.indexOf('spin.className = "yapdp-spin quickboot-balloon-spin"') !== -1,
         "the toast must use the shared .yapdp-spin spinner");
