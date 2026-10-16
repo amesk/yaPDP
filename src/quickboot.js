@@ -98,7 +98,11 @@ var QuickBoot = (function () {
                 stateManifestLoaded = true;
                 // The dialog may already be open when the manifest arrives
                 // (slow host); re-render so the list settles on the truth.
-                if (overlay && overlay.classList.contains("visible")) updateScenarioList();
+                // The request can settle before show() adds .visible (for
+                // example an immediately aborted request in an offline build).
+                // Re-render whenever the dialog has been created; otherwise
+                // the list can remain stuck in its initial loading state.
+                if (overlay) updateScenarioList();
                 return stateManifest;
             });
     }
