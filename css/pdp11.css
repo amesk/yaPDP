@@ -104,6 +104,12 @@ textarea {
     font-family: inherit;
 }
 
+/* A browser textarea caret is host-rendered rather than model-timed. Hide it
+   while paused; the terminal's own canvas cursor/blink phase is paused in JS. */
+.yapdp-emulation-paused .vt52-crt textarea {
+    caret-color: transparent !important;
+}
+
 /* ===== Global scrollbar theming (DEC 1960s palette) =====
    Every scrolling container in the app (quick-boot OS list, Info / Config /
    Storage pages, teletype & LP11 paper) gets the same look, so no native
