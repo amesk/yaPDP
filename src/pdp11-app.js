@@ -19,6 +19,8 @@
 // keeps older callers/tests working when no bridge is installed.
 // ------------------------------------------------------------------
 function bridgeSendToUnit(unit, bytes) {
+  // Input is deliberately discarded while paused, never queued for later.
+  if (window.EmulationControl && window.EmulationControl.isPaused()) return false;
   var bridge = window.__yapdpBridge;
   var q = bridge
     ? bridge.dlReceiveQueue
@@ -593,7 +595,7 @@ var g60Keyboard = (function () {
   // the REPT auto-repeat. `def.special` keys (ctrl/shift/rept/break/hereis/
   // esc/lf/cr/del/space) are dispatched here.
   function activateKey(def) {
-    if (!def) return;
+    if (!def || (window.EmulationControl && window.EmulationControl.isPaused())) return;
     if (def.special) {
       switch (def.special) {
         case 'ctrl':
@@ -653,6 +655,14 @@ var g60Keyboard = (function () {
       clearInterval(repeatTimer);
       repeatTimer = null;
     }
+  }
+
+  // Stop a held REPT key on pause; do not replay the held character on resume.
+  if (window.EmulationControl && window.EmulationControl.register) {
+    window.EmulationControl.register("model33-keyboard", {
+      pause: stopRepeat,
+      resume: function () {}
+    });
   }
 
   // BREAK: open the line for >150 ms — signals the console DL11's break
@@ -715,6 +725,7 @@ var g60Keyboard = (function () {
       // on Panel and Info pages browser shortcuts (Ctrl+F etc.) must work normally.
       var termPage = document.getElementById('page-teletype');
       if (!termPage || !termPage.classList.contains('active')) return;
+      if (window.EmulationControl && window.EmulationControl.isPaused()) return;
 
       // Special keys: Enter, Backspace, Tab, Escape, Delete.
       var code = e.keyCode || e.which;
@@ -791,6 +802,7 @@ var g60Keyboard = (function () {
     if (typeof window.playBell === 'function') window.playBell();
   }
   function sendChar(code) {
+    if (window.EmulationControl && window.EmulationControl.isPaused()) return;
     bellKeyboard(code);
     var punched = punchKeyboard(code);
     // OFF: the unit is powered down — the key does nothing. LOCAL mode: the
@@ -806,6 +818,7 @@ var g60Keyboard = (function () {
     bridgeSendToUnit(0, [code]);
   }
   function sendDL(bytes) {
+    if (window.EmulationControl && window.EmulationControl.isPaused()) return;
     var punched = [];
     for (var i = 0; i < bytes.length; i++) {
       bellKeyboard(bytes[i]);
@@ -862,6 +875,7 @@ function installVT52Keyboard(unit, pageId) {
     // (let g60Keyboard handle it)
     var telePage = document.getElementById('page-teletype');
     if (telePage && telePage.classList.contains('active')) return;
+    if (window.EmulationControl && window.EmulationControl.isPaused()) return;
 
     // Prevent Tab switching away from the emulator
     if (e.key === 'Tab') { e.preventDefault(); return; }
@@ -1660,6 +1674,7 @@ function makeTextModeKeyHandler(term, ta) {
       ? term._builtinKey
       : term.handleKey.bind(term);
   return function (ev) {
+    if (window.EmulationControl && window.EmulationControl.isPaused()) return;
     var codeV = ev.keyCode || ev.which;
     var isPaste = ev.ctrlKey && (ev.key === 'v' || ev.key === 'V' || codeV === 86);
     var isCopy = ev.ctrlKey && (ev.key === 'c' || ev.key === 'C' || codeV === 67);
