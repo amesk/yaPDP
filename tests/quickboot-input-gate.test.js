@@ -157,11 +157,29 @@ function testGate() {
     // during the autoload too, or the operator is stranded with a dead dialog.
     const inModal = fakeEvent({
         type: "click",
-        target: { closest: function (sel) { return sel === ".modal-overlay" ? {} : null; } }
+        target: { closest: function (sel) {
+            return sel === ".modal-overlay"
+                ? { classList: { contains: function (name) { return name === "visible"; } } }
+                : null;
+        } }
     });
     gate.gateEvent(inModal);
     assert.ok(!inModal.defaultPrevented && !inModal.stopped,
-        "a click inside a modal must reach its button during the autoload");
+        "a click inside a visible modal must reach its button during the autoload");
+
+    // QuickBoot hides its chooser overlay but leaves focus on the selected
+    // option. Keyboard events targeted at that hidden modal must not bypass
+    // the gate while the autoload toast is still visible.
+    const hiddenModalKey = fakeEvent({
+        target: { closest: function (sel) {
+            return sel === ".modal-overlay"
+                ? { classList: { contains: function () { return false; } } }
+                : null;
+        } }
+    });
+    gate.gateEvent(hiddenModalKey);
+    assert.ok(hiddenModalKey.defaultPrevented && hiddenModalKey.stopped,
+        "keyboard input focused inside a hidden modal must remain gated");
 
     // Host-level pause and reboot controls must remain available during
     // autoload, otherwise pausing can strand the operator behind the gate.
