@@ -163,6 +163,18 @@ function testGate() {
     assert.ok(!inModal.defaultPrevented && !inModal.stopped,
         "a click inside a modal must reach its button during the autoload");
 
+    // Host-level pause and reboot controls must remain available during
+    // autoload, otherwise pausing can strand the operator behind the gate.
+    for (const selector of ["#pause-btn", "#reboot-btn"]) {
+        const hostControl = fakeEvent({
+            type: "click",
+            target: { closest: function (sel) { return sel === selector ? {} : null; } }
+        });
+        gate.gateEvent(hostControl);
+        assert.ok(!hostControl.defaultPrevented && !hostControl.stopped,
+            selector + " must remain operable during the autoload");
+    }
+
     // F11 is the app's fullscreen toggle, not console input.
     const f11 = fakeEvent({ key: "F11" });
     gate.gateEvent(f11);

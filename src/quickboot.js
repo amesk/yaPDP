@@ -298,18 +298,17 @@ var QuickBoot = (function () {
     var gateOn = false;
 
     function gateEvent(e) {
-        // The toasts are the ONLY way out of the autoload: let clicks on
-        // either balloon (autoload or preparing) through.  The screenshot
-        // button is also exempt — it is a permanent UI control, not console
-        // input, and its right-click context menu must work during a boot.
-        // A modal overlay is exempt too: it is a question the SYSTEM is asking
-        // (a reboot confirmation, a configuration-rollback offer, a refused
-        // snapshot). Blocking its buttons would strand the operator with a
-        // dialog that looks alive and answers nothing.
+        // The toast is the normal way out of the autoload. Host-level
+        // machine controls must also remain operable: pausing the emulator
+        // suspends this wizard's timers, so Pause must be reachable to resume
+        // it again. Reboot is an explicit host-side escape as well.
+        // The screenshot button and modal overlays are likewise exempt.
         if (e.target && e.target.closest &&
             (e.target.closest("#quick-boot-balloon") ||
              e.target.closest("#quick-boot-preparing") ||
              e.target.closest("#screenshot-btn") ||
+             e.target.closest("#pause-btn") ||
+             e.target.closest("#reboot-btn") ||
              e.target.closest(".modal-overlay"))) return;
         // F11 toggles fullscreen (fullscreen.js) — an app control, not
         // console input; blocking it would strand the operator in a mode
