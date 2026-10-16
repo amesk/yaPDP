@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Global machine pause/resume control.** The operator toolbar can pause guest
+  CPU execution, the VT11 display processor and KW11 line-clock ticks without
+  changing the guest CPU HALT/WAIT state or VT11 registers.
+
 - **Glossary chapter in the user manual.** A new reference chapter
   defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
   for quick lookup. Entries are written as Pandoc-style definition
