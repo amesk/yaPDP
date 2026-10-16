@@ -99,10 +99,13 @@ async function switchToScenario(page) {
     const tab = await page.waitForSelector(
         ".quickboot-tab[data-tab='scenario']", { timeout: 10000 });
     await tab.click();
+    // Wait for the manifest request to settle. A loading placeholder is
+    // not a final result: the request may fail just after the tab is shown.
     await page.waitForFunction(() => {
         const list = document.querySelector(".quickboot-list[data-tab='scenario']");
-        return list && (list.querySelector(".quickboot-scenario-option") ||
-            list.querySelector(".quickboot-empty"));
+        return list && !list.querySelector(".quickboot-loading") &&
+            (list.querySelector(".quickboot-scenario-option") ||
+                list.querySelector(".quickboot-empty"));
     }, { timeout: 10000 });
 }
 
