@@ -56,6 +56,8 @@
             this._stopTimer();
             const io = this.machine ? this.machine.io : null;
             const tick = () => {
+                if (typeof window !== "undefined" && window.YapdpPauseController &&
+                    window.YapdpPauseController.isPaused()) return;
                 this.csr |= KW_CSR_MON;
                 if (this.csr & KW_CSR_IE) {
                     this.iMask = 1;
