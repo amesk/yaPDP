@@ -30,6 +30,7 @@ var SnapshotStore = (() => {
     const SCHEMA_VERSION = (typeof StateFormat !== "undefined" &&
         StateFormat.SCHEMA_VERSION) ? StateFormat.SCHEMA_VERSION : "1.0.0";
     const PENDING_KEY = "yapdp-pending-snapshot";
+    const STATE_CONFIG_ACTIVE_KEY = "yapdp.state-config-active";
     const MAX_SNAPSHOTS = 10;
     // Where the newer-snapshot warning's "Update to Latest" points.
     const LATEST_URL = "https://amesk.github.io/yaPDP";
@@ -709,6 +710,8 @@ var SnapshotStore = (() => {
         if (!u) return Promise.resolve({ ok: false, reason: "missing-url" });
         var onRestored = (opts && typeof opts.onRestored === "function")
             ? opts.onRestored : null;
+        var onApplied = (opts && typeof opts.onApplied === "function")
+            ? opts.onApplied : null;
         // A same-origin relative path resolves against the page, which is how
         // the project hosts its own states.
         var target = u;
@@ -808,9 +811,18 @@ var SnapshotStore = (() => {
                         }
                     }
                     var applied = applyStateBytes(raw, target);
-                    if (!onRestored) return applied;
                     return applied.then(function (result) {
                         if (!result || !result.ok) return result;
+                        // The state is now applied. Record that its configuration is
+                        // active and notify the caller BEFORE waiting for the operator
+                        // to acknowledge the scenario preview or for its steps to run.
+                        // A reload while the preview is waiting must not replay the
+                        // same deep link, nor trigger an unsolicited config-restore offer.
+                        markStateConfigActive();
+                        if (onApplied) {
+                            try { onApplied(lastStateManifest, result); } catch (e) { /* ignore */ }
+                        }
+                        if (!onRestored) return result;
                         return Promise.resolve(onRestored(lastStateManifest))
                             .then(function () {
                                 // Steps run AFTER image loading, gate still ON
@@ -1578,10 +1590,33 @@ var SnapshotStore = (() => {
         return !!cur && configDiffers(base, cur);
     }
 
+    // A successfully restored state owns the live configuration across ordinary
+    // page reloads. Keep that fact separate from the viewer's rollback baseline:
+    // the baseline remains available to the explicit Reboot / Bootstrap action.
+    function markStateConfigActive() {
+        try {
+            if (typeof localStorage !== "undefined") {
+                localStorage.setItem(STATE_CONFIG_ACTIVE_KEY, "1");
+            }
+        } catch (e) { /* ignore unavailable storage */ }
+    }
+
+    function stateConfigActive() {
+        try {
+            return typeof localStorage !== "undefined" &&
+                localStorage.getItem(STATE_CONFIG_ACTIVE_KEY) === "1";
+        } catch (e) { return false; }
+    }
+
     // Forget the viewer's baseline: the viewer chose to keep the state's
-    // configuration, so this chain of applied states is over.
+    // configuration, or explicitly returned to their own configuration.
     function clearConfigBaseline() {
         if (typeof ViewerConfig !== "undefined") ViewerConfig.clear();
+        try {
+            if (typeof localStorage !== "undefined") {
+                localStorage.removeItem(STATE_CONFIG_ACTIVE_KEY);
+            }
+        } catch (e) { /* ignore unavailable storage */ }
     }
 
     // Bring back the viewer's remembered configuration. Applies EVERY field
@@ -1604,7 +1639,7 @@ var SnapshotStore = (() => {
         if (typeof ConfigApply !== "undefined" && typeof ConfigApply.applyLive === "function") {
             ConfigApply.applyLive();
         }
-        ViewerConfig.clear();
+        clearConfigBaseline();
         return needsReload ? "reload" : "applied";
     }
 
@@ -1619,6 +1654,10 @@ var SnapshotStore = (() => {
     // configuration back. A standalone dialog — it never races the Reboot /
     // Bootstrap dialog, which is raised on a click.
     function maybeOfferConfigRestore() {
+        // A plain browser reload is not a request to abandon the machine the
+        // visitor just restored. Keep the original configuration available via
+        // the explicit Reboot / Bootstrap flow, but do not interrupt every reload.
+        if (stateConfigActive()) return;
         if (!configRollbackAvailable()) return;
         showConfigRestoreDialog(function (decision) {
             if (decision !== "rollback") { clearConfigBaseline(); return; }
