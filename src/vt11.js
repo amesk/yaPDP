@@ -634,6 +634,10 @@ iopage.register(0o17772000, 4, (function () {
             }
 
             canvasFG.addEventListener('mousemove', function vt11TrackMouse(evt) {
+                // The light pen is guest input; don't update its position while
+                // the host has frozen emulation.
+                if (typeof EmulationControl !== "undefined" &&
+                    EmulationControl.isPaused()) return;
                 // The tube is CSS-scaled to fit the viewport (css/pdp11.css),
                 // so map pointer coordinates back into the internal 1024x768
                 // CONTENT space used by light-pen hit testing.
