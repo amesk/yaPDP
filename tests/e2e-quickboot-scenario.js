@@ -162,11 +162,14 @@ async function main() {
         // ---- 2. Manifest absent: the tab shows the empty message -----------
         {
             const page = await seededPage(browser);
-            // Intercept the state-manifest fetch and abort it (simulates 404).
+            // Return an actual 404 for the state manifest. This exercises the
+            // normal "manifest absent" response path without depending on
+            // browser-specific timing/handling of an aborted fetch.
             await page.setRequestInterception(true);
             page.on("request", (req) => {
                 if (req.url().indexOf("states/manifest.json") !== -1) {
-                    req.abort();
+                    req.respond({ status: 404, contentType: "application/json",
+                        body: JSON.stringify({ error: "not found" }) });
                 } else {
                     req.continue();
                 }
