@@ -30,6 +30,8 @@ const TESTS = path.join(ROOT, "tests");
 // Canonical order — the historical package.json && chain, kept as-is so the
 // run order never changes underneath the suite.
 const ORDER = [
+    "emulation-control.test.js",
+    "kw11-pause.test.js",
     "core.test.js",
     "headless-machine.test.js",
     "config.test.js",
