@@ -261,6 +261,8 @@ iopage.register(0o17772000, 4, (function () {
             if (initializedBlink) return;
             initializedBlink = true;
             setInterval(() => {
+                if (typeof window !== "undefined" && window.YapdpPauseController &&
+                    window.YapdpPauseController.isPaused()) return;
                 blinkFlag = 1 - blinkFlag;
             }, BLINK_INTERVAL_MS);
         }
@@ -989,6 +991,8 @@ iopage.register(0o17772000, 4, (function () {
 
         function processorTimeslice() {
             scheduled = false; // this tick has consumed its schedule
+            if (typeof window !== "undefined" && window.YapdpPauseController &&
+                window.YapdpPauseController.isPaused()) return;
             renderer.beginFramePath();
 
             let deadline = timing.getTimesliceDeadline();
@@ -1076,9 +1080,18 @@ iopage.register(0o17772000, 4, (function () {
         // chain, so re-arm it for a display that was mid-pass; a stopped one
         // waits for the guest's next DPC write, exactly like real hardware.
         function startIfRunning() {
-            if (!state.isStopped()) {
+            if (!state.isStopped() &&
+                !(typeof window !== "undefined" && window.YapdpPauseController &&
+                  window.YapdpPauseController.isPaused())) {
                 schedule();
             }
+        }
+
+        if (typeof window !== "undefined" && window.YapdpPauseController) {
+            window.YapdpPauseController.register({
+                pause: function () {},
+                resume: startIfRunning
+            });
         }
 
         return {
