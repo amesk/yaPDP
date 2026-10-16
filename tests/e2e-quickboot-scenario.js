@@ -118,7 +118,7 @@ async function countScenarioOptions(page) {
 // Read the empty-state message, or null when the list is not empty.
 async function scenarioEmptyMessage(page) {
     const el = await page.$(".quickboot-empty");
-    return el ? el.textContent : null;
+    return el ? el.evaluate((node) => node.textContent) : null;
 }
 
 // The real manifest entries count (from the committed file).
