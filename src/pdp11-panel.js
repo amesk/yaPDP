@@ -79,6 +79,11 @@ function switchPage(page) {
   var OPERATOR_PAGES = ['panel', 'teletype', 'vt52-console', 'vt52', 'vt11', 'printer'];
   var onOperatorPage = OPERATOR_PAGES.indexOf(page) !== -1;
 
+  var pauseBtn = document.getElementById('pause-btn');
+  if (pauseBtn) {
+    pauseBtn.classList.toggle('hidden', !onOperatorPage);
+  }
+
   var rebootBtn = document.getElementById('reboot-btn');
   if (rebootBtn) {
     rebootBtn.classList.toggle('hidden', !onOperatorPage);
@@ -520,6 +525,8 @@ function examineDeposit(data) {
   }
 
   function doReboot(forceBoot) {
+    // A reboot starts a new machine session; do not carry a UI pause into it.
+    if (window.YapdpPauseController) window.YapdpPauseController.resume();
     if (g60Console) g60Console.writeChar(10);
     // Stop any runaway teletype output backlog before restarting the CPU,
     // so the @ prompt is immediately visible and usable.
