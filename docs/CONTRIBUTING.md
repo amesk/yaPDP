@@ -54,6 +54,27 @@ For content contributions, please include enough context for another person to u
 
 A contribution does not have to be added to the main repository to be useful. Large disk images, third-party software, and independently maintained collections may be better hosted separately, with a description and a link from an appropriate project page when accepted.
 
+### Adding a machine state to the collection
+
+The `states/` directory holds the pre-built machine states the quick-boot
+Scenario tab offers. To add a new one:
+
+1. **Create the state** through the emulator's machine-state dialog
+   (STATE → Save → Export). The browser exports a gzip-wrapped `.state.zst`.
+2. **Repack to zstd** (the repo keeps zstd frames for states):
+   `npm run media:repack -- states/<name>.state.zst`
+3. **Place the file** in `states/`.
+4. **Regenerate the manifest and previews**:
+   `node tools/gen-state-manifest.js`
+5. **Optional — a hand-crafted full preview.** If you want a larger or
+   otherwise improved screenshot for the lightbox, place your own PNG at
+   `states/previews/<name>-full.png` **before** step 4. The generator
+   never overwrites an existing full preview and derives the list thumbnail
+   from it; without it the thumbnail is built from the screenshot embedded
+   in the state's own manifest.
+6. **Commit** the new `.state.zst`, the updated `states/manifest.json` and
+   the new files under `states/previews/`.
+
 ### Copyright and licensing
 
 Only submit material that you have the right to contribute and distribute under the terms you propose. The project's MIT license applies to the project code; it does **not** automatically relicense guest operating systems, disk images, tapes, manuals, photographs, audio, fonts, or other third-party material.
