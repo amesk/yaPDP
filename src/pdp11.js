@@ -1346,6 +1346,13 @@ function pdp11Processor() {
     let dst, instruction, src, reg, result, virtualAddress;
     let loopTime, loopCount;
 
+    if (typeof window !== "undefined" && window.YapdpPauseController &&
+        window.YapdpPauseController.isPaused()) {
+        setTimeout(pdp11Processor, 4);
+        updateLights();
+        return;
+    }
+
     switch (CPU.runState) {
         case STATE_STEP:
             CPU.runState = STATE_HALT; // fall through to execute one instruction then halt
@@ -2612,6 +2619,9 @@ function boot(opts) {
     CPU.registerVal[7] = CPU.registerVal[6] = BOOTBASE;
     iopage.reset();
     CPU.runState = STATE_RUN;
+    if (typeof window !== "undefined" && window.YapdpPauseController) {
+        window.YapdpPauseController.resume();
+    }
 }
 
 // One off functions to find light objects, start animations and clear memory
