@@ -153,6 +153,12 @@ function snapshot(page) {
         // The "return my configuration" offer must NOT appear during a
         // teleport — the state is the point of the link.
         configRestoreVisible: !!document.querySelector("#snap-config-restore-overlay.visible"),
+        preparingVisible: !!document.querySelector("#quick-boot-preparing.visible"),
+        playVisible: (function () {
+            const el = document.querySelector("#quick-boot-preparing-ok");
+            return !!el && getComputedStyle(el).display !== "none" &&
+                !!document.querySelector("#quick-boot-preparing.visible");
+        })(),
     }));
 }
 
@@ -284,9 +290,9 @@ async function snap(page) {
             }
         }
 
-        // --- 6. After a teleport, a plain reload offers the config back ----
-        // A fresh page WITHOUT the localStorage-clearing hook, so the baseline
-        // saved by the teleport survives the reload.
+        // --- 6. A plain reload keeps the restored configuration without
+        // raising an unsolicited rollback dialog. The original configuration
+        // remains available from the explicit Reboot / Bootstrap flow.
         {
             const page = await browser.newPage();
             page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
@@ -295,18 +301,93 @@ async function snap(page) {
             await page.waitForFunction(
                 () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
                 { timeout: 60000 });
-            // Wait for the state to be applied (parameter dropped).
-            await poll(page, () => location.search.indexOf("state=") === -1, 45000);
-            // Give the state a moment to settle, then reload plain.
-            await new Promise((r) => setTimeout(r, 1000));
+            const applied = await poll(page, () => location.search.indexOf("state=") === -1, 45000);
+            check("plain reload setup: state link was consumed", applied, location.search);
             await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
             await page.waitForFunction(
                 () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
                 { timeout: 60000 });
-            await new Promise((r) => setTimeout(r, 2000));
+            await new Promise((r) => setTimeout(r, 1500));
             const state = await snap(page);
-            check("plain reload after teleport: the config-restore offer appears",
-                state.configRestoreVisible === true, String(state.configRestoreVisible));
+            check("plain reload after teleport: no automatic config-restore offer",
+                state.configRestoreVisible === false, String(state.configRestoreVisible));
+            await page.close();
+        }
+
+        // --- 7. Reload while the Lunar Lander preview is waiting for Play! --
+        // The URL must be consumed once the state is applied, not after the
+        // operator acknowledges the preview. Reload must not show the same
+        // preview again or ask about restoring the viewer configuration.
+        {
+            const page = await browser.newPage();
+            page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
+            await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.evaluate(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+            });
+            await page.goto(BASE + "?state=" + encodeURIComponent("states/lunar-lander.state.zst"),
+                { waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.waitForFunction(
+                () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
+                { timeout: 60000 });
+            const preview = await poll(page, () => {
+                const button = document.querySelector("#quick-boot-preparing-ok");
+                return location.search.indexOf("state=") === -1 &&
+                    !!document.querySelector("#quick-boot-preparing.visible") &&
+                    !!button && getComputedStyle(button).display !== "none";
+            }, 60000);
+            check("before Play!: URL is clean while the preview waits",
+                preview, JSON.stringify(await snap(page)));
+            await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.waitForFunction(
+                () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
+                { timeout: 60000 });
+            await new Promise((r) => setTimeout(r, 1500));
+            const state = await snap(page);
+            check("reload before Play!: scenario preview is not replayed",
+                state.playVisible === false, JSON.stringify(state));
+            check("reload before Play!: no config-restore dialog",
+                state.configRestoreVisible === false, JSON.stringify(state));
+            await page.close();
+        }
+
+        // --- 8. Reload after Play! also must not prompt automatically -------
+        {
+            const page = await browser.newPage();
+            page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
+            await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.evaluate(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+            });
+            await page.goto(BASE + "?state=" + encodeURIComponent("states/lunar-lander.state.zst"),
+                { waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.waitForFunction(
+                () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
+                { timeout: 60000 });
+            const preview = await poll(page, () => {
+                const button = document.querySelector("#quick-boot-preparing-ok");
+                return location.search.indexOf("state=") === -1 &&
+                    !!document.querySelector("#quick-boot-preparing.visible") &&
+                    !!button && getComputedStyle(button).display !== "none";
+            }, 60000);
+            check("after Play!: preview is ready and URL is clean",
+                preview, JSON.stringify(await snap(page)));
+            await page.click("#quick-boot-preparing-ok");
+            const finished = await poll(page, () =>
+                !document.querySelector("#quick-boot-preparing.visible"), 45000);
+            check("after Play!: scenario handoff finished", finished, JSON.stringify(await snap(page)));
+            await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
+            await page.waitForFunction(
+                () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
+                { timeout: 60000 });
+            await new Promise((r) => setTimeout(r, 1500));
+            const state = await snap(page);
+            check("reload after Play!: scenario preview is not replayed",
+                state.playVisible === false, JSON.stringify(state));
+            check("reload after Play!: no config-restore dialog",
+                state.configRestoreVisible === false, JSON.stringify(state));
             await page.close();
         }
     } finally {
