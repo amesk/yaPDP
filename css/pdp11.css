@@ -2410,6 +2410,7 @@ body.touch-gestures .touch-pin>.panel-actions>* {
 
 /* The round buttons follow the strip down, and only while it is there. */
 body.touch-gestures.touch-controls .console-reboot,
+body.touch-gestures.touch-controls .console-pause,
 body.touch-gestures.touch-controls .quick-boot-btn {
     top: calc(var(--touch-strip-h) + 8px);
 }
@@ -2549,15 +2550,13 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     position: relative;
 }
 
-/* ===== REBOOT button (round, floating, top-left of the window) ===== */
-/* Round magic-wand-style button fixed to the top-left corner, just right of
-   the navigation sidebar (78px wide + 12px gap) — mirrors the sound-mute
-   button in the bottom-left corner. Shown only on the operator console pages
-   (teletype / VT52 console); switchPage() toggles the .hidden class. */
+/* ===== Floating machine controls (top-left) ===== */
+/* Pause, reboot and state controls share one round DEC-style button. On desktop
+   they sit to the right of the navigation sidebar; the pause action is first. */
 .console-reboot {
     position: fixed;
     top: 12px;
-    left: 90px;
+    left: 140px;
     z-index: 1000;
     width: 42px;
     height: 42px;
@@ -2593,10 +2592,22 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     display: none !important;
 }
 
-/* The STATE button (machine-state dialog) mirrors REBOOT: same round shape,
-   sitting just to its right. */
+/* Pause is the leftmost machine control; its lit state is host-level and does
+   not pretend that the emulated CPU has entered HALT or WAIT. */
+.console-pause {
+    left: 90px;
+}
+
+.console-pause.paused {
+    background: linear-gradient(180deg, #5a4a30, #3a3528);
+    border-color: #c8a860;
+    color: #f0e6c8;
+    box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* The STATE button sits to the right of REBOOT. */
 .console-state {
-    left: 140px;
+    left: 190px;
 }
 
 /* Real-printer actions (Print / Save .txt) below the machine */
@@ -4183,14 +4194,19 @@ button.action-more-hidden {
         margin-bottom: 0;
     }
 
-    .console-reboot {
+    .console-pause {
         top: 8px;
         left: 8px;
     }
 
-    .console-state {
+    .console-reboot {
         top: 8px;
         left: 56px;
+    }
+
+    .console-state {
+        top: 8px;
+        left: 104px;
     }
 
     .quick-boot-btn {
