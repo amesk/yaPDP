@@ -53,6 +53,9 @@ var QuickBoot = (function () {
     // build ships. null while unknown or absent.
     var stateManifest = null;
     var stateManifestPromise = null;
+    // Distinguish a pending request from a missing/empty manifest so the UI
+    // does not briefly announce that the collection is empty while loading.
+    var stateManifestLoaded = false;
 
     // Fetch the build manifest once. Resolves to the image-url list, or null
     // when the deployment has no manifest (or fetch is unavailable). The
@@ -92,6 +95,7 @@ var QuickBoot = (function () {
             })
             .catch(function () { stateManifest = null; return null; })
             .then(function () {
+                stateManifestLoaded = true;
                 // The dialog may already be open when the manifest arrives
                 // (slow host); re-render so the list settles on the truth.
                 if (overlay && overlay.classList.contains("visible")) updateScenarioList();
@@ -1071,6 +1075,13 @@ var QuickBoot = (function () {
         var listEl = overlay && overlay.querySelector(".quickboot-list[data-tab='scenario']");
         if (!listEl) return;
         listEl.innerHTML = "";
+        if (!stateManifestLoaded) {
+            var loading = document.createElement("span");
+            loading.className = "quickboot-loading";
+            loading.textContent = "Loading saved machine states…";
+            listEl.appendChild(loading);
+            return;
+        }
         if (!stateManifest || !stateManifest.length) {
             var empty = document.createElement("span");
             empty.className = "quickboot-empty";
