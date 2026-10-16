@@ -706,8 +706,9 @@
          * printChar/println during the same CPU slice set a NEW timer.
          */
         function processCharBuffer() {
-            // Clear timer reference so the next arrival starts a fresh timer
+            // Clear timer reference so the next arrival starts a fresh timer.
             charPrintTimer = null;
+            if (window.EmulationControl && window.EmulationControl.isPaused()) return;
 
             if (charBuffer.length === 0) {
                 // Nothing pending — stop the continuous whirr.
@@ -766,7 +767,8 @@
          */
         function printChar(c) {
             charBuffer.push(c);
-            if (!charPrintTimer) {
+            if (!charPrintTimer &&
+                !(window.EmulationControl && window.EmulationControl.isPaused())) {
                 charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
             }
         }
@@ -781,6 +783,25 @@
                 charPrintTimer = null;
             }
             charBuffer = [];
+        }
+
+        // Freeze the paced output queue on pause. Characters already emitted by
+        // the guest remain queued, but host input is never added while paused.
+        if (window.EmulationControl && window.EmulationControl.register) {
+            window.EmulationControl.register("g60-printer:" + idPrefix, {
+                pause: function () {
+                    if (charPrintTimer) {
+                        clearTimeout(charPrintTimer);
+                        charPrintTimer = null;
+                    }
+                    if (printWhirr) G60Audio.stopWhirr();
+                },
+                resume: function () {
+                    if (charBuffer.length > 0 && !charPrintTimer) {
+                        charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
+                    }
+                }
+            });
         }
 
         /**
