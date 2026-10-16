@@ -181,10 +181,21 @@ function testGate() {
     assert.ok(!f11.defaultPrevented && !f11.stopped,
         "F11 must keep working while the autoload runs");
 
-    // Close: every listener comes off, so the operator has the machine back.
-    gate.setInputGate(false);
+    // Regression: state-restore preparation may finish while autoload is
+    // still active. Releasing one owner's claim must not open the shared gate.
+    gate.setInputGate(true, "preparing");
+    gate.setInputGate(false, "preparing");
+    assert.strictEqual(gate.listeners.length, gate.gated.length,
+        "ending preparation must not release an active autoload gate");
+    const stillGated = fakeEvent();
+    gate.gateEvent(stillGated);
+    assert.ok(stillGated.defaultPrevented && stillGated.stopped,
+        "console input remains blocked while autoload still owns the gate");
+
+    // Close only after the final owner releases its claim.
+    gate.setInputGate(false, "autoload");
     assert.strictEqual(gate.listeners.length, 0,
-        "closing the gate must remove every listener");
+        "closing the final gate owner must remove every listener");
 }
 
 function testToastMarkup() {

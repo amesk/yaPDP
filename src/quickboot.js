@@ -295,7 +295,11 @@ var QuickBoot = (function () {
         "mousedown", "mouseup", "click",
         "pointerdown", "pointerup", "contextmenu"
     ];
+    // Autoload and state preparation may overlap. Each owns a separate claim.
+    // Releasing one claim must not open the gate while the other is still active.
     var gateOn = false;
+    var autoloadGateOn = false;
+    var preparingGateOn = false;
 
     function gateEvent(e) {
         // The toast is the normal way out of the autoload. Host-level
@@ -322,16 +326,22 @@ var QuickBoot = (function () {
         }
     }
 
-    function setInputGate(on) {
+    function setInputGate(on, owner) {
         if (typeof document === "undefined") return;
-        if (on === gateOn) return;
-        gateOn = on;
+        // Keep the one-argument form as an autoload claim for compatibility.
+        owner = owner || "autoload";
+        if (owner === "preparing") preparingGateOn = !!on;
+        else autoloadGateOn = !!on;
+
+        var shouldGate = autoloadGateOn || preparingGateOn;
+        if (shouldGate === gateOn) return;
+        gateOn = shouldGate;
         for (var i = 0; i < GATED_EVENTS.length; i++) {
-            if (on) document.addEventListener(GATED_EVENTS[i], gateEvent, true);
+            if (gateOn) document.addEventListener(GATED_EVENTS[i], gateEvent, true);
             else document.removeEventListener(GATED_EVENTS[i], gateEvent, true);
         }
         if (document.body) {
-            document.body.classList.toggle("quickboot-autoloading", on);
+            document.body.classList.toggle("quickboot-autoloading", gateOn);
         }
     }
 
@@ -378,12 +388,12 @@ var QuickBoot = (function () {
     function showBalloon() {
         if (typeof document === "undefined") return;
         ensureBalloon().classList.add("visible");
-        setInputGate(true);
+        setInputGate(true, "autoload");
     }
 
     function hideBalloon() {
         if (balloon) balloon.classList.remove("visible");
-        setInputGate(false);
+        setInputGate(false, "autoload");
     }
 
     // --- "Preparing the machine" toast -----------------------------------
@@ -504,7 +514,7 @@ var QuickBoot = (function () {
             okBtn.style.display = showOk ? "inline-block" : "none";
         }
         el.classList.add("visible");
-        setInputGate(true);
+        setInputGate(true, "preparing");
         if (showOk) {
             return new Promise(function (resolve) {
                 _stepsOkResolve = resolve;
@@ -518,7 +528,7 @@ var QuickBoot = (function () {
     // trap we already built once and spent an evening undoing.
     function hidePreparing() {
         if (prepToast) prepToast.classList.remove("visible");
-        setInputGate(false);
+        setInputGate(false, "preparing");
         _stepsOkResolve = null;
     }
 
@@ -1323,7 +1333,7 @@ var QuickBoot = (function () {
         // one through the pending key) — the first-run hint stands down then.
         arrivedByDeepLink: arrivedByDeepLink,
         // True while the autoload toast is up and the input gate is closed.
-        isAutoloading: function () { return gateOn; },
+        isAutoloading: function () { return autoloadGateOn; },
         // Resolves to the build-manifest image list (or null when absent);
         // shared with the Info page so both surfaces agree on availability.
         manifest: function () { return manifestPromise; },
