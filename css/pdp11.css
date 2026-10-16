@@ -2409,6 +2409,7 @@ body.touch-gestures .touch-pin>.panel-actions>* {
 }
 
 /* The round buttons follow the strip down, and only while it is there. */
+body.touch-gestures.touch-controls .console-pause,
 body.touch-gestures.touch-controls .console-reboot,
 body.touch-gestures.touch-controls .quick-boot-btn {
     top: calc(var(--touch-strip-h) + 8px);
@@ -2549,11 +2550,9 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     position: relative;
 }
 
-/* ===== REBOOT button (round, floating, top-left of the window) ===== */
-/* Round magic-wand-style button fixed to the top-left corner, just right of
-   the navigation sidebar (78px wide + 12px gap) — mirrors the sound-mute
-   button in the bottom-left corner. Shown only on the operator console pages
-   (teletype / VT52 console); switchPage() toggles the .hidden class. */
+/* ===== Floating pause and reboot controls ===== */
+/* Round controls fixed just right of the navigation sidebar. Pause occupies
+   the first slot, followed by Reboot and the machine-state button. */
 .console-pause,
 .console-reboot {
     position: fixed;
@@ -2599,6 +2598,7 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     color: #e0d8c8;
 }
 
+.console-pause .console-reboot-icon,
 .console-reboot .console-reboot-icon {
     width: 20px;
     height: 20px;
