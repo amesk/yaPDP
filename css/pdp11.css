@@ -737,6 +737,53 @@ textarea {
     outline-offset: 1px;
 }
 
+/* Lightbox (src/lightbox.js): a full-screen image viewer that sits one layer
+   above the shared modal dialogs (100001 > 100000), so it can open from inside
+   the quick-boot dialog and still cover it. The image is capped by the window
+   on both axes and scrolls only when the original is larger than the screen. */
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 5, 3, 0.88);
+}
+
+.lightbox-overlay.visible {
+    display: flex;
+}
+
+.lightbox-image {
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 96px);
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    box-shadow: 0 12px 60px rgba(0, 0, 0, 0.75);
+    background: #000;
+}
+
+.lightbox-caption {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    color: #c8b898;
+    font-size: 13px;
+    text-align: center;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+@media (hover: none) and (pointer: coarse) {
+
+    /* A phone has no backdrop to click on outside the image — the image
+       itself dismisses the viewer (tapping anywhere closes it). */
+    .lightbox-overlay .lightbox-image {
+        cursor: pointer;
+    }
+}
+
 /* Machine-state dialog: the primary Save action is amber-filled, the select
    list matches the dark input theme, and the action row spaces the buttons. */
 .modal-primary {
