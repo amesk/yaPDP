@@ -190,6 +190,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **QuickBoot input gate respects modal visibility.** Keyboard and pointer events are exempted only for visible modal overlays, so focus left on the hidden scenario chooser cannot leak operator keystrokes into an active autoload.
+
 - **QuickBoot and guided snapshot steps now pause with emulation.** Scheduled
   console input and prompt-wait timeouts suspend during a host-level pause and
   resume with their remaining delay, so the autoload gate does not strand the
