@@ -45,6 +45,8 @@ function run() {
         assert.strictEqual(env.control.pause(), false, "pause is idempotent");
         assert.strictEqual(env.control.isPaused(), true);
         assert.strictEqual(env.store.get("yapdp.emulation-paused"), "1");
+        assert.strictEqual(env.events[0].type, "yapdp:emulation-state");
+        assert.strictEqual(env.events[0].detail.paused, true);
         assert.strictEqual(env.control.resume(), true);
         assert.strictEqual(env.control.resume(), false, "resume is idempotent");
         assert.strictEqual(env.store.has("yapdp.emulation-paused"), false);
