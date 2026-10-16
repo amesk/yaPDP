@@ -207,11 +207,11 @@ async function main() {
             const cards = await page.$$(".quickboot-scenario-option");
             if (cards.length > 0) {
                 await cards[0].click();
-                // Wait for the imgerror dialog to appear (the fake state will fail).
+                // Wait for the shared-state error dialog (the fake container is not a valid state).
                 const imgerror = await page.waitForSelector(
-                    ".imgerror-overlay.visible", { timeout: 15000 }).catch(() => null);
-                check("card click: imgerror appears (fake state fails)",
-                    !!imgerror, "no imgerror after clicking a card with a fake state");
+                    "#quickboot-link-error.visible", { timeout: 15000 }).catch(() => null);
+                check("card click: state error dialog appears (fake state fails)",
+                    !!imgerror, "no state error dialog after clicking a card with a fake state");
             } else {
                 check("card click: at least one card exists (sanity)",
                     false, "no scenario cards rendered");
@@ -258,7 +258,7 @@ async function main() {
             await page.close();
         }
 
-        // ---- 5. Load error shows imgerror, input is not blocked ------------
+        // ---- 5. Load error shows the state-link error, input is not blocked --
         {
             const page = await seededPage(browser);
             // Intercept the state-manifest to return a valid list, but make
@@ -287,15 +287,15 @@ async function main() {
             const cards = await page.$$(".quickboot-scenario-option");
             if (cards.length > 0) {
                 await cards[0].click();
-                // Wait for the imgerror dialog to appear.
+                // Wait for the shared-state error dialog.
                 const imgerror = await page.waitForSelector(
                     ".imgerror-overlay.visible", { timeout: 15000 }).catch(() => null);
-                check("load error: imgerror dialog appears",
-                    !!imgerror, "imgerror did not appear after a failed state load");
+                check("load error: state error dialog appears",
+                    !!imgerror, "state error dialog did not appear after a failed state load");
 
-                // Close the imgerror dialog.
+                // Close the state error dialog.
                 if (imgerror) {
-                    const closeBtn = await page.$(".imgerror-overlay .modal-close");
+                    const closeBtn = await page.$("#quickboot-link-error .modal-close");
                     if (closeBtn) await closeBtn.click();
                     await sleep(300);
                     // The quick-boot dialog should still be usable.
