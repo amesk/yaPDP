@@ -162,15 +162,12 @@ async function main() {
         // ---- 2. Manifest absent: the tab shows the empty message -----------
         {
             const page = await seededPage(browser);
-            let interceptedManifestRequest = false;
             // Return an actual 404 for the state manifest. This exercises the
             // normal "manifest absent" response path without depending on
             // browser-specific timing/handling of an aborted fetch.
             await page.setRequestInterception(true);
             page.on("request", (req) => {
                 if (req.url().indexOf("states/manifest.json") !== -1) {
-                    interceptedManifestRequest = true;
-                    console.log("DEBUG absent manifest: intercepted " + req.url());
                     req.respond({ status: 404, contentType: "application/json",
                         body: JSON.stringify({ error: "not found" }) });
                 } else {
@@ -183,33 +180,6 @@ async function main() {
             await switchToScenario(page);
 
             const empty = await scenarioEmptyMessage(page);
-            if (!empty) {
-                const diagnostic = await page.evaluate(() => {
-                    const list = document.querySelector(
-                        ".quickboot-list[data-tab='scenario']");
-                    return {
-                        href: location.href,
-                        overlayVisible: !!document.querySelector(
-                            "#quick-boot-overlay.visible"),
-                        scenarioListFound: !!list,
-                        scenarioListHTML: list ? list.innerHTML : null,
-                        scenarioListDisplay: list ? getComputedStyle(list).display : null,
-                        scenarioOptions: list
-                            ? list.querySelectorAll(".quickboot-scenario-option").length
-                            : null,
-                        emptyMessage: list
-                            ? (list.querySelector(".quickboot-empty") || {}).textContent || null
-                            : null,
-                        loadingMessage: list
-                            ? (list.querySelector(".quickboot-loading") || {}).textContent || null
-                            : null
-                    };
-                });
-                console.error("  DEBUG absent manifest state: " + JSON.stringify({
-                    interceptedManifestRequest: interceptedManifestRequest,
-                    diagnostic: diagnostic
-                }, null, 2));
-            }
             check("absent manifest: shows 'No saved machine states available.'",
                 empty && empty.indexOf("No saved machine states") !== -1,
                 "got: " + empty);
