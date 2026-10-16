@@ -283,6 +283,12 @@
           stroke-width="1.2" stroke-linecap="round" />
         <path d="M8 19.8h8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.8" />
       </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="M7 4.5v15L20 12z" fill="currentColor" />
+      </symbol>
       <symbol id="icon-reboot" viewBox="0 0 24 24">
         <!-- circular restart arrow with arrowhead (machine reboot) -->
         <path
@@ -431,6 +437,15 @@
          bottom-left corner). Wired up by src/pdp11-panel.js via
          data-action="reboot"; shown on the Panel, teletype and VT52 (TTY 1)
          pages. -->
+    <button type="button" id="pause-btn" class="console-pause" title="Pause the machine"
+      aria-label="Pause the machine" aria-pressed="false">
+      <svg class="console-reboot-icon pause-glyph" aria-hidden="true" focusable="false">
+        <use href="#icon-pause" />
+      </svg>
+      <svg class="console-reboot-icon play-glyph" aria-hidden="true" focusable="false">
+        <use href="#icon-play" />
+      </svg>
+    </button>
     <button type="button" id="reboot-btn" class="console-reboot" data-action="reboot"
       title="Restart the machine. With Auto-boot enabled, boots the built-in default loader (toggle it in the confirmation dialog)."
       aria-label="Restart the machine">
@@ -2130,6 +2145,7 @@ Hello world
   </button>
 
   <script src='src/version.js'></script>
+  <script src='src/pause-controller.js'></script>
   <script src='src/pdp11-panel.js'></script>
   <script src='src/vt52zoom.js'></script>
   <script src='src/g60printer.js'></script>
