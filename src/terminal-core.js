@@ -303,11 +303,31 @@
                 // Bind keyboard events for canvas mode
                 this.bindEvents(this.screenCanvas);
 
-                // Classic VT100 blink rate (500ms)
-                setInterval(() => {
-                    this.canvas.blinkCycle = !this.canvas.blinkCycle;
-                    if (this.modes.screen) this.blinkCells();
-                }, 500);
+                // Classic VT100 blink rate (500ms). Keep the phase frozen while
+                // the host has paused emulation; restarting one timer avoids
+                // cursor/text blinking independently of the virtual machine.
+                this._blinkTimer = null;
+                this._startBlinkTimer = () => {
+                    if (this._blinkTimer !== null ||
+                        (window.EmulationControl && window.EmulationControl.isPaused())) return;
+                    this._blinkTimer = setInterval(() => {
+                        this.canvas.blinkCycle = !this.canvas.blinkCycle;
+                        if (this.modes.screen) this.blinkCells();
+                    }, 500);
+                };
+                this._stopBlinkTimer = () => {
+                    if (this._blinkTimer !== null) {
+                        clearInterval(this._blinkTimer);
+                        this._blinkTimer = null;
+                    }
+                };
+                this._startBlinkTimer();
+                if (window.EmulationControl && window.EmulationControl.register) {
+                    window.EmulationControl.register("terminal-blink:" + unit, {
+                        pause: this._stopBlinkTimer,
+                        resume: this._startBlinkTimer
+                    });
+                }
             } else {
                 this.allowCanvas = false;
             }
