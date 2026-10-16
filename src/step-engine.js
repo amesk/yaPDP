@@ -21,6 +21,14 @@ var StepEngine = (function () {
     var emulationPaused = !!(root.EmulationControl &&
         typeof root.EmulationControl.isPaused === "function" &&
         root.EmulationControl.isPaused());
+    // `window` can be a lightweight wrapper in tests/embedded contexts. Use its
+    // timers when present, otherwise fall back to the script global.
+    var hostSetTimeout = (typeof root.setTimeout === "function")
+        ? function (callback, delay) { return root.setTimeout(callback, delay); }
+        : setTimeout;
+    var hostClearTimeout = (typeof root.clearTimeout === "function")
+        ? function (timerId) { root.clearTimeout(timerId); }
+        : clearTimeout;
     var pauseStartedAt = emulationPaused ? Date.now() : 0;
     var totalPausedMs = 0;
     var scheduledTimers = [];
@@ -38,7 +46,7 @@ var StepEngine = (function () {
     function armTimer(entry) {
         if (!entry.active || emulationPaused) return;
         entry.startedAt = Date.now();
-        entry.timerId = root.setTimeout(function () {
+        entry.timerId = hostSetTimeout(function () {
             entry.timerId = null;
             if (!entry.active) return;
             entry.active = false;
@@ -66,7 +74,7 @@ var StepEngine = (function () {
         pauseStartedAt = Date.now();
         scheduledTimers.forEach(function (entry) {
             if (entry.timerId === null) return;
-            root.clearTimeout(entry.timerId);
+            hostClearTimeout(entry.timerId);
             entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));
             entry.timerId = null;
         });
@@ -215,14 +223,14 @@ var StepEngine = (function () {
                         if (typeof onCancel === "function") onCancel();
                         return;
                     }
-                    sendBytes(stepBytes(step));
+                    (typeof ctx.sendBytes === "function" ? ctx.sendBytes : sendBytes)(stepBytes(step));
                     scheduleTimeout(function () {
                         if (typeof onDone === "function") onDone();
                     }, ctx.stepDelayMs || 800);
                 }, settle);
                 return;
             }
-            setTimeout(poll, waitPollMs);
+            scheduleTimeout(poll, waitPollMs);
         }
         poll();
     }
@@ -279,7 +287,7 @@ var StepEngine = (function () {
                             resolve();
                             return;
                         }
-                        sendBytes(stepBytes(step));
+                        (typeof ctx.sendBytes === "function" ? ctx.sendBytes : sendBytes)(stepBytes(step));
                         next();
                     }, delayFor(idx, ctx.stepDelayMs || 800));
                 }
