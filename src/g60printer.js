@@ -210,9 +210,12 @@
         var nextEmulationTimerId = 1;
 
         function scheduleEmulationTimer(id, entry) {
+            var generation = ++entry.generation;
             entry.startedAt = Date.now();
             entry.timer = window.setTimeout(function () {
-                if (!emulationTimers.has(id)) return;
+                // A cleared timer may already be queued by the host event loop.
+                // Its generation must not consume a replacement timer on resume.
+                if (!emulationTimers.has(id) || entry.generation !== generation) return;
                 entry.timer = null;
                 if (emulationPaused) {
                     entry.remaining = 0;
@@ -230,7 +233,8 @@
                 callback: callback,
                 remaining: wait,
                 startedAt: 0,
-                timer: null
+                timer: null,
+                generation: 0
             };
             emulationTimers.set(id, entry);
             if (!emulationPaused) scheduleEmulationTimer(id, entry);
@@ -250,6 +254,7 @@
             emulationTimers.forEach(function (entry) {
                 if (entry.timer !== null) {
                     window.clearTimeout(entry.timer);
+                    entry.generation++;
                     entry.remaining = Math.max(0,
                         entry.remaining - (Date.now() - entry.startedAt));
                     entry.timer = null;
