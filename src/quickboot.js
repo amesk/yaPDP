@@ -775,6 +775,15 @@ var QuickBoot = (function () {
         // avoid in the first place.
         showPreparing("Restoring the machine state\u2026", null, false, null);
         SnapshotStore.loadFromUrl(url, {
+            // Clear the deep link as soon as the state has actually been applied,
+            // before the preview's Play!/OK gate and scenario steps. A reload while
+            // the operator is reading the preview must not apply the state again.
+            onApplied: function () {
+                try {
+                    history.replaceState(null, "",
+                        location.pathname + location.hash);
+                } catch (err) { /* ignore: the state is already applied */ }
+            },
             // Called after the container is unpacked and the machine restored,
             // before the guest is allowed to run on: the visitor is told the
             // disk is still coming, instead of meeting a download strip later.
@@ -857,15 +866,20 @@ var QuickBoot = (function () {
             },
         }).then(function (result) {
             if (result && result.ok) {
-                // State applied successfully. If there are no steps to
-                // execute, close the balloon now. If there are steps, the
-                // balloon stays up with the OK button — it will be closed
-                // after the operator clicks OK and steps complete.
+                // A config-driven reload is the one successful result that
+                // has not applied the state yet. Keep URL clearing here for that
+                // path; ordinary restores cleared it in onApplied, before waiting
+                // for Play!/OK and the scenario steps.
+                if (result.reloading) {
+                    try {
+                        history.replaceState(null, "",
+                            location.pathname + location.hash);
+                    } catch (err) { /* ignore */ }
+                }
+                // If there are no steps, close the balloon now. Otherwise it
+                // remains until the operator acknowledges the preview and the
+                // scenario steps complete.
                 if (!_hasSteps) hidePreparing();
-                try {
-                    history.replaceState(null, "",
-                        location.pathname + location.hash);
-                } catch (err) { /* ignore: the state is already applied */ }
                 return;
             }
             hidePreparing();
