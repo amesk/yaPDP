@@ -175,6 +175,16 @@ function testGate() {
             selector + " must remain operable during the autoload");
     }
 
+    // Using Pause/Resume must not release the gate. The pause control is
+    // exempted from interception, but that exemption applies only to its
+    // click — it does not grant the console keyboard ownership.
+    const afterResume = fakeEvent();
+    gate.gateEvent(afterResume);
+    assert.ok(afterResume.defaultPrevented && afterResume.stopped,
+        "console input must remain blocked after the operator resumes emulation");
+    assert.strictEqual(gate.listeners.length, gate.gated.length,
+        "Pause/Resume must not remove the autoload gate listeners");
+
     // F11 is the app's fullscreen toggle, not console input.
     const f11 = fakeEvent({ key: "F11" });
     gate.gateEvent(f11);
