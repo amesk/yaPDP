@@ -31,7 +31,15 @@
         }
     }
 
+    function syncPauseClass() {
+        if (root.document && root.document.documentElement &&
+            root.document.documentElement.classList) {
+            root.document.documentElement.classList.toggle("yapdp-emulation-paused", paused);
+        }
+    }
+
     function notifyState() {
+        syncPauseClass();
         if (!root.document || typeof root.document.dispatchEvent !== "function" ||
             typeof root.CustomEvent !== "function") return;
         root.document.dispatchEvent(new root.CustomEvent("yapdp:emulation-state", {
@@ -71,6 +79,8 @@
             if (handlers[name] === handler) delete handlers[name];
         };
     }
+
+    syncPauseClass();
 
     root.EmulationControl = {
         isPaused: function () { return paused; },
