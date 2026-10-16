@@ -2554,10 +2554,11 @@ body.touch-gestures.touch-controls .quick-boot-btn {
    the navigation sidebar (78px wide + 12px gap) — mirrors the sound-mute
    button in the bottom-left corner. Shown only on the operator console pages
    (teletype / VT52 console); switchPage() toggles the .hidden class. */
+.console-pause,
 .console-reboot {
     position: fixed;
     top: 12px;
-    left: 90px;
+    left: 140px;
     z-index: 1000;
     width: 42px;
     height: 42px;
@@ -2575,6 +2576,23 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     user-select: none;
 }
 
+.console-pause {
+    left: 90px;
+}
+
+.console-pause .play-glyph {
+    display: none;
+}
+
+.console-pause[aria-pressed="true"] .pause-glyph {
+    display: none;
+}
+
+.console-pause[aria-pressed="true"] .play-glyph {
+    display: block;
+}
+
+.console-pause:hover,
 .console-reboot:hover {
     background: linear-gradient(180deg, #4a453a, #3a352a);
     border-color: #8a7a5a;
@@ -2589,14 +2607,15 @@ body.touch-gestures.touch-controls .quick-boot-btn {
 
 /* The REBOOT action is offered on the Panel, teletype and VT52 (TTY 1) pages;
    switchPage() toggles this class. */
-.console-reboot.hidden {
+.console-reboot.hidden,
+.console-pause.hidden {
     display: none !important;
 }
 
 /* The STATE button (machine-state dialog) mirrors REBOOT: same round shape,
    sitting just to its right. */
 .console-state {
-    left: 140px;
+    left: 190px;
 }
 
 /* Real-printer actions (Print / Save .txt) below the machine */
