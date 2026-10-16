@@ -99,10 +99,13 @@ async function switchToScenario(page) {
     const tab = await page.waitForSelector(
         ".quickboot-tab[data-tab='scenario']", { timeout: 10000 });
     await tab.click();
+    // Wait for the manifest request to settle. A loading placeholder is
+    // not a final result: the request may fail just after the tab is shown.
     await page.waitForFunction(() => {
         const list = document.querySelector(".quickboot-list[data-tab='scenario']");
-        return list && (list.querySelector(".quickboot-scenario-option") ||
-            list.querySelector(".quickboot-empty"));
+        return list && !list.querySelector(".quickboot-loading") &&
+            (list.querySelector(".quickboot-scenario-option") ||
+                list.querySelector(".quickboot-empty"));
     }, { timeout: 10000 });
 }
 
@@ -115,7 +118,7 @@ async function countScenarioOptions(page) {
 // Read the empty-state message, or null when the list is not empty.
 async function scenarioEmptyMessage(page) {
     const el = await page.$(".quickboot-empty");
-    return el ? el.textContent : null;
+    return el ? el.evaluate((node) => node.textContent) : null;
 }
 
 // The real manifest entries count (from the committed file).
@@ -159,11 +162,14 @@ async function main() {
         // ---- 2. Manifest absent: the tab shows the empty message -----------
         {
             const page = await seededPage(browser);
-            // Intercept the state-manifest fetch and abort it (simulates 404).
+            // Return an actual 404 for the state manifest. This exercises the
+            // normal "manifest absent" response path without depending on
+            // browser-specific timing/handling of an aborted fetch.
             await page.setRequestInterception(true);
             page.on("request", (req) => {
                 if (req.url().indexOf("states/manifest.json") !== -1) {
-                    req.abort();
+                    req.respond({ status: 404, contentType: "application/json",
+                        body: JSON.stringify({ error: "not found" }) });
                 } else {
                     req.continue();
                 }
@@ -207,11 +213,11 @@ async function main() {
             const cards = await page.$$(".quickboot-scenario-option");
             if (cards.length > 0) {
                 await cards[0].click();
-                // Wait for the imgerror dialog to appear (the fake state will fail).
+                // Wait for the shared-state error dialog (the fake container is not a valid state).
                 const imgerror = await page.waitForSelector(
-                    ".imgerror-overlay.visible", { timeout: 15000 }).catch(() => null);
-                check("card click: imgerror appears (fake state fails)",
-                    !!imgerror, "no imgerror after clicking a card with a fake state");
+                    "#quickboot-link-error.visible", { timeout: 15000 }).catch(() => null);
+                check("card click: state error dialog appears (fake state fails)",
+                    !!imgerror, "no state error dialog after clicking a card with a fake state");
             } else {
                 check("card click: at least one card exists (sanity)",
                     false, "no scenario cards rendered");
@@ -258,7 +264,7 @@ async function main() {
             await page.close();
         }
 
-        // ---- 5. Load error shows imgerror, input is not blocked ------------
+        // ---- 5. Load error shows the state-link error, input is not blocked --
         {
             const page = await seededPage(browser);
             // Intercept the state-manifest to return a valid list, but make
@@ -287,15 +293,15 @@ async function main() {
             const cards = await page.$$(".quickboot-scenario-option");
             if (cards.length > 0) {
                 await cards[0].click();
-                // Wait for the imgerror dialog to appear.
+                // Wait for the shared-state error dialog.
                 const imgerror = await page.waitForSelector(
-                    ".imgerror-overlay.visible", { timeout: 15000 }).catch(() => null);
-                check("load error: imgerror dialog appears",
-                    !!imgerror, "imgerror did not appear after a failed state load");
+                    "#quickboot-link-error.visible", { timeout: 15000 }).catch(() => null);
+                check("load error: state error dialog appears",
+                    !!imgerror, "state error dialog did not appear after a failed state load");
 
-                // Close the imgerror dialog.
+                // Close the state error dialog.
                 if (imgerror) {
-                    const closeBtn = await page.$(".imgerror-overlay .modal-close");
+                    const closeBtn = await page.$("#quickboot-link-error .modal-close");
                     if (closeBtn) await closeBtn.click();
                     await sleep(300);
                     // The quick-boot dialog should still be usable.
