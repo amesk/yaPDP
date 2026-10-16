@@ -302,7 +302,8 @@ async function snap(page) {
                 () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
                 { timeout: 60000 });
             const applied = await poll(page, () => location.search.indexOf("state=") === -1, 45000);
-            check("plain reload setup: state link was consumed", applied, location.search);
+            check("plain reload setup: state link was consumed", applied,
+                await page.evaluate(() => location.search));
             await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
             await page.waitForFunction(
                 () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
