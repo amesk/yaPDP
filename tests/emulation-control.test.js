@@ -8,6 +8,14 @@ const vm = require("vm");
 
 const source = fs.readFileSync(
     path.join(__dirname, "..", "src", "emulation-control.js"), "utf8");
+const appSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "pdp11-app.js"), "utf8");
+const terminalSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "terminal-core.js"), "utf8");
+const printerSource = fs.readFileSync(
+    path.join(__dirname, "..", "src", "g60printer.js"), "utf8");
+const vt11Source = fs.readFileSync(
+    path.join(__dirname, "..", "src", "vt11.js"), "utf8");
 
 function loadControl(initialValue) {
     const store = new Map();
@@ -33,6 +41,21 @@ function loadControl(initialValue) {
 }
 
 function run() {
+    // Guard rails for the browser-facing input and timer paths. The integration
+    // suite exercises the actual UI; these checks prevent regressions where a
+    // new input route bypasses the global pause contract.
+    assert.ok(appSource.includes("if (window.EmulationControl && window.EmulationControl.isPaused()) return false;"),
+        "the shared terminal input bridge must discard input while paused");
+    assert.ok(appSource.includes("if (!def || (window.EmulationControl && window.EmulationControl.isPaused())) return;"),
+        "the Model 33 on-screen keyboard must ignore keys while paused");
+    assert.ok(terminalSource.includes('window.EmulationControl.register("terminal-blink:" + unit'),
+        "VT52/VT100 blink timers must subscribe to pause/resume");
+    assert.ok(printerSource.includes("function pauseEmulationTimers()") &&
+        printerSource.includes("function resumeEmulationTimers()"),
+        "printer paper/head timers must preserve their remaining time across pause");
+    assert.ok(vt11Source.includes("EmulationControl.isPaused()) return;"),
+        "VT11 light-pen input must be ignored while paused");
+
     {
         const env = loadControl(false);
         const calls = [];
