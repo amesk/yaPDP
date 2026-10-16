@@ -25,10 +25,14 @@ var StepEngine = (function () {
     // timers when present, otherwise fall back to the script global.
     var hostSetTimeout = (typeof root.setTimeout === "function")
         ? function (callback, delay) { return root.setTimeout(callback, delay); }
-        : setTimeout;
+        : (typeof setTimeout === "function"
+            ? function (callback, delay) { return setTimeout(callback, delay); }
+            : function () { return null; });
     var hostClearTimeout = (typeof root.clearTimeout === "function")
         ? function (timerId) { root.clearTimeout(timerId); }
-        : clearTimeout;
+        : (typeof clearTimeout === "function"
+            ? function (timerId) { clearTimeout(timerId); }
+            : function () {});
     var pauseStartedAt = emulationPaused ? Date.now() : 0;
     var totalPausedMs = 0;
     var scheduledTimers = [];
