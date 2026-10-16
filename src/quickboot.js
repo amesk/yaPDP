@@ -1058,6 +1058,14 @@ var QuickBoot = (function () {
     }
 
     // --- Scenario list ----------------------------------------------------
+    // Resolve a state-manifest image value to a page-usable URL. Newer
+    // manifests hold a path relative to states/ ("previews/x-small.png");
+    // a data-URI value is an ad-hoc/old manifest and passes through.
+    function previewUrl(value) {
+        if (!value) return "";
+        return /^(data:|https?:|\/)/i.test(value) ? value : "states/" + value;
+    }
+
     // Render the list of pre-built machine states from the state manifest.
     function updateScenarioList() {
         var listEl = overlay && overlay.querySelector(".quickboot-list[data-tab='scenario']");
@@ -1077,13 +1085,27 @@ var QuickBoot = (function () {
             btn.setAttribute("data-state-file", s.file);
             if (s.description) btn.title = s.description;
 
-            // Screenshot preview thumbnail (when available)
+            // Screenshot preview thumbnail (when available). The manifest
+            // holds paths under states/ ("previews/x-small.png"); a data-URI
+            // value is an older ad-hoc manifest and is used as-is.
             if (s.screenshot) {
                 var img = document.createElement("img");
                 img.className = "quickboot-scenario-preview";
-                img.src = s.screenshot;
+                img.src = previewUrl(s.screenshot);
                 img.alt = "";
                 img.loading = "lazy";
+                // Clicking the thumbnail shows the full screenshot in the
+                // lightbox instead of launching the state (the card's own
+                // click starts the state).
+                img.addEventListener("click", function (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    if (typeof Lightbox !== "undefined" && Lightbox) {
+                        Lightbox.show(
+                            previewUrl(s.screenshotFull || s.screenshot),
+                            s.label || s.file);
+                    }
+                });
                 btn.appendChild(img);
             }
 
