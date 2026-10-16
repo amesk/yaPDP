@@ -193,6 +193,21 @@
         "package.json"
       ]
     },
+    "e2e:quickboot-scenario": {
+      "command": "node tests/e2e-quickboot-scenario.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-quickboot-scenario.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "states/**",
+        "package.json"
+      ]
+    },
     "e2e:os:legacy": {
       "command": "node tests/e2e-osboot.js --legacy",
       "dependencies": [

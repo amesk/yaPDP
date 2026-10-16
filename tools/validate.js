@@ -47,6 +47,7 @@ const ON_CI = process.env.GITHUB_ACTIONS === "true";
 const SUITES = [
     ["e2e:quickboot-manifest", ["tests/e2e-quickboot-manifest.js"]],
     ["e2e:quickboot-deeplink", ["tests/e2e-quickboot-deeplink.js"]],
+    ["e2e:quickboot-scenario", ["tests/e2e-quickboot-scenario.js"]],
     ["e2e:snapshots",          ["tests/e2e-snapshots.js"]],
     ["e2e:startup-cls",        ["tests/e2e-startup-cls.js"]],
     ["e2e:os",                 ["tests/e2e-osboot.js"]],
