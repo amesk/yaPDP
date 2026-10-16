@@ -200,6 +200,79 @@
         // Optional configuration (CONFIG page)
         var opts = options || {};
         var idPrefix = (typeof opts.idPrefix === 'string') ? opts.idPrefix : '';
+
+        // All paced paper/head movements use these local timeout wrappers.
+        // A host pause preserves each timer's remaining delay, so an in-flight
+        // line feed or carriage return cannot continue moving paper off-screen.
+        var emulationPaused = !!(window.EmulationControl &&
+            window.EmulationControl.isPaused());
+        var emulationTimers = new Map();
+        var nextEmulationTimerId = 1;
+
+        function scheduleEmulationTimer(id, entry) {
+            entry.startedAt = Date.now();
+            entry.timer = window.setTimeout(function () {
+                if (!emulationTimers.has(id)) return;
+                entry.timer = null;
+                if (emulationPaused) {
+                    entry.remaining = 0;
+                    return;
+                }
+                emulationTimers.delete(id);
+                entry.callback();
+            }, entry.remaining);
+        }
+
+        function setTimeout(callback, delay) {
+            var id = nextEmulationTimerId++;
+            var wait = Math.max(0, Number(delay) || 0);
+            var entry = {
+                callback: callback,
+                remaining: wait,
+                startedAt: 0,
+                timer: null
+            };
+            emulationTimers.set(id, entry);
+            if (!emulationPaused) scheduleEmulationTimer(id, entry);
+            return id;
+        }
+
+        function clearTimeout(id) {
+            var entry = emulationTimers.get(id);
+            if (!entry) return;
+            if (entry.timer !== null) window.clearTimeout(entry.timer);
+            emulationTimers.delete(id);
+        }
+
+        function pauseEmulationTimers() {
+            if (emulationPaused) return;
+            emulationPaused = true;
+            emulationTimers.forEach(function (entry) {
+                if (entry.timer !== null) {
+                    window.clearTimeout(entry.timer);
+                    entry.remaining = Math.max(0,
+                        entry.remaining - (Date.now() - entry.startedAt));
+                    entry.timer = null;
+                }
+            });
+            if (printWhirr) G60Audio.stopWhirr();
+        }
+
+        function resumeEmulationTimers() {
+            if (!emulationPaused) return;
+            emulationPaused = false;
+            emulationTimers.forEach(function (entry, id) {
+                if (entry.timer === null) scheduleEmulationTimer(id, entry);
+            });
+        }
+
+        if (window.EmulationControl && window.EmulationControl.register) {
+            window.EmulationControl.register("g60-printer:" + idPrefix, {
+                pause: pauseEmulationTimers,
+                resume: resumeEmulationTimers
+            });
+        }
+
         var PRINT_WIDTHS = [72, 80, 100, 132];
 
         // Printer state
@@ -708,7 +781,6 @@
         function processCharBuffer() {
             // Clear timer reference so the next arrival starts a fresh timer.
             charPrintTimer = null;
-            if (window.EmulationControl && window.EmulationControl.isPaused()) return;
 
             if (charBuffer.length === 0) {
                 // Nothing pending — stop the continuous whirr.
@@ -767,8 +839,7 @@
          */
         function printChar(c) {
             charBuffer.push(c);
-            if (!charPrintTimer &&
-                !(window.EmulationControl && window.EmulationControl.isPaused())) {
+            if (!charPrintTimer) {
                 charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
             }
         }
@@ -785,24 +856,8 @@
             charBuffer = [];
         }
 
-        // Freeze the paced output queue on pause. Characters already emitted by
-        // the guest remain queued, but host input is never added while paused.
-        if (window.EmulationControl && window.EmulationControl.register) {
-            window.EmulationControl.register("g60-printer:" + idPrefix, {
-                pause: function () {
-                    if (charPrintTimer) {
-                        clearTimeout(charPrintTimer);
-                        charPrintTimer = null;
-                    }
-                    if (printWhirr) G60Audio.stopWhirr();
-                },
-                resume: function () {
-                    if (charBuffer.length > 0 && !charPrintTimer) {
-                        charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
-                    }
-                }
-            });
-        }
+        // Character pacing, paper feed and print-head movement all use the
+        // pausable timeout scheduler installed at construction time.
 
         /**
          * doPrintln() - Internal: execute the line feed / new paragraph logic.
