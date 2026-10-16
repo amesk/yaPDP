@@ -2611,6 +2611,28 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
+/* A slow, restrained pulse makes the paused state noticeable and invites
+   the user to resume. This is host UI feedback, not model time. */
+html.yapdp-emulation-paused .console-pause {
+    animation: pause-attention 1s ease-in-out infinite;
+}
+
+@keyframes pause-attention {
+    0%, 100% {
+        box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+        box-shadow: inset 0 1px 0 rgba(255, 220, 130, 0.3), 0 0 10px rgba(220, 175, 75, 0.65);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html.yapdp-emulation-paused .console-pause {
+        animation: none;
+        box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+}
+
 /* The STATE button sits to the right of REBOOT. */
 .console-state {
     left: 190px;
@@ -3237,6 +3259,16 @@ body.crt-effects .vt52-crt::after {
     50% {
         opacity: 0.85;
     }
+}
+
+/* Freeze display-side animation phases with the host pause. Static scanlines,
+   glass shading and host UI animations remain visible/active. */
+html.yapdp-emulation-paused .vt52-crt canvas,
+html.yapdp-emulation-paused body.crt-effects .vt52-crt::before,
+html.yapdp-emulation-paused body.crt-effects .vt52-crt::after,
+html.yapdp-emulation-paused .vt11-crt canvas,
+html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash {
+    animation-play-state: paused !important;
 }
 
 /* ===== VT11 Display page — vector-graphics CRT ===== */

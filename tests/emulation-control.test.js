@@ -16,6 +16,8 @@ const printerSource = fs.readFileSync(
     path.join(__dirname, "..", "src", "g60printer.js"), "utf8");
 const vt11Source = fs.readFileSync(
     path.join(__dirname, "..", "src", "vt11.js"), "utf8");
+const cssSource = fs.readFileSync(
+    path.join(__dirname, "..", "css", "pdp11.css"), "utf8");
 
 function loadControl(initialValue) {
     const store = new Map();
@@ -55,6 +57,16 @@ function run() {
         "printer paper/head timers must preserve their remaining time across pause");
     assert.ok(vt11Source.includes("EmulationControl.isPaused()) return;"),
         "VT11 light-pen input must be ignored while paused");
+    assert.ok(cssSource.includes("html.yapdp-emulation-paused .vt52-crt canvas") &&
+        cssSource.includes("html.yapdp-emulation-paused body.crt-effects .vt52-crt::before") &&
+        cssSource.includes("html.yapdp-emulation-paused body.crt-effects .vt52-crt::after") &&
+        cssSource.includes("html.yapdp-emulation-paused .vt11-crt canvas") &&
+        cssSource.includes("html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash") &&
+        cssSource.includes("animation-play-state: paused !important;"),
+        "CRT animations and visual bell must freeze while paused");
+    assert.ok(cssSource.includes("animation: pause-attention 1s ease-in-out infinite;") &&
+        cssSource.includes("@media (prefers-reduced-motion: reduce)"),
+        "the pause button should pulse once per second unless reduced motion is preferred");
 
     {
         const env = loadControl(false);
