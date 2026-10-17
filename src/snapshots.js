@@ -788,8 +788,14 @@ var SnapshotStore = (() => {
                             if (typeof sessionStorage !== "undefined") {
                                 sessionStorage.setItem(PENDING_STATE_KEY, target);
                                 sessionStorage.setItem("yapdp.restore-pending", "1");
-                                // Persist steps, description and button label across
-                                // the reload so they can be shown on the second load.
+                                // Persist the share metadata across the reload so
+                                // the preparing toast can show the same title and guide.
+                                if (parsedManifest.label) {
+                                    sessionStorage.setItem("yapdp.state-title",
+                                        parsedManifest.label);
+                                } else {
+                                    sessionStorage.removeItem("yapdp.state-title");
+                                }
                                 if (parsedManifest.steps) {
                                     sessionStorage.setItem("yapdp.state-steps",
                                         JSON.stringify(parsedManifest.steps));
@@ -1461,9 +1467,14 @@ var SnapshotStore = (() => {
         // — the single reload boots with the right devices, and init() can
         // restore directly. applySnapshotConfig() no-ops on a missing snapshot.
         return dbGet(id).then(function (snap) {
-            // Persist steps metadata across reload for "shared" mode.
+            // Persist shared-state metadata across reload.
             if (mode === "shared" && snap && typeof sessionStorage !== "undefined") {
                 try {
+                    if (snap.name) {
+                        sessionStorage.setItem("yapdp.state-title", snap.name);
+                    } else {
+                        sessionStorage.removeItem("yapdp.state-title");
+                    }
                     if (snap.steps) {
                         sessionStorage.setItem("yapdp.state-steps",
                             JSON.stringify(snap.steps));
@@ -1847,7 +1858,12 @@ var SnapshotStore = (() => {
                     var steps = snap.steps;
                     var stepsMessage = snap.stepsMessage || null;
                     var buttonLabel = snap.buttonLabel || null;
+                    var stateTitle = snap.name || null;
                     if (typeof sessionStorage !== "undefined") {
+                        try {
+                            var savedTitle = sessionStorage.getItem("yapdp.state-title");
+                            if (savedTitle) { stateTitle = savedTitle; }
+                        } catch (e) { /* ignore */ }
                         try {
                             var saved = sessionStorage.getItem("yapdp.state-steps");
                             if (saved) { steps = JSON.parse(saved); }
@@ -1876,7 +1892,7 @@ var SnapshotStore = (() => {
                         typeof QuickBoot.showPreparing === "function") {
                         var prepPromise = QuickBoot.showPreparing(
                             "Restoring the machine state\u2026",
-                            stepsMessage, hasSteps, buttonLabel);
+                            stepsMessage, hasSteps, buttonLabel, stateTitle);
                         // Show the screenshot preview if the state carries one.
                         if (screenshotUrl) {
                             var screenshotImg = document.getElementById("quick-boot-preparing-screenshot");
