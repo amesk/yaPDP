@@ -4585,3 +4585,55 @@ button.action-more-hidden {
     }
 }
 
+/* Quick Boot scenario picker on phones in landscape: reclaim vertical space
+   from the heading and scenario cards so several choices are visible at once.
+   The list remains the scrolling region; the dialog actions stay reachable. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+    .quickboot-box.modal-box {
+        padding: 10px 14px;
+    }
+
+    .quickboot-box .modal-title {
+        font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+
+    .quickboot-tabs {
+        margin-bottom: 4px;
+    }
+
+    .quickboot-list {
+        flex: 1 1 auto;
+        max-height: calc(100vh - 130px);
+        max-height: calc(100dvh - 130px);
+        gap: 4px;
+        margin: 2px 0 8px;
+    }
+
+    .quickboot-option,
+    .quickboot-scenario-option {
+        padding: 5px 8px;
+    }
+
+    .quickboot-scenario-option {
+        gap: 8px;
+    }
+
+    .quickboot-scenario-preview {
+        width: 56px;
+        height: 42px;
+    }
+
+    .quickboot-scenario-desc {
+        font-size: 11px;
+        line-height: 1.25;
+        -webkit-line-clamp: 2;
+    }
+
+    .quickboot-box .modal-close {
+        padding: 5px 20px;
+    }
+}
+
