@@ -309,10 +309,26 @@ var QuickBoot = (function () {
         // The screenshot button and modal overlays are likewise exempt.
         if (e.target && e.target.closest &&
             (e.target.closest("#quick-boot-balloon") ||
-             e.target.closest("#quick-boot-preparing") ||
-             e.target.closest("#screenshot-btn") ||
-             e.target.closest("#pause-btn") ||
-             e.target.closest("#reboot-btn"))) return;
+             e.target.closest("#quick-boot-preparing"))) {
+            // The toast contains the Take control button, and the preparing
+            // dialog may contain a confirmation button; their own interaction
+            // must remain possible while they own the gate.
+            return;
+        }
+        var hostControl = e.target && e.target.closest
+            ? e.target.closest("#screenshot-btn, #pause-btn, #reboot-btn") : null;
+        if (hostControl) {
+            // A focused Pause/Resume button must not become a keyboard-input
+            // tunnel into the guest after the operator resumes QuickBoot.
+            // Keep pointer/click activation and keyboard activation (Enter /
+            // Space) available, but gate ordinary keys even when the focused
+            // element is a host-side control.
+            if (e.type === "click" || e.type === "mousedown" ||
+                e.type === "mouseup" || e.type === "pointerdown" ||
+                e.type === "pointerup" || e.type === "contextmenu") return;
+            if ((e.type === "keydown" || e.type === "keyup") &&
+                (e.key === "Enter" || e.key === " " || e.key === "Spacebar")) return;
+        }
         // Only a visible modal may bypass the gate. QuickBoot hides its chooser
         // without moving focus, so the focused option can remain inside a
         // hidden .modal-overlay while the autoload toast owns the machine.
