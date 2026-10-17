@@ -186,7 +186,7 @@ function testGate() {
     for (const selector of ["#pause-btn", "#reboot-btn"]) {
         const hostControl = fakeEvent({
             type: "click",
-            target: { closest: function (sel) { return sel === selector ? {} : null; } }
+            target: { closest: function (sel) { return sel.split(", ").indexOf(selector) !== -1 ? {} : null; } }
         });
         gate.gateEvent(hostControl);
         assert.ok(!hostControl.defaultPrevented && !hostControl.stopped,
@@ -200,7 +200,7 @@ function testGate() {
         const focusedKey = fakeEvent({
             type: "keydown",
             key: "a",
-            target: { closest: function (sel) { return sel === selector ? {} : null; } }
+            target: { closest: function (sel) { return sel.split(", ").indexOf(selector) !== -1 ? {} : null; } }
         });
         gate.gateEvent(focusedKey);
         assert.ok(focusedKey.defaultPrevented && focusedKey.stopped,
@@ -214,7 +214,7 @@ function testGate() {
             const activationKey = fakeEvent({
                 type: type,
                 key: keyName,
-                target: { closest: function (sel) { return sel === "#pause-btn" ? {} : null; } }
+                target: { closest: function (sel) { return sel.split(", ").indexOf("#pause-btn") !== -1 ? {} : null; } }
             });
             gate.gateEvent(activationKey);
             assert.ok(!activationKey.defaultPrevented && activationKey.stopped,
