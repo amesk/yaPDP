@@ -757,7 +757,18 @@ function examineDeposit(data) {
 
   if (pauseButton) {
     pauseButton.addEventListener('click', function () {
-      if (typeof EmulationControl !== 'undefined') EmulationControl.toggle();
+      if (typeof EmulationControl === 'undefined') return;
+      var changed = EmulationControl.toggle();
+      // State changes initiated by this operator control deserve an explicit
+      // acknowledgement: the icon is subtle and pause affects the whole
+      // emulated machine. Do not toast for implicit resumes (e.g. reboot).
+      if (changed && typeof Toasts !== 'undefined' && Toasts.show) {
+        Toasts.show({
+          text: EmulationControl.isPaused() ? 'Emulation paused' : 'Emulation resumed',
+          category: 'info',
+          duration: 4500
+        });
+      }
     });
     document.addEventListener('yapdp:emulation-state', function (event) {
       updatePauseButton(!!(event.detail && event.detail.paused));
