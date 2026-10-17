@@ -838,10 +838,6 @@ var QuickBoot = (function () {
     // address bar only on success: a link that could not be honoured keeps its
     // parameter so the visitor sees what was actually asked for.
     function applyStateLink(url) {
-        // A state restore opens its own preparing dialog. Dismiss the Quick Boot
-        // chooser first, otherwise that dialog is stacked underneath it and the
-        // operator has to close the chooser manually before Play is reachable.
-        hide();
         if (typeof SnapshotStore === "undefined" ||
             typeof SnapshotStore.loadFromUrl !== "function") {
             showStateFailure({ url: url, reason: "not-a-state" });
@@ -1200,6 +1196,9 @@ var QuickBoot = (function () {
 
             btn.appendChild(textWrap);
             btn.addEventListener("click", function () {
+                // Close the chooser before the restore path opens its own
+                // preparing dialog; otherwise the two modals get stacked.
+                hide();
                 applyStateLink("states/" + s.file);
             });
             listEl.appendChild(btn);
