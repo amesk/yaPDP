@@ -4538,3 +4538,50 @@ button.action-more-hidden {
         overflow-wrap: anywhere;
     }
 }
+
+/* Compact preparing toast for phone landscape, where the viewport is short.
+   Keep the entire toast on-screen; if unusually long state details still do
+   not fit, scroll inside the toast rather than clipping its bottom. */
+@media (orientation: landscape) and (max-height: 500px) {
+    #quick-boot-preparing.quickboot-balloon {
+        top: max(8px, env(safe-area-inset-top, 0px));
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 7px 12px;
+        gap: 4px;
+    }
+
+    #quick-boot-preparing .quickboot-balloon-row {
+        gap: 6px;
+    }
+
+    #quick-boot-preparing .quickboot-balloon-row > span {
+        line-height: 1.2;
+    }
+
+    .quickboot-balloon-state-title {
+        margin-top: 1px;
+        font-size: 14px;
+        line-height: 1.2;
+    }
+
+    .quickboot-balloon-desc {
+        margin-top: 1px;
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .quickboot-balloon-screenshot {
+        max-height: 72px;
+        margin-top: 1px;
+    }
+
+    .quickboot-balloon-ok {
+        margin-top: 2px;
+        padding: 4px 18px;
+        font-size: 14px;
+    }
+}
+
