@@ -70,7 +70,7 @@ export function PDP11Emulator({ lang, onBackToHome, onOpenManual }: PDP11Emulato
       {/* Main Console Chassis */}
       <section className="relative rounded-lg border border-[#4a4030] bg-black shadow-[0_12px_40px_rgba(0,0,0,0.85)] overflow-hidden">
         {/* Live Emulator Viewport */}
-        <div className="relative w-full bg-black min-h-[640px] h-[78vh] max-h-[920px]">
+        <div className="emulator-viewport relative w-full bg-black min-h-[640px] h-[78vh] max-h-[920px]">
           <iframe
             key={iframeKey}
             src="pdp11.html"
