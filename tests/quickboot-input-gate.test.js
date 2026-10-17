@@ -193,9 +193,31 @@ function testGate() {
             selector + " must remain operable during the autoload");
     }
 
-    // Using Pause/Resume must not release the gate. The pause control is
-    // exempted from interception, but that exemption applies only to its
-    // click — it does not grant the console keyboard ownership.
+    // A focused host control must not become a keyboard-input tunnel.
+    // This is the exact Pause -> Resume regression: after clicking Pause the
+    // button can retain focus, so ordinary keys must still be stopped.
+    for (const selector of ["#pause-btn", "#reboot-btn", "#screenshot-btn"]) {
+        const focusedKey = fakeEvent({
+            type: "keydown",
+            key: "a",
+            target: { closest: function (sel) { return sel === selector ? {} : null; } }
+        });
+        gate.gateEvent(focusedKey);
+        assert.ok(focusedKey.defaultPrevented && focusedKey.stopped,
+            selector + " must not exempt ordinary keyboard input from the gate");
+    }
+
+    // Keyboard activation remains available for host controls.
+    const pauseEnter = fakeEvent({
+        type: "keydown",
+        key: "Enter",
+        target: { closest: function (sel) { return sel === "#pause-btn" ? {} : null; } }
+    });
+    gate.gateEvent(pauseEnter);
+    assert.ok(!pauseEnter.defaultPrevented && !pauseEnter.stopped,
+        "Enter must still activate the focused Pause/Resume button");
+
+    // Using Pause/Resume must not release the gate.
     const afterResume = fakeEvent();
     gate.gateEvent(afterResume);
     assert.ok(afterResume.defaultPrevented && afterResume.stopped,
