@@ -207,15 +207,20 @@ function testGate() {
             selector + " must not exempt ordinary keyboard input from the gate");
     }
 
-    // Keyboard activation remains available for host controls.
-    const pauseEnter = fakeEvent({
-        type: "keydown",
-        key: "Enter",
-        target: { closest: function (sel) { return sel === "#pause-btn" ? {} : null; } }
-    });
-    gate.gateEvent(pauseEnter);
-    assert.ok(!pauseEnter.defaultPrevented && !pauseEnter.stopped,
-        "Enter must still activate the focused Pause/Resume button");
+    // Keyboard activation remains available for host controls, but only
+    // the activation keys—not arbitrary typing—bypass the gate.
+    for (const type of ["keydown", "keypress", "keyup"]) {
+        for (const keyName of ["Enter", " "]) {
+            const activationKey = fakeEvent({
+                type: type,
+                key: keyName,
+                target: { closest: function (sel) { return sel === "#pause-btn" ? {} : null; } }
+            });
+            gate.gateEvent(activationKey);
+            assert.ok(!activationKey.defaultPrevented && !activationKey.stopped,
+                keyName + " " + type + " must still activate the focused Pause/Resume button");
+        }
+    }
 
     // Using Pause/Resume must not release the gate.
     const afterResume = fakeEvent();
