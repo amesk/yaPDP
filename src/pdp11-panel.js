@@ -582,6 +582,16 @@ function examineDeposit(data) {
   // — a reboot that starts the default bootstrap and switches to the operator
   // console; anything else is the plain REBOOT.
   function performMachineAction(action) {
+    // A reboot can immediately halt the CPU or reload the page. Acknowledge
+    // the confirmed operation before starting it, not when the dialog opens;
+    // this function is also the post-reload continuation for a config rollback.
+    if (typeof Toasts !== 'undefined' && Toasts.show) {
+      Toasts.show({
+        text: 'Rebooting…',
+        category: 'info',
+        duration: 4500
+      });
+    }
     if (action === 'boot') {
       doReboot(true);
       switchPage(consolePageFor(typeof Config !== 'undefined' ? Config.get() : null));
