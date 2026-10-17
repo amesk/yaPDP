@@ -70,3 +70,15 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   min-height: 100vh;
 }
+
+/* The inline emulator sits below the sticky navigation and its own control bar.
+   On short landscape screens, let it use the remaining viewport instead of
+   forcing a 640px minimum height and pushing most of the machine off-screen. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .emulator-viewport {
+    height: calc(100vh - 180px);
+    height: calc(100dvh - 180px);
+    min-height: 0;
+    max-height: none;
+  }
+}
