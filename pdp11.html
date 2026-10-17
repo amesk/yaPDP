@@ -63,6 +63,9 @@
        .yapdp-spin in css/pdp11.css (used by the quick-boot autoload toast) —
        keep the two in sync. */
     #yapdp-loading .yapdp-loading-spin {
+      /* Keep the spinner circular when the overlay's column cannot fit its
+         contents vertically in a short landscape viewport. */
+      flex: 0 0 auto;
       width: 34px;
       height: 34px;
       border: 3px solid rgba(200, 168, 96, 0.25);
