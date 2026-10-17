@@ -192,6 +192,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **QuickBoot input gate respects modal visibility.** Keyboard and pointer events are exempted only for visible modal overlays, so focus left on the hidden scenario chooser cannot leak operator keystrokes into an active autoload.
 
+- **QuickBoot input gate stays closed when a host control retains focus.** Ordinary keyboard events targeting Pause/Resume, Reboot or Screenshot are still blocked during autoload; pointer clicks and Enter/Space activation of the host controls remain available. (`src/quickboot.js`; pinned by `tests/quickboot-input-gate.test.js`)
+- **Pause/Resume now confirms state changes with a toast.** Clicking the host-level control displays “Emulation paused” or “Emulation resumed”, in addition to updating its icon and accessible label. (`src/pdp11-panel.js`)
+
 - **QuickBoot and guided snapshot steps now pause with emulation.** Scheduled
   console input and prompt-wait timeouts suspend during a host-level pause and
   resume with their remaining delay, so the autoload gate does not strand the
