@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Scenario tab in the Quick Boot wizard.** The magic-wand dialog now has
+  two tabs — "Boot" (existing OS boot scenarios) and "Scenario" (pre-built
+  machine states from `states/`). Picking a scenario restores the machine
+  instantly, the same way a `?state=` deep link does. A new build step
+  (`tools/gen-state-manifest.js`) generates `states/manifest.json` from the
+  actual state files, so the list is always in sync. States that carry a
+  screenshot show a thumbnail, and clicking it opens the full picture in a
+  new shared lightbox (`src/lightbox.js`) instead of launching the state.
+  (`src/quickboot.js`, `src/lightbox.js`, `css/pdp11.css`,
+  `tools/gen-state-manifest.js`, `states/manifest.json`, `package.json`,
+  `pdp11.html`)
+- **The state manifest is light and screenshots are files.** The Scenario
+  tab's manifest (`states/manifest.json`) stores screenshots as paths to
+  `states/previews/*.png` instead of inline base64, so fetching the list
+  on page load stays inside the startup budget pinned by
+  `tests/e2e-startup-cls.js`. (`tools/gen-state-manifest.js`,
+  `states/manifest.json`, `states/previews/`, `src/quickboot.js`,
+  `tests/states-manifest.test.js`, `tests/e2e-startup-cls.js`)
 - **Glossary chapter in the user manual.** A new reference chapter
   defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
   for quick lookup. Entries are written as Pandoc-style definition

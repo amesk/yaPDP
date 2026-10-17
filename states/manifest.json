@@ -1,0 +1,106 @@
+[
+  {
+    "device": "basic",
+    "label": "BASIC (ready)",
+    "description": null,
+    "file": "basic-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": null,
+    "label": "Lunar Lander",
+    "description": "Lunar Lander on the VT11 vector display — the landing in progress. Use the mouse as a light pen: hover over the on-screen controls to steer and set thrust — no clicking.",
+    "file": "lunar-lander.state.zst",
+    "screenshot": "previews/lunar-lander-small.png",
+    "screenshotFull": "previews/lunar-lander-full.png"
+  },
+  {
+    "device": "rk0",
+    "label": "RK0 (ready)",
+    "description": null,
+    "file": "rk0-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rk1",
+    "label": "RK1 (ready)",
+    "description": null,
+    "file": "rk1-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rk1tty",
+    "label": "RK1TTY (ready)",
+    "description": null,
+    "file": "rk1tty-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rk1vt52",
+    "label": "RK1VT52 (ready)",
+    "description": null,
+    "file": "rk1vt52-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rk2",
+    "label": "RK2 (ready)",
+    "description": null,
+    "file": "rk2-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rk3",
+    "label": "RK3 (ready)",
+    "description": null,
+    "file": "rk3-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rp1",
+    "label": "RP1 (ready)",
+    "description": null,
+    "file": "rp1-ready.state.zst",
+    "screenshot": null,
+    "screenshotFull": null
+  },
+  {
+    "device": "rk4",
+    "label": "RT-11 Adventure",
+    "description": "Colossal Cave — Will Crowther and Don Woods' original text adventure, the cave crawl that started the genre (and inspired Dungeon): it opens at the end of a road before a small brick building.\"",
+    "file": "rt-11-adventure.state.zst",
+    "screenshot": "previews/rt-11-adventure-small.png",
+    "screenshotFull": "previews/rt-11-adventure-full.png"
+  },
+  {
+    "device": "rk4",
+    "label": "RT-11 Dungeon",
+    "description": "The MIT text adventure that grew into Zork — a FORTRAN IV dungeon crawl under RT-11, billed by its authors as \"a game of adventure, danger and low cunning.\n\nIt starts at the boarded white house...",
+    "file": "rt-11-dungeon.state.zst",
+    "screenshot": "previews/rt-11-dungeon-small.png",
+    "screenshotFull": "previews/rt-11-dungeon-full.png"
+  },
+  {
+    "device": "rk1",
+    "label": "RT-11-SPCINV",
+    "description": "VAX port for PDP-11.\nAs close to the original as possible...",
+    "file": "rt-11-spcinv.state.zst",
+    "screenshot": "previews/rt-11-spcinv-small.png",
+    "screenshotFull": "previews/rt-11-spcinv-full.png"
+  },
+  {
+    "device": "rk1",
+    "label": "RT-11-TIME52",
+    "description": "The $100,000 Digital Timepiece from 1975: Why settle for a cheap wristwatch when you can track the relentless passage of time using a legendary DEC PDP-11/70 minicomputer and a VT52 DECScope terminal?",
+    "file": "rt-11-time52.state.zst",
+    "screenshot": "previews/rt-11-time52-small.png",
+    "screenshotFull": "previews/rt-11-time52-full.png"
+  }
+]

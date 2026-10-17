@@ -737,6 +737,53 @@ textarea {
     outline-offset: 1px;
 }
 
+/* Lightbox (src/lightbox.js): a full-screen image viewer that sits one layer
+   above the shared modal dialogs (100001 > 100000), so it can open from inside
+   the quick-boot dialog and still cover it. The image is capped by the window
+   on both axes and scrolls only when the original is larger than the screen. */
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(6, 5, 3, 0.88);
+}
+
+.lightbox-overlay.visible {
+    display: flex;
+}
+
+.lightbox-image {
+    max-width: calc(100vw - 48px);
+    max-height: calc(100vh - 96px);
+    border: 1px solid #c8a860;
+    border-radius: 4px;
+    box-shadow: 0 12px 60px rgba(0, 0, 0, 0.75);
+    background: #000;
+}
+
+.lightbox-caption {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    color: #c8b898;
+    font-size: 13px;
+    text-align: center;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+@media (hover: none) and (pointer: coarse) {
+
+    /* A phone has no backdrop to click on outside the image — the image
+       itself dismisses the viewer (tapping anywhere closes it). */
+    .lightbox-overlay .lightbox-image {
+        cursor: pointer;
+    }
+}
+
 /* Machine-state dialog: the primary Save action is amber-filled, the select
    list matches the dark input theme, and the action row spaces the buttons. */
 .modal-primary {
@@ -1262,9 +1309,50 @@ textarea {
     color: #e0d8c8;
 }
 
+/* Quick-boot tab bar inside the shared modal box. */
+.quickboot-tabs {
+    display: flex;
+    gap: 0;
+    margin: 0 0 8px;
+    border-bottom: 1px solid #4a453a;
+}
+
+.quickboot-tab {
+    flex: 0 1 auto;
+    padding: 6px 16px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: #9a9488;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.quickboot-tab:hover {
+    color: #c8c0b0;
+}
+
+.quickboot-tab.active {
+    color: #c8a860;
+    border-bottom-color: #c8a860;
+}
+
+.quickboot-empty {
+    display: block;
+    padding: 12px 0;
+    color: #9a9488;
+    font-style: italic;
+    text-align: center;
+}
+
 /* Quick-boot OS picker list inside the shared modal box. */
 .quickboot-box {
     max-width: 480px;
+    /* Keep the Close button outside the scrolling list, even in a short iframe. */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .quickboot-list {
@@ -1272,7 +1360,11 @@ textarea {
     flex-direction: column;
     gap: 6px;
     margin: 4px 0 16px;
-    max-height: 60vh;
+    /* Let the list take the remaining modal height and scroll internally. */
+    flex: 1 1 50vh;
+    height: auto;
+    min-height: 0;
+    max-height: 70vh;
     overflow-y: auto;
 }
 
@@ -1291,6 +1383,8 @@ textarea {
     font-size: 13px;
     text-align: left;
     cursor: pointer;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .quickboot-option:hover {
@@ -1314,6 +1408,58 @@ textarea {
     flex-basis: 100%;
     color: #8f8878;
     font-size: 11px;
+}
+
+/* Scenario list item: screenshot thumbnail + text side by side. */
+.quickboot-scenario-option {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #4a4438;
+    border-radius: 5px;
+    background: #241f18;
+    color: #e0d8c8;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.quickboot-scenario-option:hover {
+    border-color: #c8a860;
+    background: #2f2820;
+}
+
+.quickboot-scenario-preview {
+    flex: 0 0 auto;
+    width: 80px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 3px;
+    border: 1px solid #4a4438;
+}
+
+.quickboot-scenario-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.quickboot-scenario-desc {
+    display: block;
+    color: #9a9488;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-top: 2px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    /* Clamp to 3 lines */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* "Autoloading in progress" toast (quickboot.js) — pinned to the top centre
@@ -1408,9 +1554,9 @@ textarea {
     color: #ffd9d0;
 }
 
-/* Preparing toast stacks its children vertically: top row (spinner + label),
-   then description, then OK button. The autoload toast (#quick-boot-balloon)
-   keeps the original row layout via flex-wrap. */
+/* Preparing toast stacks its children vertically: status row, optional state
+   title, description, screenshot and OK button. The autoload toast
+   (#quick-boot-balloon) keeps the original row layout via flex-wrap. */
 #quick-boot-preparing.quickboot-balloon {
     flex-direction: column;
     gap: 8px;
@@ -1427,8 +1573,22 @@ textarea {
     display: flex;
 }
 
+/* Optional user-supplied title from the shared state's manifest. Keep the
+   full title visible, wrapping long names instead of clipping them. */
+.quickboot-balloon-state-title {
+    display: block;
+    width: 100%;
+    flex-basis: 100%;
+    max-width: 420px;
+    margin: 4px auto 0;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 /* Description text inside the preparing toast (shareable state stepsMessage).
-   width:100% forces it to a new line below the main label; max-width keeps it
+   width:100% forces it to a new line below the state title; max-width keeps it
    from stretching across the whole balloon. */
 .quickboot-balloon-desc {
     display: block;
@@ -4378,3 +4538,102 @@ button.action-more-hidden {
         overflow-wrap: anywhere;
     }
 }
+
+/* Compact preparing toast for phone landscape, where the viewport is short.
+   Keep the entire toast on-screen; if unusually long state details still do
+   not fit, scroll inside the toast rather than clipping its bottom. */
+@media (orientation: landscape) and (max-height: 500px) {
+    #quick-boot-preparing.quickboot-balloon {
+        top: max(8px, env(safe-area-inset-top, 0px));
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 7px 12px;
+        gap: 4px;
+    }
+
+    #quick-boot-preparing .quickboot-balloon-row {
+        gap: 6px;
+    }
+
+    #quick-boot-preparing .quickboot-balloon-row > span {
+        line-height: 1.2;
+    }
+
+    .quickboot-balloon-state-title {
+        margin-top: 1px;
+        font-size: 14px;
+        line-height: 1.2;
+    }
+
+    .quickboot-balloon-desc {
+        margin-top: 1px;
+        font-size: 12px;
+        line-height: 1.25;
+    }
+
+    .quickboot-balloon-screenshot {
+        max-height: 72px;
+        margin-top: 1px;
+    }
+
+    .quickboot-balloon-ok {
+        margin-top: 2px;
+        padding: 4px 18px;
+        font-size: 14px;
+    }
+}
+
+/* Quick Boot scenario picker on phones in landscape: reclaim vertical space
+   from the heading and scenario cards so several choices are visible at once.
+   The list remains the scrolling region; the dialog actions stay reachable. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+    .quickboot-box.modal-box {
+        padding: 10px 14px;
+    }
+
+    .quickboot-box .modal-title {
+        font-size: 18px;
+        line-height: 1.2;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+
+    .quickboot-tabs {
+        margin-bottom: 4px;
+    }
+
+    .quickboot-list {
+        flex: 1 1 auto;
+        max-height: calc(100vh - 130px);
+        max-height: calc(100dvh - 130px);
+        gap: 4px;
+        margin: 2px 0 8px;
+    }
+
+    .quickboot-option,
+    .quickboot-scenario-option {
+        padding: 5px 8px;
+    }
+
+    .quickboot-scenario-option {
+        gap: 8px;
+    }
+
+    .quickboot-scenario-preview {
+        width: 56px;
+        height: 42px;
+    }
+
+    .quickboot-scenario-desc {
+        font-size: 11px;
+        line-height: 1.25;
+        -webkit-line-clamp: 2;
+    }
+
+    .quickboot-box .modal-close {
+        padding: 5px 20px;
+    }
+}
+
