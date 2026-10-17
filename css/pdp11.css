@@ -1349,6 +1349,10 @@ textarea {
 /* Quick-boot OS picker list inside the shared modal box. */
 .quickboot-box {
     max-width: 480px;
+    /* Keep the Close button outside the scrolling list, even in a short iframe. */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .quickboot-list {
@@ -1356,11 +1360,9 @@ textarea {
     flex-direction: column;
     gap: 6px;
     margin: 4px 0 16px;
-    height: 50vh;
-    /* The list must be allowed to shrink when Quick Boot is shown inside a
-       short iframe viewport. A fixed 300px minimum makes the whole modal
-       overflow, putting a second scrollbar around the dialog and crowding
-       the Close button against its bottom border. */
+    /* Let the list take the remaining modal height and scroll internally. */
+    flex: 1 1 50vh;
+    height: auto;
     min-height: 0;
     max-height: 70vh;
     overflow-y: auto;
