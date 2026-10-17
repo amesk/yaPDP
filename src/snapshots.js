@@ -983,6 +983,7 @@ var SnapshotStore = (() => {
         var snap = {
             id: "url-state",
             name: parsed.manifest.label || parsed.manifest.device || url,
+            stateTitle: parsed.manifest.label || null,
             // The medium this state belongs to, for the CONFIG 'last' boot
             // device (the mounted list can be empty for a paper-tape guest,
             // so the manifest's own device key is the one to keep).
@@ -1470,8 +1471,10 @@ var SnapshotStore = (() => {
             // Persist shared-state metadata across reload.
             if (mode === "shared" && snap && typeof sessionStorage !== "undefined") {
                 try {
-                    if (snap.name) {
-                        sessionStorage.setItem("yapdp.state-title", snap.name);
+                    var sharedTitle = snap.stateTitle ||
+                        (snap.id !== "url-state" ? snap.name : null);
+                    if (sharedTitle) {
+                        sessionStorage.setItem("yapdp.state-title", sharedTitle);
                     } else {
                         sessionStorage.removeItem("yapdp.state-title");
                     }
@@ -1858,7 +1861,8 @@ var SnapshotStore = (() => {
                     var steps = snap.steps;
                     var stepsMessage = snap.stepsMessage || null;
                     var buttonLabel = snap.buttonLabel || null;
-                    var stateTitle = snap.name || null;
+                    var stateTitle = snap.stateTitle ||
+                        (snap.id !== "url-state" ? snap.name : null);
                     if (typeof sessionStorage !== "undefined") {
                         try {
                             var savedTitle = sessionStorage.getItem("yapdp.state-title");
