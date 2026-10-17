@@ -879,6 +879,13 @@ var QuickBoot = (function () {
                 // Restore stepsMessage from sessionStorage if the manifest
                 // doesn't carry it (e.g. after a config-driven reload that
                 // persisted it in snapshots.js before calling location.reload).
+                var stateTitle = (manifest && manifest.label) || null;
+                if (!stateTitle) {
+                    try {
+                        var savedTitle = sessionStorage.getItem("yapdp.state-title");
+                        if (savedTitle) { stateTitle = savedTitle; }
+                    } catch (e) { /* ignore */ }
+                }
                 var stepsMessage = (manifest && manifest.stepsMessage) || null;
                 if (!stepsMessage) {
                     try {
@@ -915,7 +922,9 @@ var QuickBoot = (function () {
                 // should always see that the machine is being restored.
                 // When the button is visible, showPreparing returns a Promise
                 // that resolves only after the operator clicks it.
-                var prepPromise = showPreparing("Restoring the machine state\u2026", stepsMessage, hasSteps, buttonLabel);
+                var prepPromise = showPreparing(
+                    "Restoring the machine state\\u2026",
+                    stepsMessage, hasSteps, buttonLabel, stateTitle);
                 // The state is restored — stop the throbber. What remains is
                 // waiting for the operator (OK button) or loading images, both
                 // of which are idle from the machine's perspective.
