@@ -256,13 +256,30 @@ iopage.register(0o17772000, 4, (function () {
         let refreshTime = 0;
         let refreshCount = 0;
         let initializedBlink = false;
+        let blinkTimer = null;
+
+        function isEmulationPaused() {
+            return typeof EmulationControl !== "undefined" &&
+                EmulationControl.isPaused();
+        }
 
         function startBlinkTimer() {
-            if (initializedBlink) return;
             initializedBlink = true;
-            setInterval(() => {
+            if (isEmulationPaused() || blinkTimer !== null) return;
+            blinkTimer = setInterval(() => {
                 blinkFlag = 1 - blinkFlag;
             }, BLINK_INTERVAL_MS);
+        }
+
+        function pauseBlinkTimer() {
+            if (blinkTimer !== null) {
+                clearInterval(blinkTimer);
+                blinkTimer = null;
+            }
+        }
+
+        function resumeBlinkTimer() {
+            if (initializedBlink) startBlinkTimer();
         }
 
         function getBlinkFlag() {
@@ -285,6 +302,8 @@ iopage.register(0o17772000, 4, (function () {
 
         return {
             startBlinkTimer,
+            pauseBlinkTimer,
+            resumeBlinkTimer,
             getBlinkFlag,
             shouldUpdateFrame,
             getTimesliceDeadline
@@ -615,6 +634,10 @@ iopage.register(0o17772000, 4, (function () {
             }
 
             canvasFG.addEventListener('mousemove', function vt11TrackMouse(evt) {
+                // The light pen is guest input; don't update its position while
+                // the host has frozen emulation.
+                if (typeof EmulationControl !== "undefined" &&
+                    EmulationControl.isPaused()) return;
                 // The tube is CSS-scaled to fit the viewport (css/pdp11.css),
                 // so map pointer coordinates back into the internal 1024x768
                 // CONTENT space used by light-pen hit testing.
@@ -980,15 +1003,31 @@ iopage.register(0o17772000, 4, (function () {
         // guest DPC write. `scheduled` keeps arming idempotent: two live
         // chains would double the display refresh rate.
         let scheduled = false;
+        let scheduledTimer = null;
+
+        function isEmulationPaused() {
+            return typeof EmulationControl !== "undefined" &&
+                EmulationControl.isPaused();
+        }
 
         function schedule() {
-            if (scheduled) return;
+            if (scheduled || isEmulationPaused()) return;
             scheduled = true;
-            setTimeout(processorTimeslice, PROCESSOR_RESCHEDULE_MS);
+            scheduledTimer = setTimeout(processorTimeslice, PROCESSOR_RESCHEDULE_MS);
+        }
+
+        function cancelSchedule() {
+            if (scheduledTimer !== null) {
+                clearTimeout(scheduledTimer);
+                scheduledTimer = null;
+            }
+            scheduled = false;
         }
 
         function processorTimeslice() {
             scheduled = false; // this tick has consumed its schedule
+            scheduledTimer = null;
+            if (isEmulationPaused()) return;
             renderer.beginFramePath();
 
             let deadline = timing.getTimesliceDeadline();
@@ -1079,6 +1118,19 @@ iopage.register(0o17772000, 4, (function () {
             if (!state.isStopped()) {
                 schedule();
             }
+        }
+
+        if (typeof EmulationControl !== "undefined" && EmulationControl.register) {
+            EmulationControl.register("vt11", {
+                pause: function () {
+                    cancelSchedule();
+                    timing.pauseBlinkTimer();
+                },
+                resume: function () {
+                    timing.resumeBlinkTimer();
+                    startIfRunning();
+                }
+            });
         }
 
         return {

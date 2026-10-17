@@ -79,6 +79,11 @@ function switchPage(page) {
   var OPERATOR_PAGES = ['panel', 'teletype', 'vt52-console', 'vt52', 'vt11', 'printer'];
   var onOperatorPage = OPERATOR_PAGES.indexOf(page) !== -1;
 
+  var pauseBtn = document.getElementById('pause-btn');
+  if (pauseBtn) {
+    pauseBtn.classList.toggle('hidden', !onOperatorPage);
+  }
+
   var rebootBtn = document.getElementById('reboot-btn');
   if (rebootBtn) {
     rebootBtn.classList.toggle('hidden', !onOperatorPage);
@@ -520,6 +525,9 @@ function examineDeposit(data) {
   }
 
   function doReboot(forceBoot) {
+    // A deliberate reboot is an explicit exit from host-level pause. Resume
+    // first; the synchronous reset/boot below completes before its timer runs.
+    if (typeof EmulationControl !== 'undefined') EmulationControl.resume();
     if (g60Console) g60Console.writeChar(10);
     // Stop any runaway teletype output backlog before restarting the CPU,
     // so the @ prompt is immediately visible and usable.
@@ -574,6 +582,15 @@ function examineDeposit(data) {
   // — a reboot that starts the default bootstrap and switches to the operator
   // console; anything else is the plain REBOOT.
   function performMachineAction(action) {
+    // A reboot can immediately halt the CPU or reload the page. Acknowledge
+    // the confirmed operation before starting it, not when the dialog opens;
+    // this function is also the post-reload continuation for a config rollback.
+    if (typeof Toasts !== 'undefined' && Toasts.show) {
+      Toasts.show({
+        text: 'Rebooting…',
+        category: 'info'
+      });
+    }
     if (action === 'boot') {
       doReboot(true);
       switchPage(consolePageFor(typeof Config !== 'undefined' ? Config.get() : null));
@@ -732,6 +749,40 @@ function examineDeposit(data) {
     toggleDialogPart('machine-action-dontask-row', confirm);
     toggleDialogPart('machine-action-return-row', rollback);
     el.classList.add('visible');
+  }
+
+  var pauseButton = document.getElementById('pause-btn');
+
+  function updatePauseButton(paused) {
+    if (!pauseButton) return;
+    var use = pauseButton.querySelector('use');
+    if (use) use.setAttribute('href', paused ? '#icon-play' : '#icon-pause');
+    pauseButton.classList.toggle('paused', !!paused);
+    pauseButton.setAttribute('aria-pressed', paused ? 'true' : 'false');
+    pauseButton.setAttribute('aria-label', paused ? 'Resume emulation' : 'Pause emulation');
+    pauseButton.title = paused ? 'Resume the entire emulated machine' :
+      'Pause the entire emulated machine';
+  }
+
+  if (pauseButton) {
+    pauseButton.addEventListener('click', function () {
+      if (typeof EmulationControl === 'undefined') return;
+      var changed = EmulationControl.toggle();
+      // State changes initiated by this operator control deserve an explicit
+      // acknowledgement: the icon is subtle and pause affects the whole
+      // emulated machine. Do not toast for implicit resumes (e.g. reboot).
+      if (changed && typeof Toasts !== 'undefined' && Toasts.show) {
+        Toasts.show({
+          text: EmulationControl.isPaused() ? 'Emulation paused' : 'Emulation resumed',
+          category: 'info'
+        });
+      }
+    });
+    document.addEventListener('yapdp:emulation-state', function (event) {
+      updatePauseButton(!!(event.detail && event.detail.paused));
+    });
+    updatePauseButton(typeof EmulationControl !== 'undefined' &&
+      EmulationControl.isPaused());
   }
 
   document.querySelectorAll('[data-action="reboot"]').forEach(function (reboot) {

@@ -295,22 +295,56 @@ var QuickBoot = (function () {
         "mousedown", "mouseup", "click",
         "pointerdown", "pointerup", "contextmenu"
     ];
+    // Autoload and state preparation may overlap. Each owns a separate claim.
+    // Releasing one claim must not open the gate while the other is still active.
     var gateOn = false;
+    var autoloadGateOn = false;
+    var preparingGateOn = false;
 
     function gateEvent(e) {
-        // The toasts are the ONLY way out of the autoload: let clicks on
-        // either balloon (autoload or preparing) through.  The screenshot
-        // button is also exempt — it is a permanent UI control, not console
-        // input, and its right-click context menu must work during a boot.
-        // A modal overlay is exempt too: it is a question the SYSTEM is asking
-        // (a reboot confirmation, a configuration-rollback offer, a refused
-        // snapshot). Blocking its buttons would strand the operator with a
-        // dialog that looks alive and answers nothing.
+        // The toast is the normal way out of the autoload. Host-level
+        // machine controls must also remain operable: pausing the emulator
+        // suspends this wizard's timers, so Pause must be reachable to resume
+        // it again. Reboot is an explicit host-side escape as well.
+        // The screenshot button and modal overlays are likewise exempt.
         if (e.target && e.target.closest &&
             (e.target.closest("#quick-boot-balloon") ||
-             e.target.closest("#quick-boot-preparing") ||
-             e.target.closest("#screenshot-btn") ||
-             e.target.closest(".modal-overlay"))) return;
+             e.target.closest("#quick-boot-preparing"))) {
+            // The toast contains the Take control button, and the preparing
+            // dialog may contain a confirmation button; their own interaction
+            // must remain possible while they own the gate.
+            return;
+        }
+        var hostControl = e.target && e.target.closest
+            ? e.target.closest("#screenshot-btn, #pause-btn, #reboot-btn") : null;
+        if (hostControl) {
+            // A focused Pause/Resume button must not become a keyboard-input
+            // tunnel into the guest after the operator resumes QuickBoot.
+            // Keep pointer/click activation and keyboard activation (Enter /
+            // Space) available, but gate ordinary keys even when the focused
+            // element is a host-side control.
+            if (e.type === "click" || e.type === "mousedown" ||
+                e.type === "mouseup" || e.type === "pointerdown" ||
+                e.type === "pointerup" || e.type === "contextmenu") return;
+            if ((e.type === "keydown" || e.type === "keypress" || e.type === "keyup") &&
+                (e.key === "Enter" || e.key === " " || e.key === "Spacebar")) {
+                // Stop the keyboard event before terminal handlers see it,
+                // but do not cancel its default action: the browser can still
+                // synthesize the button's click for keyboard activation.
+                if (typeof e.stopImmediatePropagation === "function") {
+                    e.stopImmediatePropagation();
+                } else if (typeof e.stopPropagation === "function") {
+                    e.stopPropagation();
+                }
+                return;
+            }
+        }
+        // Only a visible modal may bypass the gate. QuickBoot hides its chooser
+        // without moving focus, so the focused option can remain inside a
+        // hidden .modal-overlay while the autoload toast owns the machine.
+        var modal = e.target && e.target.closest
+            ? e.target.closest(".modal-overlay") : null;
+        if (modal && modal.classList && modal.classList.contains("visible")) return;
         // F11 toggles fullscreen (fullscreen.js) — an app control, not
         // console input; blocking it would strand the operator in a mode
         // they cannot leave while the boot runs.
@@ -323,16 +357,22 @@ var QuickBoot = (function () {
         }
     }
 
-    function setInputGate(on) {
+    function setInputGate(on, owner) {
         if (typeof document === "undefined") return;
-        if (on === gateOn) return;
-        gateOn = on;
+        // Keep the one-argument form as an autoload claim for compatibility.
+        owner = owner || "autoload";
+        if (owner === "preparing") preparingGateOn = !!on;
+        else autoloadGateOn = !!on;
+
+        var shouldGate = autoloadGateOn || preparingGateOn;
+        if (shouldGate === gateOn) return;
+        gateOn = shouldGate;
         for (var i = 0; i < GATED_EVENTS.length; i++) {
-            if (on) document.addEventListener(GATED_EVENTS[i], gateEvent, true);
+            if (gateOn) document.addEventListener(GATED_EVENTS[i], gateEvent, true);
             else document.removeEventListener(GATED_EVENTS[i], gateEvent, true);
         }
         if (document.body) {
-            document.body.classList.toggle("quickboot-autoloading", on);
+            document.body.classList.toggle("quickboot-autoloading", gateOn);
         }
     }
 
@@ -379,12 +419,12 @@ var QuickBoot = (function () {
     function showBalloon() {
         if (typeof document === "undefined") return;
         ensureBalloon().classList.add("visible");
-        setInputGate(true);
+        setInputGate(true, "autoload");
     }
 
     function hideBalloon() {
         if (balloon) balloon.classList.remove("visible");
-        setInputGate(false);
+        setInputGate(false, "autoload");
     }
 
     // --- "Preparing the machine" toast -----------------------------------
@@ -505,7 +545,7 @@ var QuickBoot = (function () {
             okBtn.style.display = showOk ? "inline-block" : "none";
         }
         el.classList.add("visible");
-        setInputGate(true);
+        setInputGate(true, "preparing");
         if (showOk) {
             return new Promise(function (resolve) {
                 _stepsOkResolve = resolve;
@@ -519,7 +559,7 @@ var QuickBoot = (function () {
     // trap we already built once and spent an evening undoing.
     function hidePreparing() {
         if (prepToast) prepToast.classList.remove("visible");
-        setInputGate(false);
+        setInputGate(false, "preparing");
         _stepsOkResolve = null;
     }
 
@@ -1338,7 +1378,7 @@ var QuickBoot = (function () {
         // one through the pending key) — the first-run hint stands down then.
         arrivedByDeepLink: arrivedByDeepLink,
         // True while the autoload toast is up and the input gate is closed.
-        isAutoloading: function () { return gateOn; },
+        isAutoloading: function () { return autoloadGateOn; },
         // Resolves to the build-manifest image list (or null when absent);
         // shared with the Info page so both surfaces agree on availability.
         manifest: function () { return manifestPromise; },

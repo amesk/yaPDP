@@ -157,11 +157,78 @@ function testGate() {
     // during the autoload too, or the operator is stranded with a dead dialog.
     const inModal = fakeEvent({
         type: "click",
-        target: { closest: function (sel) { return sel === ".modal-overlay" ? {} : null; } }
+        target: { closest: function (sel) {
+            return sel === ".modal-overlay"
+                ? { classList: { contains: function (name) { return name === "visible"; } } }
+                : null;
+        } }
     });
     gate.gateEvent(inModal);
     assert.ok(!inModal.defaultPrevented && !inModal.stopped,
-        "a click inside a modal must reach its button during the autoload");
+        "a click inside a visible modal must reach its button during the autoload");
+
+    // QuickBoot hides its chooser overlay but leaves focus on the selected
+    // option. Keyboard events targeted at that hidden modal must not bypass
+    // the gate while the autoload toast is still visible.
+    const hiddenModalKey = fakeEvent({
+        target: { closest: function (sel) {
+            return sel === ".modal-overlay"
+                ? { classList: { contains: function () { return false; } } }
+                : null;
+        } }
+    });
+    gate.gateEvent(hiddenModalKey);
+    assert.ok(hiddenModalKey.defaultPrevented && hiddenModalKey.stopped,
+        "keyboard input focused inside a hidden modal must remain gated");
+
+    // Host-level pause and reboot controls must remain available during
+    // autoload, otherwise pausing can strand the operator behind the gate.
+    for (const selector of ["#pause-btn", "#reboot-btn"]) {
+        const hostControl = fakeEvent({
+            type: "click",
+            target: { closest: function (sel) { return sel.split(", ").indexOf(selector) !== -1 ? {} : null; } }
+        });
+        gate.gateEvent(hostControl);
+        assert.ok(!hostControl.defaultPrevented && !hostControl.stopped,
+            selector + " must remain operable during the autoload");
+    }
+
+    // A focused host control must not become a keyboard-input tunnel.
+    // This is the exact Pause -> Resume regression: after clicking Pause the
+    // button can retain focus, so ordinary keys must still be stopped.
+    for (const selector of ["#pause-btn", "#reboot-btn", "#screenshot-btn"]) {
+        const focusedKey = fakeEvent({
+            type: "keydown",
+            key: "a",
+            target: { closest: function (sel) { return sel.split(", ").indexOf(selector) !== -1 ? {} : null; } }
+        });
+        gate.gateEvent(focusedKey);
+        assert.ok(focusedKey.defaultPrevented && focusedKey.stopped,
+            selector + " must not exempt ordinary keyboard input from the gate");
+    }
+
+    // Keyboard activation remains available for host controls, but only
+    // the activation keys—not arbitrary typing—bypass the gate.
+    for (const type of ["keydown", "keypress", "keyup"]) {
+        for (const keyName of ["Enter", " "]) {
+            const activationKey = fakeEvent({
+                type: type,
+                key: keyName,
+                target: { closest: function (sel) { return sel.split(", ").indexOf("#pause-btn") !== -1 ? {} : null; } }
+            });
+            gate.gateEvent(activationKey);
+            assert.ok(!activationKey.defaultPrevented && activationKey.stopped,
+                keyName + " " + type + " must not reach guest keyboard handlers, while preserving button activation");
+        }
+    }
+
+    // Using Pause/Resume must not release the gate.
+    const afterResume = fakeEvent();
+    gate.gateEvent(afterResume);
+    assert.ok(afterResume.defaultPrevented && afterResume.stopped,
+        "console input must remain blocked after the operator resumes emulation");
+    assert.strictEqual(gate.listeners.length, gate.gated.length,
+        "Pause/Resume must not remove the autoload gate listeners");
 
     // F11 is the app's fullscreen toggle, not console input.
     const f11 = fakeEvent({ key: "F11" });
@@ -169,10 +236,21 @@ function testGate() {
     assert.ok(!f11.defaultPrevented && !f11.stopped,
         "F11 must keep working while the autoload runs");
 
-    // Close: every listener comes off, so the operator has the machine back.
-    gate.setInputGate(false);
+    // Regression: state-restore preparation may finish while autoload is
+    // still active. Releasing one owner's claim must not open the shared gate.
+    gate.setInputGate(true, "preparing");
+    gate.setInputGate(false, "preparing");
+    assert.strictEqual(gate.listeners.length, gate.gated.length,
+        "ending preparation must not release an active autoload gate");
+    const stillGated = fakeEvent();
+    gate.gateEvent(stillGated);
+    assert.ok(stillGated.defaultPrevented && stillGated.stopped,
+        "console input remains blocked while autoload still owns the gate");
+
+    // Close only after the final owner releases its claim.
+    gate.setInputGate(false, "autoload");
     assert.strictEqual(gate.listeners.length, 0,
-        "closing the gate must remove every listener");
+        "closing the final gate owner must remove every listener");
 }
 
 function testToastMarkup() {
@@ -191,9 +269,9 @@ function testToastMarkup() {
         "the button must abort the autoload");
 
     assert.ok(src.indexOf('classList.add("visible")') !== -1 &&
-        src.indexOf("setInputGate(true)") !== -1,
+        src.indexOf('setInputGate(true, "autoload")') !== -1,
         "showing the toast must open the input gate");
-    assert.ok(src.indexOf("setInputGate(false)") !== -1,
+    assert.ok(src.indexOf('setInputGate(false, "autoload")') !== -1,
         "hiding the toast must close the input gate");
     assert.ok(src.indexOf('spin.className = "yapdp-spin quickboot-balloon-spin"') !== -1,
         "the toast must use the shared .yapdp-spin spinner");

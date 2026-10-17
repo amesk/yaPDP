@@ -190,6 +190,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **QuickBoot input gate respects modal visibility.** Keyboard and pointer events are exempted only for visible modal overlays, so focus left on the hidden scenario chooser cannot leak operator keystrokes into an active autoload.
+
+- **QuickBoot input gate stays closed when a host control retains focus.** Ordinary keyboard events targeting Pause/Resume, Reboot or Screenshot are still blocked during autoload; pointer clicks and Enter/Space activation of the host controls remain available. (`src/quickboot.js`; pinned by `tests/quickboot-input-gate.test.js`)
+- **Pause/Resume now confirms state changes with a toast.** Clicking the host-level control displays “Emulation paused” or “Emulation resumed”, in addition to updating its icon and accessible label. (`src/pdp11-panel.js`)
+- **Reboot now confirms the start of the operation with a toast.** “Rebooting…” appears only after the action is confirmed and immediately before reboot starts, including when the confirmed reboot resumes after a configuration-rollback reload. Opening or cancelling the dialog does not show it. (`src/pdp11-panel.js`)
+
+- **QuickBoot and guided snapshot steps now pause with emulation.** Scheduled
+  console input and prompt-wait timeouts suspend during a host-level pause and
+  resume with their remaining delay, so the autoload gate does not strand the
+  operator. (`src/step-engine.js`; pinned by
+  `tests/step-engine-pause.test.js`)
+
 - **Share-dialog screenshot paste now works.** The "Paste or click to add a
   screenshot" field in the Share-snapshot dialog accepts Ctrl+V from the native
   clipboard (e.g. an image copied from mspaint). The global keyboard handler no

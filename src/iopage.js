@@ -805,7 +805,9 @@ iopage.register(0o17777546, 1, (function() {
 
     let csr;
     let iMask;
-    let tickTimer;
+    let tickTimer = null;
+    let emulationPaused = !!(typeof EmulationControl !== "undefined" &&
+        EmulationControl.isPaused());
 
     function initKW() {
         csr = KW_CSR_MON;   // MON set, IE clear
@@ -813,8 +815,16 @@ iopage.register(0o17777546, 1, (function() {
         startTimer();
     }
 
+    function stopTimer() {
+        if (tickTimer !== null) {
+            clearInterval(tickTimer);
+            tickTimer = null;
+        }
+    }
+
     function startTimer() {
-        if (tickTimer) clearInterval(tickTimer);
+        stopTimer();
+        if (emulationPaused) return;
         tickTimer = setInterval(() => {
             csr |= KW_CSR_MON;
             if (csr & KW_CSR_IE) {
@@ -822,6 +832,19 @@ iopage.register(0o17777546, 1, (function() {
                 requestInterrupt();
             }
         }, KW_TICK_MS);
+    }
+
+    if (typeof EmulationControl !== "undefined" && EmulationControl.register) {
+        EmulationControl.register("kw11-legacy", {
+            pause: function () {
+                emulationPaused = true;
+                stopTimer();
+            },
+            resume: function () {
+                emulationPaused = false;
+                startTimer();
+            }
+        });
     }
 
     return {

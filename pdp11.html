@@ -283,6 +283,13 @@
           stroke-width="1.2" stroke-linecap="round" />
         <path d="M8 19.8h8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.8" />
       </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <rect x="6" y="4" width="4" height="16" rx="0.8" fill="currentColor" />
+        <rect x="14" y="4" width="4" height="16" rx="0.8" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="M7 4.5v15l12-7.5z" fill="currentColor" />
+      </symbol>
       <symbol id="icon-reboot" viewBox="0 0 24 24">
         <!-- circular restart arrow with arrowhead (machine reboot) -->
         <path
@@ -426,11 +433,15 @@
         <rect x="15" y="3" width="5" height="4" rx="1" stroke="currentColor" fill="none" />
       </svg>
     </button>
-    <!-- Floating REBOOT toggle — round button in the top-left corner, just
-         right of the navigation sidebar (mirrors the sound-mute button in the
-         bottom-left corner). Wired up by src/pdp11-panel.js via
-         data-action="reboot"; shown on the Panel, teletype and VT52 (TTY 1)
-         pages. -->
+    <!-- Host-level pause/resume — does not change the PDP-11 HALT/WAIT state.
+         Shown on operator pages alongside the machine controls. -->
+    <button type="button" id="pause-btn" class="console-reboot console-pause"
+      title="Pause the entire emulated machine" aria-label="Pause emulation" aria-pressed="false">
+      <svg class="console-reboot-icon" aria-hidden="true" focusable="false">
+        <use href="#icon-pause" />
+      </svg>
+    </button>
+    <!-- Floating REBOOT toggle. The pause control sits immediately to its left. -->
     <button type="button" id="reboot-btn" class="console-reboot" data-action="reboot"
       title="Restart the machine. With Auto-boot enabled, boots the built-in default loader (toggle it in the confirmation dialog)."
       aria-label="Restart the machine">
@@ -2130,6 +2141,7 @@ Hello world
   </button>
 
   <script src='src/version.js'></script>
+  <script src='src/emulation-control.js'></script>
   <script src='src/pdp11-panel.js'></script>
   <script src='src/vt52zoom.js'></script>
   <script src='src/g60printer.js'></script>

@@ -49,11 +49,26 @@
             this.csr = KW_CSR_MON; // MON set, IE clear
             this.iMask = 0;
             this.tickTimer = null;
+            this.emulationPaused = !!(global.EmulationControl &&
+                global.EmulationControl.isPaused());
+            if (global.EmulationControl && global.EmulationControl.register) {
+                global.EmulationControl.register("kw11:" + id, {
+                    pause: () => {
+                        this.emulationPaused = true;
+                        this._stopTimer();
+                    },
+                    resume: () => {
+                        this.emulationPaused = false;
+                        this._startTimer();
+                    }
+                });
+            }
             this._startTimer();
         }
 
         _startTimer() {
             this._stopTimer();
+            if (this.emulationPaused) return;
             const io = this.machine ? this.machine.io : null;
             const tick = () => {
                 this.csr |= KW_CSR_MON;

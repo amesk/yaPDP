@@ -114,6 +114,33 @@ function makeEl(trackContexts) {
 
 // Fresh sandbox with a stubbed iopage that captures registrations.
 // opts.vt11 controls the Config flag that gates device registration.
+function makePauseControl(initiallyPaused) {
+    let paused = !!initiallyPaused;
+    const handlers = Object.create(null);
+    function notify(method) {
+        Object.keys(handlers).forEach(function (name) {
+            if (typeof handlers[name][method] === "function") handlers[name][method]();
+        });
+    }
+    return {
+        isPaused: function () { return paused; },
+        register: function (name, handler) {
+            handlers[name] = handler;
+            if (paused && typeof handler.pause === "function") handler.pause();
+        },
+        pause: function () {
+            if (paused) return;
+            paused = true;
+            notify("pause");
+        },
+        resume: function () {
+            if (!paused) return;
+            paused = false;
+            notify("resume");
+        }
+    };
+}
+
 function loadVT11(opts) {
     const src = fs.readFileSync(VT11_SOURCE, "utf8");
     const iopageSrc = fs.readFileSync(IOPAGE_SOURCE, "utf8");
@@ -129,6 +156,7 @@ function loadVT11(opts) {
     sandbox.STATE_RUN = 1;
     sandbox.trap = function () { return -1; };
     sandbox.Config = { get: function () { return { vt11: !!opts.vt11 }; } };
+    sandbox.EmulationControl = opts.pauseControl;
     sandbox.iopage = {
         register: function (address, count, device) {
             registrations.push({ address: address, count: count, device: device });
@@ -144,15 +172,35 @@ function loadVT11(opts) {
     // Timers must NOT actually run the VT11 processor loop; the callbacks are
     // recorded so a test can assert that the loop was (re)armed.
     const timers = [];
-    sandbox.setTimeout = function (fn) { timers.push(fn); return timers.length; };
-    sandbox.setInterval = function () { return 1; };
+    const activeTimeouts = new Map();
+    const activeIntervals = new Map();
+    let nextTimerId = 0;
+    sandbox.setTimeout = function (fn, delay) {
+        const id = ++nextTimerId;
+        timers.push(fn);
+        activeTimeouts.set(id, { fn: fn, delay: delay });
+        return id;
+    };
+    sandbox.clearTimeout = function (id) { activeTimeouts.delete(id); };
+    sandbox.setInterval = function (fn, delay) {
+        const id = ++nextTimerId;
+        activeIntervals.set(id, { fn: fn, delay: delay });
+        return id;
+    };
+    sandbox.clearInterval = function (id) { activeIntervals.delete(id); };
 
     vm.createContext(sandbox);
     vm.runInContext(
         insertData + "\n" + requestInterrupt + "\n" + src,
         sandbox
     );
-    return { sandbox: sandbox, registrations: registrations, timers: timers };
+    return {
+        sandbox: sandbox,
+        registrations: registrations,
+        timers: timers,
+        activeTimeouts: activeTimeouts,
+        activeIntervals: activeIntervals
+    };
 }
 
 function run() {
@@ -299,7 +347,63 @@ function run() {
     }
 
     // ------------------------------------------------------------------
-    // Test 10: the tube never hides the mouse pointer.
+    // Test 10: host-level pause cancels VT11 execution and blink timers while
+    // preserving the guest-visible DSR; resume re-arms one processor chain.
+    // ------------------------------------------------------------------
+    {
+        const control = makePauseControl(false);
+        const t = loadVT11({ vt11: true, pauseControl: control });
+        const dev = t.registrations[0].device;
+        dev.access(DPC, 0o1000, false);
+        assert.strictEqual(t.activeTimeouts.size, 1,
+            "a running display has one scheduled processor timeslice");
+        const dsrBefore = dev.access(DSR, -1, false);
+        assert.strictEqual(t.activeIntervals.size, 1,
+            "the VT11 blink clock starts with the display");
+
+        control.pause();
+        assert.strictEqual(t.activeTimeouts.size, 0,
+            "pause cancels the scheduled processor timeslice");
+        assert.strictEqual(t.activeIntervals.size, 0,
+            "pause stops the VT11 blink clock");
+        assert.strictEqual(dev.access(DSR, -1, false), dsrBefore,
+            "pause does not alter the guest-visible DSR");
+
+        control.resume();
+        assert.strictEqual(t.activeTimeouts.size, 1,
+            "resume re-arms exactly one running display chain");
+        assert.strictEqual(t.activeIntervals.size, 1,
+            "resume restarts the blink clock");
+        control.pause();
+        control.resume();
+        assert.strictEqual(t.activeTimeouts.size, 1,
+            "repeated pause/resume does not create duplicate chains");
+    }
+
+    // ------------------------------------------------------------------
+    // Test 11: restoring a running VT11 while the whole machine is paused
+    // must not start it until resume; a STOPPED display stays stopped.
+    // ------------------------------------------------------------------
+    {
+        const control = makePauseControl(true);
+        const t = loadVT11({ vt11: true, pauseControl: control });
+        const dev = t.registrations[0].device;
+        dev.restore({ regs: { DSR: 0o1400, DPC: 0o33610 }, image: null });
+        assert.strictEqual(t.activeTimeouts.size, 0,
+            "restore cannot restart VT11 while host pause is active");
+        control.resume();
+        assert.strictEqual(t.activeTimeouts.size, 1,
+            "resume starts the restored running display");
+
+        control.pause();
+        dev.restore({ regs: { DSR: 0x8000, DPC: 0 }, image: null });
+        control.resume();
+        assert.strictEqual(t.activeTimeouts.size, 0,
+            "resume does not start a guest-stopped display");
+    }
+
+    // ------------------------------------------------------------------
+    // Test 12: the tube never hides the mouse pointer.
     // Regression guard: the canvas cursor was set to "none" (the light pen
     // "off"), so the pointer vanished over the Display page and reappeared
     // only outside the canvas; and restore() re-initialised the renderer

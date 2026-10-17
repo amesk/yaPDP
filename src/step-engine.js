@@ -13,6 +13,91 @@
 "use strict";
 
 var StepEngine = (function () {
+    // --- Pause-aware host timers -----------------------------------------
+    // QuickBoot and snapshot steps are host-side automation, but their timers
+    // must follow emulated time: a global pause must not consume boot delays or
+    // the prompt-wait budget, and must never send a console byte while paused.
+    var root = (typeof window !== "undefined") ? window : globalThis;
+    var emulationPaused = !!(root.EmulationControl &&
+        typeof root.EmulationControl.isPaused === "function" &&
+        root.EmulationControl.isPaused());
+    // `window` can be a lightweight wrapper in tests/embedded contexts. Use its
+    // timers when present, otherwise fall back to the script global.
+    var hostSetTimeout = (typeof root.setTimeout === "function")
+        ? function (callback, delay) { return root.setTimeout(callback, delay); }
+        : (typeof setTimeout === "function"
+            ? function (callback, delay) { return setTimeout(callback, delay); }
+            : function () { return null; });
+    var hostClearTimeout = (typeof root.clearTimeout === "function")
+        ? function (timerId) { root.clearTimeout(timerId); }
+        : (typeof clearTimeout === "function"
+            ? function (timerId) { clearTimeout(timerId); }
+            : function () {});
+    var pauseStartedAt = emulationPaused ? Date.now() : 0;
+    var totalPausedMs = 0;
+    var scheduledTimers = [];
+
+    function logicalNow() {
+        var now = Date.now();
+        return now - totalPausedMs - (emulationPaused ? now - pauseStartedAt : 0);
+    }
+
+    function forgetTimer(entry) {
+        var index = scheduledTimers.indexOf(entry);
+        if (index !== -1) scheduledTimers.splice(index, 1);
+    }
+
+    function armTimer(entry) {
+        if (!entry.active || emulationPaused) return;
+        entry.startedAt = Date.now();
+        entry.timerId = hostSetTimeout(function () {
+            entry.timerId = null;
+            if (!entry.active) return;
+            entry.active = false;
+            forgetTimer(entry);
+            entry.callback();
+        }, entry.remaining);
+    }
+
+    function scheduleTimeout(callback, delay) {
+        var entry = {
+            callback: callback,
+            remaining: Math.max(0, Number(delay) || 0),
+            startedAt: 0,
+            timerId: null,
+            active: true
+        };
+        scheduledTimers.push(entry);
+        armTimer(entry);
+        return entry;
+    }
+
+    function pauseScheduledTimers() {
+        if (emulationPaused) return;
+        emulationPaused = true;
+        pauseStartedAt = Date.now();
+        scheduledTimers.forEach(function (entry) {
+            if (entry.timerId === null) return;
+            hostClearTimeout(entry.timerId);
+            entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));
+            entry.timerId = null;
+        });
+    }
+
+    function resumeScheduledTimers() {
+        if (!emulationPaused) return;
+        totalPausedMs += Date.now() - pauseStartedAt;
+        emulationPaused = false;
+        scheduledTimers.slice().forEach(armTimer);
+    }
+
+    if (root.EmulationControl && typeof root.EmulationControl.register === "function") {
+        root.EmulationControl.register("step-engine", {
+            pause: pauseScheduledTimers,
+            resume: resumeScheduledTimers
+        });
+    }
+
     // Console output sniffer: iopage.js feeds every console character through
     // window.__consoleOutputHook; we keep the tail so prompt-waiting steps can
     // detect "login:" etc. instead of guessing timings.
@@ -123,7 +208,7 @@ var StepEngine = (function () {
     // Wait for a prompt to appear in the console output, then send the step.
     // Calls onDone() when the step is sent, or onCancel() when cancelled.
     function waitForPrompt(step, ctx, onDone, onCancel) {
-        var startedAt = Date.now();
+        var startedAt = logicalNow();
         var waitTimeoutMs = ctx.waitTimeoutMs || WAIT_TIMEOUT_MS;
         var waitPollMs = ctx.waitPollMs || WAIT_POLL_MS;
 
@@ -133,23 +218,23 @@ var StepEngine = (function () {
                 return;
             }
             if (outputContains(step.waitFor) ||
-                Date.now() - startedAt > waitTimeoutMs) {
+                logicalNow() - startedAt > waitTimeoutMs) {
                 // Prompt seen (or timed out): optionally settle, then send the
                 // input and move on.
                 var settle = step.wait || 0;
-                setTimeout(function () {
+                scheduleTimeout(function () {
                     if (typeof ctx.isCancelled === "function" && ctx.isCancelled()) {
                         if (typeof onCancel === "function") onCancel();
                         return;
                     }
-                    sendBytes(stepBytes(step));
-                    setTimeout(function () {
+                    (typeof ctx.sendBytes === "function" ? ctx.sendBytes : sendBytes)(stepBytes(step));
+                    scheduleTimeout(function () {
                         if (typeof onDone === "function") onDone();
                     }, ctx.stepDelayMs || 800);
                 }, settle);
                 return;
             }
-            setTimeout(poll, waitPollMs);
+            scheduleTimeout(poll, waitPollMs);
         }
         poll();
     }
@@ -187,7 +272,7 @@ var StepEngine = (function () {
                     // Pure delay step (no input): e.g. let a guest settle before
                     // the next prompt (BSD 2.9's getty flushes input received
                     // before it finished opening the console).
-                    setTimeout(function () {
+                    scheduleTimeout(function () {
                         if (typeof ctx.isCancelled === "function" && ctx.isCancelled()) {
                             resolve();
                             return;
@@ -201,12 +286,12 @@ var StepEngine = (function () {
                         resolve();
                     });
                 } else {
-                    setTimeout(function () {
+                    scheduleTimeout(function () {
                         if (typeof ctx.isCancelled === "function" && ctx.isCancelled()) {
                             resolve();
                             return;
                         }
-                        sendBytes(stepBytes(step));
+                        (typeof ctx.sendBytes === "function" ? ctx.sendBytes : sendBytes)(stepBytes(step));
                         next();
                     }, delayFor(idx, ctx.stepDelayMs || 800));
                 }

@@ -1341,8 +1341,27 @@ function branch(instruction) {
 // • JavaScript requires periodic yielding to allow timers, screen updates, etc.
 
 
+var pdp11ProcessorTimer = null;
+
+function schedulePdp11Processor(delay) {
+    if (typeof EmulationControl !== "undefined" && EmulationControl.isPaused()) return;
+    if (pdp11ProcessorTimer !== null) return;
+    pdp11ProcessorTimer = setTimeout(function () {
+        pdp11ProcessorTimer = null;
+        pdp11Processor();
+    }, delay);
+}
+
+function cancelPdp11Processor() {
+    if (pdp11ProcessorTimer !== null) {
+        clearTimeout(pdp11ProcessorTimer);
+        pdp11ProcessorTimer = null;
+    }
+}
+
 function pdp11Processor() {
     "use strict";
+    if (typeof EmulationControl !== "undefined" && EmulationControl.isPaused()) return;
     let dst, instruction, src, reg, result, virtualAddress;
     let loopTime, loopCount;
 
@@ -2328,7 +2347,7 @@ function pdp11Processor() {
             }
     }
 
-    setTimeout(pdp11Processor, 4);
+    schedulePdp11Processor(4);
     updateLights();
 }
 
@@ -2623,6 +2642,18 @@ for (let i = 0; i < MAX_MEMORY / 2; i++) {
     CPU.memory[i] = 0;
 }
 CPU.runState = STATE_RUN;
+if (typeof EmulationControl !== "undefined" && EmulationControl.register) {
+    EmulationControl.register("pdp11", {
+        pause: function () {
+            cancelPdp11Processor();
+            updateLights();
+        },
+        resume: function () {
+            schedulePdp11Processor(0);
+            updateLights();
+        }
+    });
+}
 // Start the CPU loop only once the whole module set (including iopage) has
 // been loaded. This avoids a load-time race where the 80ms timer fires
 // before iopage.js executes, which would throw "iopage is not defined".
@@ -2635,5 +2666,5 @@ CPU.runState = STATE_RUN;
         }
         return;
     }
-    setTimeout(pdp11Processor, 80);
+    schedulePdp11Processor(80);
 })(0);
