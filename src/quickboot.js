@@ -326,7 +326,7 @@ var QuickBoot = (function () {
             if (e.type === "click" || e.type === "mousedown" ||
                 e.type === "mouseup" || e.type === "pointerdown" ||
                 e.type === "pointerup" || e.type === "contextmenu") return;
-            if ((e.type === "keydown" || e.type === "keyup") &&
+            if ((e.type === "keydown" || e.type === "keypress" || e.type === "keyup") &&
                 (e.key === "Enter" || e.key === " " || e.key === "Spacebar")) return;
         }
         // Only a visible modal may bypass the gate. QuickBoot hides its chooser
