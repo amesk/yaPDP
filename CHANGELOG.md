@@ -194,6 +194,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **QuickBoot input gate stays closed when a host control retains focus.** Ordinary keyboard events targeting Pause/Resume, Reboot or Screenshot are still blocked during autoload; pointer clicks and Enter/Space activation of the host controls remain available. (`src/quickboot.js`; pinned by `tests/quickboot-input-gate.test.js`)
 - **Pause/Resume now confirms state changes with a toast.** Clicking the host-level control displays “Emulation paused” or “Emulation resumed”, in addition to updating its icon and accessible label. (`src/pdp11-panel.js`)
+- **Reboot now confirms the start of the operation with a toast.** “Rebooting…” appears only after the action is confirmed and immediately before reboot starts, including when the confirmed reboot resumes after a configuration-rollback reload. Opening or cancelling the dialog does not show it. (`src/pdp11-panel.js`)
 
 - **QuickBoot and guided snapshot steps now pause with emulation.** Scheduled
   console input and prompt-wait timeouts suspend during a host-level pause and
