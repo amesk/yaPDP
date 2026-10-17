@@ -1357,7 +1357,11 @@ textarea {
     gap: 6px;
     margin: 4px 0 16px;
     height: 50vh;
-    min-height: 300px;
+    /* The list must be allowed to shrink when Quick Boot is shown inside a
+       short iframe viewport. A fixed 300px minimum makes the whole modal
+       overflow, putting a second scrollbar around the dialog and crowding
+       the Close button against its bottom border. */
+    min-height: 0;
     max-height: 70vh;
     overflow-y: auto;
 }
