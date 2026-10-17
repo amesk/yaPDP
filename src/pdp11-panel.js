@@ -588,8 +588,7 @@ function examineDeposit(data) {
     if (typeof Toasts !== 'undefined' && Toasts.show) {
       Toasts.show({
         text: 'Rebooting…',
-        category: 'info',
-        duration: 4500
+        category: 'info'
       });
     }
     if (action === 'boot') {
@@ -775,8 +774,7 @@ function examineDeposit(data) {
       if (changed && typeof Toasts !== 'undefined' && Toasts.show) {
         Toasts.show({
           text: EmulationControl.isPaused() ? 'Emulation paused' : 'Emulation resumed',
-          category: 'info',
-          duration: 4500
+          category: 'info'
         });
       }
     });
