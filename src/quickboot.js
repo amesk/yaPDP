@@ -327,7 +327,17 @@ var QuickBoot = (function () {
                 e.type === "mouseup" || e.type === "pointerdown" ||
                 e.type === "pointerup" || e.type === "contextmenu") return;
             if ((e.type === "keydown" || e.type === "keypress" || e.type === "keyup") &&
-                (e.key === "Enter" || e.key === " " || e.key === "Spacebar")) return;
+                (e.key === "Enter" || e.key === " " || e.key === "Spacebar")) {
+                // Stop the keyboard event before terminal handlers see it,
+                // but do not cancel its default action: the browser can still
+                // synthesize the button's click for keyboard activation.
+                if (typeof e.stopImmediatePropagation === "function") {
+                    e.stopImmediatePropagation();
+                } else if (typeof e.stopPropagation === "function") {
+                    e.stopPropagation();
+                }
+                return;
+            }
         }
         // Only a visible modal may bypass the gate. QuickBoot hides its chooser
         // without moving focus, so the focused option can remain inside a
