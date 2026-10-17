@@ -299,15 +299,22 @@ async function main() {
                 check("load error: state error dialog appears",
                     !!imgerror, "state error dialog did not appear after a failed state load");
 
-                // Close the state error dialog.
+                // The chooser closes before restore to avoid stacked modals.
+                // The error dialog must offer a direct route back to Quick Boot.
                 if (imgerror) {
-                    const closeBtn = await page.$("#quickboot-link-error .modal-close");
-                    if (closeBtn) await closeBtn.click();
-                    await sleep(300);
-                    // The quick-boot dialog should still be usable.
-                    const stillOpen = await page.$("#quick-boot-overlay.visible");
-                    check("load error: quick-boot dialog stays open after imgerror",
-                        !!stillOpen, "dialog closed after imgerror");
+                    const chooseBtn = await page.$(
+                        "#quickboot-link-error [data-bootlink-action='wizard']");
+                    check("load error: offers a way back to Quick Boot",
+                        !!chooseBtn, "no Choose a guest OS action in the state error dialog");
+                    if (chooseBtn) {
+                        await chooseBtn.click();
+                        await sleep(300);
+                        const errorClosed = await page.$("#quickboot-link-error.visible");
+                        const wizardOpen = await page.$("#quick-boot-overlay.visible");
+                        check("load error: Choose a guest OS reopens Quick Boot",
+                            !errorClosed && !!wizardOpen,
+                            "Quick Boot did not reopen after the error dialog action");
+                    }
                 }
             } else {
                 check("load error: at least one card exists (sanity)",
