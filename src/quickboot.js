@@ -923,7 +923,7 @@ var QuickBoot = (function () {
                 // When the button is visible, showPreparing returns a Promise
                 // that resolves only after the operator clicks it.
                 var prepPromise = showPreparing(
-                    "Restoring the machine state\\u2026",
+                    "Restoring the machine state\u2026",
                     stepsMessage, hasSteps, buttonLabel, stateTitle);
                 // The state is restored — stop the throbber. What remains is
                 // waiting for the operator (OK button) or loading images, both
