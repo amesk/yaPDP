@@ -217,8 +217,8 @@ function testGate() {
                 target: { closest: function (sel) { return sel === "#pause-btn" ? {} : null; } }
             });
             gate.gateEvent(activationKey);
-            assert.ok(!activationKey.defaultPrevented && !activationKey.stopped,
-                keyName + " " + type + " must still activate the focused Pause/Resume button");
+            assert.ok(!activationKey.defaultPrevented && activationKey.stopped,
+                keyName + " " + type + " must not reach guest keyboard handlers, while preserving button activation");
         }
     }
 
