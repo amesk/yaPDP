@@ -509,6 +509,11 @@ var QuickBoot = (function () {
         topRow.appendChild(spin);
         topRow.appendChild(text);
 
+        var stateTitle = document.createElement("span");
+        stateTitle.className = "quickboot-balloon-state-title";
+        stateTitle.id = "quick-boot-preparing-state-title";
+        stateTitle.style.display = "none";
+
         var desc = document.createElement("span");
         desc.className = "quickboot-balloon-desc";
         desc.id = "quick-boot-preparing-desc";
@@ -537,6 +542,7 @@ var QuickBoot = (function () {
         });
 
         prepToast.appendChild(topRow);
+        prepToast.appendChild(stateTitle);
         prepToast.appendChild(desc);
         prepToast.appendChild(screenshotImg);
         prepToast.appendChild(okBtn);
@@ -564,11 +570,16 @@ var QuickBoot = (function () {
     // Promise resolves only when the operator clicks it (or immediately when
     // the button is hidden). The caller should await this Promise before
     // proceeding with step execution.
-    function showPreparing(label, stepsMessage, hasSteps, buttonLabel) {
+    function showPreparing(label, stepsMessage, hasSteps, buttonLabel, stateTitle) {
         if (typeof document === "undefined") return Promise.resolve();
         var el = ensurePrepToast();
         var text = el.querySelector("#quick-boot-preparing-text") || el.lastChild;
         text.textContent = label || "Restoring the machine state\u2026";
+        var title = el.querySelector("#quick-boot-preparing-state-title");
+        if (title) {
+            title.textContent = stateTitle || "";
+            title.style.display = stateTitle ? "block" : "none";
+        }
         var desc = el.querySelector("#quick-boot-preparing-desc");
         if (desc) {
             desc.textContent = stepsMessage || "";
