@@ -35,17 +35,13 @@ The emulator currently fetches built-in resources from URLs such as:
 
 The `media/` path is therefore part of the web-serving interface even though it is not the logical name saved in a snapshot. Do not remove or repurpose these paths as part of the initial storage-model change.
 
-### 3. Legacy image fingerprint
+### 3. Pre-0.4.0 fingerprint migration
 
-In `releases/v0.3.0`, `src/imagefingerprint.js` uses **FNV-1a/32**, formatted as eight lowercase hexadecimal digits. It hashes the bytes of the compressed `.zst` response body, not the decompressed disk or tape payload. This fingerprint is used by the existing DiskStore/snapshot compatibility checks to avoid reusing stale cached blocks or overlays with a different image stream.
+In `releases/v0.3.0`, `src/imagefingerprint.js` used **FNV-1a/32** over the compressed `.zst` response body. That historical value was used by DiskStore and snapshot compatibility checks, but it is not the runtime identity contract for 0.4.0.
 
-This legacy fingerprint is deliberately not the canonical identity proposed for the resource archive:
+Before the first 0.4.0 release, replace that mechanism with SHA-256 over the **decompressed resource payload** everywhere image identity is needed. Do not keep FNV-1a/32 as a second active mechanism and do not reinterpret an old eight-digit FNV value as SHA-256. During migration, old cache entries and overlays whose saved FNV value differs from the current SHA-256 identity are stale and must be ignored; snapshots carrying an old known fingerprint must be refused when the current payload identity is known. Snapshots without identity information remain unknown rather than being assigned a fabricated identity.
 
-- It is only 32 bits and is intended for change detection, not collision-resistant content addressing.
-- Its input is the compressed representation, so repacking identical uncompressed data can change the fingerprint.
-- Existing snapshots and stored disk data may contain these legacy fingerprints. They must continue to be interpreted according to the old algorithm; do not silently reinterpret them as SHA-256 values.
-
-A filename or URL does not prove that the bytes are unchanged between releases. Snapshot fingerprints help detect some mismatches, but they do not by themselves provide a durable resource catalogue or make missing bytes available.
+A filename or URL does not prove that the bytes are unchanged between releases. The canonical identity detects payload changes; the resource catalogue and release manifests separately make exact historical payloads discoverable and available.
 
 ## Proposed model
 
@@ -55,9 +51,7 @@ A stable name used by the emulator and legacy snapshots, for example `rp1.dsk` o
 
 ### Content revision
 
-An immutable identity for the actual resource payload, separate from the legacy image fingerprint described above. Use SHA-256 of the **uncompressed resource bytes** as the canonical content identity. Thus the identity does not change merely because a resource is recompressed.
-
-Do not replace or reinterpret the existing FNV-1a/32 snapshot/cache fingerprint as part of this change. The two hashes answer different questions: the legacy fingerprint preserves existing runtime compatibility checks against the compressed bytes fetched by the emulator; SHA-256 identifies an immutable payload in the resource catalogue/archive.
+An immutable identity for the actual resource payload. Use SHA-256 of the **uncompressed resource bytes** as the single canonical image identity for DiskStore compatibility, snapshot/overlay checks, and the resource catalogue/archive. Thus the identity does not change merely because a resource is recompressed. The same algorithm and input representation must be used at every call site.
 
 If two logical resources have identical uncompressed bytes, they have the same content identity and should share one stored payload where practical. A changed payload receives a new identity; never overwrite a historical revision in place.
 
@@ -68,7 +62,7 @@ The storage representation (raw or compressed) is an implementation detail and m
 A machine-readable catalogue maps logical names and content identities to the information required to locate and decode the stored payload. It should distinguish at least:
 
 - logical name;
-- SHA-256 of the uncompressed payload (the canonical archive identity, distinct from the legacy FNV-1a/32 fingerprint);
+- SHA-256 of the uncompressed payload (the canonical image/resource identity used throughout the runtime and archive);
 - resource kind (disk, magnetic tape, paper tape, or other supported type);
 - storage path and encoding;
 - legacy/public URL aliases, where applicable.
@@ -152,7 +146,7 @@ The first implementation should add automated checks for:
 - resource kind and encoding being consistent with the actual payload;
 - compatibility aliases resolving to the intended content revision;
 - the `media/manifest.json` guest catalogue not being mistaken for a complete physical-file inventory;
-- legacy FNV-1a/32 fingerprints continuing to be interpreted as hashes of the compressed response bytes, never as archive SHA-256 identities;
+- pre-0.4.0 FNV-1a/32 values never being mistaken for SHA-256, with old cache entries and overlays safely rejected when their known identity differs;
 - deployment failing when a release references a missing resource;
 - deployment/rollback preserving previously published immutable resource URLs according to the declared support policy.
 
