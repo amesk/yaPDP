@@ -416,9 +416,18 @@ var SnapshotStore = (() => {
             var now = (typeof DiskStore !== "undefined" &&
                 typeof DiskStore.fingerprintOf === "function")
                 ? DiskStore.fingerprintOf(url) : null;
-            // Only a KNOWN current fingerprint can contradict a known saved
-            // one; if the image is not loaded now, `now` is null and the
-            // snapshot is not refused for it (it may still be mounted later).
+            // Before 0.4.0, known image fingerprints were 8-digit FNV-1a/32.
+            // This build uses 64-digit SHA-256 identities, so reject that old
+            // format explicitly even if the image cannot be loaded to compare.
+            // Otherwise the snapshot could be half-restored with its overlay
+            // silently skipped later.
+            if (then != null && !/^[0-9a-f]{64}$/.test(String(then))) {
+                bad.push({ url: url, then: then, now: now });
+                return;
+            }
+            // A SHA-256 identity cannot contradict an unknown current identity.
+            // loadStateImages() normally resolves this before the check; this
+            // fallback keeps hosts without an image-byte source permissive.
             if (now == null) return;
             var ok = F && typeof F.matches === "function"
                 ? F.matches(then, now)
