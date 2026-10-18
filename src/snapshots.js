@@ -428,45 +428,47 @@ var SnapshotStore = (() => {
         return bad;
     }
 
-    // Mount disk images from a snapshot's mounted list into DataLoader and
-    // ensure their drive providers are set up. Used by restore() so that a
-    // state loaded via ?state= has its disks available — the images are not
-    // mounted by dragdrop.init() because there is no page reload.
+    // Load image bytes from a snapshot's mounted list into DataLoader, but do
+    // not change drive providers yet. Restore uses this preflight to learn each
+    // image's SHA-256 before it decides whether CPU/RAM may safely be changed.
+    function loadStateImages(mounted) {
+        if (!mounted || !Array.isArray(mounted) || !mounted.length) {
+            return Promise.resolve();
+        }
+        var urls = mounted.filter(function (u) { return u && typeof u === "string"; });
+        var promises = [];
+        for (var i = 0; i < urls.length; i++) {
+            (function (url) {
+                if (typeof DataLoader !== "undefined" &&
+                    typeof DataLoader.has === "function" && !DataLoader.has(url) &&
+                    typeof window !== "undefined" &&
+                    typeof window.__yapdpLoadImage === "function") {
+                    if (typeof console !== "undefined") console.log("loadStateImages: loading", url);
+                    promises.push(Promise.resolve(window.__yapdpLoadImage(url)));
+                }
+            })(urls[i]);
+        }
+        return Promise.all(promises);
+    }
+
+    // Mount providers only after image identity checks have passed. Used by
+    // restore() so a shared ?state= link gets working drives without reloading.
     function mountStateDisks(mounted) {
         if (!mounted || !Array.isArray(mounted) || !mounted.length) {
             if (typeof console !== "undefined") console.log("mountStateDisks: no mounted urls");
             return Promise.resolve();
         }
         var urls = mounted.filter(function (u) { return u && typeof u === "string"; });
-        if (!urls.length) {
-            if (typeof console !== "undefined") console.log("mountStateDisks: no valid urls after filter");
-            return Promise.resolve();
-        }
-        if (typeof console !== "undefined") console.log("mountStateDisks: mounting", JSON.stringify(urls));
-        var promises = [];
-        for (var i = 0; i < urls.length; i++) {
-            (function (url) {
-                var p = Promise.resolve();
-                if (typeof DataLoader !== "undefined" &&
-                    typeof DataLoader.has === "function" && !DataLoader.has(url)) {
-                    if (typeof window !== "undefined" &&
-                        typeof window.__yapdpLoadImage === "function") {
-                        if (typeof console !== "undefined") console.log("mountStateDisks: loading", url);
-                        p = window.__yapdpLoadImage(url);
-                    }
-                } else {
-                    if (typeof console !== "undefined") console.log("mountStateDisks: already in DataLoader:", url);
+        if (!urls.length) return Promise.resolve();
+        return loadStateImages(urls).then(function () {
+            urls.forEach(function (url) {
+                if (typeof window !== "undefined" &&
+                    typeof window.__yapdpMountProvider === "function") {
+                    if (typeof console !== "undefined") console.log("mountStateDisks: mounting provider for", url);
+                    window.__yapdpMountProvider(url);
                 }
-                promises.push(p.then(function () {
-                    if (typeof window !== "undefined" &&
-                        typeof window.__yapdpMountProvider === "function") {
-                        if (typeof console !== "undefined") console.log("mountStateDisks: mounting provider for", url);
-                        window.__yapdpMountProvider(url);
-                    }
-                }));
-            })(urls[i]);
-        }
-        return Promise.all(promises);
+            });
+        });
     }
 
     function restore(snap) {
@@ -491,7 +493,7 @@ var SnapshotStore = (() => {
         // The current machine may not have these images loaded yet (notably
         // for a shared ?state= URL), so checking first would see "unknown" and
         // incorrectly accept a snapshot whose disk payload has changed.
-        return mountStateDisks(snap.mounted).then(function () {
+        return loadStateImages(snap.mounted).then(function () {
             // Refuse before touching CPU/RAM: a snapshot whose disks changed
             // under it cannot be restored consistently, and a half-applied
             // restore (new RAM on an old disk) is worse than no restore at all.
@@ -521,10 +523,11 @@ var SnapshotStore = (() => {
                 overlayPromise = DiskStore.clearAll();
             }
             return overlayPromise.then(function () {
-                // Images are already mounted and identified above. Apply the
-                // overlay only after the compatibility check has succeeded.
-                // fingerprint check in restoreOverlay() can match against
-                // the freshly-registered image identity.
+                // Image identity was checked before CPU/RAM were touched. Now
+                // register the drive providers, then apply the overlay against
+                // the already-identified image payloads.
+                return mountStateDisks(snap.mounted);
+            }).then(function () {
                 if (snap.overlay && typeof DiskStore !== "undefined" &&
                     typeof DiskStore.restoreOverlay === "function") {
                     return DiskStore.restoreOverlay(snap.overlay);
