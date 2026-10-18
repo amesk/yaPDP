@@ -487,18 +487,21 @@ var SnapshotStore = (() => {
     }
 
     function restoreApply(snap) {
-        // Refuse BEFORE touching CPU/RAM: a snapshot whose disks changed under
-        // it cannot be restored consistently, and a half-applied restore
-        // (new RAM on an old disk) is worse than no restore at all. The same
-        // rule DiskStore.restoreOverlay applies per block, applied to the
-        // snapshot as a whole.
-        var bad = incompatibleImages(snap);
-        if (bad.length > 0) {
-            showIncompatibleImageDialog(snap, bad);
-            return Promise.resolve(false);
-        }
-        restoreCPU(snap.cpu);
-        return restoreMemory(snap.memory).then(function () {
+        // Load and identify the snapshot's images BEFORE touching CPU/RAM.
+        // The current machine may not have these images loaded yet (notably
+        // for a shared ?state= URL), so checking first would see "unknown" and
+        // incorrectly accept a snapshot whose disk payload has changed.
+        return mountStateDisks(snap.mounted).then(function () {
+            // Refuse before touching CPU/RAM: a snapshot whose disks changed
+            // under it cannot be restored consistently, and a half-applied
+            // restore (new RAM on an old disk) is worse than no restore at all.
+            var bad = incompatibleImages(snap);
+            if (bad.length > 0) {
+                showIncompatibleImageDialog(snap, bad);
+                return false;
+            }
+            restoreCPU(snap.cpu);
+            return restoreMemory(snap.memory).then(function () {
             // Device registers (L2) — restore after RAM so devices see
             // consistent memory; control blocks re-create lazily on I/O.
             if (snap.devices && typeof iopage !== "undefined" &&
@@ -518,21 +521,8 @@ var SnapshotStore = (() => {
                 overlayPromise = DiskStore.clearAll();
             }
             return overlayPromise.then(function () {
-                // Mount disk images from the snapshot BEFORE the CPU resumes,
-                // so the guest OS can read its drives immediately. The images
-                // are loaded into DataLoader and their providers are set up
-                // (see mountStateDisks). Without this, a state loaded via
-                // ?state= restores CPU/RAM/devices but the disks are not
-                // accessible — fetchBlock() finds nothing in DataLoader and
-                // the guest OS hangs or fails to boot.
-                //
-                // Mount disks BEFORE applying the overlay so that the image
-                // fingerprint is registered in DiskStore — restoreOverlay()
-                // checks matchOk(rec.v, fingerprintOf(url)) and would skip
-                // the overlay when the fingerprint is still unknown (null).
-                return mountStateDisks(snap.mounted);
-            }).then(function () {
-                // Apply the overlay AFTER the images are mounted, so the
+                // Images are already mounted and identified above. Apply the
+                // overlay only after the compatibility check has succeeded.
                 // fingerprint check in restoreOverlay() can match against
                 // the freshly-registered image identity.
                 if (snap.overlay && typeof DiskStore !== "undefined" &&
@@ -617,6 +607,7 @@ var SnapshotStore = (() => {
                     return true;
                 });
             });
+        });
     }
 
     // ------------------------------------------------------------------
