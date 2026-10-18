@@ -286,10 +286,10 @@ var SnapshotStore = (() => {
                     // The app that took this snapshot, for the newer-version
                     // warning when it is restored by an older build.
                     yaPDPVersion: currentYaPDPVersion(),
-                    // Identity of every image the snapshot's disks belong to:
-                    // { "rk0.dsk": "a1b2c3d4", ... }. A null/absent value
-                    // means the identity was never learned (file://, desktop
-                    // bundle) and never invalidates anything.
+                    // SHA-256 identity of every mounted image payload:
+                    // { "rk0.dsk": "<64 lowercase hex digits>", ... }. A
+                    // null/absent value means the identity was never learned
+                    // and never invalidates anything.
                     imageFingerprints: captureImageFingerprints(),
                     cpu: captureCPU(),
                     memory: mem,
@@ -376,9 +376,8 @@ var SnapshotStore = (() => {
 
     // Apply a snapshot to the live machine. Caller must have halted the
     // CPU first (or the CPU start timer must not have fired yet).
-    // Fingerprints of the images this machine is currently running on, read
-    // from DiskStore (which learns them from the bytes the browser received).
-    // Falls back to null per url, which callers treat as "unknown".
+    // SHA-256 identities of the image payloads this machine is running on,
+    // read from DiskStore. Falls back to null per URL, treated as "unknown".
     function captureImageFingerprints() {
         var out = {};
         if (typeof DiskStore === "undefined" ||
