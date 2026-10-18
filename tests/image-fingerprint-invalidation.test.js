@@ -212,12 +212,13 @@ async function testGetBlockUnknownIsPermissive() {
     const anon = await DiskStore.getBlock("mt0.tap", 3);
     assert.ok(anon, "an image with no fingerprint keeps its cache (unknown never invalidates)");
 
-    // And learning the identity later does not retroactively kill it when the
-    // lookups disagree — only two KNOWN, differing fingerprints do.
-    DiskStore.registerImage("mt0.tap", "cccc3333");
+    // If a canonical identity becomes known later, the unknown saved block
+    // cannot be proven to belong to that image and must no longer be served.
+    DiskStore.registerImage("mt0.tap", "c".repeat(64));
     const after = await DiskStore.getBlock("mt0.tap", 3);
-    assert.ok(after, "saved-as-unknown vs known-now is NOT a mismatch");
-    console.log("PASS: unknown fingerprints never invalidate a cache");
+    assert.strictEqual(after, undefined,
+        "saved-as-unknown vs known-now is rejected as unverified");
+    console.log("PASS: unknown cache identities remain usable only while current identity is also unknown");
 }
 
 async function testRestoreOverlayAcrossBuilds() {
