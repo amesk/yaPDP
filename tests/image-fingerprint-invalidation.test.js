@@ -13,8 +13,9 @@
  *   1. DiskStore.getBlock() refuses a block saved under a DIFFERENT known
  *      fingerprint (the corruption case) and accepts one saved under the
  *      current fingerprint (the normal case);
- *   2. it does NOT refuse anything when a fingerprint is UNKNOWN on either
- *      side — the behaviour every host without a .zst depends on;
+ *   2. unknown saved identities remain permissive, but a known saved identity
+ *      is not served until the current image identity is known; this prevents
+ *      pre-0.4.0 FNV cache blocks from bypassing SHA-256 during startup;
  *   3. DiskStore.restoreOverlay() skips an overlay recorded against a different
  *      build of the disk, and applies one from the same build;
  *   4. SnapshotStore.incompatibleImages() names the images that changed and
@@ -63,8 +64,8 @@ function extractBlock(src, startMarker, tail) {
 // IndexedDB stub shaped like the one in tests/diskstore.test.js and
 // tests/snapshotstore.test.js: the TRANSACTION fires oncomplete, which is what
 // flush() awaits — a stub that only wires the object store makes flush() hang.
-function makeFakeIndexedDB() {
-    const store = new Map();
+function makeFakeIndexedDB(store) {
+    store = store || new Map();
     const objectStore = {
         put(value, key) { store.set(key, value); },
         get(key) {
@@ -96,18 +97,19 @@ function makeFakeIndexedDB() {
             const req = { result: fakeDB, onupgradeneeded: null, onsuccess: null, onerror: null };
             setTimeout(() => { if (req.onsuccess) req.onsuccess(); }, 0);
             return req;
-        }
+        },
+        _store: store
     };
 }
 
 // Load DiskStore plus the real ImageFingerprint into one sandbox, so the
 // invalidation rule is exercised through the production modules, not a copy.
-function buildDiskStoreSandbox() {
+function buildDiskStoreSandbox(indexedDB) {
     const sandbox = {
         console, Uint8Array, Uint16Array, ArrayBuffer, DataView, Map, Set,
         setTimeout, clearInterval,
         setInterval: () => 0,
-        indexedDB: makeFakeIndexedDB()
+        indexedDB: indexedDB || makeFakeIndexedDB()
     };
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(FINGERPRINT_PATH, "utf8"), sandbox);
@@ -168,6 +170,33 @@ async function testGetBlockAcrossBuilds() {
         "a block saved from a DIFFERENT build of the disk must be refused " +
         "(this is the corruption case the old hand-bumped version missed)");
     console.log("PASS: getBlock() refuses a block from a different build of the image");
+}
+
+async function testLegacyKnownCacheIsNotServedBeforeIdentityIsKnown() {
+    // Simulate an IndexedDB cache written by pre-0.4.0, then a fresh page
+    // where the current image has not been fetched and SHA-256 is still unknown.
+    const idb = makeFakeIndexedDB();
+    const oldPage = buildDiskStoreSandbox(idb);
+    await oldPage.DiskStore.init();
+    const ctrl = makeCtrl("rk0.dsk");
+    ctrl.cache[0] = new Uint16Array(8).fill(0x1234);
+    oldPage.DiskStore.registerImage("rk0.dsk", "aaaa1111");
+    oldPage.DiskStore.markDirty(ctrl, 0);
+    await oldPage.DiskStore.flush("rk0.dsk");
+
+    const newPage = buildDiskStoreSandbox(makeFakeIndexedDB(idb._store));
+    await newPage.DiskStore.init();
+    const beforeFetch = await newPage.DiskStore.getBlock("rk0.dsk", 0);
+    assert.strictEqual(beforeFetch, undefined,
+        "a known legacy cache block must not be served while current identity is unknown");
+
+    // Once the new image has been fetched and identified, the old FNV value
+    // still cannot match the new SHA-256 identity.
+    newPage.DiskStore.registerImage("rk0.dsk", "b".repeat(64));
+    const afterFetch = await newPage.DiskStore.getBlock("rk0.dsk", 0);
+    assert.strictEqual(afterFetch, undefined,
+        "a legacy cache block must remain stale after SHA-256 is registered");
+    console.log("PASS: pre-0.4.0 cache blocks are never served during identity bootstrap");
 }
 
 async function testGetBlockUnknownIsPermissive() {
@@ -289,6 +318,7 @@ async function testRestoreRefusesAndKeepsMachine() {
 
 (async () => {
     await testGetBlockAcrossBuilds();
+    await testLegacyKnownCacheIsNotServedBeforeIdentityIsKnown();
     await testGetBlockUnknownIsPermissive();
     await testRestoreOverlayAcrossBuilds();
     testIncompatibleImages();
