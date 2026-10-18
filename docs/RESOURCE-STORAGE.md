@@ -6,6 +6,8 @@ Proposed architecture, for review before implementation.
 
 This document defines the resource model needed for portable snapshots and Share packages. It does **not** implement Share bundling, migrate existing media, or change the `.state.zst` format.
 
+The target for the first public 0.4.0 release is one canonical resource identity: SHA-256 over uncompressed resource bytes. Pre-0.4.0 fingerprint compatibility is intentionally not a release requirement.
+
 ## Problem statement
 
 A snapshot records the emulated machine state, mounted logical image names, image fingerprints, and disk write-back overlays. It does not embed every base disk or tape image required to recreate the scenario. A recipient can therefore have a valid snapshot but lack one of its base resources, or have a different revision under the same filename.
@@ -16,13 +18,13 @@ The Pages workflow builds the site from the selected checkout. Files present onl
 
 ## Existing compatibility contracts
 
-The following are separate contracts and must not be conflated.
+The following concepts must remain distinct: logical resource names, public URLs, and canonical content identity. The old fingerprint algorithm itself is not a contract to preserve across the pre-release 0.4.0 boundary.
 
 ### 1. Logical resource name
 
 Snapshots refer to mounted images by logical names such as `rp1.dsk`. They do not serialize the `media/` URL prefix as the mounted name.
 
-Logical names are part of the existing snapshot/runtime contract. Preserve their interpretation for existing snapshots.
+Preserve the interpretation of logical mounted names. This is independent of whether old fingerprint metadata remains readable.
 
 ### 2. Public runtime URL
 
@@ -37,9 +39,15 @@ The `media/` path is therefore part of the web-serving interface even though it 
 
 ### 3. Pre-0.4.0 fingerprint migration
 
-In `releases/v0.3.0`, `src/imagefingerprint.js` used **FNV-1a/32** over the compressed `.zst` response body. That historical value was used by DiskStore and snapshot compatibility checks, but it is not the runtime identity contract for 0.4.0.
+In `releases/v0.3.0`, `src/imagefingerprint.js` used **FNV-1a/32** over the compressed `.zst` response body. The value was used by DiskStore and snapshot compatibility checks.
 
-Before the first 0.4.0 release, replace that mechanism with SHA-256 over the **decompressed resource payload** everywhere image identity is needed. Do not keep FNV-1a/32 as a second active mechanism and do not reinterpret an old eight-digit FNV value as SHA-256. Old snapshots carrying an eight-digit FNV value must be rejected explicitly, even if the current image cannot be loaded for comparison. For DiskStore cache entries and overlays, accept them only when saved and current identities match, or when both are unknown; a known-versus-unknown pair is not proof of compatibility. This prevents stale or identity-less pre-0.4.0 blocks from being applied to a newly identified image. Snapshots without identity information remain unknown rather than being assigned a fabricated identity.
+For 0.4.0, replace FNV-1a/32 with **SHA-256 over the decompressed resource payload** everywhere resource/image identity is needed. Do not keep FNV-1a/32 as a second active mechanism, and never reinterpret an old eight-digit FNV value as SHA-256.
+
+Backward compatibility with pre-0.4.0 fingerprint values is intentionally not required. A snapshot whose stored identity uses the old fingerprint format must be rejected with an explicit, actionable compatibility error rather than silently accepted or compared with a SHA-256 value. The rejection should identify the snapshot as using an unsupported pre-0.4.0 identity format and explain that it must be recreated with the current version. Do not make failure depend on successfully loading the current image first.
+
+DiskStore cache entries and persisted overlays created under the old identity contract must not be trusted under the new one. At the 0.4.0 migration boundary, invalidate or discard legacy cache/overlay records unless a separately designed and tested migration can prove their base-image identity. Do not apply legacy overlay blocks merely because a logical filename matches. The migration must be explicit and deterministic; it must not accidentally erase unrelated machine state or current-format data.
+
+Snapshots with no identity metadata are also not proof of compatibility. Under the new contract, do not assign them a fabricated identity or silently apply an overlay to a known image. If the application elects to support such snapshots, it must have an explicit safe policy and tests; otherwise reject them with a clear message.
 
 A filename or URL does not prove that the bytes are unchanged between releases. The canonical identity detects payload changes; the resource catalogue and release manifests separately make exact historical payloads discoverable and available.
 
@@ -47,11 +55,11 @@ A filename or URL does not prove that the bytes are unchanged between releases. 
 
 ### Logical resource
 
-A stable name used by the emulator and legacy snapshots, for example `rp1.dsk` or `tm0.tap`. This name answers “which resource does this machine expect?” It is not a version identifier.
+A stable name used by the emulator and legacy snapshot structure, for example `rp1.dsk` or `tm0.tap`. This name answers “which resource does this machine expect?” It is not a version identifier.
 
 ### Content revision
 
-An immutable identity for the actual resource payload. Use SHA-256 of the **uncompressed resource bytes** as the single canonical image identity for DiskStore compatibility, snapshot/overlay checks, and the resource catalogue/archive. Thus the identity does not change merely because a resource is recompressed. The same algorithm and input representation must be used at every call site.
+An immutable identity for the actual resource payload. Use SHA-256 of the **uncompressed resource bytes** as the single canonical image identity for DiskStore compatibility, snapshot/overlay checks, and the resource catalogue/archive. The identity therefore does not change merely because a resource is recompressed. The same algorithm and input representation must be used at every call site.
 
 If two logical resources have identical uncompressed bytes, they have the same content identity and should share one stored payload where practical. A changed payload receives a new identity; never overwrite a historical revision in place.
 
@@ -94,13 +102,13 @@ resources/
 
 This is a conceptual layout, not a commitment to those exact filenames. The key properties are immutable payloads, explicit encoding metadata, and deduplication by content identity.
 
-The existing `media/` paths remain compatibility aliases for the resources that need them. Migration must not require rewriting old snapshots or changing their `mounted` entries.
+The existing `media/` paths remain compatibility aliases for the resources that need them. Migration must not require rewriting logical mounted resource names.
 
 ## Snapshot and Share responsibilities
 
-The storage model must preserve the current separation of concerns:
+The storage model must preserve the separation of concerns:
 
-- A snapshot stores machine state, mounted logical names, compatibility fingerprints, and disk overlays.
+- A snapshot stores machine state, mounted logical names, canonical SHA-256 identities, and disk overlays.
 - The release manifest says which exact resource revisions the selected yaPDP release guarantees as built-ins.
 - Later, Share packaging compares the scenario's required resource revisions with that release's built-in set and includes the missing payloads in the share package.
 - Creating a share package must not mutate the source snapshot or its stored overlays.
@@ -129,12 +137,13 @@ Do not introduce a speculative mapping for a `media/` prefix in old snapshots: i
 Migration should be incremental:
 
 1. Inventory all shipped resources, including resources omitted from the current guest-media manifest, and classify disk, tape, paper-tape, boot/runtime, and other assets.
-2. Compute and verify content identities from uncompressed bytes.
-3. Record the built-in resource set for each supported release based on the actual bytes shipped by that release; do not infer it from the current directory listing.
+2. Compute and verify canonical SHA-256 identities from uncompressed bytes.
+3. Record the built-in resource set for each release based on the actual bytes shipped by that release; do not infer it from the current directory listing.
 4. Add catalogue/manifest validation and deployment safeguards.
-5. Only after those contracts are tested, implement Share resource collection and packaging.
+5. In the 0.4.0 implementation, explicitly invalidate incompatible pre-0.4.0 DiskStore records and provide a clear error for old snapshots with FNV metadata.
+6. Only after those contracts are tested, implement Share resource collection and packaging.
 
-Do not retroactively claim that an old release guaranteed a resource unless the exact historical payload can be verified.
+Do not retroactively claim that an old release guaranteed a resource unless the exact historical payload can be verified. Recording historical payloads in the archive does not imply that the new application must continue to load every old snapshot.
 
 ## Validation requirements
 
@@ -146,16 +155,18 @@ The first implementation should add automated checks for:
 - resource kind and encoding being consistent with the actual payload;
 - compatibility aliases resolving to the intended content revision;
 - the `media/manifest.json` guest catalogue not being mistaken for a complete physical-file inventory;
-- pre-0.4.0 FNV-1a/32 values never being mistaken for SHA-256, with old cache entries and overlays safely rejected when their known identity differs;
+- all runtime identity call sites using SHA-256 over decompressed bytes, with no active FNV-1a/32 fallback;
+- old snapshots carrying FNV metadata being rejected explicitly and deterministically;
+- legacy DiskStore cache/overlay records not being applied under the new identity contract;
 - deployment failing when a release references a missing resource;
 - deployment/rollback preserving previously published immutable resource URLs according to the declared support policy.
 
-Regression coverage must include snapshots from a historical release with mounted media and disk overlays, and must confirm that existing logical names and restore semantics remain unchanged. Also cover magnetic tape and paper tape, not only disk images.
+Regression coverage must include current-format snapshots with mounted media and disk overlays and confirm that restore semantics remain correct. Add separate tests proving that pre-0.4.0 snapshots with old fingerprint metadata fail clearly rather than being silently accepted. Also cover magnetic tape and paper tape, not only disk images.
 
 ## Non-goals for this phase
 
 - No Share UI or bundling implementation.
-- No change to the `.state.zst` container or snapshot schema.
+- No change to the `.state.zst` container unless implementation proves it necessary; any required schema change must be explicit and versioned.
 - No renaming of logical mounted resources.
 - No removal of existing `media/...` URLs.
 - No assumption that every file under `media/` is a built-in guest resource.
