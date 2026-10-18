@@ -56,6 +56,12 @@ var DiskStore = (() => {
     }
 
     function matchOk(saved, current) {
+        // A known saved identity cannot be trusted until the current image has
+        // been identified. getBlock() runs before the base image is fetched, so
+        // treating known-vs-unknown as a match would let pre-0.4.0 FNV-tagged
+        // IndexedDB blocks bypass the new SHA-256 check and corrupt the guest.
+        if (saved != null && current == null) return false;
+
         var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
         if (F && typeof F.matches === "function") return F.matches(saved, current);
         // No fingerprint module: fall back to strict equality so an unknown
