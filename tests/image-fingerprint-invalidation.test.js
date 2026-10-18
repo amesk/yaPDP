@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * Image-change invalidation tests: the caches and snapshots of a repacked image.
+ * Image-identity invalidation tests for cached blocks and snapshots.
  *
- * This is the regression the whole fingerprint mechanism exists for. The old
- * scheme tagged every cached block with a hand-maintained IMAGE_VERSION, and
- * the hand forgot: media/rp1.dsk.zst (BSD 2.11) was repacked three times while
- * the constant stayed "0.1.0". A block saved from the old disk then matched the
- * current version and was overlaid onto a different disk — silent filesystem
- * corruption in the guest.
+ * The regression this mechanism prevents: a stale block from an older disk
+ * image being overlaid onto changed base bytes, silently corrupting the guest
+ * filesystem. The canonical SHA-256 is computed from decompressed payload
+ * bytes, so recompression alone does not invalidate a cache; changed payload
+ * bytes do. Pre-0.4.0 FNV-1a/32 values must not match new SHA-256 identities.
  *
  * What is pinned here, against the real production code in a VM sandbox:
  *
@@ -254,6 +253,13 @@ function testIncompatibleImages() {
         "a snapshot with no fingerprints restores as before");
     assert.strictEqual(SS.incompatibleImages({ imageFingerprints: null }).length, 0,
         "a null fingerprint map restores as before");
+
+    // A known pre-0.4.0 FNV-1a/32 value is not compatible with the new
+    // canonical SHA-256 identity, even if it refers to the same named image.
+    const migrated = buildSnapshotStoreSandbox({ "rp1.dsk": "b".repeat(64) });
+    const oldSnapshot = { imageFingerprints: { "rp1.dsk": "aaaa1111" } };
+    assert.strictEqual(migrated.SnapshotStore.incompatibleImages(oldSnapshot).length, 1,
+        "a legacy fingerprint is rejected rather than mistaken for SHA-256");
 
     // An image the snapshot knows but the machine has not loaded now cannot be
     // judged yet — it is not a mismatch.
