@@ -2267,12 +2267,10 @@ function fetchImageBytes(url) {
     });
 }
 
-// Remember the identity of the image bytes the browser just received, so the
-// write-back cache can tell whether a block it saved came from THIS build of
-// the disk (see DiskStore.registerImage). Only a successful fetch of the
-// compressed body carries an identity: a Range read of a raw .dsk, or an
-// image mounted from a desktop bundle, leaves the fingerprint unknown, and an
-// unknown fingerprint never invalidates anything.
+// Remember the canonical identity of the decompressed image payload, so the
+// write-back cache can tell whether a saved block belongs to this exact image
+// (see DiskStore.registerImage). Hash the decoded bytes, not the compressed
+// transport stream: recompression must not change the image identity.
 function registerImageFingerprint(imageUrl, bytes) {
     if (typeof DiskStore === "undefined" ||
         typeof DiskStore.registerImage !== "function") return;
