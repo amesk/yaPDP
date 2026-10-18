@@ -254,26 +254,31 @@ async function testRestoreOverlayAcrossBuilds() {
 }
 
 function testIncompatibleImages() {
+    // Use valid SHA-256-shaped identities for the normal compatibility case.
+    // Short FNV-1a values are reserved for the explicit legacy-rejection tests.
+    const hashA = "a".repeat(64);
+    const hashB = "b".repeat(64);
+
     // The snapshot names two disks; one has been repacked since.
     const sb = buildSnapshotStoreSandbox({
-        "rk0.dsk": "aaaa1111", // unchanged
-        "rp1.dsk": "bbbb2222"  // current build differs from the snapshot's
+        "rk0.dsk": hashA, // unchanged
+        "rp1.dsk": hashB  // current build differs from the snapshot's
     });
     const SS = sb.SnapshotStore;
     const snap = {
         name: "before the upgrade",
-        imageFingerprints: { "rk0.dsk": "aaaa1111", "rp1.dsk": "aaaa1111" }
+        imageFingerprints: { "rk0.dsk": hashA, "rp1.dsk": hashA }
     };
 
     const bad = SS.incompatibleImages(snap);
     assert.strictEqual(bad.length, 1, "exactly the repacked image is named");
     assert.strictEqual(bad[0].url, "rp1.dsk");
-    assert.strictEqual(bad[0].then, "aaaa1111");
-    assert.strictEqual(bad[0].now, "bbbb2222");
+    assert.strictEqual(bad[0].then, hashA);
+    assert.strictEqual(bad[0].now, hashB);
 
     // Unchanged images are silent.
     const ok = SS.incompatibleImages({
-        imageFingerprints: { "rk0.dsk": "aaaa1111" }
+        imageFingerprints: { "rk0.dsk": hashA }
     });
     assert.strictEqual(ok.length, 0, "a snapshot on the same build is compatible");
 
