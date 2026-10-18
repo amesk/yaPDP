@@ -300,10 +300,10 @@ function testIncompatibleImages() {
     assert.strictEqual(unknownCurrent.SnapshotStore.incompatibleImages(oldSnapshot).length, 1,
         "a legacy snapshot is rejected even before its image can be identified");
 
-    // An image the snapshot knows but the machine has not loaded now cannot be
-    // judged yet — it is not a mismatch.
+    // A valid SHA-256 identity for an image not currently loaded cannot be
+    // compared yet — unknown current identity is not itself a mismatch.
     assert.strictEqual(SS.incompatibleImages({
-        imageFingerprints: { "tm0.tap": "dddd4444" }
+        imageFingerprints: { "tm0.tap": hashA }
     }).length, 0, "an image not currently loaded is not a mismatch");
     console.log("PASS: incompatibleImages() names only the images that really changed");
 }
