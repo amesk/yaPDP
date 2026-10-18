@@ -2376,7 +2376,6 @@ async function fetchBlock(controlBlock, block) {
             if (zstResponse.ok) {
                 const buffer = got.bytes;
                 assertCompleteImage(zstResponse, buffer, controlBlock.url);
-                registerImageFingerprint(controlBlock.url, new Uint8Array(buffer));
                 if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
                     throw new Error("fzstd decompression library not loaded");
                 }
@@ -2387,6 +2386,7 @@ async function fetchBlock(controlBlock, block) {
                     throw imageError("decompress",
                         `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
                 }
+                registerImageFingerprint(controlBlock.url, decompressed);
                 // Slice from the requested block to the END of the image:
                 // createCache() fills cache[block], cache[block+1], ... from
                 // the stream, so every subsequent block gets its correct
@@ -2443,7 +2443,6 @@ async function fetchBlock(controlBlock, block) {
 
     const buffer = got.bytes;
     assertCompleteImage(got.response, buffer, controlBlock.url);
-    registerImageFingerprint(controlBlock.url, new Uint8Array(buffer));
     if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
         throw new Error("fzstd decompression library not loaded");
     }
@@ -2456,6 +2455,7 @@ async function fetchBlock(controlBlock, block) {
         throw imageError("decompress",
             `Corrupt .zst image ${controlBlock.url}: ${err.message}`);
     }
+    registerImageFingerprint(controlBlock.url, decompressed);
     const start = block * IO_BLOCKSIZE;
     if (start >= decompressed.length) {
         createEmptyCacheBlock(controlBlock.cache, block);
