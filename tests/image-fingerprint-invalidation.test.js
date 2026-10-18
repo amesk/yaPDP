@@ -290,6 +290,10 @@ function testIncompatibleImages() {
     assert.strictEqual(migrated.SnapshotStore.incompatibleImages(oldSnapshot).length, 1,
         "a legacy fingerprint is rejected rather than mistaken for SHA-256");
 
+    const unknownCurrent = buildSnapshotStoreSandbox({});
+    assert.strictEqual(unknownCurrent.SnapshotStore.incompatibleImages(oldSnapshot).length, 1,
+        "a legacy snapshot is rejected even before its image can be identified");
+
     // An image the snapshot knows but the machine has not loaded now cannot be
     // judged yet — it is not a mismatch.
     assert.strictEqual(SS.incompatibleImages({
