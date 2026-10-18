@@ -298,14 +298,6 @@
             try {
                 var got = await progress("media/" + url + ".zst");
                 if (got.response.ok) {
-                    if (typeof DiskStore !== "undefined" &&
-                        typeof DiskStore.registerImage === "function" &&
-                        typeof ImageFingerprint !== "undefined" &&
-                        typeof ImageFingerprint.ofBytes === "function") {
-                        try {
-                            DiskStore.registerImage(url, ImageFingerprint.ofBytes(got.bytes));
-                        } catch (e) { /* identity unknown: stay permissive */ }
-                    }
                     var raw = fzstd.decompress(got.bytes);
                     DataLoader.mount(url, raw);
                     return raw;
@@ -317,14 +309,6 @@
         try {
             var got = await progress("media/" + url + ".zst");
             if (got.response.ok) {
-                if (typeof DiskStore !== "undefined" &&
-                    typeof DiskStore.registerImage === "function" &&
-                    typeof ImageFingerprint !== "undefined" &&
-                    typeof ImageFingerprint.ofBytes === "function") {
-                    try {
-                        DiskStore.registerImage(url, ImageFingerprint.ofBytes(got.bytes));
-                    } catch (e) { /* identity unknown: stay permissive */ }
-                }
                 var raw = fzstd.decompress(got.bytes);
                 DataLoader.mount(url, raw);
                 return raw;
