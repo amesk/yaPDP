@@ -30,6 +30,17 @@ var DataLoader = (() => {
         mount(url, bytes) {
             mounted.set(url, bytes);
             sources.set(url, "local");
+            // All mounted data is decompressed payload bytes. Register one
+            // canonical identity here so network, drag-and-drop, QuickBoot,
+            // and desktop-bundled images follow the same rule.
+            if (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.registerImage === "function" &&
+                typeof ImageFingerprint !== "undefined" &&
+                typeof ImageFingerprint.ofBytes === "function") {
+                try {
+                    DiskStore.registerImage(url, ImageFingerprint.ofBytes(bytes));
+                } catch (err) { /* identity unknown: stay permissive */ }
+            }
         },
         mountZst(url, zstBytes) {
             if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
@@ -37,8 +48,7 @@ var DataLoader = (() => {
             }
             try {
                 const decompressed = fzstd.decompress(new Uint8Array(zstBytes));
-                mounted.set(url, decompressed);
-                sources.set(url, "local");
+                this.mount(url, decompressed);
                 return decompressed.length;
             } catch (err) {
                 return -1;
