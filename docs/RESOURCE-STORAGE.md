@@ -35,9 +35,17 @@ The emulator currently fetches built-in resources from URLs such as:
 
 The `media/` path is therefore part of the web-serving interface even though it is not the logical name saved in a snapshot. Do not remove or repurpose these paths as part of the initial storage-model change.
 
-### 3. Content identity
+### 3. Legacy image fingerprint
 
-A filename or URL does not prove that the bytes are unchanged between releases. The same logical name may refer to different content at different times. Snapshot fingerprints are useful for detecting a mismatch, but they do not by themselves provide a durable resource catalogue or make missing bytes available.
+In `releases/v0.3.0`, `src/imagefingerprint.js` uses **FNV-1a/32**, formatted as eight lowercase hexadecimal digits. It hashes the bytes of the compressed `.zst` response body, not the decompressed disk or tape payload. This fingerprint is used by the existing DiskStore/snapshot compatibility checks to avoid reusing stale cached blocks or overlays with a different image stream.
+
+This legacy fingerprint is deliberately not the canonical identity proposed for the resource archive:
+
+- It is only 32 bits and is intended for change detection, not collision-resistant content addressing.
+- Its input is the compressed representation, so repacking identical uncompressed data can change the fingerprint.
+- Existing snapshots and stored disk data may contain these legacy fingerprints. They must continue to be interpreted according to the old algorithm; do not silently reinterpret them as SHA-256 values.
+
+A filename or URL does not prove that the bytes are unchanged between releases. Snapshot fingerprints help detect some mismatches, but they do not by themselves provide a durable resource catalogue or make missing bytes available.
 
 ## Proposed model
 
@@ -47,7 +55,9 @@ A stable name used by the emulator and legacy snapshots, for example `rp1.dsk` o
 
 ### Content revision
 
-An immutable identity for the actual resource payload. Use SHA-256 of the **uncompressed resource bytes** as the canonical content identity. Thus the identity does not change merely because a resource is recompressed.
+An immutable identity for the actual resource payload, separate from the legacy image fingerprint described above. Use SHA-256 of the **uncompressed resource bytes** as the canonical content identity. Thus the identity does not change merely because a resource is recompressed.
+
+Do not replace or reinterpret the existing FNV-1a/32 snapshot/cache fingerprint as part of this change. The two hashes answer different questions: the legacy fingerprint preserves existing runtime compatibility checks against the compressed bytes fetched by the emulator; SHA-256 identifies an immutable payload in the resource catalogue/archive.
 
 If two logical resources have identical uncompressed bytes, they have the same content identity and should share one stored payload where practical. A changed payload receives a new identity; never overwrite a historical revision in place.
 
@@ -58,7 +68,7 @@ The storage representation (raw or compressed) is an implementation detail and m
 A machine-readable catalogue maps logical names and content identities to the information required to locate and decode the stored payload. It should distinguish at least:
 
 - logical name;
-- SHA-256 of the uncompressed payload;
+- SHA-256 of the uncompressed payload (the canonical archive identity, distinct from the legacy FNV-1a/32 fingerprint);
 - resource kind (disk, magnetic tape, paper tape, or other supported type);
 - storage path and encoding;
 - legacy/public URL aliases, where applicable.
@@ -142,6 +152,7 @@ The first implementation should add automated checks for:
 - resource kind and encoding being consistent with the actual payload;
 - compatibility aliases resolving to the intended content revision;
 - the `media/manifest.json` guest catalogue not being mistaken for a complete physical-file inventory;
+- legacy FNV-1a/32 fingerprints continuing to be interpreted as hashes of the compressed response bytes, never as archive SHA-256 identities;
 - deployment failing when a release references a missing resource;
 - deployment/rollback preserving previously published immutable resource URLs according to the declared support policy.
 
