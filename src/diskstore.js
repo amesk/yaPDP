@@ -17,15 +17,12 @@
 //   dirty:Set }. diskIO() reports writes via markDirty().
 // - fetchBlock() consults DiskStore BEFORE the network/DataLoader path
 //   so a saved block always wins over the pristine base image.
-// - Every saved block is tagged with the FINGERPRINT of the image it came
-//   from (src/imagefingerprint.js), not with a hand-maintained constant.
-//   The old IMAGE_VERSION had to be bumped by hand whenever a bundled
-//   image was repacked, and it was not: rp1.dsk.zst changed three times in
-//   two days while the version stayed "0.1.0", so a stale cached block was
-//   overlaid onto a different disk. A computed fingerprint cannot be
-//   forgotten. An image whose bytes are unknown (file://, desktop bundle,
-//   any host that never fetches a .zst) has no fingerprint and keeps the
-//   old permissive behaviour.
+// - Every saved block is tagged with the SHA-256 identity of the
+//   DECOMPRESSED image payload (src/imagefingerprint.js), not a hand-maintained
+//   constant or the compressed transport representation. Repacking the same
+//   image therefore preserves identity; changing the payload invalidates stale
+//   blocks. An image whose bytes are unknown has no identity and keeps the
+//   permissive unknown-identity behaviour.
 // - IndexedDB is used only when available (browser, Tauri WebView).
 //   In pure Node test contexts (no indexedDB) DiskStore degrades to a
 //   no-op that keeps state in memory only.
@@ -47,11 +44,10 @@ var DiskStore = (() => {
     const DB_NAME = "yapdp-diskstore";
     const DB_STORE = "blocks";
 
-    // url -> fingerprint of the image bytes last loaded for it (null when the
-    // bytes were never seen, e.g. an image restored from a desktop bundle).
-    // Registering is what makes the cache self-invalidating: a repacked .zst
-    // gets a new fingerprint, and every block saved under the old one stops
-    // matching (see getBlock/restoreOverlay).
+    // url -> SHA-256 of the decompressed image payload (null when the bytes
+    // were never seen). Registering the canonical identity makes the cache
+    // self-invalidating when the actual payload changes, independent of how
+    // the image was compressed (see getBlock/restoreOverlay).
     const fingerprints = new Map();
 
     function fingerprintOf(url) {
@@ -67,11 +63,9 @@ var DiskStore = (() => {
         return String(saved) === String(current);
     }
 
-    // Record the identity of the image bytes just loaded for `url`. Called by
-    // the fetch path (fetchBlock in iopage.js and the browser-machine loader)
-    // with the raw `.zst` body it received. A null fingerprint leaves any
-    // previous value alone: "we did not learn the identity this time" is not
-    // "the identity changed".
+    // Record the canonical SHA-256 identity of the decompressed payload for
+    // `url`. A null identity leaves any previous value alone: "we did not
+    // learn the identity this time" is not "the identity changed".
     function registerImage(url, fingerprint) {
         if (!url || fingerprint == null) return;
         fingerprints.set(url, String(fingerprint));
