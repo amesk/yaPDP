@@ -259,8 +259,18 @@
     // otherwise the network (media/<url>.zst, then the raw file). On success
     // the bytes are mounted into DataLoader, so the disk provider and the
     // exporter share ONE fetch path. Resolves undefined when unavailable.
-    async function loadBaseBytes(url) {
+    async function loadBaseBytes(url, versionInfo) {
         if (typeof DataLoader === "undefined") return undefined;
+        // Snapshot restore may require an immutable registry version. It must
+        // bypass a same-named drag/drop or cached image and verify the payload
+        // before making it visible to the machine.
+        if (versionInfo && versionInfo.version != null) {
+            if (typeof VersionedMedia === "undefined" ||
+                typeof VersionedMedia.load !== "function") {
+                throw new Error("Versioned media support is unavailable");
+            }
+            return VersionedMedia.load(url, versionInfo.version, versionInfo.sha256);
+        }
         var local = DataLoader.get(url);
         if (local !== undefined) return local;
         // Desktop bundle: images are mounted asynchronously by
@@ -563,14 +573,14 @@
     // never requested: a deadlock (found 2026-10-02, the first "preparing"
     // toast waited forever). Asking for the image OURSELVES breaks the circle:
     // the fetch starts, the toast tracks it, and the gate opens when it lands.
-    async function loadImage(url) {
+    async function loadImage(url, versionInfo) {
         if (!url) return false;
-        if (typeof DataLoader !== "undefined" &&
+        if (!versionInfo && typeof DataLoader !== "undefined" &&
             typeof DataLoader.has === "function" && DataLoader.has(url)) {
             return true;   // already here: nothing to wait for
         }
         try {
-            var bytes = await loadBaseBytes(url);
+            var bytes = await loadBaseBytes(url, versionInfo);
             return !!bytes;
         } catch (e) {
             return false;
