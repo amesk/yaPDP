@@ -25,5 +25,232 @@
     "tm0.tap",
     "tm1.tap",
     "tm2.tap"
-  ]
+  ],
+  "media-versioned": {
+    "DEC-11-AJPB-PB.ptap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "56e13bae58f44d427bc76d87034ba94272a0d75d4227bad914d3272824ec4d9b",
+          "url": "media/DEC-11-AJPB-PB.ptap.zst"
+        }
+      }
+    },
+    "DEC-11-O2PA-PB.ptap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "7e4f1511b0378a9a91eabb67b994bdfbfe9fa022c3630237f1adc2481559d1cf",
+          "url": "media/DEC-11-O2PA-PB.ptap.zst"
+        }
+      }
+    },
+    "ED-11-V004B-8K.ptap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "1718c32c035cce8958b80561db80de2134e486d6a4912d06aff989a08fb1563a",
+          "url": "media/ED-11-V004B-8K.ptap.zst"
+        }
+      }
+    },
+    "lander.ptap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "95f314570424a2d3a5e5e4684b78d5b5f519d6f16931854540dc736220340930",
+          "url": "media/lander.ptap"
+        }
+      }
+    },
+    "ra0.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "bafc2bdba8270d4b6701bfb0ea5fdd11688bd6d09b3e951c6347b6f9e6d540b8",
+          "url": "media/ra0.dsk.zst"
+        }
+      }
+    },
+    "ra1.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "7fb34dd423644e88741cfa809fe1c059b6dfd536422637433fda255dafead9db",
+          "url": "media/ra1.dsk.zst"
+        }
+      }
+    },
+    "ra2.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "e2ba0a29367f5fb8a21e04f46e9283803a6caaa36ff33c0680a23073253bf1d4",
+          "url": "media/ra2.dsk.zst"
+        }
+      }
+    },
+    "rk0.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "24e009e48bba89eb4aecd01ccf48892d89f81dc7ca176f1ae2d322c271518bcc",
+          "url": "media/rk0.dsk.zst"
+        }
+      }
+    },
+    "rk1.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "0a972223a8c38e0b02784861075e2aa3a3d04328fd9e25b90d16df37ec10d932",
+          "url": "media/rk1.dsk.zst"
+        }
+      }
+    },
+    "rk2.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "7d239669c62f35836c5e23cebb8c614f08b0d1782e44c2ff4fa3cd63190d3c7f",
+          "url": "media/rk2.dsk.zst"
+        }
+      }
+    },
+    "rk3.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "b7dc6932a69a8cec8be9785020bb8b6c0d6812b729c210a758463e05146ba51c",
+          "url": "media/rk3.dsk.zst"
+        }
+      }
+    },
+    "rk4.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "feccc00613379d0bc4413dd90926de4ef0f133ba21d4659157d09c09a5a10016",
+          "url": "media/rk4.dsk.zst"
+        }
+      }
+    },
+    "rk5.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "14900310899f3551f076940f019e706f0c29a028f7dd30f70562e90922f640f8",
+          "url": "media/rk5.dsk.zst"
+        }
+      }
+    },
+    "rl0.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "b701200991fd9df24b920434b8968aac08abcc69d08c084ca525f924958f7e6e",
+          "url": "media/rl0.dsk.zst"
+        }
+      }
+    },
+    "rl1.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "ee654ac81a763fa558c9ab39e3fab74b9ccfac5d79575a3d1f5f3eb8ca519248",
+          "url": "media/rl1.dsk.zst"
+        }
+      }
+    },
+    "rl2.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "c92527aca5c8bbef0eafd7de4827540a78bbb9b7654fd2d960871829c7b7b282",
+          "url": "media/rl2.dsk.zst"
+        }
+      }
+    },
+    "rl3.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "095aeff2d078c80e9d428b660da97332fb4f69206aa7f2f341842992602c0da3",
+          "url": "media/rl3.dsk.zst"
+        }
+      }
+    },
+    "rp0.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "4d15bb304e892249f8405f1f887a746379a51104b55318751f0426d06ea75e76",
+          "url": "media/rp0.dsk.zst"
+        }
+      }
+    },
+    "rp1.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "65a7d236e541f2417548c7ec5f52eddd7b393380aea1335b5dc8bf41a85323e8",
+          "url": "media/rp1.dsk.zst"
+        }
+      }
+    },
+    "rp2.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "80224470e1ad58794ccdc5fd7ed68b3defe737c0bbb121edc0814cb7107f5e12",
+          "url": "media/rp2.dsk.zst"
+        }
+      }
+    },
+    "rp3.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "43e88c844f5d2b9079022ce39d32bea29202e8e65d01479952358a10c38f7f47",
+          "url": "media/rp3.dsk.zst"
+        }
+      }
+    },
+    "rp4.dsk": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "fe654f8e925430f8e9ff3f9cff70ba3f02b3dfcddfdb6b08f791cdf9e5119a92",
+          "url": "media/rp4.dsk.zst"
+        }
+      }
+    },
+    "tm0.tap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "13fd2f18c68e5ae0b3f3f027bf3584a8523d803410da1e8c77d3a0ff23faa43f",
+          "url": "media/tm0.tap.zst"
+        }
+      }
+    },
+    "tm1.tap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "7a6cc7a85440bbe0f6c22d6d9239f6d35b936e4aa05599c315fd02f79906b4b7",
+          "url": "media/tm1.tap.zst"
+        }
+      }
+    },
+    "tm2.tap": {
+      "versions": {
+        "1": {
+          "version": 1,
+          "sha256": "e395be2dc950b74e9084f595036dfce16ab4b00940b4536bb2b2c9d5ea958161",
+          "url": "media/tm2.tap.zst"
+        }
+      }
+    }
+  }
 }
