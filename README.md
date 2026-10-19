@@ -123,6 +123,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **Roadmap:** Where the machine is heading next: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 * **DevLog publishing workflow:** How to publish articles from a release-based Support branch without deploying untested emulator changes: [`docs/DEVLOG.md`](docs/DEVLOG.md).
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
+* **Image Version Registry:** Rules for image identity, version numbering, immutable publication, and long-term availability of published image content: [`docs/image-registry.md`](docs/image-registry.md).
 * **Embedding the Emulator:** For museums and educators — embed yaPDP in any HTML page via `<iframe>`: [`docs/manual/machine-state.md`](docs/manual/machine-state.md) (see the Embedding subsection).
 
 ---
