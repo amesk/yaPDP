@@ -17,6 +17,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const MediaZst = require("./media-zst.js");
 const { StateFormat } = require(path.join(__dirname, "..", "src", "state-format.js"));
 const StateIO = require("./state-io.js");
 
@@ -105,13 +106,24 @@ function legacyFingerprintBytes(url, expected, parsed, root) {
 
     for (const file of imagePathCandidates(url, root)) {
         if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-            candidates.push({ source: path.relative(root, file), bytes: fs.readFileSync(file) });
+            const bytes = fs.readFileSync(file);
+            candidates.push({
+                source: path.relative(root, file),
+                bytes,
+                identityBytes: file.endsWith(".zst")
+                    ? MediaZst.decompressBytes(bytes, false)
+                    : bytes
+            });
         }
     }
 
     for (const candidate of candidates) {
         if (fnv1a32(candidate.bytes) === expected) {
-            return { bytes: candidate.bytes, source: candidate.source };
+            return {
+                bytes: candidate.bytes,
+                identityBytes: candidate.identityBytes || candidate.bytes,
+                source: candidate.source
+            };
         }
     }
     throw new Error("cannot safely migrate image fingerprint for " + url +
@@ -126,7 +138,7 @@ function migrateFingerprint(url, value, parsed, root) {
         throw new Error("unsupported image fingerprint for " + url + ": " + fingerprint);
     }
     const match = legacyFingerprintBytes(url, fingerprint, parsed, root);
-    return { value: sha256(match.bytes), changed: true, source: match.source };
+    return { value: sha256(match.identityBytes), changed: true, source: match.source };
 }
 
 function migrateImageIdentities(parsed, root = ROOT) {
