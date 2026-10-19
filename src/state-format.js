@@ -381,7 +381,11 @@ var StateFormat = (function () {
         var intermediateContainer = intermediateMagic && manifest.containerVersion === 2 &&
             Array.isArray(manifest.blobCatalog);
         if (!blobContainer && !intermediateContainer) {
-            if (intermediateMagic) return null;
+            // A manifest that declares a container layout but uses an unknown
+            // version must not fall through to the legacy "all payload is RAM"
+            // interpretation.
+            if (intermediateMagic || manifest.containerVersion != null ||
+                Array.isArray(manifest.blobCatalog)) return null;
             var legacyMemory = bytes.subarray(payloadStart);
             if (legacyMemory.length & 1) return null;
             return { manifest: manifest,
