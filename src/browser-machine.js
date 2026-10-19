@@ -583,6 +583,9 @@
             var bytes = await loadBaseBytes(url, versionInfo);
             return !!bytes;
         } catch (e) {
+            // A pinned version is part of the snapshot contract: do not turn
+            // a missing image or hash mismatch into a permissive cache hit.
+            if (versionInfo) throw e;
             return false;
         }
     }
