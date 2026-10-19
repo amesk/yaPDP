@@ -319,15 +319,30 @@ var StateFormat = (function () {
 
         var cursor = 0;
         var catalog = [];
+        var stored = [];
+        var ids = Object.create(null);
+        var content = Object.create(null);
         blobs.forEach(function (blob) {
+            if (ids[blob.id]) throw new Error("Duplicate state blob id: " + blob.id);
+            ids[blob.id] = true;
+            var hash = blobHash(blob.bytes);
+            var key = hash ? "sha256:" + hash : "blob:" + blob.id;
+            var location = content[key];
+            if (!location) {
+                location = { offset: cursor, size: blob.bytes.length };
+                content[key] = location;
+                stored.push(blob);
+                cursor += blob.bytes.length;
+            } else if (location.size !== blob.bytes.length) {
+                throw new Error("State blob digest collision");
+            }
             catalog.push({
                 id: blob.id,
                 mediaType: blob.mediaType,
-                offset: cursor,
-                size: blob.bytes.length,
-                sha256: blobHash(blob.bytes)
+                offset: location.offset,
+                size: location.size,
+                sha256: hash
             });
-            cursor += blob.bytes.length;
         });
         saved.containerVersion = 2;
         saved.blobCatalog = catalog;
@@ -335,7 +350,7 @@ var StateFormat = (function () {
         var out = new Uint8Array(HEADER_LEN + manifestBytes.length + cursor);
         writeHeader(out, MAGIC, manifestBytes);
         cursor = HEADER_LEN + manifestBytes.length;
-        blobs.forEach(function (blob) {
+        stored.forEach(function (blob) {
             out.set(blob.bytes, cursor);
             cursor += blob.bytes.length;
         });
