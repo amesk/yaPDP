@@ -41,10 +41,9 @@
  * Two different versions travel with a state, and they answer different
  * questions:
  *
- *   CONTAINER_VERSION (number)  how the BYTES are laid out — the magic, the
- *                               manifest length, what follows the manifest.
- *                               Changes when the binary layout changes. v1
- *                               remains readable; new writes use v2.
+ *   CONTAINER_VERSION (number)  how the payload bytes are laid out. The first
+ *                               canonical blob layout is version 1; the
+ *                               unpublished YAPDPST2 prototype is migration-only.
  *   schemaVersion (semver)      the SHAPE of the manifest JSON. MAJOR means a
  *                               reader that does not understand it cannot read
  *                               the state; MINOR is additive fields an older
@@ -63,18 +62,11 @@
 var StateFormat = (function () {
     "use strict";
 
-    // Container format version — NOT the snapshot's own schemaVersion, which
-    // describes the fields inside the manifest. This one describes how the
-    // bytes are laid out, so a future container layout can be told apart.
-    //
-    // Evolution rule: this number changes only when the byte LAYOUT after the
-    // header changes — a second binary segment (a binary disk overlay, large
-    // tapes) next to the raw memory, or the memory section replaced by a
-    // descriptor-driven one. Adding fields to the manifest does NOT touch it
-    // (that is schemaVersion's MINOR). When a second segment does arrive this
-    // becomes 2 and the segments get an explicit descriptor; until then memory
-    // is simply "everything after the manifest", and an offset/length pair in
-    // the manifest would be redundant and could drift.
+    // Container layout version, independent of schemaVersion. The first
+    // canonical layout already uses a descriptor-driven blob region for RAM,
+    // overlays and embedded resources, so it is version 1. The earlier
+    // YAPDPST2/containerVersion 2 layout was an unpublished prototype, not a
+    // released contract; the migration reader below accepts it temporarily.
     var CONTAINER_VERSION = 1;
 
     // Snapshot manifest schema version — semver, and NOT the container layout
