@@ -25,7 +25,8 @@ const { StateFormat } = require(path.join(__dirname, "..", "src", "state-format.
 
 function run() {
     // ---- constants ------------------------------------------------------
-    assert.strictEqual(typeof StateFormat.CONTAINER_VERSION, "number");
+    assert.strictEqual(StateFormat.CONTAINER_VERSION, 1,
+        "the canonical blob layout starts at container version 1");
     assert.strictEqual(StateFormat.SCHEMA_VERSION, "1.0.0",
         "the current manifest schema is 1.0.0");
 
