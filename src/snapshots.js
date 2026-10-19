@@ -1767,6 +1767,19 @@ var SnapshotStore = (() => {
         var pendingState = pendingStateUrl();
         if (pendingState) {
             clearPendingStateUrl();
+            // A config-driven reload keeps its ?state= in the address bar (the
+            // reload was started before the parameter was cleared). QuickBoot's
+            // init — loaded before this module — already OWNS that URL and will
+            // apply it (via setTimeout); applying the same state from the
+            // pending key as well would mount its disk images twice, and the
+            // second mount can stall the first load. Let the URL path do the
+            // whole job on these pages (the key is cleared above either way,
+            // so a later plain reload of this page does not replay the state).
+            if (typeof QuickBoot !== "undefined" &&
+                typeof QuickBoot.stateUrlFromSearch === "function" &&
+                QuickBoot.stateUrlFromSearch(typeof location !== "undefined" ? location.search : "") !== null) {
+                return Promise.resolve(false);
+            }
             if (typeof CPU !== "undefined") CPU.runState = STATE_HALT;
             if (typeof window !== "undefined" &&
                 typeof window.__yapdpApplyStateLink === "function") {
