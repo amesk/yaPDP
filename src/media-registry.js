@@ -49,10 +49,13 @@
         });
     }
 
-    async function load(name, version) {
+    async function load(name, version, expectedSha256) {
         var data = await manifest();
         var entry = entryFor(name, version, data);
         if (!entry) throw new Error("Image version is not registered: " + name + " v" + version);
+        if (expectedSha256 && String(entry.sha256).toLowerCase() !== String(expectedSha256).toLowerCase()) {
+            throw new Error("Registered SHA-256 changed for " + name + " v" + version);
+        }
         var response = await fetch(entry.url);
         if (!response.ok) throw new Error("Cannot load " + name + " v" + version + " (" + response.status + ")");
         var bytes = new Uint8Array(await response.arrayBuffer());
