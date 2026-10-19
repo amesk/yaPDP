@@ -544,7 +544,7 @@ var SnapshotStore = (() => {
                 embeddedRefs[resourceUrl] = id;
                 resourceBytes[id] = new Uint8Array(snap.embeddedResources[resourceUrl]);
             });
-            if (!mountEmbeddedResources({ embeddedImages: embeddedRefs }, resourceBytes)) {
+            if (!mountEmbeddedResources({ embeddedImages: embeddedRefs, mounted: snap.mounted || [] }, resourceBytes)) {
                 return Promise.resolve(false);
             }
         }
