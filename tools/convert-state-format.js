@@ -16,6 +16,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { StateFormat } = require(path.join(__dirname, "..", "src", "state-format.js"));
 const StateIO = require("./state-io.js");
 
@@ -59,6 +60,100 @@ function stableValue(value) {
 
 function equalJson(a, b) {
     return JSON.stringify(stableValue(a)) === JSON.stringify(stableValue(b));
+}
+
+// Legacy snapshots fingerprinted the raw compressed .zst response with FNV-1a/32.
+// The current runtime uses SHA-256 over that same byte stream, so migration must
+// verify the old value against the exact source bytes before replacing it.
+function fnv1a32(bytes) {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < bytes.length; i++) {
+        hash = Math.imul(hash ^ (bytes[i] & 0xff), 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+}
+
+function sha256(bytes) {
+    return crypto.createHash("sha256").update(bytes).digest("hex");
+}
+
+function imagePathCandidates(url, root) {
+    let clean = String(url || "").replace(/[?#].*$/, "");
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(clean)) {
+        try { clean = new URL(clean).pathname; } catch (e) { return []; }
+    }
+    try { clean = decodeURIComponent(clean); } catch (e) { /* keep literal path */ }
+    clean = clean.replace(/\\\\/g, "/").replace(/^\/+/, "").replace(/^\.\//, "");
+    if (!clean || clean.split("/").some((part) => part === "..")) return [];
+
+    const relativePaths = clean.startsWith("media/")
+        ? [clean, clean + ".zst"]
+        : [path.posix.join("media", clean), path.posix.join("media", clean + ".zst")];
+    const rootPath = path.resolve(root);
+    return relativePaths.map((relative) => path.resolve(rootPath, ...relative.split("/")))
+        .filter((candidate) => candidate.startsWith(rootPath + path.sep));
+}
+
+function legacyFingerprintBytes(url, expected, parsed, root) {
+    const candidates = [];
+    const embedded = parsed.manifest.embeddedImages;
+    const embeddedId = embedded && embedded[url];
+    const embeddedBytes = embeddedId && parsed.blobs && parsed.blobs[embeddedId];
+    if (embeddedBytes) candidates.push({ source: "embedded state resource", bytes: embeddedBytes });
+
+    for (const file of imagePathCandidates(url, root)) {
+        if (fs.existsSync(file) && fs.statSync(file).isFile()) {
+            candidates.push({ source: path.relative(root, file), bytes: fs.readFileSync(file) });
+        }
+    }
+
+    for (const candidate of candidates) {
+        if (fnv1a32(candidate.bytes) === expected) {
+            return { bytes: candidate.bytes, source: candidate.source };
+        }
+    }
+    throw new Error("cannot safely migrate image fingerprint for " + url +
+        ": no available image bytes match legacy FNV-1a " + expected);
+}
+
+function migrateFingerprint(url, value, parsed, root) {
+    if (value == null) return { value, changed: false };
+    const fingerprint = String(value);
+    if (/^[0-9a-f]{64}$/.test(fingerprint)) return { value: fingerprint, changed: false };
+    if (!/^[0-9a-f]{8}$/.test(fingerprint)) {
+        throw new Error("unsupported image fingerprint for " + url + ": " + fingerprint);
+    }
+    const match = legacyFingerprintBytes(url, fingerprint, parsed, root);
+    return { value: sha256(match.bytes), changed: true, source: match.source };
+}
+
+function migrateImageIdentities(parsed, root = ROOT) {
+    const manifest = parsed.manifest;
+    let changed = 0;
+    const fingerprints = manifest.imageFingerprints;
+    if (fingerprints && typeof fingerprints === "object") {
+        for (const url of Object.keys(fingerprints)) {
+            const result = migrateFingerprint(url, fingerprints[url], parsed, root);
+            if (result.changed) {
+                fingerprints[url] = result.value;
+                changed++;
+            }
+        }
+    }
+
+    const overlay = manifest.overlay;
+    if (overlay && typeof overlay === "object") {
+        for (const url of Object.keys(overlay)) {
+            const record = overlay[url];
+            if (!record || typeof record !== "object" || record.v == null) continue;
+            const result = migrateFingerprint(url, record.v, parsed, root);
+            if (result.changed) {
+                record.v = result.value;
+                changed++;
+            }
+        }
+    }
+    return changed;
 }
 
 function buildCanonical(parsed) {
@@ -129,19 +224,21 @@ function replaceVerified(file, bytes) {
     }
 }
 
-function convertOne(file, write) {
+function convertOne(file, write, root = ROOT) {
     const absolute = path.resolve(file);
     const input = StateIO.readBytes(absolute);
-    const manifest = rawManifest(input.container);
-    const alreadyCanonical = manifest.containerVersion === 1 &&
-        Array.isArray(manifest.blobCatalog);
-    if (alreadyCanonical) {
-        console.log("SKIP  " + path.relative(ROOT, absolute) + " (already canonical)");
-        return { skipped: true };
-    }
+    const headerManifest = rawManifest(input.container);
+    const alreadyCanonical = headerManifest.containerVersion === 1 &&
+        Array.isArray(headerManifest.blobCatalog);
 
     const parsed = StateFormat.unpack(input.container);
     if (!parsed) throw new Error("cannot parse source container");
+    const migratedIdentities = migrateImageIdentities(parsed, root);
+    if (alreadyCanonical && migratedIdentities === 0) {
+        console.log("SKIP  " + path.relative(root, absolute) + " (already canonical)");
+        return { skipped: true };
+    }
+
     const packed = buildCanonical(parsed);
     verifyConversion(input.container, packed, parsed);
 
@@ -149,17 +246,23 @@ function convertOne(file, write) {
         replaceVerified(absolute, packed);
         // Verify the framed file after replacement as well.
         const reread = StateIO.readBytes(absolute);
+        const reparsed = StateFormat.unpack(reread.container);
         const header = rawManifest(reread.container);
-        if (header.containerVersion !== 1) {
+        if (header.containerVersion !== 1 || !reparsed) {
             throw new Error("replaced file is not canonical after re-read");
         }
-        console.log("OK    " + path.relative(ROOT, absolute) +
-            " (" + input.size + " -> " + fs.statSync(absolute).size + " bytes)");
+        if (migrateImageIdentities(reparsed, root) !== 0) {
+            throw new Error("legacy image fingerprints remain after migration");
+        }
+        console.log("OK    " + path.relative(root, absolute) +
+            " (" + input.size + " -> " + fs.statSync(absolute).size +
+            " bytes; " + migratedIdentities + " image identities migrated)");
     } else {
-        console.log("READY " + path.relative(ROOT, absolute) +
-            " (" + input.size + " bytes; dry run, unchanged)");
+        console.log("READY " + path.relative(root, absolute) +
+            " (" + input.size + " bytes; " + migratedIdentities +
+            " image identities to migrate; dry run, unchanged)");
     }
-    return { converted: true };
+    return { converted: true, migratedIdentities };
 }
 
 function usage() {
@@ -201,4 +304,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { buildCanonical, verifyConversion, convertOne };
+module.exports = { buildCanonical, verifyConversion, convertOne, fnv1a32, sha256, migrateImageIdentities };
