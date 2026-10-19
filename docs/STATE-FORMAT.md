@@ -92,7 +92,7 @@ node tools/convert-state-format.js --write states/example.state.zst
 
 Before replacing a file, the tool converts it, validates the container, checks
 the manifest, RAM and extra blobs, and verifies that the output uses canonical
-container version 1. It also migrates legacy 8-digit FNV-1a image fingerprints in snapshot metadata and disk overlays to SHA-256. The old fingerprint must match the exact local compressed image bytes (`media/<image>.zst`) before replacement; if the image is unavailable or differs, the converter refuses to rewrite that state. It writes a temporary file first and only replaces the
+container version 1. It also migrates legacy 8-digit FNV-1a image fingerprints in snapshot metadata and disk overlays to SHA-256 of the decompressed image payload. The old fingerprint must match the exact local compressed image bytes (`media/<image>.zst`) before replacement; if the image is unavailable or differs, the converter refuses to rewrite that state. It writes a temporary file first and only replaces the
 original after validation. Keep a normal repository backup/commit before using
 `--write`; the migration should be reviewed and committed separately from the
 code change.
