@@ -92,5 +92,5 @@
 })(typeof window !== "undefined" ? window : globalThis);
 
 if (typeof module !== "undefined" && module.exports) {
-    module.exports = { VersionedMedia: (typeof window !== "undefined" ? window.VersionedMedia : null) };
+    module.exports = { VersionedMedia: globalThis.VersionedMedia };
 }
