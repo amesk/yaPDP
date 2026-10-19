@@ -471,12 +471,16 @@ var SnapshotStore = (() => {
             (function (url) {
                 var versionInfo = imageVersions && imageVersions[url];
                 if (versionInfo && versionInfo.version != null) {
-                    if (typeof window === "undefined" ||
-                        typeof window.__yapdpLoadImage !== "function") {
+                    if (typeof window !== "undefined" &&
+                        typeof window.__yapdpLoadImage === "function") {
+                        promises.push(Promise.resolve(window.__yapdpLoadImage(url, versionInfo)));
+                    } else if (typeof VersionedMedia !== "undefined" &&
+                        typeof VersionedMedia.load === "function") {
+                        promises.push(Promise.resolve(
+                            VersionedMedia.load(url, versionInfo.version, versionInfo.sha256)));
+                    } else {
                         promises.push(Promise.reject(new Error("Versioned image loader unavailable: " + url)));
-                        return;
                     }
-                    promises.push(Promise.resolve(window.__yapdpLoadImage(url, versionInfo)));
                     return;
                 }
                 if (typeof DataLoader !== "undefined" &&
