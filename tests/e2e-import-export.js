@@ -369,15 +369,21 @@ async function testOverlayDiskRoundTrip(browser, page) {
     // Little-endian bytes of the seeded words (blockToBytes in src/diskstore.js).
     const expected = [];
     words.forEach((w) => { expected.push(w & 0xff, (w >>> 8) & 0xff); });
+    // The canonical SHA-256 image identity (64 hex digits) that BOTH pages of
+    // the round-trip must agree on. The image itself is a fixture — only its
+    // write-back overlay is seeded — so the identity is one fixed value, and
+    // the reloaded page re-registers it (see the evaluateOnNewDocument hook
+    // before load() below), exactly like DataLoader does for a mounted image.
+    const FP = "face".repeat(16);
 
     // Seed a REAL write-back overlay through the production API — exactly what
     // a guest write (COPY onto a disk) leaves behind.
-    await page.evaluate((url, block, words) => {
-        DiskStore.registerImage(url, "fp-e2e");
+    await page.evaluate((url, block, words, fp) => {
+        DiskStore.registerImage(url, fp);
         const cb = { url: url, cache: [] };
         cb.cache[block] = Uint16Array.from(words);
         DiskStore.markDirty(cb, block);
-    }, url, block, words);
+    }, url, block, words, FP);
 
     const snapId = await page.evaluate(async () => (await SnapshotStore.save("overlay e2e")).id);
     check("F1: snapshot saved", typeof snapId === "string", String(snapId));
@@ -415,6 +421,22 @@ async function testOverlayDiskRoundTrip(browser, page) {
         return await SnapshotStore.importState(new Uint8Array(arr));
     }, importArr);
     check("F5: import from disk succeeded", imported.ok === true, JSON.stringify(imported));
+
+    // The reloaded page must know the image's identity BEFORE restoreOverlay()
+    // runs, or the strict SHA-256 policy (a known-vs-unknown fingerprint is
+    // NOT a match — see DiskStore.matchOk) would discard the overlay blocks as
+    // orphaned. In production the DataLoader registers the identity as it
+    // mounts the image; here the image is a fixture, so this hook registers
+    // the same identity on the new document as soon as DiskStore exists.
+    await page.evaluateOnNewDocument((u, fp) => {
+        var timer = setInterval(function () {
+            if (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.registerImage === "function") {
+                DiskStore.registerImage(u, fp);
+                clearInterval(timer);
+            }
+        }, 0);
+    }, url, FP);
 
     await page.evaluate(async (id) => { await SnapshotStore.load(id); }, imported.id);
     await page.waitForFunction(
