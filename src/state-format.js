@@ -77,7 +77,7 @@ var StateFormat = (function () {
     // becomes 2 and the segments get an explicit descriptor; until then memory
     // is simply "everything after the manifest", and an offset/length pair in
     // the manifest would be redundant and could drift.
-    var CONTAINER_VERSION = 1;
+    var CONTAINER_VERSION = 2;
 
     // Snapshot manifest schema version — semver, and NOT the container layout
     // above. It describes the SHAPE of the manifest's JSON:
@@ -89,7 +89,8 @@ var StateFormat = (function () {
     // this string, so a state saved before the field became semver still reads.
     var SCHEMA_VERSION = "1.0.0";
 
-    var MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x41]; // "YAPDPSTA"
+    var LEGACY_MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x41]; // "YAPDPSTA"
+    var MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x32]; // "YAPDPST2"
     var MAGIC_LEN = MAGIC.length;
     var HEADER_LEN = MAGIC_LEN + 4; // magic + manifest length
 
@@ -179,65 +180,224 @@ var StateFormat = (function () {
     }
 
     // --- Container pack / unpack -----------------------------------------
-    /**
-     * pack(manifest, memoryWords) -> Uint8Array (UNCOMPRESSED container bytes)
-     *
-     * The caller compresses the result (.state.zst). `manifest` carries
-     * everything but memory; `memoryWords` is CPU.memory, or null for a state
-     * with no memory section (a device-only layer).
-     */
-    function pack(manifest, memoryWords) {
-        var memBytes = memoryWords ? memoryToBytes(memoryWords) : new Uint8Array(0);
-        var manifestBytes = utf8Encode(JSON.stringify(manifest));
-        var out = new Uint8Array(HEADER_LEN + manifestBytes.length + memBytes.length);
-        out.set(MAGIC, 0);
+    // Binary overlay codec. The small JSON index describes disk identities and
+    // block locations; block contents themselves remain binary.
+    function encodeOverlay(overlay) {
+        if (!overlay || typeof overlay !== "object") return null;
+        var entries = [];
+        var chunks = [];
+        var offset = 0;
+        Object.keys(overlay).forEach(function (url) {
+            var rec = overlay[url];
+            if (!rec || typeof rec !== "object" ||
+                !rec.blocks || typeof rec.blocks !== "object") return;
+            var entry = { url: url, v: rec.v == null ? null : rec.v,
+                origin: rec.origin == null ? null : rec.origin, blocks: [] };
+            Object.keys(rec.blocks).forEach(function (key) {
+                var value = rec.blocks[key];
+                var bytes = value instanceof Uint8Array ? value
+                    : Array.isArray(value) ? Uint8Array.from(value)
+                    : value && typeof value === "object"
+                        ? Uint8Array.from(Object.values(value)) : null;
+                if (!bytes || !bytes.length) return;
+                entry.blocks.push({ block: Number(key), offset: offset, length: bytes.length });
+                chunks.push(bytes);
+                offset += bytes.length;
+            });
+            if (entry.blocks.length) entries.push(entry);
+        });
+        var meta = utf8Encode(JSON.stringify({ version: 1, entries: entries }));
+        var out = new Uint8Array(4 + meta.length + offset);
+        out[0] = meta.length & 0xff;
+        out[1] = (meta.length >>> 8) & 0xff;
+        out[2] = (meta.length >>> 16) & 0xff;
+        out[3] = (meta.length >>> 24) & 0xff;
+        out.set(meta, 4);
+        var cursor = 4 + meta.length;
+        chunks.forEach(function (chunk) {
+            out.set(chunk, cursor);
+            cursor += chunk.length;
+        });
+        return out;
+    }
+
+    function decodeOverlay(bytes) {
+        if (!bytes || bytes.length < 4) return null;
+        var metaLength = bytes[0] | (bytes[1] << 8) |
+            (bytes[2] << 16) | (bytes[3] << 24);
+        if (metaLength < 0 || 4 + metaLength > bytes.length) return null;
+        var meta;
+        try {
+            meta = JSON.parse(utf8Decode(bytes.subarray(4, 4 + metaLength)));
+        } catch (e) {
+            return null;
+        }
+        if (!meta || meta.version !== 1 || !Array.isArray(meta.entries)) return null;
+        var dataStart = 4 + metaLength;
+        var out = {};
+        for (var i = 0; i < meta.entries.length; i++) {
+            var entry = meta.entries[i];
+            if (!entry || typeof entry.url !== "string" || !Array.isArray(entry.blocks)) return null;
+            var blocks = {};
+            for (var j = 0; j < entry.blocks.length; j++) {
+                var item = entry.blocks[j];
+                if (!item || !Number.isInteger(item.block) || item.block < 0 ||
+                    !Number.isInteger(item.offset) || item.offset < 0 ||
+                    !Number.isInteger(item.length) || item.length <= 0 ||
+                    item.offset + item.length > bytes.length - dataStart) return null;
+                blocks[String(item.block)] = bytes.slice(
+                    dataStart + item.offset, dataStart + item.offset + item.length);
+            }
+            out[entry.url] = { v: entry.v == null ? null : entry.v, blocks: blocks };
+            if (entry.origin != null) out[entry.url].origin = entry.origin;
+        }
+        return out;
+    }
+
+    function writeHeader(out, magic, manifestBytes) {
+        out.set(magic, 0);
         var len = manifestBytes.length;
         out[MAGIC_LEN] = len & 0xff;
         out[MAGIC_LEN + 1] = (len >>> 8) & 0xff;
         out[MAGIC_LEN + 2] = (len >>> 16) & 0xff;
         out[MAGIC_LEN + 3] = (len >>> 24) & 0xff;
         out.set(manifestBytes, HEADER_LEN);
+    }
+
+    function packLegacy(manifest, memoryWords) {
+        var memBytes = memoryWords ? memoryToBytes(memoryWords) : new Uint8Array(0);
+        var manifestBytes = utf8Encode(JSON.stringify(manifest));
+        var out = new Uint8Array(HEADER_LEN + manifestBytes.length + memBytes.length);
+        writeHeader(out, LEGACY_MAGIC, manifestBytes);
         out.set(memBytes, HEADER_LEN + manifestBytes.length);
         return out;
     }
 
     /**
-     * unpack(bytes) -> { manifest, memoryWords } or null when `bytes` is not a
-     * container (an old snapshot, a plain image, a truncated file).
-     *
-     * Returning null rather than throwing is deliberate: callers must be able
-     * to fall back (the browser still reads gzip/raw memories written before
-     * this format existed).
+     * pack(manifest, memoryWords, extraBlobs) -> Uint8Array.
+     * Version 2 stores RAM, binary disk overlays, and caller-supplied resources
+     * in one offset-addressable blob region. Blob offsets are relative to that
+     * region, not the compressed outer frame.
      */
-    function unpack(bytes) {
-        if (!bytes || bytes.length < HEADER_LEN) return null;
-        for (var i = 0; i < MAGIC_LEN; i++) {
-            if (bytes[i] !== MAGIC[i]) return null;
+    function pack(manifest, memoryWords, extraBlobs) {
+        var saved = Object.assign({}, manifest || {});
+        var blobs = [];
+        var memoryBytes = memoryWords ? memoryToBytes(memoryWords) : new Uint8Array(0);
+        if (memoryWords) {
+            blobs.push({ id: "memory", mediaType: "application/vnd.yapdp.ram", bytes: memoryBytes });
+            saved.memoryBlob = "memory";
+        } else {
+            delete saved.memoryBlob;
         }
+        if (saved.overlay && typeof saved.overlay === "object") {
+            var overlayBytes = encodeOverlay(saved.overlay);
+            if (overlayBytes) {
+                blobs.push({ id: "disk-overlay", mediaType: "application/vnd.yapdp.disk-overlay", bytes: overlayBytes });
+                saved.overlayBlob = "disk-overlay";
+            } else {
+                delete saved.overlayBlob;
+            }
+            delete saved.overlay;
+        }
+        (extraBlobs || []).forEach(function (blob) {
+            if (!blob || typeof blob.id !== "string" || !blob.id ||
+                blob.id === "memory" || blob.id === "disk-overlay") {
+                throw new Error("Invalid or reserved state blob id");
+            }
+            var bytes = blob.bytes instanceof Uint8Array
+                ? blob.bytes : new Uint8Array(blob.bytes || 0);
+            blobs.push({ id: blob.id, mediaType: blob.mediaType || "application/octet-stream", bytes: bytes });
+        });
+
+        var cursor = 0;
+        var catalog = [];
+        blobs.forEach(function (blob) {
+            catalog.push({
+                id: blob.id,
+                mediaType: blob.mediaType,
+                offset: cursor,
+                size: blob.bytes.length
+            });
+            cursor += blob.bytes.length;
+        });
+        saved.containerVersion = 2;
+        saved.blobCatalog = catalog;
+        var manifestBytes = utf8Encode(JSON.stringify(saved));
+        var out = new Uint8Array(HEADER_LEN + manifestBytes.length + cursor);
+        writeHeader(out, MAGIC, manifestBytes);
+        cursor = HEADER_LEN + manifestBytes.length;
+        blobs.forEach(function (blob) {
+            out.set(blob.bytes, cursor);
+            cursor += blob.bytes.length;
+        });
+        return out;
+    }
+
+    function readManifest(bytes) {
+        if (!bytes || bytes.length < HEADER_LEN) return null;
         var len = bytes[MAGIC_LEN] | (bytes[MAGIC_LEN + 1] << 8) |
                   (bytes[MAGIC_LEN + 2] << 16) | (bytes[MAGIC_LEN + 3] << 24);
         if (len < 0 || HEADER_LEN + len > bytes.length) return null;
-        var manifest;
         try {
-            manifest = JSON.parse(utf8Decode(bytes.subarray(HEADER_LEN, HEADER_LEN + len)));
+            return JSON.parse(utf8Decode(bytes.subarray(HEADER_LEN, HEADER_LEN + len)));
         } catch (e) {
             return null;
         }
-        var memStart = HEADER_LEN + len;
-        var memBytes = bytes.subarray(memStart);
-        return {
-            manifest: manifest,
-            memoryWords: memBytes.length ? bytesToMemory(memBytes) : null,
-        };
     }
 
-    // Is this a .state container? (cheap check, for the fallback paths)
-    function isContainer(bytes) {
-        if (!bytes || bytes.length < HEADER_LEN) return false;
-        for (var i = 0; i < MAGIC_LEN; i++) {
-            if (bytes[i] !== MAGIC[i]) return false;
+    function unpack(bytes) {
+        if (!bytes || bytes.length < HEADER_LEN) return null;
+        var legacy = startsWith(bytes, LEGACY_MAGIC);
+        var current = startsWith(bytes, MAGIC);
+        if (!legacy && !current) return null;
+        var manifest = readManifest(bytes);
+        if (!manifest || typeof manifest !== "object") return null;
+        var payloadStart = HEADER_LEN + (bytes[MAGIC_LEN] | (bytes[MAGIC_LEN + 1] << 8) |
+            (bytes[MAGIC_LEN + 2] << 16) | (bytes[MAGIC_LEN + 3] << 24));
+        if (legacy) {
+            var legacyMemory = bytes.subarray(payloadStart);
+            return { manifest: manifest,
+                memoryWords: legacyMemory.length ? bytesToMemory(legacyMemory) : null };
+        }
+        if (manifest.containerVersion !== 2 || !Array.isArray(manifest.blobCatalog)) return null;
+        var catalog = {};
+        var payloadLength = bytes.length - payloadStart;
+        for (var i = 0; i < manifest.blobCatalog.length; i++) {
+            var item = manifest.blobCatalog[i];
+            if (!item || typeof item.id !== "string" ||
+                !Number.isInteger(item.offset) || item.offset < 0 ||
+                !Number.isInteger(item.size) || item.size < 0 ||
+                item.offset + item.size > payloadLength || catalog[item.id]) return null;
+            catalog[item.id] = bytes.slice(payloadStart + item.offset,
+                payloadStart + item.offset + item.size);
+        }
+        var memory = null;
+        if (manifest.memoryBlob != null) {
+            if (!catalog[manifest.memoryBlob] || (catalog[manifest.memoryBlob].length & 1)) return null;
+            memory = bytesToMemory(catalog[manifest.memoryBlob]);
+        }
+        if (manifest.overlayBlob != null) {
+            if (!catalog[manifest.overlayBlob]) return null;
+            manifest.overlay = decodeOverlay(catalog[manifest.overlayBlob]);
+            if (!manifest.overlay) return null;
+        }
+        delete manifest.blobCatalog;
+        delete manifest.memoryBlob;
+        delete manifest.overlayBlob;
+        delete manifest.containerVersion;
+        return { manifest: manifest, memoryWords: memory, blobs: catalog };
+    }
+
+    function startsWith(bytes, magic) {
+        if (!bytes || bytes.length < magic.length) return false;
+        for (var i = 0; i < magic.length; i++) {
+            if (bytes[i] !== magic[i]) return false;
         }
         return true;
+    }
+
+    function isContainer(bytes) {
+        return startsWith(bytes, LEGACY_MAGIC) || startsWith(bytes, MAGIC);
     }
 
     // --- Versioning helpers ----------------------------------------------
@@ -308,13 +468,17 @@ var StateFormat = (function () {
         CONTAINER_VERSION: CONTAINER_VERSION,
         SCHEMA_VERSION: SCHEMA_VERSION,
         MAGIC: MAGIC,
+        LEGACY_MAGIC: LEGACY_MAGIC,
         HEADER_LEN: HEADER_LEN,
         captureCPU: captureCPU,
         restoreCPU: restoreCPU,
         memoryToBytes: memoryToBytes,
         bytesToMemory: bytesToMemory,
         pack: pack,
+        packLegacy: packLegacy,
         unpack: unpack,
+        encodeOverlay: encodeOverlay,
+        decodeOverlay: decodeOverlay,
         isContainer: isContainer,
         parseSemver: parseSemver,
         compareSemver: compareSemver,
