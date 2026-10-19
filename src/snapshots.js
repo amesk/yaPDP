@@ -277,7 +277,9 @@ var SnapshotStore = (() => {
             var overlayPromise = (typeof DiskStore !== "undefined" &&
                 typeof DiskStore.captureOverlay === "function")
                 ? DiskStore.captureOverlay() : Promise.resolve({});
-            return overlayPromise.then(function (overlay) {
+            return Promise.all([overlayPromise, captureImageVersions()]).then(function (captured) {
+                var overlay = captured[0];
+                var imageVersions = captured[1];
                 var snap = {
                     id: "snap-" + Date.now(),
                     name: name || defaultName(),
@@ -291,6 +293,7 @@ var SnapshotStore = (() => {
                     // null/absent value means the identity was never learned
                     // and never invalidates anything.
                     imageFingerprints: captureImageFingerprints(),
+                    imageVersions: imageVersions,
                     cpu: captureCPU(),
                     memory: mem,
                     mounted: captureMounted(),
@@ -390,6 +393,24 @@ var SnapshotStore = (() => {
         return out;
     }
 
+    // Registry identity is recorded only when the mounted payload's
+    // fingerprint exactly matches a published immutable version.
+    function captureImageVersions() {
+        if (typeof VersionedMedia === "undefined" ||
+            typeof VersionedMedia.identify !== "function") return Promise.resolve({});
+        var out = {};
+        var urls = listMountedUrls(snapMountedList());
+        return Promise.all(urls.map(function (url) {
+            var fp = (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.fingerprintOf === "function")
+                ? DiskStore.fingerprintOf(url) : null;
+            if (!fp) return Promise.resolve();
+            return VersionedMedia.identify(url, fp).then(function (identity) {
+                if (identity) out[url] = identity;
+            }).catch(function () { /* registry unavailable: keep legacy identity only */ });
+        })).then(function () { return out; });
+    }
+
     // The mounted image list as the emulator sees it (DataLoader), as urls.
     function snapMountedList() {
         if (typeof DataLoader === "undefined" ||
@@ -440,7 +461,7 @@ var SnapshotStore = (() => {
     // Load image bytes from a snapshot's mounted list into DataLoader, but do
     // not change drive providers yet. Restore uses this preflight to learn each
     // image's SHA-256 before it decides whether CPU/RAM may safely be changed.
-    function loadStateImages(mounted) {
+    function loadStateImages(mounted, imageVersions) {
         if (!mounted || !Array.isArray(mounted) || !mounted.length) {
             return Promise.resolve();
         }
@@ -448,6 +469,16 @@ var SnapshotStore = (() => {
         var promises = [];
         for (var i = 0; i < urls.length; i++) {
             (function (url) {
+                var versionInfo = imageVersions && imageVersions[url];
+                if (versionInfo && versionInfo.version != null) {
+                    if (typeof window === "undefined" ||
+                        typeof window.__yapdpLoadImage !== "function") {
+                        promises.push(Promise.reject(new Error("Versioned image loader unavailable: " + url)));
+                        return;
+                    }
+                    promises.push(Promise.resolve(window.__yapdpLoadImage(url, versionInfo)));
+                    return;
+                }
                 if (typeof DataLoader !== "undefined" &&
                     typeof DataLoader.has === "function" && !DataLoader.has(url) &&
                     typeof window !== "undefined" &&
@@ -502,7 +533,7 @@ var SnapshotStore = (() => {
         // The current machine may not have these images loaded yet (notably
         // for a shared ?state= URL), so checking first would see "unknown" and
         // incorrectly accept a snapshot whose disk payload has changed.
-        return loadStateImages(snap.mounted).then(function () {
+        return loadStateImages(snap.mounted, snap.imageVersions).then(function () {
             // Refuse before touching CPU/RAM: a snapshot whose disks changed
             // under it cannot be restored consistently, and a half-applied
             // restore (new RAM on an old disk) is worse than no restore at all.
@@ -1246,6 +1277,7 @@ var SnapshotStore = (() => {
                     createdAt: new Date(snap.createdAt).toISOString(),
                     profile: snap.config,
                     imageFingerprints: snap.imageFingerprints,
+                    imageVersions: snap.imageVersions,
                     cpu: snap.cpu,
                     devices: snap.devices,
                     punchtape: snap.punchtape,
@@ -1376,6 +1408,7 @@ var SnapshotStore = (() => {
                         // later restore by an older build can warn.
                         yaPDPVersion: manifest.yaPDPVersion || null,
                         imageFingerprints: manifest.imageFingerprints || null,
+                        imageVersions: manifest.imageVersions || null,
                         cpu: manifest.cpu || {},
                         memory: mem,
                         mounted: manifest.mounted || [],
