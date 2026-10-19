@@ -78,6 +78,25 @@ proceed silently because there is nobody to ask.
 The rule lives in `StateFormat.checkVersionCompatibility(manifest,
 currentVersion)`.
 
+## Migrating existing states
+
+The one-time migration utility accepts legacy `YAPDPSTA` states and the
+unreleased `YAPDPST2` development prototype. It scans `states/` recursively
+when no files are supplied and performs a dry run unless `--write` is passed:
+
+```sh
+node tools/convert-state-format.js
+node tools/convert-state-format.js --write
+node tools/convert-state-format.js --write states/example.state.zst
+```
+
+Before replacing a file, the tool converts it, validates the container, checks
+the manifest, RAM and extra blobs, and verifies that the output uses canonical
+container version 1. It writes a temporary file first and only replaces the
+original after validation. Keep a normal repository backup/commit before using
+`--write`; the migration should be reviewed and committed separately from the
+code change.
+
 ## Text envelope for GitHub Gist
 
 A `.state.zst` file can be wrapped in a text envelope for sharing via
