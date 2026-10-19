@@ -1007,6 +1007,10 @@ var SnapshotStore = (() => {
             if (typeof console !== "undefined") console.log("applyContainer: unpack failed");
             return { ok: false, reason: "not-a-state", url: url };
         }
+        if (typeof StateFormat.schemaMajor === "function" &&
+            StateFormat.schemaMajor(parsed.manifest) !== 1) {
+            return { ok: false, reason: "unsupported-version", url: url };
+        }
         if (!mountEmbeddedResources(parsed.manifest, parsed.blobs)) {
             return { ok: false, reason: "missing-embedded-resource", url: url };
         }
@@ -1302,8 +1306,10 @@ var SnapshotStore = (() => {
         if (typeof DataLoader === "undefined" || typeof DataLoader.mount !== "function") {
             return false;
         }
+        var mounted = Array.isArray(manifest.mounted) ? manifest.mounted : [];
         var urls = Object.keys(refs);
         for (var i = 0; i < urls.length; i++) {
+            if (mounted.indexOf(urls[i]) < 0) return false;
             var bytes = blobs && blobs[refs[urls[i]]];
             if (!bytes || typeof bytes.length !== "number") return false;
             DataLoader.mount(urls[i], new Uint8Array(bytes));
