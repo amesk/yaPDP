@@ -536,6 +536,26 @@ var SnapshotStore = (() => {
         // The current machine may not have these images loaded yet (notably
         // for a shared ?state= URL), so checking first would see "unknown" and
         // incorrectly accept a snapshot whose disk payload has changed.
+        if (snap.embeddedResources && typeof snap.embeddedResources === "object") {
+            var embeddedIds = {};
+            Object.keys(snap.embeddedResources).forEach(function (resourceUrl, index) {
+                var id = "stored-resource-" + index;
+                embeddedIds[resourceUrl] = id;
+                embeddedIds[id] = snap.embeddedResources[resourceUrl];
+            });
+            var resourceBytes = {};
+            Object.keys(embeddedIds).forEach(function (key) {
+                if (key.indexOf("stored-resource-") === 0) {
+                    resourceBytes[key] = new Uint8Array(embeddedIds[key]);
+                }
+            });
+            if (!mountEmbeddedResources({ embeddedImages: Object.keys(snap.embeddedResources).reduce(function (out, resourceUrl, index) {
+                out[resourceUrl] = "stored-resource-" + index;
+                return out;
+            }, {}) }, resourceBytes)) {
+                return Promise.resolve(false);
+            }
+        }
         return loadStateImages(snap.mounted, snap.imageVersions).then(function () {
             // Refuse before touching CPU/RAM: a snapshot whose disks changed
             // under it cannot be restored consistently, and a half-applied
@@ -707,7 +727,7 @@ var SnapshotStore = (() => {
     // A state fetched here is NOT written to the store: it belongs to somebody
     // else's link, and copying it into the user's snapshot list would be a
     // surprise. It is applied to the live machine, once.
-    var MAX_STATE_BYTES = 16 * 1024 * 1024;   // a state, not an image
+    var MAX_STATE_BYTES = 256 * 1024 * 1024; // state plus bundled resources
 
     // opts.onRestored(manifest) — called AFTER the state is applied but BEFORE
     // the promise settles, so a caller can raise a "preparing" toast for the
@@ -1001,6 +1021,9 @@ var SnapshotStore = (() => {
             if (typeof console !== "undefined") console.log("applyContainer: unpack failed");
             return { ok: false, reason: "not-a-state", url: url };
         }
+        if (!mountEmbeddedResources(parsed.manifest, parsed.blobs)) {
+            return { ok: false, reason: "missing-embedded-resource", url: url };
+        }
         lastStateManifest = parsed.manifest || null;
         if (typeof console !== "undefined") console.log("applyContainer: manifest set, device=", parsed.manifest ? parsed.manifest.device : "null");
         // A container state arrives as manifest + raw words; the rest of the
@@ -1234,6 +1257,69 @@ var SnapshotStore = (() => {
         return out;
     }
 
+    // Collect non-registry resources so a shared state does not depend on
+    // an author's private host. Published immutable media stays referenced by
+    // its versioned registry identity; all other mounted bytes travel inline.
+    function collectEmbeddedResources(mounted, imageVersions, storedResources) {
+        var urls = Array.isArray(mounted) ? mounted.filter(function (url) {
+            return typeof url === "string" && url.length > 0;
+        }) : [];
+        var tasks = urls.map(function (url) {
+            if (imageVersions && imageVersions[url]) return Promise.resolve(null);
+            var stored = storedResources && storedResources[url];
+            var bytes = stored ? new Uint8Array(stored) :
+                (typeof DataLoader !== "undefined" && DataLoader.get
+                    ? DataLoader.get(url) : null);
+            if (bytes && bytes.length) {
+                return Promise.resolve({ url: url, bytes: new Uint8Array(bytes) });
+            }
+            if (typeof window !== "undefined" &&
+                typeof window.__yapdpLoadImage === "function") {
+                return Promise.resolve(window.__yapdpLoadImage(url)).then(function (ok) {
+                    var loaded = typeof DataLoader !== "undefined" && DataLoader.get
+                        ? DataLoader.get(url) : null;
+                    if (ok && loaded && loaded.length) {
+                        return { url: url, bytes: new Uint8Array(loaded) };
+                    }
+                    throw new Error("Cannot bundle state resource: " + url);
+                });
+            }
+            throw new Error("Cannot bundle state resource: " + url);
+        });
+        return Promise.all(tasks).then(function (items) {
+            var blobs = [];
+            var embeddedImages = {};
+            items.forEach(function (item) {
+                if (!item) return;
+                var id = "resource-" + blobs.length;
+                embeddedImages[item.url] = id;
+                blobs.push({
+                    id: id,
+                    mediaType: /\.(ptap|tap)$/i.test(item.url)
+                        ? "application/vnd.yapdp.paper-tape"
+                        : "application/octet-stream",
+                    bytes: item.bytes
+                });
+            });
+            return { blobs: blobs, embeddedImages: embeddedImages };
+        });
+    }
+
+    function mountEmbeddedResources(manifest, blobs) {
+        var refs = manifest && manifest.embeddedImages;
+        if (!refs || typeof refs !== "object") return true;
+        if (typeof DataLoader === "undefined" || typeof DataLoader.mount !== "function") {
+            return false;
+        }
+        var urls = Object.keys(refs);
+        for (var i = 0; i < urls.length; i++) {
+            var bytes = blobs && blobs[refs[urls[i]]];
+            if (!bytes || !bytes.length) return false;
+            DataLoader.mount(urls[i], new Uint8Array(bytes));
+        }
+        return true;
+    }
+
     function deserializeOverlay(overlay) {
         if (!overlay || typeof overlay !== "object") return null;
         var out = {};
@@ -1293,12 +1379,16 @@ var SnapshotStore = (() => {
                     stepsMessage: snap.stepsMessage,
                     overlay: serializeOverlay(snap.overlay),
                 };
-                var packed = StateFormat.pack(manifest, memoryWords);
-                return gzipCompress(packed).then(function (bytes) {
-                    return bytes;
-                }, function () {
-                    return packed;   // uncompressed container fallback
-                });
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources)
+                    .then(function (resources) {
+                        manifest.embeddedImages = resources.embeddedImages;
+                        var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
+                        return gzipCompress(packed).then(function (bytes) {
+                            return bytes;
+                        }, function () {
+                            return packed;   // uncompressed container fallback
+                        });
+                    });
             });
         });
     }
@@ -1366,12 +1456,16 @@ var SnapshotStore = (() => {
                     screenshot: screenshot,
                     overlay: serializeOverlay(snap.overlay),
                 };
-                var packed = StateFormat.pack(manifest, memoryWords);
-                return gzipCompress(packed).then(function (bytes) {
-                    return bytes;
-                }, function () {
-                    return packed;
-                });
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources)
+                    .then(function (resources) {
+                        manifest.embeddedImages = resources.embeddedImages;
+                        var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
+                        return gzipCompress(packed).then(function (bytes) {
+                            return bytes;
+                        }, function () {
+                            return packed;
+                        });
+                    });
             });
         });
     }
@@ -1423,6 +1517,15 @@ var SnapshotStore = (() => {
                         vt52: manifest.vt52 || null,
                         teletypepaper: manifest.teletypepaper || null,
                         overlay: deserializeOverlay(manifest.overlay),
+                        embeddedResources: (function () {
+                            var resources = {};
+                            var refs = manifest.embeddedImages || {};
+                            Object.keys(refs).forEach(function (resourceUrl) {
+                                var bytes = parsed.blobs && parsed.blobs[refs[resourceUrl]];
+                                if (bytes) resources[resourceUrl] = bytes.slice().buffer;
+                            });
+                            return resources;
+                        })(),
                         steps: manifest.steps || null,
                         stepsMessage: manifest.stepsMessage || null,
                         buttonLabel: manifest.buttonLabel || null,
