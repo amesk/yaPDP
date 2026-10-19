@@ -130,14 +130,14 @@ function run() {
             },
         },
     };
-    const v2Manifest = {
+    const blobManifest = {
         schemaVersion: StateFormat.SCHEMA_VERSION,
         label: "binary overlay round trip",
         overlay,
     };
-    const v2Words = Uint16Array.from([0, 1, 0x1234, 0xffff]);
+    const blobWords = Uint16Array.from([0, 1, 0x1234, 0xffff]);
     const extraBytes = Uint8Array.from([12, 34, 56]);
-    const v2Packed = StateFormat.pack(v2Manifest, v2Words, [{
+    const blobPacked = StateFormat.pack(blobManifest, blobWords, [{
         id: "custom-tape",
         mediaType: "application/octet-stream",
         bytes: extraBytes,
@@ -146,35 +146,35 @@ function run() {
         mediaType: "application/octet-stream",
         bytes: extraBytes,
     }]);
-    assert.strictEqual(String.fromCharCode.apply(null, v2Packed.subarray(0, 8)), "YAPDPST2",
-        "new containers use a distinct magic so v1 readers cannot mistake blobs for RAM");
-    const v2Parsed = StateFormat.unpack(v2Packed);
-    assert.ok(v2Parsed, "v2 container unpacks");
-    assert.deepStrictEqual(Array.from(v2Parsed.memoryWords), Array.from(v2Words),
+    assert.strictEqual(String.fromCharCode.apply(null, blobPacked.subarray(0, 8)), "YAPDPSTA",
+        "canonical containers retain the established magic; the manifest version selects the layout");
+    const blobParsed = StateFormat.unpack(blobPacked);
+    assert.ok(blobParsed, "canonical blob container unpacks");
+    assert.deepStrictEqual(Array.from(blobParsed.memoryWords), Array.from(blobWords),
         "RAM is recovered from its blob");
-    assert.deepStrictEqual(Array.from(v2Parsed.blobs["custom-tape"]), Array.from(extraBytes),
+    assert.deepStrictEqual(Array.from(blobParsed.blobs["custom-tape"]), Array.from(extraBytes),
         "caller-supplied blobs survive round trip");
-    assert.deepStrictEqual(Array.from(v2Parsed.blobs["custom-tape-copy"]), Array.from(extraBytes),
+    assert.deepStrictEqual(Array.from(blobParsed.blobs["custom-tape-copy"]), Array.from(extraBytes),
         "deduplicated blob aliases remain addressable");
-    const tapeDescriptor = v2Parsed.blobCatalog.find((item) => item.id === "custom-tape");
-    const tapeCopyDescriptor = v2Parsed.blobCatalog.find((item) => item.id === "custom-tape-copy");
+    const tapeDescriptor = blobParsed.blobCatalog.find((item) => item.id === "custom-tape");
+    const tapeCopyDescriptor = blobParsed.blobCatalog.find((item) => item.id === "custom-tape-copy");
     assert.strictEqual(tapeDescriptor.offset, tapeCopyDescriptor.offset,
         "identical blob payloads share one physical range");
     assert.strictEqual(tapeDescriptor.sha256, tapeCopyDescriptor.sha256,
         "deduplicated descriptors share the same content hash");
     assert.deepStrictEqual(
-        Array.from(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].blocks["2"]),
+        Array.from(blobParsed.manifest.overlay["media/rk1.dsk.zst"].blocks["2"]),
         [0, 1, 127, 255],
         "overlay block bytes remain binary and round-trip exactly");
     assert.deepStrictEqual(
-        Array.from(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].blocks["9"]),
+        Array.from(blobParsed.manifest.overlay["media/rk1.dsk.zst"].blocks["9"]),
         [9, 8, 7],
         "all overlay blocks are restored");
-    assert.strictEqual(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].origin, "state");
-    assert.strictEqual(v2Parsed.manifest.blobCatalog, undefined,
+    assert.strictEqual(blobParsed.manifest.overlay["media/rk1.dsk.zst"].origin, "state");
+    assert.strictEqual(blobParsed.manifest.blobCatalog, undefined,
         "physical blob offsets do not leak into the logical manifest");
 
-    // Existing v1 containers remain readable by the new reader.
+    // Legacy containers remain readable by the new reader.
     const legacyPacked = StateFormat.packLegacy(manifest, words);
     assert.strictEqual(String.fromCharCode.apply(null, legacyPacked.subarray(0, 8)), "YAPDPSTA");
     const legacyParsed = StateFormat.unpack(legacyPacked);
@@ -182,10 +182,10 @@ function run() {
     assert.deepStrictEqual(Array.from(legacyParsed.memoryWords), Array.from(words),
         "legacy RAM remains readable");
     assert.strictEqual(StateFormat.isContainer(legacyPacked), true);
-    assert.strictEqual(StateFormat.isContainer(v2Packed), true);
+    assert.strictEqual(StateFormat.isContainer(blobPacked), true);
 
     // Reject malformed catalog ranges before exposing any partial state.
-    const corrupt = v2Packed.slice();
+    const corrupt = blobPacked.slice();
     const parsedManifestLength = corrupt[8] | (corrupt[9] << 8) |
         (corrupt[10] << 16) | (corrupt[11] << 24);
     const manifestOffset = 12;
@@ -204,13 +204,13 @@ function run() {
     corruptContainer.set(corrupt.subarray(12 + parsedManifestLength), 12 + encodedManifest.length);
     assert.strictEqual(StateFormat.unpack(corruptContainer), null,
         "out-of-range blob descriptors are rejected");
-    const tampered = v2Packed.slice();
+    const tampered = blobPacked.slice();
     tampered[tampered.length - 1] ^= 0xff;
     assert.strictEqual(StateFormat.unpack(tampered), null,
         "blob payloads are verified against their SHA-256 descriptors");
 
 
-    console.log("All StateFormat versioning tests passed.");
+    console.log("All StateFormat container tests passed.");
 }
 
 run();
