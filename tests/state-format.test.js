@@ -63,7 +63,7 @@ function run() {
     assert.strictEqual(StateFormat.schemaMajor({ schemaVersion: "1.0.0" }), 1);
     assert.strictEqual(StateFormat.schemaMajor({ schemaVersion: "1.7.2" }), 1);
     assert.strictEqual(StateFormat.schemaMajor({ schemaVersion: "2.0.0" }), 2,
-        "2.x is the binary-overlay schema");
+        "a 2.x manifest schema has major version 2");
     assert.strictEqual(StateFormat.schemaMajor({ schemaVersion: 1 }), 1, "legacy number");
     assert.strictEqual(StateFormat.schemaMajor({}), 1, "absent -> base schema");
     assert.strictEqual(StateFormat.schemaMajor({ schemaVersion: "nonsense" }), 0,
