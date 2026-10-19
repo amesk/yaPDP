@@ -16,10 +16,8 @@
  *
  * A `.state` file is one zstd frame containing a small binary container:
  *
- *   [8 bytes]  magic "YAPDPSTA"
- *   [4 bytes]  manifest length, little-endian
- *   [manifest] UTF-8 JSON — version, layers, config, CPU, devices, layouts
- *   [memory]   raw bytes, little-endian words, exactly CPU.memory's size
+ *   v1: "YAPDPSTA" + manifest length + JSON manifest + raw RAM bytes
+ *   v2: "YAPDPST2" + manifest length + JSON manifest + a catalogued blob region
  *
  * Memory is the bulk of a state and is stored as RAW BYTES. It used to be
  * `Array.from(Uint16Array)` inside JSON — millions of decimal digits for a
@@ -45,8 +43,8 @@
  *
  *   CONTAINER_VERSION (number)  how the BYTES are laid out — the magic, the
  *                               manifest length, what follows the manifest.
- *                               Changes only with the byte layout (a second
- *                               binary segment). 1 today.
+ *                               Changes when the binary layout changes. v1
+ *                               remains readable; new writes use v2.
  *   schemaVersion (semver)      the SHAPE of the manifest JSON. MAJOR means a
  *                               reader that does not understand it cannot read
  *                               the state; MINOR is additive fields an older
@@ -254,6 +252,16 @@ var StateFormat = (function () {
         return out;
     }
 
+    function blobHash(bytes) {
+        var fingerprint = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+        if (!fingerprint && typeof module !== "undefined" && module.exports) {
+            try { fingerprint = require("./imagefingerprint.js").ImageFingerprint; }
+            catch (e) { fingerprint = null; }
+        }
+        return fingerprint && typeof fingerprint.ofBytes === "function"
+            ? fingerprint.ofBytes(bytes) : null;
+    }
+
     function writeHeader(out, magic, manifestBytes) {
         out.set(magic, 0);
         var len = manifestBytes.length;
@@ -316,7 +324,8 @@ var StateFormat = (function () {
                 id: blob.id,
                 mediaType: blob.mediaType,
                 offset: cursor,
-                size: blob.bytes.length
+                size: blob.bytes.length,
+                sha256: blobHash(blob.bytes)
             });
             cursor += blob.bytes.length;
         });
@@ -360,7 +369,7 @@ var StateFormat = (function () {
                 memoryWords: legacyMemory.length ? bytesToMemory(legacyMemory) : null };
         }
         if (manifest.containerVersion !== 2 || !Array.isArray(manifest.blobCatalog)) return null;
-        var catalog = {};
+        var catalog = Object.create(null);
         var payloadLength = bytes.length - payloadStart;
         for (var i = 0; i < manifest.blobCatalog.length; i++) {
             var item = manifest.blobCatalog[i];
@@ -368,8 +377,10 @@ var StateFormat = (function () {
                 !Number.isInteger(item.offset) || item.offset < 0 ||
                 !Number.isInteger(item.size) || item.size < 0 ||
                 item.offset + item.size > payloadLength || catalog[item.id]) return null;
-            catalog[item.id] = bytes.slice(payloadStart + item.offset,
+            var blobBytes = bytes.slice(payloadStart + item.offset,
                 payloadStart + item.offset + item.size);
+            if (item.sha256 != null && blobHash(blobBytes) !== item.sha256) return null;
+            catalog[item.id] = blobBytes;
         }
         var memory = null;
         if (manifest.memoryBlob != null) {
