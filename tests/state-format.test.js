@@ -141,6 +141,10 @@ function run() {
         id: "custom-tape",
         mediaType: "application/octet-stream",
         bytes: extraBytes,
+    }, {
+        id: "custom-tape-copy",
+        mediaType: "application/octet-stream",
+        bytes: extraBytes,
     }]);
     assert.strictEqual(String.fromCharCode.apply(null, v2Packed.subarray(0, 8)), "YAPDPST2",
         "new containers use a distinct magic so v1 readers cannot mistake blobs for RAM");
@@ -150,6 +154,14 @@ function run() {
         "RAM is recovered from its blob");
     assert.deepStrictEqual(Array.from(v2Parsed.blobs["custom-tape"]), Array.from(extraBytes),
         "caller-supplied blobs survive round trip");
+    assert.deepStrictEqual(Array.from(v2Parsed.blobs["custom-tape-copy"]), Array.from(extraBytes),
+        "deduplicated blob aliases remain addressable");
+    const tapeDescriptor = v2Parsed.blobCatalog.find((item) => item.id === "custom-tape");
+    const tapeCopyDescriptor = v2Parsed.blobCatalog.find((item) => item.id === "custom-tape-copy");
+    assert.strictEqual(tapeDescriptor.offset, tapeCopyDescriptor.offset,
+        "identical blob payloads share one physical range");
+    assert.strictEqual(tapeDescriptor.sha256, tapeCopyDescriptor.sha256,
+        "deduplicated descriptors share the same content hash");
     assert.deepStrictEqual(
         Array.from(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].blocks["2"]),
         [0, 1, 127, 255],
