@@ -46,8 +46,19 @@ function equalBytes(a, b) {
     return true;
 }
 
+function stableValue(value) {
+    if (value instanceof Uint8Array) return Array.from(value);
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === "object") {
+        const out = {};
+        Object.keys(value).sort().forEach((key) => { out[key] = stableValue(value[key]); });
+        return out;
+    }
+    return value;
+}
+
 function equalJson(a, b) {
-    return JSON.stringify(a) === JSON.stringify(b);
+    return JSON.stringify(stableValue(a)) === JSON.stringify(stableValue(b));
 }
 
 function buildCanonical(parsed) {
