@@ -118,6 +118,81 @@ function run() {
         StateFormat.checkVersionCompatibility(parsed.manifest, CUR).compatible, true,
         "a state this build can read is compatible");
 
+    // ---- version 2 blob catalog and binary overlay -------------------
+    assert.strictEqual(StateFormat.CONTAINER_VERSION, 2);
+    const overlay = {
+        "media/rk1.dsk.zst": {
+            v: "abc123",
+            origin: "state",
+            blocks: {
+                "2": Uint8Array.from([0, 1, 127, 255]),
+                "9": Uint8Array.from([9, 8, 7]),
+            },
+        },
+    };
+    const v2Manifest = {
+        schemaVersion: StateFormat.SCHEMA_VERSION,
+        label: "binary overlay round trip",
+        overlay,
+    };
+    const v2Words = Uint16Array.from([0, 1, 0x1234, 0xffff]);
+    const extraBytes = Uint8Array.from([12, 34, 56]);
+    const v2Packed = StateFormat.pack(v2Manifest, v2Words, [{
+        id: "custom-tape",
+        mediaType: "application/octet-stream",
+        bytes: extraBytes,
+    }]);
+    assert.strictEqual(String.fromCharCode.apply(null, v2Packed.subarray(0, 8)), "YAPDPST2",
+        "new containers use a distinct magic so v1 readers cannot mistake blobs for RAM");
+    const v2Parsed = StateFormat.unpack(v2Packed);
+    assert.ok(v2Parsed, "v2 container unpacks");
+    assert.deepStrictEqual(Array.from(v2Parsed.memoryWords), Array.from(v2Words),
+        "RAM is recovered from its blob");
+    assert.deepStrictEqual(Array.from(v2Parsed.blobs["custom-tape"]), Array.from(extraBytes),
+        "caller-supplied blobs survive round trip");
+    assert.deepStrictEqual(
+        Array.from(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].blocks["2"]),
+        [0, 1, 127, 255],
+        "overlay block bytes remain binary and round-trip exactly");
+    assert.deepStrictEqual(
+        Array.from(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].blocks["9"]),
+        [9, 8, 7],
+        "all overlay blocks are restored");
+    assert.strictEqual(v2Parsed.manifest.overlay["media/rk1.dsk.zst"].origin, "state");
+    assert.strictEqual(v2Parsed.manifest.blobCatalog, undefined,
+        "physical blob offsets do not leak into the logical manifest");
+
+    // Existing v1 containers remain readable by the new reader.
+    const legacyPacked = StateFormat.packLegacy(manifest, words);
+    assert.strictEqual(String.fromCharCode.apply(null, legacyPacked.subarray(0, 8)), "YAPDPSTA");
+    const legacyParsed = StateFormat.unpack(legacyPacked);
+    assert.ok(legacyParsed, "legacy v1 container unpacks");
+    assert.deepStrictEqual(Array.from(legacyParsed.memoryWords), Array.from(words),
+        "legacy RAM remains readable");
+    assert.strictEqual(StateFormat.isContainer(legacyPacked), true);
+    assert.strictEqual(StateFormat.isContainer(v2Packed), true);
+
+    // Reject malformed catalog ranges before exposing any partial state.
+    const corrupt = v2Packed.slice();
+    const parsedManifestLength = corrupt[8] | (corrupt[9] << 8) |
+        (corrupt[10] << 16) | (corrupt[11] << 24);
+    const manifestOffset = 12;
+    const decodedManifest = JSON.parse(new TextDecoder().decode(
+        corrupt.subarray(manifestOffset, manifestOffset + parsedManifestLength)));
+    decodedManifest.blobCatalog[0].offset = 0x7fffffff;
+    const encodedManifest = new TextEncoder().encode(JSON.stringify(decodedManifest));
+    const corruptContainer = new Uint8Array(12 + encodedManifest.length +
+        corrupt.length - 12 - parsedManifestLength);
+    corruptContainer.set(corrupt.subarray(0, 12));
+    corruptContainer[8] = encodedManifest.length & 0xff;
+    corruptContainer[9] = (encodedManifest.length >>> 8) & 0xff;
+    corruptContainer[10] = (encodedManifest.length >>> 16) & 0xff;
+    corruptContainer[11] = (encodedManifest.length >>> 24) & 0xff;
+    corruptContainer.set(encodedManifest, 12);
+    corruptContainer.set(corrupt.subarray(12 + parsedManifestLength), 12 + encodedManifest.length);
+    assert.strictEqual(StateFormat.unpack(corruptContainer), null,
+        "out-of-range blob descriptors are rejected");
+
     console.log("All StateFormat versioning tests passed.");
 }
 
