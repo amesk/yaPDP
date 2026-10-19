@@ -407,11 +407,12 @@ var StateFormat = (function () {
             manifest.overlay = decodeOverlay(catalog[manifest.overlayBlob]);
             if (!manifest.overlay) return null;
         }
+        var blobCatalog = manifest.blobCatalog.slice();
         delete manifest.blobCatalog;
         delete manifest.memoryBlob;
         delete manifest.overlayBlob;
         delete manifest.containerVersion;
-        return { manifest: manifest, memoryWords: memory, blobs: catalog };
+        return { manifest: manifest, memoryWords: memory, blobs: catalog, blobCatalog: blobCatalog };
     }
 
     function startsWith(bytes, magic) {
