@@ -192,6 +192,11 @@ function run() {
     corruptContainer.set(corrupt.subarray(12 + parsedManifestLength), 12 + encodedManifest.length);
     assert.strictEqual(StateFormat.unpack(corruptContainer), null,
         "out-of-range blob descriptors are rejected");
+    const tampered = v2Packed.slice();
+    tampered[tampered.length - 1] ^= 0xff;
+    assert.strictEqual(StateFormat.unpack(tampered), null,
+        "blob payloads are verified against their SHA-256 descriptors");
+
 
     console.log("All StateFormat versioning tests passed.");
 }
