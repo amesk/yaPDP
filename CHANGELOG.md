@@ -208,6 +208,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **?state= deep link no longer reload-loops or double-applies its devices.**
+  A state whose device set needs a page reload keeps its `?state=` in the
+  address bar; the reloaded page now applies the link once (via QuickBoot's
+  URL path) instead of also applying it from the pending key, which mounted
+  the state's disk images twice and could stall the restore on the "Restoring
+  the machine state…" toast — or, with a reload loop, never settle at all.
+  (`src/snapshots.js`; pinned by `tests/e2e-state-deeplink.js`, which now
+  fails a page that keeps navigating instead of hanging on `page.close()`)
+
 - **QuickBoot input gate respects modal visibility.** Keyboard and pointer events are exempted only for visible modal overlays, so focus left on the hidden scenario chooser cannot leak operator keystrokes into an active autoload.
 
 - **QuickBoot input gate stays closed when a host control retains focus.** Ordinary keyboard events targeting Pause/Resume, Reboot or Screenshot are still blocked during autoload; pointer clicks and Enter/Space activation of the host controls remain available. (`src/quickboot.js`; pinned by `tests/quickboot-input-gate.test.js`)

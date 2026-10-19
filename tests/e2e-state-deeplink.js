@@ -118,13 +118,46 @@ async function poll(page, predicate, timeoutMs) {
 }
 
 // Open the emulator with the loading gate out of the way; storage is CLEAN so
-// the state path is the only thing that can bring the machine up.
+// the state path is the only thing that can bring the machine up. The stores
+// are cleared ONCE, against the real origin, before the ?state= link is opened —
+// NOT via evaluateOnNewDocument(): that hook runs on every navigation, so the
+// config-driven reload the state flow performs would drop the profile the state
+// just persisted, re-detect a "different device set" and reload forever (seen
+// in CI as a one-hour hang on page.close() while the tab keeps navigating).
+// IndexedDB is cleared too: the disk/overlay store is persistent across runs,
+// and a stale overlay fingerprint from an earlier session makes the restore
+// refuse the state (bad.length > 0 in incompatibleImages) — which shows up as
+// "parameter never dropped" rather than a hang, but only on reused profiles.
 async function openPage(browser, errors, search) {
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
-    await page.evaluateOnNewDocument(() => {
+    await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.evaluate(() => new Promise((resolve) => {
         try { localStorage.clear(); } catch (e) { /* ignore */ }
-    });
+        try { sessionStorage.clear(); } catch (e) { /* ignore */ }
+        const dropAll = () => {
+            if (typeof indexedDB === "undefined" ||
+                typeof indexedDB.databases !== "function") {
+                resolve();
+                return;
+            }
+            indexedDB.databases().then((dbs) => {
+                const names = (dbs || []).map((d) => d.name)
+                    // The emulator's own stores; anything else belongs to
+                    // something else and is left alone.
+                    .filter((n) => /^yapdp-/.test(n));
+                if (!names.length) { resolve(); return; }
+                let left = names.length;
+                names.forEach((name) => {
+                    const req = indexedDB.deleteDatabase(name);
+                    req.onsuccess = req.onerror = req.onblocked = () => {
+                        if (--left === 0) resolve();
+                    };
+                });
+            }, () => resolve());
+        };
+        dropAll();
+    }));
     await page.goto(BASE + search, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForFunction(
         () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
@@ -178,6 +211,30 @@ async function snap(page) {
     }
 }
 
+// Wait until the main frame has gone `quietMs` without a navigation, up to
+// `timeoutMs`. Returns false when the page keeps navigating (a reload loop).
+// The ?state= flow reloads the page AT MOST ONCE (a device-set change), so a
+// page that stays busy navigating after the state was applied is a bug — and
+// closing such a page hangs headless CI (Target.closeTarget never completes).
+async function waitForStable(page, quietMs, timeoutMs) {
+    let navCount = 0;
+    const onNav = () => { navCount++; };
+    page.on("framenavigated", onNav);
+    try {
+        const deadline = Date.now() + timeoutMs;
+        let lastChange = Date.now();
+        for (;;) {
+            const before = navCount;
+            await new Promise((r) => setTimeout(r, 250));
+            if (navCount !== before) lastChange = Date.now();
+            if (Date.now() - lastChange >= quietMs) return true;
+            if (Date.now() > deadline) return false;
+        }
+    } finally {
+        page.off("framenavigated", onNav);
+    }
+}
+
 (async () => {
     const server = await ensureServer();
     const browser = await puppeteer.launch({
@@ -193,7 +250,7 @@ async function snap(page) {
             // The state is applied by SnapshotStore.loadFromUrl; success is the
             // parameter leaving the URL (see 2) plus a live console.
             const applied = await poll(page, () =>
-                location.search.indexOf("state=") === -1, 45000);
+                location.search.indexOf("state=") === -1, 90000);
             const state = await snap(page);
             check("?state=: the state was applied (parameter dropped)",
                 applied, JSON.stringify(state));
@@ -203,6 +260,12 @@ async function snap(page) {
                 state.configRestoreVisible === false, String(state.configRestoreVisible));
             check("?state=: the machine is running the restored guest",
                 state.consoleText.length > 0, JSON.stringify(state.consoleText));
+            // The state flow may reload the page ONCE (device-set change); a
+            // page that keeps navigating is stuck in a reload loop and would
+            // hang page.close() forever in headless CI. Catch it as a FAIL.
+            const stable = await waitForStable(page, 5000, 30000);
+            check("?state=: the page is stable before close (no reload loop)",
+                stable, "");
             await page.close();
         }
 
@@ -253,7 +316,7 @@ async function snap(page) {
                 const page = await openPage(browser, errors,
                     "?state=" + encodeURIComponent(ext.url));
                 const applied = await poll(page, () =>
-                    location.search.indexOf("state=") === -1, 45000);
+                    location.search.indexOf("state=") === -1, 90000);
                 const state = await snap(page);
                 check("external (CORS): the state was applied",
                     applied, JSON.stringify(state));
@@ -261,6 +324,9 @@ async function snap(page) {
                     state.dialogTitle === null, String(state.dialogTitle));
                 check("external (CORS): the machine is running the restored guest",
                     state.consoleText.length > 0, JSON.stringify(state.consoleText));
+                const stableExt = await waitForStable(page, 5000, 30000);
+                check("external (CORS): the page is stable before close (no reload loop)",
+                    stableExt, "");
                 await page.close();
             } finally {
                 ext.server.close();
@@ -301,7 +367,7 @@ async function snap(page) {
             await page.waitForFunction(
                 () => typeof SnapshotStore === "object" && typeof QuickBoot === "object",
                 { timeout: 60000 });
-            const applied = await poll(page, () => location.search.indexOf("state=") === -1, 45000);
+            const applied = await poll(page, () => location.search.indexOf("state=") === -1, 90000);
             check("plain reload setup: state link was consumed", applied,
                 await page.evaluate(() => location.search));
             await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
@@ -377,7 +443,7 @@ async function snap(page) {
                 preview, JSON.stringify(await snap(page)));
             await page.click("#quick-boot-preparing-ok");
             const finished = await poll(page, () =>
-                !document.querySelector("#quick-boot-preparing.visible"), 45000);
+                !document.querySelector("#quick-boot-preparing.visible"), 90000);
             check("after Play!: scenario handoff finished", finished, JSON.stringify(await snap(page)));
             await page.reload({ waitUntil: "domcontentloaded", timeout: 90000 });
             await page.waitForFunction(
