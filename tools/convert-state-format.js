@@ -83,7 +83,9 @@ function imagePathCandidates(url, root) {
         try { clean = new URL(clean).pathname; } catch (e) { return []; }
     }
     try { clean = decodeURIComponent(clean); } catch (e) { /* keep literal path */ }
-    clean = clean.split(String.fromCharCode(92)).join("/").replace(/^\\/+/, "").replace(/^\.\//, "");
+    clean = clean.split(String.fromCharCode(92)).join("/");
+    while (clean.startsWith("/")) clean = clean.slice(1);
+    if (clean.startsWith("./")) clean = clean.slice(2);
     if (!clean || clean.split("/").some((part) => part === "..")) return [];
 
     const relativePaths = clean.startsWith("media/")
