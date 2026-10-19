@@ -205,6 +205,25 @@ function run() {
     corruptContainer.set(corrupt.subarray(12 + parsedManifestLength), 12 + encodedManifest.length);
     assert.strictEqual(StateFormat.unpack(corruptContainer), null,
         "out-of-range blob descriptors are rejected");
+
+    // An unknown declared container version must not fall back to interpreting
+    // the payload as legacy RAM, even though the canonical magic is unchanged.
+    decodedManifest.blobCatalog[0].offset = 0;
+    decodedManifest.containerVersion = 99;
+    const unsupportedManifest = new TextEncoder().encode(JSON.stringify(decodedManifest));
+    const unsupportedContainer = new Uint8Array(12 + unsupportedManifest.length +
+        blobPacked.length - 12 - parsedManifestLength);
+    unsupportedContainer.set(blobPacked.subarray(0, 12));
+    unsupportedContainer[8] = unsupportedManifest.length & 0xff;
+    unsupportedContainer[9] = (unsupportedManifest.length >>> 8) & 0xff;
+    unsupportedContainer[10] = (unsupportedManifest.length >>> 16) & 0xff;
+    unsupportedContainer[11] = (unsupportedManifest.length >>> 24) & 0xff;
+    unsupportedContainer.set(unsupportedManifest, 12);
+    unsupportedContainer.set(blobPacked.subarray(12 + parsedManifestLength),
+        12 + unsupportedManifest.length);
+    assert.strictEqual(StateFormat.unpack(unsupportedContainer), null,
+        "unknown declared container versions are refused");
+
     const tampered = blobPacked.slice();
     tampered[tampered.length - 1] ^= 0xff;
     assert.strictEqual(StateFormat.unpack(tampered), null,
