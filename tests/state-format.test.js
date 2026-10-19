@@ -119,8 +119,9 @@ function run() {
         StateFormat.checkVersionCompatibility(parsed.manifest, CUR).compatible, true,
         "a state this build can read is compatible");
 
-    // ---- version 2 blob catalog and binary overlay -------------------
-    assert.strictEqual(StateFormat.CONTAINER_VERSION, 2);
+    // ---- canonical version 1 blob catalog and binary overlay -----------
+    assert.strictEqual(StateFormat.CONTAINER_VERSION, 1,
+        "the canonical blob container uses version 1");
     const overlay = {
         "media/rk1.dsk.zst": {
             v: "abc123",
