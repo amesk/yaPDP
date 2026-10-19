@@ -64,8 +64,8 @@ function equalJson(a, b) {
 }
 
 // Legacy snapshots fingerprinted the raw compressed .zst response with FNV-1a/32.
-// The current runtime uses SHA-256 over that same byte stream, so migration must
-// verify the old value against the exact source bytes before replacing it.
+// The current identity is SHA-256 of the decompressed image payload. Verify the
+// old fingerprint against the exact compressed source before changing identity.
 function fnv1a32(bytes) {
     let hash = 0x811c9dc5;
     for (let i = 0; i < bytes.length; i++) {
