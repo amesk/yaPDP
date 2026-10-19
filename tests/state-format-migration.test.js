@@ -11,16 +11,18 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { StateFormat } = require(path.join(__dirname, "..", "src", "state-format.js"));
+const MediaZst = require(path.join(__dirname, "..", "tools", "media-zst.js"));
 const StateIO = require(path.join(__dirname, "..", "tools", "state-io.js"));
 const { convertOne, fnv1a32, sha256 } = require(path.join(__dirname, "..", "tools", "convert-state-format.js"));
 
 function testLegacyImageFingerprintMigration(dir) {
     const mediaDir = path.join(dir, "media");
     fs.mkdirSync(mediaDir, { recursive: true });
-    const imageBytes = Buffer.from("fixture compressed image payload");
-    fs.writeFileSync(path.join(mediaDir, "rk1.dsk.zst"), imageBytes);
+    const imageBytes = Buffer.from("fixture decompressed image payload");
+    const imageFrame = MediaZst.rawFrame(imageBytes);
+    fs.writeFileSync(path.join(mediaDir, "rk1.dsk.zst"), imageFrame);
 
-    const oldFingerprint = fnv1a32(imageBytes);
+    const oldFingerprint = fnv1a32(imageFrame);
     const file = path.join(dir, "canonical-with-legacy-fingerprint.state.zst");
     const words = Uint16Array.from([0x1111, 0x2222, 0x3333]);
     const manifest = {
