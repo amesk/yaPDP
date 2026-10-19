@@ -274,10 +274,11 @@ var SnapshotStore = (() => {
             // disks back to the same generation as the captured RAM, so the
             // restored guest's filesystem metadata stays consistent with the
             // disk contents.
+            var imageFingerprints = captureImageFingerprints();
             var overlayPromise = (typeof DiskStore !== "undefined" &&
                 typeof DiskStore.captureOverlay === "function")
                 ? DiskStore.captureOverlay() : Promise.resolve({});
-            return Promise.all([overlayPromise, captureImageVersions()]).then(function (captured) {
+            return Promise.all([overlayPromise, captureImageVersions(imageFingerprints)]).then(function (captured) {
                 var overlay = captured[0];
                 var imageVersions = captured[1];
                 var snap = {
@@ -292,7 +293,7 @@ var SnapshotStore = (() => {
                     // { "rk0.dsk": "<64 lowercase hex digits>", ... }. A
                     // null/absent value means the identity was never learned
                     // and never invalidates anything.
-                    imageFingerprints: captureImageFingerprints(),
+                    imageFingerprints: imageFingerprints,
                     imageVersions: imageVersions,
                     cpu: captureCPU(),
                     memory: mem,
@@ -395,15 +396,13 @@ var SnapshotStore = (() => {
 
     // Registry identity is recorded only when the mounted payload's
     // fingerprint exactly matches a published immutable version.
-    function captureImageVersions() {
+    function captureImageVersions(fingerprints) {
         if (typeof VersionedMedia === "undefined" ||
             typeof VersionedMedia.identify !== "function") return Promise.resolve({});
         var out = {};
         var urls = listMountedUrls(snapMountedList());
         return Promise.all(urls.map(function (url) {
-            var fp = (typeof DiskStore !== "undefined" &&
-                typeof DiskStore.fingerprintOf === "function")
-                ? DiskStore.fingerprintOf(url) : null;
+            var fp = fingerprints && fingerprints[url];
             if (!fp) return Promise.resolve();
             return VersionedMedia.identify(url, fp).then(function (identity) {
                 if (identity) out[url] = identity;
