@@ -16,8 +16,8 @@
  *
  * A `.state` file is one zstd frame containing a small binary container:
  *
- *   v1: "YAPDPSTA" + manifest length + JSON manifest + raw RAM bytes
- *   v2: "YAPDPST2" + manifest length + JSON manifest + a catalogued blob region
+ *   legacy: "YAPDPSTA" + manifest length + JSON manifest + raw RAM bytes
+ *   current: "YAPDPSTA" + manifest length + JSON manifest + a catalogued blob region
  *
  * Memory is the bulk of a state and is stored as RAW BYTES. It used to be
  * `Array.from(Uint16Array)` inside JSON — millions of decimal digits for a
@@ -75,7 +75,7 @@ var StateFormat = (function () {
     // becomes 2 and the segments get an explicit descriptor; until then memory
     // is simply "everything after the manifest", and an offset/length pair in
     // the manifest would be redundant and could drift.
-    var CONTAINER_VERSION = 2;
+    var CONTAINER_VERSION = 1;
 
     // Snapshot manifest schema version — semver, and NOT the container layout
     // above. It describes the SHAPE of the manifest's JSON:
@@ -88,7 +88,9 @@ var StateFormat = (function () {
     var SCHEMA_VERSION = "1.0.0";
 
     var LEGACY_MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x41]; // "YAPDPSTA"
-    var MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x32]; // "YAPDPST2"
+    // Intermediate development format. It was never part of a released contract.
+    var INTERMEDIATE_MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x32]; // "YAPDPST2"
+    var MAGIC = LEGACY_MAGIC;
     var MAGIC_LEN = MAGIC.length;
     var HEADER_LEN = MAGIC_LEN + 4; // magic + manifest length
 
@@ -283,9 +285,9 @@ var StateFormat = (function () {
 
     /**
      * pack(manifest, memoryWords, extraBlobs) -> Uint8Array.
-     * Version 2 stores RAM, binary disk overlays, and caller-supplied resources
-     * in one offset-addressable blob region. Blob offsets are relative to that
-     * region, not the compressed outer frame.
+     * Container version 1 stores RAM, binary disk overlays, and caller-supplied
+     * resources in one offset-addressable blob region. Blob offsets are relative
+     * to that region, not the compressed outer frame.
      */
     function pack(manifest, memoryWords, extraBlobs) {
         var saved = Object.assign({}, manifest || {});
@@ -344,7 +346,7 @@ var StateFormat = (function () {
                 sha256: hash
             });
         });
-        saved.containerVersion = 2;
+        saved.containerVersion = CONTAINER_VERSION;
         saved.blobCatalog = catalog;
         var manifestBytes = utf8Encode(JSON.stringify(saved));
         var out = new Uint8Array(HEADER_LEN + manifestBytes.length + cursor);
@@ -371,19 +373,28 @@ var StateFormat = (function () {
 
     function unpack(bytes) {
         if (!bytes || bytes.length < HEADER_LEN) return null;
-        var legacy = startsWith(bytes, LEGACY_MAGIC);
-        var current = startsWith(bytes, MAGIC);
-        if (!legacy && !current) return null;
+        var legacyMagic = startsWith(bytes, LEGACY_MAGIC);
+        var intermediateMagic = startsWith(bytes, INTERMEDIATE_MAGIC);
+        if (!legacyMagic && !intermediateMagic) return null;
         var manifest = readManifest(bytes);
         if (!manifest || typeof manifest !== "object") return null;
         var payloadStart = HEADER_LEN + (bytes[MAGIC_LEN] | (bytes[MAGIC_LEN + 1] << 8) |
             (bytes[MAGIC_LEN + 2] << 16) | (bytes[MAGIC_LEN + 3] << 24));
-        if (legacy) {
+        // Released legacy containers have no containerVersion/blobCatalog and
+        // store RAM as the entire payload. The new canonical format deliberately
+        // keeps the same magic; the manifest discriminator selects the layout.
+        // YAPDPST2 is accepted only to migrate an unpublished development format.
+        var blobContainer = manifest.containerVersion === CONTAINER_VERSION &&
+            Array.isArray(manifest.blobCatalog);
+        var intermediateContainer = intermediateMagic && manifest.containerVersion === 2 &&
+            Array.isArray(manifest.blobCatalog);
+        if (!blobContainer && !intermediateContainer) {
+            if (intermediateMagic) return null;
             var legacyMemory = bytes.subarray(payloadStart);
+            if (legacyMemory.length & 1) return null;
             return { manifest: manifest,
                 memoryWords: legacyMemory.length ? bytesToMemory(legacyMemory) : null };
         }
-        if (manifest.containerVersion !== 2 || !Array.isArray(manifest.blobCatalog)) return null;
         var catalog = Object.create(null);
         var payloadLength = bytes.length - payloadStart;
         for (var i = 0; i < manifest.blobCatalog.length; i++) {
@@ -424,7 +435,7 @@ var StateFormat = (function () {
     }
 
     function isContainer(bytes) {
-        return startsWith(bytes, LEGACY_MAGIC) || startsWith(bytes, MAGIC);
+        return startsWith(bytes, LEGACY_MAGIC) || startsWith(bytes, INTERMEDIATE_MAGIC);
     }
 
     // --- Versioning helpers ----------------------------------------------
@@ -496,6 +507,7 @@ var StateFormat = (function () {
         SCHEMA_VERSION: SCHEMA_VERSION,
         MAGIC: MAGIC,
         LEGACY_MAGIC: LEGACY_MAGIC,
+        INTERMEDIATE_MAGIC: INTERMEDIATE_MAGIC,
         HEADER_LEN: HEADER_LEN,
         captureCPU: captureCPU,
         restoreCPU: restoreCPU,
