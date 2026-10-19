@@ -894,12 +894,18 @@ var QuickBoot = (function () {
                     // breaks the circle — the fetch starts, the label tracks it,
                     // and the gate opens when it lands.
                     return Promise.all(urls.map(function (u) {
+                        var versionInfo = manifest.imageVersions && manifest.imageVersions[u];
                         if (typeof window !== "undefined" &&
                             typeof window.__yapdpLoadImage === "function") {
-                            return window.__yapdpLoadImage(u);
+                            return window.__yapdpLoadImage(u, versionInfo || null);
                         }
-                        // No loader (legacy stack, or a harness): fall back to
-                        // watching DataLoader so the gate still opens.
+                        if (versionInfo && versionInfo.version != null &&
+                            typeof VersionedMedia !== "undefined" &&
+                            typeof VersionedMedia.load === "function") {
+                            return VersionedMedia.load(u, versionInfo.version, versionInfo.sha256);
+                        }
+                        // No versioned loader (legacy stack, or a harness):
+                        // watch DataLoader so the gate still opens.
                         return waitForImages([u]);
                     }));
                 });
