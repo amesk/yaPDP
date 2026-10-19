@@ -537,22 +537,14 @@ var SnapshotStore = (() => {
         // for a shared ?state= URL), so checking first would see "unknown" and
         // incorrectly accept a snapshot whose disk payload has changed.
         if (snap.embeddedResources && typeof snap.embeddedResources === "object") {
-            var embeddedIds = {};
+            var embeddedRefs = {};
+            var resourceBytes = {};
             Object.keys(snap.embeddedResources).forEach(function (resourceUrl, index) {
                 var id = "stored-resource-" + index;
-                embeddedIds[resourceUrl] = id;
-                embeddedIds[id] = snap.embeddedResources[resourceUrl];
+                embeddedRefs[resourceUrl] = id;
+                resourceBytes[id] = new Uint8Array(snap.embeddedResources[resourceUrl]);
             });
-            var resourceBytes = {};
-            Object.keys(embeddedIds).forEach(function (key) {
-                if (key.indexOf("stored-resource-") === 0) {
-                    resourceBytes[key] = new Uint8Array(embeddedIds[key]);
-                }
-            });
-            if (!mountEmbeddedResources({ embeddedImages: Object.keys(snap.embeddedResources).reduce(function (out, resourceUrl, index) {
-                out[resourceUrl] = "stored-resource-" + index;
-                return out;
-            }, {}) }, resourceBytes)) {
+            if (!mountEmbeddedResources({ embeddedImages: embeddedRefs }, resourceBytes)) {
                 return Promise.resolve(false);
             }
         }
@@ -1045,6 +1037,7 @@ var SnapshotStore = (() => {
             // for a state fetched from somebody else's link.
             yaPDPVersion: parsed.manifest.yaPDPVersion || null,
             imageFingerprints: parsed.manifest.imageFingerprints || null,
+            imageVersions: parsed.manifest.imageVersions || null,
             cpu: parsed.manifest.cpu || {},
             memory: { format: "raw", data: parsed.memoryWords
                 ? parsed.memoryWords.buffer : new ArrayBuffer(0) },
@@ -1160,22 +1153,27 @@ var SnapshotStore = (() => {
                 // dead with a loaded memory (measured: BASIC-11 restored, runState
                 // 3, nothing happened). Same correction capture() makes.
                 if (wasRunning) manifest.cpu.runState = STATE_RUN;
-                var packed = StateFormat.pack(manifest, CPU.memory);
-                // Compress with what the BROWSER already has. fzstd is
-                // decompress-only by design, and pulling a zstd compressor into
-                // the page would cost ~1-2 MB of script for a button nobody
-                // presses daily. CompressionStream is built in and free; the
-                // container is unchanged — only the frame around it differs, and
-                // both decompressors (fzstd for zstd, DecompressionStream for
-                // gzip) are on the page already.
-                return gzipCompress(packed).then(function (bytes) {
-                    if (wasRunning) CPU.runState = prevRunState;
-                    return bytes;
-                }, function () {
-                    if (wasRunning) CPU.runState = prevRunState;
-                    return packed;   // no CompressionStream: uncompressed container
+                return captureImageVersions(fps).then(function (versions) {
+                    manifest.imageVersions = versions;
+                    return collectEmbeddedResources(manifest.mounted, versions, null).then(function (resources) {
+                        manifest.embeddedImages = resources.embeddedImages;
+                        var packed = StateFormat.pack(manifest, CPU.memory, resources.blobs);
+                        // Compression is only an outer transport frame; the
+                        // inner v2 blob offsets refer to the decoded container.
+                        return gzipCompress(packed).then(function (bytes) {
+                            return bytes;
+                        }, function () {
+                            return packed;
+                        });
+                    });
                 });
             });
+        }).then(function (bytes) {
+            if (wasRunning) CPU.runState = prevRunState;
+            return bytes;
+        }, function (err) {
+            if (wasRunning) CPU.runState = prevRunState;
+            throw err;
         });
     }
 
@@ -1307,7 +1305,7 @@ var SnapshotStore = (() => {
         var urls = Object.keys(refs);
         for (var i = 0; i < urls.length; i++) {
             var bytes = blobs && blobs[refs[urls[i]]];
-            if (!bytes || !bytes.length) return false;
+            if (!bytes || typeof bytes.length !== "number") return false;
             DataLoader.mount(urls[i], new Uint8Array(bytes));
         }
         return true;
@@ -1435,6 +1433,7 @@ var SnapshotStore = (() => {
                     createdAt: new Date().toISOString(),
                     profile: snap.config,
                     imageFingerprints: snap.imageFingerprints,
+                    imageVersions: snap.imageVersions,
                     cpu: snap.cpu,
                     devices: snap.devices,
                     punchtape: snap.punchtape,
