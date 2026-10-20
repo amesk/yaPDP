@@ -1326,10 +1326,38 @@ var SnapshotStore = (() => {
         });
     }
 
+    // Decode an overlay block without allowing typed-array coercion to hide
+    // malformed byte values (e.g. 256 becoming 0 or -1 becoming 255).
+    // Object-form blocks must have the same contiguous numeric keys produced
+    // by serializing a Uint8Array.
+    function overlayBlockBytes(value) {
+        if (value instanceof Uint8Array) return new Uint8Array(value);
+        if (value instanceof ArrayBuffer) return new Uint8Array(value.slice(0));
+        var values;
+        if (Array.isArray(value)) {
+            values = value;
+        } else if (value && typeof value === "object") {
+            var keys = Object.keys(value);
+            for (var i = 0; i < keys.length; i++) {
+                if (keys[i] !== String(i)) return null;
+            }
+            values = keys.map(function (key) { return value[key]; });
+        } else {
+            return null;
+        }
+        for (var j = 0; j < values.length; j++) {
+            if (!Number.isInteger(values[j]) || values[j] < 0 || values[j] > 255) {
+                return null;
+            }
+        }
+        return Uint8Array.from(values);
+    }
+
     // Flatten a disk's write-back overlay into its embedded base image.
     // Only exact SHA-256 matches are safe: a stale/legacy/unknown overlay is
     // retained separately rather than risking damage to the disk contents.
-    // IO_BLOCKSIZE in iopage.js is 128 KiB; overlay blocks use that same size.
+    // Use the shared device constant when available; keep the format's 128 KiB
+    // block size as a fallback for environments that load snapshots in tests.
     function mergeEmbeddedOverlays(manifest, resources) {
         var overlay = manifest && manifest.overlay;
         if (!overlay || typeof overlay !== "object" ||
@@ -1344,7 +1372,8 @@ var SnapshotStore = (() => {
             if (blob && blob.id) blobsById[blob.id] = blob;
         });
         var fingerprints = Object.assign({}, manifest.imageFingerprints || {});
-        var blockSize = 131072;
+        var blockSize = (typeof IO_BLOCKSIZE === "number" && IO_BLOCKSIZE > 0)
+            ? IO_BLOCKSIZE : 128 * 1024;
 
         Object.keys(overlay).forEach(function (url) {
             var rec = overlay[url];
@@ -1369,11 +1398,7 @@ var SnapshotStore = (() => {
                 var blockNo = Number(key);
                 var offset = blockNo * blockSize;
                 var value = rec.blocks[key];
-                var bytes = value instanceof Uint8Array ? new Uint8Array(value)
-                    : value instanceof ArrayBuffer ? new Uint8Array(value.slice(0))
-                    : Array.isArray(value) ? Uint8Array.from(value)
-                    : (value && typeof value === "object")
-                        ? new Uint8Array(Object.values(value)) : null;
+                var bytes = overlayBlockBytes(value);
                 // A block beyond EOF would change the disk geometry; keep that
                 // overlay separate. Empty and malformed blocks are not merged.
                 // DiskStore serializes every cache block to exactly IO_BLOCKSIZE
@@ -1437,10 +1462,9 @@ var SnapshotStore = (() => {
             var blocks = {};
             Object.keys(rec.blocks).forEach(function (b) {
                 var v = rec.blocks[b];
-                blocks[b] = (v instanceof Uint8Array) ? new Uint8Array(v)
-                    : Array.isArray(v) ? Uint8Array.from(v)
-                    : (v && typeof v === "object") ? new Uint8Array(Object.values(v))
-                    : new Uint8Array(0);
+                // Preserve malformed input verbatim so the flattening path can
+                // reject it instead of accepting bytes after silent coercion.
+                blocks[b] = overlayBlockBytes(v) || v;
             });
             out[url] = Object.assign({}, rec, { blocks: blocks });
         });
