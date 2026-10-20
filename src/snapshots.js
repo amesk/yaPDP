@@ -1254,12 +1254,12 @@ var SnapshotStore = (() => {
     // Collect non-registry resources so a shared state does not depend on
     // an author's private host. Published immutable media stays referenced by
     // its versioned registry identity; all other mounted bytes travel inline.
-    function collectEmbeddedResources(mounted, imageVersions, storedResources) {
+    function collectEmbeddedResources(mounted, imageVersions, storedResources, includePublished) {
         var urls = Array.isArray(mounted) ? mounted.filter(function (url) {
             return typeof url === "string" && url.length > 0;
         }) : [];
         var tasks = urls.map(function (url) {
-            if (imageVersions && imageVersions[url]) return Promise.resolve(null);
+            if (!includePublished && imageVersions && imageVersions[url]) return Promise.resolve(null);
             var stored = storedResources && storedResources[url];
             var bytes = stored ? new Uint8Array(stored) :
                 (typeof DataLoader !== "undefined" && DataLoader.get
@@ -1438,7 +1438,7 @@ var SnapshotStore = (() => {
                     createdAt: new Date().toISOString(),
                     profile: snap.config,
                     imageFingerprints: snap.imageFingerprints,
-                    imageVersions: snap.imageVersions,
+                    imageVersions: Object.assign({}, snap.imageVersions || {}),
                     cpu: snap.cpu,
                     devices: snap.devices,
                     punchtape: snap.punchtape,
@@ -1453,9 +1453,15 @@ var SnapshotStore = (() => {
                     screenshot: screenshot,
                     overlay: serializeOverlay(snap.overlay),
                 };
-                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources)
+                var selfContained = !!(opts && opts.selfContained);
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, selfContained)
                     .then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
+                        // Embedded resources are authoritative. Do not ask the
+                        // versioned media loader to replace them during restore.
+                        Object.keys(resources.embeddedImages).forEach(function (url) {
+                            delete manifest.imageVersions[url];
+                        });
                         var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
                         return gzipCompress(packed).then(function (bytes) {
                             return bytes;
@@ -3333,6 +3339,11 @@ var SnapshotStore = (() => {
                     '<label class="modal-field">Run after restore' +
                         '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
+                    '<label class="share-self-contained-option">' +
+                        '<input type="checkbox" id="share-self-contained">' +
+                        '<span><strong>Make state self-contained</strong>' +
+                        '<small>Include standard disk images too, so the state does not depend on the current yaPDP media files.</small></span>' +
+                    '</label>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
                     '<div class="split-btn">' +
                         '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
@@ -3504,6 +3515,7 @@ var SnapshotStore = (() => {
                     buttonLabel: btn || null,
                     screenshot: screenshotData,
                     command: cmd,
+                    selfContained: !!document.getElementById("share-self-contained")?.checked,
                 };
             }
 
