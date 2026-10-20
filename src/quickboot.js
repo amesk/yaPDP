@@ -876,9 +876,9 @@ var QuickBoot = (function () {
             // before the guest is allowed to run on: the visitor is told the
             // disk is still coming, instead of meeting a download strip later.
             onRestored: function (manifest) {
-                // Restore stepsMessage from sessionStorage if the manifest
-                // doesn't carry it (e.g. after a config-driven reload that
-                // persisted it in snapshots.js before calling location.reload).
+                // Restore the title persisted across a config-driven reload.
+                // Other preview metadata must come from this manifest only:
+                // sessionStorage may contain data from an unrelated state.
                 var stateTitle = (manifest && manifest.label) || null;
                 if (!stateTitle) {
                     try {
@@ -887,36 +887,10 @@ var QuickBoot = (function () {
                     } catch (e) { /* ignore */ }
                 }
                 var stepsMessage = (manifest && manifest.stepsMessage) || null;
-                if (!stepsMessage) {
-                    try {
-                        var saved = sessionStorage.getItem("yapdp.state-steps-message");
-                        if (saved) { stepsMessage = saved; }
-                    } catch (e) { /* ignore */ }
-                }
-                // Determine if there are steps to execute (from manifest or
-                // sessionStorage fallback). When steps exist, the OK button
-                // is shown and showPreparing waits for the operator to click it.
                 var hasSteps = !!(manifest && manifest.steps &&
                     Array.isArray(manifest.steps) && manifest.steps.length > 0);
-                if (!hasSteps) {
-                    try {
-                        var saved = sessionStorage.getItem("yapdp.state-steps");
-                        if (saved) { hasSteps = true; }
-                    } catch (e) { /* ignore */ }
-                }
                 _hasSteps = hasSteps;
-                // Read the optional custom button label from the manifest.
-                // When set, the OK button is shown with that label regardless
-                // of steps; when absent, the button is only shown when there
-                // are steps to execute (with a default "OK" label).
-                // Fall back to sessionStorage for config-driven reloads.
                 var buttonLabel = (manifest && manifest.buttonLabel) || null;
-                if (!buttonLabel) {
-                    try {
-                        var saved = sessionStorage.getItem("yapdp.state-button-label");
-                        if (saved) { buttonLabel = saved; }
-                    } catch (e) { /* ignore */ }
-                }
                 // Show the preparing balloon for EVERY state restore, not just
                 // when there are images to fetch or steps to run. The visitor
                 // should always see that the machine is being restored.
@@ -930,9 +904,13 @@ var QuickBoot = (function () {
                 // of which are idle from the machine's perspective.
                 var spinEl = document.querySelector(".quickboot-balloon-spin");
                 if (spinEl) spinEl.style.display = "none";
-                // Show the screenshot preview if the manifest carries one.
+                // Show only the screenshot belonging to this URL-loaded state.
                 var screenshotUrl = (manifest && manifest.screenshot) || null;
                 var screenshotImg = document.getElementById("quick-boot-preparing-screenshot");
+                if (screenshotImg) {
+                    screenshotImg.removeAttribute("src");
+                    screenshotImg.style.display = "none";
+                }
                 if (screenshotUrl && screenshotImg) {
                     screenshotImg.src = screenshotUrl;
                     screenshotImg.style.display = "block";
