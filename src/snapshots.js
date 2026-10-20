@@ -1300,6 +1300,84 @@ var SnapshotStore = (() => {
         });
     }
 
+    // Flatten a disk's write-back overlay into its embedded base image.
+    // Only exact SHA-256 matches are safe: a stale/legacy/unknown overlay is
+    // retained separately rather than risking damage to the disk contents.
+    // IO_BLOCKSIZE in iopage.js is 128 KiB; overlay blocks use that same size.
+    function mergeEmbeddedOverlays(manifest, resources) {
+        var overlay = manifest && manifest.overlay;
+        if (!overlay || typeof overlay !== "object" ||
+            !resources || !Array.isArray(resources.blobs)) return;
+        var fingerprint = (typeof ImageFingerprint !== "undefined")
+            ? ImageFingerprint
+            : (typeof window !== "undefined" ? window.__yapdpImageFingerprint : null);
+        if (!fingerprint || typeof fingerprint.ofBytes !== "function") return;
+
+        var blobsById = {};
+        resources.blobs.forEach(function (blob) {
+            if (blob && blob.id) blobsById[blob.id] = blob;
+        });
+        var fingerprints = Object.assign({}, manifest.imageFingerprints || {});
+        var blockSize = 131072;
+
+        Object.keys(overlay).forEach(function (url) {
+            var rec = overlay[url];
+            var blobId = resources.embeddedImages && resources.embeddedImages[url];
+            var blob = blobId && blobsById[blobId];
+            if (!blob || !rec || typeof rec !== "object" ||
+                !rec.blocks || typeof rec.blocks !== "object") return;
+
+            var base = new Uint8Array(blob.bytes);
+            var baseFingerprint = fingerprint.ofBytes(base);
+            // Do not merge a stale overlay or one from a legacy identity scheme.
+            if (!baseFingerprint || rec.v == null ||
+                String(rec.v) !== String(baseFingerprint)) return;
+
+            var merged = new Uint8Array(base);
+            var blockKeys = Object.keys(rec.blocks);
+            var decoded = [];
+            var valid = true;
+            for (var i = 0; i < blockKeys.length; i++) {
+                var key = blockKeys[i];
+                if (!/^(0|[1-9][0-9]*)$/.test(key)) { valid = false; break; }
+                var blockNo = Number(key);
+                var offset = blockNo * blockSize;
+                var value = rec.blocks[key];
+                var bytes = value instanceof Uint8Array ? new Uint8Array(value)
+                    : value instanceof ArrayBuffer ? new Uint8Array(value.slice(0))
+                    : Array.isArray(value) ? Uint8Array.from(value)
+                    : (value && typeof value === "object")
+                        ? new Uint8Array(Object.values(value)) : null;
+                // A block beyond EOF would change the disk geometry; keep that
+                // overlay separate. Empty and malformed blocks are not merged.
+                if (!bytes || !bytes.length || bytes.length > blockSize ||
+                    !isFinite(offset) || offset < 0 || offset >= merged.length) {
+                    valid = false;
+                    break;
+                }
+                decoded.push({ offset: offset, bytes: bytes });
+            }
+            if (!valid || !decoded.length) return;
+
+            decoded.forEach(function (block) {
+                var count = Math.min(block.bytes.length, merged.length - block.offset);
+                merged.set(block.bytes.subarray(0, count), block.offset);
+            });
+            var mergedFingerprint = fingerprint.ofBytes(merged);
+            if (!mergedFingerprint) return;
+
+            // The embedded bytes now represent the guest-visible disk. Its new
+            // fingerprint must describe those bytes, and the old overlay must
+            // not be applied a second time during restore.
+            blob.bytes = merged;
+            fingerprints[url] = mergedFingerprint;
+            delete overlay[url];
+        });
+
+        manifest.imageFingerprints = fingerprints;
+        if (Object.keys(overlay).length === 0) manifest.overlay = null;
+    }
+
     function mountEmbeddedResources(manifest, blobs) {
         var refs = manifest && manifest.embeddedImages;
         if (!refs || typeof refs !== "object") return true;
@@ -1463,6 +1541,7 @@ var SnapshotStore = (() => {
                         Object.keys(resources.embeddedImages).forEach(function (url) {
                             delete manifest.imageVersions[url];
                         });
+                        if (selfContained) mergeEmbeddedOverlays(manifest, resources);
                         var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
                         return gzipCompress(packed).then(function (bytes) {
                             return bytes;
