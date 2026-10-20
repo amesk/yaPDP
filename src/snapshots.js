@@ -624,15 +624,14 @@ var SnapshotStore = (() => {
                         window.vt52RestoreAll && typeof window.vt52RestoreAll === "function") {
                         window.vt52RestoreAll(snap.vt52);
                     }
-                    // The TELETYPE's paper — the console screen for half the
-                    // guests, and not a VT52: it is printed paper, captured as
-                    // rendered rows. Without this a restored teletype guest wakes
-                    // up with a BLANK screen (the boot banner and the prompt are
-                    // on paper nobody put back). No-op when the printer API or the
-                    // field is absent (an older state).
-                    if (snap.teletypepaper && typeof window !== "undefined" &&
+                    // The TELETYPE's paper is part of the machine's visible state.
+                    // Restore it even when the snapshot predates paper capture or
+                    // has no paper: otherwise output from the previously loaded
+                    // guest remains visible after restoring a different machine.
+                    // An empty paper state clears the old output and queued printing.
+                    if (typeof window !== "undefined" &&
                         window.g60printer && typeof window.g60printer.restore === "function") {
-                        window.g60printer.restore(snap.teletypepaper);
+                        window.g60printer.restore(snap.teletypepaper || { rows: [] });
                     }
                     // Mounted images: DataLoader entries are re-created by
                     // dragdrop.init() from the images IDB on startup; nothing to
