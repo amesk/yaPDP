@@ -701,8 +701,11 @@ async function run() {
     const sb = buildSandbox();
     const SS = loadSnapshotStore(sb);
     const url = "media/rk5.dsk.zst";
-    const baseBytes = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]);
-    const overlayBytes = Uint8Array.from([0xAA, 0xBB, 0xCC]);
+    const blockSize = 128 * 1024;
+    const baseBytes = new Uint8Array(blockSize * 2);
+    const overlayBytes = new Uint8Array(blockSize);
+    for (let i = 0; i < baseBytes.length; i++) baseBytes[i] = (i * 3 + 1) & 0xFF;
+    for (let i = 0; i < overlayBytes.length; i++) overlayBytes[i] = (i * 7 + 0xA5) & 0xFF;
     const baseFingerprint = sb.ImageFingerprint.ofBytes(baseBytes);
     sb.DataLoader.mount(url, baseBytes);
 
@@ -737,11 +740,12 @@ async function run() {
     const selfContainedImport = await SS.importState(new Uint8Array(selfContainedBytes));
     assert.strictEqual(selfContainedImport.ok, true, "self-contained share imports");
     const selfContainedSnap = sb.indexedDB._store.get(selfContainedImport.id);
-    const expectedBytes = Uint8Array.from([0xAA, 0xBB, 0xCC, 4, 5, 6, 7, 8]);
+    const expectedBytes = new Uint8Array(baseBytes);
+    expectedBytes.set(overlayBytes, 0);
     assert.deepStrictEqual(
       Array.from(new Uint8Array(selfContainedSnap.embeddedResources[url])),
       Array.from(expectedBytes),
-      "self-contained image contains overlay bytes"
+      "self-contained image contains the complete overlay block"
     );
     assert.ok(!selfContainedSnap.overlay || !selfContainedSnap.overlay[url],
       "merged overlay is removed so it cannot be applied twice");
@@ -750,7 +754,54 @@ async function run() {
       sb.ImageFingerprint.ofBytes(expectedBytes),
       "fingerprint describes the merged image"
     );
-    console.log("PASS test 18: self-contained Share flattens matching disk overlays");
+    console.log("PASS test 18: self-contained Share flattens matching full-size disk overlays");
+  }
+
+  // ---- Test 18b: malformed partial overlay block is preserved, not flattened ----
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const url = "media/rk5-malformed.dsk.zst";
+    const baseBytes = new Uint8Array(128 * 1024);
+    for (let i = 0; i < baseBytes.length; i++) baseBytes[i] = (i * 5 + 9) & 0xFF;
+    const malformedBlock = Uint8Array.from([0xAA, 0xBB, 0xCC]);
+    const baseFingerprint = sb.ImageFingerprint.ofBytes(baseBytes);
+    sb.DataLoader.mount(url, baseBytes);
+
+    const source = sb.StateFormat.pack({
+      schemaVersion: SS.SCHEMA_VERSION,
+      label: "disk with malformed partial overlay block",
+      mounted: [url],
+      imageFingerprints: { [url]: baseFingerprint },
+      overlay: { [url]: { v: baseFingerprint, blocks: { "0": malformedBlock } } },
+      embeddedImages: { [url]: "base-disk" },
+    }, sb.CPU.memory, [{
+      id: "base-disk",
+      mediaType: "application/octet-stream",
+      bytes: baseBytes,
+    }]);
+    const importedSource = await SS.importState(new Uint8Array(source));
+    assert.strictEqual(importedSource.ok, true, "source with malformed overlay imports");
+
+    const sharedBytes = await SS.createShareableState(
+      importedSource.id, { selfContained: true }
+    );
+    const sharedImport = await SS.importState(new Uint8Array(sharedBytes));
+    assert.strictEqual(sharedImport.ok, true, "self-contained share imports");
+    const sharedSnap = sb.indexedDB._store.get(sharedImport.id);
+    assert.deepStrictEqual(
+      Array.from(new Uint8Array(sharedSnap.embeddedResources[url])),
+      Array.from(baseBytes),
+      "malformed partial block does not modify the embedded base image"
+    );
+    assert.ok(sharedSnap.overlay && sharedSnap.overlay[url],
+      "malformed partial block keeps the overlay separate");
+    assert.strictEqual(
+      sharedSnap.imageFingerprints[url],
+      baseFingerprint,
+      "base fingerprint remains unchanged when overlay is not flattened"
+    );
+    console.log("PASS test 18b: malformed partial overlay block is preserved");
   }
 
   // ---- Test 19: plain export tolerates an unavailable mounted image ------
