@@ -1251,9 +1251,10 @@ var SnapshotStore = (() => {
         return out;
     }
 
-    // Collect non-registry resources so a shared state does not depend on
-    // an author's private host. Published immutable media stays referenced by
-    // its versioned registry identity; all other mounted bytes travel inline.
+    // Collect mounted resources for a state package. By default, published
+    // immutable media stays referenced by its versioned registry identity and
+    // other mounted bytes travel inline. Share's self-contained option also
+    // embeds published media so restore does not depend on the current registry.
     function collectEmbeddedResources(mounted, imageVersions, storedResources, includePublished) {
         var urls = Array.isArray(mounted) ? mounted.filter(function (url) {
             return typeof url === "string" && url.length > 0;
