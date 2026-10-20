@@ -2938,7 +2938,7 @@ var SnapshotStore = (() => {
     function showImportError(result) {
         var msgs = {
             "not-a-state": "The file is not a valid .state file.",
-            "too-large": "The file is too large (max 16 MB).",
+            "too-large": "The file is too large (max 256 MiB).",
             "unsupported-version": "Unsupported state format version.",
             "invalid-manifest": "The state manifest is invalid or missing.",
             "clipboard-unavailable": "Clipboard access is not available. Please paste the text into a file and import that instead.",
