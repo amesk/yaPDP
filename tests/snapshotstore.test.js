@@ -773,7 +773,7 @@ async function run() {
       label: "disk with malformed partial overlay block",
       mounted: [url],
       imageFingerprints: { [url]: baseFingerprint },
-      overlay: { [url]: { v: baseFingerprint, blocks: { "0": new Uint8Array(blockSize).fill(0xA5) } } },
+      overlay: { [url]: { v: baseFingerprint, blocks: { "0": malformedBlock } } },
       embeddedImages: { [url]: "base-disk" },
     }, sb.CPU.memory, [{
       id: "base-disk",
