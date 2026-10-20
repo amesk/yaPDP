@@ -773,7 +773,7 @@ async function run() {
       label: "disk with malformed partial overlay block",
       mounted: [url],
       imageFingerprints: { [url]: baseFingerprint },
-      overlay: { [url]: { v: baseFingerprint, blocks: { "0": malformedBlock } } },
+      overlay: { [url]: { v: baseFingerprint, blocks: { "0": new Uint8Array(blockSize).fill(0xA5) } } },
       embeddedImages: { [url]: "base-disk" },
     }, sb.CPU.memory, [{
       id: "base-disk",
@@ -831,6 +831,10 @@ async function run() {
     }]);
     const importedSource = await SS.importState(new Uint8Array(source));
     assert.strictEqual(importedSource.ok, true, "source with invalid overlay byte imports");
+    // Inject malformed in-memory data after container decoding: the container
+    // format itself stores overlay blocks as bytes and therefore cannot encode
+    // an out-of-range byte value without coercing it first.
+    sb.indexedDB._store.get(importedSource.id).overlay[url].blocks["0"] = malformedBlock;
 
     const sharedBytes = await SS.createShareableState(importedSource.id, { selfContained: true });
     const sharedImport = await SS.importState(new Uint8Array(sharedBytes));
