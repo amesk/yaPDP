@@ -219,6 +219,11 @@ function buildSandbox() {
         snapshot() { return { buffer: this._buffer.slice() }; },
         restore(bytes) { this._buffer = bytes ? bytes.slice() : []; },
       },
+      g60printer: {
+        _state: { rows: [] },
+        snapshot() { return JSON.parse(JSON.stringify(this._state)); },
+        restore(state) { this._state = JSON.parse(JSON.stringify(state)); },
+      },
     },
   };
 }
@@ -296,12 +301,19 @@ async function run() {
     sb.CPU.memory[100] = 0xDEAD;
 
     const snap = await SS.save("pre-mutation");
+    // Older/prepared states may not contain captured teletype paper. A restore
+    // must clear paper left by the previously loaded guest instead of retaining
+    // its output.
+    delete snap.teletypepaper;
+    sb.window.g60printer._state = { rows: [{ text: "SPACE INVADERS" }] };
     sb.CPU.registerVal[7] = 0x9999;
     sb.CPU.PSW = 0;
     sb.CPU.memory[100] = 0;
 
     const ok = await SS.restore(snap);
     assert.strictEqual(ok, true);
+    assert.deepStrictEqual(sb.window.g60printer._state.rows, [],
+      "restore without teletype paper clears output from the previous guest");
     assert.strictEqual(sb.CPU.registerVal[7], 0x1234, "PC restored");
     assert.strictEqual(sb.CPU.PSW, 0x1f, "PSW restored");
     assert.strictEqual(sb.CPU.memory[100], 0xDEAD, "RAM restored");
