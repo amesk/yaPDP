@@ -297,7 +297,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`landing/src/components/GamesCarousel.tsx`, `landing/src/data.ts`,
   `landing/src/types.ts`, `landing/src/App.tsx`, `states/lunar-lander.state.zst`,
   `states/rt-11-spcinv.state.zst`, `states/rt-11-dungeon.state.zst`,
-  `states/rt-11-adventure.state.zst`, `states/rt-11-time52.state.zst`)
+  `states/rt-11-adventure.state.zst`, `states/rt-11-time52.state.zst`,
+  `states/rt-11-print-coguar.state.zst`)
 
 - **Instant Run and Games on the classic landing page:** the root `index.html`
   now mirrors the SPA's new carousels in English — an Instant-Run (Teleport)
