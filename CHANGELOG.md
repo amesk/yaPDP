@@ -191,6 +191,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Restoring a state without captured teletype paper clears the previous guest's output.** Prepared and older states may omit the optional paper snapshot; restore now resets the visible paper instead of leaving text from the previously loaded game on the machine. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
+
+
 - **?state= deep link no longer reload-loops or double-applies its devices.**
   A state whose device set needs a page reload keeps its `?state=` in the
   address bar; the reloaded page now applies the link once (via QuickBoot's
