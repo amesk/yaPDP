@@ -1376,7 +1376,10 @@ var SnapshotStore = (() => {
                         ? new Uint8Array(Object.values(value)) : null;
                 // A block beyond EOF would change the disk geometry; keep that
                 // overlay separate. Empty and malformed blocks are not merged.
-                if (!bytes || !bytes.length || bytes.length > blockSize ||
+                // DiskStore serializes every cache block to exactly IO_BLOCKSIZE
+                // bytes. A short block is malformed, not a partial write: do
+                // not flatten it because doing so could silently corrupt media.
+                if (!bytes || bytes.length !== blockSize ||
                     !isFinite(offset) || offset < 0 || offset >= merged.length) {
                     valid = false;
                     break;
