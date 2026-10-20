@@ -753,6 +753,44 @@ async function run() {
     console.log("PASS test 18: self-contained Share flattens matching disk overlays");
   }
 
+  // ---- Test 19: plain export tolerates an unavailable mounted image ------
+  // buildSandbox's DataLoader.list() advertises rk0.dsk/rk1.dsk while no
+  // bytes are mounted for them — the same shape as a snapshot saved with a
+  // disk that has since been unmounted. Exporting/compact-sharing such a
+  // snapshot must not fail: the resource simply stays an external reference
+  // (the pre-bundling contract). selfContained, which promises portability,
+  // must still refuse when a byte cannot be obtained.
+  {
+    const sb = buildSandbox();
+    // A Toasts stub records what the module reports to the operator. Real pages
+    // wire Toasts to the toast UI (the same guard the clipboard code uses); the
+    // sandbox of other tests has no Toasts at all, exercising the guard path.
+    const toastCalls = [];
+    sb.Toasts = { show(call) { toastCalls.push(call); } };
+    const SS = loadSnapshotStore(sb);
+
+    const snap = await SS.save("unmounted image");
+    const exported = await SS.exportSnapshot(snap.id);
+    assert.ok(exported && exported.length > 0,
+      "export succeeds even when a mounted image's bytes are unavailable");
+
+    assert.ok(toastCalls.some((t) => t && t.category === "warning"),
+      "a warning toast explains that an external image was kept");
+    assert.ok(toastCalls.some((t) => t && t.text && t.text.indexOf("rk0.dsk") !== -1),
+      "the toast names the image that stayed external");
+
+    const compact = await SS.createShareableState(snap.id, {});
+    assert.ok(compact && compact.length > 0,
+      "compact share tolerates the unavailable image as well");
+
+    await assert.rejects(
+      SS.createShareableState(snap.id, { selfContained: true }),
+      /Cannot bundle state resource/,
+      "self-contained share still refuses an unobtainable image"
+    );
+    console.log("PASS test 19: plain export tolerates unavailable images, self-contained refuses");
+  }
+
   console.log("\nAll SnapshotStore tests passed.");
 }
 

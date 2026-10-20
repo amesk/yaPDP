@@ -191,6 +191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Exporting a snapshot or a compact share no longer fails on an unmounted image.** Bundling of mounted resources is best-effort for plain export: a resource whose bytes are not loaded stays an external reference (with a warning toast), while self-contained shares still require every byte. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
 - **URL state restores no longer inherit stale preview text or controls.** QuickBoot now takes the description, steps, button label and screenshot only from the state being loaded, instead of falling back to sessionStorage metadata left by an earlier local snapshot. (`src/quickboot.js`)
 - **Restoring a state without captured teletype paper clears the previous guest's output.** Prepared and older states may omit the optional paper snapshot; restore now resets the visible paper instead of leaving text from the previously loaded game on the machine. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
 

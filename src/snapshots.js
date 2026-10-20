@@ -1158,7 +1158,7 @@ var SnapshotStore = (() => {
                 if (wasRunning) manifest.cpu.runState = STATE_RUN;
                 return captureImageVersions(fps).then(function (versions) {
                     manifest.imageVersions = versions;
-                    return collectEmbeddedResources(manifest.mounted, versions, null).then(function (resources) {
+                    return collectEmbeddedResources(manifest.mounted, versions, null, false, true).then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
                         var packed = StateFormat.pack(manifest, CPU.memory, resources.blobs);
                         // Compression is only an outer transport frame; the
@@ -1255,7 +1255,14 @@ var SnapshotStore = (() => {
     // immutable media stays referenced by its versioned registry identity and
     // other mounted bytes travel inline. Share's self-contained option also
     // embeds published media so restore does not depend on the current registry.
-    function collectEmbeddedResources(mounted, imageVersions, storedResources, includePublished) {
+    //
+    // tolerant: when a mounted resource's bytes cannot be obtained, skip it
+    // instead of failing. Plain export and compact shares must never break on
+    // an image that was mounted when the snapshot was saved but is no longer
+    // loaded now — the resource simply stays an external reference, exactly
+    // like before bundled media existed. Self-contained shares stay strict:
+    // they promise portability, so an unobtainable byte there is a hard error.
+    function collectEmbeddedResources(mounted, imageVersions, storedResources, includePublished, tolerant) {
         var urls = Array.isArray(mounted) ? mounted.filter(function (url) {
             return typeof url === "string" && url.length > 0;
         }) : [];
@@ -1276,11 +1283,30 @@ var SnapshotStore = (() => {
                     if (ok && loaded && loaded.length) {
                         return { url: url, bytes: new Uint8Array(loaded) };
                     }
-                    throw new Error("Cannot bundle state resource: " + url);
+                    return unavailableResource(url, tolerant);
                 });
             }
-            throw new Error("Cannot bundle state resource: " + url);
+            return unavailableResource(url, tolerant);
         });
+        function unavailableResource(url, tolerant) {
+            if (tolerant) {
+                console.warn("yapdp: cannot bundle state resource, keeping it external: " + url);
+                // The developer console is invisible to the operator. Surface the
+                // skipped resource as a warning toast too, so the user knows the
+                // exported state still depends on an external image. Guarded the
+                // same way as the clipboard toasts: tests that run this module
+                // without a Toasts stub must not crash.
+                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                    Toasts.show({
+                        text: "Mounted image could not be bundled: " + url +
+                            " — the state keeps it as an external reference",
+                        category: "warning"
+                    });
+                }
+                return null;
+            }
+            throw new Error("Cannot bundle state resource: " + url);
+        }
         return Promise.all(tasks).then(function (items) {
             var blobs = [];
             var embeddedImages = {};
@@ -1454,7 +1480,7 @@ var SnapshotStore = (() => {
                     stepsMessage: snap.stepsMessage,
                     overlay: serializeOverlay(snap.overlay),
                 };
-                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources)
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, false, true)
                     .then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
                         var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
@@ -1533,7 +1559,7 @@ var SnapshotStore = (() => {
                     overlay: serializeOverlay(snap.overlay),
                 };
                 var selfContained = !!(opts && opts.selfContained);
-                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, selfContained)
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, selfContained, !selfContained)
                     .then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
                         // Embedded resources are authoritative. Do not ask the
