@@ -3363,6 +3363,7 @@ var SnapshotStore = (() => {
             var descInput = document.getElementById("share-desc");
             var btnInput = document.getElementById("share-btn");
             var cmdInput = document.getElementById("share-cmd");
+            var selfContainedInput = document.getElementById("share-self-contained");
             var screenshotData = null; // base64 data URL or null
             var screenshotArea = document.getElementById("share-screenshot-area");
             var screenshotFile = document.getElementById("share-screenshot-file");
@@ -3515,7 +3516,7 @@ var SnapshotStore = (() => {
                     buttonLabel: btn || null,
                     screenshot: screenshotData,
                     command: cmd,
-                    selfContained: !!document.getElementById("share-self-contained")?.checked,
+                    selfContained: !!(selfContainedInput && selfContainedInput.checked),
                 };
             }
 
