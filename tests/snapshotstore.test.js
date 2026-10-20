@@ -804,6 +804,96 @@ async function run() {
     console.log("PASS test 18b: malformed partial overlay block is preserved");
   }
 
+  // ---- Test 18c: invalid byte values are not silently coerced ---------
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const url = "media/rk5-invalid-byte.dsk.zst";
+    const blockSize = 128 * 1024;
+    const baseBytes = new Uint8Array(blockSize);
+    baseBytes.fill(0x31);
+    const malformedBlock = new Array(blockSize).fill(0xA5);
+    malformedBlock[17] = 256; // Uint8Array.from() would silently turn this into 0
+    const baseFingerprint = sb.ImageFingerprint.ofBytes(baseBytes);
+    sb.DataLoader.mount(url, baseBytes);
+
+    const source = sb.StateFormat.pack({
+      schemaVersion: SS.SCHEMA_VERSION,
+      label: "disk with invalid overlay byte",
+      mounted: [url],
+      imageFingerprints: { [url]: baseFingerprint },
+      overlay: { [url]: { v: baseFingerprint, blocks: { "0": malformedBlock } } },
+      embeddedImages: { [url]: "base-disk" },
+    }, sb.CPU.memory, [{
+      id: "base-disk",
+      mediaType: "application/octet-stream",
+      bytes: baseBytes,
+    }]);
+    const importedSource = await SS.importState(new Uint8Array(source));
+    assert.strictEqual(importedSource.ok, true, "source with invalid overlay byte imports");
+
+    const sharedBytes = await SS.createShareableState(importedSource.id, { selfContained: true });
+    const sharedImport = await SS.importState(new Uint8Array(sharedBytes));
+    assert.strictEqual(sharedImport.ok, true, "self-contained share imports");
+    const sharedSnap = sb.indexedDB._store.get(sharedImport.id);
+    assert.deepStrictEqual(
+      Array.from(new Uint8Array(sharedSnap.embeddedResources[url])),
+      Array.from(baseBytes),
+      "invalid byte does not alter embedded base image"
+    );
+    assert.ok(sharedSnap.overlay && sharedSnap.overlay[url],
+      "invalid byte causes overlay to remain separate");
+    assert.strictEqual(sharedSnap.imageFingerprints[url], baseFingerprint,
+      "fingerprint stays with unchanged base image");
+    console.log("PASS test 18c: invalid overlay byte values are preserved, not coerced and merged");
+  }
+
+  // ---- Test 18d: overlay with a mismatched base fingerprint is retained ----
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const url = "media/rk5-stale-overlay.dsk.zst";
+    const blockSize = 128 * 1024;
+    const baseBytes = new Uint8Array(blockSize);
+    baseBytes.fill(0x42);
+    const overlayBytes = new Uint8Array(blockSize);
+    overlayBytes.fill(0xB6);
+    const baseFingerprint = sb.ImageFingerprint.ofBytes(baseBytes);
+    const staleFingerprint = "0".repeat(64);
+    assert.notStrictEqual(staleFingerprint, baseFingerprint, "test fingerprint differs from base");
+    sb.DataLoader.mount(url, baseBytes);
+
+    const source = sb.StateFormat.pack({
+      schemaVersion: SS.SCHEMA_VERSION,
+      label: "disk with stale overlay",
+      mounted: [url],
+      imageFingerprints: { [url]: baseFingerprint },
+      overlay: { [url]: { v: staleFingerprint, blocks: { "0": overlayBytes } } },
+      embeddedImages: { [url]: "base-disk" },
+    }, sb.CPU.memory, [{
+      id: "base-disk",
+      mediaType: "application/octet-stream",
+      bytes: baseBytes,
+    }]);
+    const importedSource = await SS.importState(new Uint8Array(source));
+    assert.strictEqual(importedSource.ok, true, "source with stale overlay imports");
+
+    const sharedBytes = await SS.createShareableState(importedSource.id, { selfContained: true });
+    const sharedImport = await SS.importState(new Uint8Array(sharedBytes));
+    assert.strictEqual(sharedImport.ok, true, "self-contained share imports");
+    const sharedSnap = sb.indexedDB._store.get(sharedImport.id);
+    assert.deepStrictEqual(
+      Array.from(new Uint8Array(sharedSnap.embeddedResources[url])),
+      Array.from(baseBytes),
+      "stale overlay cannot alter embedded base image"
+    );
+    assert.ok(sharedSnap.overlay && sharedSnap.overlay[url],
+      "stale overlay remains separate");
+    assert.strictEqual(sharedSnap.imageFingerprints[url], baseFingerprint,
+      "fingerprint stays with unchanged base image");
+    console.log("PASS test 18d: stale overlay fingerprint prevents flattening");
+  }
+
   // ---- Test 19: plain export tolerates an unavailable mounted image ------
   // buildSandbox's DataLoader.list() advertises rk0.dsk/rk1.dsk while no
   // bytes are mounted for them — the same shape as a snapshot saved with a
