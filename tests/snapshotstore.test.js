@@ -189,7 +189,14 @@ function buildSandbox() {
     STATE_RUN: 0,
     CPU: cpu,
     DataLoader: {
+      _resources: new Map(),
       list: () => ["rk0.dsk", "rk1.dsk"],
+      get(url) {
+        const bytes = this._resources.get(url);
+        return bytes ? new Uint8Array(bytes) : null;
+      },
+      has(url) { return this._resources.has(url); },
+      mount(url, bytes) { this._resources.set(url, new Uint8Array(bytes)); },
     },
     iopage: {
       _devices: { "17777560": { rcsr: 0x80, iMask: 0 }, "17777400": { rkcs: 0x80, iMask: 1 } },
@@ -639,6 +646,52 @@ async function run() {
     assert.strictEqual(accepted.ok, true,
       "a legacy numeric schemaVersion imports: " + JSON.stringify(accepted));
     console.log("PASS test 16: schema MAJOR branching on import");
+  }
+
+  // ---- Test 17: Share can bundle standard/versioned images -----------
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    const url = "media/rk0.dsk.zst";
+    const diskBytes = Uint8Array.from([0x52, 0x4B, 0x30, 0x11, 0x22, 0x33]);
+    sb.DataLoader.mount(url, diskBytes);
+
+    const source = sb.StateFormat.pack({
+      schemaVersion: SS.SCHEMA_VERSION,
+      label: "standard image",
+      mounted: [url],
+      imageVersions: { [url]: { version: "1.0", sha256: "test-sha256" } },
+    }, sb.CPU.memory, []);
+    const importedSource = await SS.importState(new Uint8Array(source));
+    assert.strictEqual(importedSource.ok, true, "source state imports");
+
+    const compactBytes = await SS.createShareableState(importedSource.id, {});
+    const compact = await SS.importState(new Uint8Array(compactBytes));
+    assert.strictEqual(compact.ok, true, "compact share imports");
+    const compactSnap = sb.indexedDB._store.get(compact.id);
+    assert.strictEqual(
+      Object.keys(compactSnap.embeddedResources || {}).length,
+      0,
+      "compact share keeps standard media external"
+    );
+
+    const portableBytes = await SS.createShareableState(
+      importedSource.id, { selfContained: true }
+    );
+    const portable = await SS.importState(new Uint8Array(portableBytes));
+    assert.strictEqual(portable.ok, true, "self-contained share imports");
+    const portableSnap = sb.indexedDB._store.get(portable.id);
+    assert.deepStrictEqual(
+      Array.from(new Uint8Array(portableSnap.embeddedResources[url])),
+      Array.from(diskBytes),
+      "self-contained share embeds exact image bytes"
+    );
+    assert.strictEqual(
+      Object.prototype.hasOwnProperty.call(portableSnap.imageVersions || {}, url),
+      false,
+      "embedded image no longer requests a versioned external replacement"
+    );
+    console.log("PASS test 17: Share can bundle standard/versioned images");
   }
 
   console.log("\nAll SnapshotStore tests passed.");
