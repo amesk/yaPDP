@@ -936,6 +936,101 @@ async function run() {
     console.log("PASS test 19: plain export tolerates unavailable images, self-contained refuses");
   }
 
+  // ---- Test 20: a state without steps must not inherit the previous one's --
+  // Reported: restoring states/rt-11-adventure.state.zst (steps "R ADVENTURE")
+  // and then states/rp1-ready.state.zst (no steps, different device set) typed
+  // "R ADVENTURE" into the freshly restored 2.11 BSD console. The share
+  // metadata a device-set reload parks in sessionStorage belongs to exactly ONE
+  // apply; a state that carries no steps of its own must not inherit it.
+  {
+    // sessionStorage survives the reload, so one stub is shared by every page.
+    const storage = {
+      _m: new Map(),
+      getItem(k) { return this._m.has(k) ? this._m.get(k) : null; },
+      setItem(k, v) { this._m.set(k, String(v)); },
+      removeItem(k) { this._m.delete(k); },
+    };
+
+    function page(cfg) {
+      const sb = buildSandbox();
+      sb.sessionStorage = storage;
+      sb.Config.set(cfg);   // the device set this page booted with
+      // Steps are executed through the global StepEngine; the stub records
+      // what would have been typed into the console.
+      sb.StepEngine = {
+        calls: [],
+        stepBytes: () => [],
+        sendBytes: () => {},
+        outputContains: () => false,
+        runSteps(steps) { this.calls.push(steps); return Promise.resolve(); },
+      };
+      const SS = loadSnapshotStore(sb);
+      return { sb, SS };
+    }
+
+    // fetch returns the packed container for one state, the way the deep link
+    // fetches it (twice: before the reload and after it).
+    function serve(sb, manifest, words) {
+      const bytes = sb.StateFormat.pack(manifest, words);
+      sb.fetch = () => Promise.resolve({
+        ok: true,
+        headers: { get: () => null },
+        arrayBuffer: () => Promise.resolve(
+          bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)),
+      });
+    }
+
+    const ADVENTURE = {
+      schemaVersion: "1.0.0", label: "Colossal Cave", device: "rk4",
+      profile: { consoleType: "vt100", userTerminals: 0, printer: false, vt11: false },
+      steps: [{ send: "R ADVENTURE" }],
+      stepsMessage: "Colossal Cave",
+    };
+    const BSD = {
+      schemaVersion: "1.0.0", label: "2.11 BSD ready", device: "rp1",
+      profile: { consoleType: "vt100", userTerminals: 0, printer: true, vt11: false },
+    };
+    const onRestored = () => Promise.resolve();
+
+    // Page 1: the operator's own machine (teletype console, no printer). The
+    // adventure state's device set differs, so it parks its metadata and asks
+    // for a reload.
+    const p1 = page({ consoleType: "teletype", userTerminals: 0, printer: false, vt11: false });
+    serve(p1.sb, ADVENTURE, p1.sb.CPU.memory);
+    const first = await p1.SS.loadFromUrl("states/a.state", { onRestored });
+    assert.strictEqual(first.reloading, true, "the adventure state asks for a reload");
+    assert.strictEqual(storage.getItem("yapdp.state-steps"),
+      JSON.stringify([{ send: "R ADVENTURE" }]), "its steps are parked for the reload");
+
+    // Page 2: the reload — the device set now matches the adventure state, so
+    // it applies and its own steps run.
+    const p2 = page({ consoleType: "vt100", userTerminals: 0, printer: false, vt11: false });
+    serve(p2.sb, ADVENTURE, p2.sb.CPU.memory);
+    const applied = await p2.SS.loadFromUrl("states/a.state", { onRestored });
+    assert.strictEqual(applied.ok, true, "the adventure state applies: " + JSON.stringify(applied));
+    assert.strictEqual(JSON.stringify(p2.sb.StepEngine.calls),
+      JSON.stringify([[{ send: "R ADVENTURE" }]]), "its own steps run once");
+    assert.strictEqual(storage.getItem("yapdp.state-steps"), null,
+      "the parked copy is consumed, not left for the next state");
+
+    // The same page now restores the BSD state: no steps of its own, and a
+    // device set (printer) that reloads again.
+    serve(p2.sb, BSD, p2.sb.CPU.memory);
+    const bsdReload = await p2.SS.loadFromUrl("states/b.state", { onRestored });
+    assert.strictEqual(bsdReload.reloading, true, "the BSD state asks for a reload too");
+    assert.strictEqual(storage.getItem("yapdp.state-steps"), null,
+      "a state without steps clears the previous state's parked steps");
+
+    // Page 3: the BSD reload — the console must stay untouched.
+    const p3 = page({ consoleType: "vt100", userTerminals: 0, printer: true, vt11: false });
+    serve(p3.sb, BSD, p3.sb.CPU.memory);
+    const bsdApplied = await p3.SS.loadFromUrl("states/b.state", { onRestored });
+    assert.strictEqual(bsdApplied.ok, true, "the BSD state applies: " + JSON.stringify(bsdApplied));
+    assert.strictEqual(JSON.stringify(p3.sb.StepEngine.calls), "[]",
+      "no keystrokes from the previous guest are replayed into the new machine");
+    console.log("PASS test 20: steps are never inherited across states");
+  }
+
   console.log("\nAll SnapshotStore tests passed.");
 }
 
