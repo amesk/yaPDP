@@ -791,6 +791,41 @@ textarea {
     min-height: 48px;
 }
 
+/* Self-contained Share option. Keep the checkbox distinct from text fields. */
+.share-self-contained-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin: 4px 0 16px;
+    color: #c8a860;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+}
+
+.share-self-contained-option input {
+    flex: 0 0 auto;
+    margin: 3px 0 0;
+    accent-color: #c8a860;
+}
+
+.share-self-contained-option span {
+    display: block;
+}
+
+.share-self-contained-option strong {
+    display: block;
+    font-weight: 600;
+}
+
+.share-self-contained-option small {
+    display: block;
+    margin-top: 3px;
+    color: #9a9488;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 /* Preview section inside the Share dialog. */
 .modal-preview {
     margin: 8px 0 14px;

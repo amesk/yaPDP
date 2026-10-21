@@ -1158,7 +1158,7 @@ var SnapshotStore = (() => {
                 if (wasRunning) manifest.cpu.runState = STATE_RUN;
                 return captureImageVersions(fps).then(function (versions) {
                     manifest.imageVersions = versions;
-                    return collectEmbeddedResources(manifest.mounted, versions, null).then(function (resources) {
+                    return collectEmbeddedResources(manifest.mounted, versions, null, false, true).then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
                         var packed = StateFormat.pack(manifest, CPU.memory, resources.blobs);
                         // Compression is only an outer transport frame; the
@@ -1251,15 +1251,23 @@ var SnapshotStore = (() => {
         return out;
     }
 
-    // Collect non-registry resources so a shared state does not depend on
-    // an author's private host. Published immutable media stays referenced by
-    // its versioned registry identity; all other mounted bytes travel inline.
-    function collectEmbeddedResources(mounted, imageVersions, storedResources) {
+    // Collect mounted resources for a state package. By default, published
+    // immutable media stays referenced by its versioned registry identity and
+    // other mounted bytes travel inline. Share's self-contained option also
+    // embeds published media so restore does not depend on the current registry.
+    //
+    // tolerant: when a mounted resource's bytes cannot be obtained, skip it
+    // instead of failing. Plain export and compact shares must never break on
+    // an image that was mounted when the snapshot was saved but is no longer
+    // loaded now — the resource simply stays an external reference, exactly
+    // like before bundled media existed. Self-contained shares stay strict:
+    // they promise portability, so an unobtainable byte there is a hard error.
+    function collectEmbeddedResources(mounted, imageVersions, storedResources, includePublished, tolerant) {
         var urls = Array.isArray(mounted) ? mounted.filter(function (url) {
             return typeof url === "string" && url.length > 0;
         }) : [];
         var tasks = urls.map(function (url) {
-            if (imageVersions && imageVersions[url]) return Promise.resolve(null);
+            if (!includePublished && imageVersions && imageVersions[url]) return Promise.resolve(null);
             var stored = storedResources && storedResources[url];
             var bytes = stored ? new Uint8Array(stored) :
                 (typeof DataLoader !== "undefined" && DataLoader.get
@@ -1275,11 +1283,30 @@ var SnapshotStore = (() => {
                     if (ok && loaded && loaded.length) {
                         return { url: url, bytes: new Uint8Array(loaded) };
                     }
-                    throw new Error("Cannot bundle state resource: " + url);
+                    return unavailableResource(url, tolerant);
                 });
             }
-            throw new Error("Cannot bundle state resource: " + url);
+            return unavailableResource(url, tolerant);
         });
+        function unavailableResource(url, tolerant) {
+            if (tolerant) {
+                console.warn("yapdp: cannot bundle state resource, keeping it external: " + url);
+                // The developer console is invisible to the operator. Surface the
+                // skipped resource as a warning toast too, so the user knows the
+                // exported state still depends on an external image. Guarded the
+                // same way as the clipboard toasts: tests that run this module
+                // without a Toasts stub must not crash.
+                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                    Toasts.show({
+                        text: "Mounted image could not be bundled: " + url +
+                            " — the state keeps it as an external reference",
+                        category: "warning"
+                    });
+                }
+                return null;
+            }
+            throw new Error("Cannot bundle state resource: " + url);
+        }
         return Promise.all(tasks).then(function (items) {
             var blobs = [];
             var embeddedImages = {};
@@ -1297,6 +1324,112 @@ var SnapshotStore = (() => {
             });
             return { blobs: blobs, embeddedImages: embeddedImages };
         });
+    }
+
+    // Decode an overlay block without allowing typed-array coercion to hide
+    // malformed byte values (e.g. 256 becoming 0 or -1 becoming 255).
+    // Object-form blocks must have the same contiguous numeric keys produced
+    // by serializing a Uint8Array.
+    function overlayBlockBytes(value) {
+        if (value instanceof Uint8Array) return new Uint8Array(value);
+        if (value instanceof ArrayBuffer) return new Uint8Array(value.slice(0));
+        var values;
+        if (Array.isArray(value)) {
+            values = value;
+        } else if (value && typeof value === "object") {
+            var keys = Object.keys(value);
+            for (var i = 0; i < keys.length; i++) {
+                if (keys[i] !== String(i)) return null;
+            }
+            values = keys.map(function (key) { return value[key]; });
+        } else {
+            return null;
+        }
+        for (var j = 0; j < values.length; j++) {
+            if (!Number.isInteger(values[j]) || values[j] < 0 || values[j] > 255) {
+                return null;
+            }
+        }
+        return Uint8Array.from(values);
+    }
+
+    // Flatten a disk's write-back overlay into its embedded base image.
+    // Only exact SHA-256 matches are safe: a stale/legacy/unknown overlay is
+    // retained separately rather than risking damage to the disk contents.
+    // Use the shared device constant when available; keep the format's 128 KiB
+    // block size as a fallback for environments that load snapshots in tests.
+    function mergeEmbeddedOverlays(manifest, resources) {
+        var overlay = manifest && manifest.overlay;
+        if (!overlay || typeof overlay !== "object" ||
+            !resources || !Array.isArray(resources.blobs)) return;
+        var fingerprint = (typeof ImageFingerprint !== "undefined")
+            ? ImageFingerprint
+            : (typeof window !== "undefined" ? window.__yapdpImageFingerprint : null);
+        if (!fingerprint || typeof fingerprint.ofBytes !== "function") return;
+
+        var blobsById = {};
+        resources.blobs.forEach(function (blob) {
+            if (blob && blob.id) blobsById[blob.id] = blob;
+        });
+        var fingerprints = Object.assign({}, manifest.imageFingerprints || {});
+        var blockSize = (typeof IO_BLOCKSIZE === "number" && IO_BLOCKSIZE > 0)
+            ? IO_BLOCKSIZE : 128 * 1024;
+
+        Object.keys(overlay).forEach(function (url) {
+            var rec = overlay[url];
+            var blobId = resources.embeddedImages && resources.embeddedImages[url];
+            var blob = blobId && blobsById[blobId];
+            if (!blob || !rec || typeof rec !== "object" ||
+                !rec.blocks || typeof rec.blocks !== "object") return;
+
+            var base = new Uint8Array(blob.bytes);
+            var baseFingerprint = fingerprint.ofBytes(base);
+            // Do not merge a stale overlay or one from a legacy identity scheme.
+            if (!baseFingerprint || rec.v == null ||
+                String(rec.v) !== String(baseFingerprint)) return;
+
+            var merged = new Uint8Array(base);
+            var blockKeys = Object.keys(rec.blocks);
+            var decoded = [];
+            var valid = true;
+            for (var i = 0; i < blockKeys.length; i++) {
+                var key = blockKeys[i];
+                if (!/^(0|[1-9][0-9]*)$/.test(key)) { valid = false; break; }
+                var blockNo = Number(key);
+                var offset = blockNo * blockSize;
+                var value = rec.blocks[key];
+                var bytes = overlayBlockBytes(value);
+                // A block beyond EOF would change the disk geometry; keep that
+                // overlay separate. Empty and malformed blocks are not merged.
+                // DiskStore serializes every cache block to exactly IO_BLOCKSIZE
+                // bytes. A short block is malformed, not a partial write: do
+                // not flatten it because doing so could silently corrupt media.
+                if (!bytes || bytes.length !== blockSize ||
+                    !isFinite(offset) || offset < 0 || offset >= merged.length) {
+                    valid = false;
+                    break;
+                }
+                decoded.push({ offset: offset, bytes: bytes });
+            }
+            if (!valid || !decoded.length) return;
+
+            decoded.forEach(function (block) {
+                var count = Math.min(block.bytes.length, merged.length - block.offset);
+                merged.set(block.bytes.subarray(0, count), block.offset);
+            });
+            var mergedFingerprint = fingerprint.ofBytes(merged);
+            if (!mergedFingerprint) return;
+
+            // The embedded bytes now represent the guest-visible disk. Its new
+            // fingerprint must describe those bytes, and the old overlay must
+            // not be applied a second time during restore.
+            blob.bytes = merged;
+            fingerprints[url] = mergedFingerprint;
+            delete overlay[url];
+        });
+
+        manifest.imageFingerprints = fingerprints;
+        if (Object.keys(overlay).length === 0) manifest.overlay = null;
     }
 
     function mountEmbeddedResources(manifest, blobs) {
@@ -1329,10 +1462,9 @@ var SnapshotStore = (() => {
             var blocks = {};
             Object.keys(rec.blocks).forEach(function (b) {
                 var v = rec.blocks[b];
-                blocks[b] = (v instanceof Uint8Array) ? new Uint8Array(v)
-                    : Array.isArray(v) ? Uint8Array.from(v)
-                    : (v && typeof v === "object") ? new Uint8Array(Object.values(v))
-                    : new Uint8Array(0);
+                // Preserve malformed input verbatim so the flattening path can
+                // reject it instead of accepting bytes after silent coercion.
+                blocks[b] = overlayBlockBytes(v) || v;
             });
             out[url] = Object.assign({}, rec, { blocks: blocks });
         });
@@ -1375,7 +1507,7 @@ var SnapshotStore = (() => {
                     stepsMessage: snap.stepsMessage,
                     overlay: serializeOverlay(snap.overlay),
                 };
-                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources)
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, false, true)
                     .then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
                         var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
@@ -1438,7 +1570,7 @@ var SnapshotStore = (() => {
                     createdAt: new Date().toISOString(),
                     profile: snap.config,
                     imageFingerprints: snap.imageFingerprints,
-                    imageVersions: snap.imageVersions,
+                    imageVersions: Object.assign({}, snap.imageVersions || {}),
                     cpu: snap.cpu,
                     devices: snap.devices,
                     punchtape: snap.punchtape,
@@ -1453,9 +1585,16 @@ var SnapshotStore = (() => {
                     screenshot: screenshot,
                     overlay: serializeOverlay(snap.overlay),
                 };
-                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources)
+                var selfContained = !!(opts && opts.selfContained);
+                return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, selfContained, !selfContained)
                     .then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
+                        // Embedded resources are authoritative. Do not ask the
+                        // versioned media loader to replace them during restore.
+                        Object.keys(resources.embeddedImages).forEach(function (url) {
+                            delete manifest.imageVersions[url];
+                        });
+                        if (selfContained) mergeEmbeddedOverlays(manifest, resources);
                         var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
                         return gzipCompress(packed).then(function (bytes) {
                             return bytes;
@@ -2823,7 +2962,7 @@ var SnapshotStore = (() => {
     function showImportError(result) {
         var msgs = {
             "not-a-state": "The file is not a valid .state file.",
-            "too-large": "The file is too large (max 16 MB).",
+            "too-large": "The file is too large (max 256 MiB).",
             "unsupported-version": "Unsupported state format version.",
             "invalid-manifest": "The state manifest is invalid or missing.",
             "clipboard-unavailable": "Clipboard access is not available. Please paste the text into a file and import that instead.",
@@ -3333,6 +3472,11 @@ var SnapshotStore = (() => {
                     '<label class="modal-field">Run after restore' +
                         '<input type="text" class="modal-input" id="share-cmd" maxlength="128"' +
                         ' autocomplete="off" spellcheck="false" placeholder="e.g. RUN SPCINV"></label>' +
+                    '<label class="share-self-contained-option">' +
+                        '<input type="checkbox" id="share-self-contained">' +
+                        '<span><strong>Make state self-contained</strong>' +
+                        '<small>Include standard disk images too, so the state does not depend on the current yaPDP media files.</small></span>' +
+                    '</label>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
                     '<div class="split-btn">' +
                         '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
@@ -3352,6 +3496,7 @@ var SnapshotStore = (() => {
             var descInput = document.getElementById("share-desc");
             var btnInput = document.getElementById("share-btn");
             var cmdInput = document.getElementById("share-cmd");
+            var selfContainedInput = document.getElementById("share-self-contained");
             var screenshotData = null; // base64 data URL or null
             var screenshotArea = document.getElementById("share-screenshot-area");
             var screenshotFile = document.getElementById("share-screenshot-file");
@@ -3504,6 +3649,7 @@ var SnapshotStore = (() => {
                     buttonLabel: btn || null,
                     screenshot: screenshotData,
                     command: cmd,
+                    selfContained: !!(selfContainedInput && selfContainedInput.checked),
                 };
             }
 
