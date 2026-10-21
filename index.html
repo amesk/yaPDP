@@ -909,6 +909,18 @@
                             Lander.</td>
                     </tr>
                     <tr>
+                        <td class="disk">Machine States & Sharing</td>
+                        <td>Save, export, import and share the whole machine — memory, devices, screens, paper and
+                            disk overlays — as a <code>.state.zst</code> file, a text envelope or a GitHub Gist link.
+                            A self-contained state carries its disk images, so an exhibit restores anywhere; the
+                            quick-boot wizard's <b>Scenario</b> tab restores a saved state in about a second.</td>
+                    </tr>
+                    <tr>
+                        <td class="disk">Host-level Pause</td>
+                        <td>One control freezes the entire machine — CPU, devices, terminals and sound — without
+                            touching the PDP-11 HALT/WAIT state, and survives a page reload.</td>
+                    </tr>
+                    <tr>
                         <td class="disk">Persistent Storage</td>
                         <td>All disk and tape images are preloaded. Changes to disk contents persist in browser
                             storage
@@ -1050,7 +1062,8 @@
                 <b>In a hurry?</b> Use the <b>magic wand</b> button in the top-right corner of the
                 window (it stays on every page except <b>Info</b>) — it does it all in one click: picks a guest OS,
                 reconfigures the machine, reboots
-                it, and types the boot (and login) for you.
+                it, and types the boot (and login) for you. Its <b>Scenario</b> tab skips the boot altogether and
+                restores a saved machine state, so the guest opens already running.
             </p>
 
             <p>Otherwise, go the classic way:</p>

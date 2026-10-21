@@ -29,9 +29,9 @@ linked docs/issues. Known emulator bugs are tracked separately in
 
   Two things this reuses rather than invents:
   - `imageFingerprints` (added for 0.3.0, #126) already answers "is this the
-    same disk?". A shared state must name the image it needs, and the fingerprint
-    is how the receiver is told honestly that it is the right one — or that it
-    is not, before anything is restored.
+    same disk?". A shared state must name the image it needs, and the identity
+    (SHA-256 of the decompressed bytes) is how the receiver is told honestly
+    that it is the right one — or that it is not, before anything is restored.
   - `SCHEMA_VERSION` and the machine configuration already travel with a
     snapshot. Between emulator versions the *devices* can drift too, so a shared
     state is only trustworthy when it declares both.
@@ -49,7 +49,7 @@ linked docs/issues. Known emulator bugs are tracked separately in
     foreign travels. A *user* state cannot work that way: the payload lives on
     somebody's host, so its URL is necessarily a pointer to foreign content.
     The design accepts that and defends instead of forbidding — validate the
-    schema, the machine configuration and the image fingerprints; refuse a
+    schema, the machine configuration and the image identities; refuse a
     state beyond a sane size bound; never inline a state in the URL itself (a
     `#state=<base64>` fragment would put a stranger's multi-megabyte save into
     history, logs and bookmarks); and make it visible to the operator that a
@@ -129,6 +129,30 @@ linked docs/issues. Known emulator bugs are tracked separately in
   it still unclaimed.
 - **Full-disk write-back UX.** Guest writes already persist (DiskStore
   overlay); surface it in the UI (dirty indicators, reset-to-pristine).
+
+## Done (0.4.0) — unreleased
+
+- **A saved state is now a portable artifact, not a pointer.** The `.state`
+  container has a canonical blob catalog with SHA-256 digests, image identity
+  is SHA-256 of the decompressed bytes (with a verified migration from the
+  legacy FNV-1a value), a versioned media registry lets a state pin the exact
+  image version it was taken on, and a **self-contained** share embeds the disk
+  images so it restores on a host that has none of them. `?state=` links,
+  imports and the wizard all share the same preflight: identify, verify, then
+  touch CPU/RAM.
+- **The quick-boot wizard gained a Scenario tab.** Pre-built states from
+  `states/` are listed from a generated manifest with screenshot thumbnails;
+  picking one restores the machine in about a second instead of booting it.
+- **A state applies the whole configuration except the sound.** Restoring
+  re-applies the console, terminals, printer, VT11, widths, speed, zoom, glow,
+  phosphor and backdrop, reloads only when the device set differs, and
+  remembers the viewer's own setup so it can be returned later.
+- **Host-level pause/resume.** One control freezes CPU, devices, terminals,
+  sounds and the QuickBoot/snapshot step timers without touching the PDP-11
+  HALT/WAIT state, and survives a reload.
+- **Games and Instant-Run galleries.** Lunar Lander, Space Invaders, Dungeon,
+  Adventure, Time52 and an LP11 ASCII-art demo ship as saved states that the
+  landing pages open already running.
 
 ## Done (0.3.0) — 2026-09-30
 

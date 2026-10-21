@@ -51,7 +51,9 @@ function writeShot(fileName, buf) {
     }
     return canonical;
 }
-const PORT = 11790;
+// The port is overridable because Windows can exclude a range from the
+// ephemeral pool (Hyper-V/WinNAT), which makes a fixed port fail with EACCES.
+const PORT = Number(process.env.YAPDP_SHOT_PORT) || 11790;
 const BASE = `http://127.0.0.1:${PORT}`;
 const VIEWPORT = { width: 1280, height: 800 };
 
@@ -210,6 +212,7 @@ const SHOTS_VT100 = [
 // the "Buttons, Shortcuts & Indicators" section can show the actual widgets.
 const BUTTON_SHOTS = [
     { id: "#quick-boot-btn", file: "btn-magicwand.png" },
+    { id: "#pause-btn",      file: "btn-pause.png" },
     { id: "#reboot-btn",     file: "btn-reboot.png" },
     { id: "#state-btn",      file: "btn-state.png" },
     { id: "#mute-btn",       file: "btn-mute.png" },
@@ -514,7 +517,17 @@ async function captureDialogs(browser, wants) {
             const btn = document.getElementById("quick-boot-btn");
             if (btn) btn.click();
         });
-        await snap(page, "dialog-quickboot.png", 800);
+        // The dialog has two tabs (Boot / Scenario). A shot of the old
+        // single-list dialog is a wrong illustration, not a stale one, so
+        // fail loudly instead of publishing it.
+        await sleep(300);
+        const tabs = await page.evaluate(() => Array.from(
+            document.querySelectorAll(".quickboot-tab"), (t) => t.textContent.trim()));
+        if (tabs.join("/") !== "Boot/Scenario") {
+            throw new Error("dialog-quickboot: expected Boot/Scenario tabs, got " +
+                JSON.stringify(tabs));
+        }
+        await snap(page, "dialog-quickboot.png", 500);
     }
 
     // 3. "Autoloading in progress" balloon while the wizard types the boot.
@@ -643,7 +656,19 @@ async function captureDialogs(browser, wants) {
             const share = document.getElementById("snap-share");
             if (share && !share.disabled) share.click();
         });
-        await snap(page, "dialog-share.png", 900);
+        // The dialog must show the "Make state self-contained" option. Without
+        // the guard a shot of the older form looks plausible but documents a
+        // dialog that can no longer be produced.
+        await sleep(400);
+        const shareFields = await page.evaluate(() => ({
+            selfContained: !!document.getElementById("share-self-contained"),
+            splitOutputs: !!document.getElementById("share-create-more"),
+        }));
+        if (!shareFields.selfContained || !shareFields.splitOutputs) {
+            throw new Error("dialog-share: unexpected Share dialog, missing " +
+                JSON.stringify(shareFields));
+        }
+        await snap(page, "dialog-share.png", 500);
     }
 
     // 10. Gist dialog — opened from the Share dialog's split-button menu.

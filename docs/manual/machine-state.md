@@ -12,7 +12,7 @@ picture are all captured. Think of it as a save file of the whole machine.
 The machine-state dialog with one freshly saved state.{.shot-caption}
 
 - **Save state** — captures the machine exactly as it is right now under an auto-generated name (date and time). The hardware configuration is part of the state: restoring it re-applies the console type, user terminals, printer and VT11 display, restarting the machine to match.
-- **Load** — restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working. The **Load** button has a dropdown with **Load as shared state** for loading a `.state.txt` envelope file.
+- **Load** — restores the selected state and restarts the machine; a confirmation asks first. States saved by older versions of the emulator keep working, while a state written by a **newer** yaPDP asks first — Update to Latest / Open Anyway / Cancel. The **Load** button has a dropdown with **Load as shared state**, which replays the guided restore a shared-state link shows (screenshot, description, steps) — offered for states that carry such a guide.
 - **Export** — a split-button with three options:
   - **Export** (main action) — downloads the selected state as a `.state.zst` binary file.
   - **Save as text file** — encodes the state as a text envelope (`.state.txt`) that can be copied through channels that reject binary attachments.
@@ -45,7 +45,8 @@ file picker. A preview is shown once an image is attached; a **Remove** button c
 
 ![The Share dialog](assets/images/manual/dialog-share.png){.shot}
 
-The Share dialog: give the state a title, a description, a screenshot and optional post-restore command.{.shot-caption}
+The Share dialog: title, description, screenshot, optional post-restore command,
+and the **Make state self-contained** option.{.shot-caption}
 
 The **Create Shareable State** button is a split-button with additional options:
 - **Copy text to clipboard** — copies the text envelope of the shareable state.
@@ -77,6 +78,13 @@ The **Create Shareable State** button is a split-button with additional options:
 
 A **Cancel** button is placed separately from the action buttons.
 
+A **Make state self-contained** checkbox makes the file portable: a normal share
+references this build's published images by version and identity, while a
+self-contained share carries the disk images inside the file, so it restores on
+a machine that has none of them. It is larger by the size of those images, and
+a bundled image whose bytes cannot be read fails the export instead of
+promising portability it cannot keep.
+
 Host that file anywhere reachable by a URL, then send the link. Two things decide whether it works:
 
 - **The host must allow the file to be read from another site** (the `Access-Control-Allow-Origin`
@@ -84,15 +92,22 @@ Host that file anywhere reachable by a URL, then send the link. Two things decid
   the visitor then sees a "Shared state not restored" message naming the URL. Static hosts often do
   not send that header by default. The surest way to avoid the problem is to keep the file **next to
   the emulator** — on the same site — exactly as the states under `states/` are served.
-- **The receiver needs the same disk images.** A state does not carry its images, only a record of
-  which ones it needs and their fingerprints. If the image differs from the one the state was taken
-  on, the restore is **refused** rather than half-applied: a machine with new memory and an old disk
-  is worse than no restore at all.
+- **The receiver needs the same disk images — or the state must carry them.** Every image is
+  identified by the SHA-256 digest of its decompressed bytes, and a state may pin the exact published
+  version it was taken on. If the image differs from the one the state was taken on, the restore is
+  **refused** rather than half-applied: a machine with new memory and an old disk is worse than no
+  restore at all. A **self-contained** state needs nothing from the receiver, because the images
+  travel inside the file.
+
+On restore the emulator fetches a pinned version from the media registry when the image is not loaded
+yet, verifies its digest, and only then touches the machine. A plain **Export** bundles what it can:
+an image whose bytes are no longer loaded stays an external reference, and a toast warns that the
+exported state still depends on it.
 
 When either condition fails the visitor is told in a dialog that names the URL, and the address bar
 keeps the `?state=` parameter so what was asked for stays visible. If a link cannot work at all — the
-state lives somewhere that cannot be fetched — the file itself is still the fallback: **Import** it
-takes any `.state` or `.state.zst` file from disk, with no server and no CORS involved.
+state lives somewhere that cannot be fetched — the file itself is still the fallback: **Import** takes
+any `.state`, `.state.zst` or `.state.txt` file from disk, with no server and no CORS involved.
 
 ### Embedding the emulator
 
@@ -167,9 +182,16 @@ except the disk images, which are bundled with the emulator.
 - The emulator is responsive: on narrow viewports it adapts to a
   mobile-friendly layout automatically.
 
-### Configuration restore dialog
+### Configuration and the state
 
-When a saved state carries its own hardware configuration (console type, terminals, printer, VT11
-display), restoring it asks whether you want to **Reset** your configuration to the state's own, or
-**Keep** your current settings. This dialog appears automatically after a state restore or before a
-reboot that would apply a state's configuration.
+A state carries its own hardware configuration, and restoring it applies that profile — console type,
+user terminals, LP11 printer, VT11 display, widths, teletype speed, zoom, glow, phosphor and backdrop.
+There is one exception: the two sound settings (**Mute** and the machine hum) are never touched,
+because they belong to the person at the keyboard, not to the guest. A page reload happens only when
+the **device set** differs; everything else applies live.
+
+A state opened from a `?state=` link asks nothing — the state is the point of the link. Your own
+configuration is remembered before it is replaced, and after a reload (or in the **Reboot** /
+**Bootstrap now!** dialog) you are offered **Return my configuration**, which restores every field.
+Returning it reloads only when the device set differs, and a Reboot parked across that reload runs as
+soon as the page is back.
