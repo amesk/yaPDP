@@ -88,6 +88,14 @@
     "screenshotFull": "previews/rt-11-dungeon-full.png"
   },
   {
+    "device": "rk5",
+    "label": "RT-11 Print Coguar",
+    "description": "Prints the classic \"COUGAR\" ASCII art banner page on the line printer (LP:).\nHighly popular on PDP-11 systems as a continuous-feed banner page or a team mascot and a practical benchmark to test printer hardware.",
+    "file": "rt-11-print-coguar.state.zst",
+    "screenshot": "previews/rt-11-print-coguar-small.png",
+    "screenshotFull": "previews/rt-11-print-coguar-full.png"
+  },
+  {
     "device": "rk1",
     "label": "RT-11-SPCINV",
     "description": "VAX port for PDP-11.\nAs close to the original as possible...",
