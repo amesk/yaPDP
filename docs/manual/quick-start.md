@@ -20,7 +20,8 @@ every page except **Info**. One click does everything:
 
 ![Quick boot picker](assets/images/manual/dialog-quickboot.png){.shot}
 
-The quick-boot picker lists every guest OS and paper tape.{.shot-caption}
+The quick-boot dialog: the **Boot** tab lists every guest OS and paper tape,
+the **Scenario** tab restores a saved machine state.{.shot-caption}
 
 The wizard is prompt-aware: it watches the console output and types the login only when the guest
 actually prints `login:`, so slow boots with lots of output (e.g. 2.11 BSD) still reach the
@@ -52,6 +53,20 @@ sit silent for a while.
 A thin **Loading N%** bar along the bottom of the window
 shows how much of the image has arrived — during an autoload, a manual boot or a
 mount alike.
+
+### The Scenario tab
+
+The wizard has two tabs. **Boot** is the list above: a boot command is typed
+into a fresh machine. **Scenario** restores a machine state saved in this build —
+the guest is already running, so it opens in about a second instead of taking
+the full boot. Click a card to restore it, exactly like a `?state=` link (see
+[Machine State](#machine-state)); a state that carries a screenshot shows a
+thumbnail, and clicking the thumbnail opens the full picture without leaving the
+page.
+
+The list is generated from the actual state files of this build, so it always
+matches what ships. On a host without that list the tab simply has nothing to
+offer.
 
 ### The classic way
 

@@ -46,11 +46,11 @@ fields as devices are added.
 
 The versions answer different questions and must not be conflated:
 
-| Field | Kind | Describes |
-|-------|------|-----------|
-| `containerVersion` (in the manifest) | number | the binary payload layout. The first canonical blob layout is `1`. |
-| `schemaVersion` (in the manifest) | semver string | the shape of the manifest JSON. |
-| `yaPDPVersion` (in the manifest) | semver string | the application that wrote the state and the source of the newer-snapshot warning. |
+| Field                                | Kind          | Describes                                                                          |
+| ------------------------------------ | ------------- | ---------------------------------------------------------------------------------- |
+| `containerVersion` (in the manifest) | number        | the binary payload layout. The first canonical blob layout is `1`.                 |
+| `schemaVersion` (in the manifest)    | semver string | the shape of the manifest JSON.                                                    |
+| `yaPDPVersion` (in the manifest)     | semver string | the application that wrote the state and the source of the newer-snapshot warning. |
 
 The canonical blob representation is version 1, even though a different
 intermediate representation was explored during development. Version numbers
@@ -97,6 +97,41 @@ original after validation. Keep a normal repository backup/commit before using
 `--write`; the migration should be reviewed and committed separately from the
 code change.
 
+## Images: identity, versions and embedded bytes
+
+A state never stores a disk image under its logical name alone. Three manifest
+fields describe what the state needs and how the bytes can be obtained:
+
+| Field               | Meaning                                                                                                                                                                                         |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mounted`           | the image urls the machine had mounted when the state was saved                                                                                                                                 |
+| `imageFingerprints` | url → SHA-256 of the **decompressed** image bytes at capture time. The short legacy FNV-1a/32 value is still accepted where a state carries one                                                 |
+| `imageVersions`     | url → `{ version, sha256 }` — the exact published version the state was taken on, resolved through `media-versioned` in `media/manifest.json` (rules in [image-registry.md](image-registry.md)) |
+| `embeddedImages`    | url → blob id. The image bytes travel **inside this container** and take precedence over `imageVersions`                                                                                        |
+
+Restore is a preflight, not a best effort. Before CPU or RAM is touched, every
+needed image is loaded (from its pinned version when `imageVersions` names one)
+or mounted from `embeddedImages`, and its identity is compared with
+`imageFingerprints`. A mismatch refuses the state with a dialog; an unknown
+current identity — a host that cannot expose the bytes — does not invalidate
+anything.
+
+### Self-contained states
+
+The Share dialog's **Make state self-contained** option embeds every mounted
+image, including published ones, and folds each disk's write-back overlay into
+its embedded base. Such a state does not depend on the media registry or on the
+images this build ships: it restores on any host that can read the file.
+
+A plain export and a compact share embed only what is not already published —
+published media stays referenced by its version — and treat an unobtainable
+image as a warning: the resource stays an external reference and the operator
+sees a toast. A self-contained share is strict instead, because it promises
+portability: a resource whose bytes cannot be obtained fails the export.
+
+The container size ceiling is 256 MB (state plus bundled resources), so a
+self-contained share of a large disk set is refused rather than truncated.
+
 ## Text envelope for GitHub Gist
 
 A `.state.zst` file can be wrapped in a text envelope for sharing via
@@ -141,6 +176,8 @@ When importing, the system auto-detects the format:
 - **Share** dialog: create a shareable state with metadata, then choose output:
   download `.state.zst`, copy text envelope, save text file, or create a
   GitHub Gist (opens a helper dialog with instructions and link generator).
+  **Make state self-contained** embeds the disk images too, so the file no
+  longer depends on the media registry or on the images this build ships.
 
 The envelope is handled by [`src/state-envelope.js`](../src/state-envelope.js),
 shared between the browser and Node tools.

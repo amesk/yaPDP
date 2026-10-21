@@ -28,7 +28,7 @@
 :   The Line Printer model LP11, an animated line printer page that prints guest output on fanfold paper.
 
 **Magic wand**
-:   The quick-boot wizard button (top-right corner) that picks a guest OS, reconfigures the machine, reboots and types the boot command and login automatically.
+:   The quick-boot wizard button (top-right corner) that picks a guest OS, reconfigures the machine, reboots and types the boot command and login automatically. Its **Scenario** tab restores a saved machine state instead.
 
 **Panel**
 :   The front-panel page with switches, LEDs and rotary knobs that recreate the PDP-11/70 operator panel.
@@ -36,8 +36,11 @@
 **Paper tape**
 :   8-track punched tape used for data storage and exchange. The ASR-33 can read and punch paper tape; the Storage page manages tape files.
 
+**Scenario**
+:   A pre-built machine state shipped with this build and listed in the quick-boot dialog's Scenario tab; restoring it opens the guest already running, exactly like a `?state=` link.
+
 **Snapshot**
-:   A saved state of the machine's memory and registers, which can be restored later. Snapshots are tied to the exact disk image build they were taken on.
+:   A saved state of the machine's memory and registers, which can be restored later. A snapshot is tied to the exact disk image build it was taken on: images are identified by the SHA-256 digest of their decompressed bytes, and a mismatch refuses the restore. A self-contained snapshot carries the images themselves.
 
 **Storage**
 :   The page that manages disk images, tape images and paper tapes: a drop zone for imports, a mount table and a paper-tape reader/punch archive.
