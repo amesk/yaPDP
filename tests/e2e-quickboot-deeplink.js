@@ -487,7 +487,7 @@ async function seededPage(browser, errors) {
         (els) => els.map((e) => e.getAttribute("href")));
       const uniquePlay = Array.from(new Set(playHrefs));
       check("classic gallery: Instant Run and Games tiles carry ?state= links",
-        uniquePlay.length === 11 &&
+        uniquePlay.length === 12 &&
         uniquePlay.every((h) => /^pdp11\.html\?state=states%2F[a-z0-9.-]+$/.test(h)),
         uniquePlay.join(", "));
       await page.close();

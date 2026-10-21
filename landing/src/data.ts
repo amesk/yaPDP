@@ -130,6 +130,17 @@ export const GAME_SLIDES: SlideItem[] = [
     description: 'The $100,000 Digital Timepiece from 1975: Why settle for a cheap wristwatch when you can track the relentless passage of time using a legendary DEC PDP-11/70 minicomputer and a VT52 DECScope terminal?',
     descriptionRu: 'Цифровой хронометр за $100 000 из 1975 года: зачем довольствоваться дешёвыми наручными часами, если можно следить за неумолимым бегом времени на легендарном мини-компьютере DEC PDP-11/70 с терминалом VT52 DECScope?',
   },
+  {
+    id: 'coguar',
+    stateUrl: 'states/rt-11-print-coguar.state.zst',
+    stateReady: 'Coguar ASCII-art on LP11 printer',
+    title: 'Coguar ASCII-art',
+    caption: 'Coguar ASCII-art on LP11 printer',
+    image: 'assets/images/games/rt-11-print-coguar.png',
+    alt: 'Coguar ASCII-art on LP11 printer',
+    description: 'Print the "COUGAR" ASCII art banner on an LP11 line printer. Originating in the 1970s, ASCII art was a vital technique in early computing, allowing standard alphanumeric printers to function as makeshift graphic devices',
+    descriptionRu: 'Вывести ASCII-арт «Пума» (COUGAR) на АЦПУ LP11. На раннем этапе развития вычислительной техники ASCII-арт был важнейшим методом, позволявшим использовать обычные текстовые принтеры в качестве графических устройств',
+  },
 ];
 
 export const FEATURES_EN: FeatureItem[] = [

@@ -307,12 +307,13 @@ async function testInvalidImport(page) {
     check("E1: garbage rejected", result1.ok === false, JSON.stringify(result1));
     check("E2: reason is not-a-state", result1.reason === "not-a-state", result1.reason);
 
-    // Try importing a too-large file.
-    const tooBig = new Uint8Array(17 * 1024 * 1024); // 17 MB > MAX_STATE_BYTES
-    const result2 = await page.evaluate(async (arr) => {
-        return await SnapshotStore.importState(new Uint8Array(arr));
-    }, Array.from(tooBig));
-    check("E3: too-large rejected", result2.ok === false, JSON.stringify(result2));
+    // Exercise the size guard without allocating/transferring a 256 MiB
+    // buffer through Puppeteer. importState checks byteLength before reading
+    // the input, so a length-only stand-in covers the early refusal path.
+    const result2 = await page.evaluate(async () => {
+        return await SnapshotStore.importState({ byteLength: 256 * 1024 * 1024 + 1 });
+    });
+    check("E3: oversized input rejected", result2.ok === false, JSON.stringify(result2));
     check("E4: reason is too-large", result2.reason === "too-large", result2.reason);
 
     // Verify the UI is still responsive (no snapshots were added).
