@@ -14,6 +14,7 @@ import { LiveEmulatorModal } from './components/LiveEmulatorModal.tsx';
 import { UserManual } from './components/UserManual.tsx';
 import { PDP11Emulator } from './components/PDP11Emulator.tsx';
 import { Devlog } from './components/Devlog.tsx';
+import { ManualBackToTop } from './components/ManualBackToTop.tsx';
 
 export default function App() {
   const [lang, setLang] = useState<'en' | 'ru'>('en');
@@ -240,6 +241,9 @@ export default function App() {
           </div>
         </footer>
       </div>
+
+      {/* Keep one shared floating control on the long-form landing views. */}
+      {(view === 'overview' || view === 'manual') && <ManualBackToTop lang={lang} />}
 
       {/* Fullscreen Interactive Emulator Modal */}
       <LiveEmulatorModal
