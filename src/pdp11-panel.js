@@ -89,7 +89,10 @@ function switchPage(page) {
     rebootBtn.classList.toggle('hidden', !onOperatorPage);
   }
 
-  // The floating STATE button (machine-state dialog) mirrors REBOOT.
+  // The floating STATE button (machine-state dialog) is offered on exactly the
+  // same pages as REBOOT, but it is docked on the other side: saving/restoring
+  // a whole machine is a session-level action, so it sits next to the
+  // quick-boot wand instead of next to the pause/reboot pair.
   var stateBtn = document.getElementById('state-btn');
   if (stateBtn) {
     stateBtn.classList.toggle('hidden', !onOperatorPage);

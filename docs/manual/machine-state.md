@@ -1,7 +1,7 @@
 ## Machine State (STATE button)
 
-The round **STATE** button (top-left corner, right of [REBOOT](#controls)) opens the
-machine-state dialog — a
+The round **STATE** button (top-right corner, immediately left of the
+[magic wand](#quick-start)) opens the machine-state dialog — a
 full save/restore of the emulated PDP-11, not just the CPU: registers, memory, every I/O device
 (console, terminals, printer, disks, tape and the paper-tape reader/punch), the paper in the teletype
 and LP11, the video-terminal screen contents (VT52 and VT100 alike) and even the VT11 vector-display
@@ -24,9 +24,10 @@ The machine-state dialog with one freshly saved state.{.shot-caption}
 - **Share** — turn a state into a file you can hand to somebody else; the Sharing a state subsection below explains what the file needs to work.
 - **Rename / Delete** — organise the list or remove states; the counter next to the list shows how many states you have.
 
-The STATE button mirrors [REBOOT](#controls) and is available on the **Panel**, **Console** (teletype, VT52 or
-VT100) and **TTY** pages. States are stored in the browser's IndexedDB and survive reloads and
-sessions.
+The STATE button is offered on the same pages as [REBOOT](#controls) — the **Panel**, the
+**Console** (teletype, VT52 or VT100), **TTY 1**, the **VT11** display and the **Printer** — but it sits
+in the top-right corner next to the [magic wand](#quick-start): both are session-level actions that open a
+dialog. States are stored in the browser's IndexedDB and survive reloads and sessions.
 
 ### Sharing a state
 
