@@ -2946,14 +2946,31 @@ var SnapshotStore = (() => {
                 var file = importInput.files[0];
                 if (!file) return;
                 importInput.value = "";   // reset so the same file can be re-imported
+                // Same pipeline as the clipboard/URL import paths: autoDecodeInput()
+                // accepts either a text envelope or a framed .state container
+                // (zstd/gzip/bare), importState() stores it. A file that is
+                // neither is refused through showImportError(), never thrown.
+                if (typeof file.size === "number" && file.size > MAX_STATE_BYTES) {
+                    showImportError({ reason: "too-large" });
+                    return;
+                }
                 file.arrayBuffer().then(function (buf) {
-                    return importOrDecode(new Uint8Array(buf));
-                }).then(function (result) {
-                    if (result.ok) {
-                        refreshUI(result.id);
-                    } else if (result.reason !== "cancelled") {
-                        showImportError(result);
+                    return autoDecodeInput(new Uint8Array(buf));
+                }).then(function (containerBytes) {
+                    if (!containerBytes) {
+                        showImportError({ reason: "not-a-state" });
+                        return;
                     }
+                    return importState(containerBytes).then(function (result) {
+                        if (result.ok) {
+                            refreshUI(result.id);
+                        } else if (result.reason !== "cancelled") {
+                            showImportError(result);
+                        }
+                    });
+                }).catch(function (err) {
+                    showImportError({ reason: "not-a-state",
+                        detail: String(err && err.message ? err.message : err) });
                 });
             });
         }

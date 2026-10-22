@@ -550,6 +550,49 @@ async function testForeignVersionGate(page) {
     console.log("  G2: done");
 }
 
+// --- H. Import through the real UI file picker ----------------------------
+// Every test above calls SnapshotStore.importState() directly, so a broken UI
+// handler could ship unnoticed: the Import button's change handler called a
+// helper that did not exist and threw a ReferenceError, so picking a file did
+// nothing at all. This drives the ACTUAL hidden file input the button clicks,
+// so the wiring between the button and the import pipeline is covered too.
+async function testFilePickerImport(page, errors) {
+    console.log("\n=== H. Import through the file picker ===");
+
+    const statePath = path.join(ROOT, "states", "rt-11-print-coguar.state.zst");
+    check("H1: the state file exists on disk", fs.existsSync(statePath), statePath);
+
+    const before = errors.length;
+    const input = await page.$("#snap-import-input");
+    check("H2: the import file input is in the DOM", input !== null,
+        "no #snap-import-input");
+    if (!input) return;
+
+    // Same path the Import button takes: clicking it opens this input, and the
+    // change handler decodes the picked bytes and stores the snapshot.
+    await input.uploadFile(statePath);
+
+    // The handler is asynchronous — wait for the snapshot to appear instead of
+    // sleeping a fixed time.
+    let listed = [];
+    try {
+        await page.waitForFunction(
+            async () => (await SnapshotStore.list()).length === 1,
+            { timeout: 30000 });
+    } catch (e) { /* fall through: the check below reports what went wrong */ }
+    listed = await page.evaluate(async () => await SnapshotStore.list());
+
+    check("H3: the picked file was imported", listed.length === 1,
+        String(listed.length));
+    check("H4: the import raised no page error", errors.length === before,
+        errors.slice(before).join(" | "));
+
+    for (const it of listed) {
+        await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, it.id);
+    }
+    console.log("  H: done");
+}
+
 // --- Main ----------------------------------------------------------------
 (async () => {
     const server = await ensureServer();
@@ -606,6 +649,13 @@ async function testForeignVersionGate(page) {
             const p7 = await openPage(browser, errors);
             await testForeignVersionGate(p7);
             await p7.close();
+        }
+
+        // H. Import through the real UI file picker (the button's own wiring).
+        {
+            const p8 = await openPage(browser, errors);
+            await testFilePickerImport(p8, errors);
+            await p8.close();
         }
 
         // Check for page errors across all pages.
