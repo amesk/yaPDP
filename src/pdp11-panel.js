@@ -98,6 +98,16 @@ function switchPage(page) {
     stateBtn.classList.toggle('hidden', !onOperatorPage);
   }
 
+  // The floating Screenshot (camera) button photographs the operator's screen,
+  // so it follows the machine controls: a picture of a settings or reference
+  // page is what the user manual carries, not what the operator saves
+  // mid-session, and the camera would just stand in the corner of a form.
+  var CONTENT_PAGES = ['storage', 'config', 'instructions'];
+  var screenshotBtn = document.getElementById('screenshot-btn');
+  if (screenshotBtn) {
+    screenshotBtn.classList.toggle('hidden', CONTENT_PAGES.indexOf(page) !== -1);
+  }
+
   // The floating quick-boot (magic wand) button is a global action: show it on
   // every page except the INFO page (instructions), whose long-form help text
   // already explains the wizard.

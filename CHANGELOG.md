@@ -115,6 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Canonical state container and migration utility.** New states use a versioned blob catalog with SHA-256 integrity checks for RAM, disk overlays and embedded resources. `tools/convert-state-format.js` migrates existing `.state.zst` files to the canonical layout. The converter also verifies and migrates legacy FNV-1a image fingerprints in snapshots and disk overlays to SHA-256, refusing to rewrite states when the original compressed image bytes cannot be verified.
 ### Changed
 
+- **The Screenshot button is offered on the machine pages only.** Storage,
+  CONFIG and Info no longer show the round camera button in the bottom-left
+  corner: a picture of a settings or reference page is not what the operator
+  saves mid-session. (`src/pdp11-panel.js`, `css/pdp11.css`,
+  `docs/manual/controls.md`, `docs/manual/ru/controls.md`,
+  `tests/console-button-layout.test.js`)
 - **STATE button moved to the top-right corner, next to the magic wand.**
   The round STATE button (machine-state dialog) is now docked immediately
   left of the quick-boot wand instead of right of REBOOT. Both are

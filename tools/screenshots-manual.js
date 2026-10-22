@@ -15,6 +15,8 @@
  *   node tools/screenshots-manual.js            # all shots
  *   node tools/screenshots-manual.js panel      # only the 'panel' shot (file
  *                                               # name without the .png suffix)
+ *   node tools/screenshots-manual.js storage,info,config-equipment
+ *                                               # a comma-separated batch
  *   npm run screenshots:manual
  *
  * Output: assets/images/manual/<name>.png (the repo-root copy, which is the
@@ -830,13 +832,19 @@ async function captureVt11Lander(browser) {
     let server = null;
     let browser = null;
     try {
-        // Optional CLI selector: a file name without the .png suffix. When
-        // given, only the matching screenshot is generated, so the slow Lunar
-        // Lander capture does not force the whole manual batch.
-        const selector = (process.argv[2] || "").toLowerCase().replace(/\.png$/, "");
+        // Optional CLI selector: file names without the .png suffix, comma
+        // separated. When given, only the matching screenshots are generated,
+        // so the slow Lunar Lander capture does not force the whole manual
+        // batch — and a UI change that touches one family of pages (the CONFIG
+        // tabs, say) is regenerated in a single run.
+        const selectors = (process.argv[2] || "")
+            .toLowerCase()
+            .split(",")
+            .map((s) => s.trim().replace(/\.png$/, ""))
+            .filter(Boolean);
         function wants(name) {
-            return !selector ||
-                name.toLowerCase().replace(/\.png$/, "") === selector;
+            return selectors.length === 0 ||
+                selectors.indexOf(name.toLowerCase().replace(/\.png$/, "")) !== -1;
         }
 
         // Ensure every output directory exists up front (writeShot also
