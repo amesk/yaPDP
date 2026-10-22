@@ -147,6 +147,19 @@ function run() {
             "STATE and REBOOT must be shown on exactly the same pages");
     }
 
+    // --- 7. The camera leaves the settings and reference pages --------------
+    {
+        assert.ok(/var CONTENT_PAGES = \['storage', 'config', 'instructions'\]/.test(panel),
+            "the pages without a camera must be listed in one place");
+        assert.ok(/screenshotBtn\.classList\.toggle\('hidden',\s*CONTENT_PAGES\.indexOf\(page\) !== -1\)/.test(panel),
+            "the Screenshot button must be hidden on Storage, CONFIG and INFO");
+        // .screenshot-btn sets display: flex, so the bare .hidden class would
+        // lose the cascade — the rule has to force none.
+        const hiddenRule = rule(css, ".screenshot-btn.hidden");
+        assert.ok(/display\s*:\s*none\s*!important/.test(hiddenRule),
+            ".screenshot-btn.hidden must force display: none");
+    }
+
     console.log("console-button-layout: all checks passed");
 }
 

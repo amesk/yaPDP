@@ -1272,6 +1272,15 @@ textarea {
     color: #e0d8c8;
 }
 
+/* No machine on screen (Storage, CONFIG, INFO): the camera has nothing worth
+   photographing and leaves the corner entirely — same .hidden convention as
+   .quick-boot-btn / .console-reboot. Toggled by switchPage() in
+   src/pdp11-panel.js. The rule needs !important because .screenshot-btn sets
+   display: flex itself. */
+.screenshot-btn.hidden {
+    display: none !important;
+}
+
 /* Screenshot upload area inside the Share-snapshot dialog. */
 .share-screenshot-area {
     border: 1px dashed #5a554a;
