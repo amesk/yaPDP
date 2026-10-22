@@ -134,6 +134,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/landing-manual-coverage.test.js`)
 ### Changed
 
+- **Running header and footer of the printed manual.** The header carries the
+  product name in the top-left corner and the document name in the top-right
+  one, the footer the edition in the bottom-left corner and the page number in
+  the bottom-right one; both labels are translated in the Russian edition.
+  (`tools/build-manual-pdf.js`)
 - **The Screenshot button is offered on the machine pages only.** Storage,
   CONFIG and Info no longer show the round camera button in the bottom-left
   corner: a picture of a settings or reference page is not what the operator
