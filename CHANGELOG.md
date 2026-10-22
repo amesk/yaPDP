@@ -115,6 +115,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tools/build-manual-pdf.js`, `tools/manual-template-head.html`)
 
 - **Canonical state container and migration utility.** New states use a versioned blob catalog with SHA-256 integrity checks for RAM, disk overlays and embedded resources. `tools/convert-state-format.js` migrates existing `.state.zst` files to the canonical layout. The converter also verifies and migrates legacy FNV-1a image fingerprints in snapshots and disk overlays to SHA-256, refusing to rewrite states when the original compressed image bytes cannot be verified.
+- **The landing page's user guide covers the whole manual.** Its Quick Start,
+  Machine State and Controls chapters had fallen behind `docs/manual/`: the
+  Scenario tab, the iframe embedding recipes (including the Gist route around
+  CORS) and the keyboard-shortcut table were missing. All five topics are in
+  the guide now, in English and Russian, and a test holds its topic count to
+  the manual's so the two cannot drift apart again.
+  (`landing/src/components/UserManual.tsx`,
+  `tests/landing-manual-coverage.test.js`)
 ### Changed
 
 - **The Screenshot button is offered on the machine pages only.** Storage,
