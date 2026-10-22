@@ -486,7 +486,6 @@ var SnapshotStore = (() => {
                     typeof DataLoader.has === "function" && !DataLoader.has(url) &&
                     typeof window !== "undefined" &&
                     typeof window.__yapdpLoadImage === "function") {
-                    if (typeof console !== "undefined") console.log("loadStateImages: loading", url);
                     promises.push(Promise.resolve(window.__yapdpLoadImage(url)));
                 }
             })(urls[i]);
@@ -498,7 +497,6 @@ var SnapshotStore = (() => {
     // restore() so a shared ?state= link gets working drives without reloading.
     function mountStateDisks(mounted) {
         if (!mounted || !Array.isArray(mounted) || !mounted.length) {
-            if (typeof console !== "undefined") console.log("mountStateDisks: no mounted urls");
             return Promise.resolve();
         }
         var urls = mounted.filter(function (u) { return u && typeof u === "string"; });
@@ -507,7 +505,6 @@ var SnapshotStore = (() => {
             urls.forEach(function (url) {
                 if (typeof window !== "undefined" &&
                     typeof window.__yapdpMountProvider === "function") {
-                    if (typeof console !== "undefined") console.log("mountStateDisks: mounting provider for", url);
                     window.__yapdpMountProvider(url);
                 }
             });
@@ -1056,7 +1053,6 @@ var SnapshotStore = (() => {
         var parsed = (typeof StateFormat !== "undefined" &&
             typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
         if (!parsed) {
-            if (typeof console !== "undefined") console.log("applyContainer: unpack failed");
             return { ok: false, reason: "not-a-state", url: url };
         }
         if (typeof StateFormat.schemaMajor === "function" &&
@@ -1067,7 +1063,6 @@ var SnapshotStore = (() => {
             return { ok: false, reason: "missing-embedded-resource", url: url };
         }
         lastStateManifest = parsed.manifest || null;
-        if (typeof console !== "undefined") console.log("applyContainer: manifest set, device=", parsed.manifest ? parsed.manifest.device : "null");
         // A container state arrives as manifest + raw words; the rest of the
         // restore path wants a snapshot-shaped object (cpu/memory/devices).
         // The overlay is stamped with its origin so the Storage UI can say
