@@ -81,7 +81,7 @@
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
-    "puppeteer": "^25.13.0"
+    "puppeteer": "^25.14.0"
   },
   "wireit": {
     "manifest": {
