@@ -115,6 +115,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Canonical state container and migration utility.** New states use a versioned blob catalog with SHA-256 integrity checks for RAM, disk overlays and embedded resources. `tools/convert-state-format.js` migrates existing `.state.zst` files to the canonical layout. The converter also verifies and migrates legacy FNV-1a image fingerprints in snapshots and disk overlays to SHA-256, refusing to rewrite states when the original compressed image bytes cannot be verified.
 ### Changed
 
+- **STATE button moved to the top-right corner, next to the magic wand.**
+  The round STATE button (machine-state dialog) is now docked immediately
+  left of the quick-boot wand instead of right of REBOOT. Both are
+  session-level actions that open a dialog, and the wand's Scenario tab
+  restores a saved state too. Pause and Reboot stay on the left as
+  live-machine controls. (`css/pdp11.css`, `pdp11.html`,
+  `src/pdp11-panel.js`, `docs/manual/machine-state.md`,
+  `docs/manual/ru/machine-state.md`, `docs/manual/controls.md`,
+  `docs/manual/ru/controls.md`, `docs/FEATURES.md`,
+  `tests/console-button-layout.test.js`)
 - **Quick Start chapter restyled.** Long paragraphs split into shorter
   ones for better readability. (`docs/manual/quick-start.md`,
   `docs/manual/ru/quick-start.md`)

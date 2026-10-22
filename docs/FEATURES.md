@@ -393,7 +393,9 @@ last-used device directly. By default the dialog asks first, with a
 time from the Config page's **Behaviour** tab. A confirmed reboot announces
 itself with a "Rebooting…" toast; opening or cancelling the dialog does not.
 
-Next to REBOOT sits the round **STATE** button — the machine-state dialog. It
+In the top-right corner, immediately left of the magic wand, sits the round
+**STATE** button — the machine-state dialog. It is a session-level action, so
+it groups with quick boot rather than with the pause/reboot pair on the left. It
 saves and restores the whole emulated PDP-11, not just the CPU: registers,
 memory, every I/O device (console, terminals, printer, disks, tape and the
 paper-tape reader/punch), the paper in the teletype and LP11, the VT52 screen
