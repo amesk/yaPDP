@@ -140,6 +140,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
         />
       )}
 
+
       {/* Manual Hero Header */}
       <div className="text-center pt-2 pb-6 border-b border-[#3a3528]/80">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#524939] bg-[#14120e] text-xs text-[#c8a860] mb-3 font-mono">
