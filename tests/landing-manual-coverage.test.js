@@ -32,7 +32,11 @@
  *      translation is behind its own source;
  *   6. every scrollToSection('…') target of the guide exists as an id="…" in
  *      the same file — a cross-reference between chapters is a string, and a
- *      renamed anchor turns it into a dead click.
+ *      renamed anchor turns it into a dead click;
+ *   7. the table of contents lists exactly the chapters the guide renders. It
+ *      did not: About yaPDP, Glossary and Historical Fidelity were offered and
+ *      scrolled nowhere, because the TOC was built from every chapter of
+ *      _meta.yml while the guide carries thirteen of them.
  *
  * Deliberately NOT checked: the wording of a heading. The guide shortens some
  * manual titles on purpose ("Machine State" instead of "Machine State (STATE
@@ -117,6 +121,14 @@ function scrollTargets(text) {
   return new Set([...text.matchAll(/scrollToSection\('([a-z0-9-]+)'\)/g)].map((m) => m[1]));
 }
 
+// The chapters the guide advertises in its own table of contents and search.
+function tocChapters(text) {
+  const block = /const GUIDE_CHAPTERS = \[([\s\S]*?)\];/.exec(text);
+  assert.ok(block, "landing guide declares no GUIDE_CHAPTERS list — the table of contents " +
+    "cannot be checked against what the page renders");
+  return [...block[1].matchAll(/'([a-z0-9-]+)'/g)].map((m) => m[1]);
+}
+
 // --- the guard -------------------------------------------------------------
 
 function run() {
@@ -180,6 +192,16 @@ function run() {
       "docs/manual/ru/" + id + ".md has " + ru + " topic(s), docs/manual/" + id +
       ".md has " + en + " — the translation is behind its own source");
   }
+
+  // --- 7. the table of contents lists what the page renders ----------------
+  const toc = tocChapters(text);
+  assert.ok(toc.length > 0, "GUIDE_CHAPTERS is empty — the guide would offer no navigation");
+  const notRendered = toc.filter((id) => !guide.has(id));
+  const hidden = [...guide.keys()].filter((id) => toc.indexOf(id) === -1);
+  assert.ok(notRendered.length === 0 && hidden.length === 0,
+    "the table of contents and the rendered chapters disagree — offered but absent " +
+    "(the jump goes nowhere): " + (notRendered.join(", ") || "none") +
+    "; rendered but absent from the TOC: " + (hidden.join(", ") || "none"));
 
   // --- 6. every cross-reference points at an anchor that exists ------------
   const anchors = anchorsOf(text);
