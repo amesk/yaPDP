@@ -66,6 +66,37 @@ const KEYBOARD_SHORTCUTS = [
   { keys: 'Page Up / Page Down', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Scroll the terminal output history.', whatRu: 'Прокрутить историю вывода терминала.' },
 ];
 
+// The chapters this guide actually renders, in reading order. MANUAL_SECTIONS is
+// generated from docs/manual/_meta.yml and lists all sixteen chapters — About,
+// Glossary and Fidelity are among them but are not part of this guide (About and
+// Fidelity are landing pages, the Glossary is a reference list the manual page
+// owns). Offering them in the table of contents produced menu entries that
+// scrolled nowhere, because scrollToSection() silently does nothing when the
+// anchor is not in the page.
+const GUIDE_CHAPTERS = [
+  'quick-start',
+  'front-panel',
+  'console',
+  'user-terminals',
+  'printer',
+  'vt11',
+  'storage',
+  'machine-state',
+  'config',
+  'guest-oses',
+  'controls',
+  'troubleshooting',
+  'desktop',
+];
+
+// What the table of contents and the search offer: those chapters, in the
+// manual's order. They are numbered 1..N from this list, not by the manual's own
+// numbers — the manual counts sixteen chapters and puts About first, so its
+// numbering never matched the §N labels of the sections below.
+const GUIDE_SECTIONS = MANUAL_SECTIONS.filter(
+  (sec) => GUIDE_CHAPTERS.indexOf(sec.id) !== -1
+);
+
 interface UserManualProps {
   lang: 'en' | 'ru';
   onBackToHome: () => void;
@@ -132,7 +163,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
     const out: { id: string; titleEn: string; titleRu: string }[] = [];
-    for (const sec of MANUAL_SECTIONS) {
+    for (const sec of GUIDE_SECTIONS) {
       const names = sec.id === 'controls' ? FLOATING_CONTROL_NAMES : [];
       const kw = (SECTION_KEYWORDS[sec.id] || []).concat(names).join(' ').toLowerCase();
       const sub = (sec.subsections || []).map((x) => x.titleEn + ' ' + x.titleRu).join(' ').toLowerCase();
@@ -272,18 +303,18 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             <Sliders className="w-4 h-4 text-[#c8a860]" />
             {lang === 'en' ? 'Table of Contents' : 'Оглавление руководства'}
           </h2>
-          <span className="text-[11px] text-[#8a7650] font-mono">{MANUAL_SECTIONS.length} SECTIONS</span>
+          <span className="text-[11px] text-[#8a7650] font-mono">{GUIDE_SECTIONS.length} SECTIONS</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {MANUAL_SECTIONS.map((sec) => (
+          {GUIDE_SECTIONS.map((sec, idx) => (
             <button
               key={sec.id}
               onClick={() => scrollToSection(sec.id)}
               className="text-left px-3 py-2 rounded bg-[#1c1914] hover:bg-[#25211a] border border-[#3a3528]/80 hover:border-[#c8a860]/60 transition-all text-xs text-[#d4c4a0] hover:text-[#f0e6c8] flex items-center gap-2 cursor-pointer group"
             >
               <span className="font-mono text-[11px] text-[#c8a860] font-bold group-hover:text-[#e8d080]">
-                {sec.number}.
+                {idx + 1}.
               </span>
               <span className="truncate">{lang === 'en' ? sec.titleEn : sec.titleRu}</span>
             </button>
