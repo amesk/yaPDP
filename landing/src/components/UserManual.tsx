@@ -26,7 +26,6 @@ import {
   FLOATING_CONTROLS_DATA
 } from '../data/manualData.ts';
 import { Lightbox } from './Lightbox.tsx';
-import { ManualBackToTop } from './ManualBackToTop.tsx';
 import { SlideItem } from '../types.ts';
 
 // Names of the floating controls, taken from the manual data (generated from
@@ -141,7 +140,6 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
         />
       )}
 
-      <ManualBackToTop lang={lang} />
 
       {/* Manual Hero Header */}
       <div className="text-center pt-2 pb-6 border-b border-[#3a3528]/80">
