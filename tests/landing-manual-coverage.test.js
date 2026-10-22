@@ -12,9 +12,9 @@
  * cannot be loaded") while docs/manual/troubleshooting.md described eight —
  * missing a snapshot refused after an image update, a guest that does not boot,
  * a keyboard that does not type, no sound, poor performance, a blank screen and
- * CORS errors. Nothing failed; a human noticed, months later. The same kind of
- * drift is present right now in the chapters recorded in
- * KNOWN_TOPIC_DEFICITS below.
+ * CORS errors. Nothing failed; a human noticed, months later. Three more
+ * chapters had drifted the same way (quick-start, machine-state, controls) and
+ * were brought back in line once this guard existed to keep them there.
  *
  * This guard makes that class of drift fail here instead of in review:
  *
@@ -66,14 +66,11 @@ const CHAPTERS_NOT_ON_LANDING = ["about", "glossary", "fidelity"];
 // so its topics cannot drift and cannot be counted here.
 const DATA_DRIVEN_CHAPTERS = new Set(["config"]);
 
-// Known drift, in topics. The guide is behind the manual in these chapters and
-// the difference is documented rather than hidden — but the list may only
-// shrink: a chapter that catches up must be removed from here (check 4).
-const KNOWN_TOPIC_DEFICITS = {
-  "quick-start": 1,      // "The Scenario tab" is not in the guide yet
-  "machine-state": 2,    // "Embedding the emulator", "Configuration and the state"
-  "controls": 2,         // "Switching pages", "Keyboard shortcuts"
-};
+// Known drift, in topics: chapter id -> how many manual topics the guide still
+// lacks. Empty today, and it is meant to stay that way — an entry is a
+// documented debt, not a licence. The list may only shrink: a chapter that
+// catches up must be removed from here (check 4), so it cannot rot.
+const KNOWN_TOPIC_DEFICITS = {};
 
 // --- helpers ---------------------------------------------------------------
 

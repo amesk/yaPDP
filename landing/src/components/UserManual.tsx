@@ -37,6 +37,35 @@ const FLOATING_CONTROL_NAMES: string[] = FLOATING_CONTROLS_DATA.flatMap(
   (b) => [b.nameEn, b.nameRu]
 );
 
+// The sidebar pages and what each one shows. Kept as data because the list is
+// read in two languages and every entry is also a jump target — a renamed page
+// or a moved anchor is then edited in one place. `target` empty means the page
+// has no chapter in this guide (Info), so the name is rendered as plain text.
+const SIDEBAR_PAGES = [
+  { target: 'front-panel', name: 'Panel', descEn: 'the front panel with switches and LEDs.', descRu: 'пультовая панель с тумблерами и светодиодами.' },
+  { target: 'console', name: 'Console', descEn: 'the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.', descRu: 'консоль оператора: телетайп Model 33 ASR либо DECscope VT52 / DEC VT100, когда консольный терминал — видеотерминал.' },
+  { target: 'user-terminals', name: 'TTY 1 / TTY 2', descEn: 'user video terminals (VT52 or VT100), shown only when configured.', descRu: 'пользовательские видеотерминалы (VT52 или VT100), показываются только если настроены.' },
+  { target: 'printer', name: 'Printer', descEn: 'the LP11 line printer page, shown only when configured.', descRu: 'страница построчного принтера LP11, показывается только если настроен.' },
+  { target: 'vt11', name: 'Display', descEn: 'the VT11 vector-graphics CRT page, shown only when configured.', descRu: 'страница векторного CRT VT11, показывается только если настроен.' },
+  { target: 'storage', name: 'Storage', descEn: 'storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).', descRu: 'носители в двух вкладках: Images (зона перетаскивания, смонтированные образы) и Paper Tapes (читатель, экспорт перфоратора).' },
+  { target: 'config', name: 'Config', descEn: 'configure the emulated peripherals (persisted between sessions).', descRu: 'настройка эмулируемых периферийных устройств (сохраняется между сессиями).' },
+  { target: '', name: 'Info', descEn: 'detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).', descRu: 'подробные инструкции, справочник по ОС и блок About (версия, сайт, автор и лицензия; маркер версии внизу боковой панели открывает эту страницу).' },
+];
+
+// Keyboard shortcuts. Data, not prose: the table is two languages by five
+// columns, and writing it inline produced nine pairs of ternaries.
+const KEYBOARD_SHORTCUTS = [
+  { keys: 'F11', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Toggle fullscreen mode (same as the Fullscreen button).', whatRu: 'Включить полноэкранный режим (как кнопка Fullscreen).' },
+  { keys: 'Escape', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Exit fullscreen mode.', whatRu: 'Выйти из полноэкранного режима.' },
+  { keys: 'Ctrl+0 (Cmd+0)', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Reset browser zoom to 100%.', whatRu: 'Сбросить масштаб браузера до 100%.' },
+  { keys: 'Ctrl+Shift+S (Cmd+Shift+S)', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Take a screenshot of the active page (same as the Screenshot button).', whatRu: 'Сделать снимок экрана активной страницы (как кнопка Screenshot).' },
+  { keys: 'Enter', whereEn: 'Console (teletype)', whereRu: 'Консоль (телетайп)', whatEn: 'Send a carriage return / line feed.', whatRu: 'Отправить возврат каретки / перевод строки.' },
+  { keys: 'Backspace', whereEn: 'Console (teletype)', whereRu: 'Консоль (телетайп)', whatEn: 'Send a rubout (DEL) character.', whatRu: 'Отправить символ rubout (DEL).' },
+  { keys: 'Ctrl+C', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Send the interrupt signal to the guest OS.', whatRu: 'Отправить сигнал прерывания гостевой ОС.' },
+  { keys: 'Ctrl+Z', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Send the suspend signal to the guest OS.', whatRu: 'Отправить сигнал приостановки гостевой ОС.' },
+  { keys: 'Page Up / Page Down', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Scroll the terminal output history.', whatRu: 'Прокрутить историю вывода терминала.' },
+];
+
 interface UserManualProps {
   lang: 'en' | 'ru';
   onBackToHome: () => void;
@@ -418,6 +447,60 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               ? 'While the wizard types, the emulator ignores the keyboard and the mouse — console, terminals and front panel alike — so nothing you type can race its characters into the console. Until it finishes, the only way out is the toast\u2019s "Take control!" button, which stops the autoload and hands the machine back to you. Disk and tape images can take a while to download on a slow link: a thin "Loading N%" bar along the bottom of the window shows the progress.'
               : 'Пока мастер печатает, эмулятор игнорирует клавиатуру и мышь — консоль, терминалы и пульт, — так что ваши символы не вклинятся в его ввод. До окончания единственный выход — кнопка "Take control!" в уведомлении: она прерывает автозагрузку и возвращает машину вам. Образы дисков и лент на медленном канале загружаются не сразу: тонкая полоса "Loading N%" внизу окна показывает прогресс.'}
           </div>
+        </div>
+
+        {/* Subsection: The Scenario tab */}
+        <div id="scenario-tab" className="pt-2 space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080] flex items-center gap-2">
+            <HardDrive className="w-4 h-4 text-[#c8a860]" />
+            {lang === 'en' ? 'The Scenario tab' : 'Вкладка Scenario'}
+          </h3>
+
+          <p className="text-sm leading-relaxed text-[#c8b890]">
+            {lang === 'en' ? (
+              <>
+                The wizard has two tabs. <strong className="text-[#f0e6c8]">Boot</strong> is the list
+                above: a boot command is typed into a fresh machine.{' '}
+                <strong className="text-[#f0e6c8]">Scenario</strong> restores a machine state saved in
+                this build — the guest is already running, so it opens in about a second instead of
+                taking the full boot. Click a card to restore it, exactly like a{' '}
+                <code className="text-[#e8d080]">?state=</code> link (see{' '}
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('machine-state')}
+                  className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+                >
+                  Machine State
+                </button>
+                ); a state that carries a screenshot shows a thumbnail, and clicking the thumbnail
+                opens the full picture without leaving the page.
+              </>
+            ) : (
+              <>
+                В мастере две вкладки. <strong className="text-[#f0e6c8]">Boot</strong> — это список
+                выше: команда загрузки вводится в свежую машину.{' '}
+                <strong className="text-[#f0e6c8]">Scenario</strong> восстанавливает состояние машины,
+                сохранённое в этой сборке, — гость уже работает, поэтому открывается примерно за
+                секунду вместо полной загрузки. Нажмите карточку, чтобы восстановить состояние, точно
+                так же, как ссылка <code className="text-[#e8d080]">?state=</code> (см.{' '}
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('machine-state')}
+                  className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+                >
+                  Состояние машины
+                </button>
+                ); у состояния со снимком экрана есть миниатюра, а щелчок по ней открывает снимок
+                целиком, не покидая страницу.
+              </>
+            )}
+          </p>
+
+          <p className="text-sm leading-relaxed text-[#c8b890]">
+            {lang === 'en'
+              ? 'The list is generated from the actual state files of this build, so it always matches what ships. On a host without that list the tab simply has nothing to offer.'
+              : 'Список генерируется по фактическим файлам состояний этой сборки, поэтому всегда совпадает с тем, что в ней поставляется. На хосте без такого списка вкладке просто нечего предложить.'}
+          </p>
         </div>
 
         {/* Subsection: The classic way */}
@@ -1303,6 +1386,203 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             ? 'When either condition fails the visitor is told in a dialog that names the URL, and the address bar keeps the ?state= parameter so what was asked for stays visible. If a link cannot work at all — the state lives somewhere that cannot be fetched — the file itself is still the fallback: Import takes any .state or .state.zst file from disk, with no server and no CORS involved.'
             : 'Если не выполнено любое из условий, посетителю показывается диалог с указанием URL, а в адресной строке остаётся параметр ?state=, чтобы было видно, что именно запрашивалось. Если ссылка не может работать вовсе — состояние лежит там, откуда его не получить, — остаётся сам файл: Import принимает любой файл .state или .state.zst с диска, без сервера и без CORS.'}
         </p>
+
+        <h3 id="embedding-the-emulator" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Embedding the emulator' : 'Встраивание эмулятора'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              The emulator can be embedded into any HTML page as an{' '}
+              <code className="text-[#e8d080]">{'<iframe>'}</code>. This makes it suitable for museum
+              exhibits, educational websites, and online articles — visitors interact with a live PDP-11
+              without leaving your site.
+            </>
+          ) : (
+            <>
+              Эмулятор можно встроить в любую HTML-страницу через{' '}
+              <code className="text-[#e8d080]">{'<iframe>'}</code>. Это делает его удобным для
+              музейных экспонатов, образовательных сайтов и онлайн-статей — посетитель
+              взаимодействует с живой PDP-11, не покидая ваш сайт.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Basic OS boot' : 'Базовая загрузка ОС'}
+        </p>
+
+        <pre className="overflow-x-auto rounded-lg border border-[#4a453a] bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-[#d4c4a0]">{`<iframe src="https://amesk.github.io/yaPDP/pdp11.html?boot=rk1"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>`}</pre>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              The <code className="text-[#e8d080]">?boot=</code> parameter starts the quick-boot wizard
+              for the specified disk. The wizard types the boot command and, where credentials are
+              known, the login — the visitor sees a running operating system immediately.
+            </>
+          ) : (
+            <>
+              Параметр <code className="text-[#e8d080]">?boot=</code> запускает мастер быстрой
+              загрузки для указанного диска. Мастер набирает команду загрузки и, если учётные данные
+              известны, логин — посетитель сразу видит работающую операционную систему.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Loading a machine state' : 'Загрузка состояния машины'}
+        </p>
+
+        <pre className="overflow-x-auto rounded-lg border border-[#4a453a] bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-[#d4c4a0]">{`<iframe src="https://amesk.github.io/yaPDP/pdp11.html?state=states/lunar-lander.state.zst"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>`}</pre>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              The <code className="text-[#e8d080]">?state=</code> parameter loads a saved machine
+              state. The state file must be reachable from the browser — see the CORS discussion above.
+            </>
+          ) : (
+            <>
+              Параметр <code className="text-[#e8d080]">?state=</code> загружает сохранённое состояние
+              машины. Файл состояния должен быть доступен браузеру — см. обсуждение CORS выше.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Using a GitHub Gist to bypass CORS' : 'Использование GitHub Gist для обхода CORS'}
+        </p>
+
+        <pre className="overflow-x-auto rounded-lg border border-[#4a453a] bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-[#d4c4a0]">{`<iframe src="https://amesk.github.io/yaPDP/pdp11.html?state=https://gist.githubusercontent.com/.../raw/.../demo.state.txt"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>`}</pre>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              If you cannot place the state file on the same host as the emulator, the GitHub Gist
+              workflow (see{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('sharing-a-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                Sharing a state
+              </button>
+              ) solves the CORS problem: GitHub serves Gist raw files with the correct{' '}
+              <code className="text-[#e8d080]">Access-Control-Allow-Origin</code> header. The link
+              generated by the <strong className="text-[#f0e6c8]">Create GitHub Gist</strong> dialog
+              works directly in an iframe.
+            </>
+          ) : (
+            <>
+              Если вы не можете разместить файл состояния на том же хосте, что и эмулятор, механизм
+              GitHub Gist (см.{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('sharing-a-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                Передача состояния
+              </button>
+              ) решает проблему CORS: GitHub отдаёт «сырые» файлы Gist с правильным заголовком{' '}
+              <code className="text-[#e8d080]">Access-Control-Allow-Origin</code>. Ссылка,
+              сгенерированная диалогом <strong className="text-[#f0e6c8]">Create GitHub Gist</strong>,
+              работает напрямую в iframe.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Guided restore for museum exhibits' : 'Подготовленный экспонат для музея'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'When you create a shareable state, the Title, Description, Screenshot and Run after restore fields (see Sharing a state above) let you prepare a self-contained exhibit. The visitor sees a welcome message with your description and a screenshot before the machine starts; after they click the button, the emulator boots and types the post-restore command automatically. No server configuration, no disk hunting — the state carries everything except the disk images, which are bundled with the emulator.'
+            : 'При создании публикуемого состояния поля Title, Description, Screenshot и Run after restore (см. «Передача состояния» выше) позволяют подготовить самодостаточный экспонат. Посетитель видит приветственное сообщение с вашим описанием и снимком экрана до запуска машины; после нажатия кнопки эмулятор загружается и автоматически набирает команду восстановления. Никакой настройки сервера, никакого поиска дисков — состояние несёт всё, кроме образов дисков, которые уже входят в комплект эмулятора.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Recommendations for museums and educators' : 'Рекомендации для музеев и преподавателей'}
+        </p>
+
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+          <li>
+            {lang === 'en' ? (
+              <>
+                Use <code className="text-[#e8d080]">?boot=</code> for a quick OS demonstration — no
+                state file needed.
+              </>
+            ) : (
+              <>
+                Используйте <code className="text-[#e8d080]">?boot=</code> для быстрой демонстрации
+                ОС — файл состояния не нужен.
+              </>
+            )}
+          </li>
+          <li>
+            {lang === 'en' ? (
+              <>
+                Use <code className="text-[#e8d080]">?state=</code> with a GitHub Gist for a curated
+                exhibit that survives hosting changes.
+              </>
+            ) : (
+              <>
+                Используйте <code className="text-[#e8d080]">?state=</code> с GitHub Gist для
+                подготовленного экспоната, который переживёт смену хостинга.
+              </>
+            )}
+          </li>
+          <li>
+            {lang === 'en' ? (
+              <>
+                Set <code className="text-[#e8d080]">allow="clipboard-read; clipboard-write"</code> on
+                the iframe so the emulator clipboard features (Import from clipboard, Copy text to
+                clipboard) work inside the embedded page.
+              </>
+            ) : (
+              <>
+                Укажите <code className="text-[#e8d080]">allow="clipboard-read; clipboard-write"</code>{' '}
+                в iframe, чтобы функции буфера обмена эмулятора (Import from clipboard, Copy text to
+                clipboard) работали внутри встроенной страницы.
+              </>
+            )}
+          </li>
+          <li>
+            {lang === 'en'
+              ? 'The emulator is responsive: on narrow viewports it adapts to a mobile-friendly layout automatically.'
+              : 'Эмулятор адаптивен: на узких экранах он автоматически переключается в мобильный макет.'}
+          </li>
+        </ul>
+
+        <h3 id="configuration-and-the-state" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Configuration and the state' : 'Конфигурация и состояние'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A state carries its own hardware configuration, and restoring it applies that profile — console type, user terminals, LP11 printer, VT11 display, widths, teletype speed, zoom, glow, phosphor and backdrop. There is one exception: the two sound settings (Mute and the machine hum) are never touched, because they belong to the person at the keyboard, not to the guest. A page reload happens only when the device set differs; everything else applies live.'
+            : 'Состояние несёт собственную аппаратную конфигурацию, и при восстановлении применяется её профиль — тип консоли, пользовательские терминалы, принтер LP11, дисплей VT11, ширины, скорость телетайпа, масштаб, свечение, люминофор и фон. Есть одно исключение: две звуковые настройки (Mute и гул машины) не трогаются никогда, потому что принадлежат человеку за клавиатурой, а не гостю. Перезагрузка страницы происходит только если отличается набор устройств; всё остальное применяется на лету.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A state opened from a ?state= link asks nothing — the state is the point of the link. Your own configuration is remembered before it is replaced, and after a reload (or in the Reboot / Bootstrap now! dialog) you are offered Return my configuration, which restores every field. Returning it reloads only when the device set differs, and a Reboot parked across that reload runs as soon as the page is back.'
+            : 'Состояние, открытое по ссылке ?state=, ничего не спрашивает — состояние и есть смысл ссылки. Ваша собственная конфигурация запоминается до того, как её заменят, и после перезагрузки (или в диалоге Reboot / Bootstrap now!) вам предлагают Return my configuration, что восстанавливает все поля. Возврат вызывает перезагрузку только при другом наборе устройств, а отложенный Reboot выполняется, как только страница вернётся.'}
+        </p>
       </section>
 
       {/* SECTION 8: CONFIGURATION */}
@@ -1479,6 +1759,41 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           </h2>
         </div>
 
+        {/* Switching pages */}
+        <div id="switching-pages" className="space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080]">
+            {lang === 'en' ? 'Switching pages' : 'Переключение страниц'}
+          </h3>
+
+          <p className="text-sm leading-relaxed text-[#c8b890]">
+            {lang === 'en'
+              ? 'Use the sidebar to switch between:'
+              : 'Боковая панель переключает между страницами:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            {SIDEBAR_PAGES.map((page) => (
+              <li key={page.name}>
+                {page.target ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(page.target)}
+                      className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2 font-bold"
+                    >
+                      {page.name}
+                    </button>
+                    {' — '}
+                  </>
+                ) : (
+                  <strong className="text-[#f0e6c8]">{page.name}</strong>
+                )}
+                {lang === 'en' ? page.descEn : page.descRu}
+              </li>
+            ))}
+          </ul>
+        </div>
+
         {/* Floating controls table */}
         <div id="floating-controls" className="space-y-3">
           <h3 className="text-lg font-bold text-[#e8d080]">
@@ -1533,6 +1848,40 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               ? 'Each output button on the sidebar has a small blinking green LED in its top-right corner: it pulses while the PDP‑11 writes output to that console/terminal (and blinks continuously during active print jobs on the Printer button), switching off half a second after transmission completes.'
               : 'Каждая кнопка вывода в боковой панели оснащена маленьким мигающим зеленым светодиодом: он пульсирует, пока процессор PDP-11 передает данные на этот терминал (и непрерывно мигает во время печати документа на вкладке Printer), выключаясь через полсекунды после завершения.'}
           </p>
+        </div>
+
+        {/* Keyboard shortcuts */}
+        <div id="keyboard-shortcuts" className="space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080]">
+            {lang === 'en' ? 'Keyboard shortcuts' : 'Сочетания клавиш'}
+          </h3>
+
+          <div className="overflow-x-auto rounded-lg border border-[#4a453a] bg-[#12100d]">
+            <table className="w-full text-left text-xs text-[#d4c4a0] border-collapse">
+              <thead>
+                <tr className="border-b border-[#3a3528] bg-[#1c1914] text-[#f0e6c8] font-mono">
+                  <th className="py-2.5 px-3">SHORTCUT</th>
+                  <th className="py-2.5 px-3">WHERE</th>
+                  <th className="py-2.5 px-3">WHAT IT DOES</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#2a261f]">
+                {KEYBOARD_SHORTCUTS.map((sc) => (
+                  <tr key={sc.keys} className="hover:bg-[#191611]">
+                    <td className="py-2.5 px-3">
+                      <code className="font-mono font-bold text-[#e8d080]">{sc.keys}</code>
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#c8a860]">
+                      {lang === 'en' ? sc.whereEn : sc.whereRu}
+                    </td>
+                    <td className="py-2.5 px-3 leading-relaxed text-[#bfae90]">
+                      {lang === 'en' ? sc.whatEn : sc.whatRu}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
