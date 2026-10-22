@@ -247,6 +247,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classic landing-page lightbox shows a clean caption under the picture.** The enlarged screenshot now stacks the caption and the RUN/PLAY action in the normal flow, so a multi-line card caption no longer runs together as one word and no longer covers the screenshot, and the hover-only "Click to enlarge" hint stays out of it. (`index.html`, `css/pdp11.css`)
 - **Landing lightbox no longer clips its Run/Play button on short viewports.** The enlarged screenshot now takes only the space left by the top bar and the caption instead of a fixed share of the window height, so the launch action stays on screen at high display scaling (Windows 125%) and on short laptops. (`landing/src/components/Lightbox.tsx`; pinned by `tests/landing-lightbox-fit.test.js`)
+- **The landing carousels loop instead of jamming at the first and last
+  card.** The guest-OS, Instant Run and Games galleries stopped scrolling once
+  the arrows reached an end; they now carry on past it, in both directions and
+  for a swipe too, the way the classic gallery on the emulator page does.
+  (`landing/src/hooks/useWheelScroll.ts`, `landing/src/hooks/wheelMath.js`,
+  `landing/src/components/OSCarousel.tsx`,
+  `landing/src/components/InstantRun.tsx`,
+  `landing/src/components/GamesCarousel.tsx`; pinned by
+  `tests/carousel-loop.test.js`)
 - **The landing guide's table of contents no longer offers chapters it does not
   have.** About yaPDP, Glossary and Historical Fidelity and Limitations were
   listed beside the thirteen chapters the guide actually renders, so choosing one
