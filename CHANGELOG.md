@@ -262,6 +262,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the glossary terms, and its override also needed a more specific selector —
   the screen rule sits below the print block, and a media query carries no
   priority of its own. (`tools/manual-template-head.html`)
+- **Importing a snapshot from a file works again.** The Import button's file
+  picker called a helper that no longer exists, so choosing a `.state` file
+  (for example `states/rt-11-print-coguar.state.zst`) failed with a
+  `ReferenceError` and nothing was imported. The picker now runs the same
+  decode-then-import pipeline as the clipboard and URL import paths — text
+  envelopes included — and reports a bad file instead of throwing.
+  (`src/snapshots.js`)
 - **Glossary terms print in black in the PDF manual.** The gold the term
   carries on screen stayed on paper, where it was the only coloured element in
   an otherwise black-and-white layout; on paper the term now matches every
