@@ -70,6 +70,7 @@ const ORDER = [
     "media-registry.test.js",
     "changelog-format.test.js",
     "manual-generation.test.js",
+    "manual-pdf-colours.test.js",
     "landing-manual-coverage.test.js",
     "devlog.test.js",
     "desktop-bundle.test.js",

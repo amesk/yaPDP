@@ -252,6 +252,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Classic landing-page lightbox shows a clean caption under the picture.** The enlarged screenshot now stacks the caption and the RUN/PLAY action in the normal flow, so a multi-line card caption no longer runs together as one word and no longer covers the screenshot, and the hover-only "Click to enlarge" hint stays out of it. (`index.html`, `css/pdp11.css`)
 - **Landing lightbox no longer clips its Run/Play button on short viewports.** The enlarged screenshot now takes only the space left by the top bar and the caption instead of a fixed share of the window height, so the launch action stays on screen at high display scaling (Windows 125%) and on short laptops. (`landing/src/components/Lightbox.tsx`; pinned by `tests/landing-lightbox-fit.test.js`)
+- **Glossary terms print in black in the PDF manual.** The gold the term
+  carries on screen stayed on paper, where it was the only coloured element in
+  an otherwise black-and-white layout; on paper the term now matches every
+  other heading. (`tools/manual-template-head.html`; pinned by
+  `tests/manual-pdf-colours.test.js`)
+- **Floating-button captions print in black in the PDF manual.** The cream
+  label under each button picture in the Controls table had the same defect as
+  the glossary terms, and its override also needed a more specific selector —
+  the screen rule sits below the print block, and a media query carries no
+  priority of its own. (`tools/manual-template-head.html`)
+- **Glossary terms print in black in the PDF manual.** The gold the term
+  carries on screen stayed on paper, where it was the only coloured element in
+  an otherwise black-and-white layout; on paper the term now matches every
+  other heading. (`tools/manual-template-head.html`; pinned by
+  `tests/manual-pdf-colours.test.js`)
+- **Floating-button captions print in black in the PDF manual.** The cream
+  label under each button picture in the Controls table had the same defect as
+  the glossary terms, and its override also needed a more specific selector —
+  the screen rule sits below the print block, and a media query carries no
+  priority of its own. (`tools/manual-template-head.html`)
 - **The landing carousels loop instead of jamming at the first and last
   card.** The guest-OS, Instant Run and Games galleries stopped scrolling once
   the arrows reached an end; they now carry on past it, in both directions and
