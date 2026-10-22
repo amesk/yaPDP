@@ -95,7 +95,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     'config': ['settings', 'options', 'equipment', 'tabs', 'speed', 'sound'],
     'guest-oses': ['os', 'operating system', 'boot rk', 'boot rp', 'boot rl', 'unix', 'rt-11', 'rsx', 'rsts', 'bsd', 'xxdp', 'basic'],
     'controls': ['button', 'shortcut', 'indicator', 'reboot', 'mute', 'fullscreen', 'magic'],
-    'troubleshooting': ['problem', 'fix', 'error', 'help'],
+    'troubleshooting': ['problem', 'fix', 'error', 'help', 'cors', 'blank screen', 'blank', 'keyboard', 'does not type', 'no sound', 'mute', 'performance', 'slow', 'snapshot refused', 'will not boot', 'does not boot'],
     'desktop': ['tauri', 'install', 'app', 'download'],
   };
 
@@ -1536,7 +1536,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
         </div>
       </section>
 
-      {/* SECTION 11: TROUBLESHOOTING */}
+      {/* SECTION 12: TROUBLESHOOTING */}
       <section id="troubleshooting" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
@@ -1545,7 +1545,10 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           </h2>
         </div>
 
-        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+        <div
+          id="an-image-cannot-be-loaded"
+          className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4 scroll-mt-20"
+        >
           <h3 className="text-base font-bold text-[#e8d080]">
             {lang === 'en' ? 'An image cannot be loaded' : 'Ошибка загрузки образа диска'}
           </h3>
@@ -1568,6 +1571,12 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             )}
           </p>
 
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'The wording adapts to the environment: a page opened as a local file:// explains that the browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal build explains that the image is not shipped and points to the drop zone.'
+              : 'Формулировка подстраивается под окружение: страница, открытая как локальный file://, объясняет, что браузер блокирует загрузку каталога с медиа (и предлагает локальный веб-сервер), а сборка Tauri Minimal объясняет, что образ не входит в поставку, и указывает на зону перетаскивания.'}
+          </p>
+
           <div className="rounded border border-[#4a453a] bg-[#12100d] p-2 max-w-lg mx-auto">
             <img
               src="assets/images/manual/dialog-imgerror.png"
@@ -1583,6 +1592,398 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 : 'Диалог при незавершенной загрузке с кнопкой быстрого перехода в Storage.'}
             </p>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'A snapshot is refused after an image update' : 'Снапшот отклонён после обновления образа'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? (
+              <>
+                A snapshot stores the machine’s memory and registers, not the disk image itself: on restore it is
+                layered back onto the disk the emulator currently ships — or onto the exact image the snapshot pinned
+                by SHA-256, fetched from the media registry. A <strong className="text-[#f0e6c8]">self-contained</strong>{' '}
+                state carries its images inside the file, so an image update does not affect it at all. If the disk has
+                been <strong className="text-[#f0e6c8]">updated</strong> since the snapshot was taken, the two no longer
+                match — the guest’s file system in memory would not describe the disk underneath it, which shows up as a
+                corrupted file system rather than as anything obvious.
+              </>
+            ) : (
+              <>
+                Снапшот хранит память и регистры машины, а не сам образ диска: при восстановлении он накладывается на
+                тот диск, который эмулятор поставляет сейчас, — или на точный образ, закреплённый в снапшоте по
+                SHA-256 и скачанный из реестра образов.{' '}
+                <strong className="text-[#f0e6c8]">Самодостаточное</strong> состояние несёт образы внутри файла,
+                поэтому обновление образа его вообще не затрагивает. Если образ с тех пор{' '}
+                <strong className="text-[#f0e6c8]">обновили</strong>, они перестают совпадать — файловая система гостя
+                в памяти перестаёт описывать лежащий под ней диск, и это проявляется как повреждённая файловая
+                система, а не как что-то очевидное.
+              </>
+            )}
+          </p>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'The emulator detects this and refuses the restore instead of corrupting the disk. It names the image and both builds, and offers to delete the snapshot:'
+              : 'Эмулятор это обнаруживает и отказывается восстанавливать снапшот вместо того, чтобы испортить диск. Он называет образ и обе сборки и предлагает удалить снапшот:'}
+          </p>
+
+          <div className="rounded border border-[#4a453a] bg-[#12100d] p-2 max-w-lg mx-auto">
+            <img
+              src="assets/images/manual/dialog-snapshot-incompatible.png"
+              alt="Snapshot taken on a different build"
+              className="w-full h-auto rounded cursor-pointer"
+              onClick={() =>
+                openImage(
+                  'assets/images/manual/dialog-snapshot-incompatible.png',
+                  lang === 'en' ? 'Snapshot taken on a different build' : 'Снапшот снят на другой сборке'
+                )
+              }
+            />
+            <p className="mt-1.5 text-center text-[11px] text-[#8a7650] italic">
+              {lang === 'en'
+                ? 'The snapshot was taken on a different build of the disk: it is not restored, and can be deleted from here.'
+                : 'Снапшот снят на другой сборке диска: он не восстанавливается, и его можно удалить прямо отсюда.'}
+            </p>
+          </div>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'Take a fresh snapshot on the current build, or delete the stale one — a snapshot cannot be migrated onto a disk it was not taken from.'
+              : 'Сделайте новый снапшот на текущей сборке или удалите устаревший — перенести снапшот на диск, с которого он не снимался, нельзя.'}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The guest OS does not boot' : 'Гостевая ОС не загружается'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If the machine halts at the @ prompt or shows an error instead of booting:'
+              : 'Если машина останавливается на приглашении @ или показывает ошибку вместо загрузки:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong boot command.' : 'Неверная команда загрузки.'}</strong>{' '}
+              {lang === 'en' ? 'Each guest OS has its own boot command — see the ' : 'У каждой гостевой ОС своя команда — сверьтесь с '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('guest-oses')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'guest OS table' : 'таблицей гостевых ОС'}
+              </button>
+              {lang === 'en' ? '. Typing ' : '. Команда '}
+              <code className="font-mono text-[#e8d080]">boot rk0</code>
+              {lang === 'en' ? ' on a system that expects ' : ' на системе, ожидающей '}
+              <code className="font-mono text-[#e8d080]">boot rp1</code>
+              {lang === 'en' ? ' will not start it.' : ', не запустит её.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong machine profile.' : 'Неверный профиль машины.'}</strong>{' '}
+              {lang === 'en' ? 'Some guests need the ' : 'Некоторым гостям требуется '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('printer')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'LP11 line printer' : 'построчный принтер LP11'}
+              </button>
+              {lang === 'en' ? ' or a teletype console. The ' : ' или консоль-телетайп. '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('quick-start')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'quick-boot wizard' : 'Мастер быстрого запуска'}
+              </button>
+              {lang === 'en' ? ' sets these automatically; when booting manually, check the ' : ' выставляет их автоматически; при ручной загрузке проверьте '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config page' : 'страницу Config'}
+              </button>
+              {lang === 'en' ? ' for the required peripherals.' : '.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Corrupted or missing image.' : 'Повреждённый или отсутствующий образ.'}</strong>{' '}
+              {lang === 'en' ? 'If the image did not download fully, the emulator shows an ' : 'Если образ загрузился не полностью, эмулятор покажет диалог '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('an-image-cannot-be-loaded')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'image load failure' : 'ошибки загрузки образа'}
+              </button>
+              {lang === 'en' ? ' dialog. Re-download or drag & drop the image file onto the ' : '. Скачайте образ заново или перетащите файл на страницу '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('storage')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Storage' : 'Storage'}
+              </button>
+              {lang === 'en' ? ' page.' : '.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The keyboard does not type' : 'Клавиатура не вводит'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If keystrokes produce no visible output on the console or terminal:'
+              : 'Если нажатия клавиш не дают видимого вывода на консоли или терминале:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong keyboard layout.' : 'Не та раскладка.'}</strong>{' '}
+              {lang === 'en' ? 'The most obvious reason — just switch to English.' : 'Самая очевидная причина — просто переключите раскладку на английскую.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Input is locked.' : 'Ввод заблокирован.'}</strong>{' '}
+              {lang === 'en' ? 'During an ' : 'Во время '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('quick-start')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'autoload' : 'автозагрузки'}
+              </button>
+              {lang === 'en' ? ' the emulator locks all input. Click ' : ' эмулятор блокирует весь ввод. Нажмите '}
+              <strong className="text-[#f0e6c8]">Take control!</strong>
+              {lang === 'en' ? ' in the toast to unlock.' : ' в уведомлении, чтобы разблокировать.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong terminal selected.' : 'Не тот терминал.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Click the console or terminal page in the sidebar — the active page has a highlighted border. Only the active page receives keyboard input.'
+                : 'Нажмите на страницу консоли или терминала на боковой панели — активная страница выделена рамкой. Только активная страница получает ввод с клавиатуры.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Teletype upper-case only.' : 'Телетайп только заглавные.'}</strong>{' '}
+              {lang === 'en' ? 'When the ' : 'Когда опция '}
+              <strong className="text-[#f0e6c8]">Upper Case Only</strong>
+              {lang === 'en' ? ' option on the ' : ' на '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config page' : 'странице CONFIG'}
+              </button>
+              {lang === 'en'
+                ? ' is on, the teletype folds lower-case letters to upper-case. This is normal for guests that expect upper-case input.'
+                : ' включена, телетайп преобразует строчные буквы в заглавные. Это нормально для гостей, ожидающих ввод заглавными.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser focus.' : 'Фокус браузера.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Click inside the terminal area to ensure the page has focus. Some browsers require an explicit click before they forward keystrokes.'
+                : 'Щёлкните внутри области терминала, чтобы страница получила фокус. Некоторые браузеры требуют явного клика перед передачей нажатий клавиш.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'No sound' : 'Нет звука'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? 'If the emulator is silent:' : 'Если эмулятор беззвучен:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Mute is on.' : 'Mute включён.'}</strong>{' '}
+              {lang === 'en' ? 'Click the ' : 'Нажмите кнопку '}
+              <strong className="text-[#f0e6c8]">Mute</strong>
+              {lang === 'en'
+                ? ' button (bottom-left corner, just right of the sidebar) to toggle sound back on. The mute state is persisted across sessions.'
+                : ' (левый нижний угол, справа от боковой панели), чтобы включить звук. Состояние сохраняется между сессиями.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser sound.' : 'Звук браузера.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Check that your browser’s sound is not muted for the page or tab.'
+                : 'Проверьте, что звук в браузере не отключён для этой страницы или вкладки.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Desktop build.' : 'Настольное приложение.'}</strong>{' '}
+              {lang === 'en'
+                ? 'The Tauri desktop app uses the same sound settings as the browser version. Check the system volume mixer for the application.'
+                : 'Настольное приложение Tauri использует те же настройки звука, что и браузерная версия. Проверьте системный микшер громкости.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'Poor performance' : 'Низкая производительность'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? 'If the emulator feels sluggish:' : 'Если эмулятор работает медленно:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser vs desktop.' : 'Браузер против настольного приложения.'}</strong>{' '}
+              {lang === 'en' ? 'The browser version shares resources with other tabs. Close unused tabs or switch to the ' : 'Браузерная версия делит ресурсы с другими вкладками. Закройте неиспользуемые вкладки или переключитесь на '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('desktop')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Tauri desktop app' : 'настольное приложение Tauri'}
+              </button>
+              {lang === 'en' ? ' for dedicated performance.' : '.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Video terminals.' : 'Видеотерминалы.'}</strong>{' '}
+              {lang === 'en' ? 'A VT100 or VT52 terminal with scanline effects uses more CPU than the teletype. Switch to the teletype console in ' : 'VT100 или VT52 с эффектами развёртки потребляют больше ресурсов ЦП, чем телетайп. Переключитесь на консоль-телетайп в '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config' : 'Config'}
+              </button>
+              {lang === 'en' ? ' if performance is critical.' : ', если производительность критична.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Animation.' : 'Анимация.'}</strong>{' '}
+              {lang === 'en' ? 'The LP11 line printer and paper-tape machines animate during operation. Disable them in ' : 'Построчный принтер LP11 и перфоленты анимированы при работе. Отключите их в '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config' : 'Config'}
+              </button>
+              {lang === 'en' ? ' if they are not needed.' : ', если они не нужны.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Network.' : 'Сеть.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Large disk images load over the network on first access. The Loading N% bar shows progress; once cached, subsequent boots are faster.'
+                : 'Большие образы дисков при первом доступе загружаются по сети. Полоса Loading N% показывает прогресс; после кеширования последующие загрузки быстрее.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The screen is blank' : 'Экран пуст'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? 'If a terminal page shows nothing:' : 'Если страница терминала ничего не показывает:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Machine is off.' : 'Машина выключена.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Check the front-panel POWER LOCK switch. The machine must be powered on to produce output.'
+                : 'Проверьте переключатель POWER LOCK на пультовой панели. Машина должна быть включена, чтобы выдавать вывод.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong page.' : 'Не та страница.'}</strong>{' '}
+              {lang === 'en' ? 'The console and terminals show output only when the guest OS writes to them. Switch to the ' : 'Консоль и терминалы показывают вывод только когда гостевая ОС в них пишет. Переключитесь на страницу '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('console')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Console' : 'Console'}
+              </button>
+              {lang === 'en' ? ' page to see the boot sequence.' : ', чтобы увидеть последовательность загрузки.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Display page not configured.' : 'Страница Display не настроена.'}</strong>{' '}
+              {lang === 'en' ? 'The ' : ''}
+              <button
+                type="button"
+                onClick={() => scrollToSection('vt11')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'VT11 vector display' : 'Векторный дисплей VT11'}
+              </button>
+              {lang === 'en' ? ' is optional and must be enabled in ' : ' опционален и должен быть включён в '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config' : 'Config'}
+              </button>
+              {lang === 'en' ? '. Without it, the Display page stays blank.' : '. Без него страница Display остаётся пустой.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser zoom.' : 'Масштаб браузера.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Accidental browser zoom can push the terminal content off-screen. Reset zoom with Ctrl+0 (Cmd+0 on macOS).'
+                : 'Случайное изменение масштаба браузера может сдвинуть содержимое терминала за пределы экрана. Сбросьте масштаб комбинацией Ctrl+0 (Cmd+0 на macOS).'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'CORS errors in the browser version' : 'Ошибки CORS в браузерной версии'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If the emulator page shows a CORS error when loading images or media:'
+              : 'Если страница эмулятора показывает ошибку CORS при загрузке изображений или медиа:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'file:// protocol.' : 'Протокол file://.'}</strong>{' '}
+              {lang === 'en' ? 'Opening ' : 'Открытие '}
+              <code className="font-mono text-[#e8d080]">pdp11.html</code>
+              {lang === 'en' ? ' as a local file (' : ' как локального файла ('}
+              <code className="font-mono text-[#e8d080]">file://</code>
+              {lang === 'en'
+                ? ') triggers browser CORS policies. Use a local web server instead — or open the page through the Launch Online! link on the landing page.'
+                : ') вызывает политики CORS браузера. Используйте локальный веб-сервер — или откройте страницу через ссылку Launch Online! на главной странице.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'The built-in server.' : 'Встроенный сервер.'}</strong>{' '}
+              {lang === 'en' ? 'Run ' : 'Запустите '}
+              <code className="font-mono text-[#e8d080]">npm run serve</code>
+              {lang === 'en'
+                ? ' from the repository root to start a local HTTP server on port 1187, then open http://127.0.0.1:1187/pdp11.html.'
+                : ' из корня репозитория, чтобы запустить локальный HTTP-сервер на порту 1187, затем откройте http://127.0.0.1:1187/pdp11.html.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Tauri desktop.' : 'Настольное приложение Tauri.'}</strong>{' '}
+              {lang === 'en' ? 'The ' : ''}
+              <button
+                type="button"
+                onClick={() => scrollToSection('desktop')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'desktop app' : 'настольное приложение'}
+              </button>
+              {lang === 'en' ? ' has no CORS restrictions — it bundles its own server.' : ' не имеет ограничений CORS — оно использует собственный сервер.'}
+            </li>
+          </ul>
         </div>
       </section>
 

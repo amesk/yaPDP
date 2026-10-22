@@ -44,9 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`docs/manual/config.md`, `docs/manual/ru/config.md`)
 - **New troubleshooting sections.** Added guidance for: guest OS does
   not boot, keyboard does not type, no sound, poor performance, blank
-  screen, and CORS errors in the browser version.
+  screen, and CORS errors in the browser version — in the manual and in
+  the landing page's user guide alike.
   (`docs/manual/troubleshooting.md`,
-  `docs/manual/ru/troubleshooting.md`)
+  `docs/manual/ru/troubleshooting.md`,
+  `landing/src/components/UserManual.tsx`)
 - **About yaPDP chapter in the user manual.** A new introductory chapter
   describing the project's goals, key features, and guidance for museums
   and educators, including embedding and interactive exhibit creation.
