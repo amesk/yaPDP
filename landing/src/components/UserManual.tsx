@@ -67,11 +67,11 @@ const KEYBOARD_SHORTCUTS = [
 ];
 
 // The chapters this guide actually renders, in reading order. MANUAL_SECTIONS is
-// generated from docs/manual/_meta.yml and lists all sixteen chapters — About,
-// Glossary and Fidelity are among them but are not part of this guide (About and
-// Fidelity are landing pages, the Glossary is a reference list the manual page
-// owns). Offering them in the table of contents produced menu entries that
-// scrolled nowhere, because scrollToSection() silently does nothing when the
+// generated from docs/manual/_meta.yml and lists all sixteen chapters — About and
+// Glossary are among them but are not part of this guide (About is what the
+// landing itself says about the project, the Glossary is a reference list the
+// manual page owns). Offering a chapter that is not here produced a menu entry
+// that scrolled nowhere, because scrollToSection() silently does nothing when the
 // anchor is not in the page.
 const GUIDE_CHAPTERS = [
   'quick-start',
@@ -86,6 +86,7 @@ const GUIDE_CHAPTERS = [
   'guest-oses',
   'controls',
   'troubleshooting',
+  'fidelity',
   'desktop',
 ];
 
@@ -2367,11 +2368,293 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
         </div>
       </section>
 
-      {/* SECTION 12: THE DESKTOP APP */}
-      <section id="desktop" className="space-y-5 scroll-mt-20">
+      {/* SECTION 13: HISTORICAL FIDELITY AND LIMITATIONS */}
+      <section id="fidelity" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
             <span className="font-mono text-[#c8a860] text-lg">§13</span>
+            {lang === 'en' ? 'Historical Fidelity and Limitations' : 'Историческая достоверность и ограничения'}
+          </h2>
+        </div>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP is an interactive environment for exploring the PDP-11/70 and the software ecosystem built around it. Its goal is to make historical computing tangible: start a machine, inspect its front panel, boot an operating system, run a program, and explore how people interacted with computers of this era.'
+            : 'yaPDP — интерактивная среда для знакомства с PDP-11/70 и программной экосистемой, которая вокруг неё сформировалась. Цель проекта — сделать историю вычислительной техники осязаемой: запустить машину, изучить её переднюю панель, загрузить операционную систему, выполнить программу и посмотреть, как люди взаимодействовали с компьютерами той эпохи.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Historical fidelity is important to that experience, but it does not mean that every component is reproduced with identical depth. yaPDP combines emulation, practical approximations, and interface design intended to make the environment approachable in a modern browser.'
+            : 'Историческая достоверность важна для такого опыта, но она не означает, что все компоненты воспроизводятся с одинаковой степенью подробности. yaPDP объединяет эмуляцию, практические упрощения и интерфейсные решения, призванные сделать историческую вычислительную среду доступной в современном браузере.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'This chapter explains how to interpret the experience and where to be cautious.'
+            : 'В этой главе объясняется, как воспринимать этот опыт и какие ограничения следует учитывать.'}
+        </p>
+
+        <h3 id="fidelity-what-is-preserved" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'What yaPDP aims to preserve' : 'Что стремится сохранить yaPDP'}
+        </h3>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'The computing environment' : 'Вычислительная среда целиком'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP is designed around the PDP-11/70 and the experience of using a period-style computer system, rather than presenting a processor as an isolated programming target. The front panel, operating-system startup, interactive programs, storage devices, and peripheral interfaces help establish that wider context.'
+            : 'yaPDP построен вокруг PDP-11/70 и опыта работы с компьютерной системой соответствующей эпохи, а не только вокруг процессора как изолированного объекта программирования. Передняя панель, загрузка операционной системы, интерактивные программы, накопители и периферийные интерфейсы помогают увидеть более широкий контекст.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Real software and meaningful machine states' : 'Настоящее программное обеспечение и осмысленные состояния машины'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Where supported, yaPDP runs historical operating systems and programs in the emulated environment. Prepared machine states can place a visitor at a useful point in that experience: for example, ready to launch a program or already inside a demonstration.'
+            : 'Там, где это поддерживается, yaPDP запускает исторические операционные системы и программы в эмулируемой среде. Подготовленные состояния машины позволяют сразу оказаться в интересной точке этого опыта: например, в готовности к запуску программы или уже внутри демонстрационного сценария.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A saved state is a practical entry point, not by itself proof that every detail of the surrounding hardware has been reproduced exactly. The software, machine configuration, required disk images, and state format all affect what can be restored and experienced.'
+            : 'Сохранённое состояние — удобная отправная точка, но само по себе оно не доказывает, что всё окружающее оборудование воспроизведено с абсолютной точностью. На то, что удастся восстановить и исследовать, влияют программное обеспечение, конфигурация машины, необходимые дисковые образы и формат состояния.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Hardware-inspired interaction' : 'Взаимодействие, вдохновлённое реальным оборудованием'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The interface is intended to communicate the character of historical equipment. Controls and indicators are useful both for operating the emulated machine and for understanding the role of physical controls on systems such as the PDP-11/70.'
+            : 'Интерфейс призван передать характер исторической аппаратуры. Органы управления и индикаторы нужны как для работы с эмулируемой машиной, так и для понимания назначения физических элементов таких систем, как PDP-11/70.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Visual similarity and functional fidelity are related, but distinct. A control may look like its historical counterpart without modelling every electrical or mechanical detail of the original device.'
+            : 'Визуальное сходство и функциональная достоверность связаны, но не тождественны. Элемент интерфейса может выглядеть как исторический оригинал, не моделируя при этом все электрические или механические особенности реального устройства.'}
+        </p>
+
+        <h3 id="fidelity-keep-in-mind" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'What to keep in mind' : 'Что следует учитывать'}
+        </h3>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Emulation is not the same as a complete physical replica' : 'Эмуляция — не то же самое, что полная физическая копия'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP is software running on a modern computer. Its timing, rendering, input handling, storage, and browser integration are necessarily mediated by the host environment. It should not be assumed to reproduce every timing-sensitive hardware effect, electrical characteristic, mechanical behaviour, or failure mode of the original equipment.'
+            : 'yaPDP — программная система, работающая на современном компьютере. Её временные характеристики, отрисовка, обработка ввода, хранение данных и интеграция с браузером неизбежно зависят от среды исполнения. Не следует считать, что она воспроизводит все чувствительные к времени аппаратные эффекты, электрические характеристики, механическое поведение или режимы отказа оригинального оборудования.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The exact level of fidelity can differ between the CPU, memory, individual devices, and the user interface. Do not infer cycle-accurate or component-level accuracy unless it is explicitly documented for the relevant subsystem.'
+            : 'Степень достоверности может различаться для процессора, памяти, отдельных устройств и пользовательского интерфейса. Не следует предполагать точность до такта или на уровне каждого компонента, если она прямо не заявлена в документации соответствующей подсистемы.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Peripheral devices may be modelled to different depths' : 'Периферийные устройства могут моделироваться с разной степенью подробности'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Historical computer systems depended on devices such as terminals, paper-tape equipment, disks, and printers. In an interactive emulator, these devices also have to work through modern input and display mechanisms.'
+            : 'Исторические компьютерные системы зависели от таких устройств, как терминалы, оборудование для бумажной ленты, дисковые накопители и принтеры. В интерактивном эмуляторе эти устройства должны также работать через современные механизмы ввода и отображения.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Depending on the device and feature, yaPDP may prioritise the aspects that matter most to the user-visible workflow — for example, entering characters, displaying output, or exploring a prepared scenario — rather than modelling every physical detail of the original mechanism.'
+            : 'В зависимости от устройства и функции yaPDP может уделять приоритетное внимание тем аспектам, которые важнее всего для пользовательского сценария: например, вводу символов, отображению вывода или исследованию подготовленной ситуации. При этом не обязательно моделируется каждая физическая особенность оригинального механизма.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Treat device-specific documentation as the source of truth for a particular peripheral. If a behaviour is not documented or tested, do not assume that it matches the original hardware in every respect.'
+            : 'Для конкретной периферии следует обращаться к её собственной документации. Если какое-то поведение не описано и не проверено, не стоит считать, что оно во всех отношениях совпадает с работой исторического устройства.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Historical software has its own constraints' : 'Историческое программное обеспечение имеет собственные ограничения'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A program runs within the operating system, device configuration, and storage environment available to it. Some software may require a particular disk image, boot procedure, memory configuration, or peripheral. Other software may depend on conventions that are unfamiliar on modern systems.'
+            : 'Программа работает в рамках доступных ей операционной системы, конфигурации устройств и среды хранения. Некоторому ПО могут требоваться определённый дисковый образ, процедура загрузки, конфигурация памяти или периферийное устройство. Другое ПО может опираться на соглашения, непривычные для современных систем.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A prepared state can simplify setup, but it does not remove every dependency. If a state refers to disk images or other resources that are not included in the state file, those resources must still be available to the receiving installation.'
+            : 'Подготовленное состояние упрощает настройку, но не устраняет все зависимости. Если в состоянии есть ссылки на дисковые образы или другие ресурсы, которые не включены в сам файл состояния, эти ресурсы должны быть доступны и в системе получателя.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Browser and desktop environments can differ' : 'Браузерная и настольная среды могут различаться'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The browser and desktop versions may differ in how they package resources, store changes, access local files, or behave when offline. A feature that depends on downloading a resource or fetching a state from another site may also be affected by network access and browser security rules such as Cross-Origin Resource Sharing (CORS).'
+            : 'Браузерная и настольная версии могут различаться способом поставки ресурсов, хранения изменений, доступа к локальным файлам и работой без подключения к сети. На функции, требующие загрузки ресурсов или получения состояния с другого сайта, также могут влиять доступность сети и правила безопасности браузера, например Cross-Origin Resource Sharing (CORS).'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              For shared states, the fact that a URL opens in a browser tab does not necessarily mean
+              that yaPDP can fetch it from JavaScript. The hosting server must permit the relevant
+              cross-origin request. See the{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('machine-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                Machine State
+              </button>{' '}
+              chapter for details.
+            </>
+          ) : (
+            <>
+              Для общих состояний важно помнить: если URL открывается в отдельной вкладке браузера,
+              это ещё не означает, что yaPDP сможет загрузить его из JavaScript. Сервер, на котором
+              размещён файл, должен разрешать соответствующий междоменный запрос. Подробности — в
+              главе{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('machine-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                «Управление состоянием машины»
+              </button>
+              .
+            </>
+          )}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'A saved state is not a universal archival guarantee' : 'Сохранённое состояние не является универсальной гарантией архивной сохранности'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A machine state records a particular configuration and point in time according to the yaPDP state format. Restoring it successfully can depend on the yaPDP version, state schema, required resources, and compatibility handling.'
+            : 'Состояние машины фиксирует определённую конфигурацию и момент времени в соответствии с форматом yaPDP. Успешное восстановление может зависеть от версии yaPDP, версии схемы состояния, наличия необходимых ресурсов и механизмов совместимости.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'For long-term preservation, keep the state together with a description of its purpose, the yaPDP version used to create it, any required disk images, and instructions for reproducing the experience. Where possible, retain the original software and resource provenance as well.'
+            : 'Для долговременного сохранения полезно хранить вместе с состоянием описание его назначения, версию yaPDP, в которой оно было создано, необходимые дисковые образы и инструкции по воспроизведению сценария. По возможности следует также сохранять сведения о происхождении исходного программного обеспечения и ресурсов.'}
+        </p>
+
+        <h3 id="fidelity-learning-tool" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'How to use yaPDP as a historical learning tool' : 'Как использовать yaPDP для изучения истории'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? 'For the most useful experience:' : 'Чтобы получить наиболее полезный опыт:'}
+        </p>
+
+        <ol className="list-decimal list-inside space-y-2 text-sm leading-relaxed text-[#c8b890] pl-2">
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Start with a prepared scenario.' : 'Начните с подготовленного сценария.'}</strong>{' '}
+            {lang === 'en'
+              ? 'It reduces setup work and lets you focus on the system or program being demonstrated.'
+              : 'Это сокращает настройку и позволяет сосредоточиться на демонстрируемой системе или программе.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Read the scenario notes.' : 'Прочитайте описание сценария.'}</strong>{' '}
+            {lang === 'en'
+              ? 'Check which operating system, disk images, peripherals, and controls it expects.'
+              : 'Проверьте, какие операционная система, дисковые образы, периферия и органы управления ему необходимы.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Explore the machine, not just the program.' : 'Исследуйте не только программу, но и машину.'}</strong>{' '}
+            {lang === 'en'
+              ? 'Notice the front panel, boot process, terminal interaction, and the role of storage and peripheral devices.'
+              : 'Обратите внимание на переднюю панель, процесс загрузки, работу с терминалом, роль накопителей и периферийных устройств.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Distinguish historical facts from emulator behaviour.' : 'Отличайте исторические факты от поведения эмулятора.'}</strong>{' '}
+            {lang === 'en'
+              ? 'Use primary documentation and subsystem notes when making claims about the original hardware.'
+              : 'Если требуется сделать вывод об оригинальном оборудовании, обращайтесь к первичной документации и описаниям соответствующей подсистемы.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Record the conditions of an experiment.' : 'Фиксируйте условия эксперимента.'}</strong>{' '}
+            {lang === 'en'
+              ? 'If you share a state or document a result, include the relevant yaPDP version and any non-default resources or settings.'
+              : 'При обмене состоянием или описании результата указывайте версию yaPDP, а также нестандартные ресурсы и настройки, если они использовались.'}
+          </li>
+        </ol>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP can make historical systems easier to explore, but it is not a substitute for original manuals, hardware documentation, or scholarly sources when exact historical claims matter.'
+            : 'yaPDP упрощает исследование исторических систем, но не заменяет оригинальные руководства, документацию на оборудование или научные источники, если важна точность исторических утверждений.'}
+        </p>
+
+        <h3 id="fidelity-reporting" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Reporting a fidelity issue' : 'Как сообщить о проблеме с исторической достоверностью'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'If you find a behaviour that appears inconsistent with the historical machine or software, a useful report includes:'
+            : 'Если поведение кажется несовместимым с исторической машиной или программой, полезное сообщение об ошибке должно содержать:'}
+        </p>
+
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+          <li>{lang === 'en' ? 'the yaPDP version or commit;' : 'версию yaPDP или идентификатор коммита;'}</li>
+          <li>{lang === 'en' ? 'the operating system, program, and machine state used;' : 'использованные операционную систему, программу и состояние машины;'}</li>
+          <li>{lang === 'en' ? 'the device or behaviour in question;' : 'описание устройства или поведения, о котором идёт речь;'}</li>
+          <li>{lang === 'en' ? 'the steps needed to reproduce the observation;' : 'последовательность действий, позволяющую воспроизвести наблюдение;'}</li>
+          <li>
+            {lang === 'en'
+              ? 'what you expected to happen and the historical source supporting that expectation, if available.'
+              : 'ожидаемое поведение и, если возможно, исторический источник, подтверждающий ожидание.'}
+          </li>
+        </ul>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'This helps distinguish an implementation defect from an intentional simplification, a software-specific limitation, or a difference caused by configuration.'
+            : 'Такие сведения помогают отличить ошибку реализации от намеренного упрощения, ограничения конкретной программы или различия, вызванного конфигурацией.'}
+        </p>
+
+        <h3 id="fidelity-summary" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Summary' : 'Кратко'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP aims to offer an engaging, historically grounded way to experience the PDP-11/70 and its software environment. It combines working software with a visual and interactive model of a period computing system, while making practical trade-offs for use on modern computers.'
+            : 'yaPDP стремится дать увлекательный и исторически обоснованный способ познакомиться с PDP-11/70 и её программной средой. Проект сочетает работающее программное обеспечение с визуальной и интерактивной моделью вычислительной системы той эпохи, сохраняя при этом практические компромиссы, необходимые для работы на современных компьютерах.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Use it to explore, experiment, and share reproducible moments from the machine\u2019s life. When exact hardware behaviour or historical interpretation matters, check the documentation for the specific subsystem and consult authoritative historical sources.'
+            : 'Используйте yaPDP для исследования, экспериментов и обмена воспроизводимыми моментами из жизни машины. Если важны точное поведение аппаратуры или историческая интерпретация, сверяйтесь с документацией конкретной подсистемы и авторитетными историческими источниками.'}
+        </p>
+      </section>
+
+      {/* SECTION 14: THE DESKTOP APP */}
+      <section id="desktop" className="space-y-5 scroll-mt-20">
+        <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
+            <span className="font-mono text-[#c8a860] text-lg">§14</span>
             {lang === 'en' ? 'The Desktop App' : 'Настольное приложение'}
           </h2>
         </div>

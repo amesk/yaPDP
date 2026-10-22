@@ -123,6 +123,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the manual's so the two cannot drift apart again.
   (`landing/src/components/UserManual.tsx`,
   `tests/landing-manual-coverage.test.js`)
+- **Historical Fidelity chapter in the landing page's guide.** The guide now
+  carries "Historical Fidelity and Limitations" — what the emulator preserves,
+  where it is an approximation, how to use it as a teaching tool, and how to
+  report a fidelity issue — in English and Russian, between Troubleshooting and
+  the desktop chapter. About yaPDP and the Glossary stay out on purpose: the
+  first is what the landing itself says about the project, the second is a
+  reference list the manual page owns.
+  (`landing/src/components/UserManual.tsx`; pinned by
+  `tests/landing-manual-coverage.test.js`)
 ### Changed
 
 - **The Screenshot button is offered on the machine pages only.** Storage,

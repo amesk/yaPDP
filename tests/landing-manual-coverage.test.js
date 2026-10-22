@@ -34,9 +34,9 @@
  *      the same file — a cross-reference between chapters is a string, and a
  *      renamed anchor turns it into a dead click;
  *   7. the table of contents lists exactly the chapters the guide renders. It
- *      did not: About yaPDP, Glossary and Historical Fidelity were offered and
- *      scrolled nowhere, because the TOC was built from every chapter of
- *      _meta.yml while the guide carries thirteen of them.
+ *      did not: About yaPDP and Glossary (and, before it was written, Historical
+ *      Fidelity) were offered and scrolled nowhere, because the TOC was built
+ *      from every chapter of _meta.yml while the guide carries fourteen.
  *
  * Deliberately NOT checked: the wording of a heading. The guide shortens some
  * manual titles on purpose ("Machine State" instead of "Machine State (STATE
@@ -59,11 +59,12 @@ const SRC_RU = path.join(SRC, "ru");
 const META = path.join(SRC, "_meta.yml");
 const GUIDE = path.join(ROOT, "landing", "src", "components", "UserManual.tsx");
 
-// Chapters the landing deliberately does not carry: About and Fidelity are
-// marketing/policy pages that live on the landing itself, and the Glossary is a
-// reference list the manual page owns. Adding a chapter to docs/manual/ means
-// answering this question — implement it in the guide, or list it here.
-const CHAPTERS_NOT_ON_LANDING = ["about", "glossary", "fidelity"];
+// Chapters the landing deliberately does not carry: About is what the landing
+// itself says about the project, and the Glossary is a reference list the manual
+// page owns (duplicating it here would put the most frequently edited chapter in
+// a second hand-written copy). Adding a chapter to docs/manual/ means answering
+// this question — implement it in the guide, or list it here.
+const CHAPTERS_NOT_ON_LANDING = ["about", "glossary"];
 
 // Chapters whose topics are not <h3> elements: the CONFIG chapter renders its
 // four tabs from the generated CONFIG_TABS_DATA (built from the same Markdown),
