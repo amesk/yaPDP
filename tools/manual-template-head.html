@@ -636,10 +636,38 @@
                 margin: 0 0 3mm 6mm;
             }
 
+            /* The term is set in black like every other heading on paper. The
+               screen colour (#e8d080, gold) belongs to the emulator's dark
+               palette and has no counterpart in the strict black-on-white
+               layout of the printed manual, where it was the only coloured
+               element left on the page. tests/manual-pdf-colours.test.js pins
+               this: the browser converts the gold into the print profile, so
+               the colour in the file is #948551, not the token above. */
             .landing-page dl dt {
                 page-break-after: avoid;
                 break-after: avoid;
                 margin: 2mm 0 0 0;
+                color: #000;
+            }
+
+            /* The caption under each floating-button picture in the Controls
+               table is set in the screen palette too (#f0e6c8, a cream that
+               reads as "white" only against the dark slab). On paper it is the
+               same defect as the glossary term above, one chapter further on:
+               the label prints as a washed-out grey (#9c9582 in the file, once
+               the browser has mapped the cream to the print profile) instead of
+               the black of its neighbours.
+
+               This selector carries the extra `td` on purpose. The screen rule
+               it has to beat (`.landing-page .control-name`, colour #f0e6c8)
+               sits BELOW this @media print block in the file, and a media
+               query grants no priority of its own: at equal specificity the
+               later declaration wins even when printing. The glossary term
+               needed no such help because its screen rule is above this block.
+               A more specific selector is what holds the override in place
+               wherever the two rules are ordered. */
+            .landing-page td .control-name {
+                color: #000;
             }
 
             /* A heading must not sit alone at the foot of a page, and a
