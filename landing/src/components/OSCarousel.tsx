@@ -177,6 +177,8 @@ export function OSCarousel({ lang, onRun }: OSCarouselProps) {
           onClose={() => setSelectedSlideIndex(null)}
           onNext={handleNextLightbox}
           onPrev={handlePrevLightbox}
+          onLaunch={onRun ? (slide) => { if (slide.bootKey) onRun(slide.bootKey); } : undefined}
+          launchLabel={lang === 'en' ? 'Run this OS' : 'Запустить ОС'}
         />
       )}
     </section>
