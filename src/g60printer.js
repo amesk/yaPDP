@@ -342,6 +342,10 @@
         // seam) instead of always inserting a full extra blank page.
         var pagePos = 0;
         var pageHasContent = false;
+        // True while a queued form feed (its filler lines plus the seam) is
+        // still travelling through the pacing buffer, so the automatic seam of
+        // a full sheet does not draw a second one on the fresh sheet.
+        var seamQueued = false;
         var charBuffer = [];        // pending characters to print
         var charPrintTimer = null;  // timer ID for paced printing
         var CHAR_LF = '\n';         // sentinel marker in buffer to trigger a line feed
@@ -865,6 +869,18 @@
         // pausable timeout scheduler installed at construction time.
 
         /**
+         * pageAdvance() - One printed line lands on the sheet at `pos`; wrap to
+         * the next sheet once `length` lines have been printed. `full` says the
+         * line just printed was the last one on the sheet, i.e. the perforation
+         * sits directly below it. Pure, so the sheet arithmetic is unit-tested
+         * without a DOM (tests/g60printer-seam.test.js).
+         */
+        function pageAdvance(pos, length) {
+            var next = (pos + 1) % length;
+            return { pos: next, full: next === 0 };
+        }
+
+        /**
          * doPrintln() - Internal: execute the line feed / new paragraph logic.
          * This is the same as the original println() body, extracted so it can
          * be scheduled as a buffered item in the pacing queue.
@@ -893,8 +909,16 @@
 
             // Track lines printed on the current fanfold sheet (wraps at
             // pageLength) so a form feed fills only the remainder of the page.
-            pagePos = (pagePos + 1) % pageLength;
-            pageHasContent = true;
+            // A sheet that ends HERE gets its perforation whether or not the
+            // driver sends FF for it: on continuous fanfold the seam is a
+            // property of the paper, not of the job, so a job that happens to
+            // fill the sheet exactly must not run into the next one with no
+            // separator at all (the FF that follows is then a no-op, exactly
+            // like an lpd FF before the banner of a fresh job).
+            var sheet = pageAdvance(pagePos, pageLength);
+            pagePos = sheet.pos;
+            pageHasContent = !sheet.full;
+            if (sheet.full && !seamQueued) charBuffer.push(CHAR_FF_MARK);
 
             // Play linefeed sound (disabled on the fast LP11 line printer).
             // Do not cut the continuous LP11 whirr at a line boundary.
@@ -970,6 +994,7 @@
             // pacing rate (in charsPerTick bursts).
             if (pageHasContent) {
                 var fill = (pageLength - pagePos) % pageLength;
+                seamQueued = true;
                 charBuffer.unshift(CHAR_FF_MARK);
                 for (var i = 0; i < fill; i++) {
                     charBuffer.unshift(CHAR_LF);
@@ -1000,6 +1025,7 @@
                 printArea.appendChild(marker);
             }
             // Start the next page on a clean line below the seam.
+            seamQueued = false;
             currentLineEl = null;
             currentCharPos = 0;
             overHang = 0;
@@ -1340,7 +1366,7 @@
             keepLocked = false; headUp = headDir = undefined;
             // Reset current line tracking and form-feed page position.
             currentLineEl = null; currentCharPos = 0; overHang = 0;
-            pagePos = 0; pageHasContent = false;
+            pagePos = 0; pageHasContent = false; seamQueued = false;
             if (!unloading) {
                 setHeadPos(headIdlePos, false);
                 // Re-create initial empty line
@@ -1565,6 +1591,9 @@
             }
             if (typeof state.pagePos === 'number') pagePos = state.pagePos;
             if (typeof state.pageHasContent === 'boolean') pageHasContent = state.pageHasContent;
+            // A seam in flight is pacing state, not paper state: a restore
+            // starts with an empty queue.
+            seamQueued = false;
             if (typeof state.headPos === 'number') {
                 headPos = state.headPos;
                 setHeadPos(headPos, false);
