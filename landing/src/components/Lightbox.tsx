@@ -89,7 +89,7 @@ export function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={slide.title}
-      className="fixed inset-0 z-[100000] flex flex-col items-center justify-between bg-[#0a0806]/92 p-3 sm:p-6 backdrop-blur-md select-none touch-manipulation"
+      className="fixed inset-0 z-[100000] flex flex-col items-center bg-[#0a0806]/92 p-2 sm:p-4 backdrop-blur-md select-none touch-manipulation overflow-hidden"
       onClick={(e) => {
         // Close if tapping the backdrop
         if (e.target === e.currentTarget) {
@@ -101,7 +101,7 @@ export function Lightbox({
       onTouchEnd={handleTouchEnd}
     >
       {/* Top Bar with counter & Close Button */}
-      <div className="w-full max-w-5xl flex items-center justify-between z-10 pt-1 pb-2">
+      <div className="w-full max-w-5xl flex shrink-0 items-center justify-between z-10 pt-1 pb-2">
         <div className="flex items-center gap-2 bg-[#1e1a14]/90 px-3 py-1 rounded-full border border-[#4a453a] text-xs font-mono text-[#c8a860]">
           <span>{currentIndex + 1}</span>
           <span className="text-[#6a5e48]">/</span>
@@ -121,7 +121,7 @@ export function Lightbox({
 
       {/* Main Content Area (Image & Nav Arrows) */}
       <div
-        className="relative flex-1 w-full max-w-5xl flex items-center justify-center my-auto px-2"
+        className="relative flex-1 min-h-0 w-full max-w-5xl flex items-center justify-center px-2 py-1"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
@@ -143,14 +143,14 @@ export function Lightbox({
 
         {/* Screenshot Image */}
         <div
-          className="relative max-w-full max-h-[64vh] sm:max-h-[76vh] flex items-center justify-center"
+          className="relative min-h-0 min-w-0 max-w-full max-h-full flex items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
           <img
             src={slide.image}
             alt={slide.alt}
             draggable={false}
-            className="max-w-[94vw] max-h-[62vh] sm:max-h-[74vh] w-auto h-auto object-contain rounded border-2 border-[#c8a860] shadow-[0_12px_48px_rgba(0,0,0,0.85)] bg-black"
+            className="block max-w-full max-h-[calc(100dvh-15rem)] sm:max-h-[calc(100dvh-13rem)] w-auto h-auto object-contain rounded border-2 border-[#c8a860] shadow-[0_12px_48px_rgba(0,0,0,0.85)] bg-black"
           />
         </div>
 
@@ -172,14 +172,14 @@ export function Lightbox({
 
       {/* Caption & Mobile Nav Bar */}
       <div
-        className="w-full max-w-xl text-center px-3 pt-2 pb-3 bg-[#191612]/90 rounded-t-lg border-t border-[#4a453a] sm:border-0 sm:bg-transparent"
+        className="w-full max-w-xl shrink-0 text-center px-3 pt-1 pb-1 sm:pt-2 sm:pb-2 bg-[#191612]/90 rounded-t-lg border-t border-[#4a453a] sm:border-0 sm:bg-transparent"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-[#f0e6c8] font-bold text-sm sm:text-base font-mono">
           {slide.caption}
         </p>
         {slide.description && (
-          <p className="text-[#c8b890] italic text-xs sm:text-sm mt-1 leading-relaxed line-clamp-2 sm:line-clamp-none">
+          <p className="text-[#c8b890] italic text-xs sm:text-sm mt-1 leading-relaxed line-clamp-2">
             {slide.description}
           </p>
         )}
@@ -193,7 +193,7 @@ export function Lightbox({
               onClose();
             }}
             aria-label={launchLabel || `Open ${slide.title} in the emulator`}
-            className="mt-3 inline-flex min-h-[44px] items-center justify-center gap-2 rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#f0e6c8] shadow-lg transition-colors hover:from-[#6a5838] hover:to-[#4a4030] active:from-[#7a6848] active:to-[#5a5038] cursor-pointer touch-manipulation"
+            className="mt-2 inline-flex min-h-[44px] items-center justify-center gap-2 rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#f0e6c8] shadow-lg transition-colors hover:from-[#6a5838] hover:to-[#4a4030] active:from-[#7a6848] active:to-[#5a5038] cursor-pointer touch-manipulation"
           >
             <Play className="w-4 h-4" />
             {launchLabel || 'Run this demo'}
@@ -201,7 +201,7 @@ export function Lightbox({
         )}
 
         {/* Mobile Navigation Controls (Touch friendly >=44px) */}
-        <div className="flex sm:hidden items-center justify-center gap-6 mt-2 pt-1">
+        <div className="flex sm:hidden items-center justify-center gap-4 mt-1">
           <button
             type="button"
             aria-label="Previous OS"
