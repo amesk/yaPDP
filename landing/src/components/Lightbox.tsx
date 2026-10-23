@@ -143,14 +143,14 @@ export function Lightbox({
 
         {/* Screenshot Image */}
         <div
-          className="relative min-h-0 min-w-0 max-w-full max-h-full flex items-center justify-center"
+          className="relative h-full min-h-0 min-w-0 max-w-full max-h-full flex items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
           <img
             src={slide.image}
             alt={slide.alt}
             draggable={false}
-            className="block max-w-full max-h-[calc(100dvh-15rem)] sm:max-h-[calc(100dvh-13rem)] w-auto h-auto object-contain rounded border-2 border-[#c8a860] shadow-[0_12px_48px_rgba(0,0,0,0.85)] bg-black"
+            className="block max-w-full max-h-full w-auto h-auto object-contain rounded border-2 border-[#c8a860] shadow-[0_12px_48px_rgba(0,0,0,0.85)] bg-black"
           />
         </div>
 
