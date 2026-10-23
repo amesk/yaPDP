@@ -140,6 +140,7 @@ async function bootRT11(opts = {}) {
   load(sb, "src/fpp.js");
   load(sb, "src/dataloader.js"); // DataLoader moved out of iopage.js (refactor)
   load(sb, "src/diskstore.js");  // DiskStore moved out of iopage.js (refactor)
+  load(sb, "src/lp11paper.js");  // LP11 paper copy moved out of iopage.js (refactor)
   load(sb, "src/iopage.js");
   load(sb, "src/boot-mailbox.js"); // Boot ROM's booted-device register
 

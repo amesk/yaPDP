@@ -43,6 +43,7 @@ const ORDER = [
     "pasteutil.test.js",
     "paper-geometry.test.js",
     "lp11-text.test.js",
+    "lp11-print.test.js",
     "lp11-scaling.test.js",
     "panel-scaling.test.js",
     "teletype-scaling.test.js",
