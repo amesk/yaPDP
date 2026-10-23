@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **One-click launch from gallery lightboxes.** Enlarged guest-OS, Instant Run, and game screenshots now offer the matching Run/Teleport/Play action, both in the React landing page and the classic root `index.html`; ordinary images without a launch target remain view-only. (`landing/src/components/Lightbox.tsx`, `landing/src/components/OSCarousel.tsx`, `landing/src/components/InstantRun.tsx`, `landing/src/components/GamesCarousel.tsx`, `index.html`)
 - **Scenario tab in the Quick Boot wizard.** The magic-wand dialog now has
   two tabs — "Boot" (existing OS boot scenarios) and "Scenario" (pre-built
   machine states from `states/`). Picking a scenario restores the machine
