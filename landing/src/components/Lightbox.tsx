@@ -89,7 +89,7 @@ export function Lightbox({
       role="dialog"
       aria-modal="true"
       aria-label={slide.title}
-      className="fixed inset-0 z-[100000] flex flex-col items-center justify-between bg-[#0a0806]/92 p-3 sm:p-6 backdrop-blur-md select-none touch-manipulation"
+      className="fixed inset-0 z-[100000] grid grid-rows-[auto_minmax(6rem,1fr)_auto] justify-items-center bg-[#0a0806]/92 p-3 sm:p-6 backdrop-blur-md select-none touch-manipulation overflow-y-auto overscroll-contain"
       onClick={(e) => {
         // Close if tapping the backdrop
         if (e.target === e.currentTarget) {
@@ -121,7 +121,7 @@ export function Lightbox({
 
       {/* Main Content Area (Image & Nav Arrows) */}
       <div
-        className="relative flex-1 w-full max-w-5xl flex items-center justify-center my-auto px-2"
+        className="relative min-h-0 w-full max-w-5xl flex items-center justify-center px-2"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}
@@ -142,15 +142,19 @@ export function Lightbox({
         )}
 
         {/* Screenshot Image */}
+        {/* The image only takes the space left by the top bar and the caption,
+            so the launch button under the picture can never fall off-screen.
+            vh-based caps ignored the caption block and overflowed on short
+            viewports (e.g. Windows display scaling at 125%). */}
         <div
-          className="relative max-w-full max-h-[64vh] sm:max-h-[76vh] flex items-center justify-center"
+          className="relative flex h-full w-full items-center justify-center"
           onClick={(e) => e.stopPropagation()}
         >
           <img
             src={slide.image}
             alt={slide.alt}
             draggable={false}
-            className="max-w-[94vw] max-h-[62vh] sm:max-h-[74vh] w-auto h-auto object-contain rounded border-2 border-[#c8a860] shadow-[0_12px_48px_rgba(0,0,0,0.85)] bg-black"
+            className="max-w-full max-h-full w-auto h-auto object-contain rounded border-2 border-[#c8a860] shadow-[0_12px_48px_rgba(0,0,0,0.85)] bg-black"
           />
         </div>
 
