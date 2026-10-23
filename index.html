@@ -230,14 +230,19 @@
 
         /* Lightbox: fixed full-window overlay showing the clicked screenshot
            large. Lives outside .landing-page, so it is not clipped by the
-           content slab's overflow. */
+           content slab's overflow. The picture, the caption and the RUN action
+           are stacked in the normal flow: the caption can no longer sit on top
+           of the screenshot, and the action can never leave the viewport. */
         .lightbox {
             position: fixed;
             inset: 0;
             z-index: 200000;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 10px;
+            padding: 56px 16px 24px;
             background: rgba(10, 8, 6, 0.85);
         }
 
@@ -247,17 +252,19 @@
 
         .lightbox img {
             max-width: 92vw;
-            max-height: 84vh;
+            /* Reserve room under the picture for the caption and the action. */
+            max-height: calc(100vh - 190px);
+            min-height: 0;
             border: 1px solid #c8a860;
             border-radius: 4px;
             box-shadow: 0 10px 46px rgba(0, 0, 0, 0.6);
         }
 
         .lightbox-caption {
-            position: absolute;
-            bottom: 70px;
-            left: 0;
-            right: 0;
+            /* Explicit static: the caption is a flow item under the picture,
+               not an overlay on top of it. */
+            position: static;
+            max-width: 92vw;
             text-align: center;
             color: #c8b890;
             font-style: italic;
@@ -284,10 +291,6 @@
         }
 
         .lightbox-action {
-            position: absolute;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
             padding: 10px 22px;
             border: 1px solid #c8a860;
             border-radius: 4px;
@@ -315,8 +318,15 @@
         }
 
         @media (max-width: 600px) {
+            .lightbox {
+                padding: 52px 12px 16px;
+            }
+
+            .lightbox img {
+                max-height: calc(100vh - 170px);
+            }
+
             .lightbox-action {
-                bottom: 14px;
                 padding: 10px 16px;
             }
         }
@@ -1257,6 +1267,31 @@
                 return first ? first.getBoundingClientRect().width + GAP : 0;
             }
 
+            // Caption text for the lightbox, built from the card's own markup
+            // one node at a time. textContent glued a card title to the block
+            // that follows it ("Space InvadersSPCINV running…"), and it also
+            // dragged in the hover-only "Click to enlarge" hint; joining the
+            // blocks with a space and dropping the hint fixes both.
+            function captionText(fig) {
+                if (!fig) return '';
+                var parts = [];
+                var nodes = fig.childNodes;
+                for (var i = 0; i < nodes.length; i++) {
+                    var node = nodes[i];
+                    if (node.nodeType === 3) {
+                        parts.push(node.nodeValue);
+                    } else if (node.nodeType === 1) {
+                        if (node.tagName === 'BR') {
+                            parts.push(' ');
+                        } else if (!(node.classList &&
+                            node.classList.contains('enlarge-hint'))) {
+                            parts.push(node.textContent || '');
+                        }
+                    }
+                }
+                return parts.join(' ').replace(/\s+/g, ' ').trim();
+            }
+
             function openLightbox(item) {
                 var img = item.querySelector('img');
                 var lightbox = document.getElementById('os-lightbox');
@@ -1265,7 +1300,7 @@
                 lightbox.querySelector('img').alt = img.alt;
                 var fig = item.querySelector('figcaption');
                 lightbox.querySelector('.lightbox-caption').textContent =
-                    fig ? fig.textContent : img.alt;
+                    captionText(fig) || img.alt;
                 var actionLink = item.querySelector('.run-btn, .play-btn');
                 var lightboxAction = lightbox.querySelector('.lightbox-action');
                 if (actionLink && lightboxAction) {
