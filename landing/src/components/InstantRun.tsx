@@ -18,6 +18,7 @@ interface InstantRunProps {
 const TELEPORT_TILES = GUEST_OS_SLIDES.filter((s) => !!s.stateUrl);
 
 export function InstantRun({ lang, onTeleport }: InstantRunProps) {
+  const launchLabel = lang === 'en' ? 'Teleport!' : 'Телепорт!';
   const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const touchStateRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -150,7 +151,7 @@ export function InstantRun({ lang, onTeleport }: InstantRunProps) {
                   className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded border border-[#7a9a5a] bg-gradient-to-b from-[#3a4a30] to-[#27331f] hover:from-[#4a5c3a] hover:to-[#33422a] active:from-[#5a6e48] active:to-[#3d4d33] text-[#e8f0d8] shadow-md transition-colors cursor-pointer touch-manipulation"
                 >
                   <Sparkles className="w-3 h-3" />
-                  {lang === 'en' ? 'Teleport!' : 'Телепорт!'}
+                  {launchLabel}
                 </button>
               )}
             </div>
@@ -176,7 +177,7 @@ export function InstantRun({ lang, onTeleport }: InstantRunProps) {
           onNext={handleNextLightbox}
           onPrev={handlePrevLightbox}
           onLaunch={onTeleport ? (slide) => { if (slide.stateUrl) onTeleport(slide.stateUrl); } : undefined}
-          launchLabel={lang === 'en' ? 'Teleport!' : 'Телепорт!'}
+          launchLabel={launchLabel}
         />
       )}
     </section>
