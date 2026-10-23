@@ -755,7 +755,11 @@ textarea {
     display: flex;
 }
 
-.lightbox-image {
+/* Both rules are scoped to .lightbox-overlay: the landing page (index.html)
+   has its own .lightbox with a .lightbox-caption, and an unscoped caption
+   rule here made that page's caption absolutely positioned on top of the
+   picture and sent it to the bottom edge of the window. */
+.lightbox-overlay .lightbox-image {
     max-width: calc(100vw - 48px);
     max-height: calc(100vh - 96px);
     border: 1px solid #c8a860;
@@ -764,7 +768,7 @@ textarea {
     background: #000;
 }
 
-.lightbox-caption {
+.lightbox-overlay .lightbox-caption {
     position: absolute;
     left: 16px;
     right: 16px;
@@ -2813,9 +2817,12 @@ html.yapdp-emulation-paused .console-pause {
 }
 
 @keyframes pause-attention {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: inset 0 1px 0 rgba(255, 200, 80, 0.15), 0 1px 3px rgba(0, 0, 0, 0.5);
     }
+
     50% {
         box-shadow: inset 0 1px 0 rgba(255, 220, 130, 0.3), 0 0 10px rgba(220, 175, 75, 0.65);
     }
@@ -4592,7 +4599,7 @@ button.action-more-hidden {
         gap: 6px;
     }
 
-    #quick-boot-preparing .quickboot-balloon-row > span {
+    #quick-boot-preparing .quickboot-balloon-row>span {
         line-height: 1.2;
     }
 
@@ -4671,4 +4678,3 @@ button.action-more-hidden {
         padding: 5px 20px;
     }
 }
-

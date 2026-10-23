@@ -13,6 +13,7 @@ interface OSCarouselProps {
 }
 
 export function OSCarousel({ lang, onRun }: OSCarouselProps) {
+  const launchLabel = lang === 'en' ? 'Run' : 'Запустить';
   const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const touchStateRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -150,7 +151,7 @@ export function OSCarousel({ lang, onRun }: OSCarouselProps) {
                   className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] hover:from-[#6a5838] hover:to-[#4a4030] active:from-[#7a6848] active:to-[#5a5038] text-[#f0e6c8] shadow-md transition-colors cursor-pointer touch-manipulation"
                 >
                   <Play className="w-3 h-3" />
-                  {lang === 'en' ? 'Run' : 'Запустить'}
+                  {launchLabel}
                 </button>
               )}
             </div>
@@ -177,6 +178,8 @@ export function OSCarousel({ lang, onRun }: OSCarouselProps) {
           onClose={() => setSelectedSlideIndex(null)}
           onNext={handleNextLightbox}
           onPrev={handlePrevLightbox}
+          onLaunch={onRun ? (slide) => { if (slide.bootKey) onRun(slide.bootKey); } : undefined}
+          launchLabel={launchLabel}
         />
       )}
     </section>

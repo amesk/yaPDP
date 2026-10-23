@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **One-click launch from gallery lightboxes.** Enlarged guest-OS, Instant Run, and game screenshots now offer the matching Run/Teleport/Play action, both in the React landing page and the classic root `index.html`; ordinary images without a launch target remain view-only. (`landing/src/components/Lightbox.tsx`, `landing/src/components/OSCarousel.tsx`, `landing/src/components/InstantRun.tsx`, `landing/src/components/GamesCarousel.tsx`, `index.html`)
 - **Scenario tab in the Quick Boot wizard.** The magic-wand dialog now has
   two tabs — "Boot" (existing OS boot scenarios) and "Scenario" (pre-built
   machine states from `states/`). Picking a scenario restores the machine
@@ -209,6 +210,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Classic landing-page lightbox shows a clean caption under the picture.** The enlarged screenshot now stacks the caption and the RUN/PLAY action in the normal flow, so a multi-line card caption no longer runs together as one word and no longer covers the screenshot, and the hover-only "Click to enlarge" hint stays out of it. (`index.html`, `css/pdp11.css`)
+- **Landing lightbox no longer clips its Run/Play button on short viewports.** The enlarged screenshot now takes only the space left by the top bar and the caption instead of a fixed share of the window height, so the launch action stays on screen at high display scaling (Windows 125%) and on short laptops. (`landing/src/components/Lightbox.tsx`; pinned by `tests/landing-lightbox-fit.test.js`)
 - **Exporting a snapshot or a compact share no longer fails on an unmounted image.** Bundling of mounted resources is best-effort for plain export: a resource whose bytes are not loaded stays an external reference (with a warning toast), while self-contained shares still require every byte. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
 - **URL state restores no longer inherit stale preview text or controls.** QuickBoot now takes the description, steps, button label and screenshot only from the state being loaded, instead of falling back to sessionStorage metadata left by an earlier local snapshot. (`src/quickboot.js`)
 - **Restoring a state without captured teletype paper clears the previous guest's output.** Prepared and older states may omit the optional paper snapshot; restore now resets the visible paper instead of leaving text from the previously loaded game on the machine. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
