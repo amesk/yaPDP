@@ -175,6 +175,8 @@ export function InstantRun({ lang, onTeleport }: InstantRunProps) {
           onClose={() => setSelectedSlideIndex(null)}
           onNext={handleNextLightbox}
           onPrev={handlePrevLightbox}
+          onLaunch={onTeleport ? (slide) => { if (slide.stateUrl) onTeleport(slide.stateUrl); } : undefined}
+          launchLabel={lang === 'en' ? 'Teleport!' : 'Телепорт!'}
         />
       )}
     </section>
