@@ -196,7 +196,7 @@ export function Lightbox({
             className="mt-3 inline-flex min-h-[44px] items-center justify-center gap-2 rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#f0e6c8] shadow-lg transition-colors hover:from-[#6a5838] hover:to-[#4a4030] active:from-[#7a6848] active:to-[#5a5038] cursor-pointer touch-manipulation"
           >
             <Play className="w-4 h-4" />
-            {launchLabel || (lang === 'ru' ? 'Запустить' : 'Run this demo')}
+            {launchLabel || 'Run this demo'}
           </button>
         )}
 
