@@ -255,7 +255,7 @@
 
         .lightbox-caption {
             position: absolute;
-            bottom: 24px;
+            bottom: 70px;
             left: 0;
             right: 0;
             text-align: center;
@@ -281,6 +281,44 @@
 
         .lightbox-close:hover {
             background: linear-gradient(180deg, #6a5838, #4a4030);
+        }
+
+        .lightbox-action {
+            position: absolute;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 22px;
+            border: 1px solid #c8a860;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #5a4a30, #3a3528);
+            color: #f0e6c8;
+            font-family: arial, helvetica, sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-decoration: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+        }
+
+        .lightbox-action:hover,
+        .lightbox-action:focus-visible {
+            background: linear-gradient(180deg, #6a5838, #4a4030);
+            color: #ffd27f;
+            outline: 2px solid #c8a860;
+            outline-offset: 2px;
+        }
+
+        .lightbox-action[hidden] {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .lightbox-action {
+                bottom: 14px;
+                padding: 10px 16px;
+            }
         }
 
         /* Animated GIF banner container */
@@ -1182,6 +1220,7 @@
         <img src="" alt="">
         <button class="lightbox-close" type="button" aria-label="Close">×</button>
         <div class="lightbox-caption"></div>
+        <a class="lightbox-action" href="#" hidden>RUN</a>
     </div>
 
     <script>
@@ -1227,6 +1266,20 @@
                 var fig = item.querySelector('figcaption');
                 lightbox.querySelector('.lightbox-caption').textContent =
                     fig ? fig.textContent : img.alt;
+                var actionLink = item.querySelector('.run-btn, .play-btn');
+                var lightboxAction = lightbox.querySelector('.lightbox-action');
+                if (actionLink && lightboxAction) {
+                    lightboxAction.href = actionLink.href;
+                    lightboxAction.textContent = actionLink.textContent.trim();
+                    lightboxAction.title = actionLink.title || '';
+                    lightboxAction.setAttribute('aria-label',
+                        actionLink.title || ('Open ' + img.alt + ' in the emulator'));
+                    lightboxAction.hidden = false;
+                } else if (lightboxAction) {
+                    lightboxAction.hidden = true;
+                    lightboxAction.removeAttribute('href');
+                    lightboxAction.removeAttribute('title');
+                }
                 lightbox.hidden = false;
             }
 
