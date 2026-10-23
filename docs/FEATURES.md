@@ -454,8 +454,20 @@ FF between print jobs so each starts on a fresh page. The LP11 ejects to the
 top of the next fanfold page — it fills the rest of the sheet (66 lines at
 6 LPI for an 11″ page) and closes it with a dashed fold/perforation marker;
 the Model 33 ASR console teletype (which also supported FF via its FORM key) simply
-advances its smooth paper roll. The **Save .txt** export keeps a `\f` marker so
-the real page breaks survive in the file.
+advances its smooth paper roll. The **Save .txt** export keeps a real `\f`
+sentinel so the page breaks survive in the file.
+
+**Print** reproduces that paper. The job is paginated on the guest's form feeds
+and on the 66-line sheet length (an FF that arrives with nothing printed since
+the previous one costs no blank sheet), and the type is sized from the printable
+box rather than from a guessed sheet: the configured column count — 132 by
+default — spans the printable width of whatever paper the system dialog hands
+us, so a full line reaches the edge instead of wrapping. Overstruck glyphs keep
+their styling too: double-struck text (nroff bold, `A` ⌫ `A`) prints bold and
+underscored text prints underlined, and the advance width is unchanged, so the
+column grid survives the bold. `Save .txt` stays plain text — a .txt has no
+styling — and the printed strip is clipped at the platen edge, exactly as the
+132-column mechanism would.
 
 ## Panel tricks
 

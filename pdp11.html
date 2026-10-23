@@ -2149,6 +2149,10 @@ Hello world
   <script src='src/pdp11-panel.js'></script>
   <script src='src/vt52zoom.js'></script>
   <script src='src/g60printer.js'></script>
+  <!-- The LP11 paper copy (text model + printable document), shared by the
+       devices/lp11.js Device and the legacy iopage.js closure. Must load
+       before either of them. -->
+  <script src='src/lp11paper.js'></script>
   <script src='src/config.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
   <script src='src/bootcode.js'></script>

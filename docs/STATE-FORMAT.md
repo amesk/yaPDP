@@ -42,6 +42,12 @@ Memory is stored as raw little-endian bytes rather than a JSON array of words.
 The manifest stays JSON because it is small, human-readable, and grows new
 fields as devices are added.
 
+That growth is additive by contract: a device may add an optional field, and a
+reader that does not know it must ignore it rather than reject the state. The
+LP11 paper copy uses this twice — `lp11BufferRuns` and `lp11LineRuns` carry the
+bold/underline style runs of the printed job (empty or absent in states written
+before they existed, which the printer then treats as plain text).
+
 ## Three versions
 
 The versions answer different questions and must not be conflated:

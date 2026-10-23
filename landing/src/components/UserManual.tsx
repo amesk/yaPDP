@@ -1016,8 +1016,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
-            ? 'The LP11 is an animated line printer on wide 132-column fanfold green-bar paper (72/80/100/132 selectable). It only prints. Use Print to send jobs to your physical printer via system dialog, or Save .txt to export formatted output.'
-            : 'LP11 — это анимированный построчный принтер на широкой 132-колоночной бумаге в зеленую полоску (выбор 72/80/100/132 колонок). Кнопка Print отправляет листинг на реальный принтер через системный диалог, а Save .txt сохраняет файл с метками перевода страницы.'}
+            ? 'The LP11 is an animated line printer on wide 132-column fanfold green-bar paper (72/80/100/132 selectable). It only prints. Use Print to send jobs to your physical printer via system dialog, or Save .txt to export formatted output. Print paginates the job on form feeds and on the 66-line sheet, and the selected column count fills the printable width of whatever paper the dialog picks — double-struck (nroff bold) text prints bold and underscored text underlined.'
+            : 'LP11 — это анимированный построчный принтер на широкой 132-колоночной бумаге в зеленую полоску (выбор 72/80/100/132 колонок). Кнопка Print отправляет листинг на реальный принтер через системный диалог, а Save .txt сохраняет файл с метками перевода страницы. Print разбивает задание на листы по form feed и по 66 строкам, а выбранное число колонок занимает всю ширину области печати той бумаги, которую выберет диалог — символы, пробитые дважды (жирный в nroff), печатаются жирными, подчёркнутые — подчёркнутыми.'}
         </p>
 
         <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">

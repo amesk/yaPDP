@@ -729,8 +729,11 @@ const p12 = (async () => {
     // LPDB write accumulates the plain-text job copy.
     "HELLO\n".split("").forEach((ch) => lp.access(0o17777516, ch.charCodeAt(0), 0));
     assert.ok(lp.getText().indexOf("HELLO") !== -1);
-    lp.access(0o17777516, 0x0C, 0); // FF → page marker
-    assert.ok(lp.getText().indexOf("\\f") !== -1);
+    lp.access(0o17777516, 0x0C, 0); // FF → real page break (0x0C sentinel)
+    assert.ok(lp.getText().indexOf("\f") !== -1,
+        "FF must leave a real 0x0C page sentinel in the job copy");
+    assert.strictEqual(lp.getText().indexOf("\\f"), -1,
+        "FF must not leave a literal backslash-f marker (the old Device bug)");
     ok("lp11: LPDB writes accumulate the text job (LF/FF handled)");
 
     // OFF LINE: bytes consumed with sticky ERROR, no job text.
@@ -752,6 +755,27 @@ const p12 = (async () => {
     lp.restore({ ...snap, lpdb: 0x41 });
     assert.strictEqual(lp.lpdb, 0x41);
     ok("lp11: interrupt at vector 0200, snapshot/restore round-trips");
+
+    // Style runs survive a snapshot round-trip: a struck-twice glyph prints
+    // bold after a restore exactly as it did before it.
+    {
+        const s = lp.snapshot();
+        lp.restore({ ...s, lp11Buffer: ["A"], lp11BufferRuns: [[{ at: 0, len: 1, kind: "bold" }]],
+            lp11CurrentLine: "BC", lp11LineRuns: [{ at: 0, len: 1, kind: "underline" }] });
+        assert.deepStrictEqual(lp.lp11BufferRuns,
+            [[{ at: 0, len: 1, kind: "bold" }]], "bold runs come back");
+        assert.deepStrictEqual(lp.lp11LineRuns,
+            [{ at: 0, len: 1, kind: "underline" }], "the live line keeps its runs");
+
+        // A state written before the print fix has no run streams at all: the
+        // buffers must still line up (an empty stream per line, not a shift).
+        lp.restore({ ...s, lp11Buffer: ["X", "Y"], lp11CurrentLine: "Z" });
+        assert.strictEqual(lp.lp11BufferRuns.length, 2,
+            "a legacy state restores an aligned, empty run stream");
+        assert.deepStrictEqual(lp.lp11BufferRuns, [[], []], "no styling invented");
+        assert.deepStrictEqual(lp.lp11LineRuns, [], "the live line is unstyled too");
+        ok("lp11: style runs survive a snapshot and old states still line up");
+    }
 })();
 
 Promise.all([p6, p7, p8, p9, p10, p11, p12]).then(() => {
