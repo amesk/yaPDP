@@ -183,6 +183,8 @@ export function GamesCarousel({ lang, onPlay }: GamesCarouselProps) {
                     onClose={() => setSelectedSlideIndex(null)}
                     onNext={handleNextLightbox}
                     onPrev={handlePrevLightbox}
+                    onLaunch={onPlay ? (slide) => { if (slide.stateUrl) onPlay(slide.stateUrl); } : undefined}
+                    launchLabel={lang === 'en' ? 'Play!' : 'Играть!'}
                 />
             )}
         </section>
