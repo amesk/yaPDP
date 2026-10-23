@@ -269,16 +269,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decode-then-import pipeline as the clipboard and URL import paths — text
   envelopes included — and reports a bad file instead of throwing.
   (`src/snapshots.js`)
-- **Glossary terms print in black in the PDF manual.** The gold the term
-  carries on screen stayed on paper, where it was the only coloured element in
-  an otherwise black-and-white layout; on paper the term now matches every
-  other heading. (`tools/manual-template-head.html`; pinned by
-  `tests/manual-pdf-colours.test.js`)
-- **Floating-button captions print in black in the PDF manual.** The cream
-  label under each button picture in the Controls table had the same defect as
-  the glossary terms, and its override also needed a more specific selector —
-  the screen rule sits below the print block, and a media query carries no
-  priority of its own. (`tools/manual-template-head.html`)
 - **The landing carousels loop instead of jamming at the first and last
   card.** The guest-OS, Instant Run and Games galleries stopped scrolling once
   the arrows reached an end; they now carry on past it, in both directions and
