@@ -1,7 +1,7 @@
 import { useEffect, useState, type TouchEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { SlideItem } from '../types.ts';
-import { X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
 interface LightboxProps {
   slide: SlideItem | null;
@@ -10,6 +10,8 @@ interface LightboxProps {
   onClose: () => void;
   onNext?: () => void;
   onPrev?: () => void;
+  onLaunch?: (slide: SlideItem) => void;
+  launchLabel?: string;
 }
 
 export function Lightbox({
@@ -19,6 +21,8 @@ export function Lightbox({
   onClose,
   onNext,
   onPrev,
+  onLaunch,
+  launchLabel,
 }: LightboxProps) {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -178,6 +182,22 @@ export function Lightbox({
           <p className="text-[#c8b890] italic text-xs sm:text-sm mt-1 leading-relaxed line-clamp-2 sm:line-clamp-none">
             {slide.description}
           </p>
+        )}
+
+        {/* Contextual launch action appears only for slides with a real target. */}
+        {onLaunch && (slide.bootKey || slide.stateUrl) && (
+          <button
+            type="button"
+            onClick={() => {
+              onLaunch(slide);
+              onClose();
+            }}
+            aria-label={launchLabel || `Open ${slide.title} in the emulator`}
+            className="mt-3 inline-flex min-h-[44px] items-center justify-center gap-2 rounded border border-[#c8a860] bg-gradient-to-b from-[#5a4a30] to-[#3a3528] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#f0e6c8] shadow-lg transition-colors hover:from-[#6a5838] hover:to-[#4a4030] active:from-[#7a6848] active:to-[#5a5038] cursor-pointer touch-manipulation"
+          >
+            <Play className="w-4 h-4" />
+            {launchLabel || (lang === 'ru' ? 'Запустить' : 'Run this demo')}
+          </button>
         )}
 
         {/* Mobile Navigation Controls (Touch friendly >=44px) */}
