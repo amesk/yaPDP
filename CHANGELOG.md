@@ -554,6 +554,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  mobile keys stack — so it occupies the gap between the left and right button
  groups instead of hovering over them. (`css/pdp11.css`)
 
+- **An LP11 sheet ejected before its 66th line still prints as a whole sheet.**
+ A form feed ends only the text: with the paper look enabled, the green-bar
+ underlay and the feed holes down both edges now run to the bottom edge of the
+ sheet instead of stopping dead at the last printed line, so a short job leaves
+ blank paper below its text rather than a half-sheet. (`src/lp11paper.js`;
+ pinned by `tests/lp11-print.test.js`)
+
+- **Print Preview lays the LP11 sheet out like the Printer page.** The tractor
+ strips keep their 33px share of the sheet, the green bars start before column 0
+ and end past the last column instead of beginning and ending with the text, and
+ a feed hole is a third of the strip wide — the proportion the paper artwork
+ itself uses — so the printed sheet and the on-screen paper agree at any
+ configured column count. (`src/lp11paper.js`; pinned by
+ `tests/lp11-print.test.js`)
+
 
 ## [0.3.0] - 2026-09-30
 
