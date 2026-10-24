@@ -6,10 +6,20 @@ printer via the system dialog, or **Save.txt** to export the output (page breaks
 `\f` markers).
 
 **Print** lays the job out the way the mechanism did: one sheet per form feed (and never more than
-66 lines on a sheet), with the configured column count — 132 by default — spanning the printable
-width of whatever paper you choose in the dialog, so a full line reaches the edge instead of
-wrapping. Double-struck glyphs (nroff bold) print bold and underscored ones print underlined;
-**Save.txt** stays plain text.
+66 lines on a sheet), with the configured column count — 132 by default — stretched across the
+printable width of whatever paper you choose in the dialog, so a full line reaches the edge instead
+of wrapping. The sheet is turned **landscape**, because a line-printer sheet is wider than it is
+tall (14⅞ × 11″), and the character cell is the machine's own **6 LPI at 10 pitch**, so the
+132 × 66 block keeps the proportion of the real 13.2 × 11″ printed area, with the remaining width
+standing in for the tractor strips. As on a real line printer, the glyph is drawn **inside** the
+cell rather than filling it — the dot matrix never covered the whole cell — which is why 6 LPI type
+has air between the lines instead of touching. The sheet is drawn with the same artwork the Printer
+page uses — the green-bar paper tile, one tile per four character rows so the bars keep their
+period, and a column of black feed holes down each edge, half an inch apart — with the 132 columns
+filling the space between the strips. Those are CSS backgrounds, so the browser prints them only
+when **Background graphics** is enabled in the print dialog; on a job going onto real fanfold the
+perforation is already in the paper. Double-struck glyphs (nroff bold) print bold and underscored
+ones print underlined; **Save.txt** stays plain text.
 
 ![The LP11 line printer](assets/images/manual/printer.png){.shot}
 

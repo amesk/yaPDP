@@ -435,7 +435,10 @@ characters far faster than the Model 33 ASR console teletype (the console keeps 
 authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
 original's ~300 lines/min. The LP11 also honours the historical DONE handshake: writing LPDB clears DONE and re-asserts it as each character is actually consumed by the mechanism, so a guest print job is throttled at printer speed instead of being dumped into the buffer ahead of the paper. When the printer is OFF LINE (or powered off) the controller latches a sticky ERROR flag in LPCS while keeping DONE set, so a guest OS driver reports an error (e.g. `?LP0: I/O error`) instead of silently discarding the job. Both the teletype and the printer size their paper
 to the configured print width (centred in the machine body), so a full line
-always reaches the paper edge. Both also advance the carriage to the next
+always reaches the paper edge. The LP11 sheet keeps the machine's own
+proportions too: its 132 columns of 7px glyphs are set 6 LPI at 10 pitch
+(11⅔px lines), so one 66-line sheet is wider than it is tall, exactly like the
+14⅞ × 11″ fanfold it stands in for. Both also advance the carriage to the next
 8-column tab stop on TAB, matching real Model 33 ASR / LP11 behaviour. Like the
 VT52 console, the LP11 cabinet auto-scales down proportionally to fit the
 window when it gets too small (transform: scale, driven by a ResizeObserver),
@@ -462,7 +465,20 @@ and on the 66-line sheet length (an FF that arrives with nothing printed since
 the previous one costs no blank sheet), and the type is sized from the printable
 box rather than from a guessed sheet: the configured column count — 132 by
 default — spans the printable width of whatever paper the system dialog hands
-us, so a full line reaches the edge instead of wrapping. Overstruck glyphs keep
+us, so a full line reaches the edge instead of wrapping. The sheet is turned
+landscape and the character cell is the machine's own — 6 LPI at 10 pitch —
+because a line-printer sheet is wider than it is tall (14⅞ × 11″): the 132 × 66
+block then keeps the 1.2 proportion of the real 13.2 × 11″ printed area and the
+leftover width stands in for the tractor strips. The glyph is drawn *inside*
+that cell, as a dot matrix always was, so 6 LPI type keeps air between the lines
+instead of touching: the pitch stays the machine's while the type is smaller
+than its cell. The sheet is drawn with the very artwork the Printer page uses —
+the green-bar paper tile at one tile per four character rows, and a column of
+black feed holes down each edge half an inch apart — with the 132 columns
+filling the space between the strips (they take width from the text column, as
+the real tractor feed does); those are CSS backgrounds, so the dialog needs
+**Background graphics** on, and `paper: "plain"` drops them for a job that
+really goes onto fanfold. Overstruck glyphs keep
 their styling too: double-struck text (nroff bold, `A` ⌫ `A`) prints bold and
 underscored text prints underlined, and the advance width is unchanged, so the
 column grid survives the bold. `Save .txt` stays plain text — a .txt has no
