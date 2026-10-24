@@ -135,6 +135,16 @@ image as a warning: the resource stays an external reference and the operator
 sees a toast. A self-contained share is strict instead, because it promises
 portability: a resource whose bytes cannot be obtained fails the export.
 
+**Self-containment is not inherited by later snapshots.** Restoring a
+self-contained state makes its embedded images available to that restore; it
+does not make every subsequently saved state self-contained. A new snapshot may
+refer to the mounted image by identity and retain only its disk overlay. If the
+base image is a custom image that is not published in the media registry, the
+new snapshot will depend on that image remaining available separately. After a
+reset or storage cleanup, an image with the same logical name but different
+bytes cannot replace it: the SHA-256 check correctly refuses the restore. To
+preserve portability, create a new self-contained share of the resulting state.
+
 The container size ceiling is 256 MB (state plus bundled resources), so a
 self-contained share of a large disk set is refused rather than truncated.
 

@@ -86,6 +86,16 @@ a machine that has none of them. It is larger by the size of those images, and
 a bundled image whose bytes cannot be read fails the export instead of
 promising portability it cannot keep.
 
+**Portability does not automatically carry over to a new snapshot.** If you
+restore a self-contained state, continue working and then save a new state, the
+new snapshot does not automatically inherit the embedded disk images from the
+state you restored. It may keep only a reference to the mounted base image and
+its disk overlay. If that was a custom image that is not available after a
+reset or storage cleanup, the snapshot cannot be restored from a different
+image with the same filename: the content identity must match. To share the new
+state independently of the original environment, create a self-contained share
+of it as well.
+
 Host that file anywhere reachable by a URL, then send the link. Two things decide whether it works:
 
 - **The host must allow the file to be read from another site** (the `Access-Control-Allow-Origin`
