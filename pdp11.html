@@ -438,8 +438,8 @@
     </button>
     <!-- Host-level pause/resume — does not change the PDP-11 HALT/WAIT state.
          Shown on operator pages alongside the machine controls. -->
-    <button type="button" id="pause-btn" class="console-reboot console-pause"
-      title="Pause the entire emulated machine" aria-label="Pause emulation" aria-pressed="false">
+    <button type="button" id="pause-btn" class="console-reboot console-pause" title="Pause the entire emulated machine"
+      aria-label="Pause emulation" aria-pressed="false">
       <svg class="console-reboot-icon" aria-hidden="true" focusable="false">
         <use href="#icon-pause" />
       </svg>
@@ -452,9 +452,10 @@
         <use href="#icon-reboot" />
       </svg>
     </button>
-    <!-- Floating STATE button — round, mirrors REBOOT. Opens the machine-state
-         dialog (save / load / rename / delete snapshots). Same visibility as
-         REBOOT: Panel, teletype and VT52 (TTY 1) pages. Wired by
+    <!-- Floating STATE button — round. Opens the machine-state dialog (save /
+         load / rename / delete snapshots). Same visibility as REBOOT (operator
+         pages), but docked on the right, immediately left of the quick-boot
+         wand: both are session-level actions that open a dialog. Wired by
          src/snapshots.js (wireUI) and src/pdp11-panel.js (switchPage). -->
     <button type="button" id="state-btn" class="console-reboot console-state" data-action="state"
       title="Machine state — save a snapshot or restore a saved one." aria-label="Save or load machine state">
@@ -2148,6 +2149,10 @@ Hello world
   <script src='src/pdp11-panel.js'></script>
   <script src='src/vt52zoom.js'></script>
   <script src='src/g60printer.js'></script>
+  <!-- The LP11 paper copy (text model + printable document), shared by the
+       devices/lp11.js Device and the legacy iopage.js closure. Must load
+       before either of them. -->
+  <script src='src/lp11paper.js'></script>
   <script src='src/config.js'></script>
   <script src="assets/vendor/fzstd.js"></script>
   <script src='src/bootcode.js'></script>

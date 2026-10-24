@@ -1,5 +1,6 @@
 import { useState, useRef, type TouchEvent } from 'react';
 import { GAME_SLIDES } from '../data.ts';
+import { useWheelScroll } from '../hooks/useWheelScroll.ts';
 import { Lightbox } from './Lightbox.tsx';
 import { ZoomIn, Play } from 'lucide-react';
 
@@ -21,8 +22,11 @@ const GAME_TILES = GAME_SLIDES.filter((s) => !!s.stateUrl);
 export function GamesCarousel({ lang, onPlay }: GamesCarouselProps) {
     const launchLabel = lang === 'en' ? 'Play!' : 'Играть!';
     const [selectedSlideIndex, setSelectedSlideIndex] = useState<number | null>(null);
-    const trackRef = useRef<HTMLDivElement>(null);
     const touchStateRef = useRef<{ x: number; y: number; time: number } | null>(null);
+    // Endless track: the hook clones the edge cards and rewinds the scroll
+    // once it crosses into a clone, so the gallery loops instead of stopping
+    // on the last game.
+    const { trackRef, items, scroll } = useWheelScroll(GAME_TILES.length);
 
     if (!GAME_TILES.length) return null;
 
@@ -32,13 +36,6 @@ export function GamesCarousel({ lang, onPlay }: GamesCarouselProps) {
         ...s,
         description: lang === 'ru' ? (s.descriptionRu || s.description) : s.description,
     }));
-
-    const scroll = (direction: 'left' | 'right') => {
-        if (trackRef.current) {
-            const scrollAmount = direction === 'left' ? -220 : 220;
-            trackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-        }
-    };
 
     const handleNextLightbox = () => {
         if (selectedSlideIndex !== null) {
@@ -103,67 +100,74 @@ export function GamesCarousel({ lang, onPlay }: GamesCarouselProps) {
                     className="flex gap-3.5 overflow-x-auto scroll-smooth py-2 px-4 sm:px-6 no-scrollbar touch-pan-x"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                    {tiles.map((slide, idx) => (
-                        <div
-                            key={slide.id}
-                            className="flex-shrink-0 w-[200px] rounded-md border border-[#4a4438] hover:border-[#c8a860] focus-within:border-[#c8a860] bg-[#1a1815] hover:bg-[#24201a] overflow-hidden p-2.5 transition-all duration-250 hover:shadow-[0_0_20px_rgba(200,168,96,0.35),0_2px_8px_rgba(0,0,0,0.6)] group/card"
-                        >
-                            <button
-                                type="button"
-                                aria-label={`Open screenshot of ${slide.title}`}
-                                onClick={() => setSelectedSlideIndex(idx)}
-                                onTouchStart={handleTouchStart}
-                                onTouchEnd={(e) => handleTouchEnd(idx, e)}
-                                className="block w-full text-left cursor-pointer focus:outline-none touch-manipulation"
+                    {items.map(({ realIndex: idx, clone }, position) => {
+                        const slide = tiles[idx];
+                        return (
+                            <div
+                                key={`${clone ? 'clone' : 'real'}-${position}-${slide.id}`}
+                                data-wheel-card
+                                aria-hidden={clone || undefined}
+                                className="flex-shrink-0 w-[200px] rounded-md border border-[#4a4438] hover:border-[#c8a860] focus-within:border-[#c8a860] bg-[#1a1815] hover:bg-[#24201a] overflow-hidden p-2.5 transition-all duration-250 hover:shadow-[0_0_20px_rgba(200,168,96,0.35),0_2px_8px_rgba(0,0,0,0.6)] group/card"
                             >
-                                <figure className="m-0 p-0 w-full">
-                                    <div className="relative w-full h-[135px] bg-black rounded overflow-hidden">
-                                        <img
-                                            src={slide.image}
-                                            alt={slide.alt}
-                                            width="200"
-                                            height="135"
-                                            draggable={false}
-                                            className="w-full h-full object-cover block rounded border border-[#2a2722] group-hover/card:brightness-108 transition-all duration-250 pointer-events-none"
-                                            loading="lazy"
-                                        />
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <span className="p-1.5 rounded-full bg-[#1c1915]/90 text-[#e8d080] border border-[#c8a860] shadow-md">
-                                                <ZoomIn className="w-4 h-4" />
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <figcaption className="mt-2.5 px-1 text-center">
-                                        <div className="font-sans text-xs sm:text-[13px] font-bold text-[#9a9488] group-hover/card:text-[#ffd27f] transition-colors duration-250 truncate">
-                                            {slide.caption}
-                                        </div>
-                                        {/* The state's own promise, so the tile does not lie about
-                        what the visitor will find there. */}
-                                        {slide.stateReady && (
-                                            <span className="block text-[10px] font-normal text-[#8a857a] mt-0.5 truncate">
-                                                {slide.stateReady}
-                                            </span>
-                                        )}
-                                    </figcaption>
-                                </figure>
-                            </button>
-
-                            {slide.stateUrl && onPlay && (
                                 <button
                                     type="button"
-                                    onClick={() => onPlay(slide.stateUrl!)}
-                                    aria-label={`Play ${slide.title}, already running`}
-                                    title={lang === 'en'
-                                        ? `Play ${slide.title} already running`
-                                        : `Играть в ${slide.title} — уже запущена`}
-                                    className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded border border-[#7a9a5a] bg-gradient-to-b from-[#3a4a30] to-[#27331f] hover:from-[#4a5c3a] hover:to-[#33422a] active:from-[#5a6e48] active:to-[#3d4d33] text-[#e8f0d8] shadow-md transition-colors cursor-pointer touch-manipulation"
+                                    aria-label={`Open screenshot of ${slide.title}`}
+                                    tabIndex={clone ? -1 : undefined}
+                                    onClick={() => setSelectedSlideIndex(idx)}
+                                    onTouchStart={handleTouchStart}
+                                    onTouchEnd={(e) => handleTouchEnd(idx, e)}
+                                    className="block w-full text-left cursor-pointer focus:outline-none touch-manipulation"
                                 >
-                                    <Play className="w-3 h-3" />
-                                    {launchLabel}
+                                    <figure className="m-0 p-0 w-full">
+                                        <div className="relative w-full h-[135px] bg-black rounded overflow-hidden">
+                                            <img
+                                                src={slide.image}
+                                                alt={slide.alt}
+                                                width="200"
+                                                height="135"
+                                                draggable={false}
+                                                className="w-full h-full object-cover block rounded border border-[#2a2722] group-hover/card:brightness-108 transition-all duration-250 pointer-events-none"
+                                                loading="lazy"
+                                            />
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                                <span className="p-1.5 rounded-full bg-[#1c1915]/90 text-[#e8d080] border border-[#c8a860] shadow-md">
+                                                    <ZoomIn className="w-4 h-4" />
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <figcaption className="mt-2.5 px-1 text-center">
+                                            <div className="font-sans text-xs sm:text-[13px] font-bold text-[#9a9488] group-hover/card:text-[#ffd27f] transition-colors duration-250 truncate">
+                                                {slide.caption}
+                                            </div>
+                                            {/* The state's own promise, so the tile does not lie about
+                        what the visitor will find there. */}
+                                            {slide.stateReady && (
+                                                <span className="block text-[10px] font-normal text-[#8a857a] mt-0.5 truncate">
+                                                    {slide.stateReady}
+                                                </span>
+                                            )}
+                                        </figcaption>
+                                    </figure>
                                 </button>
-                            )}
-                        </div>
-                    ))}
+
+                                {slide.stateUrl && onPlay && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onPlay(slide.stateUrl!)}
+                                        aria-label={`Play ${slide.title}, already running`}
+                                        tabIndex={clone ? -1 : undefined}
+                                        title={lang === 'en'
+                                            ? `Play ${slide.title} already running`
+                                            : `Играть в ${slide.title} — уже запущена`}
+                                        className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded border border-[#7a9a5a] bg-gradient-to-b from-[#3a4a30] to-[#27331f] hover:from-[#4a5c3a] hover:to-[#33422a] active:from-[#5a6e48] active:to-[#3d4d33] text-[#e8f0d8] shadow-md transition-colors cursor-pointer touch-manipulation"
+                                    >
+                                        <Play className="w-3 h-3" />
+                                        {launchLabel}
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
 
                 <button

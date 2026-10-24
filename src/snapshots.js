@@ -486,7 +486,6 @@ var SnapshotStore = (() => {
                     typeof DataLoader.has === "function" && !DataLoader.has(url) &&
                     typeof window !== "undefined" &&
                     typeof window.__yapdpLoadImage === "function") {
-                    if (typeof console !== "undefined") console.log("loadStateImages: loading", url);
                     promises.push(Promise.resolve(window.__yapdpLoadImage(url)));
                 }
             })(urls[i]);
@@ -498,7 +497,6 @@ var SnapshotStore = (() => {
     // restore() so a shared ?state= link gets working drives without reloading.
     function mountStateDisks(mounted) {
         if (!mounted || !Array.isArray(mounted) || !mounted.length) {
-            if (typeof console !== "undefined") console.log("mountStateDisks: no mounted urls");
             return Promise.resolve();
         }
         var urls = mounted.filter(function (u) { return u && typeof u === "string"; });
@@ -507,7 +505,6 @@ var SnapshotStore = (() => {
             urls.forEach(function (url) {
                 if (typeof window !== "undefined" &&
                     typeof window.__yapdpMountProvider === "function") {
-                    if (typeof console !== "undefined") console.log("mountStateDisks: mounting provider for", url);
                     window.__yapdpMountProvider(url);
                 }
             });
@@ -752,6 +749,62 @@ var SnapshotStore = (() => {
         } catch (e) { /* ignore */ }
     }
 
+    // Share metadata (scenario steps, the guide text, the balloon's button and
+    // title, the preview screenshot) is carried across a device-set reload in
+    // sessionStorage, and it belongs to exactly ONE apply: the state that asked
+    // for the reload. It is therefore written as a whole — a value the state
+    // does not have is REMOVED, never left behind — and consumed once, read AND
+    // deleted.
+    var STATE_META_KEYS = {
+        steps: "yapdp.state-steps",
+        stepsMessage: "yapdp.state-steps-message",
+        buttonLabel: "yapdp.state-button-label",
+        title: "yapdp.state-title",
+        screenshot: "yapdp.state-screenshot",
+    };
+
+    // meta: { steps, stepsMessage, buttonLabel, title, screenshot } — every
+    // field is written or cleared, so the caller's state fully replaces the
+    // previous one. A null/empty meta clears the set.
+    function persistStateMeta(meta) {
+        if (typeof sessionStorage === "undefined") return;
+        var m = meta || {};
+        Object.keys(STATE_META_KEYS).forEach(function (field) {
+            var key = STATE_META_KEYS[field];
+            var value = m[field];
+            try {
+                if (value === null || value === undefined || value === "" ||
+                    (field === "steps" && !(Array.isArray(value) && value.length))) {
+                    sessionStorage.removeItem(key);
+                } else if (field === "steps") {
+                    sessionStorage.setItem(key, JSON.stringify(value));
+                } else {
+                    sessionStorage.setItem(key, String(value));
+                }
+            } catch (e) { /* ignore */ }
+        });
+    }
+
+    // Read the share metadata ONCE and delete it. A key that survives its own
+    // apply is a key the NEXT state restored in this tab would inherit.
+    function consumeStateMeta() {
+        var out = { steps: null, stepsMessage: null, buttonLabel: null,
+                    title: null, screenshot: null };
+        if (typeof sessionStorage === "undefined") return out;
+        Object.keys(STATE_META_KEYS).forEach(function (field) {
+            var key = STATE_META_KEYS[field];
+            try {
+                var raw = sessionStorage.getItem(key);
+                sessionStorage.removeItem(key);
+                if (!raw) return;
+                out[field] = (field === "steps") ? JSON.parse(raw) : raw;
+            } catch (e) {
+                out[field] = null;
+            }
+        });
+        return out;
+    }
+
     function loadFromUrl(url, opts) {
         var u = String(url || "");
         if (!u) return Promise.resolve({ ok: false, reason: "missing-url" });
@@ -836,25 +889,17 @@ var SnapshotStore = (() => {
                                 sessionStorage.setItem(PENDING_STATE_KEY, target);
                                 sessionStorage.setItem("yapdp.restore-pending", "1");
                                 // Persist the share metadata across the reload so
-                                // the preparing toast can show the same title and guide.
-                                if (parsedManifest.label) {
-                                    sessionStorage.setItem("yapdp.state-title",
-                                        parsedManifest.label);
-                                } else {
-                                    sessionStorage.removeItem("yapdp.state-title");
-                                }
-                                if (parsedManifest.steps) {
-                                    sessionStorage.setItem("yapdp.state-steps",
-                                        JSON.stringify(parsedManifest.steps));
-                                }
-                                if (parsedManifest.stepsMessage) {
-                                    sessionStorage.setItem("yapdp.state-steps-message",
-                                        parsedManifest.stepsMessage);
-                                }
-                                if (parsedManifest.buttonLabel) {
-                                    sessionStorage.setItem("yapdp.state-button-label",
-                                        parsedManifest.buttonLabel);
-                                }
+                                // the preparing toast can show the same title and
+                                // guide — and ONLY this state's metadata: a field
+                                // the state does not carry is cleared, never
+                                // inherited from whatever was restored before.
+                                persistStateMeta({
+                                    steps: parsedManifest.steps,
+                                    stepsMessage: parsedManifest.stepsMessage,
+                                    buttonLabel: parsedManifest.buttonLabel,
+                                    title: parsedManifest.label,
+                                    screenshot: parsedManifest.screenshot,
+                                });
                             }
                         } catch (e) { /* ignore */ }
                         if (typeof window !== "undefined") window.__allowConfigReload = true;
@@ -878,21 +923,20 @@ var SnapshotStore = (() => {
                         if (!onRestored) return result;
                         return Promise.resolve(onRestored(lastStateManifest))
                             .then(function () {
-                                // Steps run AFTER image loading, gate still ON
+                                // Steps run AFTER image loading, gate still ON.
+                                // The metadata a config-driven reload parked in
+                                // sessionStorage is CONSUMED here — read and
+                                // deleted — whether or not it is used: a key left
+                                // behind is replayed by the next state restored in
+                                // this tab, and a state with no steps of its own
+                                // would then type the previous guest's commands
+                                // into the new machine.
+                                var persisted = consumeStateMeta();
                                 var steps = (lastStateManifest && lastStateManifest.steps &&
                                     Array.isArray(lastStateManifest.steps) && lastStateManifest.steps.length > 0)
-                                    ? lastStateManifest.steps : null;
-                                // Fall back to steps persisted across a config-driven
-                                // reload (saved in sessionStorage before reload()).
-                                if (!steps) {
-                                    try {
-                                        var saved = sessionStorage.getItem("yapdp.state-steps");
-                                        if (saved) {
-                                            steps = JSON.parse(saved);
-                                            sessionStorage.removeItem("yapdp.state-steps");
-                                        }
-                                    } catch (e) { /* ignore */ }
-                                }
+                                    ? lastStateManifest.steps
+                                    : (persisted.steps && persisted.steps.length
+                                        ? persisted.steps : null);
                                 if (steps) {
                                     return StepEngine.runSteps(steps, {
                                         sendBytes: StepEngine.sendBytes,
@@ -1009,7 +1053,6 @@ var SnapshotStore = (() => {
         var parsed = (typeof StateFormat !== "undefined" &&
             typeof StateFormat.unpack === "function") ? StateFormat.unpack(raw) : null;
         if (!parsed) {
-            if (typeof console !== "undefined") console.log("applyContainer: unpack failed");
             return { ok: false, reason: "not-a-state", url: url };
         }
         if (typeof StateFormat.schemaMajor === "function" &&
@@ -1020,7 +1063,6 @@ var SnapshotStore = (() => {
             return { ok: false, reason: "missing-embedded-resource", url: url };
         }
         lastStateManifest = parsed.manifest || null;
-        if (typeof console !== "undefined") console.log("applyContainer: manifest set, device=", parsed.manifest ? parsed.manifest.device : "null");
         // A container state arrives as manifest + raw words; the rest of the
         // restore path wants a snapshot-shaped object (cpu/memory/devices).
         // The overlay is stamped with its origin so the Storage UI can say
@@ -1752,33 +1794,19 @@ var SnapshotStore = (() => {
         // — the single reload boots with the right devices, and init() can
         // restore directly. applySnapshotConfig() no-ops on a missing snapshot.
         return dbGet(id).then(function (snap) {
-            // Persist shared-state metadata across reload.
-            if (mode === "shared" && snap && typeof sessionStorage !== "undefined") {
-                try {
-                    var sharedTitle = snap.stateTitle ||
-                        (snap.id !== "url-state" ? snap.name : null);
-                    if (sharedTitle) {
-                        sessionStorage.setItem("yapdp.state-title", sharedTitle);
-                    } else {
-                        sessionStorage.removeItem("yapdp.state-title");
-                    }
-                    if (snap.steps) {
-                        sessionStorage.setItem("yapdp.state-steps",
-                            JSON.stringify(snap.steps));
-                    }
-                    if (snap.stepsMessage) {
-                        sessionStorage.setItem("yapdp.state-steps-message",
-                            snap.stepsMessage);
-                    }
-                    if (snap.buttonLabel) {
-                        sessionStorage.setItem("yapdp.state-button-label",
-                            snap.buttonLabel);
-                    }
-                    if (snap.screenshot) {
-                        sessionStorage.setItem("yapdp.state-screenshot",
-                            snap.screenshot);
-                    }
-                } catch (e) { /* ignore */ }
+            // Persist shared-state metadata across reload — the whole set, so a
+            // field this snapshot does not carry cannot be inherited from the
+            // previous one. A "plain" load carries nothing: it CLEARS the keys
+            // instead of leaving stale steps for init() to replay.
+            if (typeof sessionStorage !== "undefined") {
+                persistStateMeta((mode === "shared" && snap) ? {
+                    steps: snap.steps,
+                    stepsMessage: snap.stepsMessage,
+                    buttonLabel: snap.buttonLabel,
+                    title: snap.stateTitle ||
+                        (snap.id !== "url-state" ? snap.name : null),
+                    screenshot: snap.screenshot,
+                } : null);
             }
             applySnapshotConfig(snap);
             if (typeof location !== "undefined" && location.reload) {
@@ -2093,6 +2121,10 @@ var SnapshotStore = (() => {
             if (typeof sessionStorage !== "undefined") {
                 try { sessionStorage.removeItem("yapdp.restore-pending"); } catch (e) { /* ignore */ }
             }
+            // No restore is in flight, so the share metadata a reload would have
+            // carried has no owner left — clear it (see persistStateMeta). This
+            // also sweeps keys left by a build that never consumed them.
+            persistStateMeta(null);
             // A PLAIN load (no state is being applied): if the machine still
             // runs a configuration imported from an earlier state, offer to
             // return the viewer's own. This is the "I am back, and I want my
@@ -2153,40 +2185,22 @@ var SnapshotStore = (() => {
                 if (typeof sessionStorage !== "undefined") {
                     try { loadMode = sessionStorage.getItem("yapdp.load-mode") || "shared"; } catch (e) { /* ignore */ }
                 }
+                // Consume the metadata the reload carried — read AND delete, in
+                // every mode. A "plain" load ignores it, but must not leave it
+                // behind: the next state restored in this tab would inherit it.
+                var persisted = consumeStateMeta();
                 if (ok && loadMode === "shared") {
-                    // Read steps metadata persisted by load() across the reload.
-                    var steps = snap.steps;
-                    var stepsMessage = snap.stepsMessage || null;
-                    var buttonLabel = snap.buttonLabel || null;
-                    var stateTitle = snap.stateTitle ||
+                    // The snapshot's own values win where it has them; the
+                    // persisted copy is what the reload carried and is otherwise
+                    // identical, never a reason to inherit anything.
+                    var steps = persisted.steps || snap.steps;
+                    var stepsMessage = snap.stepsMessage || persisted.stepsMessage || null;
+                    var buttonLabel = snap.buttonLabel || persisted.buttonLabel || null;
+                    var stateTitle = persisted.title || snap.stateTitle ||
                         (snap.id !== "url-state" ? snap.name : null);
-                    if (typeof sessionStorage !== "undefined") {
-                        try {
-                            var savedTitle = sessionStorage.getItem("yapdp.state-title");
-                            if (savedTitle) { stateTitle = savedTitle; }
-                        } catch (e) { /* ignore */ }
-                        try {
-                            var saved = sessionStorage.getItem("yapdp.state-steps");
-                            if (saved) { steps = JSON.parse(saved); }
-                        } catch (e) { /* ignore */ }
-                        try {
-                            var savedMsg = sessionStorage.getItem("yapdp.state-steps-message");
-                            if (savedMsg) { stepsMessage = savedMsg; }
-                        } catch (e) { /* ignore */ }
-                        try {
-                            var savedBtn = sessionStorage.getItem("yapdp.state-button-label");
-                            if (savedBtn) { buttonLabel = savedBtn; }
-                        } catch (e) { /* ignore */ }
-                    }
                     var hasSteps = !!(steps && Array.isArray(steps) && steps.length > 0);
-                    // Read screenshot persisted by load() across the reload.
-                    var screenshotUrl = null;
-                    if (typeof sessionStorage !== "undefined") {
-                        try {
-                            var savedSs = sessionStorage.getItem("yapdp.state-screenshot");
-                            if (savedSs) { screenshotUrl = savedSs; }
-                        } catch (e) { /* ignore */ }
-                    }
+                    // Screenshot persisted by load() across the reload.
+                    var screenshotUrl = persisted.screenshot || null;
                     // Show the preparing balloon via QuickBoot (no code dup).
                     // Falls back to running steps directly when QuickBoot is absent.
                     if (typeof QuickBoot !== "undefined" &&
@@ -2927,14 +2941,31 @@ var SnapshotStore = (() => {
                 var file = importInput.files[0];
                 if (!file) return;
                 importInput.value = "";   // reset so the same file can be re-imported
+                // Same pipeline as the clipboard/URL import paths: autoDecodeInput()
+                // accepts either a text envelope or a framed .state container
+                // (zstd/gzip/bare), importState() stores it. A file that is
+                // neither is refused through showImportError(), never thrown.
+                if (typeof file.size === "number" && file.size > MAX_STATE_BYTES) {
+                    showImportError({ reason: "too-large" });
+                    return;
+                }
                 file.arrayBuffer().then(function (buf) {
-                    return importOrDecode(new Uint8Array(buf));
-                }).then(function (result) {
-                    if (result.ok) {
-                        refreshUI(result.id);
-                    } else if (result.reason !== "cancelled") {
-                        showImportError(result);
+                    return autoDecodeInput(new Uint8Array(buf));
+                }).then(function (containerBytes) {
+                    if (!containerBytes) {
+                        showImportError({ reason: "not-a-state" });
+                        return;
                     }
+                    return importState(containerBytes).then(function (result) {
+                        if (result.ok) {
+                            refreshUI(result.id);
+                        } else if (result.reason !== "cancelled") {
+                            showImportError(result);
+                        }
+                    });
+                }).catch(function (err) {
+                    showImportError({ reason: "not-a-state",
+                        detail: String(err && err.message ? err.message : err) });
                 });
             });
         }

@@ -89,10 +89,23 @@ function switchPage(page) {
     rebootBtn.classList.toggle('hidden', !onOperatorPage);
   }
 
-  // The floating STATE button (machine-state dialog) mirrors REBOOT.
+  // The floating STATE button (machine-state dialog) is offered on exactly the
+  // same pages as REBOOT, but it is docked on the other side: saving/restoring
+  // a whole machine is a session-level action, so it sits next to the
+  // quick-boot wand instead of next to the pause/reboot pair.
   var stateBtn = document.getElementById('state-btn');
   if (stateBtn) {
     stateBtn.classList.toggle('hidden', !onOperatorPage);
+  }
+
+  // The floating Screenshot (camera) button photographs the operator's screen,
+  // so it follows the machine controls: a picture of a settings or reference
+  // page is what the user manual carries, not what the operator saves
+  // mid-session, and the camera would just stand in the corner of a form.
+  var CONTENT_PAGES = ['storage', 'config', 'instructions'];
+  var screenshotBtn = document.getElementById('screenshot-btn');
+  if (screenshotBtn) {
+    screenshotBtn.classList.toggle('hidden', CONTENT_PAGES.indexOf(page) !== -1);
   }
 
   // The floating quick-boot (magic wand) button is a global action: show it on

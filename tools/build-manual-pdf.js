@@ -441,36 +441,50 @@ async function buildOne(browser, key, stamp) {
   //
   // headerTemplate is only rendered when displayHeaderFooter is on; an empty
   // header meant no header at all, which is why the top of the page was bare.
-  // The running title is the product's own description, not the document's:
-  // "yaPDP — Yet Another PDP-11/70 Emulator" says which emulator the reader is
-  // holding a manual for, which a bare "User Manual" does not.
   //
-  // Header and footer are plain text blocks on purpose. An earlier version
-  // centred the header with `display:flex; justify-content:flex-end`, and
-  // Chromium's header/footer renderer does not lay out flex containers: it kept
-  // only the trailing runs of the line, so the header printed as "User Manual"
-  // with "yaPDP — " cut off. It renders these templates in a restricted mode —
-  // borders are dropped there too — and a text block with text-align is what it
-  // supports. Footer keeps a two-cell layout the same way, with justify between
-  // the spans replaced by a table-free split: the page number goes in a
-  // right-aligned block of its own.
+  // The running title carries two facts, and both are needed: the product the
+  // manual belongs to ("yaPDP — Yet Another PDP-11/70 Emulator") and which of
+  // its documents this is ("User Manual"). A bare product line leaves a loose
+  // sheet unidentified once it is photocopied or left on a desk. They sit in
+  // opposite corners — the product on the left, the document on the right —
+  // because two labels pushed into one corner read as a single long line and
+  // the eye stops telling them apart.
+  //
+  // The corner pair is expressed as ONE table row with two cells, not as two
+  // stacked blocks. An earlier version centred the header with
+  // `display:flex; justify-content:flex-end`, and Chromium's header/footer
+  // renderer does not lay out flex containers: it kept only the trailing runs
+  // of the line, so the header printed as "User Manual" with "yaPDP — " cut
+  // off. Stacking two <div>s and pulling the second one up with a negative
+  // margin is the next thing that looks reasonable and is what the footer did
+  // for a while — but measured in the finished file the header's right-hand
+  // label sat 9pt ABOVE the left-hand one, a visible drop off the line (the
+  // negative margin that closes the gap between two blocks overshoots once the
+  // line box is shorter than the margin). Two cells of a single table row share
+  // one baseline by construction and need no corrective margins, in the header
+  // and in the footer alike. The renderer is a restricted mode — borders are
+  // dropped there too — so the table carries no rules and only sets the pair.
   const productLine = "yaPDP — Yet Another PDP-11/70 Emulator";
   const docName = key === "en" ? "User Manual" : "Руководство пользователя";
-  const chromeStyle =
-    "width:100%;font-size:8pt;color:#6a5f4a;" +
-    "font-family:'Courier Prime',monospace;padding:0 " + A4.margin + "mm;";
+  const versionLabel = (key === "en" ? "Version " : "Версия ") + VERSION;
+  const chromeCell =
+    "font-size:8pt;color:#6a5f4a;font-family:'Courier Prime',monospace;";
+
+  // left label in the left corner, right label in the right corner
+  const chromeRow = (left, right) =>
+    '<table style="width:100%;border-collapse:collapse;"><tr>' +
+    '<td style="' + chromeCell + "text-align:left;padding:0 0 0 " +
+    A4.margin + 'mm;">' + left + "</td>" +
+    '<td style="' + chromeCell + "text-align:right;padding:0 " +
+    A4.margin + 'mm 0 0;">' + right + "</td>" +
+    "</tr></table>";
 
   const renderPdf = async () => page.pdf({
     format: "A4",
     printBackground: false,
     displayHeaderFooter: true,
-    headerTemplate:
-      '<div style="' + chromeStyle + 'text-align:right;">' +
-      productLine + "</div>",
-    footerTemplate:
-      '<div style="' + chromeStyle + 'text-align:left;">' + docName + "</div>" +
-      '<div style="' + chromeStyle + 'text-align:right;margin-top:-8pt;">' +
-      '<span class="pageNumber"></span></div>',
+    headerTemplate: chromeRow(productLine, docName),
+    footerTemplate: chromeRow(versionLabel, '<span class="pageNumber"></span>'),
     margin: { top: A4.margin + "mm", right: A4.margin + "mm",
       bottom: A4.margin + "mm", left: A4.margin + "mm" },
   });

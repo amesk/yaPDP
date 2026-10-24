@@ -37,6 +37,67 @@ const FLOATING_CONTROL_NAMES: string[] = FLOATING_CONTROLS_DATA.flatMap(
   (b) => [b.nameEn, b.nameRu]
 );
 
+// The sidebar pages and what each one shows. Kept as data because the list is
+// read in two languages and every entry is also a jump target — a renamed page
+// or a moved anchor is then edited in one place. `target` empty means the page
+// has no chapter in this guide (Info), so the name is rendered as plain text.
+const SIDEBAR_PAGES = [
+  { target: 'front-panel', name: 'Panel', descEn: 'the front panel with switches and LEDs.', descRu: 'пультовая панель с тумблерами и светодиодами.' },
+  { target: 'console', name: 'Console', descEn: 'the operator console: a Model 33 ASR teletype, or a DECscope VT52 / DEC VT100 when the console terminal is a video terminal.', descRu: 'консоль оператора: телетайп Model 33 ASR либо DECscope VT52 / DEC VT100, когда консольный терминал — видеотерминал.' },
+  { target: 'user-terminals', name: 'TTY 1 / TTY 2', descEn: 'user video terminals (VT52 or VT100), shown only when configured.', descRu: 'пользовательские видеотерминалы (VT52 или VT100), показываются только если настроены.' },
+  { target: 'printer', name: 'Printer', descEn: 'the LP11 line printer page, shown only when configured.', descRu: 'страница построчного принтера LP11, показывается только если настроен.' },
+  { target: 'vt11', name: 'Display', descEn: 'the VT11 vector-graphics CRT page, shown only when configured.', descRu: 'страница векторного CRT VT11, показывается только если настроен.' },
+  { target: 'storage', name: 'Storage', descEn: 'storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).', descRu: 'носители в двух вкладках: Images (зона перетаскивания, смонтированные образы) и Paper Tapes (читатель, экспорт перфоратора).' },
+  { target: 'config', name: 'Config', descEn: 'configure the emulated peripherals (persisted between sessions).', descRu: 'настройка эмулируемых периферийных устройств (сохраняется между сессиями).' },
+  { target: '', name: 'Info', descEn: 'detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).', descRu: 'подробные инструкции, справочник по ОС и блок About (версия, сайт, автор и лицензия; маркер версии внизу боковой панели открывает эту страницу).' },
+];
+
+// Keyboard shortcuts. Data, not prose: the table is two languages by five
+// columns, and writing it inline produced nine pairs of ternaries.
+const KEYBOARD_SHORTCUTS = [
+  { keys: 'F11', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Toggle fullscreen mode (same as the Fullscreen button).', whatRu: 'Включить полноэкранный режим (как кнопка Fullscreen).' },
+  { keys: 'Escape', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Exit fullscreen mode.', whatRu: 'Выйти из полноэкранного режима.' },
+  { keys: 'Ctrl+0 (Cmd+0)', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Reset browser zoom to 100%.', whatRu: 'Сбросить масштаб браузера до 100%.' },
+  { keys: 'Ctrl+Shift+S (Cmd+Shift+S)', whereEn: 'Any page', whereRu: 'Любая страница', whatEn: 'Take a screenshot of the active page (same as the Screenshot button).', whatRu: 'Сделать снимок экрана активной страницы (как кнопка Screenshot).' },
+  { keys: 'Enter', whereEn: 'Console (teletype)', whereRu: 'Консоль (телетайп)', whatEn: 'Send a carriage return / line feed.', whatRu: 'Отправить возврат каретки / перевод строки.' },
+  { keys: 'Backspace', whereEn: 'Console (teletype)', whereRu: 'Консоль (телетайп)', whatEn: 'Send a rubout (DEL) character.', whatRu: 'Отправить символ rubout (DEL).' },
+  { keys: 'Ctrl+C', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Send the interrupt signal to the guest OS.', whatRu: 'Отправить сигнал прерывания гостевой ОС.' },
+  { keys: 'Ctrl+Z', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Send the suspend signal to the guest OS.', whatRu: 'Отправить сигнал приостановки гостевой ОС.' },
+  { keys: 'Page Up / Page Down', whereEn: 'Console / terminal', whereRu: 'Консоль / терминал', whatEn: 'Scroll the terminal output history.', whatRu: 'Прокрутить историю вывода терминала.' },
+];
+
+// The chapters this guide actually renders, in reading order. MANUAL_SECTIONS is
+// generated from docs/manual/_meta.yml and lists all sixteen chapters — About and
+// Glossary are among them but are not part of this guide (About is what the
+// landing itself says about the project, the Glossary is a reference list the
+// manual page owns). Offering a chapter that is not here produced a menu entry
+// that scrolled nowhere, because scrollToSection() silently does nothing when the
+// anchor is not in the page.
+const GUIDE_CHAPTERS = [
+  'quick-start',
+  'front-panel',
+  'console',
+  'user-terminals',
+  'printer',
+  'vt11',
+  'storage',
+  'machine-state',
+  'config',
+  'guest-oses',
+  'controls',
+  'troubleshooting',
+  'fidelity',
+  'desktop',
+];
+
+// What the table of contents and the search offer: those chapters, in the
+// manual's order. They are numbered 1..N from this list, not by the manual's own
+// numbers — the manual counts sixteen chapters and puts About first, so its
+// numbering never matched the §N labels of the sections below.
+const GUIDE_SECTIONS = MANUAL_SECTIONS.filter(
+  (sec) => GUIDE_CHAPTERS.indexOf(sec.id) !== -1
+);
+
 interface UserManualProps {
   lang: 'en' | 'ru';
   onBackToHome: () => void;
@@ -95,7 +156,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     'config': ['settings', 'options', 'equipment', 'tabs', 'speed', 'sound'],
     'guest-oses': ['os', 'operating system', 'boot rk', 'boot rp', 'boot rl', 'unix', 'rt-11', 'rsx', 'rsts', 'bsd', 'xxdp', 'basic'],
     'controls': ['button', 'shortcut', 'indicator', 'reboot', 'mute', 'fullscreen', 'magic'],
-    'troubleshooting': ['problem', 'fix', 'error', 'help'],
+    'troubleshooting': ['problem', 'fix', 'error', 'help', 'cors', 'blank screen', 'blank', 'keyboard', 'does not type', 'no sound', 'mute', 'performance', 'slow', 'snapshot refused', 'will not boot', 'does not boot'],
     'desktop': ['tauri', 'install', 'app', 'download'],
   };
 
@@ -103,7 +164,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
     const out: { id: string; titleEn: string; titleRu: string }[] = [];
-    for (const sec of MANUAL_SECTIONS) {
+    for (const sec of GUIDE_SECTIONS) {
       const names = sec.id === 'controls' ? FLOATING_CONTROL_NAMES : [];
       const kw = (SECTION_KEYWORDS[sec.id] || []).concat(names).join(' ').toLowerCase();
       const sub = (sec.subsections || []).map((x) => x.titleEn + ' ' + x.titleRu).join(' ').toLowerCase();
@@ -243,18 +304,18 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             <Sliders className="w-4 h-4 text-[#c8a860]" />
             {lang === 'en' ? 'Table of Contents' : 'Оглавление руководства'}
           </h2>
-          <span className="text-[11px] text-[#8a7650] font-mono">{MANUAL_SECTIONS.length} SECTIONS</span>
+          <span className="text-[11px] text-[#8a7650] font-mono">{GUIDE_SECTIONS.length} SECTIONS</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-          {MANUAL_SECTIONS.map((sec) => (
+          {GUIDE_SECTIONS.map((sec, idx) => (
             <button
               key={sec.id}
               onClick={() => scrollToSection(sec.id)}
               className="text-left px-3 py-2 rounded bg-[#1c1914] hover:bg-[#25211a] border border-[#3a3528]/80 hover:border-[#c8a860]/60 transition-all text-xs text-[#d4c4a0] hover:text-[#f0e6c8] flex items-center gap-2 cursor-pointer group"
             >
               <span className="font-mono text-[11px] text-[#c8a860] font-bold group-hover:text-[#e8d080]">
-                {sec.number}.
+                {idx + 1}.
               </span>
               <span className="truncate">{lang === 'en' ? sec.titleEn : sec.titleRu}</span>
             </button>
@@ -418,6 +479,60 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               ? 'While the wizard types, the emulator ignores the keyboard and the mouse — console, terminals and front panel alike — so nothing you type can race its characters into the console. Until it finishes, the only way out is the toast\u2019s "Take control!" button, which stops the autoload and hands the machine back to you. Disk and tape images can take a while to download on a slow link: a thin "Loading N%" bar along the bottom of the window shows the progress.'
               : 'Пока мастер печатает, эмулятор игнорирует клавиатуру и мышь — консоль, терминалы и пульт, — так что ваши символы не вклинятся в его ввод. До окончания единственный выход — кнопка "Take control!" в уведомлении: она прерывает автозагрузку и возвращает машину вам. Образы дисков и лент на медленном канале загружаются не сразу: тонкая полоса "Loading N%" внизу окна показывает прогресс.'}
           </div>
+        </div>
+
+        {/* Subsection: The Scenario tab */}
+        <div id="scenario-tab" className="pt-2 space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080] flex items-center gap-2">
+            <HardDrive className="w-4 h-4 text-[#c8a860]" />
+            {lang === 'en' ? 'The Scenario tab' : 'Вкладка Scenario'}
+          </h3>
+
+          <p className="text-sm leading-relaxed text-[#c8b890]">
+            {lang === 'en' ? (
+              <>
+                The wizard has two tabs. <strong className="text-[#f0e6c8]">Boot</strong> is the list
+                above: a boot command is typed into a fresh machine.{' '}
+                <strong className="text-[#f0e6c8]">Scenario</strong> restores a machine state saved in
+                this build — the guest is already running, so it opens in about a second instead of
+                taking the full boot. Click a card to restore it, exactly like a{' '}
+                <code className="text-[#e8d080]">?state=</code> link (see{' '}
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('machine-state')}
+                  className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+                >
+                  Machine State
+                </button>
+                ); a state that carries a screenshot shows a thumbnail, and clicking the thumbnail
+                opens the full picture without leaving the page.
+              </>
+            ) : (
+              <>
+                В мастере две вкладки. <strong className="text-[#f0e6c8]">Boot</strong> — это список
+                выше: команда загрузки вводится в свежую машину.{' '}
+                <strong className="text-[#f0e6c8]">Scenario</strong> восстанавливает состояние машины,
+                сохранённое в этой сборке, — гость уже работает, поэтому открывается примерно за
+                секунду вместо полной загрузки. Нажмите карточку, чтобы восстановить состояние, точно
+                так же, как ссылка <code className="text-[#e8d080]">?state=</code> (см.{' '}
+                <button
+                  type="button"
+                  onClick={() => scrollToSection('machine-state')}
+                  className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+                >
+                  Состояние машины
+                </button>
+                ); у состояния со снимком экрана есть миниатюра, а щелчок по ней открывает снимок
+                целиком, не покидая страницу.
+              </>
+            )}
+          </p>
+
+          <p className="text-sm leading-relaxed text-[#c8b890]">
+            {lang === 'en'
+              ? 'The list is generated from the actual state files of this build, so it always matches what ships. On a host without that list the tab simply has nothing to offer.'
+              : 'Список генерируется по фактическим файлам состояний этой сборки, поэтому всегда совпадает с тем, что в ней поставляется. На хосте без такого списка вкладке просто нечего предложить.'}
+          </p>
         </div>
 
         {/* Subsection: The classic way */}
@@ -901,8 +1016,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <p className="text-sm leading-relaxed text-[#c8b890]">
           {lang === 'en'
-            ? 'The LP11 is an animated line printer on wide 132-column fanfold green-bar paper (72/80/100/132 selectable). It only prints. Use Print to send jobs to your physical printer via system dialog, or Save .txt to export formatted output.'
-            : 'LP11 — это анимированный построчный принтер на широкой 132-колоночной бумаге в зеленую полоску (выбор 72/80/100/132 колонок). Кнопка Print отправляет листинг на реальный принтер через системный диалог, а Save .txt сохраняет файл с метками перевода страницы.'}
+            ? 'The LP11 is an animated line printer on wide 132-column fanfold green-bar paper (72/80/100/132 selectable). It only prints. Use Print to send jobs to your physical printer via system dialog, or Save .txt to export formatted output. Print paginates the job on form feeds and on the 66-line sheet, prints the sheet landscape at the machine\'s own 6 LPI / 10 pitch (a line-printer sheet is wider than it is tall) and fills the printable width with the selected column count — double-struck (nroff bold) text prints bold and underscored text underlined.'
+            : 'LP11 — это анимированный построчный принтер на широкой 132-колоночной бумаге в зеленую полоску (выбор 72/80/100/132 колонок). Кнопка Print отправляет листинг на реальный принтер через системный диалог, а Save .txt сохраняет файл с метками перевода страницы. Print разбивает задание на листы по form feed и по 66 строкам, печатает лист альбомным с машинным шагом 6 LPI при 10 pitch (лист АЦПУ шире, чем выше) и заполняет ширину области печати выбранным числом колонок — символы, пробитые дважды (жирный в nroff), печатаются жирными, подчёркнутые — подчёркнутыми.'}
         </p>
 
         <div className="rounded-lg border border-[#4a453a] bg-[#12100d] p-2">
@@ -1303,6 +1418,203 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             ? 'When either condition fails the visitor is told in a dialog that names the URL, and the address bar keeps the ?state= parameter so what was asked for stays visible. If a link cannot work at all — the state lives somewhere that cannot be fetched — the file itself is still the fallback: Import takes any .state or .state.zst file from disk, with no server and no CORS involved.'
             : 'Если не выполнено любое из условий, посетителю показывается диалог с указанием URL, а в адресной строке остаётся параметр ?state=, чтобы было видно, что именно запрашивалось. Если ссылка не может работать вовсе — состояние лежит там, откуда его не получить, — остаётся сам файл: Import принимает любой файл .state или .state.zst с диска, без сервера и без CORS.'}
         </p>
+
+        <h3 id="embedding-the-emulator" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Embedding the emulator' : 'Встраивание эмулятора'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              The emulator can be embedded into any HTML page as an{' '}
+              <code className="text-[#e8d080]">{'<iframe>'}</code>. This makes it suitable for museum
+              exhibits, educational websites, and online articles — visitors interact with a live PDP-11
+              without leaving your site.
+            </>
+          ) : (
+            <>
+              Эмулятор можно встроить в любую HTML-страницу через{' '}
+              <code className="text-[#e8d080]">{'<iframe>'}</code>. Это делает его удобным для
+              музейных экспонатов, образовательных сайтов и онлайн-статей — посетитель
+              взаимодействует с живой PDP-11, не покидая ваш сайт.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Basic OS boot' : 'Базовая загрузка ОС'}
+        </p>
+
+        <pre className="overflow-x-auto rounded-lg border border-[#4a453a] bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-[#d4c4a0]">{`<iframe src="https://amesk.github.io/yaPDP/pdp11.html?boot=rk1"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>`}</pre>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              The <code className="text-[#e8d080]">?boot=</code> parameter starts the quick-boot wizard
+              for the specified disk. The wizard types the boot command and, where credentials are
+              known, the login — the visitor sees a running operating system immediately.
+            </>
+          ) : (
+            <>
+              Параметр <code className="text-[#e8d080]">?boot=</code> запускает мастер быстрой
+              загрузки для указанного диска. Мастер набирает команду загрузки и, если учётные данные
+              известны, логин — посетитель сразу видит работающую операционную систему.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Loading a machine state' : 'Загрузка состояния машины'}
+        </p>
+
+        <pre className="overflow-x-auto rounded-lg border border-[#4a453a] bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-[#d4c4a0]">{`<iframe src="https://amesk.github.io/yaPDP/pdp11.html?state=states/lunar-lander.state.zst"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>`}</pre>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              The <code className="text-[#e8d080]">?state=</code> parameter loads a saved machine
+              state. The state file must be reachable from the browser — see the CORS discussion above.
+            </>
+          ) : (
+            <>
+              Параметр <code className="text-[#e8d080]">?state=</code> загружает сохранённое состояние
+              машины. Файл состояния должен быть доступен браузеру — см. обсуждение CORS выше.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Using a GitHub Gist to bypass CORS' : 'Использование GitHub Gist для обхода CORS'}
+        </p>
+
+        <pre className="overflow-x-auto rounded-lg border border-[#4a453a] bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-[#d4c4a0]">{`<iframe src="https://amesk.github.io/yaPDP/pdp11.html?state=https://gist.githubusercontent.com/.../raw/.../demo.state.txt"
+        width="1024" height="768"
+        allow="clipboard-read; clipboard-write"
+        title="yaPDP PDP-11/70 Emulator">
+</iframe>`}</pre>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              If you cannot place the state file on the same host as the emulator, the GitHub Gist
+              workflow (see{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('sharing-a-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                Sharing a state
+              </button>
+              ) solves the CORS problem: GitHub serves Gist raw files with the correct{' '}
+              <code className="text-[#e8d080]">Access-Control-Allow-Origin</code> header. The link
+              generated by the <strong className="text-[#f0e6c8]">Create GitHub Gist</strong> dialog
+              works directly in an iframe.
+            </>
+          ) : (
+            <>
+              Если вы не можете разместить файл состояния на том же хосте, что и эмулятор, механизм
+              GitHub Gist (см.{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('sharing-a-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                Передача состояния
+              </button>
+              ) решает проблему CORS: GitHub отдаёт «сырые» файлы Gist с правильным заголовком{' '}
+              <code className="text-[#e8d080]">Access-Control-Allow-Origin</code>. Ссылка,
+              сгенерированная диалогом <strong className="text-[#f0e6c8]">Create GitHub Gist</strong>,
+              работает напрямую в iframe.
+            </>
+          )}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Guided restore for museum exhibits' : 'Подготовленный экспонат для музея'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'When you create a shareable state, the Title, Description, Screenshot and Run after restore fields (see Sharing a state above) let you prepare a self-contained exhibit. The visitor sees a welcome message with your description and a screenshot before the machine starts; after they click the button, the emulator boots and types the post-restore command automatically. No server configuration, no disk hunting — the state carries everything except the disk images, which are bundled with the emulator.'
+            : 'При создании публикуемого состояния поля Title, Description, Screenshot и Run after restore (см. «Передача состояния» выше) позволяют подготовить самодостаточный экспонат. Посетитель видит приветственное сообщение с вашим описанием и снимком экрана до запуска машины; после нажатия кнопки эмулятор загружается и автоматически набирает команду восстановления. Никакой настройки сервера, никакого поиска дисков — состояние несёт всё, кроме образов дисков, которые уже входят в комплект эмулятора.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#f0e6c8] font-bold">
+          {lang === 'en' ? 'Recommendations for museums and educators' : 'Рекомендации для музеев и преподавателей'}
+        </p>
+
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+          <li>
+            {lang === 'en' ? (
+              <>
+                Use <code className="text-[#e8d080]">?boot=</code> for a quick OS demonstration — no
+                state file needed.
+              </>
+            ) : (
+              <>
+                Используйте <code className="text-[#e8d080]">?boot=</code> для быстрой демонстрации
+                ОС — файл состояния не нужен.
+              </>
+            )}
+          </li>
+          <li>
+            {lang === 'en' ? (
+              <>
+                Use <code className="text-[#e8d080]">?state=</code> with a GitHub Gist for a curated
+                exhibit that survives hosting changes.
+              </>
+            ) : (
+              <>
+                Используйте <code className="text-[#e8d080]">?state=</code> с GitHub Gist для
+                подготовленного экспоната, который переживёт смену хостинга.
+              </>
+            )}
+          </li>
+          <li>
+            {lang === 'en' ? (
+              <>
+                Set <code className="text-[#e8d080]">allow="clipboard-read; clipboard-write"</code> on
+                the iframe so the emulator clipboard features (Import from clipboard, Copy text to
+                clipboard) work inside the embedded page.
+              </>
+            ) : (
+              <>
+                Укажите <code className="text-[#e8d080]">allow="clipboard-read; clipboard-write"</code>{' '}
+                в iframe, чтобы функции буфера обмена эмулятора (Import from clipboard, Copy text to
+                clipboard) работали внутри встроенной страницы.
+              </>
+            )}
+          </li>
+          <li>
+            {lang === 'en'
+              ? 'The emulator is responsive: on narrow viewports it adapts to a mobile-friendly layout automatically.'
+              : 'Эмулятор адаптивен: на узких экранах он автоматически переключается в мобильный макет.'}
+          </li>
+        </ul>
+
+        <h3 id="configuration-and-the-state" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Configuration and the state' : 'Конфигурация и состояние'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A state carries its own hardware configuration, and restoring it applies that profile — console type, user terminals, LP11 printer, VT11 display, widths, teletype speed, zoom, glow, phosphor and backdrop. There is one exception: the two sound settings (Mute and the machine hum) are never touched, because they belong to the person at the keyboard, not to the guest. A page reload happens only when the device set differs; everything else applies live.'
+            : 'Состояние несёт собственную аппаратную конфигурацию, и при восстановлении применяется её профиль — тип консоли, пользовательские терминалы, принтер LP11, дисплей VT11, ширины, скорость телетайпа, масштаб, свечение, люминофор и фон. Есть одно исключение: две звуковые настройки (Mute и гул машины) не трогаются никогда, потому что принадлежат человеку за клавиатурой, а не гостю. Перезагрузка страницы происходит только если отличается набор устройств; всё остальное применяется на лету.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A state opened from a ?state= link asks nothing — the state is the point of the link. Your own configuration is remembered before it is replaced, and after a reload (or in the Reboot / Bootstrap now! dialog) you are offered Return my configuration, which restores every field. Returning it reloads only when the device set differs, and a Reboot parked across that reload runs as soon as the page is back.'
+            : 'Состояние, открытое по ссылке ?state=, ничего не спрашивает — состояние и есть смысл ссылки. Ваша собственная конфигурация запоминается до того, как её заменят, и после перезагрузки (или в диалоге Reboot / Bootstrap now!) вам предлагают Return my configuration, что восстанавливает все поля. Возврат вызывает перезагрузку только при другом наборе устройств, а отложенный Reboot выполняется, как только страница вернётся.'}
+        </p>
       </section>
 
       {/* SECTION 8: CONFIGURATION */}
@@ -1479,6 +1791,41 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           </h2>
         </div>
 
+        {/* Switching pages */}
+        <div id="switching-pages" className="space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080]">
+            {lang === 'en' ? 'Switching pages' : 'Переключение страниц'}
+          </h3>
+
+          <p className="text-sm leading-relaxed text-[#c8b890]">
+            {lang === 'en'
+              ? 'Use the sidebar to switch between:'
+              : 'Боковая панель переключает между страницами:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            {SIDEBAR_PAGES.map((page) => (
+              <li key={page.name}>
+                {page.target ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(page.target)}
+                      className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2 font-bold"
+                    >
+                      {page.name}
+                    </button>
+                    {' — '}
+                  </>
+                ) : (
+                  <strong className="text-[#f0e6c8]">{page.name}</strong>
+                )}
+                {lang === 'en' ? page.descEn : page.descRu}
+              </li>
+            ))}
+          </ul>
+        </div>
+
         {/* Floating controls table */}
         <div id="floating-controls" className="space-y-3">
           <h3 className="text-lg font-bold text-[#e8d080]">
@@ -1534,9 +1881,43 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
               : 'Каждая кнопка вывода в боковой панели оснащена маленьким мигающим зеленым светодиодом: он пульсирует, пока процессор PDP-11 передает данные на этот терминал (и непрерывно мигает во время печати документа на вкладке Printer), выключаясь через полсекунды после завершения.'}
           </p>
         </div>
+
+        {/* Keyboard shortcuts */}
+        <div id="keyboard-shortcuts" className="space-y-3">
+          <h3 className="text-lg font-bold text-[#e8d080]">
+            {lang === 'en' ? 'Keyboard shortcuts' : 'Сочетания клавиш'}
+          </h3>
+
+          <div className="overflow-x-auto rounded-lg border border-[#4a453a] bg-[#12100d]">
+            <table className="w-full text-left text-xs text-[#d4c4a0] border-collapse">
+              <thead>
+                <tr className="border-b border-[#3a3528] bg-[#1c1914] text-[#f0e6c8] font-mono">
+                  <th className="py-2.5 px-3">SHORTCUT</th>
+                  <th className="py-2.5 px-3">WHERE</th>
+                  <th className="py-2.5 px-3">WHAT IT DOES</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#2a261f]">
+                {KEYBOARD_SHORTCUTS.map((sc) => (
+                  <tr key={sc.keys} className="hover:bg-[#191611]">
+                    <td className="py-2.5 px-3">
+                      <code className="font-mono font-bold text-[#e8d080]">{sc.keys}</code>
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#c8a860]">
+                      {lang === 'en' ? sc.whereEn : sc.whereRu}
+                    </td>
+                    <td className="py-2.5 px-3 leading-relaxed text-[#bfae90]">
+                      {lang === 'en' ? sc.whatEn : sc.whatRu}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
-      {/* SECTION 11: TROUBLESHOOTING */}
+      {/* SECTION 12: TROUBLESHOOTING */}
       <section id="troubleshooting" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
@@ -1545,7 +1926,10 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           </h2>
         </div>
 
-        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+        <div
+          id="an-image-cannot-be-loaded"
+          className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4 scroll-mt-20"
+        >
           <h3 className="text-base font-bold text-[#e8d080]">
             {lang === 'en' ? 'An image cannot be loaded' : 'Ошибка загрузки образа диска'}
           </h3>
@@ -1568,6 +1952,12 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             )}
           </p>
 
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'The wording adapts to the environment: a page opened as a local file:// explains that the browser blocks fetching the media directory (and suggests a local web server), while the Tauri Minimal build explains that the image is not shipped and points to the drop zone.'
+              : 'Формулировка подстраивается под окружение: страница, открытая как локальный file://, объясняет, что браузер блокирует загрузку каталога с медиа (и предлагает локальный веб-сервер), а сборка Tauri Minimal объясняет, что образ не входит в поставку, и указывает на зону перетаскивания.'}
+          </p>
+
           <div className="rounded border border-[#4a453a] bg-[#12100d] p-2 max-w-lg mx-auto">
             <img
               src="assets/images/manual/dialog-imgerror.png"
@@ -1584,13 +1974,687 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             </p>
           </div>
         </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'A snapshot is refused after an image update' : 'Снапшот отклонён после обновления образа'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? (
+              <>
+                A snapshot stores the machine’s memory and registers, not the disk image itself: on restore it is
+                layered back onto the disk the emulator currently ships — or onto the exact image the snapshot pinned
+                by SHA-256, fetched from the media registry. A <strong className="text-[#f0e6c8]">self-contained</strong>{' '}
+                state carries its images inside the file, so an image update does not affect it at all. If the disk has
+                been <strong className="text-[#f0e6c8]">updated</strong> since the snapshot was taken, the two no longer
+                match — the guest’s file system in memory would not describe the disk underneath it, which shows up as a
+                corrupted file system rather than as anything obvious.
+              </>
+            ) : (
+              <>
+                Снапшот хранит память и регистры машины, а не сам образ диска: при восстановлении он накладывается на
+                тот диск, который эмулятор поставляет сейчас, — или на точный образ, закреплённый в снапшоте по
+                SHA-256 и скачанный из реестра образов.{' '}
+                <strong className="text-[#f0e6c8]">Самодостаточное</strong> состояние несёт образы внутри файла,
+                поэтому обновление образа его вообще не затрагивает. Если образ с тех пор{' '}
+                <strong className="text-[#f0e6c8]">обновили</strong>, они перестают совпадать — файловая система гостя
+                в памяти перестаёт описывать лежащий под ней диск, и это проявляется как повреждённая файловая
+                система, а не как что-то очевидное.
+              </>
+            )}
+          </p>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'The emulator detects this and refuses the restore instead of corrupting the disk. It names the image and both builds, and offers to delete the snapshot:'
+              : 'Эмулятор это обнаруживает и отказывается восстанавливать снапшот вместо того, чтобы испортить диск. Он называет образ и обе сборки и предлагает удалить снапшот:'}
+          </p>
+
+          <div className="rounded border border-[#4a453a] bg-[#12100d] p-2 max-w-lg mx-auto">
+            <img
+              src="assets/images/manual/dialog-snapshot-incompatible.png"
+              alt="Snapshot taken on a different build"
+              className="w-full h-auto rounded cursor-pointer"
+              onClick={() =>
+                openImage(
+                  'assets/images/manual/dialog-snapshot-incompatible.png',
+                  lang === 'en' ? 'Snapshot taken on a different build' : 'Снапшот снят на другой сборке'
+                )
+              }
+            />
+            <p className="mt-1.5 text-center text-[11px] text-[#8a7650] italic">
+              {lang === 'en'
+                ? 'The snapshot was taken on a different build of the disk: it is not restored, and can be deleted from here.'
+                : 'Снапшот снят на другой сборке диска: он не восстанавливается, и его можно удалить прямо отсюда.'}
+            </p>
+          </div>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'Take a fresh snapshot on the current build, or delete the stale one — a snapshot cannot be migrated onto a disk it was not taken from.'
+              : 'Сделайте новый снапшот на текущей сборке или удалите устаревший — перенести снапшот на диск, с которого он не снимался, нельзя.'}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The guest OS does not boot' : 'Гостевая ОС не загружается'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If the machine halts at the @ prompt or shows an error instead of booting:'
+              : 'Если машина останавливается на приглашении @ или показывает ошибку вместо загрузки:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong boot command.' : 'Неверная команда загрузки.'}</strong>{' '}
+              {lang === 'en' ? 'Each guest OS has its own boot command — see the ' : 'У каждой гостевой ОС своя команда — сверьтесь с '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('guest-oses')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'guest OS table' : 'таблицей гостевых ОС'}
+              </button>
+              {lang === 'en' ? '. Typing ' : '. Команда '}
+              <code className="font-mono text-[#e8d080]">boot rk0</code>
+              {lang === 'en' ? ' on a system that expects ' : ' на системе, ожидающей '}
+              <code className="font-mono text-[#e8d080]">boot rp1</code>
+              {lang === 'en' ? ' will not start it.' : ', не запустит её.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong machine profile.' : 'Неверный профиль машины.'}</strong>{' '}
+              {lang === 'en' ? 'Some guests need the ' : 'Некоторым гостям требуется '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('printer')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'LP11 line printer' : 'построчный принтер LP11'}
+              </button>
+              {lang === 'en' ? ' or a teletype console. The ' : ' или консоль-телетайп. '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('quick-start')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'quick-boot wizard' : 'Мастер быстрого запуска'}
+              </button>
+              {lang === 'en' ? ' sets these automatically; when booting manually, check the ' : ' выставляет их автоматически; при ручной загрузке проверьте '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config page' : 'страницу Config'}
+              </button>
+              {lang === 'en' ? ' for the required peripherals.' : '.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Corrupted or missing image.' : 'Повреждённый или отсутствующий образ.'}</strong>{' '}
+              {lang === 'en' ? 'If the image did not download fully, the emulator shows an ' : 'Если образ загрузился не полностью, эмулятор покажет диалог '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('an-image-cannot-be-loaded')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'image load failure' : 'ошибки загрузки образа'}
+              </button>
+              {lang === 'en' ? ' dialog. Re-download or drag & drop the image file onto the ' : '. Скачайте образ заново или перетащите файл на страницу '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('storage')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Storage' : 'Storage'}
+              </button>
+              {lang === 'en' ? ' page.' : '.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The keyboard does not type' : 'Клавиатура не вводит'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If keystrokes produce no visible output on the console or terminal:'
+              : 'Если нажатия клавиш не дают видимого вывода на консоли или терминале:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong keyboard layout.' : 'Не та раскладка.'}</strong>{' '}
+              {lang === 'en' ? 'The most obvious reason — just switch to English.' : 'Самая очевидная причина — просто переключите раскладку на английскую.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Input is locked.' : 'Ввод заблокирован.'}</strong>{' '}
+              {lang === 'en' ? 'During an ' : 'Во время '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('quick-start')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'autoload' : 'автозагрузки'}
+              </button>
+              {lang === 'en' ? ' the emulator locks all input. Click ' : ' эмулятор блокирует весь ввод. Нажмите '}
+              <strong className="text-[#f0e6c8]">Take control!</strong>
+              {lang === 'en' ? ' in the toast to unlock.' : ' в уведомлении, чтобы разблокировать.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong terminal selected.' : 'Не тот терминал.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Click the console or terminal page in the sidebar — the active page has a highlighted border. Only the active page receives keyboard input.'
+                : 'Нажмите на страницу консоли или терминала на боковой панели — активная страница выделена рамкой. Только активная страница получает ввод с клавиатуры.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Teletype upper-case only.' : 'Телетайп только заглавные.'}</strong>{' '}
+              {lang === 'en' ? 'When the ' : 'Когда опция '}
+              <strong className="text-[#f0e6c8]">Upper Case Only</strong>
+              {lang === 'en' ? ' option on the ' : ' на '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config page' : 'странице CONFIG'}
+              </button>
+              {lang === 'en'
+                ? ' is on, the teletype folds lower-case letters to upper-case. This is normal for guests that expect upper-case input.'
+                : ' включена, телетайп преобразует строчные буквы в заглавные. Это нормально для гостей, ожидающих ввод заглавными.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser focus.' : 'Фокус браузера.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Click inside the terminal area to ensure the page has focus. Some browsers require an explicit click before they forward keystrokes.'
+                : 'Щёлкните внутри области терминала, чтобы страница получила фокус. Некоторые браузеры требуют явного клика перед передачей нажатий клавиш.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'No sound' : 'Нет звука'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? 'If the emulator is silent:' : 'Если эмулятор беззвучен:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Mute is on.' : 'Mute включён.'}</strong>{' '}
+              {lang === 'en' ? 'Click the ' : 'Нажмите кнопку '}
+              <strong className="text-[#f0e6c8]">Mute</strong>
+              {lang === 'en'
+                ? ' button (bottom-left corner, just right of the sidebar) to toggle sound back on. The mute state is persisted across sessions.'
+                : ' (левый нижний угол, справа от боковой панели), чтобы включить звук. Состояние сохраняется между сессиями.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser sound.' : 'Звук браузера.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Check that your browser’s sound is not muted for the page or tab.'
+                : 'Проверьте, что звук в браузере не отключён для этой страницы или вкладки.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Desktop build.' : 'Настольное приложение.'}</strong>{' '}
+              {lang === 'en'
+                ? 'The Tauri desktop app uses the same sound settings as the browser version. Check the system volume mixer for the application.'
+                : 'Настольное приложение Tauri использует те же настройки звука, что и браузерная версия. Проверьте системный микшер громкости.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'Poor performance' : 'Низкая производительность'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? 'If the emulator feels sluggish:' : 'Если эмулятор работает медленно:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser vs desktop.' : 'Браузер против настольного приложения.'}</strong>{' '}
+              {lang === 'en' ? 'The browser version shares resources with other tabs. Close unused tabs or switch to the ' : 'Браузерная версия делит ресурсы с другими вкладками. Закройте неиспользуемые вкладки или переключитесь на '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('desktop')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Tauri desktop app' : 'настольное приложение Tauri'}
+              </button>
+              {lang === 'en' ? ' for dedicated performance.' : '.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Video terminals.' : 'Видеотерминалы.'}</strong>{' '}
+              {lang === 'en' ? 'A VT100 or VT52 terminal with scanline effects uses more CPU than the teletype. Switch to the teletype console in ' : 'VT100 или VT52 с эффектами развёртки потребляют больше ресурсов ЦП, чем телетайп. Переключитесь на консоль-телетайп в '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config' : 'Config'}
+              </button>
+              {lang === 'en' ? ' if performance is critical.' : ', если производительность критична.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Animation.' : 'Анимация.'}</strong>{' '}
+              {lang === 'en' ? 'The LP11 line printer and paper-tape machines animate during operation. Disable them in ' : 'Построчный принтер LP11 и перфоленты анимированы при работе. Отключите их в '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config' : 'Config'}
+              </button>
+              {lang === 'en' ? ' if they are not needed.' : ', если они не нужны.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Network.' : 'Сеть.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Large disk images load over the network on first access. The Loading N% bar shows progress; once cached, subsequent boots are faster.'
+                : 'Большие образы дисков при первом доступе загружаются по сети. Полоса Loading N% показывает прогресс; после кеширования последующие загрузки быстрее.'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The screen is blank' : 'Экран пуст'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? 'If a terminal page shows nothing:' : 'Если страница терминала ничего не показывает:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Machine is off.' : 'Машина выключена.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Check the front-panel POWER LOCK switch. The machine must be powered on to produce output.'
+                : 'Проверьте переключатель POWER LOCK на пультовой панели. Машина должна быть включена, чтобы выдавать вывод.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Wrong page.' : 'Не та страница.'}</strong>{' '}
+              {lang === 'en' ? 'The console and terminals show output only when the guest OS writes to them. Switch to the ' : 'Консоль и терминалы показывают вывод только когда гостевая ОС в них пишет. Переключитесь на страницу '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('console')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Console' : 'Console'}
+              </button>
+              {lang === 'en' ? ' page to see the boot sequence.' : ', чтобы увидеть последовательность загрузки.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Display page not configured.' : 'Страница Display не настроена.'}</strong>{' '}
+              {lang === 'en' ? 'The ' : ''}
+              <button
+                type="button"
+                onClick={() => scrollToSection('vt11')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'VT11 vector display' : 'Векторный дисплей VT11'}
+              </button>
+              {lang === 'en' ? ' is optional and must be enabled in ' : ' опционален и должен быть включён в '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('config')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'Config' : 'Config'}
+              </button>
+              {lang === 'en' ? '. Without it, the Display page stays blank.' : '. Без него страница Display остаётся пустой.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Browser zoom.' : 'Масштаб браузера.'}</strong>{' '}
+              {lang === 'en'
+                ? 'Accidental browser zoom can push the terminal content off-screen. Reset zoom with Ctrl+0 (Cmd+0 on macOS).'
+                : 'Случайное изменение масштаба браузера может сдвинуть содержимое терминала за пределы экрана. Сбросьте масштаб комбинацией Ctrl+0 (Cmd+0 на macOS).'}
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'CORS errors in the browser version' : 'Ошибки CORS в браузерной версии'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If the emulator page shows a CORS error when loading images or media:'
+              : 'Если страница эмулятора показывает ошибку CORS при загрузке изображений или медиа:'}
+          </p>
+
+          <ul className="list-disc pl-5 text-xs sm:text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'file:// protocol.' : 'Протокол file://.'}</strong>{' '}
+              {lang === 'en' ? 'Opening ' : 'Открытие '}
+              <code className="font-mono text-[#e8d080]">pdp11.html</code>
+              {lang === 'en' ? ' as a local file (' : ' как локального файла ('}
+              <code className="font-mono text-[#e8d080]">file://</code>
+              {lang === 'en'
+                ? ') triggers browser CORS policies. Use a local web server instead — or open the page through the Launch Online! link on the landing page.'
+                : ') вызывает политики CORS браузера. Используйте локальный веб-сервер — или откройте страницу через ссылку Launch Online! на главной странице.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'The built-in server.' : 'Встроенный сервер.'}</strong>{' '}
+              {lang === 'en' ? 'Run ' : 'Запустите '}
+              <code className="font-mono text-[#e8d080]">npm run serve</code>
+              {lang === 'en'
+                ? ' from the repository root to start a local HTTP server on port 1187, then open http://127.0.0.1:1187/pdp11.html.'
+                : ' из корня репозитория, чтобы запустить локальный HTTP-сервер на порту 1187, затем откройте http://127.0.0.1:1187/pdp11.html.'}
+            </li>
+            <li>
+              <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Tauri desktop.' : 'Настольное приложение Tauri.'}</strong>{' '}
+              {lang === 'en' ? 'The ' : ''}
+              <button
+                type="button"
+                onClick={() => scrollToSection('desktop')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                {lang === 'en' ? 'desktop app' : 'настольное приложение'}
+              </button>
+              {lang === 'en' ? ' has no CORS restrictions — it bundles its own server.' : ' не имеет ограничений CORS — оно использует собственный сервер.'}
+            </li>
+          </ul>
+        </div>
       </section>
 
-      {/* SECTION 12: THE DESKTOP APP */}
-      <section id="desktop" className="space-y-5 scroll-mt-20">
+      {/* SECTION 13: HISTORICAL FIDELITY AND LIMITATIONS */}
+      <section id="fidelity" className="space-y-5 scroll-mt-20">
         <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
             <span className="font-mono text-[#c8a860] text-lg">§13</span>
+            {lang === 'en' ? 'Historical Fidelity and Limitations' : 'Историческая достоверность и ограничения'}
+          </h2>
+        </div>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP is an interactive environment for exploring the PDP-11/70 and the software ecosystem built around it. Its goal is to make historical computing tangible: start a machine, inspect its front panel, boot an operating system, run a program, and explore how people interacted with computers of this era.'
+            : 'yaPDP — интерактивная среда для знакомства с PDP-11/70 и программной экосистемой, которая вокруг неё сформировалась. Цель проекта — сделать историю вычислительной техники осязаемой: запустить машину, изучить её переднюю панель, загрузить операционную систему, выполнить программу и посмотреть, как люди взаимодействовали с компьютерами той эпохи.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Historical fidelity is important to that experience, but it does not mean that every component is reproduced with identical depth. yaPDP combines emulation, practical approximations, and interface design intended to make the environment approachable in a modern browser.'
+            : 'Историческая достоверность важна для такого опыта, но она не означает, что все компоненты воспроизводятся с одинаковой степенью подробности. yaPDP объединяет эмуляцию, практические упрощения и интерфейсные решения, призванные сделать историческую вычислительную среду доступной в современном браузере.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'This chapter explains how to interpret the experience and where to be cautious.'
+            : 'В этой главе объясняется, как воспринимать этот опыт и какие ограничения следует учитывать.'}
+        </p>
+
+        <h3 id="fidelity-what-is-preserved" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'What yaPDP aims to preserve' : 'Что стремится сохранить yaPDP'}
+        </h3>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'The computing environment' : 'Вычислительная среда целиком'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP is designed around the PDP-11/70 and the experience of using a period-style computer system, rather than presenting a processor as an isolated programming target. The front panel, operating-system startup, interactive programs, storage devices, and peripheral interfaces help establish that wider context.'
+            : 'yaPDP построен вокруг PDP-11/70 и опыта работы с компьютерной системой соответствующей эпохи, а не только вокруг процессора как изолированного объекта программирования. Передняя панель, загрузка операционной системы, интерактивные программы, накопители и периферийные интерфейсы помогают увидеть более широкий контекст.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Real software and meaningful machine states' : 'Настоящее программное обеспечение и осмысленные состояния машины'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Where supported, yaPDP runs historical operating systems and programs in the emulated environment. Prepared machine states can place a visitor at a useful point in that experience: for example, ready to launch a program or already inside a demonstration.'
+            : 'Там, где это поддерживается, yaPDP запускает исторические операционные системы и программы в эмулируемой среде. Подготовленные состояния машины позволяют сразу оказаться в интересной точке этого опыта: например, в готовности к запуску программы или уже внутри демонстрационного сценария.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A saved state is a practical entry point, not by itself proof that every detail of the surrounding hardware has been reproduced exactly. The software, machine configuration, required disk images, and state format all affect what can be restored and experienced.'
+            : 'Сохранённое состояние — удобная отправная точка, но само по себе оно не доказывает, что всё окружающее оборудование воспроизведено с абсолютной точностью. На то, что удастся восстановить и исследовать, влияют программное обеспечение, конфигурация машины, необходимые дисковые образы и формат состояния.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Hardware-inspired interaction' : 'Взаимодействие, вдохновлённое реальным оборудованием'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The interface is intended to communicate the character of historical equipment. Controls and indicators are useful both for operating the emulated machine and for understanding the role of physical controls on systems such as the PDP-11/70.'
+            : 'Интерфейс призван передать характер исторической аппаратуры. Органы управления и индикаторы нужны как для работы с эмулируемой машиной, так и для понимания назначения физических элементов таких систем, как PDP-11/70.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Visual similarity and functional fidelity are related, but distinct. A control may look like its historical counterpart without modelling every electrical or mechanical detail of the original device.'
+            : 'Визуальное сходство и функциональная достоверность связаны, но не тождественны. Элемент интерфейса может выглядеть как исторический оригинал, не моделируя при этом все электрические или механические особенности реального устройства.'}
+        </p>
+
+        <h3 id="fidelity-keep-in-mind" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'What to keep in mind' : 'Что следует учитывать'}
+        </h3>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Emulation is not the same as a complete physical replica' : 'Эмуляция — не то же самое, что полная физическая копия'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP is software running on a modern computer. Its timing, rendering, input handling, storage, and browser integration are necessarily mediated by the host environment. It should not be assumed to reproduce every timing-sensitive hardware effect, electrical characteristic, mechanical behaviour, or failure mode of the original equipment.'
+            : 'yaPDP — программная система, работающая на современном компьютере. Её временные характеристики, отрисовка, обработка ввода, хранение данных и интеграция с браузером неизбежно зависят от среды исполнения. Не следует считать, что она воспроизводит все чувствительные к времени аппаратные эффекты, электрические характеристики, механическое поведение или режимы отказа оригинального оборудования.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The exact level of fidelity can differ between the CPU, memory, individual devices, and the user interface. Do not infer cycle-accurate or component-level accuracy unless it is explicitly documented for the relevant subsystem.'
+            : 'Степень достоверности может различаться для процессора, памяти, отдельных устройств и пользовательского интерфейса. Не следует предполагать точность до такта или на уровне каждого компонента, если она прямо не заявлена в документации соответствующей подсистемы.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Peripheral devices may be modelled to different depths' : 'Периферийные устройства могут моделироваться с разной степенью подробности'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Historical computer systems depended on devices such as terminals, paper-tape equipment, disks, and printers. In an interactive emulator, these devices also have to work through modern input and display mechanisms.'
+            : 'Исторические компьютерные системы зависели от таких устройств, как терминалы, оборудование для бумажной ленты, дисковые накопители и принтеры. В интерактивном эмуляторе эти устройства должны также работать через современные механизмы ввода и отображения.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Depending on the device and feature, yaPDP may prioritise the aspects that matter most to the user-visible workflow — for example, entering characters, displaying output, or exploring a prepared scenario — rather than modelling every physical detail of the original mechanism.'
+            : 'В зависимости от устройства и функции yaPDP может уделять приоритетное внимание тем аспектам, которые важнее всего для пользовательского сценария: например, вводу символов, отображению вывода или исследованию подготовленной ситуации. При этом не обязательно моделируется каждая физическая особенность оригинального механизма.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Treat device-specific documentation as the source of truth for a particular peripheral. If a behaviour is not documented or tested, do not assume that it matches the original hardware in every respect.'
+            : 'Для конкретной периферии следует обращаться к её собственной документации. Если какое-то поведение не описано и не проверено, не стоит считать, что оно во всех отношениях совпадает с работой исторического устройства.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Historical software has its own constraints' : 'Историческое программное обеспечение имеет собственные ограничения'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A program runs within the operating system, device configuration, and storage environment available to it. Some software may require a particular disk image, boot procedure, memory configuration, or peripheral. Other software may depend on conventions that are unfamiliar on modern systems.'
+            : 'Программа работает в рамках доступных ей операционной системы, конфигурации устройств и среды хранения. Некоторому ПО могут требоваться определённый дисковый образ, процедура загрузки, конфигурация памяти или периферийное устройство. Другое ПО может опираться на соглашения, непривычные для современных систем.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A prepared state can simplify setup, but it does not remove every dependency. If a state refers to disk images or other resources that are not included in the state file, those resources must still be available to the receiving installation.'
+            : 'Подготовленное состояние упрощает настройку, но не устраняет все зависимости. Если в состоянии есть ссылки на дисковые образы или другие ресурсы, которые не включены в сам файл состояния, эти ресурсы должны быть доступны и в системе получателя.'}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'Browser and desktop environments can differ' : 'Браузерная и настольная среды могут различаться'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'The browser and desktop versions may differ in how they package resources, store changes, access local files, or behave when offline. A feature that depends on downloading a resource or fetching a state from another site may also be affected by network access and browser security rules such as Cross-Origin Resource Sharing (CORS).'
+            : 'Браузерная и настольная версии могут различаться способом поставки ресурсов, хранения изменений, доступа к локальным файлам и работой без подключения к сети. На функции, требующие загрузки ресурсов или получения состояния с другого сайта, также могут влиять доступность сети и правила безопасности браузера, например Cross-Origin Resource Sharing (CORS).'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? (
+            <>
+              For shared states, the fact that a URL opens in a browser tab does not necessarily mean
+              that yaPDP can fetch it from JavaScript. The hosting server must permit the relevant
+              cross-origin request. See the{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('machine-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                Machine State
+              </button>{' '}
+              chapter for details.
+            </>
+          ) : (
+            <>
+              Для общих состояний важно помнить: если URL открывается в отдельной вкладке браузера,
+              это ещё не означает, что yaPDP сможет загрузить его из JavaScript. Сервер, на котором
+              размещён файл, должен разрешать соответствующий междоменный запрос. Подробности — в
+              главе{' '}
+              <button
+                type="button"
+                onClick={() => scrollToSection('machine-state')}
+                className="text-[#c8a860] hover:text-[#e8d080] underline underline-offset-2"
+              >
+                «Управление состоянием машины»
+              </button>
+              .
+            </>
+          )}
+        </p>
+
+        <h4 className="text-sm font-bold text-[#e8d080] pt-1">
+          {lang === 'en' ? 'A saved state is not a universal archival guarantee' : 'Сохранённое состояние не является универсальной гарантией архивной сохранности'}
+        </h4>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'A machine state records a particular configuration and point in time according to the yaPDP state format. Restoring it successfully can depend on the yaPDP version, state schema, required resources, and compatibility handling.'
+            : 'Состояние машины фиксирует определённую конфигурацию и момент времени в соответствии с форматом yaPDP. Успешное восстановление может зависеть от версии yaPDP, версии схемы состояния, наличия необходимых ресурсов и механизмов совместимости.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'For long-term preservation, keep the state together with a description of its purpose, the yaPDP version used to create it, any required disk images, and instructions for reproducing the experience. Where possible, retain the original software and resource provenance as well.'
+            : 'Для долговременного сохранения полезно хранить вместе с состоянием описание его назначения, версию yaPDP, в которой оно было создано, необходимые дисковые образы и инструкции по воспроизведению сценария. По возможности следует также сохранять сведения о происхождении исходного программного обеспечения и ресурсов.'}
+        </p>
+
+        <h3 id="fidelity-learning-tool" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'How to use yaPDP as a historical learning tool' : 'Как использовать yaPDP для изучения истории'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en' ? 'For the most useful experience:' : 'Чтобы получить наиболее полезный опыт:'}
+        </p>
+
+        <ol className="list-decimal list-inside space-y-2 text-sm leading-relaxed text-[#c8b890] pl-2">
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Start with a prepared scenario.' : 'Начните с подготовленного сценария.'}</strong>{' '}
+            {lang === 'en'
+              ? 'It reduces setup work and lets you focus on the system or program being demonstrated.'
+              : 'Это сокращает настройку и позволяет сосредоточиться на демонстрируемой системе или программе.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Read the scenario notes.' : 'Прочитайте описание сценария.'}</strong>{' '}
+            {lang === 'en'
+              ? 'Check which operating system, disk images, peripherals, and controls it expects.'
+              : 'Проверьте, какие операционная система, дисковые образы, периферия и органы управления ему необходимы.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Explore the machine, not just the program.' : 'Исследуйте не только программу, но и машину.'}</strong>{' '}
+            {lang === 'en'
+              ? 'Notice the front panel, boot process, terminal interaction, and the role of storage and peripheral devices.'
+              : 'Обратите внимание на переднюю панель, процесс загрузки, работу с терминалом, роль накопителей и периферийных устройств.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Distinguish historical facts from emulator behaviour.' : 'Отличайте исторические факты от поведения эмулятора.'}</strong>{' '}
+            {lang === 'en'
+              ? 'Use primary documentation and subsystem notes when making claims about the original hardware.'
+              : 'Если требуется сделать вывод об оригинальном оборудовании, обращайтесь к первичной документации и описаниям соответствующей подсистемы.'}
+          </li>
+          <li>
+            <strong className="text-[#f0e6c8]">{lang === 'en' ? 'Record the conditions of an experiment.' : 'Фиксируйте условия эксперимента.'}</strong>{' '}
+            {lang === 'en'
+              ? 'If you share a state or document a result, include the relevant yaPDP version and any non-default resources or settings.'
+              : 'При обмене состоянием или описании результата указывайте версию yaPDP, а также нестандартные ресурсы и настройки, если они использовались.'}
+          </li>
+        </ol>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP can make historical systems easier to explore, but it is not a substitute for original manuals, hardware documentation, or scholarly sources when exact historical claims matter.'
+            : 'yaPDP упрощает исследование исторических систем, но не заменяет оригинальные руководства, документацию на оборудование или научные источники, если важна точность исторических утверждений.'}
+        </p>
+
+        <h3 id="fidelity-reporting" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Reporting a fidelity issue' : 'Как сообщить о проблеме с исторической достоверностью'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'If you find a behaviour that appears inconsistent with the historical machine or software, a useful report includes:'
+            : 'Если поведение кажется несовместимым с исторической машиной или программой, полезное сообщение об ошибке должно содержать:'}
+        </p>
+
+        <ul className="list-disc pl-5 text-sm leading-relaxed text-[#c8b890] space-y-1.5">
+          <li>{lang === 'en' ? 'the yaPDP version or commit;' : 'версию yaPDP или идентификатор коммита;'}</li>
+          <li>{lang === 'en' ? 'the operating system, program, and machine state used;' : 'использованные операционную систему, программу и состояние машины;'}</li>
+          <li>{lang === 'en' ? 'the device or behaviour in question;' : 'описание устройства или поведения, о котором идёт речь;'}</li>
+          <li>{lang === 'en' ? 'the steps needed to reproduce the observation;' : 'последовательность действий, позволяющую воспроизвести наблюдение;'}</li>
+          <li>
+            {lang === 'en'
+              ? 'what you expected to happen and the historical source supporting that expectation, if available.'
+              : 'ожидаемое поведение и, если возможно, исторический источник, подтверждающий ожидание.'}
+          </li>
+        </ul>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'This helps distinguish an implementation defect from an intentional simplification, a software-specific limitation, or a difference caused by configuration.'
+            : 'Такие сведения помогают отличить ошибку реализации от намеренного упрощения, ограничения конкретной программы или различия, вызванного конфигурацией.'}
+        </p>
+
+        <h3 id="fidelity-summary" className="text-lg font-semibold text-[#f0e6c8] pt-2">
+          {lang === 'en' ? 'Summary' : 'Кратко'}
+        </h3>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'yaPDP aims to offer an engaging, historically grounded way to experience the PDP-11/70 and its software environment. It combines working software with a visual and interactive model of a period computing system, while making practical trade-offs for use on modern computers.'
+            : 'yaPDP стремится дать увлекательный и исторически обоснованный способ познакомиться с PDP-11/70 и её программной средой. Проект сочетает работающее программное обеспечение с визуальной и интерактивной моделью вычислительной системы той эпохи, сохраняя при этом практические компромиссы, необходимые для работы на современных компьютерах.'}
+        </p>
+
+        <p className="text-sm leading-relaxed text-[#c8b890]">
+          {lang === 'en'
+            ? 'Use it to explore, experiment, and share reproducible moments from the machine\u2019s life. When exact hardware behaviour or historical interpretation matters, check the documentation for the specific subsystem and consult authoritative historical sources.'
+            : 'Используйте yaPDP для исследования, экспериментов и обмена воспроизводимыми моментами из жизни машины. Если важны точное поведение аппаратуры или историческая интерпретация, сверяйтесь с документацией конкретной подсистемы и авторитетными историческими источниками.'}
+        </p>
+      </section>
+
+      {/* SECTION 14: THE DESKTOP APP */}
+      <section id="desktop" className="space-y-5 scroll-mt-20">
+        <div className="flex items-center justify-between border-b border-[#3a3528] pb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#f0e6c8] flex items-center gap-2">
+            <span className="font-mono text-[#c8a860] text-lg">§14</span>
             {lang === 'en' ? 'The Desktop App' : 'Настольное приложение'}
           </h2>
         </div>

@@ -1272,6 +1272,15 @@ textarea {
     color: #e0d8c8;
 }
 
+/* No machine on screen (Storage, CONFIG, INFO): the camera has nothing worth
+   photographing and leaves the corner entirely — same .hidden convention as
+   .quick-boot-btn / .console-reboot. Toggled by switchPage() in
+   src/pdp11-panel.js. The rule needs !important because .screenshot-btn sets
+   display: flex itself. */
+.screenshot-btn.hidden {
+    display: none !important;
+}
+
 /* Screenshot upload area inside the Share-snapshot dialog. */
 .share-screenshot-area {
     border: 1px dashed #5a554a;
@@ -2573,8 +2582,8 @@ body.touch-gestures .touch-pin>* {
 }
 
 /* On a touch device the controls dock as ONE STRIP AT THE VERY TOP, and the
-   round floating buttons (Reboot/State at the left, Quick Boot at the right)
-   move below it. The page's own controls read first because they belong to the
+   round floating buttons (Pause/Reboot at the left, State/Quick Boot at the
+   right) move below it. The page's own controls read first because they belong to the
    machine on screen; the application's chrome is the second row. A page with
    more buttons than fit scrolls sideways instead of stacking over the machine. */
 body.touch-gestures .touch-pin>#teletype-controls,
@@ -2755,9 +2764,11 @@ body.touch-gestures.touch-controls .quick-boot-btn {
     position: relative;
 }
 
-/* ===== Floating machine controls (top-left) ===== */
-/* Pause, reboot and state controls share one round DEC-style button. On desktop
-   they sit to the right of the navigation sidebar; the pause action is first. */
+/* ===== Floating machine controls ===== */
+/* Pause and reboot share one round DEC-style button and sit in the TOP-LEFT
+   corner, to the right of the navigation sidebar, the pause action first: they
+   act on the live machine. STATE belongs to the other group — see
+   .console-state below. */
 .console-reboot {
     position: fixed;
     top: 12px;
@@ -2835,9 +2846,15 @@ html.yapdp-emulation-paused .console-pause {
     }
 }
 
-/* The STATE button sits to the right of REBOOT. */
+/* The STATE button is a session-level action (save / restore / share a whole
+   machine), not an operator action, so it lives in the TOP-RIGHT corner
+   immediately left of the quick-boot wand: both open a dialog, and the wand's
+   Scenario tab restores a saved state too. Both buttons keep the same
+   visibility on operator pages. */
 .console-state {
-    left: 190px;
+    left: auto;
+    right: 64px;
+    /* 14px inset + 42px wand + 8px gap */
 }
 
 /* Real-printer actions (Print / Save .txt) below the machine */
@@ -4446,7 +4463,9 @@ button.action-more-hidden {
 
     .console-state {
         top: 8px;
-        left: 104px;
+        left: auto;
+        right: 58px;
+        /* 8px inset + 42px wand + 8px gap */
     }
 
     .quick-boot-btn {

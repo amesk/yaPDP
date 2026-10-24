@@ -21,10 +21,13 @@ An incomplete image triggers this dialog with an [Open Storage](#storage) shortc
 ### A snapshot is refused after an image update
 
 A snapshot stores the machine's memory and registers, not the disk image itself:
-on restore it is layered back onto whatever disk the emulator currently ships.
-If that disk has been **updated** since the snapshot was taken, the two no longer
-match — the guest's file system in memory would not describe the disk underneath
-it, which shows up as a corrupted file system rather than as anything obvious.
+on restore it is layered back onto the disk the emulator currently ships — or
+onto the exact image the snapshot pinned by SHA-256, fetched from the media
+registry. A **self-contained** state carries its images inside the file, so an
+image update does not affect it at all. If the disk has been **updated** since
+the snapshot was taken, the two no longer match — the guest's file system in
+memory would not describe the disk underneath it, which shows up as a corrupted
+file system rather than as anything obvious.
 
 The emulator detects this and refuses the restore instead of corrupting the
 disk. It names the image and both builds, and offers to delete the snapshot:

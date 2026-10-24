@@ -44,9 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`docs/manual/config.md`, `docs/manual/ru/config.md`)
 - **New troubleshooting sections.** Added guidance for: guest OS does
   not boot, keyboard does not type, no sound, poor performance, blank
-  screen, and CORS errors in the browser version.
+  screen, and CORS errors in the browser version — in the manual and in
+  the landing page's user guide alike.
   (`docs/manual/troubleshooting.md`,
-  `docs/manual/ru/troubleshooting.md`)
+  `docs/manual/ru/troubleshooting.md`,
+  `landing/src/components/UserManual.tsx`)
 - **About yaPDP chapter in the user manual.** A new introductory chapter
   describing the project's goals, key features, and guidance for museums
   and educators, including embedding and interactive exhibit creation.
@@ -113,8 +115,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tools/build-manual-pdf.js`, `tools/manual-template-head.html`)
 
 - **Canonical state container and migration utility.** New states use a versioned blob catalog with SHA-256 integrity checks for RAM, disk overlays and embedded resources. `tools/convert-state-format.js` migrates existing `.state.zst` files to the canonical layout. The converter also verifies and migrates legacy FNV-1a image fingerprints in snapshots and disk overlays to SHA-256, refusing to rewrite states when the original compressed image bytes cannot be verified.
+- **The landing page's user guide covers the whole manual.** Its Quick Start,
+  Machine State and Controls chapters had fallen behind `docs/manual/`: the
+  Scenario tab, the iframe embedding recipes (including the Gist route around
+  CORS) and the keyboard-shortcut table were missing. All five topics are in
+  the guide now, in English and Russian, and a test holds its topic count to
+  the manual's so the two cannot drift apart again.
+  (`landing/src/components/UserManual.tsx`,
+  `tests/landing-manual-coverage.test.js`)
+- **Historical Fidelity chapter in the landing page's guide.** The guide now
+  carries "Historical Fidelity and Limitations" — what the emulator preserves,
+  where it is an approximation, how to use it as a teaching tool, and how to
+  report a fidelity issue — in English and Russian, between Troubleshooting and
+  the desktop chapter. About yaPDP and the Glossary stay out on purpose: the
+  first is what the landing itself says about the project, the second is a
+  reference list the manual page owns.
+  (`landing/src/components/UserManual.tsx`; pinned by
+  `tests/landing-manual-coverage.test.js`)
 ### Changed
 
+- **Running header and footer of the printed manual.** The header carries the
+  product name in the top-left corner and the document name in the top-right
+  one, the footer the edition in the bottom-left corner and the page number in
+  the bottom-right one; both labels are translated in the Russian edition.
+  (`tools/build-manual-pdf.js`)
+- **The Screenshot button is offered on the machine pages only.** Storage,
+  CONFIG and Info no longer show the round camera button in the bottom-left
+  corner: a picture of a settings or reference page is not what the operator
+  saves mid-session. (`src/pdp11-panel.js`, `css/pdp11.css`,
+  `docs/manual/controls.md`, `docs/manual/ru/controls.md`,
+  `tests/console-button-layout.test.js`)
+- **STATE button moved to the top-right corner, next to the magic wand.**
+  The round STATE button (machine-state dialog) is now docked immediately
+  left of the quick-boot wand instead of right of REBOOT. Both are
+  session-level actions that open a dialog, and the wand's Scenario tab
+  restores a saved state too. Pause and Reboot stay on the left as
+  live-machine controls. (`css/pdp11.css`, `pdp11.html`,
+  `src/pdp11-panel.js`, `docs/manual/machine-state.md`,
+  `docs/manual/ru/machine-state.md`, `docs/manual/controls.md`,
+  `docs/manual/ru/controls.md`, `docs/FEATURES.md`,
+  `tests/console-button-layout.test.js`)
 - **Quick Start chapter restyled.** Long paragraphs split into shorter
   ones for better readability. (`docs/manual/quick-start.md`,
   `docs/manual/ru/quick-start.md`)
@@ -210,8 +250,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The LP11 paper keeps the guest's page breaks.** A form feed now ends the sheet it was sent on — in the printed document and as the `\f` sentinel of **Save .txt** — instead of being glued onto the line as a literal `\f`, and a job prints no blank sheet for a form feed that arrives with nothing printed since the last one. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-print.test.js`)
+- **A fanfold sheet that fills up gets its perforation.** The seam was drawn only on a guest form feed, so a job that happened to fill all 66 lines ran into the next sheet with no separator; the paper now closes the sheet at the 66th line and the form feed that follows it costs no second seam. (`src/g60printer.js`; pinned by `tests/g60printer-seam.test.js`)
+- **The LP11 job copy keeps every glyph the guest printed.** A TAB now only moves the carriage and an overstrike can only add ink, so neither the tab padding nor a blank/underscore strike replaces text any more — `man sh | lpr` used to lose whole phrases in the job copy (and so in **Save .txt**) while the animated paper still showed them. (`src/lp11paper.js`; pinned by `tests/lp11-text.test.js`)
+- **The LP11 Print sheet looks like the paper it emulates.** The same green-bar paper tile the Printer page draws (one tile per four character rows, so the bar period is the artwork's) and a column of black feed holes down each edge, half an inch apart, with the 132 columns filling the space between them — the strips take width from the text column exactly as the real tractor feed does. The backing is a CSS background, so the print dialog needs **Background graphics** on; `paper: "plain"` drops it for a job that really goes onto fanfold, where the perforation is already there. (`src/lp11paper.js`)
+- **The LP11 Print output has the machine's proportions.** The type is sized from the printable box instead of a fixed 12px, so the configured column count (132 by default) spans the width of whatever paper the print dialog picks, a line longer than the platen is cut at its edge instead of wrapping, and 66 lines stay on one sheet. The sheet is printed landscape with the machine's own character cell — 6 LPI at 10 pitch — because a line-printer sheet (14⅞ × 11″) is wider than it is tall, so the 132 × 66 block keeps the proportion of the real printed area; the glyph is drawn inside that cell, as a dot matrix was, so the lines keep their air instead of touching. (`src/lp11paper.js`; pinned by `tests/lp11-print.test.js`)
+- **Double-struck LP11 text prints bold.** Overstrike survives into the printed job — the same glyph struck twice (nroff bold) prints bold and an underscore strike prints underlined, without disturbing the 132-column grid; **Save .txt** stays plain text. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-text.test.js`)
+- **The Printer page's LP11 sheet keeps the fanfold proportions.** The animated sheet drew each line 16px tall against a 7px glyph advance — a 1.37× vertical stretch that made one 132 × 66 sheet 1026 × 1061px, taller than wide, while real fanfold is 14⅞ × 11″. The line pitch is now the machine's own 6 LPI at 10 pitch (11⅔px), so the sheet is 1026 × 775px and the printed image keeps the paper's aspect. (`css/g60printer.css`, `src/g60printer.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-sheet-aspect.test.js`)
+- **The Print sheet's green bars match the Printer page.** The print dialog used to open before the paper tile had decoded, so Chrome painted the emergency gradient — a noticeably greener, whiter bar than the artwork on screen. The document now warms the tile and prints once it has loaded (with a timeout, so an offline URL cannot stall the dialog), the fallback gradient carries the tile's own colours, and the sheet's margins are painted with the same paper colour, so the white rows no longer read as grey beside the perforated strips. (`src/lp11paper.js`; pinned by `tests/lp11-print.test.js`)
+- **Printed rules are continuous on the Printer page.** A run of `_` and nroff's underline (`_\bC` per letter) used to break up: the underscore glyph is narrower than the 7px cell, and `text-decoration` inside that cell is drawn only ~5px wide, leaving a 2px gap — a man-page heading such as `Cal` looked dashed while the printed sheet (one `<u>` inside a single `<pre>`) stayed unbroken. Both are now one 2px rule at the bottom of the cell, overhanging it by a pixel on each side (a background is clipped to its own box, and a 1px rule falls below a device pixel when the cabinet is auto-scaled, which is why the line also looked dashed while the paper was still moving). (`css/g60printer.css`, `src/g60printer.js`; pinned by `tests/lp11-cabinet-css.test.js`)
 - **Classic landing-page lightbox shows a clean caption under the picture.** The enlarged screenshot now stacks the caption and the RUN/PLAY action in the normal flow, so a multi-line card caption no longer runs together as one word and no longer covers the screenshot, and the hover-only "Click to enlarge" hint stays out of it. (`index.html`, `css/pdp11.css`)
 - **Landing lightbox no longer clips its Run/Play button on short viewports.** The enlarged screenshot now takes only the space left by the top bar and the caption instead of a fixed share of the window height, so the launch action stays on screen at high display scaling (Windows 125%) and on short laptops. (`landing/src/components/Lightbox.tsx`; pinned by `tests/landing-lightbox-fit.test.js`)
+- **Glossary terms print in black in the PDF manual.** The gold the term
+  carries on screen stayed on paper, where it was the only coloured element in
+  an otherwise black-and-white layout; on paper the term now matches every
+  other heading. (`tools/manual-template-head.html`; pinned by
+  `tests/manual-pdf-colours.test.js`)
+- **Floating-button captions print in black in the PDF manual.** The cream
+  label under each button picture in the Controls table had the same defect as
+  the glossary terms, and its override also needed a more specific selector —
+  the screen rule sits below the print block, and a media query carries no
+  priority of its own. (`tools/manual-template-head.html`)
+- **Importing a snapshot from a file works again.** The Import button's file
+  picker called a helper that no longer exists, so choosing a `.state` file
+  (for example `states/rt-11-print-coguar.state.zst`) failed with a
+  `ReferenceError` and nothing was imported. The picker now runs the same
+  decode-then-import pipeline as the clipboard and URL import paths — text
+  envelopes included — and reports a bad file instead of throwing.
+  (`src/snapshots.js`)
+- **The landing carousels loop instead of jamming at the first and last
+  card.** The guest-OS, Instant Run and Games galleries stopped scrolling once
+  the arrows reached an end; they now carry on past it, in both directions and
+  for a swipe too, the way the classic gallery on the emulator page does.
+  (`landing/src/hooks/useWheelScroll.ts`, `landing/src/hooks/wheelMath.js`,
+  `landing/src/components/OSCarousel.tsx`,
+  `landing/src/components/InstantRun.tsx`,
+  `landing/src/components/GamesCarousel.tsx`; pinned by
+  `tests/carousel-loop.test.js`)
+- **The landing guide's table of contents no longer offers chapters it does not
+  have.** About yaPDP, Glossary and Historical Fidelity and Limitations were
+  listed beside the thirteen chapters the guide actually renders, so choosing one
+  of them scrolled nowhere — and searching for "glossary" produced the same dead
+  jump. The contents and the search now list exactly what the page renders,
+  numbered to match the §N labels of those sections, and a test holds the two
+  lists equal. (`landing/src/components/UserManual.tsx`;
+  pinned by `tests/landing-manual-coverage.test.js`)
+- **A restored state no longer types the previous state's commands into its guest.** Restoring a scenario with guided steps (RT-11 Adventure: "R ADVENTURE") and then a state without steps of its own (2.11 BSD on RP1) replayed those keystrokes on the new console; the share metadata a device-set reload keeps across the page boundary is now written as a whole and consumed once. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
 - **Exporting a snapshot or a compact share no longer fails on an unmounted image.** Bundling of mounted resources is best-effort for plain export: a resource whose bytes are not loaded stays an external reference (with a warning toast), while self-contained shares still require every byte. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
 - **URL state restores no longer inherit stale preview text or controls.** QuickBoot now takes the description, steps, button label and screenshot only from the state being loaded, instead of falling back to sessionStorage metadata left by an earlier local snapshot. (`src/quickboot.js`)
 - **Restoring a state without captured teletype paper clears the previous guest's output.** Prepared and older states may omit the optional paper snapshot; restore now resets the visible paper instead of leaving text from the previously loaded game on the machine. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
@@ -469,6 +553,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  buttons' bottom offset on every layout — desktop, narrow screen and above the
  mobile keys stack — so it occupies the gap between the left and right button
  groups instead of hovering over them. (`css/pdp11.css`)
+
+- **An LP11 sheet ejected before its 66th line still prints as a whole sheet.**
+ A form feed ends only the text: with the paper look enabled, the green-bar
+ underlay and the feed holes down both edges now run to the bottom edge of the
+ sheet instead of stopping dead at the last printed line, so a short job leaves
+ blank paper below its text rather than a half-sheet. (`src/lp11paper.js`;
+ pinned by `tests/lp11-print.test.js`)
+
+- **Print Preview lays the LP11 sheet out like the Printer page.** The tractor
+ strips keep their 33px share of the sheet, the green bars start before column 0
+ and end past the last column instead of beginning and ending with the text, and
+ a feed hole is a third of the strip wide — the proportion the paper artwork
+ itself uses — so the printed sheet and the on-screen paper agree at any
+ configured column count. (`src/lp11paper.js`; pinned by
+ `tests/lp11-print.test.js`)
 
 
 ## [0.3.0] - 2026-09-30

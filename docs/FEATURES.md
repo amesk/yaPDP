@@ -7,18 +7,21 @@ the UI pages.
 
 ## Feature overview
 
-| Feature | Description |
-|---------|-------------|
-| **Authentic Front Panel** | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s. |
-| **Model 33 ASR Teletype** | A fully animated teletype drawn as an authentic Model 33 ASR — see [below](#model-33-asr-teletype). |
+| Feature                         | Description                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Authentic Front Panel**       | Every switch, LED, and rotary knob faithfully recreated. Toggle in a bootstrap loader the way DEC engineers did in the 1970s.                                                                                                                                                                                                                                                            |
+| **Model 33 ASR Teletype**       | A fully animated teletype drawn as an authentic Model 33 ASR — see [below](#model-33-asr-teletype).                                                                                                                                                                                                                                                                                      |
 | **Authentic LP11 Line Printer** | A faithful recreation of the DEC line printer that stood beside real PDP‑11s — beige/grey cabinet, fanfold paper, ON LINE lamp and TOP OF FORM / PAPER FEED controls, printing at a near‑authentic ~300 lines/min. The accumulated job can be handed to your real printer via the system dialog (**Print**) or exported as a **.txt** file — hardcopy, just as it left the machine room. |
-| **VT52 Terminal** | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. See [below](#vt52-terminal). |
-| **VT100 Terminal** | The terminal the 1980s guests actually ran on: canvas tube with a P4 white or P1 green phosphor (the DECscope pins P4), the VT100 key click, reverse video only when the software asks for it with SGR 7, and the ANSI dialect built on the DECscope the hardware superseded. See [below](#vt100-terminal). |
-| **VT11 Display** | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page. |
-| **Bootable Media & Quick Boot** | Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander. |
-| **Persistent Disk Images** | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions. |
-| **Paper Tape Reader** | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape. |
-| **Startup gate** | A first-paint overlay holds the page until the artwork, the fonts and the media manifest are ready, so the machine no longer assembles itself on screen on a slow link. See [below](#startup-gate). |
+| **VT52 Terminal**               | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. See [below](#vt52-terminal).                                                                                                                               |
+| **VT100 Terminal**              | The terminal the 1980s guests actually ran on: canvas tube with a P4 white or P1 green phosphor (the DECscope pins P4), the VT100 key click, reverse video only when the software asks for it with SGR 7, and the ANSI dialect built on the DECscope the hardware superseded. See [below](#vt100-terminal).                                                                              |
+| **VT11 Display**                | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page.                                                                                                                                                                                                    |
+| **Bootable Media & Quick Boot** | Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander.                                                                                                       |
+| **Persistent Disk Images**      | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions.                                                                                                                                                                                                                                                                             |
+| **Paper Tape Reader**           | Load BASIC‑11, ODT‑11, ED‑11, or Lunar Lander from simulated paper tape.                                                                                                                                                                                                                                                                                                                 |
+| **Machine States & Sharing**    | Save, export, import and share the whole machine — memory, devices, screens, paper and disk overlays — as a `.state.zst`, a text envelope or a GitHub Gist link. A state can also be **self-contained**, carrying the disk images so it restores anywhere.                                                                                                                               |
+| **Instant Run & Games**         | Landing-page carousels that teleport into a guest that is already running (`?state=`), with the historical games — Lunar Lander on the VT11, Space Invaders, Dungeon, Adventure, Time52 — and an LP11 ASCII-art demo.                                                                                                                                                                    |
+| **Host-level Pause / Resume**   | One control that freezes the whole emulated machine — CPU, devices, terminals, sounds — without touching the PDP-11 HALT/WAIT state, and survives a reload.                                                                                                                                                                                                                              |
+| **Startup gate**                | A first-paint overlay holds the page until the artwork, the fonts and the media manifest are ready, so the machine no longer assembles itself on screen on a slow link. See [below](#startup-gate).                                                                                                                                                                                      |
 
 ## Model 33 ASR Teletype
 
@@ -230,6 +233,18 @@ as before. The Info page's guest-OS table is annotated the same way: rows
 whose image is not in the build are dimmed with an "image not in this build"
 note.
 
+The dialog has two lists. **Boot** is the guest-OS picker above: a boot
+command is typed into a fresh machine. **Scenario** lists the pre-built machine
+states from `states/`, generated into `states/manifest.json` by
+`tools/gen-state-manifest.js`, and restores one instantly through the same path
+as a `?state=` link — no boot, no waiting for the guest to come up. A state
+that carries a screenshot shows a thumbnail; clicking the thumbnail opens the
+full picture in the shared lightbox (`src/lightbox.js`) instead of starting the
+state, while the card's own click starts it. States without a screenshot are
+plain rows with their label and description. The manifest stores screenshot
+paths (`states/previews/*.png`), not inline base64, so opening the dialog stays
+inside the startup budget.
+
 Login steps are prompt-aware: instead of firing on a timer, the wizard watches
 the console output and types only when the guest prints `login:` (with a
 timeout fallback), so slow boots with lots of output (e.g. 2.11 BSD) still
@@ -303,6 +318,15 @@ and is persisted between sessions. The button's icon mirrors what is on screen:
 a display while the cabinet (the artwork) is shown, the whole terminal (screen
 over a keyboard) in zoom mode. It is disabled on pages with no video terminal.
 
+The **pause** control sits in the top-left corner, immediately left of REBOOT.
+It is a host-level freeze, not the PDP-11 HALT/WAIT state: the CPU timer, every
+device tick, the terminal blink, the sounds and the QuickBoot/snapshot step
+timers all stop, input is discarded rather than queued, and the icon switches
+from pause to play. Clicking again resumes everything with the remaining
+delays. The flag lives in `sessionStorage`, so a page reload comes back paused
+rather than running behind the operator's back; a toast confirms both
+directions ("Emulation paused" / "Emulation resumed").
+
 The **Config** page controls the console terminal type (a Model 33 ASR teletype,
 a DECscope VT52 or a DEC VT100), the two user terminals (TTY 1 / TTY 2, each of
 them `None | VT52 | VT100` — the number of terminals is read off them, and TT2
@@ -324,9 +348,11 @@ terminals, LP11 printer, VT11 display, print widths, teletype speed, the
 Upper Case Only keyboard flag and the Force PDP Output Uppercase teletype flag),
 **Look & sound** (the VT100 phosphor and key click, the DECscope reverse video,
 CRT effects, machine hum, photo
-backdrop), **Behaviour** (reboot confirmation) and **Development** (VT52 text
-mode) — with the **Apply** and **Restore defaults** actions in a bar below the
-tabs. Fields that belong to a terminal which is not installed are dimmed, so an
+backdrop), **Behaviour** (reboot confirmation, the Help Me! sticker, machine
+power, the three-way **Boot device** — None / Interactive loader / Last medium —
+and the first-run hint) and **Development** (VT52 text mode) — with the
+**Apply** and **Restore defaults** actions in a bar below the tabs. Fields that
+belong to a terminal which is not installed are dimmed, so an
 unavailable option never looks like an active one.
 Structural changes (console type, terminals, printer, VT11 display) are
 committed with the **Apply** button, which restarts the machine so the emulated
@@ -359,32 +385,48 @@ is active.
 The **REBOOT** button is a round button with a restart icon, pinned to the
 top-left corner of the window just right of the navigation sidebar (mirroring
 the sound-mute button in the bottom-left corner; a tooltip describes it).
-Pressing it restarts the machine; when a Boot device is configured (see CONFIG)
-it also boots. By default a confirmation dialog asks first, with a
-"Don't show this warning
-anymore" option. The warning can be restored at any time from the Config
-page's **Behaviour** tab.
+Pressing it restarts the machine; the confirmation dialog carries the same
+three-way **Boot device** choice as CONFIG — None, Interactive loader (`@`) or
+Last medium — so the reboot either waits, reaches the `@` prompt or boots the
+last-used device directly. By default the dialog asks first, with a
+"Don't show this warning anymore" option. The warning can be restored at any
+time from the Config page's **Behaviour** tab. A confirmed reboot announces
+itself with a "Rebooting…" toast; opening or cancelling the dialog does not.
 
-Next to REBOOT sits the round **STATE** button — the machine-state dialog. It
+In the top-right corner, immediately left of the magic wand, sits the round
+**STATE** button — the machine-state dialog. It is a session-level action, so
+it groups with quick boot rather than with the pause/reboot pair on the left. It
 saves and restores the whole emulated PDP-11, not just the CPU: registers,
 memory, every I/O device (console, terminals, printer, disks, tape and the
 paper-tape reader/punch), the paper in the teletype and LP11, the VT52 screen
-contents and the VT11 vector picture. **Save state** captures the machine as
-it is now under an auto-generated name; **Load** restores a state (re-applying
-its hardware configuration and restarting the machine, with a confirmation
-first); **Export / Import** moves a state through a `.state` file; **Share**
-turns one into a file to hand to somebody else, with the words they will read
-and a command that types itself once the machine is back; and
+contents and the VT11 vector picture. **Save state** captures the machine as it
+is now under an auto-generated name; **Load** restores a state and hands the
+machine back at once, while **Load as shared state** replays the guided restore
+for a state that carries a guide (steps, a button label or a screenshot);
+**Export / Import** move a state through a `.state` file, a text envelope or a
+URL; **Share** turns one into a file to hand to somebody else, with the words
+they will read and a command that types itself once the machine is back; and
 **Rename / Delete** organise the list. States live in the
 browser's IndexedDB, survive reloads and sessions, and states saved by older
-emulator versions keep working. A state can also be opened from a link
-(`pdp11.html?state=<url>`), which is how the Games tiles teleport into a
-running guest — the host serving the file must allow the read
-(`Access-Control-Allow-Origin`), and the receiver needs the same disk images,
-because a state carries their fingerprints rather than the images themselves;
-when either is missing the restore is refused and the visitor is told.
-Both buttons appear on the Panel, Console
-(teletype or VT52) and TTY pages.
+emulator versions keep working.
+
+A state carries the whole configuration profile it was saved with, except the
+two sound settings (`mute`, `hum`), which belong to the person at the
+keyboard: restoring re-applies console, terminals, printer, VT11, widths,
+teletype speed, zoom, glow, phosphor and backdrop. A reload happens only when
+the device set differs; the viewer's previous configuration is remembered and
+can be brought back later. Images are identified by SHA-256 of their
+decompressed bytes and may be pinned to a published version in the media
+registry, so a state is never silently applied on top of different disk bytes;
+a mismatch refuses the restore and explains itself, and a state written by a
+newer yaPDP warns before it is opened. **Export** bundles what it can and
+warns through a toast about an image whose bytes are not loaded, while the
+Share dialog's **Make state self-contained** option embeds the images too, so
+the file restores on a host that has none of them. A state can also be opened
+from a link (`pdp11.html?state=<url>`), which is how the Games tiles teleport
+into a running guest — the host serving the file must allow the read
+(`Access-Control-Allow-Origin`). Both buttons appear on the Panel, Console
+(teletype, VT52 or VT100) and TTY pages.
 
 The **Printer** page renders the LP11 output on an animated paper machine (no
 keyboard) and offers **Print** (send the accumulated jobs to the real OS printer
@@ -393,7 +435,10 @@ characters far faster than the Model 33 ASR console teletype (the console keeps 
 authentic ~33 cps pacing) and prints on a wide 132-column paper at close to the
 original's ~300 lines/min. The LP11 also honours the historical DONE handshake: writing LPDB clears DONE and re-asserts it as each character is actually consumed by the mechanism, so a guest print job is throttled at printer speed instead of being dumped into the buffer ahead of the paper. When the printer is OFF LINE (or powered off) the controller latches a sticky ERROR flag in LPCS while keeping DONE set, so a guest OS driver reports an error (e.g. `?LP0: I/O error`) instead of silently discarding the job. Both the teletype and the printer size their paper
 to the configured print width (centred in the machine body), so a full line
-always reaches the paper edge. Both also advance the carriage to the next
+always reaches the paper edge. The LP11 sheet keeps the machine's own
+proportions too: its 132 columns of 7px glyphs are set 6 LPI at 10 pitch
+(11⅔px lines), so one 66-line sheet is wider than it is tall, exactly like the
+14⅞ × 11″ fanfold it stands in for. Both also advance the carriage to the next
 8-column tab stop on TAB, matching real Model 33 ASR / LP11 behaviour. Like the
 VT52 console, the LP11 cabinet auto-scales down proportionally to fit the
 window when it gets too small (transform: scale, driven by a ResizeObserver),
@@ -412,8 +457,33 @@ FF between print jobs so each starts on a fresh page. The LP11 ejects to the
 top of the next fanfold page — it fills the rest of the sheet (66 lines at
 6 LPI for an 11″ page) and closes it with a dashed fold/perforation marker;
 the Model 33 ASR console teletype (which also supported FF via its FORM key) simply
-advances its smooth paper roll. The **Save .txt** export keeps a `\f` marker so
-the real page breaks survive in the file.
+advances its smooth paper roll. The **Save .txt** export keeps a real `\f`
+sentinel so the page breaks survive in the file.
+
+**Print** reproduces that paper. The job is paginated on the guest's form feeds
+and on the 66-line sheet length (an FF that arrives with nothing printed since
+the previous one costs no blank sheet), and the type is sized from the printable
+box rather than from a guessed sheet: the configured column count — 132 by
+default — spans the printable width of whatever paper the system dialog hands
+us, so a full line reaches the edge instead of wrapping. The sheet is turned
+landscape and the character cell is the machine's own — 6 LPI at 10 pitch —
+because a line-printer sheet is wider than it is tall (14⅞ × 11″): the 132 × 66
+block then keeps the 1.2 proportion of the real 13.2 × 11″ printed area and the
+leftover width stands in for the tractor strips. The glyph is drawn *inside*
+that cell, as a dot matrix always was, so 6 LPI type keeps air between the lines
+instead of touching: the pitch stays the machine's while the type is smaller
+than its cell. The sheet is drawn with the very artwork the Printer page uses —
+the green-bar paper tile at one tile per four character rows, and a column of
+black feed holes down each edge half an inch apart — with the 132 columns
+filling the space between the strips (they take width from the text column, as
+the real tractor feed does); those are CSS backgrounds, so the dialog needs
+**Background graphics** on, and `paper: "plain"` drops them for a job that
+really goes onto fanfold. Overstruck glyphs keep
+their styling too: double-struck text (nroff bold, `A` ⌫ `A`) prints bold and
+underscored text prints underlined, and the advance width is unchanged, so the
+column grid survives the bold. `Save .txt` stays plain text — a .txt has no
+styling — and the printed strip is clipped at the platen edge, exactly as the
+132-column mechanism would.
 
 ## Panel tricks
 

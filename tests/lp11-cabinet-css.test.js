@@ -104,6 +104,58 @@ function run() {
             "LP11 paper/print head must be above the hood (z-index:5):\n" + ziBlock);
     }
 
+    // --- Printed rules: nroff underline AND a literal "_" -------------------
+    // text-decoration inside a 7px cell is drawn ~5px wide, and the "_" glyph
+    // is narrower than the cell, so a run of either broke up. The rule must be
+    // a pseudo-element that OVERHANGS the cell (a background is clipped to its
+    // own box, so it cannot close the seam), 2px tall (a 1px rule disappears
+    // under a sub-pixel cabinet scale) and at the very bottom of the cell.
+    {
+        const undIdx = g60Css.indexOf(
+            "#lp11_printer td#lp11g60paper_printarea span.underline,");
+        assert.ok(undIdx !== -1, "no LP11 underline rule in g60printer.css");
+        const undBlock = g60Css.slice(undIdx, undIdx + 1600);
+        assert.ok(/text-decoration:\s*none\s*;/.test(undBlock),
+            "the per-glyph decoration must be switched off:\n" + undBlock);
+        assert.ok(/span\.rule\s*\{/.test(undBlock),
+            "the literal underscore must use the same rule");
+        assert.ok(/span\.underline::after,\s*\n?[\s\S]{0,120}span\.rule::after \{/
+            .test(undBlock) || /span\.rule::after \{/.test(undBlock),
+            "the rule must be a pseudo-element so it can overhang the cell:\n" + undBlock);
+        assert.ok(/left:\s*-1px\s*;/.test(undBlock) &&
+            /right:\s*-1px\s*;/.test(undBlock),
+            "the rule must overhang 1px on each side to close the seam:\n" + undBlock);
+        assert.ok(/height:\s*2px\s*;/.test(undBlock),
+            "a 1px rule disappears under a sub-pixel cabinet scale:\n" + undBlock);
+        assert.ok(/bottom:\s*0\s*;/.test(undBlock),
+            "the rule must sit at the bottom of the cell, below the glyphs:\n" + undBlock);
+    }
+
+    // A literal underscore is drawn as a rule, so its own narrow glyph must be
+    // hidden — otherwise the dashed glyph shows beside the drawn line.
+    {
+        // lastIndexOf picks the standalone span.rule rule (colour), not the
+        // combined selector of the shared rule above.
+        const ruleIdx = g60Css.lastIndexOf(
+            "#lp11_printer td#lp11g60paper_printarea span.rule {");
+        assert.ok(ruleIdx !== -1, "no span.rule rule in g60printer.css");
+        const ruleBlock = g60Css.slice(ruleIdx, ruleIdx + 300);
+        assert.ok(/color:\s*transparent\s*;/.test(ruleBlock),
+            "the underscore glyph must be hidden under the drawn rule:\n" + ruleBlock);
+        // The print area inherits a text-shadow, which is painted from its own
+        // colour even for a transparent glyph — the dashed "_" stayed visible.
+        assert.ok(/text-shadow:\s*none\s*;/.test(ruleBlock),
+            "the shadow of the hidden glyph must be switched off too:\n" + ruleBlock);
+    }
+
+    // The renderer tags a literal underscore cell so the LP11 sheet can draw it.
+    {
+        const js = fs.readFileSync(
+            path.join(__dirname, "..", "src", "g60printer.js"), "utf8");
+        assert.ok(/classList\.toggle\("rule", isRule\)/.test(js),
+            "G60Printer must tag a literal underscore cell");
+    }
+
     // --- Dark paper slot: a black rectangle the fanfold climbs out of --------
     // (lastIndexOf picks the ::before rule, not its mention in the comment)
     {

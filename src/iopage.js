@@ -1507,52 +1507,24 @@ iopage.register(0o17777510, 2, (function() {
     // paper so the "Print" / "Save .txt" buttons can output them for real.
     // Kept across controller resets (the paper stays, like real hardware).
     let lp11Buffer = [];       // completed lines
+    let lp11BufferRuns = [];   // style runs (bold/underline) per completed line
     let lp11CurrentLine = "";  // line being built
+    let lp11LineRuns = [];     // style runs of the line being built
     let lp11Col = 0;           // cursor column within the current line (CR/BS)
     let lp11Online = true;     // ON LINE operator state (false = OFF LINE)
     let tearAudio = null;      // lazily-loaded paper-tear sound (mp3)
     let feedAudio = null;      // lazily-loaded paper-feed (mechanical whirr) sound
 
-    // Pure plain-text accumulation for the LP11 job copy (Print / Save .txt).
-    // Operates on a state object { buffer, line, col } so the logic is free of
-    // the device closure and unit-testable in Node (tests/lp11-text.test.js).
-    //   BS (0o10) moves the cursor back one column; CR (0o15) returns it to
-    //   column 0; TAB (0o11) advances to the next 8-column stop; LF (0o12)
-    //   ends the line; FF (0o14) records a "\f" page-eject marker (2.11BSD lpd
-    //   sends FF between print jobs, keeping real page breaks in the export).
-    //   Overstruck nroff/man bold/underline collapses to a single clean glyph.
-    function lp11PutChar(state, ch) {
-        if (state.col < state.line.length) {
-            state.line = state.line.slice(0, state.col) + ch +
-                state.line.slice(state.col + 1);
-        } else {
-            state.line += ch;
-        }
-        state.col++;
+    // The paper copy — text state machine plus the printable document — lives
+    // in src/lp11paper.js, shared with the devices/lp11.js Device, so the two
+    // printer paths cannot drift apart again (they had: one wrote a real 0x0C
+    // page sentinel, the other glued a literal "\f" onto the line).
+    var Lp11PaperLib = (typeof Lp11Paper !== "undefined") ? Lp11Paper
+        : (typeof require === "function" ? require("./lp11paper.js") : null);
+    if (!Lp11PaperLib) {
+        throw new Error("src/lp11paper.js must be loaded before src/iopage.js");
     }
-
-    function lp11TextPut(state, ch) {
-        if (ch === 0o12) {                 // LF: end of line
-            state.buffer.push(state.line);
-            state.line = "";
-            state.col = 0;
-        } else if (ch === 0o10) {          // BS: back one column
-            if (state.col > 0) state.col--;
-        } else if (ch === 0o15) {          // CR: return to column 0
-            state.col = 0;
-        } else if (ch === 0o14) {          // FF: page-eject marker
-            state.buffer.push("\f");
-        } else if (ch === 0o11) {          // TAB → next 8-column stop
-            var tabCol = state.col % 8;
-            for (var t = 0; t < 8 - tabCol; t++) {
-                lp11PutChar(state, " ");
-            }
-        } else if (ch >= 0x20 && ch < 0x7F) { // printable
-            lp11PutChar(state, String.fromCharCode(ch));
-        }
-        // DEL (0o7F) and other controls are ignored.
-        return state;
-    }
+    var lp11TextPut = Lp11PaperLib.textPut;
 
     // --- initLP() ---
     // Initialize LP11 controller state.
@@ -1598,6 +1570,9 @@ iopage.register(0o17777510, 2, (function() {
             lp11Printer = new window.G60Printer("lp11_printer", {
                 idPrefix: "lp11g60",
                 maxCols: printerWidth,
+                // 10 pitch x 6 LPI on the page's 7px advance: the sheet keeps
+                // the real fanfold aspect instead of stretching 1.37x.
+                lineHeight: window.G60Printer.LP11_CELL_HEIGHT || 11.6667,
                 charPrintDelay: 3,
                 charSound: false,
                 charsPerTick: 3,
@@ -1632,36 +1607,21 @@ iopage.register(0o17777510, 2, (function() {
     // Real printer output — "Print" (system dialog) and "Save .txt"
     // ================================================================
 
-    // Join every completed line plus the in-progress line.
+    // Join every completed line plus the in-progress line (real page sentinels).
     function lp11GetText() {
-        return lp11Buffer.concat([lp11CurrentLine]).join("\n");
-    }
-
-    function escapeHtml(str) {
-        return str.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+        return Lp11PaperLib.joinText(lp11Buffer, lp11CurrentLine);
     }
 
     // Send the accumulated jobs to the real (OS) printer via a hidden iframe.
+    // Pagination, the 132-column fit and the bold/underline of overstruck
+    // glyphs all come from src/lp11paper.js (same document as the Device path).
     function lp11Print() {
-        var text = lp11GetText();
-        if (!text.trim()) return;
-        var iframe = document.createElement("iframe");
-        iframe.setAttribute("style",
-            "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;");
-        document.body.appendChild(iframe);
-        var doc = iframe.contentWindow.document;
-        doc.open();
-        doc.write(
-            "<!DOCTYPE html><html><head><title>LP11 output</title>" +
-            "<style>body{font-family:'Courier New',monospace;font-size:12px;white-space:pre;}pre{margin:0;}</style>" +
-            "</head><body><pre>" + escapeHtml(text) + "</pre></body></html>"
+        var live = (typeof Config !== "undefined") ? Config.get() : null;
+        var columns = (live && live.printerWidth) || Lp11PaperLib.DEFAULT_COLUMNS;
+        Lp11PaperLib.printDocument(
+            lp11Buffer, lp11CurrentLine, lp11BufferRuns,
+            { columns: columns, linesPerPage: Lp11PaperLib.DEFAULT_LINES_PER_PAGE }
         );
-        doc.close();
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(function () {
-            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-        }, 1000);
     }
 
     // Download the accumulated jobs as a plain-text file.
@@ -1765,7 +1725,9 @@ iopage.register(0o17777510, 2, (function() {
         }
         if (torn) playTearSound();
         lp11Buffer = [];
+        lp11BufferRuns = [];
         lp11CurrentLine = "";
+        lp11LineRuns = [];
         lp11Col = 0;
     }
 
@@ -1924,11 +1886,17 @@ iopage.register(0o17777510, 2, (function() {
                             // marker so the exported text keeps real page breaks).
                             // `buffer` is shared by reference; the primitive
                             // `line`/`col` come back via the returned state.
-                            var lp11TextState = lp11TextPut(
-                                { buffer: lp11Buffer, line: lp11CurrentLine, col: lp11Col },
-                                lpdb
-                            );
+                            var lp11TextState = lp11TextPut({
+                                buffer: lp11Buffer,
+                                bufferRuns: lp11BufferRuns,
+                                line: lp11CurrentLine,
+                                lineRuns: lp11LineRuns,
+                                col: lp11Col
+                            }, lpdb);
+                            lp11Buffer = lp11TextState.buffer;
+                            lp11BufferRuns = lp11TextState.bufferRuns;
                             lp11CurrentLine = lp11TextState.line;
+                            lp11LineRuns = lp11TextState.lineRuns;
                             lp11Col = lp11TextState.col;
                         } else {
                             // Not ready (OFF LINE / powered off): the byte is
@@ -1992,7 +1960,17 @@ iopage.register(0o17777510, 2, (function() {
                 lpdb: lpdb,
                 iMask: iMask,
                 lp11Buffer: lp11Buffer.slice(),
+                // Optional: states written before the print fix carry no runs,
+                // and restore() treats a missing stream as "plain text".
+                lp11BufferRuns: lp11BufferRuns.map(function (runs) {
+                    return (runs || []).map(function (r) {
+                        return { at: r.at, len: r.len, kind: r.kind };
+                    });
+                }),
                 lp11CurrentLine: lp11CurrentLine,
+                lp11LineRuns: lp11LineRuns.map(function (r) {
+                    return { at: r.at, len: r.len, kind: r.kind };
+                }),
                 lp11Col: lp11Col,
                 lp11Online: lp11Online,
                 paper: paper
@@ -2004,7 +1982,19 @@ iopage.register(0o17777510, 2, (function() {
             if (typeof state.lpdb === "number") lpdb = state.lpdb;
             if (typeof state.iMask === "number") iMask = state.iMask;
             if (Array.isArray(state.lp11Buffer)) lp11Buffer = state.lp11Buffer.slice();
+            // Old states have no style runs: keep an aligned, empty stream so
+            // indexes still match the buffer instead of shifting every line.
+            if (Array.isArray(state.lp11BufferRuns)) {
+                lp11BufferRuns = state.lp11BufferRuns.map(function (runs) {
+                    return Lp11PaperLib.normalizeRuns(Array.isArray(runs) ? runs : []);
+                });
+            } else if (Array.isArray(state.lp11Buffer)) {
+                lp11BufferRuns = state.lp11Buffer.map(function () { return []; });
+            }
             if (typeof state.lp11CurrentLine === "string") lp11CurrentLine = state.lp11CurrentLine;
+            if (Array.isArray(state.lp11LineRuns)) {
+                lp11LineRuns = Lp11PaperLib.normalizeRuns(state.lp11LineRuns);
+            }
             if (typeof state.lp11Col === "number") lp11Col = state.lp11Col;
             if (typeof state.lp11Online === "boolean") {
                 lp11Online = state.lp11Online;

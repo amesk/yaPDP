@@ -170,6 +170,21 @@ export const FEATURES_EN: FeatureItem[] = [
     description: 'Fifteen bootable disk and tape images — Unix V5, BSD 2.9 & 2.11, Ultrix-11, RSX-11M (3.2 & 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander.',
   },
   {
+    id: 'instant-run',
+    title: 'Instant Run & Games',
+    description: 'Carousels that teleport into a guest that is already running: historical games (Lunar Lander on the VT11, Space Invaders, Dungeon, Adventure, Time52) and an LP11 ASCII-art demo. Inside the emulator the magic wand adds a Scenario tab with the same pre-built states.',
+  },
+  {
+    id: 'machine-states',
+    title: 'Shareable Machine States',
+    description: 'Save, export, import and share the whole machine — memory, devices, screens, paper and disk overlays — as a .state.zst file, a text envelope or a GitHub Gist link. A self-contained state carries its disk images, so an exhibit restores anywhere.',
+  },
+  {
+    id: 'pause',
+    title: 'Host-level Pause',
+    description: 'One control freezes the entire machine — CPU, devices, terminals and sound — without touching the PDP-11 HALT/WAIT state, and survives a page reload.',
+  },
+  {
     id: 'storage',
     title: 'Persistent Storage',
     description: 'All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions.',
@@ -211,6 +226,21 @@ export const FEATURES_RU: FeatureItem[] = [
     id: 'bootable-media',
     title: 'Загрузочные носители',
     description: 'Пятнадцать загрузочных образов на дисках и лентах — Unix V5, BSD 2.9 и 2.11, Ultrix-11, RSX-11M (3.2 и 4.6), RSTS/E (от 4B-17 до 10.1), RT-11 и диагностика XXDP, — а также считыватель перфоленты для самосборного загрузчика и для программ вроде BASIC-11 и Lunar Lander.',
+  },
+  {
+    id: 'instant-run',
+    title: 'Мгновенный запуск и игры',
+    description: 'Карусели, которые переносят в уже работающую гостевую систему: исторические игры (Lunar Lander на дисплее VT11, Space Invaders, Dungeon, Adventure, Time52) и демонстрация ASCII-арта на принтере LP11. Внутри эмулятора у волшебной палочки есть вкладка Scenario с теми же готовыми состояниями.',
+  },
+  {
+    id: 'machine-states',
+    title: 'Обмен состояниями машины',
+    description: 'Сохранение, экспорт, импорт и передача целой машины — памяти, устройств, экранов, бумаги и дисковых оверлеев — файлом .state.zst, текстовым конвертом или ссылкой на GitHub Gist. Самодостаточное состояние несёт образы дисков, поэтому экспонат восстанавливается где угодно.',
+  },
+  {
+    id: 'pause',
+    title: 'Пауза всей машины',
+    description: 'Одно управление замораживает всю машину — процессор, устройства, терминалы и звук, — не меняя состояние HALT/WAIT PDP-11, и переживает перезагрузку страницы.',
   },
   {
     id: 'storage',
