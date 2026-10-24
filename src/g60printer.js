@@ -184,6 +184,11 @@
      *                            carriage keeps its column (Model 33 ASR); when
      *                            false LF snaps the head back to column 0 (LP11
      *                            line printer, no travelling carriage).
+     *   options.lineHeight     - on-screen line pitch in px (default 16). The
+     *                            console teletype keeps the Google60 16px line;
+     *                            the LP11 passes LP11_CELL_HEIGHT, because a
+     *                            line printer sets 6 LPI against its 10-pitch
+     *                            (7px) advance, i.e. 7 * 10/6 px per line.
      *   options.foldGlyph(ch)   - optional mapping applied to the PRINTED
      *                            glyph only, AFTER onChar() has recorded the
      *                            raw byte: a real Model 33 ASR print mechanism
@@ -193,7 +198,17 @@
      *                            "Force PDP Output Uppercase"). The LP11 line
      *                            printer omits it — it prints both cases.
      */
-    window.G60Printer = function(containerId, options) {
+   // The LP11's on-screen character cell. A line printer sets 10 pitch by
+   // 6 LPI, so one line is 10/6 glyph advances tall. The page's glyph advance
+   // is 7px (computePaperGeometry), which makes one line 7 * 10/6 = 11.6667px
+   // and one 132 x 66 sheet 13.2 x 11in worth of character grid — the real
+   // 1.2 print-area aspect. The Google60 16px line stretched that image 1.37x
+   // vertically, which is why the sheet used to come out taller than wide.
+   // MUST stay in step with --lp11-cell in css/g60printer.css; pinned by
+   // tests/lp11-sheet-aspect.test.js.
+   var LP11_CELL_HEIGHT = 11.6667;
+
+   window.G60Printer = function(containerId, options) {
         var container = document.getElementById(containerId);
         if (!container) throw new Error('Container ' + containerId + ' not found');
 
@@ -378,7 +393,11 @@
         var lfKeepsColumn = (opts.lfKeepsColumn === true);
         var headIdlePos = -3;
         var headOffset = 30;
-        var lineHeight = 16;
+        // Line pitch of the machine's own cell (see options.lineHeight): the
+        // console teletype keeps the Google60 16px line, the LP11 brings its
+        // 10-pitch x 6-LPI cell so the sheet keeps the fanfold proportions.
+        var lineHeight = (typeof opts.lineHeight === 'number' && opts.lineHeight > 0)
+            ? opts.lineHeight : 16;
         var charWidth = 7;
         // Maximum printable columns per line.  Authentic Model 33 ASR stops the
         // carriage at the right margin (72 columns; some setups use 80) and
@@ -705,6 +724,18 @@
                 span = document.createElement('span');
                 span.textContent = space ? '\u00A0' : c;
                 currentLineEl.appendChild(span);
+            }
+
+            // A literal underscore is a printed RULE: its font glyph is narrower
+            // than the 7px cell, so a run of them breaks up (and at a sub-pixel
+            // cabinet scale it breaks up badly). The LP11 sheet draws such a
+            // cell as one continuous rule (span.rule in g60printer.css); the
+            // class is inert on the console teletype, which keeps its glyph.
+            if (span) {
+                var isRule = (span.textContent === "_");
+                if (isRule !== span.classList.contains("rule")) {
+                    span.classList.toggle("rule", isRule);
+                }
             }
 
             // Animate print head: clamp to the right margin (last column)
@@ -1605,6 +1636,10 @@
             }
         };
     };
+
+    // The LP11 cell height, so a caller that builds the printer (devices/lp11.js,
+    // the legacy iopage.js closure) passes the same value the CSS uses.
+    window.G60Printer.LP11_CELL_HEIGHT = LP11_CELL_HEIGHT;
 
     // ================================================================
     // Console Adapter

@@ -27,8 +27,9 @@
  *
  * Rendering: Save .txt stays plain text (a .txt has no styling). Print builds
  * one <section> per sheet, a <pre> of <b>/<u> runs per sheet, and sizes the
- * font so that exactly `columns` characters span the printable width of
- * whatever paper the print dialog hands us (@page { size: auto }):
+ * font so that exactly `columns` characters span the printable width of the
+ * sheet the print dialog hands us, turned landscape like real fanfold
+ * (@page { size: landscape }):
  *   100cqw / var(--colw)  — width-fit, the requested "132 columns = paper";
  *   100vh  / (lines * lh) — height guard so one logical sheet stays one sheet.
  *
@@ -50,11 +51,29 @@
 
     var DEFAULT_COLUMNS = 132;        // LP11 platen, 10 pitch
     var DEFAULT_LINES_PER_PAGE = 66;  // 11in sheet at 6 LPI
-    var LINE_HEIGHT = 1.15;           // keep in step with the print stylesheet
+    // Real line-printer type is set solid: 10 pitch = 1/10in per glyph advance,
+    // 6 LPI = 1/6in per line, so a line is 1.667 advances tall. For a monospace
+    // face whose advance is 0.6em that is exactly 1.0em of line-height, and the
+    // 132 x 66 block becomes 79.2 x 66 em — the 1.2 aspect ratio of the real
+    // 13.2 x 11in printed area on 14 7/8 x 11in fanfold. Keep in step with the
+    // print stylesheet.
+    var LINE_HEIGHT = 1;
     var FONT_STACK = "'Courier New', 'Liberation Mono', 'DejaVu Sans Mono', monospace";
     // Advance width of one monospace glyph in em, used until the browser
     // measures the real face (see printDocument).
     var FALLBACK_ADVANCE = 0.6;
+    // A line printer draws its glyph INSIDE the character cell: the dot matrix
+    // covered roughly 75-80% of the 1/10 x 1/6in cell, which is why 6 LPI type
+    // has visible air between the lines. CSS couples the glyph size to the line
+    // box, so the two are decoupled here instead: the glyph is drawn at
+    // AIR x cell / ink-height — where ink-height is the measured ascent+descent
+    // of the resolved face — and letter-spacing widens the advance back to the
+    // cell, keeping the 132-column width exact. AIR is the share of the cell the
+    // ink may use; the rest is the air that keeps lines apart. Measured with
+    // canvas TextMetrics in printDocument(); the fallback is used when that
+    // measurement is unavailable.
+    var GLYPH_FALLBACK = 0.9;
+    var AIR = 0.9;
 
     // ------------------------------------------------------------------
     // Raw-stream recorder (debug aid, silent unless __lp11Record is on)
@@ -384,8 +403,9 @@
     /**
      * buildPrintDocument — the HTML handed to the hidden print iframe.
      *
-     * The paper is whatever the print dialog settles on (@page size: auto);
-     * the font is sized from the printable box instead of a guessed sheet, so
+     * The paper is whatever the print dialog settles on, turned landscape
+     * (@page size: landscape, like real fanfold); the font is sized from the
+     * printable box instead of a guessed sheet, so
      * `columns` characters span its width exactly and `linesPerPage` lines fit
      * its height. --colw is the width of one full line in em, refined by
      * printDocument() once the resolved face has been measured; --lpp is the
@@ -396,27 +416,104 @@
         var columns = opts.columns || DEFAULT_COLUMNS;
         var linesPerPage = opts.linesPerPage || DEFAULT_LINES_PER_PAGE;
         var title = opts.title || "LP11 output";
+        // Default: turn whatever paper the dialog offers. A caller may name the
+        // sheet explicitly — real 14 7/8 x 11in fanfold needs that, because the
+        // `landscape` keyword would rotate an already-landscape custom size.
+        var pageSize = opts.pageSize || "landscape";
         var fontStack = opts.fontStack || FONT_STACK;
+        // The paper LOOK: green-bar fanfold with perforated tractor strips.
+        // "plain" leaves a bare sheet — the right choice when the job really goes
+        // onto fanfold, where the perforation and the seam are already there.
+        var fanfold = (opts.paper || "fanfold") !== "plain";
+        // The strips are not printable area: they take width from the text
+        // column exactly as the tractor holes do. The share comes from the
+        // on-screen paper (css/g60printer.css): a 33px strip beside a 960px
+        // print area is 3.4% of the sheet, split between the two edges.
+        var strip = fanfold ? "1.7%" : "0";
+        // The on-screen paper is the artwork, not a gradient: paper.png is a
+        // 96x64 tile over a 960px-wide column of 16px lines, i.e. one tile per
+        // four character cells. Sizing it the same way here keeps the bar period
+        // and colour identical to the Printer page.
+        var paperUrl = opts.paperUrl || "assets/images/paper.png";
         var pages = paginate(asEntries(entries), opts);
 
+        // .col is the text column: it carries the container query (so 100cqw is
+        // the printable width between the strips), the green bars and the
+        // perforated strips as pseudo-elements.
         var body = pages.map(function (page) {
             var lines = page.map(function (line) { return lineHtml(line); }).join("\n");
-            return '<section class="page"><pre>' + lines + "</pre></section>";
+            return '<section class="page"><div class="col"><pre>' + lines +
+                "</pre></div></section>";
         }).join("");
 
         return "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
             "<title>" + escapeHtml(title) + "</title><style>" +
-            ":root { --colw: " + (columns * FALLBACK_ADVANCE).toFixed(4) +
-            "; --lpp: " + linesPerPage + "; --lh: " + LINE_HEIGHT + "; }" +
-            "@page { size: auto; margin: 12mm 10mm; }" +
+            ":root { --adv: " + FALLBACK_ADVANCE +
+            "; --colw: " + (columns * FALLBACK_ADVANCE).toFixed(4) +
+            "; --lpp: " + linesPerPage + "; --glyph: " + GLYPH_FALLBACK +
+            "; --cell: min(calc(100cqw / var(--colw)), calc(100vh / var(--lpp))); }" +
+            // A line-printer sheet is WIDER than it is tall (14 7/8 x 11in), so
+            // landscape is the faithful orientation: the tractor strips fall on
+            // the long edges and 132 columns keep their share of the width,
+            // exactly as on the paper. The bare `landscape` keyword keeps the
+            // paper the operator picks in the dialog and only turns it; an
+            // explicit size ("14.875in 11in") can be passed for real fanfold.
+            "@page { size: " + pageSize + "; margin: 10mm; }" +
             "html, body { margin: 0; padding: 0; background: #fff; color: #000; }" +
             "body { font-family: " + fontStack + "; }" +
-            ".sheet { container-type: inline-size; }" +
-            ".page { break-after: page; page-break-after: always; break-inside: avoid; }" +
+            ".page { position: relative; break-after: page; page-break-after: always;" +
+            " break-inside: avoid; padding: 0 " + strip + "; }" +
             ".page:last-child { break-after: auto; page-break-after: auto; }" +
+            ".col { position: relative; container-type: inline-size; }" +
+            (fanfold
+                // The strips are painted on the page box, not on <pre>, so they
+                // must be the SAME paper as the text column — otherwise the white
+                // rows read as grey beside a #fff margin. The tile itself cannot
+                // move here (its 100cqw sizing resolves inside .col), so the page
+                // gets the paper's own colour, which is exactly what the strips
+                // show between the holes on screen (paper-margin.png is the same
+                // stock): measured 241,239,238.
+                ? ".page { background-color: #f1efee; }" +
+                  // The same paper.png tile the Printer page uses, scaled so one
+                  // tile is four character cells (64px / 16px on screen): the bar
+                  // period and the colour are then the artwork's, not an imitation.
+                  // It sits on the <pre>, the element whose container (cqw) and
+                  // font are resolved.
+                // Two layers: the artwork on top, and a bar gradient underneath
+                // as a fallback — if the tile cannot be loaded (the print
+                // document lives in an about:blank iframe, where a relative URL
+                // may not resolve) the bars must not vanish. The fallback carries
+                // the TILE'S OWN colours — measured from paper.png as
+                // 228,232,229 on 242,240,239 — so the printed sheet looks the
+                // same colour whichever layer gets painted. The old #dfe8d2 /
+                // #ffffff pair was visibly greener and whiter than the artwork,
+                // which is why the print dialog and the Printer page disagreed.
+                  "pre { background-image: url('" + paperUrl + "')," +
+                  " repeating-linear-gradient(to bottom, #e4e8e5 0 calc(var(--cell))," +
+                  " #f2f0ef calc(var(--cell)) calc(var(--cell) * 2));" +
+                  " background-size: 100% calc(var(--cell) * 4), 100% calc(var(--cell) * 2);" +
+                  " background-repeat: repeat, repeat; background-position: 0 0, 0 0; }" +
+                  // Tractor strips: feed holes every half inch, as on the paper,
+                  // a third of the strip wide. They sit INSIDE the page box (the
+                  // .page padding), because anything painted in the @page margin
+                  // is clipped away by the printer.
+                  ".page::before, .page::after { content: \"\"; position: absolute;" +
+                  " top: 0; bottom: 0; width: " + strip + ";" +
+                  " background-image: radial-gradient(circle closest-side at 50% 50%," +
+                  " #141414 0 62%, transparent 72%);" +
+                  " background-size: 100% 12.7mm; background-repeat: repeat-y;" +
+                  " background-position: 50% 0; }" +
+                  ".page::before { left: 0; }" +
+                  ".page::after { right: 0; }"
+                : "") +
+            // --cell is the machine's character cell (the line pitch, one cell
+            // tall); the glyph is drawn smaller inside it and letter-spacing
+            // widens the advance back to the cell width, so the column count and
+            // the line pitch stay the machine's while the type keeps its air.
             "pre { margin: 0; font-family: inherit; white-space: pre; overflow: hidden;" +
-            " line-height: var(--lh);" +
-            " font-size: min(calc(100cqw / var(--colw)), calc(100vh / (var(--lpp) * var(--lh)))); }" +
+            " font-size: calc(var(--cell) * var(--glyph));" +
+            " line-height: calc(1 / var(--glyph));" +
+            " letter-spacing: calc(var(--cell) * var(--adv) * (1 - var(--glyph))); }" +
             "b { font-weight: 700; }" +
             "u { text-decoration: underline; }" +
             "@supports not (container-type: inline-size) { pre { font-size: 5.5pt; } }" +
@@ -441,6 +538,23 @@
         return px > 0 ? px / 100 : columns * FALLBACK_ADVANCE;
     }
 
+    /**
+     * measureInkEm — height of the visible ink (ascenders + descenders) of the
+     * resolved face, in em, measured on real glyphs rather than on the font's
+     * line box: the box says nothing about how much of the cell the letters
+     * actually cover, and sizing by the box is what made the type look stunted.
+     */
+    function measureInkEm(doc, fontStack) {
+        var canvas = doc.createElement("canvas");
+        var ctx = canvas.getContext ? canvas.getContext("2d") : null;
+        if (!ctx) return 0;
+        ctx.font = "100px " + fontStack;
+        var m = ctx.measureText("Mgjpq_|");
+        var up = m.actualBoundingBoxAscent || 0;
+        var down = m.actualBoundingBoxDescent || 0;
+        return (up + down) > 0 ? (up + down) / 100 : 0;
+    }
+
     /** ready — Node has no document; callers skip printing there. */
     function canPrint() {
         return typeof document !== "undefined" && typeof window !== "undefined";
@@ -454,6 +568,14 @@
         var entries = normalizeEntries(buffer, currentLine, bufferRuns);
         var opts = options || {};
         var columns = opts.columns || DEFAULT_COLUMNS;
+        // The print document is written into an about:blank iframe, where a
+        // relative url() may resolve against nothing: pin the artwork to an
+        // absolute URL now, while the real document is still in scope.
+        if (!opts.paperUrl && typeof document !== "undefined" && document.baseURI) {
+            opts = Object.assign({}, opts, {
+                paperUrl: new URL("assets/images/paper.png", document.baseURI).href,
+            });
+        }
         if (!canPrint()) return false;
         if (!entries.some(function (e) { return e.text && e.text.trim(); })) {
             return false; // nothing but blank paper
@@ -474,13 +596,44 @@
             var bold = measureLineEm(doc, columns, fontStack, "700");
             doc.documentElement.style.setProperty(
                 "--colw", Math.max(roman, bold).toFixed(4));
+            // Draw the glyph inside the machine's cell with AIR to spare, sized
+            // by the face's measured ink rather than by its line box (see AIR):
+            // the ink fills AIR of the cell, the rest keeps the lines apart.
+            var ink = measureInkEm(doc, fontStack);
+            var glyph = ink > 0 ? Math.min(1, Math.max(0.6, AIR / ink)) : GLYPH_FALLBACK;
+            doc.documentElement.style.setProperty("--glyph", glyph.toFixed(4));
         } catch (e) { /* keep the CSS fallback: printing still works */ }
 
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(function () {
-            if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-        }, 1000);
+        // The paper tile is a CSS background, and the system dialog can open
+        // before it decodes — Chrome then paints the fallback bars instead of the
+        // artwork. Warm the tile in the print document itself and print only
+        // once it has loaded; onerror is the same path (a missing tile must not
+        // hold the dialog hostage) and the timeout is the last resort for a URL
+        // that never settles.
+        var printed = false;
+        function doPrint() {
+            if (printed) return;
+            printed = true;
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            setTimeout(function () {
+                if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+            }, 1000);
+        }
+        var wantsTile = (opts.paper || "fanfold") !== "plain" && !!opts.paperUrl;
+        if (!wantsTile) {
+            doPrint();
+        } else {
+            var warmed = doc.createElement("img");
+            // Out of the layout and out of the printed page, but still fetched.
+            warmed.setAttribute("style",
+                "position:absolute;left:-9999px;top:0;width:0;height:0;");
+            warmed.onload = doPrint;
+            warmed.onerror = doPrint;
+            warmed.src = opts.paperUrl;
+            doc.body.appendChild(warmed);
+            setTimeout(doPrint, 1500);
+        }
         return true;
     }
 
@@ -492,6 +645,8 @@
         DEFAULT_COLUMNS: DEFAULT_COLUMNS,
         DEFAULT_LINES_PER_PAGE: DEFAULT_LINES_PER_PAGE,
         LINE_HEIGHT: LINE_HEIGHT,
+        GLYPH_FALLBACK: GLYPH_FALLBACK,
+        AIR: AIR,
         FONT_STACK: FONT_STACK,
         putChar: putChar,
         textPut: textPut,

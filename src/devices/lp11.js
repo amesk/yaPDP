@@ -114,6 +114,9 @@
             this.lp11Printer = new window.G60Printer("lp11_printer", {
                 idPrefix: "lp11g60",
                 maxCols: this.printerWidth,
+                // 10 pitch x 6 LPI on the page's 7px advance: the sheet keeps
+                // the real fanfold aspect instead of stretching 1.37x.
+                lineHeight: window.G60Printer.LP11_CELL_HEIGHT || 11.6667,
                 charPrintDelay: 3,
                 charSound: false,
                 charsPerTick: 3,

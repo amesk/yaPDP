@@ -630,6 +630,14 @@
     overflow: hidden;
     border: 1px solid #444;
     margin: 8px 0;
+    /* The machine's own character cell: 10 pitch is the 7px glyph advance the
+       paper geometry already uses, and 6 LPI makes one line 7 * 10/6 =
+       11.6667px tall. The Google60 16px line stretched every line 1.37x
+       vertically, so one 132 x 66 sheet (1026 x 1061px) came out TALLER than
+       wide while real fanfold is 14 7/8 x 11in. MUST stay in step with
+       LP11_CELL_HEIGHT in src/g60printer.js (pinned by
+       tests/lp11-sheet-aspect.test.js). */
+    --lp11-cell: 11.6667px;
 }
 
 #lp11_printer div#lp11g60printer {
@@ -800,17 +808,25 @@
 #lp11_printer td#lp11g60paper_printarea {
     width: 960px;
     color: #36363c;
-    font-size: 13px;
+    /* A glyph is drawn inside the 7 x 11.6667px cell, so its type size follows
+       the cell height, not the old Google60 13px/16px pair. Measured ink of the
+       resolved face is ~1.09em, so 10px stays inside the cell (~10.9px) with
+       the same air 6 LPI type has on real paper. */
+    font-size: 10px;
     text-align: left;
     font-family: lp1_regular, "Trebuchet MS", sans-serif;
     font-style: normal;
     font-weight: 400;
-    line-height: 16px;
+    line-height: var(--lp11-cell);
     background-color: white;
     padding: 57px 18px 1px 18px;
     white-space: nowrap;
     background-image: url('../assets/images/paper.png');
     background-repeat: repeat;
+    /* The tile is 96 x 64px and used to cover exactly four 16px lines; keep
+       one tile per four character cells so the green-bar period still matches
+       the paper artwork. */
+    background-size: 96px calc(var(--lp11-cell) * 4);
     -webkit-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
     -moz-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
     -o-text-shadow: 0 0 1px rgba(115, 115, 121, 0.6), 0 0 2px rgba(115, 115, 121, 0.3);
@@ -824,8 +840,8 @@
     white-space: pre;
     width: 7px;
     max-width: 7px;
-    height: 16px;
-    max-height: 16px;
+    height: var(--lp11-cell);
+    max-height: var(--lp11-cell);
     text-align: center;
 }
 
@@ -841,8 +857,47 @@
     font-weight: bold;
 }
 
-#lp11_printer td#lp11g60paper_printarea span.underline {
-    text-decoration: underline;
+/* Printed rules: both a literal "_" and nroff's underline (a letter overstruck
+   by "_", i.e. `_\bC`) are ONE continuous line on the paper.
+   - text-decoration is drawn per GLYPH (about 5px inside the 7px cell), so
+     neighbouring columns left a 2px gap and a heading such as `Cal` read as a
+     dashed line;
+   - the "_" glyph itself is narrower than the cell, so a run of them also
+     broke up;
+   - a background or a 1px rule is clipped to the cell and, at the cabinet's
+     auto-scale (--lp11-scale < 1), falls below one device pixel — which is why
+     the line looked dashed while the paper was still moving and solid after the
+     next repaint.
+   The rule is therefore a 2px pseudo-element that overhangs the cell by a pixel
+   on each side (closing the seam whatever the scale rounds to) and sits at the
+   very bottom of the cell, below the glyphs. */
+#lp11_printer td#lp11g60paper_printarea span.underline,
+#lp11_printer td#lp11g60paper_printarea span.rule {
+    text-decoration: none;
+    position: relative;
+}
+
+/* The literal underscore's own glyph would sit beside the drawn rule. The
+   character has to be hidden with BOTH colour and text-shadow: the print area
+   inherits a 1-2px text-shadow, and a shadow is painted from its own colour
+   even when the glyph itself is transparent — that was the dashed "_" still
+   showing above the drawn line. */
+#lp11_printer td#lp11g60paper_printarea span.rule {
+    color: transparent;
+    -webkit-text-shadow: none;
+    text-shadow: none;
+}
+
+#lp11_printer td#lp11g60paper_printarea span.underline::after,
+#lp11_printer td#lp11g60paper_printarea span.rule::after {
+    content: "";
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    bottom: 0;
+    height: 2px;
+    background: #36363c;
+    pointer-events: none;
 }
 
 #lp11_printer td#lp11g60paper_printarea span.drop {
@@ -859,17 +914,23 @@
 }
 
 #lp11_printer td#lp11g60paper_printarea span.nonAscii {
-    font-size: 12px !important;
-    line-height: 18px !important;
+    font-size: 9px !important;
+    line-height: var(--lp11-cell) !important;
 }
 
 #lp11_printer td#lp11g60paper_printarea p {
     margin: 0;
     padding: 0;
-    max-height: 16px;
+    max-height: var(--lp11-cell);
     vertical-align: top;
     white-space: nowrap;
     overflow: visible;
+}
+
+/* The fold seam is one printed row of the machine's cell, like every other
+   line on the sheet (the shared rule above is sized for the 16px teletype). */
+#lp11_printer td#lp11g60paper_printarea p.pageBreak {
+    max-height: var(--lp11-cell);
 }
 
 #lp11_printer div#lp11g60printer_topoverlay,
