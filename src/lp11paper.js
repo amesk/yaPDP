@@ -401,6 +401,16 @@
     }
 
     /**
+     * pct — a share of a box width as a CSS percentage. The geometry it carries
+     * is measured in character advances (see buildPrintDocument), so four
+     * decimals keep the strips, the bar field and the text column on the same
+     * grid as the Printer page at any column count.
+     */
+    function pct(share) {
+        return (share * 100).toFixed(4) + "%";
+    }
+
+    /**
      * buildPrintDocument — the HTML handed to the hidden print iframe.
      *
      * The paper is whatever the print dialog settles on, turned landscape
@@ -425,11 +435,26 @@
         // "plain" leaves a bare sheet — the right choice when the job really goes
         // onto fanfold, where the perforation and the seam are already there.
         var fanfold = (opts.paper || "fanfold") !== "plain";
-        // The strips are not printable area: they take width from the text
-        // column exactly as the tractor holes do. The share comes from the
-        // on-screen paper (css/g60printer.css): a 33px strip beside a 960px
-        // print area is 3.4% of the sheet, split between the two edges.
-        var strip = fanfold ? "1.7%" : "0";
+        // The sheet keeps the on-screen proportions (css/g60printer.css,
+        // computePaperGeometry in src/g60printer.js), measured in character
+        // advances: a 7px cell, an 18px print-area padding each side and a
+        // 33px tractor strip each side. So the print-area cell — the field the
+        // green bars cover — is `columns + 2*18/7` advances wide, the sheet is
+        // that plus `2*33/7` of tractor strip, and the text fills the cell
+        // minus its padding: 96.25% of it, never the whole field.
+        var padAdv = 18 / 7;
+        var stripAdv = 33 / 7;
+        var cellAdv = columns + 2 * padAdv;
+        var sheetAdv = cellAdv + 2 * stripAdv;
+        var strip = fanfold ? pct(stripAdv / sheetAdv) : "0";
+        // The bars belong to the CELL, not to the glyphs: on the Printer page
+        // they start 18px before column 0 and end 18px past the last column.
+        // The block that carries them is therefore the cell itself — a block
+        // whose auto width is the field, with the cell padding inside it — and
+        // the glyphs are fitted to that block's inner width (--fit), so the
+        // text keeps a blank of one cell padding at either end of the bars.
+        var cellPad = fanfold ? pct(padAdv / cellAdv) : "0";
+        var fit = (columns / cellAdv * 100).toFixed(4) + "cqw";
         // The on-screen paper is the artwork, not a gradient: paper.png is a
         // 96x64 tile over a 960px-wide column of 16px lines, i.e. one tile per
         // four character cells. Sizing it the same way here keeps the bar period
@@ -437,9 +462,10 @@
         var paperUrl = opts.paperUrl || "assets/images/paper.png";
         var pages = paginate(asEntries(entries), opts);
 
-        // .col is the text column: it carries the container query (so 100cqw is
-        // the printable width between the strips), the green bars and the
-        // perforated strips as pseudo-elements.
+        // .col is the bar field: it carries the container query, so 100cqw is
+        // the print-area cell — the space left inside the page's padding, which
+        // holds the tractor strips. The glyphs are fitted to --fit of it, the
+        // cell's inner width.
         var body = pages.map(function (page) {
             var lines = page.map(function (line) { return lineHtml(line); }).join("\n");
             return '<section class="page"><div class="col"><pre>' + lines +
@@ -450,8 +476,9 @@
             "<title>" + escapeHtml(title) + "</title><style>" +
             ":root { --adv: " + FALLBACK_ADVANCE +
             "; --colw: " + (columns * FALLBACK_ADVANCE).toFixed(4) +
+            "; --fit: " + fit +
             "; --lpp: " + linesPerPage + "; --glyph: " + GLYPH_FALLBACK +
-            "; --cell: min(calc(100cqw / var(--colw)), calc(100vh / var(--lpp))); }" +
+            "; --cell: min(calc(var(--fit) / var(--colw)), calc(100vh / var(--lpp))); }" +
             // A line-printer sheet is WIDER than it is tall (14 7/8 x 11in), so
             // landscape is the faithful orientation: the tractor strips fall on
             // the long edges and 132 columns keep their share of the width,
@@ -493,14 +520,17 @@
                   " #f2f0ef calc(var(--cell)) calc(var(--cell) * 2));" +
                   " background-size: 100% calc(var(--cell) * 4), 100% calc(var(--cell) * 2);" +
                   " background-repeat: repeat, repeat; background-position: 0 0, 0 0; }" +
-                  // Tractor strips: feed holes every half inch, as on the paper,
-                  // a third of the strip wide. They sit INSIDE the page box (the
-                  // .page padding), because anything painted in the @page margin
-                  // is clipped away by the printer.
+                  // Tractor strips: one feed hole every half inch, as on the
+                  // paper, and A THIRD OF THE STRIP WIDE — the share the
+                  // artwork itself uses (paper-margin.png: an 11px hole in the
+                  // 33px strip), so the printed holes are not fatter than the
+                  // Printer page's. They fill the .page padding and are painted
+                  // inside the page box, because anything painted in the @page
+                  // margin is clipped away by the printer.
                   ".page::before, .page::after { content: \"\"; position: absolute;" +
                   " top: 0; bottom: 0; width: " + strip + ";" +
                   " background-image: radial-gradient(circle closest-side at 50% 50%," +
-                  " #141414 0 62%, transparent 72%);" +
+                  " #141414 0 33%, transparent 44%);" +
                   " background-size: 100% 12.7mm; background-repeat: repeat-y;" +
                   " background-position: 50% 0; }" +
                   ".page::before { left: 0; }" +
@@ -510,7 +540,17 @@
             // tall); the glyph is drawn smaller inside it and letter-spacing
             // widens the advance back to the cell width, so the column count and
             // the line pitch stay the machine's while the type keeps its air.
-            "pre { margin: 0; font-family: inherit; white-space: pre; overflow: hidden;" +
+            //
+            // min-height keeps the SHEET, not the text, at full height: an FF
+            // that arrives before the 66th line ends the text there, but the
+            // paper is still fed through the platen, so the green bars (painted
+            // on <pre>) and the tractor strips (painted on the page box, which
+            // wraps this block) must run to the bottom edge of the sheet. The
+            // value is the same height guard the cell is clamped by, so a
+            // sheet that really is full is laid out exactly as before.
+            "pre { margin: 0; padding: 0 " + cellPad + ";" +
+            " font-family: inherit; white-space: pre; overflow: hidden;" +
+            " min-height: calc(var(--cell) * var(--lpp));" +
             " font-size: calc(var(--cell) * var(--glyph));" +
             " line-height: calc(1 / var(--glyph));" +
             " letter-spacing: calc(var(--cell) * var(--adv) * (1 - var(--glyph))); }" +

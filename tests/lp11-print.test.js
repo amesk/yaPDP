@@ -152,7 +152,7 @@ function run() {
         // keeps the real printed area's 79.2 x 66 em (1.2) proportion.
         assert.strictEqual(paper.LINE_HEIGHT, 1,
             "6 LPI at 10 pitch: one cell of line pitch, nothing compact");
-        assert.ok(/--cell: min\(calc\(100cqw \/ var\(--colw\)\), calc\(100vh \/ var\(--lpp\)\)\)/.test(html),
+        assert.ok(/--cell: min\(calc\(var\(--fit\) \/ var\(--colw\)\), calc\(100vh \/ var\(--lpp\)\)\)/.test(html),
             "the machine's character cell is the smaller of the width and height fits");
         assert.ok(Math.abs((COLUMNS * 0.6) / LINES - 1.2) < 1e-9,
             "132 columns x 66 lines keep the 1.2 proportion of the real print area");
@@ -161,12 +161,42 @@ function run() {
         assert.ok(/\.page:last-child \{ break-after: auto;/.test(html),
             "the last sheet does not add a trailing blank page");
         // Paper look: the SAME artwork the Printer page uses (so bar period and
-        // colour cannot drift from it) plus perforated tractor strips that take
-        // width from the text column exactly as the real holes do.
-        assert.ok(/\.page \{[^}]*padding: 0 1\.7%;/.test(html),
-            "the tractor strips take 1.7% of the sheet on each side, as on screen");
+        // colour cannot drift from it) plus perforated tractor strips.
+        //
+        // The shares are the Printer page's own geometry, in px from
+        // computePaperGeometry (tests/paper-geometry.test.js): a 1026px sheet is
+        // a 960px print-area cell — 924px of text plus 18px of cell padding each
+        // side — between two 33px tractor strips. The .page padding holds the
+        // strips, the block that paints the bars IS that 960px cell, and the
+        // glyphs are fitted to its inner width, so the bars start BEFORE column 0
+        // and end AFTER the last column, exactly as on the Printer page.
+        const SHEET_PX = COLUMNS * 7 + 2 * 18 + 2 * 33;
+        const CELL_PX = COLUMNS * 7 + 2 * 18;
+        assert.strictEqual(SHEET_PX, 1026, "the on-screen LP11 sheet is 1026px wide");
+        assert.strictEqual(CELL_PX, 960, "the print-area cell is 960px of it");
+        const stripPct = (33 / SHEET_PX * 100).toFixed(4) + "%";
+        const cellPadPct = (18 / CELL_PX * 100).toFixed(4) + "%";
+        const fitPct = (COLUMNS * 7 / CELL_PX * 100).toFixed(4) + "cqw";
+        assert.strictEqual(stripPct, "3.2164%", "tractor strip share of the sheet");
+        assert.strictEqual(cellPadPct, "1.8750%", "cell padding share of the cell");
+        assert.strictEqual(fitPct, "96.2500cqw", "text fit inside the cell");
+        assert.ok(html.indexOf("break-inside: avoid; padding: 0 " + stripPct + ";") !== -1,
+            "the page keeps a tractor strip of that width on each side");
+        assert.ok(html.indexOf("bottom: 0; width: " + stripPct + ";") !== -1,
+            "the drawn holes are as wide as the Printer page's 33px strips");
+        assert.ok(html.indexOf("pre { margin: 0; padding: 0 " + cellPadPct + ";") !== -1,
+            "the bars cover the whole cell, the text sits inside its padding");
+        assert.ok(html.indexOf("--fit: " + fitPct + ";") !== -1,
+            "the glyphs are fitted to the cell's inner width, not to the whole bar field");
+        // Bars 960/1026 of the sheet, text 924/1026 — the Printer page's shares.
+        const barsShare = 100 - 2 * parseFloat(stripPct);
+        assert.ok(Math.abs(barsShare - CELL_PX / SHEET_PX * 100) < 1e-3,
+            "the bar field keeps the print-area cell's share of the sheet");
+        const textShare = barsShare * parseFloat(fitPct) / 100;
+        assert.ok(Math.abs(textShare - COLUMNS * 7 / SHEET_PX * 100) < 1e-3,
+            "the text keeps 924/1026 of the sheet, inside the bars");
         assert.ok(/\.col \{ position: relative; container-type: inline-size; \}/.test(html),
-            "the text column is what 100cqw measures");
+            "the bar field is what 100cqw measures");
         assert.ok(/pre \{ background-image: url\('assets\/images\/paper\.png'\),/.test(html),
             "the green bars are the on-screen paper tile, not an imitation");
         // The fallback must carry the TILE'S colours (228,232,229 on
@@ -184,8 +214,10 @@ function run() {
             "one 64px tile per four 16px lines on screen: the bar period is kept");
         assert.ok(/\.page::before, \.page::after \{ content: ""; position: absolute;/.test(html),
             "both edges carry a perforated strip, painted inside the page box");
-        assert.ok(/radial-gradient\(circle closest-side at 50% 50%, #141414 0 62%, transparent 72%\)/.test(html),
-            "a feed hole is a black dot, not a faint grey one");
+        // The artwork's own hole: 11px in the 33px strip of paper-margin.png,
+        // i.e. a third of the strip — a fatter dot reads as a punched-out slot.
+        assert.ok(/radial-gradient\(circle closest-side at 50% 50%, #141414 0 33%, transparent 44%\)/.test(html),
+            "a feed hole is a black dot a third of the strip wide, as in the artwork");
         assert.ok(/background-size: 100% 12\.7mm;/.test(html),
             "feed holes are half an inch apart, as on the paper");
         // The glyph is drawn INSIDE the cell (a line printer's dot matrix never
@@ -213,6 +245,22 @@ function run() {
             "the fallback column width matches the default 132-column platen");
     }
 
+    // 7a-ter. A sheet the guest ejects EARLY is still a whole sheet. The FF
+    // ends the text there (the rest of the sheet stays blank), but the paper
+    // keeps being fed through the platen: the green bars are painted on <pre>
+    // and the tractor strips on the page box, which only wraps that block, so
+    // both used to stop at the last printed line. The block must therefore be
+    // a full sheet tall — --cell * --lpp, the very same height guard the cell
+    // is clamped by, so a genuinely full sheet does not change.
+    {
+        const html = doc(["EARLY", "\f", "NEXT"]);
+        assert.strictEqual(sheetCount(html), 2, "an early FF still breaks the sheet");
+        assert.ok(/pre \{[^}]*min-height: calc\(var\(--cell\) \* var\(--lpp\)\);/.test(html),
+            "a short sheet still paints its paper down to the bottom edge");
+        assert.ok(/\.page::before, \.page::after \{[^}]*bottom: 0;/.test(html),
+            "the strips stretch over the whole (now full-height) page box");
+    }
+
     // 7a-bis. Plain paper: no bars, no strips, full printable width. This is
     // what a job going onto real fanfold wants — the perforation is already
     // there and drawing a second one would double it.
@@ -229,6 +277,18 @@ function run() {
         const html = doc(["A"], { columns: 80 });
         assert.ok(html.indexOf("--colw: " + (80 * 0.6).toFixed(4)) !== -1,
             "the printable width follows the configured column count");
+        // The fixed px strips and cell padding are a LARGER share of a narrower
+        // sheet, so an 80-column page must not reuse the 132-column percentages.
+        const narrowSheetPx = 80 * 7 + 2 * 18 + 2 * 33;
+        const narrowCellPx = 80 * 7 + 2 * 18;
+        assert.ok(html.indexOf("break-inside: avoid; padding: 0 " +
+            (33 / narrowSheetPx * 100).toFixed(4) + "%") !== -1,
+            "the tractor strip share follows the configured width");
+        assert.ok(html.indexOf("pre { margin: 0; padding: 0 " +
+            (18 / narrowCellPx * 100).toFixed(4) + "%;") !== -1,
+            "the cell padding follows the configured width");
+        assert.ok(html.indexOf("--fit: " + (80 * 7 / narrowCellPx * 100).toFixed(4) + "cqw;") !== -1,
+            "the text fit follows the configured width");
         const pages = paper.paginate(paginationInput(["Z".repeat(100)]), { columns: 80 });
         assert.strictEqual(pages[0][0].text.length, 80, "an 80-column platen clips at 80");
     }
