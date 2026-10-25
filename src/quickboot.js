@@ -1326,6 +1326,17 @@ var QuickBoot = (function () {
                 setReaderMode: (typeof setReaderMode === "function") ? setReaderMode : null
             });
 
+        // Power the machine on before booting. The wizard can be reached from a
+        // panel that stands switched OFF (the "Machine power" option off, or a
+        // state restored with the POWER LOCK off), and a RUNNING 11/70 must not
+        // sit behind an OFF key: the operator would see a working guest on the
+        // console and a dead machine on the Panel page. skipAutoBoot: this
+        // wizard starts the bootstrap itself on the next line, so the CONFIG
+        // Boot ROM must not start a second one.
+        if (typeof window.applyMachinePower === "function") {
+            window.applyMachinePower(true, true);
+        }
+
         // Reboot the machine so the boot loader reaches the @ prompt. The
         // wizard types the boot command itself, so it forces the interactive
         // loader — the CONFIG 'last' preset must not fire here.

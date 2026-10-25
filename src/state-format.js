@@ -171,6 +171,94 @@ var StateFormat = (function () {
         return new Uint16Array(view.buffer, 0, view.byteLength >>> 1);
     }
 
+    // --- Front panel <-> plain object ------------------------------------
+    // The operator's side of the machine: the POWER LOCK key, the two rotary
+    // switches and the three toggles. These are INDEPENDENT state — nothing in
+    // the CPU or in any device can recreate them — so a state has to carry
+    // them. Everything else on the panel is derived: the lamp masks come from
+    // updateLights() (CPU/MMU/rotary), and the address/data rockers follow
+    // CPU.switchRegister, which the CPU block already stores.
+    var PANEL_FIELDS = ["powerSwitch", "rotary0", "rotary1", "lampTest", "halt", "step"];
+    // Legal detents: powerSwitch -1 OFF / 0 POWER (RUN) / 1 LOCK, rotary0 0..7,
+    // rotary1 0..3, and the three toggles are two-position rockers (0/1).
+    var PANEL_RANGE = {
+        powerSwitch: [-1, 1],
+        rotary0: [0, 7],
+        rotary1: [0, 3],
+        lampTest: [0, 1],
+        halt: [0, 1],
+        step: [0, 1]
+    };
+
+    // One field, range-checked. Returns the integer detent, or null when the
+    // value is missing, not a number, or outside the switch's travel — a state
+    // read from a file must never put a physical switch between detents.
+    function panelField(key, value) {
+        var range = PANEL_RANGE[key];
+        if (!range || typeof value !== "number" || !isFinite(value)) return null;
+        var n = Math.round(value);
+        if (n < range[0] || n > range[1]) return null;
+        return n;
+    }
+
+    // capturePanel(panel) -> { powerSwitch, rotary0, rotary1, lampTest, halt,
+    // step } | null. Whitelisted on purpose: the live panel object also holds
+    // DOM id arrays and lamp masks, which are runtime cache, not machine state.
+    function capturePanel(panel) {
+        if (!panel || typeof panel !== "object") return null;
+        var out = {};
+        for (var i = 0; i < PANEL_FIELDS.length; i++) {
+            var key = PANEL_FIELDS[i];
+            var value = panelField(key, panel[key]);
+            if (value !== null) out[key] = value;
+        }
+        return Object.keys(out).length ? out : null;
+    }
+
+    // applyPanelFields(panel, saved) -> the keys actually applied. Range-checked
+    // for the same reason as capturePanel: hand-edited and future states are
+    // inputs here, and an out-of-range detent would confuse the lamp logic.
+    function applyPanelFields(panel, saved) {
+        var applied = [];
+        if (!panel || typeof panel !== "object" ||
+            !saved || typeof saved !== "object") return applied;
+        for (var i = 0; i < PANEL_FIELDS.length; i++) {
+            var key = PANEL_FIELDS[i];
+            var value = panelField(key, saved[key]);
+            if (value === null) continue;
+            panel[key] = value;
+            applied.push(key);
+        }
+        return applied;
+    }
+
+    // panelPowerOn(savedPanel, runState, haltState, profilePowerOn)
+    //   -> { powerOn: boolean, position: -1|0|1, legacy: boolean }
+    //
+    // Where the POWER LOCK stood in a state. A state may predate the panel
+    // block (everything written before it, and everything the Node tools
+    // exported), so the fallback order is:
+    //   1. the block decides, when it is present;
+    //   2. a machine restored RUNNING was powered on — a switched-off 11/70
+    //      does not run. This is the case that left a working guest sitting
+    //      behind an OFF panel;
+    //   3. a halted machine keeps the recorded Behaviour preference (a browser
+    //      snapshot of a machine the operator deliberately left switched off);
+    //   4. otherwise the state came from a working machine: power it on.
+    function panelPowerOn(savedPanel, runState, haltState, profilePowerOn) {
+        if (savedPanel && typeof savedPanel === "object") {
+            var saved = panelField("powerSwitch", savedPanel.powerSwitch);
+            if (saved !== null) {
+                return { powerOn: saved >= 0, position: saved, legacy: false };
+            }
+        }
+        var running = typeof runState === "number" && runState !== haltState;
+        if (!running && profilePowerOn === false) {
+            return { powerOn: false, position: -1, legacy: true };
+        }
+        return { powerOn: true, position: 0, legacy: true };
+    }
+
     // --- Container pack / unpack -----------------------------------------
     // Binary overlay codec. The small JSON index describes disk identities and
     // block locations; block contents themselves remain binary.
@@ -509,6 +597,12 @@ var StateFormat = (function () {
         restoreCPU: restoreCPU,
         memoryToBytes: memoryToBytes,
         bytesToMemory: bytesToMemory,
+        // Front panel: what a state must carry for the POWER LOCK key, the
+        // rotary switches and the toggles to come back with the machine.
+        PANEL_FIELDS: PANEL_FIELDS.slice(),
+        capturePanel: capturePanel,
+        applyPanelFields: applyPanelFields,
+        panelPowerOn: panelPowerOn,
         pack: pack,
         packLegacy: packLegacy,
         unpack: unpack,

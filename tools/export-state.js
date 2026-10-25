@@ -57,6 +57,17 @@ function profileKey(sc) {
     return [h.console, h.printer, h.vt11].map(String).join("|");
 }
 
+// The front panel the headless machine was left in. The harness loads the real
+// src/pdp11.js, so the panel object exists and its block is exactly what the
+// browser would write. An exported state describes a RUNNING machine, so the
+// POWER LOCK points at POWER — a state without the block is treated the same
+// way by StateFormat.panelPowerOn(), but writing it explicitly keeps the file
+// self-describing.
+function capturePanel(booted) {
+    try { return StateFormat.capturePanel(booted.evalIn("panel")); }
+    catch (e) { return null; }
+}
+
 function firstExisting(candidates) {
     for (const c of candidates) {
         if (fs.existsSync(path.join(ROOT, c))) return c;
@@ -224,6 +235,9 @@ function captureState(booted, sc) {
         createdAt: new Date().toISOString(),
         cpu: StateFormat.captureCPU(CPU),
         devices: booted.machine.bus.snapshotDevices(),
+        // The operator's side of the machine (POWER LOCK, rotary switches,
+        // toggles) — see src/pdp11-panel.js.
+        panel: capturePanel(booted),
     };
     return StateFormat.pack(manifest, CPU.memory);
 }

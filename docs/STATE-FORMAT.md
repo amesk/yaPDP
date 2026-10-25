@@ -46,7 +46,13 @@ That growth is additive by contract: a device may add an optional field, and a
 reader that does not know it must ignore it rather than reject the state. The
 LP11 paper copy uses this twice — `lp11BufferRuns` and `lp11LineRuns` carry the
 bold/underline style runs of the printed job (empty or absent in states written
-before they existed, which the printer then treats as plain text).
+before they existed, which the printer then treats as plain text). The front
+panel follows the same rule: the optional `panel` block records the POWER LOCK
+position, the two rotary switches and the three toggles (`powerSwitch`,
+`rotary0`, `rotary1`, `lampTest`, `halt`, `step`), while the lamp masks and the
+address/data rockers stay derived from the CPU block. A state that has no
+`panel` block is restored powered on unless its `profile.powerOn` says
+otherwise (`StateFormat.panelPowerOn()`).
 
 ## Three versions
 
