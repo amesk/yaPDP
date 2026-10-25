@@ -2,13 +2,15 @@
 /**
  * yaPDP quick-boot Scenario tab end-to-end test (puppeteer + real Chromium).
  *
- * Covers the six behavioural contracts of the Scenario tab:
+ * Covers the seven behavioural contracts of the Scenario tab:
  *   1. manifest loaded  -> the tab lists every state from states/manifest.json
  *   2. manifest absent  -> the tab shows "No saved machine states available."
  *   3. card click       -> launches the state (the preparing indicator appears)
  *   4. thumbnail click  -> opens the lightbox, does NOT launch the state
  *   5. load error       -> imgerror dialog appears, input is not blocked
  *   6. reopen           -> no duplicate elements or handlers
+ *   7. metadata         -> every card carries a description taken from its own
+ *                          state, and no state is named by its device key
  *
  * The manifest and state-file responses are intercepted with
  * page.setRequestInterception, so no real files are touched.
@@ -344,6 +346,55 @@ async function main() {
             check("reopen: element count is stable",
                 count1 === count2,
                 "first open: " + count1 + ", second open: " + count2);
+
+            await page.close();
+        }
+
+        // ---- 7. Every card can describe itself ----------------------------
+        // The card's name and description come from the state's OWN manifest
+        // (tools/gen-state-manifest.js publishes them), so a state captured
+        // without them reads as a bare machine id — "RP1 (ready)" with nothing
+        // else — and the restore toast then shows a lone "rp1". This checks the
+        // committed collection, not a mock: a state that loses its metadata in
+        // a re-export fails here.
+        {
+            const page = await seededPage(browser);
+            await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+            await waitReady(page);
+            await openQuickBoot(page);
+            await switchToScenario(page);
+
+            const cards = await page.evaluate(() => {
+                const out = [];
+                document.querySelectorAll(".quickboot-scenario-option").forEach((el) => {
+                    const name = el.querySelector(".quickboot-name");
+                    const desc = el.querySelector(".quickboot-scenario-desc");
+                    const img = el.querySelector(".quickboot-scenario-preview");
+                    out.push({
+                        file: el.getAttribute("data-state-file"),
+                        label: name ? name.textContent.trim() : null,
+                        description: desc ? desc.textContent.trim() : null,
+                        preview: img ? img.getAttribute("src") : null,
+                    });
+                });
+                return out;
+            });
+
+            const mute = cards.filter((c) => !c.description);
+            check("every scenario card carries a description",
+                mute.length === 0, "no description: " + mute.map((c) => c.file).join(", "));
+
+            const rp1 = cards.find((c) => c.file === "rp1-ready.state.zst");
+            check("rp1 card exists (sanity)", !!rp1, "no card for rp1-ready.state.zst");
+            if (rp1) {
+                check("rp1 card is named by the guest, not by the device key",
+                    rp1.label && rp1.label.toLowerCase() !== "rp1" &&
+                    rp1.label.toLowerCase().indexOf("rp1") === -1,
+                    "label reads: " + rp1.label);
+                check("rp1 card shows its preview",
+                    rp1.preview === "states/previews/rp1-ready-small.png",
+                    "preview src: " + rp1.preview);
+            }
 
             await page.close();
         }

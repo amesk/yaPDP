@@ -1154,7 +1154,22 @@ var SnapshotStore = (() => {
     //     browser — the same configuration a visitor gets.
     //
     // Returns a Promise<Uint8Array> (the raw container, zstd-compressed).
-    function exportBytes(name) {
+    //
+    // `opts` (all fields optional) attaches the human-readable metadata a state
+    // carries about ITSELF. That matters beyond this page: a state applied from
+    // a foreign ?state=<url> is described by the wizard's toast straight out of
+    // the container (label / stepsMessage / screenshot), because the recipient's
+    // states/manifest.json knows nothing about a file it never listed.
+    //   label       - what the parked machine is, e.g. "2.11 BSD"
+    //   description - one line about the moment the state was taken
+    //   screenshot  - a data:image/png;base64,... URI. The state-manifest
+    //                 generator accepts nothing else (its regex is strict), so a
+    //                 JPEG/WEBP is silently ignored: convert to PNG upstream
+    //                 (tools/preview-capture.js does).
+    // With `opts` omitted the manifest is exactly what it has always been — the
+    // Machine-state dialog's Export path is untouched.
+    function exportBytes(name, opts) {
+        opts = opts || {};
         // Build the same manifest the file tools build, so a state taken here
         // and one taken by tools/export-state.js are the same kind of thing.
         var prevRunState = CPU.runState;
@@ -1213,7 +1228,7 @@ var SnapshotStore = (() => {
                     yaPDPVersion: currentYaPDPVersion(),
                     base: null,
                     device: name || "live",
-                    label: name || "live machine",
+                    label: opts.label || name || "live machine",
                     createdAt: new Date().toISOString(),
                     profile: captureConfig(),
                     imageFingerprints: fps,
@@ -1231,8 +1246,12 @@ var SnapshotStore = (() => {
                     overlay: serializeOverlay(overlay),
                     page: capturePage(),
                     steps: null,
-                    stepsMessage: null,
+                    stepsMessage: opts.description || null,
                 };
+                // Only present when asked for: a state exported without a
+                // preview must stay byte-identical to what this function
+                // produced before the option existed.
+                if (opts.screenshot) manifest.screenshot = opts.screenshot;
                 // The CPU was frozen for the capture (stop-the-world, above), so
                 // the recorded runState is HALT. A state is a machine that was
                 // RUNNING — recording HALT would make every restored guest sit

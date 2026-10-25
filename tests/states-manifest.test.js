@@ -14,7 +14,13 @@
  *      the startup loading gate past its e2e budget (tests/e2e-startup-cls.js);
  *      a return to inlining regresses the cold start;
  *   3. every preview file a manifest entry points at exists on disk — a
- *      missing thumbnail would render as a broken image in the dialog.
+ *      missing thumbnail would render as a broken image in the dialog;
+ *   4. every state NAMES and DESCRIBES ITSELF — label is not the device key and
+ *      the description is present. The Scenario card and the restore toast read
+ *      both out of the container, and a state opened through somebody else's
+ *      ?state=<url> has no manifest entry here at all;
+ *   5. an embedded preview is a PNG data URI inside the size cap, so a
+ *      full-page screenshot cannot ride along in every state.
  *
  * This file is different from tests/state-manifest.test.js, which drives the
  * tools/state-manifest.js CLI (extract/replace of the manifest stored INSIDE
@@ -90,7 +96,59 @@ const MANIFEST = path.join(STATES, "manifest.json");
     }
 }
 
-// --- 4. A regeneration never overwrites an existing full preview ------------
+// --- 4. Every state names and describes itself ------------------------------
+// A state whose label IS its device key is the failure this policy exists for:
+// the restore toast shows manifest.label, so "rp1" reads as a lone lowercase
+// machine id with nothing else. The description lives in the same manifest
+// (stepsMessage, the slot tools/gen-state-manifest.js publishes), which is the
+// only place a description can survive a foreign ?state= link.
+// Fix a state with:  node tools/states-annotate.js --write
+{
+    const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+    const StateIO = require(path.join(ROOT, "tools", "state-io.js"));
+    const files = fs.readdirSync(STATES)
+        .filter((f) => /\.state\.zst$/.test(f) && !f.startsWith(".")).sort();
+    for (const f of files) {
+        const parsed = StateFormat.unpack(StateIO.readBytes(path.join(STATES, f)).container);
+        assert.ok(parsed && parsed.manifest, f + ": unreadable container");
+        const m = parsed.manifest;
+        assert.ok(m.label && String(m.label).trim().length >= 4,
+            f + ": no label — the restore toast and the Scenario card have " +
+            "nothing to name the machine with");
+        assert.ok(String(m.label).toLowerCase() !== String(m.device || "").toLowerCase(),
+            f + ": label is the device key (" + m.label + "), which reads as a " +
+            "lone machine id in the toast; give it a name " +
+            "(node tools/states-annotate.js --write)");
+        assert.ok(m.stepsMessage && String(m.stepsMessage).trim().length >= 10,
+            f + ": no description (manifest.stepsMessage) — the Scenario card " +
+            "shows a name and nothing else");
+    }
+}
+
+// --- 5. An embedded preview is a PNG data URI within the size cap -----------
+// The preview travels inside the state so that a ?state= link can show it; that
+// only works for the ONE format the manifest generator decodes, and only if the
+// frame is a preview rather than a full-page screenshot.
+{
+    const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+    const StateIO = require(path.join(ROOT, "tools", "state-io.js"));
+    const previewTools = require(path.join(ROOT, "tools", "preview-capture.js"));
+    const files = fs.readdirSync(STATES)
+        .filter((f) => /\.state\.zst$/.test(f) && !f.startsWith(".")).sort();
+    for (const f of files) {
+        const m = StateFormat.unpack(StateIO.readBytes(path.join(STATES, f)).container).manifest;
+        if (!m || !m.screenshot) continue;
+        assert.ok(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(m.screenshot),
+            f + ": embedded preview must be a PNG data URI (the manifest " +
+            "generator drops anything else silently)");
+        const bytes = Math.round(m.screenshot.length * 3 / 4);
+        assert.ok(bytes <= previewTools.MAX_PREVIEW_BYTES,
+            f + ": embedded preview is " + Math.round(bytes / 1024) + " KB, cap is " +
+            Math.round(previewTools.MAX_PREVIEW_BYTES / 1024) + " KB — check the clip");
+    }
+}
+
+// --- 6. A regeneration never overwrites an existing full preview ------------
 // tools/gen-state-manifest.js treats an already-written -full.png as
 // operator-owned (a hand-placed or otherwise improved screenshot): the next
 // run must keep it AND derive the thumbnail from it, not from the in-state

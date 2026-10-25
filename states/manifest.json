@@ -1,11 +1,11 @@
 [
   {
     "device": "basic",
-    "label": "BASIC (ready)",
-    "description": null,
+    "label": "BASIC-11 V007A",
+    "description": "Interactive BASIC-11 loaded into PDP-11 memory, executing numerical and string expressions.",
     "file": "basic-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/basic-ready-small.png",
+    "screenshotFull": "previews/basic-ready-full.png"
   },
   {
     "device": null,
@@ -17,59 +17,59 @@
   },
   {
     "device": "rk0",
-    "label": "RK0 (ready)",
-    "description": null,
+    "label": "Unix V5",
+    "description": "Ken Thompson and Dennis Ritchie's Research Unix V5 (1974) with early C compiler, sh, and roff.",
     "file": "rk0-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rk0-ready-small.png",
+    "screenshotFull": "previews/rk0-ready-full.png"
   },
   {
     "device": "rk1",
-    "label": "RK1 (ready)",
-    "description": null,
+    "label": "RT-11 v4.0",
+    "description": "DEC Real-Time operating system widely deployed in laboratory instrumentation and Soviet clones.",
     "file": "rk1-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rk1-ready-small.png",
+    "screenshotFull": "previews/rk1-ready-full.png"
   },
   {
     "device": "rk1tty",
-    "label": "RK1TTY (ready)",
-    "description": null,
+    "label": "RT-11 v4.0 (teletype console)",
+    "description": "RT-11 booted on the Model 33 ASR teletype console — upper case only, the way the original operator saw it.",
     "file": "rk1tty-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rk1tty-ready-small.png",
+    "screenshotFull": "previews/rk1tty-ready-full.png"
   },
   {
     "device": "rk1vt52",
-    "label": "RK1VT52 (ready)",
-    "description": null,
+    "label": "RT-11 v4.0 (VT52 console)",
+    "description": "RT-11 interacting with the DECscope VT52 CRT terminal emulator running on canvas.",
     "file": "rk1vt52-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rk1vt52-ready-small.png",
+    "screenshotFull": "previews/rk1vt52-ready-full.png"
   },
   {
     "device": "rk2",
-    "label": "RK2 (ready)",
-    "description": null,
+    "label": "RSTS V06C-03",
+    "description": "RSTS/E V06C-03, the timesharing system DEC sold to everybody who could not afford a mainframe — answer START at the Option: prompt.",
     "file": "rk2-ready.state.zst",
     "screenshot": null,
     "screenshotFull": null
   },
   {
     "device": "rk3",
-    "label": "RK3 (ready)",
-    "description": null,
+    "label": "XXDP (diagnostics)",
+    "description": "DEC field diagnostic operating system used to test CPU instructions, memory management, and peripherals.",
     "file": "rk3-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rk3-ready-small.png",
+    "screenshotFull": "previews/rk3-ready-full.png"
   },
   {
     "device": "rp1",
-    "label": "RP1 (ready)",
-    "description": null,
+    "label": "BSD 2.11",
+    "description": "Berkeley Software Distribution 2.11 in full multiuser mode, featuring vi, cc, TCP/IP networking stack.",
     "file": "rp1-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rp1-ready-small.png",
+    "screenshotFull": "previews/rp1-ready-full.png"
   },
   {
     "device": "rk4",

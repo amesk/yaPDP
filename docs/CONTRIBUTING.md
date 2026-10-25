@@ -61,19 +61,36 @@ Scenario tab offers. To add a new one:
 
 1. **Create the state** through the emulator's machine-state dialog
    (STATE → Save → Export). The browser exports a gzip-wrapped `.state.zst`.
+   For a state the repo ships, prefer `node tools/export-state-browser.js <device>`:
+   it drives a real page to the same readiness point and captures the preview
+   from the frame the state is parked at.
 2. **Repack to zstd** (the repo keeps zstd frames for states):
    `npm run media:repack -- states/<name>.state.zst`
 3. **Place the file** in `states/`.
-4. **Regenerate the manifest and previews**:
-   `node tools/gen-state-manifest.js`
-5. **Optional — a hand-crafted full preview.** If you want a larger or
-   otherwise improved screenshot for the lightbox, place your own PNG at
-   `states/previews/<name>-full.png` **before** step 4. The generator
-   never overwrites an existing full preview and derives the list thumbnail
-   from it; without it the thumbnail is built from the screenshot embedded
-   in the state's own manifest.
-6. **Commit** the new `.state.zst`, the updated `states/manifest.json` and
+4. **Give it a voice.** Add an entry to `tools/state-annotations.json` —
+   `label` (what the machine is, never its device key), `description` (one line)
+   and, when you have one, a `screenshot` source image. Then
+   `node tools/states-annotate.js --write`. The metadata is written INSIDE the
+   state, because the Scenario card and the restore toast read it from the
+   container: a state opened through somebody else's `?state=<url>` has no
+   `states/manifest.json` entry at all, so anything stored outside the file
+   never arrives. The tool is idempotent — re-run it after every re-export,
+   which otherwise reverts `label` to the device name.
+5. **Regenerate the manifest and previews**:
+   `node tools/gen-state-manifest.js`. A state without a preview simply has no
+   thumbnail until a browser export supplies one.
+6. **Optional — a hand-crafted full preview.** If you want a different
+   screenshot for the lightbox, place your own PNG at
+   `states/previews/<name>-full.png` **before** step 5. The generator never
+   overwrites an existing full preview and derives the list thumbnail from it;
+   without it the thumbnail is built from the screenshot embedded in the
+   state's own manifest.
+7. **Commit** the new `.state.zst`, the updated `states/manifest.json` and
    the new files under `states/previews/`.
+
+`tests/states-manifest.test.js` enforces the result: every state must carry a
+label that is not its device key and a non-empty description, and an embedded
+preview must be a PNG data URI under the size cap.
 
 ### Copyright and licensing
 

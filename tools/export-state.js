@@ -30,6 +30,18 @@ const ROOT = path.join(__dirname, "..");
 const { bootHeadless } = require("./headless-machine.js");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
 const StateIO = require("./state-io.js");
+const statesAnnotate = require("./states-annotate.js");
+
+// Human metadata for this state (tools/state-annotations.json, the same table
+// tools/states-annotate.js applies to the committed states). The exported file
+// must describe itself: the wizard's toast and the Scenario card read label /
+// stepsMessage / screenshot out of the container, never out of a manifest.json
+// the recipient may not have.
+const ANNOTATIONS = statesAnnotate.loadAnnotations();
+
+function annotationFor(device) {
+    return statesAnnotate.annotationFor(ANNOTATIONS, device + "-ready.state.zst");
+}
 
 // The application version this tool speaks for — the same source the page uses
 // (package.json, which src/version.js mirrors on the browser side). Stamped
@@ -219,14 +231,20 @@ function makeEchoer(booted) {
 }
 
 // --- capture ------------------------------------------------------------
-function captureState(booted, sc) {
+// The PREVIEW cannot be shot here: this harness runs the emulator in Node with
+// a stubbed canvas (tools/headless-machine.js), so there are no pixels to
+// capture. When the annotation table names a source image it is used instead;
+// otherwise the state is exported without a preview and the browser exporter
+// (tools/export-state-browser.js) is the tool that supplies one.
+async function captureState(booted, sc, ann) {
     const CPU = booted.evalIn("CPU");
+    const a = ann || {};
     const manifest = {
         schemaVersion: (StateFormat.SCHEMA_VERSION || "1.0.0"),
         yaPDPVersion: YA_PDP_VERSION,
         base: null,                       // rests directly on the disk image
         device: sc.device,
-        label: sc.label || sc.device,
+        label: a.label || sc.label || sc.device,
         profile: {
             console: (sc.hardware || {}).console,
             printer: (sc.hardware || {}).printer,
@@ -238,7 +256,17 @@ function captureState(booted, sc) {
         // The operator's side of the machine (POWER LOCK, rotary switches,
         // toggles) — see src/pdp11-panel.js.
         panel: capturePanel(booted),
+        // The description the wizard shows while restoring (and the Scenario
+        // card lists). Same slot tools/gen-state-manifest.js reads.
+        stepsMessage: a.description || null,
     };
+    if (a.screenshot) {
+        try {
+            manifest.screenshot = await statesAnnotate.screenshotDataUri(a.screenshot);
+        } catch (e) {
+            err("WARN no preview: " + (e && e.message ? e.message : e));
+        }
+    }
     return StateFormat.pack(manifest, CPU.memory);
 }
 
@@ -274,7 +302,7 @@ async function exportState(device, outPath, opts) {
     const stepsMs = Date.now() - t1;
     log("steps finished in " + stepsMs + "ms");
 
-    const packed = captureState(booted, sc);
+    const packed = await captureState(booted, sc, annotationFor(sc.device));
     log("container packed: " + packed.length + " bytes");
     const out = outPath || path.join(ROOT, "states", sc.device + "-ready.state.zst");
     fs.mkdirSync(path.dirname(out), { recursive: true });
