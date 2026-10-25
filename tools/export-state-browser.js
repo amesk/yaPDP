@@ -29,6 +29,9 @@ const { spawn } = require("child_process");
 const puppeteer = require("puppeteer");
 const { StateFrame } = require(path.join(__dirname, "..", "src", "state-frame.js"));
 const StateIO = require("./state-io.js");
+const consoleWait = require("./console-wait.js");
+const preview = require("./preview-capture.js");
+const statesAnnotate = require("./states-annotate.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const PORT = 1170;
@@ -73,6 +76,26 @@ function loadScenarios() {
     vm.createContext(sb);
     vm.runInContext(fs.readFileSync(path.join(ROOT, "src", "osboot.js"), "utf8"), sb);
     return sb.OSBoot.BOOT_SCENARIOS;
+}
+
+// Human metadata a state must carry about itself: the label (what this parked
+// machine IS) and the one-line description the wizard's toast and the Scenario
+// card show. Both come from the SAME table tools/states-annotate.js applies to
+// the states already in the repo (tools/state-annotations.json, keyed by state
+// file name), so an exported state and a hand-annotated one cannot disagree.
+// A missing table is not fatal: the state is still exported, just mute.
+const ANNOTATIONS = statesAnnotate.loadAnnotations();
+
+function annotationFor(device) {
+    if (device === null || device === undefined) return {};
+    return statesAnnotate.annotationFor(ANNOTATIONS, device + "-ready.state.zst");
+}
+
+function labelFor(device) {
+    const ann = annotationFor(device);
+    if (ann.label) return ann.label;
+    const sc = loadScenarios().find((s) => s.device === device);
+    return (sc && sc.label) || null;
 }
 
 function missingScenarios() {
@@ -126,19 +149,38 @@ async function exportOne(page, device) {
     // next state (printer paper, tape position, config).
     await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
 
+    // Console render counters, installed BEFORE the boot so they count every
+    // character: the preview must not be shot while the teletype is still
+    // printing the prompt the state is parked at.
+    await consoleWait.installConsoleHooks(page);
+
     const t0 = Date.now();
     await launchDevice(page, device);
     await waitReady(page);
     const readyMs = Date.now() - t0;
     log("  ready in " + readyMs + "ms");
 
-    // Give the guest a moment to finish printing its prompt before the
-    // stop-the-world capture (BSD resumes mid-idle; the prompt is the anchor
-    // a user would see).
-    await new Promise((r) => setTimeout(r, 800));
+    // Drain the teletype (and shoot the preview) before the stop-the-world
+    // capture: the picture and the state must be the SAME moment, otherwise the
+    // tile shows half a prompt and the restore shows the whole one.
+    let shotUri = null;
+    try {
+        const png = await preview.captureMachinePng(page, { stableMs: 2500 });
+        shotUri = preview.toDataUri(png);
+        log("  preview captured " + Math.round(png.length / 1024) + " KB");
+    } catch (e) {
+        // A state without a preview is still a state; a lost export is not.
+        log("  WARN no preview: " + (e && e.message ? e.message : e));
+    }
 
-    const b64 = await page.evaluate(async (dev) => {
-        const bytes = await window.SnapshotStore.exportBytes(dev);
+    const meta = {
+        label: labelFor(device),
+        description: annotationFor(device).description || null,
+        screenshot: shotUri,
+    };
+
+    const b64 = await page.evaluate(async (dev, opts) => {
+        const bytes = await window.SnapshotStore.exportBytes(dev, opts);
         // Base64 in chunks: a 4 MB state is a big string for one apply().
         let bin = "";
         const chunk = 0x8000;
@@ -146,7 +188,7 @@ async function exportOne(page, device) {
             bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
         }
         return btoa(bin);
-    }, device);
+    }, device, meta);
 
     const buf = Buffer.from(b64, "base64");
     const out = path.join(OUT_DIR, device + "-ready.state.zst");

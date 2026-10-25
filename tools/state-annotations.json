@@ -1,0 +1,41 @@
+{
+    "basic-ready.state.zst": {
+        "label": "BASIC-11 V007A",
+        "description": "Interactive BASIC-11 loaded into PDP-11 memory, executing numerical and string expressions.",
+        "screenshot": "landing/public/assets/images/os/basic.png"
+    },
+    "rk0-ready.state.zst": {
+        "label": "Unix V5",
+        "description": "Ken Thompson and Dennis Ritchie's Research Unix V5 (1974) with early C compiler, sh, and roff.",
+        "screenshot": "landing/public/assets/images/os/unix_v5.png"
+    },
+    "rk1-ready.state.zst": {
+        "label": "RT-11 v4.0",
+        "description": "DEC Real-Time operating system widely deployed in laboratory instrumentation and Soviet clones.",
+        "screenshot": "landing/public/assets/images/os/rt11.png"
+    },
+    "rk1tty-ready.state.zst": {
+        "label": "RT-11 v4.0 (teletype console)",
+        "description": "RT-11 booted on the Model 33 ASR teletype console — upper case only, the way the original operator saw it.",
+        "screenshot": "landing/public/assets/images/os/rt11.png"
+    },
+    "rk1vt52-ready.state.zst": {
+        "label": "RT-11 v4.0 (VT52 console)",
+        "description": "RT-11 interacting with the DECscope VT52 CRT terminal emulator running on canvas.",
+        "screenshot": "landing/public/assets/images/os/rt11-vt52.png"
+    },
+    "rk2-ready.state.zst": {
+        "label": "RSTS V06C-03",
+        "description": "RSTS/E V06C-03, the timesharing system DEC sold to everybody who could not afford a mainframe — answer START at the Option: prompt."
+    },
+    "rk3-ready.state.zst": {
+        "label": "XXDP (diagnostics)",
+        "description": "DEC field diagnostic operating system used to test CPU instructions, memory management, and peripherals.",
+        "screenshot": "landing/public/assets/images/os/xxdp.png"
+    },
+    "rp1-ready.state.zst": {
+        "label": "BSD 2.11",
+        "description": "Berkeley Software Distribution 2.11 in full multiuser mode, featuring vi, cc, TCP/IP networking stack.",
+        "screenshot": "landing/public/assets/images/os/bsd.png"
+    }
+}
