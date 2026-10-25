@@ -631,6 +631,14 @@ async function handleCommand(line) {
 // both, a session can be parked and resumed at the console prompt, which is
 // exactly what the e2e suites and a human operator both want.
 
+// The front panel the headless machine was left in (POWER LOCK, rotary
+// switches, toggles). Same block the browser writes — see
+// StateFormat.capturePanel() and src/pdp11-panel.js.
+function capturePanel() {
+    try { return StateFormat.capturePanel(boot.evalIn("panel")); }
+    catch (e) { return null; }
+}
+
 // Build the container from the live machine, exactly as export-state.js does.
 function captureMachineState(file) {
     const CPU = boot.evalIn("CPU");
@@ -643,6 +651,7 @@ function captureMachineState(file) {
         createdAt: new Date().toISOString(),
         cpu: StateFormat.captureCPU(CPU),
         devices: boot.machine.bus.snapshotDevices(),
+        panel: capturePanel(),
     };
     const packed = StateFormat.pack(manifest, CPU.memory);
     const out = path.resolve(REPO, file);

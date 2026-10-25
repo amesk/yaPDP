@@ -569,6 +569,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  configured column count. (`src/lp11paper.js`; pinned by
  `tests/lp11-print.test.js`)
 
+- **A restored state brings the front panel back with the machine.** The state
+ carries the POWER LOCK position, the two rotary switches and the three toggles,
+ and restores them together with the CPU: a guest no longer runs behind an OFF
+ key, and the address/data rockers follow the restored switch register. A state
+ written before that block existed is restored powered on, and a Quick Boot from
+ the wizard powers the machine on instead of booting it behind a dead panel.
+ (`src/state-format.js`, `src/pdp11-panel.js`, `src/snapshots.js`,
+ `src/quickboot.js`, `tools/export-state.js`, `tools/headless-term.js`;
+ pinned by `tests/panel-state.test.js`)
+
 
 ## [0.3.0] - 2026-09-30
 

@@ -236,6 +236,22 @@ var SnapshotStore = (() => {
         return out;
     }
 
+    // The front panel — the operator's side of the machine: the POWER LOCK key,
+    // the two rotary switches and the three toggles. It is captured through the
+    // panel's own seam (window.__yapdpPanelState, src/pdp11-panel.js) because
+    // that module owns both the object and the DOM controls. A page without a
+    // panel (headless tooling) simply records no block; readers then derive the
+    // power condition, see StateFormat.panelPowerOn().
+    function capturePanelState() {
+        try {
+            if (typeof window !== "undefined" && window.__yapdpPanelState &&
+                typeof window.__yapdpPanelState.capture === "function") {
+                return window.__yapdpPanelState.capture();
+            }
+        } catch (e) { /* no panel: the state carries no panel block */ }
+        return null;
+    }
+
     function capture(name, steps, stepsMessage) {
         // Stop-the-world: freeze the CPU for the duration of the capture so
         // RAM, device registers and the disk overlay all come from the same
@@ -299,6 +315,10 @@ var SnapshotStore = (() => {
                     memory: mem,
                     mounted: captureMounted(),
                     config: captureConfig(),
+                    // The panel the operator left the machine in (POWER LOCK,
+                    // rotary switches, toggles) — the machine alone cannot
+                    // recreate it, so it travels with the state.
+                    panel: capturePanelState(),
                     page: capturePage(),
                     devices: devices,
                     punchtape: punchtape,
@@ -593,6 +613,18 @@ var SnapshotStore = (() => {
                     // image is mid-garbage.
                     if (snap.cpu && typeof snap.cpu.runState === "number") {
                         CPU.runState = snap.cpu.runState;
+                    }
+                    // The front panel comes back with the machine: POWER LOCK
+                    // key, rotary switches and rockers. A state written before
+                    // panel capture has no block — panelPowerOn() then powers a
+                    // restored RUNNING machine on, which is what the operator
+                    // was looking at when the state was taken (a switched-off
+                    // 11/70 does not run). skipAutoBoot inside ensures no
+                    // bootstrap starts over the restored guest.
+                    if (typeof window !== "undefined" && window.__yapdpPanelState &&
+                        typeof window.__yapdpPanelState.restore === "function") {
+                        window.__yapdpPanelState.restore(snap.panel || null,
+                            { profilePowerOn: snap.config && snap.config.powerOn });
                     }
                     // Visual punched tape (L2) — re-render the hanging ASR tape
                     // from the captured byte array (no-op when the tape UI is
@@ -1096,6 +1128,7 @@ var SnapshotStore = (() => {
             devices: parsed.manifest.devices || null,
             config: parsed.manifest.profile || null,
             overlay: overlay,
+            panel: parsed.manifest.panel || null,
             page: parsed.manifest.page || null,
             // The operator's view: terminal screens and the paper in the
             // teletype. Without these a restored guest is alive but blind —
@@ -1193,6 +1226,7 @@ var SnapshotStore = (() => {
                     readertape: readertape,
                     vt52: vt52,
                     teletypepaper: teletypepaper,
+                    panel: capturePanelState(),
                     mounted: captureMounted(),
                     overlay: serializeOverlay(overlay),
                     page: capturePage(),
@@ -1550,6 +1584,7 @@ var SnapshotStore = (() => {
                     readertape: snap.readertape,
                     vt52: snap.vt52,
                     teletypepaper: snap.teletypepaper,
+                    panel: snap.panel,
                     mounted: snap.mounted,
                     page: snap.page,
                     steps: snap.steps,
@@ -1626,6 +1661,7 @@ var SnapshotStore = (() => {
                     readertape: snap.readertape,
                     vt52: snap.vt52,
                     teletypepaper: snap.teletypepaper,
+                    panel: snap.panel,
                     mounted: snap.mounted,
                     page: snap.page,
                     steps: steps,
@@ -1701,6 +1737,7 @@ var SnapshotStore = (() => {
                         readertape: manifest.readertape || null,
                         vt52: manifest.vt52 || null,
                         teletypepaper: manifest.teletypepaper || null,
+                        panel: manifest.panel || null,
                         overlay: deserializeOverlay(manifest.overlay),
                         embeddedResources: (function () {
                             var resources = {};

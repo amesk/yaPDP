@@ -341,6 +341,76 @@ function examineDeposit(data) {
     });
   }
 
+  // --- Front-panel state (machine-state persistence) -------------------
+  // The panel is the operator's side of the machine and nothing in the CPU can
+  // recreate it, so a saved .state carries its six positions (see
+  // StateFormat.capturePanel in src/state-format.js). Everything else on the
+  // panel is derived: the lamp masks come from updateLights(), and the
+  // address/data rockers follow CPU.switchRegister, which the CPU block of the
+  // state already restores.
+  function panelStateFormat() {
+    return (typeof window !== 'undefined' && window.__yapdpStateFormat)
+      ? window.__yapdpStateFormat : null;
+  }
+
+  function capturePanelState() {
+    var format = panelStateFormat();
+    return (format && typeof panel !== 'undefined') ? format.capturePanel(panel) : null;
+  }
+
+  // Put the physical controls where the state left them, then set the POWER
+  // LOCK. The power step goes LAST and through setPowerState(): that keeps the
+  // Config option, the ambient hum and the nav power lamp in step with the key,
+  // and its skipAutoBoot argument stops the Boot ROM from starting a bootstrap
+  // over the restored guest. `opts.profilePowerOn` is the state's recorded
+  // Behaviour preference, used only when the state predates panel capture.
+  function restorePanelState(saved, opts) {
+    if (typeof panel === 'undefined' || typeof CPU === 'undefined') return false;
+    var format = panelStateFormat();
+    if (!format) return false;
+    if (saved) format.applyPanelFields(panel, saved);
+    panel.autoIncr = 0; // EXAM/DEPOSIT auto-increment is transient, never saved
+
+    // Rotary switches: each knob points at its saved detent.
+    var rotary0 = document.querySelector('.rotaryTopPanel .rotarySwitch');
+    if (rotary0) rotary0.style.transform = 'rotate(' + (panel.rotary0 * 45 - 45) + 'deg)';
+    var rotary1 = document.querySelector('.rotaryBottomPanel .rotarySwitch');
+    if (rotary1) rotary1.style.transform = 'rotate(' + (panel.rotary1 * 45 - 45) + 'deg)';
+
+    // The three toggles are ordinary two-position rockers.
+    var lampTest = document.querySelector('.switch.white');
+    if (lampTest) moveSwitch(lampTest, panel.lampTest ? 1 : 0);
+    var enableHalt = document.querySelector('[data-action="enableHalt"]');
+    if (enableHalt) moveSwitch(enableHalt, panel.halt ? 1 : 0);
+    var stepSwitch = document.querySelector('[data-action="step"]');
+    if (stepSwitch) moveSwitch(stepSwitch, panel.step ? 1 : 0);
+
+    // Address/data switches: CPU.switchRegister is already back, so the rockers
+    // follow the bits rather than the other way round.
+    if (typeof CPU.switchRegister === 'number') {
+      document.querySelectorAll('.switch[data-weight]').forEach(function (el) {
+        var weight = parseInt(el.dataset.weight, 10);
+        if (isNaN(weight)) return;
+        moveSwitch(el, (CPU.switchRegister & (1 << weight)) ? -1 : 0);
+      });
+    }
+
+    var plan = format.panelPowerOn(saved, CPU.runState, STATE_HALT,
+      opts && opts.profilePowerOn);
+    setPowerState(plan.position < 0 ? 'off' : (plan.position === 0 ? 'run' : 'lock'), true);
+
+    // Repaint the lamps at once: the masks are a cache of what the DOM shows,
+    // and the restored CPU/rotary state may differ from the ones on screen.
+    if (typeof window.updateLights === 'function') window.updateLights();
+    return true;
+  }
+
+  // The seam src/snapshots.js uses (same style as window.__yapdpStateFormat).
+  window.__yapdpPanelState = {
+    capture: capturePanelState,
+    restore: restorePanelState
+  };
+
   // Default to the powered-on RUN position so the active label matches the
   // initial panel state. Deferred: `panel` is created by pdp11.js, which is
   // loaded after this module.
