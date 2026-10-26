@@ -1558,9 +1558,17 @@
                   <select id="mounted-select" disabled>
                     <option value="">--none--</option>
                   </select>
-                  <button type="button" id="mounted-remove" disabled>Unmount</button>
+                  <button type="button" id="mounted-remove" disabled
+                    title="Take the selected image out of the machine; it stays in browser storage">Unmount</button>
+                  <button type="button" id="mounted-delete" disabled
+                    title="Erase the selected image from browser storage">Delete image</button>
                   <span id="mounted-count" class="mounted-count">0 images</span>
                 </span>
+                <span class="config-hint">Unmount takes the selected image out of the
+                  machine and keeps it in browser storage (it is back on the next launch).
+                  Delete image erases it from this browser, guest writes included &mdash; only
+                  images you imported can be deleted, because bundled media is streamed from
+                  the server again.</span>
                 <span class="config-inline">
                   <select id="assign-drive" disabled title="Drive to bind the selected image to">
                     <option value="">&mdash; not bound &mdash;</option>

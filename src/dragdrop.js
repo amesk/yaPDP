@@ -114,6 +114,8 @@
         });
     }
 
+    // Deleting an image is a deliberate, separate operator action (Unmount
+    // only takes the medium out of the machine), so nothing calls this yet.
     function dbDelete(key) {
         return openDB().then(function (db) {
             if (!db) return Promise.resolve();
@@ -327,6 +329,7 @@
         if (prev && urls.indexOf(prev) !== -1) select.value = prev;
         syncDriveSelectToList();
         refreshAssignControls();
+        refreshDeleteButton();
 
         // The counter belongs to the list beside it, so it counts what the list
         // offers: every mounted image — dragged in, bundled, or fetched for a
@@ -439,18 +442,139 @@
         });
     }
 
+    // Unmount is "pull the cartridge out of the drive", not "throw it away":
+    // the medium leaves the running machine, the operator keeps the file.
+    //   - the stored copy stays in IndexedDB, so init() re-mounts the image on
+    //     the next launch (docs/manual/storage.md promises exactly that);
+    //   - userImages keeps the image exportable ("Export image") and owned;
+    //   - the drive binding stays, so booting a drive whose medium is out
+    //     reports a missing image instead of silently substituting whatever
+    //     <unit>.dsk happens to be lying around.
+    // Deleting the bytes is a separate, explicit action; nothing here may
+    // destroy the operator's only copy. A bundled/network medium is simply
+    // re-streamed on the next boot (the disk provider asks the loader again).
     function removeMounted(url) {
         if (!url) return;
         DataLoader.unmount(url);
-        dbDelete(url);
-        delete userImages[url];
-        // Drop any drive binding that pointed at this image, so a later boot
-        // does not fall back to an unmounted url.
-        if (typeof MountMap !== "undefined" && MountMap.removeByUrl) {
-            MountMap.removeByUrl(url);
-            MountMap.save(window.localStorage);
-        }
         refreshMountedList();
+    }
+
+    // ------------------------------------------------------------------
+    // Delete image — the one DESTRUCTIVE action on this page
+    // ------------------------------------------------------------------
+    // Unmount only takes the medium out of the machine (see above); erasing the
+    // stored copy is a separate, confirmed decision, because IndexedDB holds the
+    // operator's only copy of an imported image.
+
+    // Only an image the operator imported lives in IndexedDB, so only it can be
+    // deleted: bundled media is streamed from the server, and "deleting" it
+    // would just drop the mount and re-download the same bytes.
+    function canDeleteImage(url) {
+        return !!url && !!userImages[url];
+    }
+
+    function refreshDeleteButton() {
+        var btn = document.getElementById("mounted-delete");
+        if (!btn) return;
+        var select = document.getElementById("mounted-select");
+        var url = select ? select.value : "";
+        var ok = canDeleteImage(url);
+        btn.disabled = !ok;
+        btn.title = ok
+            ? "Erase " + url + " from browser storage"
+            : "Only an image you imported can be deleted";
+    }
+
+    var deleteDialog = null;
+    var deleteTarget = "";
+
+    function buildDeleteDialog() {
+        if (deleteDialog) return deleteDialog;
+        deleteDialog = document.createElement("div");
+        deleteDialog.id = "imagedelete-overlay";
+        deleteDialog.className = "modal-overlay";
+        deleteDialog.innerHTML =
+            '<div class="modal-box">' +
+              '<span class="modal-title">Delete this image?</span>' +
+              '<p class="modal-intro">The image <code id="imagedelete-url"></code> will be ' +
+                'erased from the storage. This cannot be undone.</p>' +
+              '<p class="modal-intro" id="imagedelete-warn"></p>' +
+              '<button type="button" class="modal-close" ' +
+                'data-imagedelete="cancel">Cancel</button>' +
+              '<button type="button" class="modal-close" id="imagedelete-export" ' +
+                'data-imagedelete="export">Export first</button>' +
+              '<button type="button" class="modal-close modal-danger" ' +
+                'id="imagedelete-confirm" data-imagedelete="delete">Delete</button>' +
+            '</div>';
+        deleteDialog.addEventListener("click", function (e) {
+            if (e.target === deleteDialog) {
+                closeDeleteDialog();
+                return;
+            }
+            var action = e.target.getAttribute && e.target.getAttribute("data-imagedelete");
+            if (action === "cancel") {
+                closeDeleteDialog();
+            } else if (action === "export") {
+                // Save a copy first; the dialog stays open for the Delete.
+                downloadImage(deleteTarget);
+            } else if (action === "delete") {
+                var url = deleteTarget;
+                closeDeleteDialog();
+                deleteImage(url);
+            }
+        });
+        document.body.appendChild(deleteDialog);
+        return deleteDialog;
+    }
+
+    function openDeleteDialog(url) {
+        deleteTarget = url;
+        var box = buildDeleteDialog();
+        var code = box.querySelector("#imagedelete-url");
+        if (code) code.textContent = url;
+        var dirty = 0;
+        try {
+            if (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.dirtyBlockCount === "function") {
+                dirty = DiskStore.dirtyBlockCount(url) || 0;
+            }
+        } catch (err) { dirty = 0; }
+        var warn = box.querySelector("#imagedelete-warn");
+        if (warn) {
+            warn.textContent = dirty > 0
+                ? "Guest writes saved for this image (" + dirty + " block" +
+                  (dirty === 1 ? "" : "s") + ") go with it. \u201cExport first\u201d " +
+                  "saves everything to your computer."
+                : "\u201cExport first\u201d saves a copy to your computer before it goes.";
+        }
+        box.classList.add("visible");
+        var primary = box.querySelector("#imagedelete-confirm");
+        if (primary && primary.focus) primary.focus();
+    }
+
+    function closeDeleteDialog() {
+        if (deleteDialog) deleteDialog.classList.remove("visible");
+        deleteTarget = "";
+    }
+
+    // Erase one image from this browser: the guest's saved writes, the stored
+    // bytes, the ownership mark and any drive binding that named it.
+    function deleteImage(url) {
+        if (!url) return;
+        var work = [];
+        if (typeof DiskStore !== "undefined" && typeof DiskStore.clear === "function") {
+            work.push(Promise.resolve(DiskStore.clear(url)).catch(function () { /* ignore */ }));
+        }
+        work.push(dbDelete(url).catch(function () { /* ignore */ }));
+        Promise.all(work).then(function () {
+            DataLoader.unmount(url);
+            delete userImages[url];
+            if (typeof MountMap !== "undefined" && MountMap.removeByUrl) {
+                MountMap.removeByUrl(url);
+                if (MountMap.save) MountMap.save(window.localStorage);
+            }
+            refreshMountedList();
+        });
     }
 
     // ------------------------------------------------------------------
@@ -578,10 +702,9 @@
         if (dlBtn) dlBtn.disabled = urls.length === 0;
     }
 
-    // Download the image selected in "Export image" through the core exporter.
-    function exportSelectedImage() {
-        var select = document.getElementById("downLoadSelect");
-        var url = select ? select.value : "";
+    // Save one image to the operator's machine through the core exporter. Used
+    // by "Export image" and by the Delete dialog's "Export first".
+    function downloadImage(url) {
         if (!url) return;
         if (typeof window === "undefined" ||
             typeof window.exportDiskImage !== "function") {
@@ -608,6 +731,12 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(href);
         });
+    }
+
+    // Download the image selected in "Export image".
+    function exportSelectedImage() {
+        var select = document.getElementById("downLoadSelect");
+        downloadImage(select ? select.value : "");
     }
 
     // ------------------------------------------------------------------
@@ -752,18 +881,27 @@
         // The Paper Tapes tab has its own small zone restricted to .ptap.
         wireZone(ptapZone, ptapInput, isPtap);
 
-        // Unmount control: select an image and press Unmount to remove it
-        // from DataLoader (and from IndexedDB so it does not return on reload).
+        // Unmount / Delete controls: Unmount takes the image out of the machine
+        // (the stored copy stays), Delete erases it from this browser after a
+        // confirmation. Only an image the operator imported can be deleted.
         var mountedSelect = document.getElementById("mounted-select");
         var mountedRemove = document.getElementById("mounted-remove");
+        var mountedDelete = document.getElementById("mounted-delete");
         if (mountedSelect && mountedRemove) {
             mountedSelect.addEventListener("change", function () {
                 mountedRemove.disabled = !mountedSelect.value;
+                refreshDeleteButton();
                 syncDriveSelectToList();
                 refreshAssignControls();
             });
             mountedRemove.addEventListener("click", function () {
                 removeMounted(mountedSelect.value);
+            });
+        }
+        if (mountedSelect && mountedDelete) {
+            mountedDelete.addEventListener("click", function () {
+                var url = mountedSelect.value;
+                if (canDeleteImage(url)) openDeleteDialog(url);
             });
         }
 

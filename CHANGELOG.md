@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Delete image on the Storage page.** An image the operator imported can now
+  be erased from the storage — guest writes included — with an explicit
+  **Delete image** button beside **Unmount**, which asks for confirmation and
+  offers **Export first**. Unmount itself only takes the medium out of the
+  machine, and bundled media is never offered for deletion because it is
+  streamed from the server again. (`src/dragdrop.js`, `pdp11.html`,
+  `docs/manual/storage.md`, `docs/manual/ru/storage.md`,
+  `landing/src/components/UserManual.tsx`; pinned by
+  `tests/e2e-unmount-reboot.js`)
+
 - **A state remembers which image each drive held.** A drive remapped on the Storage page (rk4 holding rk5.dsk) survives saving, exporting, importing and `?state=` teleporting, and restores as the same machine on a browser that never made the binding; opening a state replaces the local drive bindings, while a state taken before this change leaves them untouched. (`src/mountmap.js`, `src/snapshots.js`, `src/state-format.js`, `src/devices/`, `tools/export-state.js`, `tools/restore-state.js`, `tools/headless-term.js`, `docs/ARCHITECTURE.md`, `docs/STATE-FORMAT.md`, `docs/FEATURES.md`, `tests/mountmap.test.js`, `tests/state-mountmap.test.js`, `tests/core.test.js`)
 
 - **Self-describing pre-built machine states.** Every `states/*.state.zst` now carries its own name, one-line description and preview, so a Scenario card says what the machine is instead of "RP1 (ready)", and the restore toast names the guest rather than the device key; a state opened from somebody else's `?state=` link describes itself the same way, because the metadata travels inside the container. Previews are captured from the active page at the moment the state is taken and embedded as a PNG data URI, `states/previews/*` is derived from them, and `node tools/states-annotate.js --write` keeps the committed states annotated across re-exports. (`src/snapshots.js`, `tools/states-annotate.js`, `tools/state-annotations.json`, `tools/preview-capture.js`, `tools/export-state-browser.js`, `tools/export-state.js`, `tools/gen-state-manifest.js`, `states/`, `docs/BUILDING.md`, `docs/CONTRIBUTING.md`, `tests/state-annotations.test.js`, `tests/preview-capture.test.js`, `tests/states-manifest.test.js`, `tests/e2e-quickboot-scenario.js`)
@@ -271,6 +281,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A disk unmounted on the Storage page boots again.** The disk provider
+  treated its first image fetch as final, so once Unmount removed the bytes
+  from the mount table every read of that drive returned an all-zero block and
+  any boot of it ended in `HALT at 2 PSW: 4` — the `last medium` preset and a
+  manual `BOOT RK1` typed at the `@` prompt alike. The provider streams
+  `media/<url>.zst` again when the bytes leave the mount table, and an image
+  that really is unreachable raises the "Image load interrupted" dialog
+  instead of leaving a halted CPU. (`src/browser-machine.js`; pinned by
+  `tests/e2e-unmount-reboot.js`)
+- **Unmount keeps the operator's image.** Unmounting an imported image deleted
+  its only stored copy (IndexedDB), so the guest lost the medium for good and
+  the file could no longer be booted, exported or re-mounted. Unmount now only
+  takes the medium out of the machine: the stored copy and the drive binding
+  stay, the image is re-mounted on the next launch and stays exportable.
+  (`src/dragdrop.js`, `docs/manual/storage.md`; pinned by
+  `tests/e2e-unmount-reboot.js`)
 - **The Storage page shows the disks the machine is actually running from.** The mounted-image list was built once at startup, so the payload a restored state carries inline — and the boot disk QuickBoot fetches in the background — stayed invisible there while the guest was reading it, and the page claimed nothing was mounted. The list is now rebuilt when Storage is opened and again when a restore finishes, and the counter beside it counts the images the list offers instead of only the operator's own drops, so it no longer reads "0 images" next to a machine's disks. (`src/dragdrop.js`, `src/snapshots.js`; pinned by `tests/storage-mounted-refresh.test.js`)
 - **The LP11 paper keeps the guest's page breaks.** A form feed now ends the sheet it was sent on — in the printed document and as the `\f` sentinel of **Save .txt** — instead of being glued onto the line as a literal `\f`, and a job prints no blank sheet for a form feed that arrives with nothing printed since the last one. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-print.test.js`)
 - **A fanfold sheet that fills up gets its perforation.** The seam was drawn only on a guest form feed, so a job that happened to fill all 66 lines ran into the next sheet with no separator; the paper now closes the sheet at the 66th line and the form feed that follows it costs no second seam. (`src/g60printer.js`; pinned by `tests/g60printer-seam.test.js`)

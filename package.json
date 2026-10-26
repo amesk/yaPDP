@@ -51,6 +51,7 @@
     "e2e:xxdp": "wireit",
     "e2e:xxdp:kfp": "wireit",
     "e2e:panel": "wireit",
+    "e2e:unmount": "wireit",
     "e2e:snapshot-image": "wireit",
     "e2e:state": "wireit",
     "e2e:vt100": "wireit",
@@ -370,6 +371,22 @@
       "files": [
         "src/**",
         "tests/e2e-mobile-input.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "e2e:unmount": {
+      "command": "node tests/e2e-unmount-reboot.js",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-unmount-reboot.js",
+        "tests/e2e-teletype-harness.js",
         "tools/**",
         "css/**",
         "*.html",
