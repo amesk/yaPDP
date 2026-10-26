@@ -479,6 +479,9 @@ textarea {
     box-sizing: border-box;
     max-height: calc(100vh - 32px);
     overflow-y: auto;
+    /* A long unbroken token (a 64-digit SHA-256, an image url) must never push
+       the dialog sideways: the box scrolls vertically and clips the rest. */
+    overflow-x: hidden;
     padding: 28px 34px;
     border: 1px solid #c8a860;
     border-radius: 10px;
@@ -504,6 +507,80 @@ textarea {
     border-radius: 3px;
     padding: 1px 6px;
     font-family: 'Courier Prime', arial, helvetica, sans-serif;
+}
+
+/* Machine-generated tokens inside a dialog (image names, digests, urls) are
+   data, not layout: they wrap instead of widening the box. The full digests
+   live in .modal-details, where breaking anywhere is expected. */
+.modal-box code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.modal-box .modal-details {
+    margin: 8px 0 14px;
+    font-size: 13px;
+    color: #a99c86;
+}
+
+.modal-box .modal-details summary {
+    cursor: pointer;
+    color: #b8b0a0;
+}
+
+.modal-box .modal-details div {
+    margin: 4px 0 0;
+    word-break: break-all;
+}
+
+/* Dialog actions: one wrapping row with an even gap. Inline buttons relied on
+   a margin-left between siblings, which both doubles the gap here and pushes a
+   WRAPPED row 10px to the right of the row above — three actions on a narrow
+   window looked ragged. The reset carries one class more than the shared
+   `.modal-box .modal-close + .modal-close` rule so it wins on specificity, and
+   it must stay AFTER that rule in source order to win a tie. */
+.modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.modal-box .modal-actions .modal-close+.modal-close,
+.modal-box .modal-actions .modal-close+.split-btn {
+    margin-left: 0;
+}
+
+/* The refusal dialog's file picker is driven by its own button: an exposed
+   <input type=file> would read as a form field, not as a dialog action. */
+.modal-file-input {
+    display: none;
+}
+
+/* Inline feedback inside a dialog (a supplied file that does not match).
+   Amber by default, the error accent when something was refused. */
+.modal-status {
+    margin: 8px 0 12px;
+    font-size: 13px;
+    color: #b8b0a0;
+}
+
+.modal-status.error {
+    color: #ff9b8a;
+}
+
+/* Destructive actions inside a modal are not "close" buttons: they say what
+   they destroy, in the error accent. */
+.modal-danger {
+    border-color: #b5544a;
+    color: #ff9b8a;
+}
+
+.modal-danger:hover {
+    background: #3a241f;
 }
 
 .modal-title {

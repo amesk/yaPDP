@@ -27,9 +27,14 @@ var DataLoader = (() => {
     const sources = new Map();
 
     return {
-        mount(url, bytes) {
+        // `source` records WHERE the bytes came from — "local" (drag & drop),
+        // "network", "published" (a registry version), "bundled" (desktop) or
+        // "embedded" (carried inside a state). A thin snapshot cannot fetch
+        // local bytes back, so a state records this and can warn or refuse
+        // honestly instead of blaming the wrong disk.
+        mount(url, bytes, source) {
             mounted.set(url, bytes);
-            sources.set(url, "local");
+            sources.set(url, source || "local");
             // All mounted data is decompressed payload bytes. Register one
             // canonical identity here so network, drag-and-drop, QuickBoot,
             // and desktop-bundled images follow the same rule.

@@ -558,10 +558,11 @@ async function captureDialogs(browser, wants) {
         await snap(page, "dialog-imgerror.png", 600);
     }
 
-    // 4b. Snapshot taken on a different build of the disk (offered "Delete
-    // this snapshot"). Driven through the real dialog builder, with a
-    // synthetic incompatibility, so the shot is the shipping UI and not a
-    // hand-made mock-up.
+    // 4b. Snapshot taken on a different version of the disk (offered "Use my
+    // own copy of this disk…" / "Delete this state"). Driven through the real
+    // dialog builder, with realistic 64-digit identities, so the shot is the
+    // shipping UI — short digests in the flow, full ones behind Technical
+    // details — and not a hand-made mock-up.
     if (wants("dialog-snapshot-incompatible")) {
         const page = await open(CFG_TTY);
         await page.evaluate(() => {
@@ -569,7 +570,12 @@ async function captureDialogs(browser, wants) {
                 typeof SnapshotStore.showIncompatibleImageDialog !== "function") return;
             SnapshotStore.showIncompatibleImageDialog(
                 { id: "snap-shot", name: "unix-v5 before the upgrade" },
-                [{ url: "rk0.dsk", then: "a1b2c3d4", now: "ff0099aa" }]);
+                [{
+                    url: "media/rk0.dsk.zst",
+                    then: "2e5be12477eb3ec3c1fb7afe03bf17e43860ae337be20fcb75075637c0ffee1",
+                    now: "14900310899f3551f076940f019e706f0c29a028f7dd30f70562e9091badc0de",
+                    reason: "changed"
+                }]);
         });
         await snap(page, "dialog-snapshot-incompatible.png", 600);
     }
