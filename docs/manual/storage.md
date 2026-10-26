@@ -14,20 +14,20 @@ persistent disk changes.{.shot-caption}
 
 - **Import image.** Drop or pick a disk or tape image here — `.dsk`, `.tap`, `.ptap` and their `.zst`-compressed forms are supported. While the Storage page is active you can also drop a file anywhere over the window: a full-window drop target appears. A.zst file is a zstd frame and the browser unwraps it on the fly, so a downloaded image needs no unpacking first.
 - **The file name is the device name.** An image is mounted under the device URL taken from the file itself: `RP1.DSK.ZST` becomes `rp1.dsk`, which is why the guest boots it with `boot rp1`. Rename the file to the unit you want to use — or leave the name alone and bind the image to a drive afterwards (see below). The table below maps every device to its drive, its controller and its boot command.
-- **Mounted images — the list, Unmount and the drive binding.** The list names the images mounted in this browser. The counter next to it counts the images *you* mounted (dropped or imported), not the ones the desktop build carries inside itself. With an image selected, Unmount removes it; **"Assign to drive"** binds it to a drive (rk0-rk7, rl0-rl3, rp0-rp4, ra0-ra3, tm0-tm2), so the guest boots it from there, and **"— not bound —"** detaches it, returning the drive to the file-name convention. An image whose size does not fit the chosen controller (an RP06 image on an RK05-only RK11) is refused unless you press "Assign anyway". Mounted images live in browser storage (IndexedDB) and are re-mounted automatically on the next launch.
-- **Export image.** Downloads a stored image — guest-OS writes included — to your machine. Each entry states its state: "no changes", "N blocks changed", or "not mounted, N blocks changed".
+- **Mounted images — the list, Unmount and the drive binding.** The list names the images mounted in this browser. The counter next to it counts the images *you* mounted (dropped or imported), not the ones the desktop build carries inside itself. With an image selected, Unmount removes it; **"Assign to drive"** binds it to a drive (rk0-rk7, rl0-rl3, rp0-rp4, ra0-ra3, tm0-tm2), so the guest boots it from there, and **"— not bound —"** detaches it, returning the drive to the file-name convention. An image whose size does not fit the chosen controller (an RP06 image on an RK05-only RK11) is refused unless you press "Assign anyway". An image that Export image cannot save is marked **"· nothing to export"** in this list. Mounted images live in browser storage (IndexedDB) and are re-mounted automatically on the next launch.
+- **Export image.** Downloads a stored image — guest-OS writes included — to your machine. Each entry states its state: "no changes", "N blocks changed", or "not mounted, N blocks changed". Only an image with something of yours to save is listed: one the guest has written to, or one you mounted yourself. A pristine bundled image — media the machine merely streams while a guest runs — is not listed, because it is not something you produced; the Mounted images list marks it "· nothing to export" instead.
 - **Persistent disk changes.** Guest-OS writes are saved to browser storage and overlaid on the base image on the next launch, so files an operating system created are still there tomorrow. Only the blocks the guest actually wrote are kept — the base image is fetched again on every launch — and a saved block always wins over the pristine one. They are written out periodically and when you leave the page, and they belong to one image: **Reset image** discards them for the selected disk, Reset all for every disk, which returns the media to its factory state.
 
 **Which file is which device:**
 
-| Image | Drive | Controller | Boot it with |
-|---|---|---|---|
-| rk0 … rk5{.disk} | RK05 disk cartridge | RK11 | `boot rkN` |
-| rl0 … rl3{.disk} | RL01 / RL02 cartridge | RL11 | `boot rlN` |
-| rp0 … rp4{.disk} | RP04 / RP06 disk pack | RP11 | `boot rpN` |
-| ra0 … ra2{.disk} | RA80 / RA81 (MSCP) | UDA50 | `boot raN` |
-| tm0 … tm2{.disk} | 9-track magnetic tape | TM11 | `boot tmN` (RSTS restores with ROLLIN) |
-| *.ptap{.disk}  | Paper tape reader / punch | PTR11 | `boot pr` |
+| Image            | Drive                     | Controller | Boot it with                           |
+| ---------------- | ------------------------- | ---------- | -------------------------------------- |
+| rk0 … rk5{.disk} | RK05 disk cartridge       | RK11       | `boot rkN`                             |
+| rl0 … rl3{.disk} | RL01 / RL02 cartridge     | RL11       | `boot rlN`                             |
+| rp0 … rp4{.disk} | RP04 / RP06 disk pack     | RP11       | `boot rpN`                             |
+| ra0 … ra2{.disk} | RA80 / RA81 (MSCP)        | UDA50      | `boot raN`                             |
+| tm0 … tm2{.disk} | 9-track magnetic tape     | TM11       | `boot tmN` (RSTS restores with ROLLIN) |
+| *.ptap{.disk}    | Paper tape reader / punch | PTR11      | `boot pr`                              |
 
 ![The Storage page — Paper Tapes tab](assets/images/manual/storage-tapes.png){.shot}
 

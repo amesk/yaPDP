@@ -137,6 +137,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/landing-manual-coverage.test.js`)
 ### Changed
 
+- **The Mounted images list says why an image has no Export entry.** An image
+  that "Export image" cannot save — pristine bundled media the machine merely
+  streams — is marked "· nothing to export" in the list where it is mounted, so
+  the omission reads as a rule instead of a missing feature. The export rule
+  itself is unchanged: guest writes, or an image the operator mounted.
+  (`src/dragdrop.js`, `pdp11.html`, `docs/manual/storage.md`,
+  `docs/manual/ru/storage.md`, `landing/src/components/UserManual.tsx`,
+  `tests/export-list.test.js`, `tests/storage-mounted-refresh.test.js`)
 - **The "state was not restored" dialog is readable.** It says the machine was
   left untouched before explaining anything, names each disk the way CONFIG does
   (`rk5.dsk`, not a url), shows an eight-digit identity in the flow and keeps the

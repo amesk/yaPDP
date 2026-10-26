@@ -1146,8 +1146,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'Lists the images mounted in this browser and lets you unmount one again. The counter counts the images YOU mounted (dropped or imported), not the ones the desktop build carries inside itself. Mounted images live in browser storage (IndexedDB) and are re-mounted on the next launch.'
-                : 'Список образов, подключённых в этом браузере, с возможностью отключить любой из них. Счётчик считает только ВАШИ образы (перетащенные или импортированные), а не те, что вшиты в настольную сборку. Подключённые образы хранятся в IndexedDB и подключаются снова при следующем запуске.'}
+                ? 'Lists the images mounted in this browser and lets you unmount one again. The counter counts the images YOU mounted (dropped or imported), not the ones the desktop build carries inside itself. An image that Export disk cannot save is marked “· nothing to export” here. Mounted images live in browser storage (IndexedDB) and are re-mounted on the next launch.'
+                : 'Список образов, подключённых в этом браузере, с возможностью отключить любой из них. Счётчик считает только ВАШИ образы (перетащенные или импортированные), а не те, что вшиты в настольную сборку. Образ, который «Выгрузка диска» сохранить не может, помечен здесь как «· nothing to export». Подключённые образы хранятся в IndexedDB и подключаются снова при следующем запуске.'}
             </p>
           </div>
 
@@ -1170,8 +1170,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'Downloads a mounted disk image to your machine.'
-                : 'Скачивает подключённый образ диска на ваш компьютер.'}
+                ? 'Downloads a stored disk image — guest-OS writes included — and states its condition: “no changes”, “N blocks changed” or “not mounted, N blocks changed”. Only an image with something of yours to save is listed: one the guest has written to, or one you mounted yourself. A pristine bundled image is not listed — the Mounted images list marks it “· nothing to export” instead.'
+                : 'Скачивает сохранённый образ диска — вместе с записями гостевой ОС — и указывает его состояние: «no changes», «N blocks changed» или «not mounted, N blocks changed». В списке только образы, у которых есть что сохранить из вашего: тот, куда писала гостевая ОС, или тот, что вы смонтировали сами. Чистый вшитый образ в списке отсутствует — вместо этого список Mounted images помечает его «· nothing to export».'}
             </p>
           </div>
         </div>
