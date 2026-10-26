@@ -336,6 +336,23 @@
         }
     }
 
+    // Reported image load failures, one modal per url and session: a guest
+    // that keeps reading an absent medium would otherwise stack a dialog on
+    // every cache miss. Cleared when the image finally loads.
+    var reportedImageLoads = Object.create(null);
+
+    function reportMissingImage(url) {
+        if (reportedImageLoads[url]) return;
+        reportedImageLoads[url] = true;
+        // The boot ROM does not check the controller error bits: a failed
+        // read leaves it jumping to address 0, so the operator sees only a
+        // halted CPU. The dialog is the only honest signal left (imgerror.js).
+        if (typeof window !== "undefined" &&
+            typeof window.reportImageLoadError === "function") {
+            window.reportImageLoadError(url, "network");
+        }
+    }
+
     function dataLoaderProvider(url) {
         // LAZY provider: DataLoader is filled by dragdrop.js / quickboot
         // / tauri-bundled.js at various times, so every readBlock re-reads
@@ -350,7 +367,15 @@
         // them to IDB, and readBlock() consults DiskStore BEFORE the
         // base-image path so a saved block always wins. Snapshot
         // capture/restore (snapshots.js) works through the same overlay.
+        // `fetched` means "the network attempt FAILED" in this session, not
+        // "an attempt was made": a successful load mounts the bytes into
+        // DataLoader, and Unmount can take them away again — the next read
+        // must be allowed to re-stream the image. Latching on success served
+        // an all-zero block for the rest of the session, the boot ROM jumped
+        // to address 0 and the machine halted ("HALT at 2 PSW: 4").
         var fetched = false;
+        // One network attempt at a time: parallel cache misses share it.
+        var inflight = null;
         // controlBlock mirrors the iopage.js contract DiskStore expects:
         // { url, cache: [Uint16Array words] }.
         var controlBlock = { url: url, cache: [] };
@@ -375,12 +400,26 @@
         async function baseBytes() {
             var local = (typeof DataLoader !== "undefined") ? DataLoader.get(url) : undefined;
             if (local !== undefined) return local;
-            // One network attempt per provider: an unreachable image must not
+            // One network attempt at a time: an unreachable image must not
             // make every cache miss re-fetch. loadBaseBytes() is shared with
             // the exporter (window.exportDiskImage).
+            if (inflight) return inflight;
             if (fetched) return undefined;
-            fetched = true;
-            return loadBaseBytes(url);
+            inflight = loadBaseBytes(url).then(function (bytes) {
+                inflight = null;
+                // Reached the image: release the latch, so dropping it from
+                // DataLoader (Unmount) is undone by the next read instead of
+                // serving zeros forever. Only a FAILED load stays latched.
+                fetched = bytes === undefined;
+                if (fetched) reportMissingImage(url);
+                else delete reportedImageLoads[url];
+                return bytes;
+            }, function (err) {
+                inflight = null;
+                fetched = true;
+                throw err;
+            });
+            return inflight;
         }
 
         return {

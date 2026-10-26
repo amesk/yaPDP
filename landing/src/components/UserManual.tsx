@@ -1142,12 +1142,12 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           <div className="rounded border border-[#3a3528] bg-[#13110d] p-3">
             <HardDrive className="w-4 h-4 text-[#c8a860] mb-1.5" />
             <strong className="text-[#f0e6c8] block mb-1">
-              {lang === 'en' ? 'Mounted images / Unmount' : 'Подключённые образы / отключение'}
+              {lang === 'en' ? 'Mounted images / Unmount / Delete' : 'Подключённые образы / отключение / удаление'}
             </strong>
             <p className="text-[#c8b890]">
               {lang === 'en'
-                ? 'Lists the images mounted in this browser and lets you unmount one again. The counter counts the images YOU mounted (dropped or imported), not the ones the desktop build carries inside itself. An image that Export disk cannot save is marked “· nothing to export” here. Mounted images live in browser storage (IndexedDB) and are re-mounted on the next launch.'
-                : 'Список образов, подключённых в этом браузере, с возможностью отключить любой из них. Счётчик считает только ВАШИ образы (перетащенные или импортированные), а не те, что вшиты в настольную сборку. Образ, который «Выгрузка диска» сохранить не может, помечен здесь как «· nothing to export». Подключённые образы хранятся в IndexedDB и подключаются снова при следующем запуске.'}
+                ? 'Lists the images mounted in this browser. Unmount takes the selected one out of the machine — booting that drive then reports a missing image instead of loading some other file, a bundled image is streamed from the server again on the next boot, and an imported one keeps its stored copy and is back after a reload. Delete image erases an imported image from this browser after a confirmation, guest writes included, with an Export first shortcut; bundled media cannot be deleted because it lives on the server. The counter counts the images YOU mounted, not the ones the desktop build carries inside itself, and an image that Export disk cannot save is marked “· nothing to export” here.'
+                : 'Список образов, подключённых в этом браузере. Unmount вынимает выбранный образ из машины: загрузка с этого привода сообщает об отсутствующем образе, а не подставляет другой файл; вшитый образ при следующей загрузке снова скачивается с сервера, а импортированный сохраняет копию и возвращается после перезагрузки. Delete image стирает импортированный образ из браузера после подтверждения — вместе с записями гостя и с кнопкой Export first, чтобы сначала сохранить копию; вшитые образы удалить нельзя, они лежат на сервере. Счётчик считает только ВАШИ образы, а не те, что вшиты в настольную сборку; образ, который «Выгрузка диска» сохранить не может, помечен здесь как «· nothing to export».'}
             </p>
           </div>
 
