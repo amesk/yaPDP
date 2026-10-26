@@ -7,12 +7,17 @@
  * draw the perforation only on FF, so a job that happened to fill the sheet
  * exactly ran into the next sheet with no separator at all.
  *
- * pageAdvance() is the pure sheet arithmetic behind doPrintln(); it is
- * extracted straight from the real source (same pattern as
- * tests/g60printer-flush.test.js) so the test exercises the production formula,
- * and a source contract pins the two behaviours that cannot be extracted
- * without a DOM: the automatic seam on a full sheet, and the rule that a form
- * feed travelling through the pacing queue must not draw a second one.
+ * pageAdvance() is the pure sheet arithmetic behind doPrintln() and
+ * sheetStep() is the decision built on it (queue the seam? open a fresh line on
+ * this sheet?). Both are extracted straight from the real source (same pattern
+ * as tests/g60printer-flush.test.js) so the test exercises the production
+ * formula, and a source contract pins what cannot be extracted without a DOM.
+ *
+ * The blank-row regression pinned here: the line feed that fills a sheet used
+ * to open the next line on THAT sheet, leaving one empty row between the last
+ * printed line and the perforation — an .art file printed from RT-11 (which
+ * sends no form feeds) showed an extra empty line on every page throw while the
+ * Print preview paginated correctly.
  *
  * Run with:  node tests/g60printer-seam.test.js
  *
@@ -53,17 +58,19 @@ function extractBlock(src, startMarker, tail) {
   throw new Error("unbalanced braces for: " + startMarker);
 }
 
-function loadPageAdvance() {
+function loadSheetHelpers() {
   const src = fs.readFileSync(SOURCE_PATH, "utf8");
-  const fn = extractBlock(src, "function pageAdvance", "");
+  const code = extractBlock(src, "function pageAdvance", "") + "\n" +
+    extractBlock(src, "function sheetStep", "");
   const sandbox = {};
   vm.createContext(sandbox);
-  vm.runInContext(fn + "\n; this.pageAdvance = pageAdvance;", sandbox);
-  return sandbox.pageAdvance;
+  vm.runInContext(code +
+    "\n; this.pageAdvance = pageAdvance; this.sheetStep = sheetStep;", sandbox);
+  return sandbox;
 }
 
 function run() {
-  const pageAdvance = loadPageAdvance();
+  const { pageAdvance, sheetStep } = loadSheetHelpers();
   const LENGTH = 66; // 11in sheet at 6 LPI
 
   // 1. Lines 1..65 of a sheet are not the last one.
@@ -109,14 +116,53 @@ function run() {
     assert.strictEqual(step.full, true, "and closes the sheet");
   }
 
-  // 5. Source contract: the seam is queued when the sheet fills, and the
-  //    automatic one never doubles up with a form feed already in flight.
+  // 5. A full fanfold sheet: the seam is queued and the fresh line is NOT
+  //    opened on the sheet that just ended — it belongs below the perforation.
+  {
+    let pos = 0;
+    let rows = 1;           // the empty line resetPrinter() opens on the paper
+    let seams = 0;
+    for (let line = 1; line <= LENGTH; line++) {
+      const step = sheetStep(pos, LENGTH, true, false);
+      pos = step.pos;
+      if (step.openLine) rows++;
+      if (step.seam) {
+        seams++;
+        assert.strictEqual(rows, LENGTH,
+          "a full sheet must end with exactly " + LENGTH +
+          " rows — no blank row above the perforation");
+      }
+    }
+    assert.strictEqual(seams, 1, "one sheet, one automatic seam");
+    assert.strictEqual(pos, 0, "the sheet boundary is where it should be");
+  }
+
+  // 6. The console teletype (smooth roll, no visible fold) keeps its old
+  //    behaviour: the line is opened even where a seam would have been drawn.
+  {
+    const step = sheetStep(LENGTH - 1, LENGTH, false, false);
+    assert.strictEqual(step.seam, true, "the invisible eject is still queued");
+    assert.strictEqual(step.openLine, true, "a roll has no perforation to stop at");
+  }
+
+  // 7. While a form feed's filler is in flight (seamQueued), the filler lines
+  //    are exactly the blank rows that top the sheet off, so they are opened.
+  {
+    const step = sheetStep(LENGTH - 1, LENGTH, true, true);
+    assert.strictEqual(step.seam, false, "the eject is already queued");
+    assert.strictEqual(step.openLine, true, "the filler must reach the sheet bottom");
+  }
+
+  // 8. Source contract: the seam is queued when the sheet fills, at the FF
+  //    position in the stream, and never doubles up with a form feed in flight.
   {
     const src = fs.readFileSync(SOURCE_PATH, "utf8");
-    assert.ok(/var sheet = pageAdvance\(pagePos, pageLength\);/.test(src),
-      "doPrintln must take the sheet position from pageAdvance()");
-    assert.ok(/if \(sheet\.full && !seamQueued\) charBuffer\.push\(CHAR_FF_MARK\);/.test(src),
-      "a full sheet must queue the fold marker unless a form feed is already on its way");
+    assert.ok(/var step = sheetStep\(pagePos, pageLength, pageBreakMarker, seamQueued\);/.test(src),
+      "doPrintln must take the sheet decision from sheetStep()");
+    assert.ok(/if \(step\.seam\) charBuffer\.unshift\(CHAR_FF_MARK\);/.test(src),
+      "a full sheet must queue the fold marker at the line-feed position");
+    assert.ok(/if \(step\.openLine\) \{/.test(src),
+      "doPrintln must not open a line on a sheet the seam closes");
     assert.ok(/seamQueued = true;/.test(src),
       "doFormFeed must announce the seam it queues");
     assert.ok(/seamQueued = false;/.test(src),

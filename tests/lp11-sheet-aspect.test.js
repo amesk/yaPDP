@@ -101,12 +101,19 @@ function run() {
     assert.ok(/max-height:\s*var\(--lp11-cell\);/.test(line),
         "a printed row must be one line tall:\n" + line);
 
-    // The seam selector also appears in the shared teletype rule, so take the
-    // LAST match: the LP11-specific override introduced for this fix.
+    // The seam selector also appears in the shared teletype rule, so the FIRST
+    // match is that shared rule (which draws the dashed perforation) and the
+    // LAST one is the LP11-specific override introduced for this fix.
+    const seamBase = extractRule(css,
+        "#lp11_printer td#lp11g60paper_printarea p.pageBreak");
+    assert.ok(/border-bottom:\s*1px dashed/.test(seamBase),
+        "the perforation must still be drawn:\n" + seamBase);
+
     const seam = extractRule(css,
         "#lp11_printer td#lp11g60paper_printarea p.pageBreak", true);
-    assert.ok(/max-height:\s*var\(--lp11-cell\);/.test(seam),
-        "the fold seam must be one line tall too:\n" + seam);
+    assert.ok(/height:\s*0;/.test(seam) && /max-height:\s*0;/.test(seam),
+        "the fold seam must not take a printed row — 66 lines run right up " +
+        "to the fold:\n" + seam);
 
     // --- 4. The resulting sheet is wider than tall -------------------------
     const contentW = COLUMNS * CHAR_WIDTH;

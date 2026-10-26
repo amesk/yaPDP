@@ -927,10 +927,16 @@
     overflow: visible;
 }
 
-/* The fold seam is one printed row of the machine's cell, like every other
-   line on the sheet (the shared rule above is sized for the 16px teletype). */
+/* A real perforation takes NO printed row: the 66 lines of a sheet run right
+   up to the fold and the next sheet's first line starts directly under it.
+   Spending a character cell on the seam left a thin blank strip between sheets
+   on the Printer page (the Print preview has no such gap), so the seam is a
+   zero-height box and its dashed rule is drawn on the sheet boundary. */
 #lp11_printer td#lp11g60paper_printarea p.pageBreak {
-    max-height: var(--lp11-cell);
+    height: 0;
+    max-height: 0;
+    line-height: 0;
+    overflow: hidden;
 }
 
 #lp11_printer div#lp11g60printer_topoverlay,
