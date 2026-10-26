@@ -146,7 +146,10 @@ async function run() {
             "only the Storage page rebuilds the list");
 
         fire(page, "storage");
-        assert.deepStrictEqual(labels(page), ["rk5.dsk"],
+        // The "· nothing to export" suffix is the Export rule showing through
+        // (a restored, write-free image has nothing of the operator's to save);
+        // the rule itself is pinned in tests/export-list.test.js.
+        assert.deepStrictEqual(labels(page), ["rk5.dsk  · nothing to export"],
             "opening Storage must show the disk the guest is running from");
         assert.strictEqual(page.select.disabled, false,
             "the Unmount control must be usable for a restored disk");
@@ -163,7 +166,8 @@ async function run() {
         mounted.push("rk1.dsk");
         mounted.push("rk5.dsk");
         fire(page, "storage");
-        assert.deepStrictEqual(labels(page), ["rk1.dsk", "rk5.dsk"],
+        assert.deepStrictEqual(labels(page),
+            ["rk1.dsk  · nothing to export", "rk5.dsk  · nothing to export"],
             "every image mounted since startup is listed, sorted by name");
         assert.strictEqual(page.count.textContent, "2 images",
             "the teleport case: two disks listed, two counted — never 0");

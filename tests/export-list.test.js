@@ -36,13 +36,13 @@ const vm = require("vm");
 const SRC = path.join(__dirname, "..", "src", "dragdrop.js");
 
 /**
- * makePage(state) — a sandbox holding one copy of the page script.
+ * makeSelect() — a stub <select>: its option list, current value and disabled
+ * flag.
  *
- * state = { mounted: [], changed: [], blocks: {} } — what DataLoader/DiskStore
- * report. Returns the export API, the stub <select> (its options and disabled
- * flag) and the stub Download button.
+ * Assigning innerHTML rebuilds the option list, and the DOM also drops the
+ * selection with it — the refreshers read the old value before clearing.
  */
-function makePage(state) {
+function makeSelect() {
     const options = [];
     const select = {
         value: "",
@@ -53,18 +53,31 @@ function makePage(state) {
             if (options.length === 1) select.value = opt.value; // the DOM does this
         }
     };
-    // Assigning innerHTML rebuilds the option list, and the DOM also drops the
-    // selection with it — refreshExportList() reads the old value first.
     Object.defineProperty(select, "innerHTML", {
         get() { return ""; },
         set(v) { if (v === "") { options.length = 0; select.value = ""; } }
     });
+    return select;
+}
+
+/**
+ * makePage(state) — a sandbox holding one copy of the page script.
+ *
+ * state = { mounted: [], changed: [], blocks: {} } — what DataLoader/DiskStore
+ * report. Returns the export API, the stub export <select>, the stub MOUNTED
+ * <select> (refreshMountedList rebuilds it and then calls refreshExportList)
+ * and the stub Download button.
+ */
+function makePage(state) {
+    const select = makeSelect();
+    const mountedSelect = makeSelect();
     const downloadBtn = { disabled: false };
     const document = {
         readyState: "loading",          // init() must NOT run
         addEventListener() {},
         getElementById(id) {
             if (id === "downLoadSelect") return select;
+            if (id === "mounted-select") return mountedSelect;
             if (id === "download-btn") return downloadBtn;
             return null;
         },
@@ -96,12 +109,18 @@ function makePage(state) {
     vm.runInContext(fs.readFileSync(SRC, "utf8"), sandbox,
         { filename: "src/dragdrop.js" });
 
-    return { api: sandbox.window.yapdpExportList, select: select,
-        options: options, downloadBtn: downloadBtn, state: state };
+    return { api: sandbox.window.yapdpExportList,
+        select: select, options: select.options,
+        mountedSelect: mountedSelect, mountedOptions: mountedSelect.options,
+        downloadBtn: downloadBtn, state: state };
 }
 
 function labels(page) {
     return page.options.map((o) => o.textContent);
+}
+
+function mountedLabels(page) {
+    return page.mountedOptions.map((o) => o.textContent);
 }
 
 function run() {
@@ -199,6 +218,33 @@ function run() {
         assert.deepStrictEqual(labels(page), ["rk0.dsk  (not mounted, 2 blocks changed)"],
             "an image that is not mounted says so and keeps its block count");
         console.log("PASS: export list — a detached image keeps its saved writes");
+    }
+
+    // ---- 4. the MOUNTED list explains an image with nothing to save -----
+    // The two lists sit on one page, and Mounted now names EVERY mounted image
+    // while Export deliberately omits pristine bundled media. Without a mark,
+    // an omission reads as a bug — so the Mounted entry itself says why.
+    {
+        const page = makePage({ mounted: ["rp1.dsk", "mine.dsk"], changed: [], blocks: {} });
+        page.api.userImages["mine.dsk"] = true;
+        page.api.refreshMountedList();
+        assert.deepStrictEqual(mountedLabels(page),
+            ["mine.dsk", "rp1.dsk  · nothing to export"],
+            "a mounted bundled image says why it has no Export entry, " +
+            "while the operator's own image needs no explanation");
+        assert.deepStrictEqual(labels(page), ["mine.dsk  (no changes)"],
+            "the mark lives in the Mounted list only, never in Export");
+
+        // A guest write makes the bundled image exportable — the mark goes.
+        page.state.changed.push("rp1.dsk");
+        page.state.blocks["rp1.dsk"] = 1;
+        page.api.refreshMountedList();
+        assert.deepStrictEqual(mountedLabels(page), ["mine.dsk", "rp1.dsk"],
+            "an image with writes needs no explanation");
+        assert.deepStrictEqual(labels(page),
+            ["mine.dsk  (no changes)", "rp1.dsk  (1 block changed)"],
+            "and it appears in Export right away");
+        console.log("PASS: mounted list — 'nothing to export' marks what Export cannot save");
     }
 
     console.log("export-list: all checks passed");

@@ -295,6 +295,13 @@
 
         var urls = diskImageUrls(DataLoader.list()).sort();
         var bindings = bindingsByUrl();
+        // Which of these images "Export image" can actually save. The same rule
+        // as the export list itself (exportableUrls), computed HERE so the two
+        // lists on one page can never tell different stories about one image.
+        var changed = (typeof DiskStore !== "undefined" &&
+                       typeof DiskStore.listDirty === "function")
+            ? diskImageUrls(DiskStore.listDirty()) : [];
+        var exportable = exportableUrls(urls, changed, userImages);
         select.innerHTML = "";
         if (!urls.length) {
             var emptyOpt = document.createElement("option");
@@ -305,7 +312,13 @@
             urls.forEach(function (url) {
                 var opt = document.createElement("option");
                 opt.value = url;
-                opt.textContent = imageLabel(url, bindings);
+                // Say WHY an image has nothing to save. A pristine bundled image
+                // is mounted and streaming but has no entry in "Export image"
+                // (see exportableUrls), and a list that simply omits it reads as
+                // a bug unless the image itself says so.
+                opt.textContent = imageLabel(url, bindings) +
+                    (exportable.indexOf(url) === -1
+                        ? "  \u00b7 nothing to export" : "");
                 select.appendChild(opt);
             });
         }
