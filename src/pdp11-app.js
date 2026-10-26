@@ -4358,14 +4358,25 @@ Onboarding.init();
     });
 })();
 
-// CPU runaway-halt notifier: the core (src/pdp11.js) only raises an injectable
-// slot when it force-halts on trap recursion; this UI layer decides the reaction
-// — a transient error toast. Same inversion as __consoleOutputHook.
+// CPU halt notifier: the core (src/pdp11.js) only raises an injectable slot when
+// the machine stops on its own (HALT instruction, runaway trap recursion) and
+// passes the structured event; this UI layer decides the reaction — an operator
+// notice with a recovery hint. Same inversion as __consoleOutputHook.
+//
+// The wording/severity policy lives in src/halt-notice.js (DOM-free, unit
+// tested); here we only route it to the toast subsystem.
 (function initCpuHaltToast() {
-    window.__yapdpCpuHaltHook = function (reason) {
-        if (typeof Toasts !== "undefined" && Toasts.show) {
-            Toasts.show({ text: "CPU halted: runaway trap", category: "error" });
-        }
+    window.__yapdpCpuHaltHook = function (info) {
+        if (typeof HaltNotice === "undefined") return;
+        // While the quick-boot wizard autoloads it owns the machine through an
+        // input gate whose only way out is its own toast (src/quickboot.js):
+        // preempting that toast would strand the operator, so stay silent. The
+        // stop is still recorded in CPU.haltReason and shown on the panel icon.
+        if (typeof QuickBoot !== "undefined" && QuickBoot.isAutoloading &&
+            QuickBoot.isAutoloading()) return;
+        var notice = HaltNotice.haltNotice(info);
+        if (!notice) return; // e.g. a panel STEP halts by design
+        if (typeof Toasts !== "undefined" && Toasts.show) Toasts.show(notice);
     };
 })();
 

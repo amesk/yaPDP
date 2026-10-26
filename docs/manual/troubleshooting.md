@@ -67,6 +67,27 @@ If the machine halts at the `@` prompt or shows an error instead of booting:
 - **Wrong machine profile.** Some guests need the [LP11 line printer](#printer) or a teletype console. The [quick-boot wizard](#quick-start) sets these automatically; when booting manually, check the [Config page](#config) for the required peripherals.
 - **Corrupted or missing image.** If the image did not download fully, the emulator shows an [image load failure](#an-image-cannot-be-loaded) dialog. Re-download or drag & drop the image file onto the **Storage** page.
 
+### The machine stops by itself
+
+When the guest executes a `HALT` instruction, or the emulator cuts off a runaway
+trap, the machine really stops: the output goes silent and the RUN light goes
+out. The emulator says so instead of leaving you in front of a frozen screen.
+
+![The halt notice](assets/images/manual/dialog-halt-toast.png){.shot}
+
+- A toast names the address — in octal, the way DEC wrote addresses — and what to
+  do next: **CONT** continues from where it stopped, **RESET** or a reboot starts
+  over.
+- A stop at `000002` or `000004` means the CPU trapped into an empty vector, which
+  is what a failed boot or a broken bootstrap leaves behind: reboot the machine or
+  boot it again.
+- The pause icon on the **PANEL** button in the sidebar keeps the last stop as a
+  tooltip, so the reason is still readable after the toast is gone; clicking the
+  button shows the notice again.
+
+If you stopped the CPU yourself — the **HALT** switch on the panel, or one pass
+with **STEP** — there is no notice, because nothing unexpected happened.
+
 ### The keyboard does not type
 
 If keystrokes produce no visible output on the console or terminal:

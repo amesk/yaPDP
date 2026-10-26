@@ -30,6 +30,7 @@
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const net = require("net");
 const { spawn } = require("child_process");
 const puppeteer = require("puppeteer-core");
 
@@ -55,8 +56,16 @@ function writeShot(fileName, buf) {
 }
 // The port is overridable because Windows can exclude a range from the
 // ephemeral pool (Hyper-V/WinNAT), which makes a fixed port fail with EACCES.
-const PORT = Number(process.env.YAPDP_SHOT_PORT) || 11790;
-const BASE = `http://127.0.0.1:${PORT}`;
+// An override alone is not enough when the blocked range is unknown, so the
+// candidates below are probed and the first one that can actually be bound
+// wins — 11790 itself sits inside such a range on some machines, and the old
+// behaviour was a bare "Static server did not start" with no way to tell why.
+const PORT_CANDIDATES = [
+    Number(process.env.YAPDP_SHOT_PORT) || 11790,
+    11791, 11880, 13080, 13380
+].filter((p, i, all) => all.indexOf(p) === i);
+let PORT = PORT_CANDIDATES[0];
+let BASE = `http://127.0.0.1:${PORT}`;
 const VIEWPORT = { width: 1280, height: 800 };
 
 // --- Config seeded into localStorage (merged over Config.DEFAULTS) -------
@@ -252,19 +261,39 @@ function serverAlive() {
     });
 }
 
+// Can this port be bound at all? Probing first turns a Windows "excluded
+// range" (EACCES) into "try the next candidate" instead of a silent hang in
+// the readiness loop below, where the child's error is swallowed by
+// stdio: "ignore".
+function canBind(port) {
+    return new Promise((resolve) => {
+        const srv = net.createServer();
+        srv.once("error", () => resolve(false));
+        srv.once("listening", () => srv.close(() => resolve(true)));
+        srv.listen(port, "127.0.0.1");
+    });
+}
+
 // Start the repo's static server unless something already serves the port.
 async function ensureServer() {
     if (await serverAlive()) return null;
-    const child = spawn(process.execPath, [
-        path.join(ROOT, "tools", "serve.js"),
-        "--port", String(PORT)
-    ], { cwd: ROOT, stdio: "ignore" });
-    for (let i = 0; i < 60; i++) {
-        if (await serverAlive()) return child;
-        await sleep(200);
+    for (const candidate of PORT_CANDIDATES) {
+        if (!await canBind(candidate)) continue;
+        PORT = candidate;
+        BASE = `http://127.0.0.1:${PORT}`;
+        const child = spawn(process.execPath, [
+            path.join(ROOT, "tools", "serve.js"),
+            "--port", String(PORT)
+        ], { cwd: ROOT, stdio: "ignore" });
+        for (let i = 0; i < 60; i++) {
+            if (await serverAlive()) return child;
+            await sleep(200);
+        }
+        child.kill();
+        throw new Error(`Static server did not start on port ${PORT}`);
     }
-    child.kill();
-    throw new Error(`Static server did not start on port ${PORT}`);
+    throw new Error("no port could be bound for the static server (tried " +
+        PORT_CANDIDATES.join(", ") + "); set YAPDP_SHOT_PORT to a free port");
 }
 
 // Resolve an installed Edge/Chrome for puppeteer-core.
@@ -545,6 +574,28 @@ async function captureDialogs(browser, wants) {
             if (opt) opt.click();
         });
         await snap(page, "dialog-autoload.png", 1000);
+    }
+
+    // 4b. Halt notice — a REAL stop, not a mocked toast: deposit HALT, jump the
+    // CPU there and let the core publish the event (notifyCpuHalt ->
+    // src/halt-notice.js -> Toasts), which is the path the operator meets.
+    if (wants("dialog-halt-toast")) {
+        const page = await open(CFG_TTY);
+        await page.evaluate(() => {
+            CPU.mmuMode = 0;            // a HALT is a real halt only in kernel
+            CPU.mmuEnable = 0;
+            CPU.registerVal[7] = 0o1000;      // PC
+            CPU.memory[0o1000 >> 1] = 0;      // HALT 000000
+            CPU.runState = 0;                 // STATE_RUN
+        });
+        // Wait for the notice to reach the DOM instead of guessing a delay:
+        // a toast that never appeared must fail here, not produce a silent
+        // picture of an unchanged page.
+        await page.waitForFunction(() => {
+            const el = document.querySelector(".yapdp-toast");
+            return !!el && el.classList.contains("visible");
+        }, { timeout: 5000 });
+        await snap(page, "dialog-halt-toast.png", 400);
     }
 
     // 4. Image load failure dialog (Offered "Open Storage").
@@ -876,7 +927,8 @@ async function captureVt11Lander(browser) {
             await captureButtons(browser, wants);
         }
         if (wants("dialog-onboarding") || wants("dialog-quickboot") ||
-            wants("dialog-autoload") || wants("dialog-imgerror") ||
+            wants("dialog-autoload") || wants("dialog-halt-toast") ||
+            wants("dialog-imgerror") ||
             wants("dialog-snapshot-incompatible") ||
             wants("dialog-poweroff") || wants("dialog-config-leave") ||
             wants("dialog-reboot") || wants("dialog-state") ||

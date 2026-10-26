@@ -29,6 +29,10 @@ const vm = require("vm");
 const assert = require("assert");
 
 const SOURCE_PATH = path.join(__dirname, "..", "src", "panel-led.js");
+// The icon tooltip formats the PC through the halt-notice module's octal
+// helper, so the module under test is loaded alongside it (same order as
+// pdp11.html).
+const HALT_NOTICE_PATH = path.join(__dirname, "..", "src", "halt-notice.js");
 
 // CPU run states (mirror src/pdp11.js).
 const STATE_RUN = 0;
@@ -42,6 +46,7 @@ const STATE_STEP = 4;
 // Panel nav button exposes an observable .nav-led and .nav-run-icon.
 function loadModule(powerSwitch, runState) {
   const code = fs.readFileSync(SOURCE_PATH, "utf8");
+  const haltNoticeCode = fs.readFileSync(HALT_NOTICE_PATH, "utf8");
   const state = { powerSwitch, runState };
 
   function makeClasses() {
@@ -82,6 +87,7 @@ function loadModule(powerSwitch, runState) {
     clearInterval() {},
   };
   vm.createContext(sandbox);
+  vm.runInContext(haltNoticeCode, sandbox); // exposes window.HaltNotice
   vm.runInContext(code, sandbox);
   return {
     PanelLed: sandbox.window.PanelLed,
@@ -176,6 +182,39 @@ function run() {
     assert.strictEqual(led.has("power-on"), false, "powered off -> lamp off");
     assert.strictEqual(icon.has("off"), true, "powered off -> icon hidden");
     assert.strictEqual(icon.has("run"), false, "powered off -> no play icon");
+  }
+
+  // ---- haltTitle(): the icon explains WHY the machine stands still --------
+  {
+    const { PanelLed, icon, state } = loadModule(0, STATE_HALT);
+    assert.strictEqual(typeof PanelLed.haltTitle, "function",
+      "haltTitle should be a function");
+    assert.strictEqual(PanelLed.haltTitle(null), "",
+      "no recorded stop -> no tooltip");
+    assert.strictEqual(
+      PanelLed.haltTitle({ reason: "halt-instruction", pc: 0o10, psw: 0, step: true }),
+      "", "a panel STEP halt is not worth a tooltip");
+
+    const running = PanelLed.haltTitle({ reason: "halt-instruction", pc: 0o10, psw: 0,
+      step: false });
+    assert.ok(/000010/.test(running),
+      "the tooltip carries the octal PC (XXDP EKBCD1 shape): " + running);
+    assert.ok(/HALT instruction/.test(running), "it names the cause: " + running);
+    assert.ok(/PSW/.test(running), "it carries the PSW: " + running);
+
+    const trapped = PanelLed.haltTitle({ reason: "runaway-trap", pc: 0o1234,
+      psw: 0, step: false });
+    assert.ok(/unrecoverable trap/.test(trapped), "it names a trap: " + trapped);
+    assert.ok(/001234/.test(trapped), "it carries the octal PC: " + trapped);
+
+    // update() puts that text on the icon, so a dead machine explains itself
+    // long after the announcing toast has expired.
+    PanelLed.update();
+    assert.strictEqual(icon.title, "", "no stop recorded -> icon title cleared");
+    state.haltReason = { reason: "halt-instruction", pc: 0o10, psw: 0, step: false };
+    PanelLed.update();
+    assert.ok(/000010/.test(icon.title),
+      "a halted machine keeps the reason on its icon: " + icon.title);
   }
 
   // ---- start(): installs the interval once (idempotent) ------------------

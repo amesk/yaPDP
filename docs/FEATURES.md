@@ -327,6 +327,17 @@ delays. The flag lives in `sessionStorage`, so a page reload comes back paused
 rather than running behind the operator's back; a toast confirms both
 directions ("Emulation paused" / "Emulation resumed").
 
+When the machine stops **on its own** the operator is told instead of being left
+with a frozen screen: the guest's `HALT` instruction and the emulator's
+runaway-trap guard raise a toast carrying the address in octal and the way out
+("Press CONT to continue, or RESET to reboot"), and the pause glyph on the PANEL
+sidebar button keeps the reason as a tooltip and repeats the notice when
+clicked. A halt at 0/2/4 (the CPU trapped into an empty vector, which is what a
+failed boot leaves behind) is an error, an ordinary guest halt a warning, and a
+stop the operator caused himself — the **HALT** switch or one **STEP** pass — is
+not announced at all. The notice stays quiet while the quick-boot wizard owns
+the machine, so it can never hide its **Take control!** button.
+
 The **Config** page controls the console terminal type (a Model 33 ASR teletype,
 a DECscope VT52 or a DEC VT100), the two user terminals (TTY 1 / TTY 2, each of
 them `None | VT52 | VT100` — the number of terminals is read off them, and TT2

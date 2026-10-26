@@ -105,6 +105,11 @@ const CPU = {
     interruptRequested: 1,       // Flag to mark if an interrupt has been requested
     trapMask: 0,                 // Mask of traps to be taken at the end of the current instruction
     trapPSW: -1,                 // PSW when first trap invoked (for double trap handling)
+    // Last self-initiated stop of the machine, published by notifyCpuHalt().
+    // An OBJECT on purpose: captureCPU() (src/state-format.js) persists only
+    // primitives and typed arrays, so this stays runtime-only and the state
+    // file format does not change (see docs/STATE-FORMAT.md).
+    haltReason: null,            // { reason, pc, psw, step } | null
 
     // --- Processor Status Word & Flags ---
     PSW: 0xf,                    // PSW (less flags C, N, V & Z)
@@ -148,6 +153,42 @@ const CPU = {
     statusLights: 0x3000,                      // Console error/status lights
     switchRegister: 0                          // Console switch register
 };
+
+// Panel STEP bookkeeping: 1 while a one-instruction step batch runs. A halt
+// during that batch is the operator's own doing, not a failure (see
+// notifyCpuHalt). NON-ENUMERABLE on purpose: captureCPU() walks the CPU keys and
+// a state file must not grow a runtime-only flag.
+Object.defineProperty(CPU, "stepActive", {
+    value: 0, writable: true, enumerable: false, configurable: true
+});
+
+// === notifyCpuHalt() ===
+// Purpose:
+//   Single publication point for "the machine stopped on its own" — the HALT
+//   instruction and the runaway trap-recursion guard. The core stays UI-agnostic:
+//   it records WHY (and where) and hands a structured event to the injectable
+//   slot. pdp11-app.js maps that to an operator-facing notice; the headless
+//   test stack reads CPU.haltReason directly.
+//
+// Notes:
+//   • WAIT is NOT a stop and must never come through here: an idle guest
+//     (e.g. the XXDP monitor at its prompt) sits in STATE_WAIT, and a notice
+//     per prompt would be noise.
+//   • A HALT executed while CPU.stepActive is set is the panel STEP switch
+//     doing its job; the event says so via `step`, so the UI can stay quiet.
+function notifyCpuHalt(reason) {
+    "use strict";
+    CPU.haltReason = {
+        reason: reason,
+        pc: CPU.registerVal[7] & 0xffff,
+        psw: readPSW() & 0xffff,
+        step: CPU.stepActive ? true : false
+    };
+    if (typeof window !== "undefined" &&
+        typeof window.__yapdpCpuHaltHook === "function") {
+        window.__yapdpCpuHaltHook(CPU.haltReason);
+    }
+}
 
 // Instruction logging stuff - useful ONLY in browser debugging mode!!
 var log = {
@@ -567,13 +608,10 @@ function trap(vector, errorMask) {
             if ((CPU.trapDepth = (CPU.trapDepth || 0) + 1) > 8) {
                 CPU.trapDepth = 0;
                 CPU.runState = STATE_HALT;
-                // The core only signals the event through an injectable slot;
-                // it knows nothing about who listens (see pdp11-app.js, which
-                // wires this to the toast subsystem). Mirrors __consoleOutputHook.
-                if (typeof window !== "undefined" &&
-                    typeof window.__yapdpCpuHaltHook === "function") {
-                    window.__yapdpCpuHaltHook("runaway-trap");
-                }
+                // Publish through the one stop-reporting choke point; the core
+                // still knows nothing about who listens (pdp11-app.js wires it
+                // to the operator notice).
+                notifyCpuHalt("runaway-trap");
                 return -1;
             }
         }
@@ -1365,6 +1403,13 @@ function pdp11Processor() {
     let dst, instruction, src, reg, result, virtualAddress;
     let loopTime, loopCount;
 
+    // Arm/disarm the STEP marker for this batch: STATE_STEP runs one
+    // instruction and leaves the CPU halted by design (see notifyCpuHalt).
+    CPU.stepActive = (CPU.runState === STATE_STEP) ? 1 : 0;
+    // Resuming clears the "last stop" record, whichever control did it
+    // (panel CONT/START, boot, state restore) — no caller has to remember.
+    if (CPU.runState === STATE_RUN && CPU.haltReason) CPU.haltReason = null;
+
     switch (CPU.runState) {
         case STATE_STEP:
             CPU.runState = STATE_HALT; // fall through to execute one instruction then halt
@@ -1442,7 +1487,10 @@ function pdp11Processor() {
                                                         trap(0o4, 0x80); // Trap 4 - 0x80 Illegal halt
                                                     } else {
                                                         CPU.runState = STATE_HALT; // halt
+                                                        // console.log stays: the developer channel. The operator
+                                                        // channel is the published event below.
                                                         console.log("HALT at " + CPU.registerVal[7].toString(8) + " PSW: " + readPSW().toString(8));
+                                                        notifyCpuHalt("halt-instruction");
                                                     }
                                                     break;
                                                 case 1: // WAIT 000001
@@ -2554,6 +2602,7 @@ function boot(opts) {
     CPU.trapMask = 0;
     CPU.trapPSW = -1;              // -1 means "no trap in progress"
     CPU.interruptRequested = 1;
+    CPU.haltReason = null;         // a clean start carries no previous stop
 
     CPU.flagC = NaN;
     CPU.flagNZ = NaN;

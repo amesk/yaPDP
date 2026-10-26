@@ -58,6 +58,8 @@ const SUITES = [
     ["e2e:bsd29",              ["tests/e2e-bsd29-boot.js"]],
     ["e2e:xxdp",               ["tests/e2e-xxdp-ekbbf0.js"]],
     ["e2e:xxdp:kfp",           ["tests/e2e-xxdp-kfp.js"]],
+    // Idle monitor = WAIT (not a stop); a halted diagnostic = fast verdict.
+    ["e2e:xxdp:halt",          ["tests/e2e-xxdp-halt-notice.js"]],
     ["e2e:panel",              ["tests/e2e-panel-lamps.js"]],
     ["e2e:snapshot-image",     ["tests/e2e-snapshot-image-changed.js"]],
     ["e2e:state",              ["tests/e2e-state-deeplink.js"]],

@@ -101,6 +101,26 @@ function sendChar(evalIn, ch) {
   evalIn("window.dlReceiveQueue(0, [" + (ch.charCodeAt(0) & 0x7f) + "])");
 }
 
+// Read the core's own record of a self-initiated stop (CPU.haltReason, see
+// notifyCpuHalt() in src/pdp11.js). Returns null while the machine has not
+// stopped on its own — a guest idling in WAIT at a prompt is NOT a stop.
+function halted(mach) {
+  try {
+    const info = mach.evalIn("(typeof CPU !== 'undefined' && CPU.haltReason) || null");
+    return (info && typeof info === "object") ? info : null;
+  } catch (err) {
+    return null; // a sandbox without the CPU field is simply "not halted"
+  }
+}
+
+// Human wording for a halt verdict. DEC documents PDP-11 addresses in octal and
+// the core logs them the same way, so the failure message speaks that dialect.
+function haltVerdict(info) {
+  const oct = (n) => Number(n || 0).toString(8).padStart(6, "0");
+  return "halted at PC " + oct(info.pc) + " PSW " + oct(info.psw) +
+    " (" + (info.reason || "?") + ")";
+}
+
 /**
  * Boot XXDP+ (rk3) headlessly and reach the monitor prompt.
  * @returns {Promise<{mach:object, ev:function, panel:object}>}
@@ -175,6 +195,14 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
   } else {
     await typeLineSlowly(ev, command);
   }
+  // A loader that stops the CPU can never print the banner: say so at once
+  // instead of burning the whole start budget on a machine that cannot answer.
+  const haltBeforeStart = halted(mach);
+  if (haltBeforeStart) {
+    dumpConsole("halt", mach.getOut());
+    assert.fail("the machine " + haltVerdict(haltBeforeStart) +
+      " before the diagnostic started — not a hang");
+  }
   if (!await waitFor(mach, startNeedle, startTimeout, "launch:start")) {
     console.error("diagnostic never started");
     dumpConsole("start", mach.getOut());
@@ -188,6 +216,12 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
  *
  * cfg:
  *   endPass   RegExp matched against the whole console output (a clean pass).
+ *   haltIsFailure  treat a self-halted CPU as a fault verdict (default true).
+ *             Hard XXDP diagnostics (docs/xxdp-diagnostics.md) print nothing on
+ *             a fault and just HALT with an address — this turns a 120 s
+ *             "timed out waiting for END PASS" into "halted at PC 000010" in
+ *             one poll. Set false for a diagnostic known to halt after its
+ *             own clean pass.
  *   error     RegExp for failure text (optional; tail-matched defence).
  *             Keep it specific: it is tested against the last 1200 characters,
  *             so a bare /\bERROR\b/i matches the harmless banner text a
@@ -204,7 +238,8 @@ async function launchDiagnostic({ mach, ev, command, resolveNeedle,
  *
  * Returns after a clean pass; otherwise prints a tail and fails the assertion.
  */
-async function runToVerdict({ mach, ev, panel, endPass, error, timeoutMs, drive }) {
+async function runToVerdict({ mach, ev, panel, endPass, error, timeoutMs, drive,
+  haltIsFailure = true }) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const out = mach.getOut();
@@ -215,9 +250,23 @@ async function runToVerdict({ mach, ev, panel, endPass, error, timeoutMs, drive 
       dumpConsole("error", out);
       assert.fail("diagnostic ended with an error");
     }
+    // A clean pass is checked BEFORE the halt: a diagnostic may print its
+    // END PASS and only then stop the CPU.
     if (endPass.test(out)) {
       mach.halt();
       return;
+    }
+    // Silent hard diagnostics: no per-pass text, a detected fault HALTs with
+    // an address. The address IS the verdict — never lose it to a timeout.
+    if (haltIsFailure) {
+      const halt = halted(mach);
+      if (halt) {
+        mach.halt();
+        console.error("diagnostic " + haltVerdict(halt));
+        dumpConsole("halt", out);
+        assert.fail("diagnostic " + haltVerdict(halt) +
+          " — a fault verdict, not a hang");
+      }
     }
 
     if (drive) {
@@ -246,6 +295,6 @@ function phaseReport() {
 
 module.exports = {
   bootXxdp, launchDiagnostic, runToVerdict, waitFor, sendLine, typeLineSlowly,
-  sendChar, sleep,
+  sendChar, sleep, halted, haltVerdict,
   phaseReport,
 };

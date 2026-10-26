@@ -55,18 +55,59 @@ var PanelLed = (function () {
         return (runState === STATE_RUN) ? "run" : "halt";
     }
 
+    /**
+     * Pure: the tooltip for the run-state icon — the last stop the machine
+     * reported. The toast that announced it is long gone by the time the
+     * operator looks at a dead machine, so the reason has to live on here.
+     * @param {?{reason:string, pc:number, psw:number, step:boolean}} info
+     *        CPU.haltReason (see notifyCpuHalt() in src/pdp11.js)
+     * @returns {string} "" when there is nothing to say
+     */
+    function haltTitle(info) {
+        if (!info || typeof info !== "object" || info.step) return "";
+        var octal = (typeof HaltNotice !== "undefined" && HaltNotice.octal)
+            ? HaltNotice.octal
+            : function (n) { return (n >>> 0).toString(8); };
+        var what = (info.reason === "runaway-trap")
+            ? "unrecoverable trap"
+            : "HALT instruction";
+        return "Last stop: " + what + " at " + octal(info.pc) +
+            " (PSW " + octal(info.psw) + ")";
+    }
+
     // Read the live machine state. Every access is guarded so the module is
     // safe even if the page is still initializing or a module is absent.
     function readState() {
         var powerOn = false;
         var runState = -1; // unknown -> treat as not running (pause icon)
+        var haltReason = null;
         try {
             if (typeof panel !== 'undefined') powerOn = (panel.powerSwitch >= 0);
         } catch (err) { powerOn = false; }
         try {
-            if (typeof CPU !== 'undefined') runState = CPU.runState;
-        } catch (err) { runState = -1; }
-        return { powerOn: powerOn, runState: runState };
+            if (typeof CPU !== 'undefined') {
+                runState = CPU.runState;
+                haltReason = CPU.haltReason || null;
+            }
+        } catch (err) { runState = -1; haltReason = null; }
+        return { powerOn: powerOn, runState: runState, haltReason: haltReason };
+    }
+
+    // Clicking the run-state icon repeats the stop notice: the toast is
+    // transient, the halt is not, and the operator needs a way to ask again.
+    // Installed once per button, guarded so polling cannot stack listeners.
+    function installClick(btn) {
+        if (!btn || typeof btn.addEventListener !== 'function') return;
+        if (btn.__haltNoticeClick) return;
+        btn.__haltNoticeClick = true;
+        btn.addEventListener('click', function () {
+            var info = readState().haltReason;
+            var notice = (typeof HaltNotice !== 'undefined' && HaltNotice.haltNotice)
+                ? HaltNotice.haltNotice(info) : null;
+            if (notice && typeof Toasts !== 'undefined' && Toasts.show) {
+                Toasts.show(notice);
+            }
+        });
     }
 
     // Re-read the machine state and apply the indicator classes to the Panel
@@ -76,6 +117,7 @@ var PanelLed = (function () {
         var s = readState();
         var btn = document.querySelector('.nav-btn[data-page="panel"]');
         if (!btn) return;
+        installClick(btn);
         // Power lamp: lit only while the machine is powered on.
         var led = btn.querySelector('.nav-led');
         if (led) led.classList.toggle('power-on', ledState(s.powerOn) === 'on');
@@ -86,6 +128,9 @@ var PanelLed = (function () {
             var mode = runIcon(s.powerOn, s.runState);
             icon.classList.toggle('off', mode === 'off');
             icon.classList.toggle('run', mode === 'run');
+            // Why the machine stands still — kept on the icon because the
+            // announcing toast expires while the halt does not.
+            icon.title = haltTitle(s.haltReason);
         }
     }
 
@@ -110,6 +155,7 @@ var PanelLed = (function () {
         TICK_MS: TICK_MS,
         ledState: ledState,
         runIcon: runIcon,
+        haltTitle: haltTitle,
         start: start,
         stop: stop,
         update: update
