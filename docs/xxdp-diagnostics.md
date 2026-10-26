@@ -28,18 +28,18 @@ Source (authoritative mnemonic table):
 
 ### Device mnemonics relevant to this emulator
 
-| Code | Device            |
-|------|-------------------|
-| KB   | CPU (KB11/11-70)  |
-| FP   | FP11, FPF11 (FPU) |
-| MS, MK, MM, ML, MF, KM | Memory |
-| KT   | Memory management |
-| KK   | Cache memory      |
-| RK   | RK11 / RK05       |
-| RL   | RL11 / RL01-02    |
-| RH, RM, RS | disk controllers |
-| KL   | KL11 console      |
-| Z    | not CPU-bound     |
+| Code                   | Device            |
+| ---------------------- | ----------------- |
+| KB                     | CPU (KB11/11-70)  |
+| FP                     | FP11, FPF11 (FPU) |
+| MS, MK, MM, ML, MF, KM | Memory            |
+| KT                     | Memory management |
+| KK                     | Cache memory      |
+| RK                     | RK11 / RK05       |
+| RL                     | RL11 / RL01-02    |
+| RH, RM, RS             | disk controllers  |
+| KL                     | KL11 console      |
+| Z                      | not CPU-bound     |
 
 ## The rk3 image (XXDP+ DK)
 
@@ -62,8 +62,10 @@ Full catalog (entry `D` in the monitor), grouped by device under test:
 > (no per-pass text) and a detected fault **halts the CPU** instead of
 > printing. Running them needs the correct switch-register (silence/PASS
 > semantics) and a readiness model that treats HALT-with-an-address as an
-> error, not a hang. `EKBCD1` halts at pc=`10` — worth decoding via its
-> listing (retrocmp scan) when debugging 11/70 cache behaviour.
+> error, not a hang — which the shared driver now has (see
+> [Halt events](#halt-events-a-stop-is-a-verdict)). `EKBCD1` halts at
+> pc=`10` — worth decoding via its listing (retrocmp scan) when debugging
+> 11/70 cache behaviour.
 
 ### FP11 / FPU diagnostics (KFP*)
 - `KFPAD0`, `KFPBC0`, `KFPCD0`
@@ -83,6 +85,29 @@ Full catalog (entry `D` in the monitor), grouped by device under test:
 rk3 does: on the headless stack it stops at the boot ROM with
 `VALID COMMANDS ARE BOOT OR HELP` and needs its own input protocol. It is
 currently out of scope; revisit separately.
+
+## Halt events: a stop is a verdict
+
+The CPU core publishes every self-initiated stop as one structured event
+(`CPU.haltReason = { reason, pc, psw, step }`, see `notifyCpuHalt()` in
+`src/pdp11.js`). Two consequences matter here:
+
+- **An idle guest is not a stop.** The XXDP+ monitor waits for input by polling
+  its console from a run loop (measured), so "not halted" is the property to
+  assert, not a particular run state.
+- **A halted diagnostic is a failure verdict.** `runToVerdict()` in
+  `tests/xxdp-lib.js` reads that event and reports
+  `diagnostic halted at PC 000010 PSW 000000 (halt-instruction)` in one poll,
+  instead of burning the whole budget and printing "timed out waiting for END
+  PASS". Set `haltIsFailure: false` for a diagnostic known to halt *after* its
+  own clean pass.
+
+Reproduce the diagnosis on the real image:
+
+```bash
+node tests/e2e-xxdp-halt-notice.js                       # idle != stop
+XXDP_HALT_NEGATIVE=1 node tests/e2e-xxdp-halt-notice.js  # EKBCD1 halts -> fast verdict
+```
 
 ## How a diagnostic is driven on headless
 

@@ -114,6 +114,7 @@ contract, the bridge and the write-back storage split.
 | [`src/panel-led.js`](../src/panel-led.js)               | Panel nav-button status indicators — polls the machine power + CPU run state; the green power lamp lights while powered on, and a pause/play glyph in the button's top-left corner shows whether the CPU is halted or running (hidden while the machine is off)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | [`src/loading-gate.js`](../src/loading-gate.js)         | Startup loading gate (issue #77) — decides when the inline first-paint overlay may be lifted. It waits for the Model 33 artwork markers, the terminal artwork markers, the first-screen webfonts and `media/manifest.json`, keeps sounds/the room photo/the images themselves loading behind it, and a 15 s ceiling lifts it regardless                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | [`src/toasts.js`](../src/toasts.js)                     | Toast notifications — a DOM-independent subsystem owning the queue, the timing and the categories (`info`/`warning`/`error`). The window injects a DOM/CSS adapter; `show()` supports key-based deduplication so a repeated identical failure extends one toast instead of spamming. The UI layer exposes `window.__yapdpReportError`/`__yapdpReportWarning` (in `src/pdp11-app.js`) that modules call for user-relevant failures (see [User-facing errors](#user-facing-errors))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| [`src/halt-notice.js`](../src/halt-notice.js)           | Halt-event policy — turns the structured stop the core publishes (`CPU.haltReason` from `notifyCpuHalt()` in `src/pdp11.js`) into the operator notice: wording, severity and recovery hint. DOM-free and unit tested (`tests/halt-notice.test.js`); see [The machine stopped](#the-machine-stopped-one-published-event-one-policy) |
 | [`src/state-format.js`](../src/state-format.js)         | The `.state` container and its versioning — magic + manifest + raw memory; `CONTAINER_VERSION` (byte layout) and `schemaVersion` (manifest semver), the legacy-number normalisation and the compatibility rule (see the [state format](STATE-FORMAT.md) deep-dive)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | [`src/state-frame.js`](../src/state-frame.js)           | The compression FRAME around the container (zstd / gzip / bare) and the policy for which one a writer uses                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | [`css/pdp11.css`](../css/pdp11.css)                     | Front panel and application styles                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -142,6 +143,63 @@ that did not apply (`src/dragdrop.js`), a fullscreen toggle that failed
 deduplication: a repeated identical failure extends one toast instead of
 spamming. A missing `Toasts` subsystem is a silent no-op, so the same code path
 serves the browser and the Node tests.
+
+### The machine stopped: one published event, one policy
+
+A CPU stop is a **state**, not a log line, so it travels as one structured event
+instead of being scraped out of `console.*`:
+
+- the core publishes it from one place — `notifyCpuHalt(reason)` in
+  `src/pdp11.js` — which records `CPU.haltReason = { reason, pc, psw, step }` and
+  calls the injectable slot `window.__yapdpCpuHaltHook(info)`. There are exactly
+  two publishers: the `HALT` instruction and the runaway trap-recursion guard.
+  `WAIT` (an idle guest at its prompt) is **not** a stop and never reaches the
+  slot, and neither is a panel `STEP` (it says so through `step: true`);
+- `CPU.haltReason` is an object on purpose: `captureCPU()` in
+  `src/state-format.js` persists only primitives and typed arrays, so the record
+  stays runtime-only and the state file format does not change (the `stepActive`
+  marker is a non-enumerable property for the same reason);
+- `src/halt-notice.js` owns the policy — a `runaway-trap` or a halt at PC ≤ 4
+  (trapped into an empty vector) is an `error`, an ordinary guest halt is a
+  `warning` with a CONT hint, a STEP halt produces nothing at all, and the dedup
+  key `cpu-halt` lets repeated stops extend one toast;
+- `src/pdp11-app.js` routes the notice to the toast subsystem and stays silent
+  while the quick-boot wizard owns the machine through its input gate (the
+  "Take control!" button lives in that toast — preempting it would strand the
+  operator). `src/panel-led.js` keeps the reason on the run-state icon as a
+  tooltip and repeats the notice on click, so a halt outlives a 4 s toast.
+
+The same event serves the headless test stack: `tests/xxdp-lib.js` reads
+`CPU.haltReason` through the sandbox and turns a halted diagnostic into a fast
+verdict (`halted at PC 000010`) instead of a budget-sized timeout — see
+[xxdp-diagnostics.md](xxdp-diagnostics.md#halt-events-a-stop-is-a-verdict).
+
+**Triggering a stop by hand** (browser console; serve the repo with
+`node tools/serve.js`, port 1170). The console must be attached to the document
+that runs `pdp11.html`: `CPU` is a `const` and `writePSW()` a function of *that*
+document, so on the landing page — which embeds the emulator in an `<iframe>` —
+both are undefined. Switch the console's execution context to the `pdp11.html`
+frame, or open the page directly:
+
+```js
+// an ordinary HALT -> warning: "Machine halted at 001002. Press CONT to continue…"
+CPU.mmuMode = 0; CPU.mmuEnable = 0;   // a HALT is a real halt only in kernel, no MMU
+CPU.registerVal[7] = 0o1000;          // PC
+CPU.memory[0o1000 >> 1] = 0;          // HALT 000000
+CPU.runState = 0;                     // STATE_RUN; the CPU loop reschedules itself
+
+// an empty-vector dead end -> error ("…trapped into an empty vector")
+CPU.registerVal[7] = 0; CPU.memory[0] = 0; CPU.runState = 0;
+
+// a runaway trap -> error
+CPU.trapDepth = 8; trap(0o4, 0);
+```
+
+The PC in the notice is the address *after* the fetch (the core increments R7
+before dispatch), hence `001002` for a `HALT` deposited at `001000`. The
+screenshot `assets/images/manual/dialog-halt-toast.png` is produced from exactly
+this path by `node tools/screenshots-manual.js dialog-halt-toast` — a real stop,
+not a mocked toast.
 
 ## Tests
 

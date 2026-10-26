@@ -1977,6 +1977,55 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
 
         <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
           <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en' ? 'The machine stops by itself' : 'Машина останавливается сама'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'When the guest executes a HALT instruction, or the emulator cuts off a runaway trap, the machine really stops: the output goes silent and the RUN light goes out. The emulator says so instead of leaving you in front of a frozen screen — a toast names the address (octal, the way DEC wrote addresses) and what to do: CONT continues from where it stopped, RESET or a reboot starts over.'
+              : 'Когда гость выполняет инструкцию HALT или эмулятор обрывает ушедшую в рекурсию ловушку, машина действительно встаёт: вывод замолкает, лампа RUN гаснет. Эмулятор сообщает об этом, а не оставляет вас перед застывшим экраном: в уведомлении видны адрес (в восьмеричной системе, как писали адреса в DEC) и что делать — CONT продолжит с места остановки, RESET или перезагрузка начнут заново.'}
+          </p>
+
+          <ul className="text-xs sm:text-sm text-[#c8b890] leading-relaxed list-disc pl-5 space-y-1.5">
+            <li>
+              {lang === 'en'
+                ? 'A stop at 000002 or 000004 means the CPU trapped into an empty vector — what a failed boot or a broken bootstrap leaves behind: reboot or boot again.'
+                : 'Остановка на адресе 000002 или 000004 означает, что процессор ушёл в пустой вектор — так выглядит неудачная загрузка или испорченный бутстрап: перезагрузите машину или загрузитесь снова.'}
+            </li>
+            <li>
+              {lang === 'en'
+                ? 'The pause icon on the PANEL button keeps the last stop as a tooltip, so the reason is still readable after the toast is gone; clicking the button shows the notice again.'
+                : 'Значок паузы на кнопке PANEL хранит причину последней остановки в подсказке, поэтому её можно прочитать и после исчезновения уведомления; клик по кнопке показывает сообщение снова.'}
+            </li>
+            <li>
+              {lang === 'en'
+                ? 'A stop you caused yourself — the HALT switch on the panel, or one STEP pass — is not announced at all: nothing unexpected happened.'
+                : 'Остановка, которую вызвали вы сами, — тумблер HALT на панели или один проход в режиме STEP — не объявляется: ничего неожиданного не случилось.'}
+            </li>
+          </ul>
+
+          <div className="rounded border border-[#4a453a] bg-[#12100d] p-2 max-w-lg mx-auto">
+            <img
+              src="assets/images/manual/dialog-halt-toast.png"
+              alt="The halt notice"
+              className="w-full h-auto rounded cursor-pointer"
+              onClick={() =>
+                openImage(
+                  'assets/images/manual/dialog-halt-toast.png',
+                  lang === 'en' ? 'The halt notice names the address and the way out' : 'Уведомление об остановке: адрес и что делать'
+                )
+              }
+            />
+            <p className="mt-1.5 text-center text-[11px] text-[#8a7650] italic">
+              {lang === 'en'
+                ? 'A halted machine explains itself: the address in octal and the way out.'
+                : 'Остановившаяся машина объясняет себя: адрес в восьмеричной системе и что делать.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
             {lang === 'en' ? 'A snapshot is refused after an image update' : 'Снапшот отклонён после обновления образа'}
           </h3>
 

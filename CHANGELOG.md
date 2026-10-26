@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The machine says why it stopped.** A CPU halt — the guest's own `HALT` or
+  the emulator's runaway-trap guard — now raises an operator toast carrying the
+  address and the way out ("press CONT", or "press RESET or boot again"), where
+  previously it only printed a line to the developer console and the machine
+  simply looked frozen. A stop at 0/2/4 (trapped into an empty vector) and a
+  runaway trap are errors; an ordinary guest halt is a warning; a panel `STEP`
+  stop stays silent, and nothing is shown while the Quick Boot wizard owns the
+  machine. The halted Panel icon keeps the reason in its tooltip and repeats the
+  notice when clicked. The same event reaches the headless stack, so a
+  diagnostic that HALTs (XXDP `EKBCD1` stops at PC `000010`) now fails with that
+  address instead of looking like a 90-second hang. Documented in the manual
+  (both languages) with a real screenshot, in `docs/ARCHITECTURE.md` and
+  `docs/FEATURES.md`, and on the landing's User Manual page. (`src/pdp11.js`,
+  `src/halt-notice.js`, `src/pdp11-app.js`, `src/panel-led.js`, `pdp11.html`,
+  `tests/xxdp-lib.js`, `docs/xxdp-diagnostics.md`, `docs/ARCHITECTURE.md`,
+  `docs/FEATURES.md`, `docs/manual/troubleshooting.md`,
+  `docs/manual/ru/troubleshooting.md`, `landing/src/components/UserManual.tsx`,
+  `tools/screenshots-manual.js`, `tests/halt-notice.test.js`,
+  `tests/cpu-halt-hook.test.js`, `tests/e2e-xxdp-halt-notice.js`)
+
 - **Delete image on the Storage page.** An image the operator imported can now
   be erased from the storage — guest writes included — with an explicit
   **Delete image** button beside **Unmount**, which asks for confirmation and
