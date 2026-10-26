@@ -315,6 +315,10 @@ var SnapshotStore = (() => {
                     // image has no published version to fetch, so a thin state
                     // can only restore here — the save path warns about it.
                     imageSources: captureImageSources(),
+                    // Which image each drive was bound to (a remapped drive).
+                    // The controllers read their url through MountMap, so a
+                    // state without this table resurrects the default image.
+                    mountmap: captureMountMap(),
                     cpu: captureCPU(),
                     memory: mem,
                     mounted: captureMounted(),
@@ -431,6 +435,17 @@ var SnapshotStore = (() => {
             if (source) out[url] = String(source);
         });
         return out;
+    }
+
+    // The drive → image-url bindings the operator made (a remapped drive, e.g.
+    // rk4 → rk5.dsk). Without them a state taken on this machine reads the
+    // DEFAULT image of that drive when it is restored on another one. A state
+    // with no remaps records "{}": the field is always written, so readers can
+    // tell "no remaps" from a legacy state that never had the field.
+    function captureMountMap() {
+        if (typeof MountMap === "undefined" ||
+            typeof MountMap.list !== "function") return {};
+        try { return MountMap.list() || {}; } catch (e) { return {}; }
     }
 
     // Registry identity is recorded only when the mounted payload's
@@ -576,6 +591,39 @@ var SnapshotStore = (() => {
         return Promise.all(promises);
     }
 
+    // Apply a state's drive → image-url bindings to the live MountMap.
+    //
+    // Ordering rules (they are the whole point of this function):
+    //   - `table === undefined` means a LEGACY state: the browser's own table
+    //     is left alone, so opening an old state changes nothing;
+    //   - a present table (including `{}`) REPLACES the local one — a state
+    //     describes the machine, it does not add a preference;
+    //   - the result is persisted, otherwise the guest reads another image
+    //     after a Reboot or a power cycle;
+    //   - every bound url gets a drive provider, otherwise a remapped drive
+    //     that is not in `mounted` reads zeroes.
+    // Never call this before incompatibleImages(): a refused restore must not
+    // damage the bindings the user made locally.
+    function applyStateMountMap(table) {
+        if (typeof MountMap === "undefined" ||
+            typeof MountMap.applySnapshot !== "function") return;
+        if (table === undefined) return;
+        MountMap.applySnapshot(table);
+        if (typeof window !== "undefined" && window.localStorage &&
+            typeof MountMap.save === "function") {
+            MountMap.save(window.localStorage);
+        }
+        if (typeof window === "undefined" || typeof MountMap.list !== "function") return;
+        var bound = MountMap.list() || {};
+        Object.keys(bound).forEach(function (drive) {
+            var url = bound[drive];
+            if (!url) return;
+            if (typeof window.__yapdpMountProvider === "function") {
+                try { window.__yapdpMountProvider(url); } catch (e) { /* provider is best-effort */ }
+            }
+        });
+    }
+
     // Mount providers only after image identity checks have passed. Used by
     // restore() so a shared ?state= link gets working drives without reloading.
     function mountStateDisks(mounted) {
@@ -653,6 +701,11 @@ var SnapshotStore = (() => {
                 showIncompatibleImageDialog(snap, bad);
                 return false;
             }
+            // Which image each drive holds is part of the machine, so it is
+            // applied after the image check (a refusal keeps the local table)
+            // and before restoreDevices()/the first I/O, where the controllers
+            // resolve their url.
+            applyStateMountMap(snap.mountmap);
             restoreCPU(snap.cpu);
             return restoreMemory(snap.memory).then(function () {
             // Device registers (L2) — restore after RAM so devices see
@@ -752,7 +805,7 @@ var SnapshotStore = (() => {
                     // power-on. A state carries its device key; a saved snapshot
                     // only names its mounted images, derived here.
                     var lastKey = snap.bootDeviceKey
-                        || deviceKeyFromMounted(snap.mounted);
+                        || bootDeviceKey(snap.mounted, snap.mountmap);
                     if (lastKey && typeof LastBoot !== "undefined" &&
                         LastBoot.remember) {
                         LastBoot.remember(lastKey);
@@ -768,6 +821,16 @@ var SnapshotStore = (() => {
                         typeof document.getElementById === "function" &&
                         document.getElementById("page-" + snap.page)) {
                         switchPage(snap.page);
+                    }
+                    // The Storage page's list was built at init(), before this
+                    // restore mounted anything: an embedded payload (or a disk
+                    // fetched right now) is missing there. Rebuild it, so the
+                    // disks the machine is actually running on are visible where
+                    // the operator looks. A state with no recorded page does not
+                    // change pages, hence the explicit call.
+                    if (typeof window !== "undefined" && window.yapdpExportList &&
+                        typeof window.yapdpExportList.refreshMountedList === "function") {
+                        window.yapdpExportList.refreshMountedList();
                     }
                     return true;
                 });
@@ -1251,6 +1314,9 @@ var SnapshotStore = (() => {
             vt52: parsed.manifest.vt52 || null,
             teletypepaper: parsed.manifest.teletypepaper || null,
             mounted: parsed.manifest.mounted || [],
+            // Deliberately NOT defaulted: an absent field means a legacy state,
+            // which must leave the browser's own bindings untouched.
+            mountmap: parsed.manifest.mountmap,
         };
         return restore(snap).then(function (applied) {
             return applied ? { ok: true, url: url, name: snap.name }
@@ -1355,6 +1421,8 @@ var SnapshotStore = (() => {
                     teletypepaper: teletypepaper,
                     panel: capturePanelState(),
                     mounted: captureMounted(),
+                    // Which image each drive was bound to at export time.
+                    mountmap: captureMountMap(),
                     overlay: serializeOverlay(overlay),
                     page: capturePage(),
                     steps: null,
@@ -1695,7 +1763,7 @@ var SnapshotStore = (() => {
             // device = boot disk name from mounted images (e.g. "rp1").
             // Only set when we can derive it; otherwise omit so ?state=
             // does not try to pre-load a non-existent image.
-            var deviceKey = deviceKeyFromMounted(snap.mounted);
+            var deviceKey = bootDeviceKey(snap.mounted, snap.mountmap);
             return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
                 var manifest = {
                     schemaVersion: SCHEMA_VERSION,
@@ -1717,6 +1785,9 @@ var SnapshotStore = (() => {
                     teletypepaper: snap.teletypepaper,
                     panel: snap.panel,
                     mounted: snap.mounted,
+                    // Always written ({} = "no remapped drives"), so a reader
+                    // can tell a modern state from a legacy one.
+                    mountmap: snap.mountmap || {},
                     page: snap.page,
                     steps: snap.steps,
                     stepsMessage: snap.stepsMessage,
@@ -1751,6 +1822,23 @@ var SnapshotStore = (() => {
         return base.length > 0 ? base : null;
     }
 
+    // The boot-device key of a state. Normally the first mounted image names
+    // the device it came from (rak0.dsk → "rk0"), but a REMAPPED drive breaks
+    // that rule: with rk4 bound to rk5.dsk the guest boots rk4, not rk5, so
+    // the drive the table points at wins. Falls back to the historical
+    // derivation when nothing is remapped.
+    function bootDeviceKey(mounted, mountmap) {
+        var derived = deviceKeyFromMounted(mounted);
+        if (!mounted || !Array.isArray(mounted) || !mounted.length) return derived;
+        if (!mountmap || typeof mountmap !== "object") return derived;
+        var url = String(mounted[0]);
+        var drives = Object.keys(mountmap);
+        for (var i = 0; i < drives.length; i++) {
+            if (String(mountmap[drives[i]]) === url) return drives[i];
+        }
+        return derived;
+    }
+
     // ------------------------------------------------------------------
     // Create a shareable .state.zst from a stored snapshot, adding
     // human-readable description and an optional one-command handoff
@@ -1774,7 +1862,7 @@ var SnapshotStore = (() => {
             // ?state= can pre-load the correct disk image via OSBoot scenarios.
             // Only set when we can derive it; otherwise omit so ?state=
             // does not try to pre-load a non-existent image.
-            var deviceKey = deviceKeyFromMounted(snap.mounted);
+            var deviceKey = bootDeviceKey(snap.mounted, snap.mountmap);
             return decompressMemoryToWords(snap.memory).then(function (memoryWords) {
                 var manifest = {
                     schemaVersion: SCHEMA_VERSION,
@@ -1794,6 +1882,7 @@ var SnapshotStore = (() => {
                     teletypepaper: snap.teletypepaper,
                     panel: snap.panel,
                     mounted: snap.mounted,
+                    mountmap: snap.mountmap || {},
                     page: snap.page,
                     steps: steps,
                     stepsMessage: stepsMessage,
@@ -1861,6 +1950,9 @@ var SnapshotStore = (() => {
                         cpu: manifest.cpu || {},
                         memory: mem,
                         mounted: manifest.mounted || [],
+                        // Kept as-is (undefined for a legacy state): a manifest
+                        // is re-exported with `{}` only when one is written.
+                        mountmap: manifest.mountmap,
                         config: manifest.profile || null,
                         page: manifest.page || null,
                         devices: manifest.devices || null,

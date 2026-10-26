@@ -25,7 +25,10 @@
 (function () {
     // Images the user has mounted this session (via drag & drop or restored
     // from IndexedDB), keyed by canonical URL. Bundled desktop images are NOT
-    // tracked here, so the "Mounted images" counter reflects user images only.
+    // tracked here: the "Export image" rule uses this map to tell the
+    // operator's own files from media the machine merely streams. The
+    // "Mounted images" counter follows the LIST itself (see
+    // refreshMountedList), so it can never contradict what the select shows.
     var userImages = {};
 
     // Resolves once the images persisted from a previous session are mounted.
@@ -312,12 +315,14 @@
         syncDriveSelectToList();
         refreshAssignControls();
 
-        // Show how many user-mounted images there are next to the Unmount
-        // button (drag & drop + IndexedDB restores only, not bundled desktop
-        // images), mirroring the "EXPORT PAPER TAPE" size indicator style.
+        // The counter belongs to the list beside it, so it counts what the list
+        // offers: every mounted image — dragged in, bundled, or fetched for a
+        // restored state — not only the operator's own files. Counting
+        // userImages read "0 images" next to the two disks a teleport was
+        // running from.
         var count = document.getElementById("mounted-count");
         if (count) {
-            var n = diskImageUrls(Object.keys(userImages)).length;
+            var n = urls.length;
             count.textContent = n + " " + plural(n);
         }
 
@@ -777,6 +782,19 @@
         if (assignBtn) assignBtn.addEventListener("click", doApply);
         if (assignAnywayBtn) assignAnywayBtn.addEventListener("click", doApply);
 
+        // The mounted-image list is built from DataLoader, but images can arrive
+        // AFTER it was built: a restored state mounts the payload it carries
+        // inline asynchronously, and QuickBoot fetches its boot disk in the
+        // background. Rebuild the list whenever the operator opens Storage, so
+        // the page never claims the machine has no disks while the guest is
+        // running from one. switchPage() announces every page change.
+        if (typeof document.addEventListener === "function") {
+            document.addEventListener("yapdp:pagechange", function (e) {
+                if (!e || !e.detail || e.detail.page !== "storage") return;
+                refreshMountedList();
+            });
+        }
+
         // ------------------------------------------------------------------
         // Full-window drop overlay.
         // While a file drag is in progress anywhere over the Storage page,
@@ -854,6 +872,10 @@
             exportableUrls: exportableUrls,
             diskImageUrls: diskImageUrls,
             refreshExportList: refreshExportList,
+            // Rebuild the "Mounted images" select. Snapshots calls this after a
+            // restore: the images it mounts arrive after init() already filled
+            // the list, so the page would otherwise show none of them.
+            refreshMountedList: refreshMountedList,
             userImages: userImages
         };
     }

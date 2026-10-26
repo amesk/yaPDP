@@ -134,6 +134,69 @@ test("set ignores empty keys and urls", () => {
     assert.deepStrictEqual(plain(MountMap.list()), {});
 });
 
+// A state describes a MACHINE, so applying one replaces the table instead of
+// adding a preference to whatever this browser had bound by hand.
+test("applySnapshot replaces the whole table (never merges)", () => {
+    MountMap.clear();
+    MountMap.set("rk0", "local0.dsk");
+    const res = MountMap.applySnapshot({ rk4: "rk5.dsk" });
+    assert.deepStrictEqual(plain(MountMap.list()), { rk4: "rk5.dsk" });
+    assert.strictEqual(res.changed, true);
+    assert.strictEqual(res.count, 1);
+});
+
+test("applySnapshot normalises keys and drops empty / non-string urls", () => {
+    MountMap.clear();
+    MountMap.applySnapshot({
+        RK4: "rk5.dsk",
+        rl0: "",
+        rp1: 42,
+        "": "orphan.dsk",
+        tm0: "tape.tap"
+    });
+    assert.deepStrictEqual(plain(MountMap.list()), { rk4: "rk5.dsk", tm0: "tape.tap" });
+});
+
+test("applySnapshot({}) clears the table", () => {
+    MountMap.clear();
+    MountMap.set("rk0", "a.dsk");
+    MountMap.set("rl1", "b.dsk");
+    const res = MountMap.applySnapshot({});
+    assert.deepStrictEqual(plain(MountMap.list()), {});
+    assert.strictEqual(res.changed, true);
+    assert.strictEqual(res.count, 0);
+});
+
+test("applySnapshot reports no change for an identical table", () => {
+    MountMap.clear();
+    MountMap.set("rk0", "a.dsk");
+    MountMap.set("rl1", "b.dsk");
+    const res = MountMap.applySnapshot({ rl1: "b.dsk", rk0: "a.dsk" });
+    assert.strictEqual(res.changed, false);
+    assert.strictEqual(res.count, 2);
+});
+
+test("applySnapshot ignores garbage instead of clearing the table", () => {
+    MountMap.clear();
+    MountMap.set("rk0", "keep.dsk");
+    [null, undefined, [], "rk0=keep.dsk", 7].forEach((bad) => {
+        const res = MountMap.applySnapshot(bad);
+        assert.strictEqual(res.changed, false, "no change for " + JSON.stringify(bad));
+        assert.deepStrictEqual(plain(MountMap.list()), { rk0: "keep.dsk" });
+    });
+});
+
+test("applySnapshot does not touch storage", () => {
+    MountMap.clear();
+    const storage = fakeStorage();
+    MountMap.set("rk0", "saved.dsk");
+    MountMap.save(storage);
+    MountMap.applySnapshot({ rl0: "other.dsk" });
+    // The caller persists (or not): the table on disk is still the old one.
+    assert.deepStrictEqual(storage._dump(),
+        { [MountMap.STORAGE_KEY]: JSON.stringify({ rk0: "saved.dsk" }) });
+});
+
 MountMap.clear();
 console.log("\n" + passed + " passed, " + failures + " failed");
 process.exit(failures ? 1 : 0);

@@ -548,6 +548,10 @@
         }
 
         restore(state) {
+            // The disks are replaced by the restored machine: a control block
+            // caches the url resolved when it was created (and never travels in
+            // a state), so drop them and let the next I/O resolve the url again.
+            this.rpControlBlock = [];
             if (!state) return;
             if (typeof state.rpcs1 === "number") this.rpcs1 = state.rpcs1;
             if (typeof state.rpwc === "number") this.rpwc = state.rpwc;

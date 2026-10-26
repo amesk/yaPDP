@@ -30,6 +30,7 @@ const vm = require("vm");
 const ROOT = path.join(__dirname, "..");
 const { bootHeadless } = require("./headless-machine.js");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+const { MountMap } = require(path.join(ROOT, "src", "mountmap.js"));
 const StateIO = require("./state-io.js");
 
 const T0 = Date.now();
@@ -52,8 +53,20 @@ function readContainer(file) {
     return parsed;
 }
 
+// Apply the state's drive → image bindings. A legacy state has no field and
+// leaves the local table alone; a present table (including {}) replaces it.
+// Runs BEFORE the machine is created: a controller resolves its drive url when
+// its control block is built, so a table applied later would not be seen.
+function applyMountMap(manifest) {
+    const table = manifest && manifest.mountmap;
+    if (table === undefined) return;
+    MountMap.clear();
+    Object.keys(table || {}).forEach((drive) => MountMap.set(drive, table[drive]));
+}
+
 async function restoreState(file) {
     const parsed = readContainer(file);
+    applyMountMap(parsed.manifest);
 
     // The machine must exist before a state can be applied to it: boot it to
     // the bootloader prompt, exactly as a user's page would, then overwrite

@@ -88,6 +88,36 @@ var MountMap = (() => {
         return override !== undefined ? override : key + (suffix || ".dsk");
     }
 
+    /** _signature(map) — order-independent text of a { key: url } map. */
+    const signature = (map) => Object.keys(map).sort()
+        .map((key) => key + "=" + map[key]).join("\n");
+
+    /**
+     * applySnapshot(table) — replace the whole table from a state manifest.
+     *
+     * A state DESCRIBES the machine it was taken from, so this is a
+     * replacement, never a merge: bindings made in this browser are dropped
+     * when the state carries bindings of its own. Anything that is not a
+     * plain `{ drive: url }` object of non-empty strings is ignored, so a
+     * malformed or hand-edited manifest cannot break the controllers. The
+     * storage is NOT touched here — the caller decides when to persist.
+     *
+     * Returns { changed, count }: whether the table actually differs, and how
+     * many bindings it now holds.
+     */
+    function applySnapshot(table) {
+        if (!table || typeof table !== "object" || Array.isArray(table)) {
+            return { changed: false, count: overrides.size };
+        }
+        const before = signature(list());
+        overrides.clear();
+        Object.keys(table).forEach((key) => {
+            const url = table[key];
+            if (typeof url === "string" && url !== "") set(key, url);
+        });
+        return { changed: before !== signature(list()), count: overrides.size };
+    }
+
     /** load(storage) — replace the table from persisted JSON (best-effort). */
     function load(storage) {
         overrides.clear();
@@ -127,6 +157,7 @@ var MountMap = (() => {
         }
     }
 
+
     // Auto-restore the persisted table in the browser (Node tests call load()
     // explicitly with a fake storage). Runs at load time, before the machine
     // layer reads urlFor() — mountmap.js is loaded before iopage.js and
@@ -145,6 +176,7 @@ var MountMap = (() => {
         clear,
         list,
         urlFor,
+        applySnapshot,
         load,
         save,
         reset

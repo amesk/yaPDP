@@ -27,8 +27,10 @@ function run() {
     // ---- constants ------------------------------------------------------
     assert.strictEqual(StateFormat.CONTAINER_VERSION, 1,
         "the canonical blob layout starts at container version 1");
-    assert.strictEqual(StateFormat.SCHEMA_VERSION, "1.0.0",
-        "the current manifest schema is 1.0.0");
+    // 1.1.0 added the additive `mountmap` field (drive -> image url):
+    // MAJOR stays 1, an older reader ignores the field.
+    assert.strictEqual(StateFormat.SCHEMA_VERSION, "1.1.0",
+        "the current manifest schema is 1.1.0");
 
     // ---- parseSemver ----------------------------------------------------
     assert.deepStrictEqual(StateFormat.parseSemver("1.2.3"),
@@ -112,7 +114,8 @@ function run() {
     const packed = StateFormat.pack(manifest, words);
     const parsed = StateFormat.unpack(packed);
     assert.ok(parsed, "unpack returns the container");
-    assert.strictEqual(parsed.manifest.schemaVersion, "1.0.0");
+    assert.strictEqual(parsed.manifest.schemaVersion, StateFormat.SCHEMA_VERSION,
+        "the container keeps the manifest schema it was written with");
     assert.strictEqual(parsed.manifest.yaPDPVersion, CUR);
     assert.strictEqual(StateFormat.schemaMajor(parsed.manifest), 1);
     assert.strictEqual(

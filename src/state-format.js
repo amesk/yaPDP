@@ -77,7 +77,13 @@ var StateFormat = (function () {
     //   PATCH  corrections with no structural change.
     // Legacy states wrote a bare number (1); normalizeSchemaVersion maps it to
     // this string, so a state saved before the field became semver still reads.
-    var SCHEMA_VERSION = "1.0.0";
+    // 1.1.0 added the optional `mountmap` manifest field (drive -> image url).
+    // Additive: MAJOR stays 1, an older reader ignores the field.
+    var SCHEMA_VERSION = "1.1.0";
+    // What a manifest with NO version field means: the original 1.0.0 shape.
+    // SCHEMA_VERSION says what this build WRITES; it must not be used as the
+    // reading of an absent field, which only legacy states have.
+    var BASE_SCHEMA_VERSION = "1.0.0";
 
     var LEGACY_MAGIC = [0x59, 0x41, 0x50, 0x44, 0x50, 0x53, 0x54, 0x41]; // "YAPDPSTA"
     // Intermediate development format. It was never part of a released contract.
@@ -550,7 +556,7 @@ var StateFormat = (function () {
         var s = manifest ? manifest.schemaVersion : undefined;
         if (typeof s === "number" && isFinite(s)) return String(s) + ".0.0";
         if (typeof s === "string" && s.trim()) return s.trim();
-        return SCHEMA_VERSION;
+        return BASE_SCHEMA_VERSION;
     }
 
     // The MAJOR of the manifest's schema — the number readers branch on. 1

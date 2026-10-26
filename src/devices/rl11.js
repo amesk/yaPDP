@@ -382,6 +382,10 @@
         }
 
         restore(state) {
+            // The disks are replaced by the restored machine: a control block
+            // caches the url resolved when it was created (and never travels in
+            // a state), so drop them and let the next I/O resolve the url again.
+            this.rlControlBlock = [];
             if (!state) return;
             if (typeof state.csr === "number") this.csr = state.csr;
             if (typeof state.bar === "number") this.bar = state.bar;
