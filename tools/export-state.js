@@ -230,13 +230,47 @@ function makeEchoer(booted) {
     };
 }
 
+// --- mountmap -----------------------------------------------------------
+// `--mountmap rk4=rk5.dsk` (repeatable): the state must remember WHICH image
+// each drive held. Without it a state taken on a remapped drive restores on
+// another machine reading the default rk4.dsk instead.
+function parseMountMap(argv) {
+    const out = {};
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] !== "--mountmap") continue;
+        const spec = argv[i + 1] || "";
+        const eq = spec.indexOf("=");
+        const drive = eq > 0 ? spec.slice(0, eq).toLowerCase() : "";
+        const url = eq > 0 ? spec.slice(eq + 1) : "";
+        if (!/^[a-z]{2}\d+$/.test(drive) || !url) {
+            throw new Error("--mountmap expects drive=image (e.g. rk4=rk5.dsk), got: " +
+                JSON.stringify(spec));
+        }
+        out[drive] = url;
+    }
+    return out;
+}
+
+// Positional arguments only: a flag AND its value are not paths. Without this,
+// `export-state.js rk1 --mountmap rk4=rk5.dsk` would take the binding spec as
+// the output file name.
+function positionalArgs(argv) {
+    const out = [];
+    for (let i = 0; i < argv.length; i++) {
+        if (argv[i] === "--mountmap") { i++; continue; }
+        if (argv[i].startsWith("--")) continue;
+        out.push(argv[i]);
+    }
+    return out;
+}
+
 // --- capture ------------------------------------------------------------
 // The PREVIEW cannot be shot here: this harness runs the emulator in Node with
 // a stubbed canvas (tools/headless-machine.js), so there are no pixels to
 // capture. When the annotation table names a source image it is used instead;
 // otherwise the state is exported without a preview and the browser exporter
 // (tools/export-state-browser.js) is the tool that supplies one.
-async function captureState(booted, sc, ann) {
+async function captureState(booted, sc, ann, opts) {
     const CPU = booted.evalIn("CPU");
     const a = ann || {};
     const manifest = {
@@ -259,6 +293,9 @@ async function captureState(booted, sc, ann) {
         // The description the wizard shows while restoring (and the Scenario
         // card lists). Same slot tools/gen-state-manifest.js reads.
         stepsMessage: a.description || null,
+        // Always written ({} = no remapped drives), so a reader can tell this
+        // state from a legacy one without the field.
+        mountmap: (opts && opts.mountmap) || {},
     };
     if (a.screenshot) {
         try {
@@ -302,7 +339,7 @@ async function exportState(device, outPath, opts) {
     const stepsMs = Date.now() - t1;
     log("steps finished in " + stepsMs + "ms");
 
-    const packed = await captureState(booted, sc, annotationFor(sc.device));
+    const packed = await captureState(booted, sc, annotationFor(sc.device), opts);
     log("container packed: " + packed.length + " bytes");
     const out = outPath || path.join(ROOT, "states", sc.device + "-ready.state.zst");
     fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -338,13 +375,21 @@ async function exportState(device, outPath, opts) {
 }
 
 if (require.main === module) {
-    const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+    const argv = process.argv.slice(2);
+    const args = positionalArgs(argv);
     const device = args[0];
     if (!device) {
-        console.error("usage: node tools/export-state.js <device> [out.state.zst]");
+        console.error("usage: node tools/export-state.js <device> [out.state.zst] [--mountmap rk4=rk5.dsk]");
         process.exit(2);
     }
-    exportState(device, args[1]).then(() => {
+    let mountmap = {};
+    try {
+        mountmap = parseMountMap(argv);
+    } catch (e) {
+        console.error(e.message);
+        process.exit(2);
+    }
+    exportState(device, args[1], { mountmap: mountmap }).then(() => {
         log("EXIT 0 (ok)");
         process.exit(0);
     }).catch((e) => {
@@ -355,4 +400,6 @@ if (require.main === module) {
     });
 }
 
-module.exports = { exportState, scenarioFor, profileKey, runSteps };
+module.exports = {
+    exportState, scenarioFor, profileKey, runSteps, parseMountMap, positionalArgs
+};

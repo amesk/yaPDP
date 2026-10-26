@@ -62,6 +62,7 @@ const vm = require("vm");
 const { bootHeadless } = require("./headless-machine.js");
 const { IO_BLOCKSIZE } = require("../src/devices/disk-service.js");
 const { StateFormat } = require("../src/state-format.js");
+const { MountMap } = require("../src/mountmap.js");
 const StateIO = require("./state-io.js");
 
 const REPO = path.resolve(__dirname, "..");
@@ -686,10 +687,22 @@ async function applyState(parsed) {
     boot.evalIn("CPU.runState = " + (typeof rs === "number" ? rs : 0));
 }
 
+// Apply the state's drive → image bindings before anything is transferred.
+// A legacy state has no field and leaves the local table alone; a present table
+// (including {}) replaces it. The controllers were created at boot, so their
+// stale control blocks are dropped by Rk11/Rl11/Rp11/Uda50/Tm11 restore().
+function applyMountMap(manifest) {
+    const table = manifest && manifest.mountmap;
+    if (table === undefined) return;
+    MountMap.clear();
+    Object.keys(table || {}).forEach((drive) => MountMap.set(drive, table[drive]));
+}
+
 async function loadStateFile(file) {
     const read = StateIO.readBytes(path.resolve(REPO, file));
     const parsed = StateFormat.unpack(read.container);
     if (!parsed) throw new Error("not a .state container: " + file);
+    applyMountMap(parsed.manifest);
     await applyState(parsed);
     console.error("headless-term: state restored from " + file +
         " (device=" + parsed.manifest.device + ", " + read.frame + ")");

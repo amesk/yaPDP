@@ -378,8 +378,13 @@ The **Storage** page manages the storage media in two tabs: **Images** (the
 drag & drop disk/tape image drop zone, the mounted-images/Unmount list and
 the disk export) and **Paper Tapes** (the paper-tape reader file selector, a
 small `.ptap` drop zone and the punch-tape export). Images dropped there are
-mounted into DataLoader and persist in IndexedDB across sessions. The drop
-target (including the full-window one) appears only while the Storage page
+mounted into DataLoader and persist in IndexedDB across sessions. A drive can be
+bound to any mounted image (a remapped drive, e.g. rk4 holding rk5.dsk); that
+binding survives saving, exporting and teleporting into the state from a link,
+and it is restored on a machine that never made the binding itself. Opening a
+state replaces the local drive bindings of this browser with the ones the state
+was taken with — a state describes a machine, it does not add a preference. The
+drop target (including the full-window one) appears only while the Storage page
 is active.
 
 The **REBOOT** button is a round button with a restart icon, pinned to the

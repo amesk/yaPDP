@@ -534,6 +534,21 @@ const p10 = (async () => {
     MountMap.clear();
     ok("rk11: control block url follows a MountMap override");
 
+    // A control block caches the url it was created with, and a state never
+    // carries control blocks. Dropping a .state over a live page must therefore
+    // resolve the drive again — otherwise the guest keeps reading the image the
+    // page was opened with.
+    MountMap.clear();
+    MountMap.set("rk4", "old.dsk");
+    const remapped = new Rk11(m, "rk4", { regions: [{ address: 0o17777700, count: 8 }] });
+    assert.strictEqual(remapped._controlBlockFor(4).url, "old.dsk");
+    MountMap.applySnapshot({ rk4: "new.dsk" });
+    remapped.restore(remapped.snapshot());
+    assert.strictEqual(remapped._controlBlockFor(4).url, "new.dsk",
+        "restore() drops the cached control blocks");
+    MountMap.clear();
+    ok("rk11: restore() drops the control blocks so a restored mountmap url wins");
+
     // A controller reset must drop the drive block caches. Keeping them meant
     // the guest kept reading blocks cached by the PREVIOUS boot: RT-11 reads
     // one block and never noticed, but a kernel that reads and validates many

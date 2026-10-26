@@ -467,6 +467,10 @@
         }
 
         restore(state) {
+            // The media are replaced by the restored machine: a control block
+            // caches the url resolved when it was created (and never travels in
+            // a state), so drop them and let the next I/O resolve the url again.
+            this.mtControlBlock = [];
             if (!state) return;
             if (typeof state.mts === "number") this.mts = state.mts;
             if (typeof state.mtc === "number") this.mtc = state.mtc;
