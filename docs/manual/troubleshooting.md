@@ -30,15 +30,34 @@ memory would not describe the disk underneath it, which shows up as a corrupted
 file system rather than as anything obvious.
 
 The emulator detects this and refuses the restore instead of corrupting the
-disk. It names the image and both builds, and offers to delete the snapshot:
+disk. The machine is left exactly as it was, the dialog names the disk the way
+the CONFIG page does, and the full digests sit behind **Technical details**:
 
 ![Snapshot taken on a different build](assets/images/manual/dialog-snapshot-incompatible.png){.shot}
 
-The snapshot was taken on a different build of the disk: it is not restored, and
-can be deleted from here.{.shot-caption}
+The state was not restored and the machine was left as it was: the dialog names
+the disk, keeps the digests collapsed, and offers a way out.{.shot-caption}
 
 Take a fresh snapshot on the current build, or delete the stale one — a snapshot
 cannot be migrated onto a disk it was not taken from.
+
+### A state needs a disk that only this browser has
+
+A disk you dropped in or imported yourself has no published version, so a state
+taken on it restores in this browser only — saving such a state says so in a
+toast. Bytes that are still loaded here are found even under another file name,
+because the digest decides, not the name.
+
+If the state is refused with a **different version of this disk** message, the
+dialog offers **Use my own copy of this disk…**. Pick the file:
+
+- the digest the state was saved with decides — a copy with the right contents is
+  accepted under any name;
+- a wrong file is refused in place, and nothing is mounted from it;
+- after a match the restore runs again by itself, and the state is not deleted.
+
+To make such a state portable in the first place, export it with **Make state
+self-contained** so the disk bytes travel inside the file.
 
 ### The guest OS does not boot
 

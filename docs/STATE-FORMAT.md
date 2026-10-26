@@ -114,12 +114,13 @@ code change.
 A state never stores a disk image under its logical name alone. Three manifest
 fields describe what the state needs and how the bytes can be obtained:
 
-| Field               | Meaning                                                                                                                                                                                         |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mounted`           | the image urls the machine had mounted when the state was saved                                                                                                                                 |
-| `imageFingerprints` | url → SHA-256 of the **decompressed** image bytes at capture time. The short legacy FNV-1a/32 value is still accepted where a state carries one                                                 |
-| `imageVersions`     | url → `{ version, sha256 }` — the exact published version the state was taken on, resolved through `media-versioned` in `media/manifest.json` (rules in [image-registry.md](image-registry.md)) |
-| `embeddedImages`    | url → blob id. The image bytes travel **inside this container** and take precedence over `imageVersions`                                                                                        |
+| Field               | Meaning                                                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mounted`           | the image urls the machine had mounted when the state was saved                                                                                                                                                                       |
+| `imageFingerprints` | url → SHA-256 of the **decompressed** image bytes at capture time. The short legacy FNV-1a/32 value is still accepted where a state carries one                                                                                       |
+| `imageVersions`     | url → `{ version, sha256 }` — the exact published version the state was taken on, resolved through `media-versioned` in `media/manifest.json` (rules in [image-registry.md](image-registry.md))                                       |
+| `imageSources`      | url → `local` / `network` / `published` / `bundled` / `embedded` / `adopted` — where the bytes came from. A `local` image with no `imageVersions` entry cannot be fetched back, so the save path warns that the state is not portable |
+| `embeddedImages`    | url → blob id. The image bytes travel **inside this container** and take precedence over `imageVersions`                                                                                                                              |
 
 Restore is a preflight, not a best effort. Before CPU or RAM is touched, every
 needed image is loaded (from its pinned version when `imageVersions` names one)
@@ -127,6 +128,15 @@ or mounted from `embeddedImages`, and its identity is compared with
 `imageFingerprints`. A mismatch refuses the state with a dialog; an unknown
 current identity — a host that cannot expose the bytes — does not invalidate
 anything.
+
+Before the network is asked, restore looks for the required bytes **on this
+machine**: an image already mounted under another name whose SHA-256 matches the
+state is adopted (and marked `adopted` in `imageSources`). Identity, never the
+file name, decides — a dropped copy that happens to be called `rk5.dsk` proves
+nothing, and a differently named copy of the right bytes is accepted. When the
+bytes are nowhere to be found, the refusal dialog offers **Use my own copy of
+this disk…**: the chosen file is hashed, and only a matching digest is mounted
+under the name the state expects, after which the restore is replayed.
 
 ### Self-contained states
 

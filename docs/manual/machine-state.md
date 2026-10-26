@@ -111,9 +111,18 @@ Host that file anywhere reachable by a URL, then send the link. Two things decid
   travel inside the file.
 
 On restore the emulator fetches a pinned version from the media registry when the image is not loaded
-yet, verifies its digest, and only then touches the machine. A plain **Export** bundles what it can:
-an image whose bytes are no longer loaded stays an external reference, and a toast warns that the
-exported state still depends on it.
+yet, verifies its digest, and only then touches the machine. Bytes this machine already has are used
+first, even when they are loaded under another name — the digest decides, not the file name. A plain
+**Export** bundles what it can: an image whose bytes are no longer loaded stays an external reference,
+and a toast warns that the exported state still depends on it.
+
+A disk you dropped in yourself has no published version to fetch back, so a state taken on it restores
+only in this browser, and saving such a state says so in a toast. If a restore is refused because of
+such a disk, the dialog offers **Use my own copy of this disk…**: pick the file, and the emulator
+accepts it only if its digest is the one the state was saved with — a disk with the right contents
+works under any name, and a different disk changes nothing. The other two actions are **Keep it**
+(leave the state alone) and **Delete this state**. The **Technical details** section holds the full
+digests, with **Copy details** for a bug report.
 
 When either condition fails the visitor is told in a dialog that names the URL, and the address bar
 keeps the `?state=` parameter so what was asked for stays visible. If a link cannot work at all — the

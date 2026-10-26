@@ -8,14 +8,18 @@
  * real browser, because the refuse path is the half of the feature that only
  * exists in the DOM:
  *
- *   1. the dialog opens and says the snapshot was taken on a different build;
- *   2. it names the image and both fingerprints, so the message is actionable;
+ *   1. the dialog says the state was not restored and that the machine was
+ *      left untouched — what happened, before any technical detail;
+ *   2. it names each disk by its bare image name (no path, no .zst) with a
+ *      SHORT identity, while the full 64-digit digests live behind "Technical
+ *      details": unbroken digests used to widen the box past the window edge;
  *   3. it uses the shared error shell (.modal-box.error), like the failed-image
  *      dialog it is styled after;
- *   4. "Delete this snapshot" really removes it from the store;
- *   5. "Got it" dismisses it without deleting anything;
+ *   4. "Delete this state" really removes it from the store;
+ *   5. "Keep it" dismisses it without deleting anything;
  *   6. the image name arrives as TEXT — a snapshot name is stored data, not a
- *      URL we validated, and must never be parsed as markup.
+ *      URL we validated, and must never be parsed as markup;
+ *   7. .modal-box does not overflow horizontally, collapsed or expanded.
  *
  * Run with:  node tests/e2e-snapshot-image-changed.js
  * (needs puppeteer, server on :1170 — see tools/serve.js)
@@ -25,7 +29,10 @@
 const puppeteer = require("puppeteer");
 const path = require("path");
 const http = require("http");
+const fs = require("fs");
+const os = require("os");
 const { spawn } = require("child_process");
+const { ImageFingerprint } = require("../src/imagefingerprint.js");
 
 const BASE = "http://localhost:1170/pdp11.html";
 
@@ -98,21 +105,37 @@ async function openPage(browser, errors) {
         // --- 1 / 2 / 3: the dialog itself --------------------------------
         {
             const page = await openPage(browser, errors);
-            await page.evaluate(() => {
+            const thenHash = "a1b2c3d4".repeat(8);   // 64 digits, like a real digest
+            const nowHash = "ff0099aa".repeat(8);
+            await page.evaluate((then, now) => {
                 SnapshotStore.showIncompatibleImageDialog(
                     { id: "snap-e2e", name: "unix-v5 before the upgrade" },
-                    [{ url: "rk0.dsk", then: "a1b2c3d4", now: "ff0099aa" }]);
-            });
+                    [{ url: "media/rk0.dsk.zst", then: then, now: now, reason: "changed" }]);
+            }, thenHash, nowHash);
             const state = await page.evaluate(() => {
                 const overlay = document.querySelector("#snap-incompatible-overlay.visible");
                 if (!overlay) return null;
                 const title = overlay.querySelector(".modal-title");
                 const intro = overlay.querySelector(".modal-intro");
+                const box = overlay.querySelector(".modal-box");
+                const details = overlay.querySelector(".modal-details");
+                // Everything the operator reads in the flow, i.e. the box
+                // without the collapsed "Technical details" block.
+                const body = box ? box.cloneNode(true) : null;
+                if (body) {
+                    const collapsed = body.querySelector(".modal-details");
+                    if (collapsed) collapsed.remove();
+                }
                 return {
                     title: title ? title.textContent : "",
                     intro: intro ? intro.textContent : "",
+                    bodyText: body ? body.textContent : "",
                     codes: Array.from(overlay.querySelectorAll("code")).map((c) => c.textContent),
+                    hasDetails: !!details,
+                    detailsText: details ? details.textContent : "",
+                    detailsOpen: details ? details.open : null,
                     errorShell: overlay.querySelectorAll(".modal-box.error").length,
+                    overflow: box ? box.scrollWidth - box.clientWidth : -1,
                     buttons: Array.from(overlay.querySelectorAll("button"))
                         .map((b) => b.textContent)
                 };
@@ -120,24 +143,203 @@ async function openPage(browser, errors) {
             check("the dialog opens", state !== null);
             check("it says the snapshot was not restored",
                 state && state.title === "Snapshot not restored", state && state.title);
-            check("it names the image and both fingerprints",
-                state && state.codes.indexOf("rk0.dsk (expected a1b2c3d4, found ff0099aa)") !== -1,
+            check("it says the machine was left as it was",
+                state && /left exactly as it was/i.test(state.intro), state && state.intro);
+            check("it names the disk without a path or .zst",
+                state && state.codes.indexOf("rk0.dsk") !== -1,
                 state && state.codes.join(" | "));
+            check("it shows a SHORT identity in the flow",
+                state && state.bodyText.indexOf("a1b2c3d4\u2026") !== -1,
+                state && state.bodyText);
+            check("the full digests are NOT in the dialog body",
+                state && state.bodyText.indexOf("a1b2c3d4".repeat(8)) === -1 &&
+                state.bodyText.indexOf("ff0099aa".repeat(8)) === -1,
+                state && state.bodyText);
+            check("the full digests live behind Technical details",
+                state && state.hasDetails && state.detailsOpen === false &&
+                state.detailsText.indexOf("a1b2c3d4".repeat(8)) !== -1 &&
+                state.detailsText.indexOf("ff0099aa".repeat(8)) !== -1,
+                state && state.detailsText);
             check("it names the snapshot",
                 state && state.codes.indexOf("unix-v5 before the upgrade") !== -1,
                 state && state.codes.join(" | "));
             check("it uses the shared error shell",
                 state && state.errorShell === 1);
-            check("it offers Got it and Delete this snapshot",
-                state && state.buttons.indexOf("Got it") !== -1 &&
-                state.buttons.indexOf("Delete this snapshot") !== -1,
+            check("it offers Copy details, Keep it and Delete this state",
+                state && state.buttons.indexOf("Copy details") !== -1 &&
+                state.buttons.indexOf("Keep it") !== -1 &&
+                state.buttons.indexOf("Delete this state") !== -1,
                 state && state.buttons.join(" | "));
+            check("the dialog does not overflow horizontally",
+                state && state.overflow <= 0, state && String(state.overflow));
 
-            // --- 5. Got it dismisses, and deletes nothing -----------------
+            // --- 7. ...and it stays inside the box when details are open ---
+            await page.evaluate(() => {
+                const details = document.querySelector("#snap-incompatible-overlay .modal-details");
+                if (details) details.open = true;
+            });
+            const opened = await page.evaluate(() => {
+                const box = document.querySelector("#snap-incompatible-overlay .modal-box");
+                return box ? box.scrollWidth - box.clientWidth : -1;
+            });
+            check("no horizontal overflow with Technical details expanded",
+                opened <= 0, String(opened));
+
+            // --- 10. The actions never touch: they wrap as one row --------
+            // Three inline buttons separated by margin-left butt-joined
+            // vertically the moment the row wrapped — "Use my own copy…" sat
+            // right on top of "Delete this state" on a narrow window.
+            const actionLayout = async () => page.evaluate(() => {
+                const actions = document.querySelector("#snap-incompatible-overlay .modal-actions");
+                if (!actions) return null;
+                const actionsLeft = Math.round(actions.getBoundingClientRect().left);
+                const rects = Array.from(actions.querySelectorAll("button"))
+                    .map((b) => b.getBoundingClientRect());
+                let overlap = false;
+                for (let i = 0; i < rects.length; i++) {
+                    for (let j = i + 1; j < rects.length; j++) {
+                        const a = rects[i];
+                        const b = rects[j];
+                        if (a.left < b.right && b.left < a.right &&
+                            a.top < b.bottom && b.top < a.bottom) overlap = true;
+                    }
+                }
+                // Every ROW must start on the row's left edge. The shared
+                // `.modal-box .modal-close + .modal-close` margin used to push a
+                // wrapped row 10px right, which read as ragged alignment.
+                const rowStarts = {};
+                rects.forEach((r) => {
+                    const key = Math.round(r.top);
+                    if (!(key in rowStarts)) rowStarts[key] = Math.round(r.left);
+                });
+                const raggedRows = Object.keys(rowStarts)
+                    .filter((key) => Math.abs(rowStarts[key] - actionsLeft) > 1).length;
+                return {
+                    count: rects.length,
+                    display: getComputedStyle(actions).display,
+                    overlap,
+                    raggedRows
+                };
+            });
+            const wide = await actionLayout();
+            check("the actions share one wrapping row",
+                wide && wide.display === "flex" && wide.count === 3,
+                JSON.stringify(wide));
+            check("no two actions overlap at the default width",
+                wide && wide.overlap === false, JSON.stringify(wide));
+            check("every row of actions starts on the same left edge",
+                wide && wide.raggedRows === 0, JSON.stringify(wide));
+
+            await page.setViewport({ width: 360, height: 720 });
+            const narrow = await actionLayout();
+            check("no two actions overlap on a phone-width window",
+                narrow && narrow.overlap === false, JSON.stringify(narrow));
+            check("wrapped rows stay aligned on a phone-width window",
+                narrow && narrow.raggedRows === 0, JSON.stringify(narrow));
+            await page.setViewport({ width: 1280, height: 900 });
+
+            // --- 5. Keep it dismisses, and deletes nothing -----------------
             await page.click("#snap-incompatible-overlay [data-snap-action='close']");
             const dismissed = await page.evaluate(() =>
                 !document.querySelector("#snap-incompatible-overlay.visible"));
-            check("Got it dismisses the dialog", dismissed);
+            check("Keep it dismisses the dialog", dismissed);
+            await page.close();
+        }
+
+        // --- 8. Supplying the disk the state needs -----------------------
+        // The state was taken on a disk only this browser has. The operator
+        // hands the bytes back: the DIGEST decides, a wrong file changes
+        // nothing, and the right one restores the state.
+        {
+            const page = await openPage(browser, errors);
+            const bytes = new Uint8Array(512);
+            bytes[0] = 0x11;
+            bytes[511] = 0xee;
+            const sha = ImageFingerprint.ofBytes(bytes);
+            const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "yapdp-supply-"));
+            const goodPath = path.join(tmpDir, "my-rk5.dsk");
+            fs.writeFileSync(goodPath, Buffer.from(bytes));
+            const badPath = path.join(tmpDir, "other.dsk");
+            fs.writeFileSync(badPath, Buffer.alloc(512, 0x7f));
+
+            const offered = await page.evaluate(async (thenSha) => {
+                const snap = await SnapshotStore.save("needs my disk");
+                SnapshotStore.showIncompatibleImageDialog(snap,
+                    [{ url: "local-rk5.dsk", then: thenSha, now: "0".repeat(64),
+                       reason: "changed" }]);
+                const overlay = document.querySelector("#snap-incompatible-overlay.visible");
+                const picker = overlay && overlay.querySelector("#snap-incompat-file");
+                return {
+                    id: snap.id,
+                    hasButton: !!overlay && Array.from(overlay.querySelectorAll("button"))
+                        .some((b) => b.textContent.indexOf("Use my own copy") !== -1),
+                    pickerHidden: !!picker && getComputedStyle(picker).display === "none"
+                };
+            }, sha);
+            check("it offers the operator's own copy of the disk", offered.hasButton);
+            check("the file picker itself stays out of the dialog", offered.pickerHidden);
+
+            // Wrong file: refused where the operator is looking, nothing mounted.
+            await (await page.$("#snap-incompat-file")).uploadFile(badPath);
+            const wrong = await page.evaluate(async () => {
+                await new Promise((r) => setTimeout(r, 400));
+                const status = document.querySelector("#snap-incompatible-overlay .modal-status");
+                return {
+                    text: status ? status.textContent : "",
+                    isError: status ? status.classList.contains("error") : false,
+                    mounted: DataLoader.has("local-rk5.dsk"),
+                    open: !!document.querySelector("#snap-incompatible-overlay.visible")
+                };
+            });
+            check("a wrong disk is refused in place",
+                wrong.isError && /not the disk this state needs/i.test(wrong.text), wrong.text);
+            check("...and nothing is mounted from it", wrong.mounted === false);
+            check("...and the dialog stays open", wrong.open === true);
+
+            // Right bytes under a DIFFERENT name: accepted, the name is decoration.
+            await (await page.$("#snap-incompat-file")).uploadFile(goodPath);
+            const right = await page.evaluate(async (id) => {
+                await new Promise((r) => setTimeout(r, 900));
+                const items = await SnapshotStore.list();
+                return {
+                    mounted: DataLoader.has("local-rk5.dsk"),
+                    open: !!document.querySelector("#snap-incompatible-overlay.visible"),
+                    stillStored: items.some((it) => it.id === id)
+                };
+            }, offered.id);
+            check("the right disk is mounted under the name the state expects",
+                right.mounted === true, JSON.stringify(right));
+            check("...the dialog closes and the restore proceeds",
+                right.open === false, JSON.stringify(right));
+            check("...and supplying a disk never deletes the state",
+                right.stillStored === true, JSON.stringify(right));
+
+            fs.rmSync(tmpDir, { recursive: true, force: true });
+            await page.close();
+        }
+
+        // --- 9. A state on a local-only disk warns about portability -----
+        {
+            const page = await openPage(browser, errors);
+            const warned = await page.evaluate(async () => {
+                const bytes = new Uint8Array(64);
+                bytes[0] = 3;
+                DataLoader.mount("local-test.dsk", bytes, "local");
+                const snap = await SnapshotStore.save("portable?");
+                const toast = document.querySelector(".yapdp-toast.visible");
+                return {
+                    text: toast ? toast.textContent : "",
+                    local: Array.prototype.join.call(
+                        SnapshotStore.localOnlyImages(snap), ","),
+                    stored: (await SnapshotStore.list()).some((it) => it.id === snap.id)
+                };
+            });
+            check("a local-only disk makes the state non-portable",
+                warned.local === "local-test.dsk", warned.local);
+            check("saving says so in a toast",
+                /only this browser has/i.test(warned.text), warned.text);
+            check("...and the state is still saved",
+                warned.stored === true, JSON.stringify(warned));
             await page.close();
         }
 
@@ -166,7 +368,7 @@ async function openPage(browser, errors) {
                     overlayVisible: !!document.querySelector("#snap-incompatible-overlay.visible")
                 };
             }, saved.id);
-            check("Delete this snapshot removes it from the store",
+            check("Delete this state removes it from the store",
                 gone.stillThere === false, JSON.stringify(gone));
             check("...and closes the dialog behind it",
                 gone.overlayVisible === false, JSON.stringify(gone));

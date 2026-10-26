@@ -77,9 +77,9 @@
                     if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
                         throw new Error("fzstd not available for " + item.resource);
                     }
-                    DataLoader.mount(item.url, fzstd.decompress(u8));
+                    DataLoader.mount(item.url, fzstd.decompress(u8), "bundled");
                 } else {
-                    DataLoader.mount(item.url, u8);
+                    DataLoader.mount(item.url, u8, "bundled");
                 }
                 return item.url;
             })

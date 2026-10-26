@@ -32,6 +32,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
+const { ImageFingerprint } = require("../src/imagefingerprint.js");
 
 const ROOT = path.join(__dirname, "..");
 const DISKSTORE_PATH = path.join(ROOT, "src", "diskstore.js");
@@ -122,7 +123,7 @@ function buildDiskStoreSandbox(indexedDB) {
 
 // Build a SnapshotStore sandbox with a stub DiskStore whose fingerprints we
 // control, plus the real ImageFingerprint.
-function buildSnapshotStoreSandbox(fingerprints) {
+function buildSnapshotStoreSandbox(fingerprints, extra) {
     const src = fs.readFileSync(path.join(ROOT, "src", "snapshots.js"), "utf8");
     const sandbox = {
         console, Uint8Array, ArrayBuffer, Map, Set, Date, JSON, String, Number,
@@ -133,6 +134,8 @@ function buildSnapshotStoreSandbox(fingerprints) {
             fingerprintOf: (url) => (url in fingerprints ? fingerprints[url] : null)
         }
     };
+    // Optional collaborators (DataLoader, window) for the source-aware paths.
+    if (extra) Object.keys(extra).forEach((key) => { sandbox[key] = extra[key]; });
     vm.createContext(sandbox);
     vm.runInContext(fs.readFileSync(FINGERPRINT_PATH, "utf8"), sandbox);
     vm.runInContext(
@@ -275,6 +278,8 @@ function testIncompatibleImages() {
     assert.strictEqual(bad[0].url, "rp1.dsk");
     assert.strictEqual(bad[0].then, hashA);
     assert.strictEqual(bad[0].now, hashB);
+    // The reason picks the wording of the refusal, never the decision.
+    assert.strictEqual(bad[0].reason, "changed", "a different digest is 'changed'");
 
     // Unchanged images are silent.
     const ok = SS.incompatibleImages({
@@ -293,8 +298,11 @@ function testIncompatibleImages() {
     // canonical SHA-256 identity, even if it refers to the same named image.
     const migrated = buildSnapshotStoreSandbox({ "rp1.dsk": "b".repeat(64) });
     const oldSnapshot = { imageFingerprints: { "rp1.dsk": "aaaa1111" } };
-    assert.strictEqual(migrated.SnapshotStore.incompatibleImages(oldSnapshot).length, 1,
+    const legacyBad = migrated.SnapshotStore.incompatibleImages(oldSnapshot);
+    assert.strictEqual(legacyBad.length, 1,
         "a legacy fingerprint is rejected rather than mistaken for SHA-256");
+    assert.strictEqual(legacyBad[0].reason, "legacy",
+        "a pre-0.4.0 identity is reported as 'legacy', not as changed bytes");
 
     const unknownCurrent = buildSnapshotStoreSandbox({});
     assert.strictEqual(unknownCurrent.SnapshotStore.incompatibleImages(oldSnapshot).length, 1,
@@ -306,6 +314,131 @@ function testIncompatibleImages() {
         imageFingerprints: { "tm0.tap": hashA }
     }).length, 0, "an image not currently loaded is not a mismatch");
     console.log("PASS: incompatibleImages() names only the images that really changed");
+}
+
+// The refusal dialog must be readable: the digests live in production code as
+// 64 unbroken characters, which used to widen the box past the window edge and
+// bury the "what now?" answer. These are the formatting rules behind it.
+function testRefusalWording() {
+    const SS = buildSnapshotStoreSandbox({}).SnapshotStore;
+
+    // A full digest is shortened for the flow, short values pass through.
+    const hash = "2e5be12477eb3ec3c1fb7afe03bf17e43860ae337be20fcb75075637c0ffee1";
+    assert.strictEqual(SS.shortFingerprint(hash), "2e5be124\u2026",
+        "a 64-digit digest becomes 8 digits and an ellipsis");
+    assert.strictEqual(SS.shortFingerprint("aaaa1111"), "aaaa1111",
+        "a short legacy value is shown as is");
+    assert.strictEqual(SS.shortFingerprint(null), "unknown",
+        "an unknown identity says so instead of printing null");
+    assert.strictEqual(SS.shortFingerprint("a".repeat(13)).length, 9,
+        "anything longer than 12 characters is shortened");
+
+    // The disk is named the way the operator knows it, not by its URL.
+    assert.strictEqual(SS.imageLabel("media/rk5.dsk.zst"), "rk5.dsk",
+        "directory and .zst are stripped");
+    assert.strictEqual(SS.imageLabel("rk5.dsk"), "rk5.dsk",
+        "a bare name is unchanged");
+    assert.strictEqual(SS.imageLabel("C:\\\\images\\\\rp0.dsk"), "rp0.dsk",
+        "a windows path is stripped too");
+    assert.strictEqual(SS.imageLabel(null), "", "a missing url does not print null");
+
+    // One clause per image, chosen by reason, never containing a full digest.
+    const changed = SS.incompatibleReasonText(
+        { url: "rk5.dsk", then: hash, now: "1".repeat(64), reason: "changed" });
+    assert.ok(changed.indexOf("2e5be124\u2026") !== -1, "the saved digest is shown short");
+    assert.ok(changed.indexOf(hash) === -1, "the full saved digest is not in the flow");
+    assert.ok(SS.incompatibleReasonText({ reason: "legacy" }).indexOf("identity format") !== -1,
+        "a legacy identity is explained, not printed");
+    assert.ok(SS.incompatibleReasonText({ reason: "missing" }).indexOf("not available") !== -1,
+        "a missing image is explained, not printed");
+
+    // "Use my own copy of this disk": the DIGEST decides, the file name does
+    // not. A right-bytes/wrong-name file is accepted, wrong bytes are not, and
+    // a legacy identity can never be satisfied this way.
+    const diskBytes = new Uint8Array(512);
+    diskBytes[0] = 0x5a;
+    diskBytes[511] = 0xa5;
+    const diskSha = ImageFingerprint.ofBytes(diskBytes);
+    const hit = SS.matchSuppliedBytes(
+        [{ url: "media/rk5.dsk.zst", then: diskSha, now: "f".repeat(64), reason: "changed" }],
+        diskBytes);
+    assert.ok(hit.match && hit.match.url === "media/rk5.dsk.zst",
+        "the supplied bytes are matched by digest, not by name");
+    assert.strictEqual(hit.sha, diskSha, "the reported identity is the file's own");
+
+    const miss = SS.matchSuppliedBytes(
+        [{ url: "rk5.dsk", then: "a".repeat(64), now: "b".repeat(64), reason: "changed" }],
+        diskBytes);
+    assert.strictEqual(miss.match, null, "a different disk is refused");
+
+    const legacy = SS.matchSuppliedBytes(
+        [{ url: "rk5.dsk", then: "aaaa1111", now: null, reason: "legacy" }], diskBytes);
+    assert.strictEqual(legacy.match, null,
+        "a legacy identity is not satisfied by supplying a file");
+
+    const empty = SS.matchSuppliedBytes([{ url: "rk5.dsk", then: diskSha }], new Uint8Array(0));
+    assert.strictEqual(empty.match, null, "an empty file never matches");
+    console.log("PASS: refusal wording keeps the digests short and the disks named plainly");
+    console.log("PASS: a supplied disk is matched by digest, never by file name");
+}
+
+// Where an image's bytes came from decides whether a THIN state can ever fetch
+// them again: a dropped file cannot, a published version can. And bytes already
+// on this machine answer a state even when they are mounted under another name.
+function testImageSources() {
+    const bytes = new Uint8Array(64);
+    bytes[0] = 7;
+    const sha = ImageFingerprint.ofBytes(bytes);
+    const store = new Map();
+    const sourcesOf = new Map();
+    const fakeLoader = {
+        mount(url, data, source) {
+            store.set(url, data);
+            sourcesOf.set(url, source || "local");
+        },
+        get(url) { return store.get(url); },
+        has(url) { return store.has(url); },
+        list() { return Array.from(store.keys()); },
+        sourceOf(url) { return sourcesOf.get(url); }
+    };
+    const SS = buildSnapshotStoreSandbox({}, { DataLoader: fakeLoader }).SnapshotStore;
+
+    fakeLoader.mount("rk0.dsk", bytes, "network");
+    assert.strictEqual(SS.captureImageSources()["rk0.dsk"], "network",
+        "the source of every mounted image travels with the state");
+
+    // Arrays cross the VM realm boundary, so compare their text form:
+    // deepStrictEqual would compare Array prototypes from two realms.
+    const names = (list) => Array.prototype.join.call(list, ",");
+    assert.strictEqual(
+        names(SS.localOnlyImages({ imageSources: { "rk5.dsk": "local" }, imageVersions: {} })),
+        "rk5.dsk", "a local image with no published version is not portable");
+    assert.strictEqual(
+        names(SS.localOnlyImages({
+            imageSources: { "rk5.dsk": "local" },
+            imageVersions: { "rk5.dsk": { version: 2, sha256: sha } }
+        })), "", "a pinned version makes even a local image portable");
+    assert.strictEqual(
+        names(SS.localOnlyImages({ imageSources: { "rk5.dsk": "published" }, imageVersions: {} })),
+        "", "a published image is not a portability concern");
+    assert.strictEqual(
+        names(SS.localOnlyImages({ imageSources: { "rk5.dsk": "adopted" }, imageVersions: {} })),
+        "rk5.dsk", "bytes adopted from a local copy are still local");
+
+    // The right bytes under a DIFFERENT name answer the state's identity.
+    fakeLoader.mount("my-rk5.dsk", bytes, "local");
+    assert.strictEqual(names(SS.adoptLocalImages({ imageFingerprints: { "rk5.dsk": sha } })),
+        "rk5.dsk", "a dropped copy answers the state under the expected name");
+    assert.strictEqual(fakeLoader.sourceOf("rk5.dsk"), "adopted",
+        "the adopted image is marked as such, not as published");
+    assert.strictEqual(
+        names(SS.adoptLocalImages({ imageFingerprints: { "zz.dsk": "f".repeat(64) } })),
+        "", "bytes that match nothing are never adopted");
+    assert.strictEqual(fakeLoader.has("zz.dsk"), false,
+        "nothing is mounted for an identity this machine does not have");
+    assert.strictEqual(names(SS.adoptLocalImages({ imageFingerprints: { "rk0.dsk": sha } })),
+        "", "an image already mounted with the right bytes is left alone");
+    console.log("PASS: image sources decide portability, and identity beats the file name");
 }
 
 async function testRestoreRefusesAndKeepsMachine() {
@@ -332,6 +465,8 @@ async function testRestoreRefusesAndKeepsMachine() {
     await testGetBlockUnknownIsPermissive();
     await testRestoreOverlayAcrossBuilds();
     testIncompatibleImages();
+    testRefusalWording();
+    testImageSources();
     await testRestoreRefusesAndKeepsMachine();
     console.log("image-fingerprint-invalidation: all tests passed");
 })().catch((err) => {

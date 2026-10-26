@@ -301,7 +301,7 @@
             try {
                 var rawGot = await progress("media/" + url);
                 if (rawGot.response.ok) {
-                    DataLoader.mount(url, rawGot.bytes);
+                    DataLoader.mount(url, rawGot.bytes, "network");
                     return rawGot.bytes;
                 }
             } catch (e) { /* fall through to .zst */ }
@@ -309,7 +309,7 @@
                 var got = await progress("media/" + url + ".zst");
                 if (got.response.ok) {
                     var raw = fzstd.decompress(got.bytes);
-                    DataLoader.mount(url, raw);
+                    DataLoader.mount(url, raw, "network");
                     return raw;
                 }
             } catch (e) { /* .zst also missing */ }
@@ -320,7 +320,7 @@
             var got = await progress("media/" + url + ".zst");
             if (got.response.ok) {
                 var raw = fzstd.decompress(got.bytes);
-                DataLoader.mount(url, raw);
+                DataLoader.mount(url, raw, "network");
                 return raw;
             }
         } catch (e) {
@@ -329,7 +329,7 @@
         try {
             var rawGot = await progress("media/" + url);
             if (!rawGot.response.ok) return undefined;
-            DataLoader.mount(url, rawGot.bytes);
+            DataLoader.mount(url, rawGot.bytes, "network");
             return rawGot.bytes;
         } catch (e) {
             return undefined;

@@ -28,6 +28,20 @@
     // tracked here, so the "Mounted images" counter reflects user images only.
     var userImages = {};
 
+    // Resolves once the images persisted from a previous session are mounted.
+    // Snapshot restore waits for it: judging a state before the user's own
+    // images are back would compare it against the bundled image of the same
+    // name, and refuse a state that is perfectly restorable. Held as a
+    // resolver so a restore that starts early simply waits.
+    var imagesReady = (typeof Promise === "function") ? (function () {
+        var resolveReady = null;
+        var promise = new Promise(function (resolve) { resolveReady = resolve; });
+        return {
+            promise: promise,
+            resolve: function () { if (resolveReady) { resolveReady(); resolveReady = null; } }
+        };
+    })() : null;
+
     function plural(n) {
         return n === 1 ? "image" : "images";
     }
@@ -659,6 +673,10 @@
                 }
             });
             refreshMountedList();
+        }).catch(function () {
+            // Storage unavailable: nothing to wait for, never block a restore.
+        }).then(function () {
+            if (imagesReady) imagesReady.resolve();
         });
 
         // Load the write-back index of saved disk changes and wire up the
@@ -818,6 +836,20 @@
     // userImages map is handed out so a test can mount an image "by hand" the
     // way a drag & drop would.
     if (typeof window !== "undefined") {
+        // Startup readiness seam for snapshot restore. A restore may begin
+        // before IndexedDB has handed back the user's images; racing a storage
+        // read against a disk check produced a spurious "different build".
+        // The timeout keeps a wedged IndexedDB from blocking restore forever.
+        window.__yapdpImagesReady = {
+            whenReady: function (timeoutMs) {
+                if (!imagesReady) return Promise.resolve();
+                var limit = (typeof timeoutMs === "number") ? timeoutMs : 2000;
+                return Promise.race([
+                    imagesReady.promise,
+                    new Promise(function (resolve) { setTimeout(resolve, limit); })
+                ]);
+            }
+        };
         window.yapdpExportList = {
             exportableUrls: exportableUrls,
             diskImageUrls: diskImageUrls,

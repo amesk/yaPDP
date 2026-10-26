@@ -135,6 +135,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/landing-manual-coverage.test.js`)
 ### Changed
 
+- **The "state was not restored" dialog is readable.** It says the machine was
+  left untouched before explaining anything, names each disk the way CONFIG does
+  (`rk5.dsk`, not a url), shows an eight-digit identity in the flow and keeps the
+  full SHA-256 digests behind **Technical details** with **Copy details**, where
+  a 64-character token can no longer push the dialog past the window edge. The
+  actions say what they do: **Keep it** and **Delete this state**, the latter
+  styled as a destructive action, with the offending disk listed first and the
+  rest counted; all actions sit on one wrapping row, so a third button never
+  touches its neighbour on a narrow window. (`src/snapshots.js`,
+  `css/pdp11.css`, `tests/e2e-snapshot-image-changed.js`)
 - **Running header and footer of the printed manual.** The header carries the
   product name in the top-left corner and the document name in the top-right
   one, the footer the edition in the bottom-left corner and the page number in

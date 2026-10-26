@@ -156,7 +156,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
     'config': ['settings', 'options', 'equipment', 'tabs', 'speed', 'sound'],
     'guest-oses': ['os', 'operating system', 'boot rk', 'boot rp', 'boot rl', 'unix', 'rt-11', 'rsx', 'rsts', 'bsd', 'xxdp', 'basic'],
     'controls': ['button', 'shortcut', 'indicator', 'reboot', 'mute', 'fullscreen', 'magic'],
-    'troubleshooting': ['problem', 'fix', 'error', 'help', 'cors', 'blank screen', 'blank', 'keyboard', 'does not type', 'no sound', 'mute', 'performance', 'slow', 'snapshot refused', 'will not boot', 'does not boot'],
+    'troubleshooting': ['problem', 'fix', 'error', 'help', 'cors', 'blank screen', 'blank', 'keyboard', 'does not type', 'no sound', 'mute', 'performance', 'slow', 'snapshot refused', 'own copy', 'local disk', 'portable', 'will not boot', 'does not boot'],
     'desktop': ['tauri', 'install', 'app', 'download'],
   };
 
@@ -2034,6 +2034,38 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
             {lang === 'en'
               ? 'Take a fresh snapshot on the current build, or delete the stale one — a snapshot cannot be migrated onto a disk it was not taken from.'
               : 'Сделайте новый снапшот на текущей сборке или удалите устаревший — перенести снапшот на диск, с которого он не снимался, нельзя.'}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-[#4a453a] bg-[#14120e] p-4 space-y-4">
+          <h3 className="text-base font-bold text-[#e8d080]">
+            {lang === 'en'
+              ? 'A state needs a disk that only this browser has'
+              : 'Состоянию нужен диск, который есть только в этом браузере'}
+          </h3>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en' ? (
+              <>
+                A disk you dropped in or imported yourself has no published version, so a state taken on it
+                restores in this browser only — saving such a state says so in a toast. Bytes already loaded here
+                are found even under another file name, because the{' '}
+                <strong className="text-[#f0e6c8]">digest</strong> decides, not the name.
+              </>
+            ) : (
+              <>
+                У диска, который вы перетащили или импортировали сами, нет опубликованной версии, поэтому
+                состояние, снятое на нём, восстанавливается только в этом браузере — при сохранении такого
+                состояния появляется предупреждение. Уже загруженные здесь байты находятся даже под другим именем
+                файла: решает <strong className="text-[#f0e6c8]">дайджест</strong>, а не имя.
+              </>
+            )}
+          </p>
+
+          <p className="text-xs sm:text-sm text-[#c8b890] leading-relaxed">
+            {lang === 'en'
+              ? 'If the restore is refused because of such a disk, the dialog offers Use my own copy of this disk… Pick the file: the digest the state was saved with decides, so a copy with the right contents is accepted under any name, a wrong file changes nothing, and the restore then runs again by itself. To make such a state portable from the start, export it with Make state self-contained.'
+              : 'Если восстановление отклонено из-за такого диска, в диалоге есть кнопка «Use my own copy of this disk…». Выберите файл: решает дайджест, с которым состояние было сохранено, поэтому копия с правильным содержимым принимается под любым именем, чужой файл ничего не меняет, а восстановление затем запускается само. Чтобы состояние сразу было переносимым, экспортируйте его с включённым «Make state self-contained».'}
           </p>
         </div>
 

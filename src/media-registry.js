@@ -75,7 +75,7 @@
         if (typeof DataLoader === "undefined" || typeof DataLoader.mount !== "function") {
             throw new Error("Image loader is unavailable");
         }
-        DataLoader.mount(name, raw);
+        DataLoader.mount(name, raw, "published");
         return raw;
     }
 

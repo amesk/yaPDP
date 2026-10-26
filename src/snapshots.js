@@ -311,6 +311,10 @@ var SnapshotStore = (() => {
                     // and never invalidates anything.
                     imageFingerprints: imageFingerprints,
                     imageVersions: imageVersions,
+                    // Where each image's bytes came from. A local (drag & drop)
+                    // image has no published version to fetch, so a thin state
+                    // can only restore here — the save path warns about it.
+                    imageSources: captureImageSources(),
                     cpu: captureCPU(),
                     memory: mem,
                     mounted: captureMounted(),
@@ -414,6 +418,21 @@ var SnapshotStore = (() => {
         return out;
     }
 
+    // Where each mounted image came from, per url: "local" (drag & drop),
+    // "network", "published", "bundled" or "embedded". A thin state cannot
+    // fetch local bytes back, so this is what lets it warn at save time and
+    // say the truth when it refuses a restore.
+    function captureImageSources() {
+        var out = {};
+        if (typeof DataLoader === "undefined" ||
+            typeof DataLoader.sourceOf !== "function") return out;
+        listMountedUrls(snapMountedList()).forEach(function (url) {
+            var source = DataLoader.sourceOf(url);
+            if (source) out[url] = String(source);
+        });
+        return out;
+    }
+
     // Registry identity is recorded only when the mounted payload's
     // fingerprint exactly matches a published immutable version.
     function captureImageVersions(fingerprints) {
@@ -445,7 +464,11 @@ var SnapshotStore = (() => {
     // An unknown fingerprint on either side is NOT a mismatch: a value that
     // was never computed cannot contradict anything, and treating it as a
     // mismatch would refuse good snapshots on every host without a .zst.
-    // Returns [{url, then, now}, ...] — empty when the snapshot is usable.
+    // Returns [{url, then, now, reason}, ...] — empty when the snapshot is
+    // usable. `reason` is "legacy" (pre-0.4.0 identity, rejected explicitly)
+    // or "changed" (the bytes differ now); it selects the wording of the
+    // refusal, never the decision. "missing" is reserved for a caller that
+    // knows the image could not be resolved at all.
     function incompatibleImages(snap) {
         var saved = (snap && snap.imageFingerprints) || null;
         if (!saved || typeof saved !== "object") return [];
@@ -462,7 +485,7 @@ var SnapshotStore = (() => {
             // Otherwise the snapshot could be half-restored with its overlay
             // silently skipped later.
             if (then != null && !/^[0-9a-f]{64}$/.test(String(then))) {
-                bad.push({ url: url, then: then, now: now });
+                bad.push({ url: url, then: then, now: now, reason: "legacy" });
                 return;
             }
             // A SHA-256 identity cannot contradict an unknown current identity.
@@ -472,9 +495,49 @@ var SnapshotStore = (() => {
             var ok = F && typeof F.matches === "function"
                 ? F.matches(then, now)
                 : String(then) === String(now);
-            if (!ok) bad.push({ url: url, then: then, now: now });
+            if (!ok) bad.push({ url: url, then: then, now: now, reason: "changed" });
         });
         return bad;
+    }
+
+    // Bytes already on this machine can satisfy a state even when they are
+    // mounted under a different name: identity is the digest, not the label.
+    // A dropped "my-rk5.dsk" that IS the disk the state needs is adopted
+    // instead of fetching the published rk5.dsk over it. Returns the urls that
+    // were adopted, so a caller can tell the operator what happened.
+    function adoptLocalImages(snap) {
+        var saved = (snap && snap.imageFingerprints) || null;
+        if (!saved || typeof saved !== "object") return [];
+        if (typeof DataLoader === "undefined" ||
+            typeof DataLoader.mount !== "function" ||
+            typeof DataLoader.list !== "function" ||
+            typeof DataLoader.get !== "function") return [];
+        var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+        if (!F || typeof F.ofBytes !== "function") return [];
+        var mountedUrls = DataLoader.list() || [];
+        var adopted = [];
+        Object.keys(saved).forEach(function (url) {
+            var then = saved[url];
+            if (then == null || !/^[0-9a-f]{64}$/.test(String(then))) return;
+            var wanted = String(then).toLowerCase();
+            // Already mounted and already the right bytes: nothing to do.
+            if (typeof DataLoader.has === "function" && DataLoader.has(url)) {
+                var own = F.ofBytes(DataLoader.get(url));
+                if (own && String(own).toLowerCase() === wanted) return;
+            }
+            for (var i = 0; i < mountedUrls.length; i++) {
+                var from = mountedUrls[i];
+                if (from === url) continue;
+                var bytes = DataLoader.get(from);
+                var sha = bytes ? F.ofBytes(bytes) : null;
+                if (sha && String(sha).toLowerCase() === wanted) {
+                    DataLoader.mount(url, bytes, "adopted");
+                    adopted.push(url);
+                    return;
+                }
+            }
+        });
+        return adopted;
     }
 
     // Load image bytes from a snapshot's mounted list into DataLoader, but do
@@ -565,7 +628,23 @@ var SnapshotStore = (() => {
                 return Promise.resolve(false);
             }
         }
-        return loadStateImages(snap.mounted, snap.imageVersions).then(function () {
+        // The user's own images (drag & drop) are re-mounted from IndexedDB
+        // asynchronously at startup. Judging the state before they are back
+        // would compare it against the bundled image of the same name and
+        // refuse a state that is perfectly restorable. Wait, but never hang:
+        // the readiness seam bounds itself.
+        var imagesReady = (typeof window !== "undefined" &&
+            window.__yapdpImagesReady &&
+            typeof window.__yapdpImagesReady.whenReady === "function")
+            ? window.__yapdpImagesReady.whenReady() : Promise.resolve();
+        return imagesReady.then(function () {
+            // The state may need bytes this machine already has under another
+            // name (a dropped copy). Adopt them BEFORE the network is asked:
+            // fetching the published image would replace the very bytes the
+            // state was taken on.
+            adoptLocalImages(snap);
+            return loadStateImages(snap.mounted, snap.imageVersions);
+        }).then(function () {
             // Refuse before touching CPU/RAM: a snapshot whose disks changed
             // under it cannot be restored consistently, and a half-applied
             // restore (new RAM on an old disk) is worse than no restore at all.
@@ -696,12 +775,45 @@ var SnapshotStore = (() => {
         });
     }
 
+    // Images a THIN state cannot fetch back: the bytes are local (drag & drop
+    // or adopted from one) and no published version pins them. Such a state
+    // restores on this machine and nowhere else, so saving warns about it.
+    function localOnlyImages(snap) {
+        var sources = (snap && snap.imageSources) || {};
+        var versions = (snap && snap.imageVersions) || {};
+        return Object.keys(sources).filter(function (url) {
+            var source = sources[url];
+            if (source !== "local" && source !== "adopted") return false;
+            var pinned = versions[url];
+            return !(pinned && pinned.version != null);
+        });
+    }
+
+    // A toast, not a dialog: the state IS saved and works here. The warning is
+    // about portability, and it is the only moment the operator can act on it.
+    function warnLocalOnlyState(snap) {
+        var urls = localOnlyImages(snap);
+        if (!urls.length) return;
+        if (typeof window === "undefined" ||
+            typeof window.__yapdpReportWarning !== "function") return;
+        var names = urls.map(imageLabel).join(", ");
+        try {
+            window.__yapdpReportWarning(
+                "State saved. " + names + (urls.length === 1 ? " is" : " are") +
+                " a disk only this browser has, so this state restores here and " +
+                "nowhere else. Export it with \"Make state self-contained\" to " +
+                "keep it portable.",
+                "snapshot-local-image");
+        } catch (e) { /* reporting must never break a save */ }
+    }
+
     // ------------------------------------------------------------------
     // Public API
     // ------------------------------------------------------------------
     function save(name, steps, stepsMessage) {
         return capture(name, steps, stepsMessage).then(function (snap) {
             return dbPut(snap.id, snap).then(function () {
+                warnLocalOnlyState(snap);
                 // Keep the store bounded.
                 return dbGetAll().then(function (items) {
                     const excess = items.length - MAX_SNAPSHOTS;
@@ -1546,7 +1658,7 @@ var SnapshotStore = (() => {
             if (mounted.indexOf(urls[i]) < 0) return false;
             var bytes = blobs && blobs[refs[urls[i]]];
             if (!bytes || typeof bytes.length !== "number") return false;
-            DataLoader.mount(urls[i], new Uint8Array(bytes));
+            DataLoader.mount(urls[i], new Uint8Array(bytes), "embedded");
         }
         return true;
     }
@@ -2403,24 +2515,129 @@ var SnapshotStore = (() => {
     // --- "Snapshot not restored" dialog -----------------------------------
     // A snapshot whose disk images changed under it is an explicit request that
     // cannot be met. It gets the same treatment as a failed image fetch: the
-    // .modal-box.error shell from css/pdp11.css, one "Got it" to dismiss and
+    // .modal-box.error shell from css/pdp11.css, one "Keep it" to dismiss and
     // one action that leads somewhere useful. Built with createElement/
     // textContent, the way imgerror.js builds its overlay, so an image name —
     // which comes from a stored snapshot, not from a URL we validated — is
     // data, never markup.
     //
-    // The optional third action deletes the incompatible snapshot. Offered,
-    // never automatic: it is the user's work.
+    // The wording answers "what now?" BEFORE it explains: the machine is
+    // untouched, which disks differ, and the three ways out. The full 64-digit
+    // digests are collapsed into "Technical details" — they matter to a bug
+    // report, not to the decision, and unbroken they used to widen the box
+    // past the window edge (css/pdp11.css .modal-box code).
+    //
+    // The second action deletes the incompatible snapshot. Offered, never
+    // automatic: it is the user's work.
     var __snapIncompatModal = null;
+    // The refused snapshot and its mismatches, kept for the "use my own copy"
+    // path: replaying the restore needs both, and neither can be recovered
+    // from the DOM.
+    var __snapIncompatSnap = null;
+    var __snapIncompatBad = null;
 
-    function incompatibleText(bad) {
-        return bad.map(function (b) {
-            var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
-            var detail = (F && typeof F.describe === "function")
-                ? F.describe(b.then, b.now)
-                : (String(b.then) + " vs " + String(b.now));
-            return b.url + " (" + detail + ")";
-        }).join(", ");
+    // Short identity for the dialog body. The full digest stays in the
+    // "Technical details" block: it is what a bug report needs, not what the
+    // operator needs to decide, and 64 unbroken characters are wider than the
+    // dialog box (see css/pdp11.css .modal-box code).
+    function shortFingerprint(value) {
+        if (value == null) return "unknown";
+        var text = String(value);
+        return text.length > 12 ? text.slice(0, 8) + "\u2026" : text;
+    }
+
+    // The image as the operator knows it: no directory, no compression suffix.
+    // "media/rk5.dsk.zst" reads as "rk5.dsk", the name the Config page shows.
+    function imageLabel(url) {
+        return String(url == null ? "" : url)
+            .replace(/^.*[\\\/]/, "")
+            .replace(/\.zst$/i, "");
+    }
+
+    // One clause per incompatible image, appended to its name in the list.
+    function incompatibleReasonText(bad) {
+        if (bad.reason === "legacy") {
+            return "was saved with an identity format this build no longer accepts";
+        }
+        if (bad.reason === "missing") {
+            return "is not available on this build";
+        }
+        return "was " + shortFingerprint(bad.then) + " when the state was saved, " +
+            "is " + shortFingerprint(bad.now) + " now";
+    }
+
+    // Which refused image the operator just supplied. Identity is the digest,
+    // never the file name: a disk that happens to be called rk5.dsk proves
+    // nothing, and a differently named copy of the right bytes is accepted.
+    // Returns {match, sha} — match is null when the file is a different disk.
+    function matchSuppliedBytes(bad, bytes) {
+        var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+        if (!F || typeof F.ofBytes !== "function" || !bytes || !bytes.length) {
+            return { match: null, sha: null };
+        }
+        var sha = F.ofBytes(bytes);
+        var match = null;
+        (bad || []).forEach(function (b) {
+            if (b && b.reason === "changed" && b.then != null &&
+                String(b.then).toLowerCase() === String(sha).toLowerCase()) {
+                match = b;
+            }
+        });
+        return { match: match, sha: sha };
+    }
+
+    // Inline feedback inside the refusal dialog: a supplied file that does not
+    // match must say so where the operator is looking, not in a toast behind
+    // the overlay. Inserted before the first action button so the buttons never
+    // jump to a new place.
+    function incompatStatus(message, isError) {
+        if (!__snapIncompatModal) return;
+        var box = __snapIncompatModal.querySelector(".modal-box");
+        if (!box) return;
+        var status = box.querySelector(".modal-status");
+        if (!status) {
+            status = document.createElement("p");
+            status.className = "modal-status";
+            // Just above the action row, so a refusal reads before the buttons
+            // and the buttons never move to a new place. No action row (a
+            // caller-built dialog) means the status goes last.
+            var actions = box.querySelector(".modal-actions");
+            if (actions) box.insertBefore(status, actions);
+            else box.appendChild(status);
+        }
+        status.textContent = message;
+        if (isError) status.classList.add("error");
+        else status.classList.remove("error");
+    }
+
+    // The operator handed back a disk: verify its identity, mount it under the
+    // name the state expects, and replay the refused restore. Nothing is
+    // mounted on a mismatch, so a wrong file can never reach the guest.
+    function acceptSuppliedImage(file) {
+        if (typeof FileReader === "undefined" || !file) return;
+        var reader = new FileReader();
+        reader.onerror = function () {
+            incompatStatus("That file could not be read. Nothing was changed.", true);
+        };
+        reader.onload = function () {
+            var bytes = new Uint8Array(reader.result || new ArrayBuffer(0));
+            var result = matchSuppliedBytes(__snapIncompatBad, bytes);
+            if (!result.match) {
+                incompatStatus("That file is not the disk this state needs (" +
+                    shortFingerprint(result.sha) + "). Nothing was changed.", true);
+                return;
+            }
+            if (typeof DataLoader === "undefined" ||
+                typeof DataLoader.mount !== "function") {
+                incompatStatus("The image loader is unavailable. Nothing was changed.", true);
+                return;
+            }
+            DataLoader.mount(result.match.url, bytes);
+            var snap = __snapIncompatSnap;
+            hideIncompatibleImageDialog();
+            if (snap && typeof restore === "function") restore(snap);
+        };
+        reader.readAsArrayBuffer(file);
     }
 
     function showIncompatibleImageDialog(snap, bad) {
@@ -2439,19 +2656,40 @@ var SnapshotStore = (() => {
             __snapIncompatModal.id = "snap-incompatible-overlay";
             __snapIncompatModal.className = "modal-overlay";
             __snapIncompatModal.addEventListener("click", function (e) {
-                var action = e.target.getAttribute &&
-                    e.target.getAttribute("data-snap-action");
+                // The action lives on the button, but a click may land on a
+                // child of it — resolve the nearest owner, never the raw target.
+                var owner = (e.target.closest && e.target.closest("[data-snap-action]")) || null;
+                var action = owner ? owner.getAttribute("data-snap-action") : null;
                 if (action === "remove") {
                     var id = __snapIncompatModal.getAttribute("data-snap-id");
                     hideIncompatibleImageDialog();
                     if (id) remove(id).then(function () { refreshUI(); });
-                } else if (action === "close" || e.target === __snapIncompatModal ||
-                        (e.target.closest && e.target.closest(".modal-close"))) {
+                } else if (action === "supply") {
+                    // The hidden file input owns the picker; the button is the
+                    // only way to it, because a bare <input type=file> in the
+                    // flow reads as a form field, not as a dialog action.
+                    var picker = __snapIncompatModal.querySelector("#snap-incompat-file");
+                    if (picker) picker.click();
+                } else if (action === "copy") {
+                    // The full digests for a bug report. The dialog stays open:
+                    // the operator still has to decide what to do.
+                    var details = __snapIncompatModal.querySelector(".modal-details");
+                    var text = details ? details.textContent : "";
+                    if (typeof navigator !== "undefined" && navigator.clipboard &&
+                        typeof navigator.clipboard.writeText === "function") {
+                        navigator.clipboard.writeText(text).catch(function () { /* denied */ });
+                    }
+                } else if (action === "close" || e.target === __snapIncompatModal) {
                     hideIncompatibleImageDialog();
                 }
             });
             document.body.appendChild(__snapIncompatModal);
         }
+
+        // Remembered for the "use my own copy" path: replaying the restore
+        // needs the state itself and the mismatches it is judged against.
+        __snapIncompatSnap = snap;
+        __snapIncompatBad = bad;
 
         var box = document.createElement("div");
         box.className = "modal-box error";
@@ -2461,37 +2699,121 @@ var SnapshotStore = (() => {
         title.textContent = "Snapshot not restored";
         box.appendChild(title);
 
+        // What happened, in one sentence, before any technical detail — and
+        // the reassurance that nothing was damaged comes FIRST, not last.
         var intro = document.createElement("p");
         intro.className = "modal-intro";
-        intro.appendChild(document.createTextNode("The snapshot "));
+        intro.appendChild(document.createTextNode("The machine was left exactly as it was. The state "));
         var name = document.createElement("code");
         name.textContent = String(snap.name || snap.id || "");
         intro.appendChild(name);
         intro.appendChild(document.createTextNode(
-            " was taken on a different build of "));
-        var img = document.createElement("code");
-        img.textContent = incompatibleText(bad);
-        intro.appendChild(img);
-        intro.appendChild(document.createTextNode(
-            ". The image has been updated since, so restoring would put the " +
-            "saved memory on top of a disk it does not match — the guest would " +
-            "see a corrupted file system. The machine was left as it is. " +
-            "Delete the snapshot, or take a fresh one on this build."));
+            bad.length === 1
+                ? " cannot be restored: the disk it was saved with is not the disk loaded now."
+                : " cannot be restored: " + bad.length + " of the disks it was saved with " +
+                  "are not the disks loaded now."));
         box.appendChild(intro);
 
-        var gotItBtn = document.createElement("button");
-        gotItBtn.type = "button";
-        gotItBtn.className = "modal-close";
-        gotItBtn.setAttribute("data-snap-action", "close");
-        gotItBtn.textContent = "Got it";
-        box.appendChild(gotItBtn);
+        // Which disks, by the names the operator sees in Config. Three at most:
+        // a wall of image names is not actionable, the details block has them all.
+        var list = document.createElement("ul");
+        list.className = "modal-steps";
+        bad.slice(0, 3).forEach(function (b) {
+            var item = document.createElement("li");
+            var label = document.createElement("code");
+            label.textContent = imageLabel(b.url);
+            item.appendChild(label);
+            item.appendChild(document.createTextNode(" " + incompatibleReasonText(b)));
+            list.appendChild(item);
+        });
+        if (bad.length > 3) {
+            var more = document.createElement("li");
+            more.textContent = "and " + (bad.length - 3) + " more (see technical details)";
+            list.appendChild(more);
+        }
+        box.appendChild(list);
+
+        var why = document.createElement("p");
+        why.className = "modal-drag";
+        why.textContent = "Restoring would put the saved memory on top of a different " +
+            "file system, so the guest would see a corrupted disk. Delete this state, " +
+            "take a fresh one on this build, or load the disk it was saved with.";
+        box.appendChild(why);
+
+        // Full digests: what a bug report needs, and what the dialog body must
+        // not contain (64 unbroken characters are wider than the box).
+        var details = document.createElement("details");
+        details.className = "modal-details";
+        var summary = document.createElement("summary");
+        summary.textContent = "Technical details";
+        details.appendChild(summary);
+        bad.forEach(function (b) {
+            var line = document.createElement("div");
+            var urlCode = document.createElement("code");
+            urlCode.textContent = String(b.url);
+            line.appendChild(urlCode);
+            var F = (typeof ImageFingerprint !== "undefined") ? ImageFingerprint : null;
+            var description = (F && typeof F.describe === "function")
+                ? F.describe(b.then, b.now)
+                : ("expected " + String(b.then) + ", found " + String(b.now));
+            line.appendChild(document.createTextNode(" " + description));
+            details.appendChild(line);
+        });
+        var copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        copyBtn.className = "modal-close";
+        copyBtn.setAttribute("data-snap-action", "copy");
+        copyBtn.textContent = "Copy details";
+        details.appendChild(copyBtn);
+        box.appendChild(details);
+
+        // The actions share ONE wrapping row (.modal-actions). Inline buttons
+        // separated by margin-left butt-joined vertically as soon as the row
+        // wrapped, which is exactly what three actions do on a narrow window.
+        var actions = document.createElement("div");
+        actions.className = "modal-actions";
+
+        // The way out when the disk exists only on this machine: the operator
+        // hands the bytes back and the digest decides. Offered only for a disk
+        // that differs (a legacy identity can never be satisfied this way) and
+        // only where a file can be read at all.
+        var suppliable = bad.filter(function (b) { return b.reason === "changed"; });
+        var fileInput = null;
+        if (suppliable.length > 0 && typeof FileReader !== "undefined") {
+            fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.id = "snap-incompat-file";
+            fileInput.className = "modal-file-input";
+            fileInput.addEventListener("change", function () {
+                var file = fileInput.files && fileInput.files[0];
+                if (file) acceptSuppliedImage(file);
+                fileInput.value = "";
+            });
+            box.appendChild(fileInput);
+
+            var supplyBtn = document.createElement("button");
+            supplyBtn.type = "button";
+            supplyBtn.className = "modal-close";
+            supplyBtn.setAttribute("data-snap-action", "supply");
+            supplyBtn.textContent = "Use my own copy of this disk\u2026";
+            actions.appendChild(supplyBtn);
+        }
+
+        var keepBtn = document.createElement("button");
+        keepBtn.type = "button";
+        keepBtn.className = "modal-close";
+        keepBtn.setAttribute("data-snap-action", "close");
+        keepBtn.textContent = "Keep it";
+        actions.appendChild(keepBtn);
 
         var removeBtn = document.createElement("button");
         removeBtn.type = "button";
-        removeBtn.className = "modal-close";
+        removeBtn.className = "modal-close modal-danger";
         removeBtn.setAttribute("data-snap-action", "remove");
-        removeBtn.textContent = "Delete this snapshot";
-        box.appendChild(removeBtn);
+        removeBtn.textContent = "Delete this state";
+        actions.appendChild(removeBtn);
+
+        box.appendChild(actions);
 
         __snapIncompatModal.innerHTML = "";
         __snapIncompatModal.setAttribute("data-snap-id", String(snap.id || ""));
@@ -3957,6 +4279,20 @@ var SnapshotStore = (() => {
         // Exposed for tests: the compatibility rule and its dialog, and the
         // HTML escaper the Share dialog applies to a snapshot name.
         incompatibleImages: incompatibleImages,
+        // Wording helpers of the refusal dialog: exposed so the formatting
+        // rules (short digest, bare image name, reason clause) are pinned by
+        // unit tests instead of only by the e2e that drives the dialog.
+        shortFingerprint: shortFingerprint,
+        imageLabel: imageLabel,
+        incompatibleReasonText: incompatibleReasonText,
+        // "Use my own copy of this disk": the digest decides, not the file
+        // name. Exposed so the rule is pinned without a real file picker.
+        matchSuppliedBytes: matchSuppliedBytes,
+        // Which images a thin state cannot fetch back, and which bytes already
+        // on this machine answer a state's identity.
+        localOnlyImages: localOnlyImages,
+        adoptLocalImages: adoptLocalImages,
+        captureImageSources: captureImageSources,
         showIncompatibleImageDialog: showIncompatibleImageDialog,
         hideIncompatibleImageDialog: hideIncompatibleImageDialog,
         currentYaPDPVersion: currentYaPDPVersion,
