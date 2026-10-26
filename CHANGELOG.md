@@ -301,6 +301,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **No blank line or strip on an LP11 page throw.** A job that fills a sheet
+  without sending form feeds — an `.art` file printed from RT-11, for instance
+  — left one empty row between the last printed line and the fold, and the fold
+  itself spent a printed row, so the Printer page showed a blank strip at every
+  page boundary while the Print preview paginated correctly. The line feed that
+  fills the sheet no longer opens the next line on it, and the perforation is
+  drawn on the sheet boundary at zero height: 66 lines run right up to the fold
+  and the next page's first line starts directly under it. (`src/g60printer.js`,
+  `css/g60printer.css`; pinned by `tests/g60printer-seam.test.js`,
+  `tests/lp11-sheet-aspect.test.js`)
+
 - **A disk unmounted on the Storage page boots again.** The disk provider
   treated its first image fetch as final, so once Unmount removed the bytes
   from the mount table every read of that drive returned an all-zero block and

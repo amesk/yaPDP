@@ -912,6 +912,32 @@
         }
 
         /**
+         * sheetStep() - The whole decision one line feed makes against the
+         * paper: where the sheet position lands, whether this line closes the
+         * sheet (so the perforation must be queued) and whether a fresh line
+         * may be opened on THIS sheet at all. `openLine` is false when the seam
+         * is drawn: the perforation closes the sheet directly under the line
+         * just printed, so the next line belongs to the following sheet.
+         * Opening it here left a blank row above the fold on every automatic
+         * page throw — a job without form feeds (e.g. an .art file printed
+         * from RT-11) showed one extra empty line per sheet while the Print
+         * preview paginated correctly. The console teletype's smooth roll
+         * (pageBreakMarker false) keeps the old behaviour: no visible fold, so
+         * the line is opened as before. Pure, so it is unit-tested without a
+         * DOM (tests/g60printer-seam.test.js).
+         */
+        function sheetStep(pos, length, pageBreakMarker, seamQueued) {
+            var sheet = pageAdvance(pos, length);
+            var seam = sheet.full && !seamQueued;
+            return {
+                pos: sheet.pos,
+                full: sheet.full,
+                seam: seam,
+                openLine: !(seam && pageBreakMarker)
+            };
+        }
+
+        /**
          * doPrintln() - Internal: execute the line feed / new paragraph logic.
          * This is the same as the original println() body, extracted so it can
          * be scheduled as a buffered item in the pacing queue.
@@ -927,16 +953,6 @@
             // carriage: LF starts the new line at the left margin (one NBSP
             // cell, column 0) and the head snaps back to column 0.
             var col = currentCharPos;
-            var cells = lfKeepsColumn ? (col + 1) : 1;
-            currentLineEl = document.createElement('p');
-            printArea.appendChild(currentLineEl);
-            for (var i = 0; i < cells; i++) {
-                var spaceEl = document.createElement('span');
-                spaceEl.textContent = '\u00A0';
-                currentLineEl.appendChild(spaceEl);
-            }
-            currentCharPos = lfKeepsColumn ? col : 0;
-            overHang = 0;
 
             // Track lines printed on the current fanfold sheet (wraps at
             // pageLength) so a form feed fills only the remainder of the page.
@@ -946,10 +962,32 @@
             // fill the sheet exactly must not run into the next one with no
             // separator at all (the FF that follows is then a no-op, exactly
             // like an lpd FF before the banner of a fresh job).
-            var sheet = pageAdvance(pagePos, pageLength);
-            pagePos = sheet.pos;
-            pageHasContent = !sheet.full;
-            if (sheet.full && !seamQueued) charBuffer.push(CHAR_FF_MARK);
+            // The seam is unshifted, not pushed: like the eject queued by
+            // doFormFeed it belongs at the FF position in the logical stream,
+            // i.e. BEFORE any content already queued after this line feed.
+            var step = sheetStep(pagePos, pageLength, pageBreakMarker, seamQueued);
+            pagePos = step.pos;
+            pageHasContent = !step.full;
+            if (step.seam) charBuffer.unshift(CHAR_FF_MARK);
+
+            if (step.openLine) {
+                var cells = lfKeepsColumn ? (col + 1) : 1;
+                currentLineEl = document.createElement('p');
+                printArea.appendChild(currentLineEl);
+                for (var i = 0; i < cells; i++) {
+                    var spaceEl = document.createElement('span');
+                    spaceEl.textContent = '\u00A0';
+                    currentLineEl.appendChild(spaceEl);
+                }
+                currentCharPos = lfKeepsColumn ? col : 0;
+                overHang = 0;
+            } else {
+                // The perforation closes this sheet; the first glyph of the
+                // next page opens the fresh line below it (doPrintChar).
+                currentLineEl = null;
+                currentCharPos = 0;
+                overHang = 0;
+            }
 
             // Play linefeed sound (disabled on the fast LP11 line printer).
             // Do not cut the continuous LP11 whirr at a line boundary.
