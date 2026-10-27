@@ -420,8 +420,10 @@ is now under an auto-generated name; **Load** restores a state and hands the
 machine back at once, while **Load as shared state** replays the guided restore
 for a state that carries a guide (steps, a button label or a screenshot);
 **Export / Import** move a state through a `.state` file, a text envelope or a
-URL; **Share** turns one into a file to hand to somebody else, with the words
-they will read and a command that types itself once the machine is back; and
+URL; **Share** turns one into a file to hand to somebody else — through the
+system share sheet, which sends the `.state.zst` file and, if the sheet refuses
+it, offers the full text envelope on a second click — with the words they will
+read and a command that types itself once the machine is back; and
 **Rename / Delete** organise the list. States live in the
 browser's IndexedDB, survive reloads and sessions, and states saved by older
 emulator versions keep working.

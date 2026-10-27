@@ -207,10 +207,27 @@ When importing, the system auto-detects the format:
 - **Export** split-button: download `.state.zst`, save as text file (`.txt`),
   copy text envelope to clipboard.
 - **Share** dialog: create a shareable state with metadata, then choose output:
-  download `.state.zst`, copy text envelope, save text file, or create a
-  GitHub Gist (opens a helper dialog with instructions and link generator).
+  download `.state.zst`, copy text envelope, save text file, create a
+  GitHub Gist (opens a helper dialog with instructions and link generator), or
+  hand the state to the system share sheet (**Share via platform…**).
   **Make state self-contained** embeds the disk images too, so the file no
   longer depends on the media registry or on the images this build ships.
+- **Share via platform** offers the state as a file first, on every platform:
+  the `.state.zst` (`application/octet-stream`), then the `.state.txt` envelope
+  (`text/plain`). The payload carries the file ALONE — some sheets reject a
+  payload that mixes files with a text body. When the sheet refuses it, the
+  full envelope is put on the clipboard, and the same menu item switches to the
+  text channel (`Share state text…`): one more click sends the envelope as
+  message text, which is the channel a desktop browser really has. The retry is
+  a separate click because a share consumes the click's user activation — a
+  second `share()` inside the same handler always fails with "Must be handling
+  a user gesture" and would hide the first error. The envelope is never
+  truncated, and refusals report the browser's own reason — inside the dialog
+  itself, because a toast is painted under the modal overlay and the dialog has
+  to stay open for the retry click.
+  The policy lives in `SnapshotStore.sharePayloadFor()` /
+  `SnapshotStore.shareCapabilities()` and is pinned by
+  [`tests/share-payload.test.js`](../tests/share-payload.test.js).
 
 The envelope is handled by [`src/state-envelope.js`](../src/state-envelope.js),
 shared between the browser and Node tools.

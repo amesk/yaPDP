@@ -310,6 +310,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Share via platform hands over the machine state.** The Share dialog's
+  platform item offers the state to the system share sheet as a real
+  `.state.zst` file — the artifact the recipient can import — with the file
+  travelling alone, because a payload that mixes files with a text body is
+  refused by some sheets. The state is packaged while the split menu is open and
+  the item stays disabled until it is ready, so `navigator.share()` runs inside
+  the click that owns the user activation. When the sheet refuses the file, the
+  full text envelope goes to the clipboard and the same item becomes
+  **Share state text…**, which sends the envelope as message text on the next
+  click — one `share()` per click, because a retry inside the same handler fails
+  with "Must be handling a user gesture" and hides the real refusal. The refusal
+  is reported in a status line inside the dialog, not through a toast: a toast
+  is painted under the modal overlay, and the dialog stays open for the retry.
+  The old `text.slice(0, 2048)` is gone: a truncated body no longer decodes.
+  (`src/snapshots.js`, `css/pdp11.css`, `docs/STATE-FORMAT.md`,
+  `docs/FEATURES.md`, `docs/manual/machine-state.md`,
+  `docs/manual/ru/machine-state.md`; pinned by `tests/share-payload.test.js` and
+  `tests/e2e-share.js`)
+
 - **No blank line or strip on an LP11 page throw.** A job that fills a sheet
   without sending form feeds — an `.art` file printed from RT-11, for instance
   — left one empty row between the last printed line and the fold, and the fold

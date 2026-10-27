@@ -1912,6 +1912,116 @@ var SnapshotStore = (() => {
     }
 
     // ------------------------------------------------------------------
+    // Platform-share policy: which artifact the Share dialog hands to the
+    // share sheet. Best first:
+    //   1. "zst" — the binary .state.zst file: compact, every messenger takes
+    //      it, and importing on the other side is one click.
+    //   2. "txt" — the text envelope as a .state.txt FILE: for a target that
+    //      refuses the container's MIME type but still accepts attachments.
+    //   3. "text" — the envelope as share TEXT, only while it fits a
+    //      platform's text limit. Truncating instead (text.slice(0, 2048)) is
+    //      exactly the bug this policy exists to prevent: the recipient got a
+    //      fragment that no longer decodes.
+    //   4. "clipboard" — nothing shareable: the caller copies the full
+    //      envelope to the clipboard and says why.
+    // DOM-free and pure, so the rule is pinned by unit tests instead of only
+    // by the e2e that drives the dialog.
+    // ------------------------------------------------------------------
+    var SHARE_TEXT_LIMIT = 60000;                    // text channels cut ~65k
+    var SHARE_ENVELOPE_MAX_BYTES = 48 * 1024 * 1024; // base64 would be ~64 MB
+
+    // Exact length of StateEnvelope.encode() output for a given byte count:
+    // the marker line, base64 (4 chars per 3 bytes), wrapped at 76 columns.
+    function envelopeLengthFor(byteLength) {
+        var len = Number(byteLength) || 0;
+        if (len <= 0) return 0;
+        var b64 = 4 * Math.ceil(len / 3);
+        var dataLines = Math.ceil(b64 / 76);
+        // join("\n"): one newline after the marker, one between data lines.
+        return "yapdp-text-envelope-v1".length + 1 + b64 + Math.max(0, dataLines - 1);
+    }
+
+    // Probe what this platform can actually share. navigator.canShare throws
+    // for payloads it does not understand, so both probes are guarded: a
+    // throw means "no", never an exception in the dialog.
+    // `isMobile` is part of the answer, not decoration: a desktop Chrome
+    // answers canShare({files}) with "true" and then refuses the payload when
+    // asked for real, spending the click's activation on the way (observed on
+    // Windows against WhatsApp Desktop).
+    function shareCapabilities(navLike, probeZst, probeTxt, isMobile) {
+        var nav = navLike || {};
+        var hasShare = typeof nav.share === "function";
+        var canShareFn = typeof nav.canShare === "function";
+        function ok(file) {
+            if (!hasShare || !canShareFn || !file) return false;
+            try {
+                return !!nav.canShare({ files: [file] });
+            } catch (e) {
+                return false;
+            }
+        }
+        return {
+            hasShare: hasShare,
+            canShareZst: ok(probeZst),
+            canShareTxt: ok(probeTxt),
+            isMobile: !!isMobile
+        };
+    }
+
+    // Decide the artifact for a state of byteLength bytes. Returns
+    // { mode, filename, mime, tooLargeToEncode }. `tooLargeToEncode` means the
+    // envelope itself cannot be built (a self-contained state carrying disk
+    // images) — then only the file paths make sense and even the clipboard is
+    // off the table.
+    function sharePayloadFor(byteLength, baseName, caps) {
+        var base = sanitizeFilename(baseName);
+        var len = Number(byteLength) || 0;
+        var zstName = base + ".state.zst";
+        var txtName = base + ".state.txt";
+        var result = {
+            mode: "clipboard",
+            filename: txtName,
+            mime: "text/plain",
+            tooLargeToEncode: len > SHARE_ENVELOPE_MAX_BYTES
+        };
+        if (!caps || !caps.hasShare || len <= 0) return result;
+        // The file goes first, on every platform: it is the artifact that the
+        // recipient can import, and it is what the operator asks for. The
+        // payload is deliberately NOT mixed with a text body — some share
+        // implementations reject that combination, and one rejection costs the
+        // click's activation (see the dialog handler).
+        // `isMobile` stays in the answer for diagnostics and labelling only: it
+        // must not decide what is offered, or a desktop that does support file
+        // sharing would never be asked.
+        if (caps.canShareZst) {
+            return {
+                mode: "zst",
+                filename: zstName,
+                mime: "application/octet-stream",
+                tooLargeToEncode: false
+            };
+        }
+        if (result.tooLargeToEncode) return result;
+        if (caps.canShareTxt) {
+            return {
+                mode: "txt",
+                filename: txtName,
+                mime: "text/plain",
+                tooLargeToEncode: false
+            };
+        }
+        if (envelopeLengthFor(len) <= SHARE_TEXT_LIMIT) {
+            return {
+                mode: "text",
+                filename: txtName,
+                mime: "text/plain",
+                tooLargeToEncode: false
+            };
+        }
+        return result;
+    }
+
+    // ------------------------------------------------------------------
     // Import a .state container bytes into the snapshot store.
     // Returns Promise<{ok:true, id, name}> or {ok:false, reason, detail?}.
     // ------------------------------------------------------------------
@@ -4003,6 +4113,12 @@ var SnapshotStore = (() => {
                         '<span><strong>Make state self-contained</strong>' +
                         '<small>Include standard disk images too, so the state does not depend on the current yaPDP media files.</small></span>' +
                     '</label>' +
+                    // Inline status: a toast sits at z-index 50000 and this
+                    // overlay at 100000, so anything announced through Toasts
+                    // is invisible while the dialog stays open — and it has to
+                    // stay open, because the share retry is a second click.
+                    '<p class="share-status" id="share-status" role="status"' +
+                        ' aria-live="polite" style="display:none"></p>' +
                     '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
                     '<div class="split-btn">' +
                         '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
@@ -4010,7 +4126,7 @@ var SnapshotStore = (() => {
                         '<div class="split-btn-menu open-up" id="share-create-menu">' +
                             '<button type="button" id="share-create-clipboard" class="split-btn-item">Copy text to clipboard</button>' +
                             '<button type="button" id="share-create-textfile" class="split-btn-item">Save as text file</button>' +
-                            '<button type="button" id="share-create-share" class="split-btn-item">Share via platform\u2026</button>' +
+                            '<button type="button" id="share-create-share" class="split-btn-item" disabled>Share via platform\u2026</button>' +
                             '<button type="button" id="share-create-gist" class="split-btn-item">Create GitHub Gist\u2026</button>' +
                         '</div>' +
                     '</div>' +
@@ -4032,6 +4148,7 @@ var SnapshotStore = (() => {
 
             function setScreenshot(dataUrl) {
                 screenshotData = dataUrl;
+                invalidateShareArtifact();
                 if (screenshotPlaceholder) screenshotPlaceholder.style.display = "none";
                 if (screenshotPreview) {
                     screenshotPreview.src = dataUrl;
@@ -4042,6 +4159,7 @@ var SnapshotStore = (() => {
 
             function clearScreenshot() {
                 screenshotData = null;
+                invalidateShareArtifact();
                 if (screenshotPlaceholder) screenshotPlaceholder.style.display = "";
                 if (screenshotPreview) { screenshotPreview.style.display = "none"; screenshotPreview.src = ""; }
                 if (screenshotRemove) screenshotRemove.style.display = "none";
@@ -4184,6 +4302,192 @@ var SnapshotStore = (() => {
                 return createShareableState(snapId, opts);
             }
 
+            // ---- Platform share (the system share sheet) ---------------------
+            // navigator.share() only works while the click's transient user
+            // activation is alive, and building a state (IndexedDB read + gzip)
+            // outlives it. So the artifact is built BEFORE the click: when the
+            // split menu opens, and again after any field changes. The menu item
+            // stays disabled and says "Preparing" until it is ready; the click
+            // itself then calls share() synchronously. This is the same pattern
+            // the screenshot Share item uses (src/screenshot.js).
+            var shareArtifact = null;   // { sig, mode, filename, mime, title, file, text }
+            var sharePreparing = null;  // { sig, promise } of the in-flight build
+
+            function toastText(text, category) {
+                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
+                    Toasts.show({ text: text, category: category || "info" });
+                }
+            }
+
+            // Report something about the share attempt where the operator can
+            // actually see it: inside the dialog while it is open (a toast would
+            // be painted under the overlay), through a toast once it is closed.
+            function setShareStatus(message, category) {
+                var status = document.getElementById("share-status");
+                if (!status) return;
+                if (!message) {
+                    status.textContent = "";
+                    status.className = "share-status";
+                    status.style.display = "none";
+                    return;
+                }
+                status.textContent = message;
+                status.className = "share-status" +
+                    (category === "error" ? " share-status--error" : "");
+                status.style.display = "block";
+            }
+
+            function announceShare(message, category) {
+                var modalVisible = !!(__snapModal && __snapModal.classList &&
+                    __snapModal.classList.contains("visible"));
+                if (modalVisible) {
+                    setShareStatus(message, category);
+                } else {
+                    toastText(message, category);
+                }
+            }
+
+            // Any field change makes the prepared artifact stale: the next menu
+            // open rebuilds it, and the item is disabled until then.
+            function invalidateShareArtifact() {
+                shareArtifact = null;
+            }
+
+            function shareOptsSignature(opts) {
+                // The screenshot is a data URL: length is enough, and it keeps
+                // the signature cheap to build on every keystroke.
+                var shot = opts && opts.screenshot ? opts.screenshot.length : 0;
+                return JSON.stringify([
+                    snapId,
+                    opts ? opts.title : "",
+                    opts ? opts.description : "",
+                    opts ? opts.buttonLabel : null,
+                    opts ? opts.command : "",
+                    !!(opts && opts.selfContained),
+                    shot
+                ]);
+            }
+
+            // Probe the platform with files that carry the real names and MIME
+            // types but none of the payload: canShare() answers for the type,
+            // and a probe keeps a multi-megabyte state out of the question.
+            function shareCapsFor(baseName) {
+                var nav = typeof navigator !== "undefined" ? navigator : null;
+                if (!nav || typeof File === "undefined") {
+                    return {
+                        hasShare: false, canShareZst: false, canShareTxt: false,
+                        isMobile: false
+                    };
+                }
+                // A desktop sheet claims file support and then refuses the
+                // payload (spending the click's activation), so the device kind
+                // is probed here rather than only asked of canShare().
+                var isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(nav.userAgent || "");
+                // Client hints are authoritative only when they SAY mobile:
+                // a desktop Chrome reports userAgentData.mobile === false even
+                // when the user agent was overridden (device emulation, tests).
+                if (!isMobile && nav.userAgentData && nav.userAgentData.mobile === true) {
+                    isMobile = true;
+                }
+                var base = sanitizeFilename(baseName);
+                var probeZst = new File([new Uint8Array([0x1F])],
+                    base + ".state.zst", { type: "application/octet-stream" });
+                var probeTxt = new File([new TextEncoder().encode("x")],
+                    base + ".state.txt", { type: "text/plain" });
+                return shareCapabilities(nav, probeZst, probeTxt, isMobile);
+            }
+
+            function encodeEnvelope(bytes) {
+                var env = typeof StateEnvelope !== "undefined"
+                    ? StateEnvelope : window.__yapdpStateEnvelope;
+                return env ? env.encode(bytes) : null;
+            }
+
+            function shareItemLabel(mode) {
+                if (mode === "zst") return "Share state file\u2026";
+                if (mode === "txt") return "Share text file\u2026";
+                if (mode === "text") return "Share state text\u2026";
+                if (mode === "clipboard") return "Copy state text (no file sharing here)\u2026";
+                return "Share via platform\u2026";
+            }
+
+            function setShareItem(mode, enabled, note) {
+                var item = document.getElementById("share-create-share");
+                if (!item) return;
+                item.textContent = shareItemLabel(mode);
+                item.disabled = !enabled;
+                item.title = note || "";
+            }
+
+            // Any edit of a field the state carries makes the prepared
+            // artifact stale; the screenshot path calls the same helper.
+            [titleInput, descInput, btnInput, cmdInput].forEach(function (el) {
+                if (el) el.addEventListener("input", invalidateShareArtifact);
+            });
+            if (selfContainedInput) {
+                selfContainedInput.addEventListener("change", invalidateShareArtifact);
+            }
+
+            // Build the artifact for the CURRENT field values, cached by the
+            // options signature so re-opening the menu does not recompress the
+            // state. Resolves to the artifact; rejects when it cannot be built.
+            function prepareShareArtifact(force) {
+                var opts = gatherShareOpts();
+                var sig = shareOptsSignature(opts);
+                if (!force && shareArtifact && shareArtifact.sig === sig) {
+                    return Promise.resolve(shareArtifact);
+                }
+                if (sharePreparing && sharePreparing.sig === sig) {
+                    return sharePreparing.promise;
+                }
+                setShareItem(null, false, "Preparing\u2026");
+                var entry = { sig: sig, promise: null };
+                entry.promise = doCreateShareable(opts).then(function (bytes) {
+                    if (!bytes || !bytes.byteLength) throw new Error("state-not-created");
+                    var baseName = opts.title || snapName;
+                    var caps = shareCapsFor(baseName);
+                    var payload = sharePayloadFor(bytes.byteLength, baseName, caps);
+                    var artifact = {
+                        sig: sig,
+                        mode: payload.mode,
+                        filename: payload.filename,
+                        mime: payload.mime,
+                        title: baseName,
+                        file: null,
+                        text: null,
+                        // Kept so a refused share sheet can still build the
+                        // envelope on the spot and put it on the clipboard.
+                        bytes: bytes,
+                        tooLargeToEncode: payload.tooLargeToEncode
+                    };
+                    if (payload.mode === "zst" || payload.mode === "txt") {
+                        var body = payload.mode === "zst"
+                            ? bytes
+                            : new TextEncoder().encode(encodeEnvelope(bytes) || "");
+                        artifact.file = new File([body], payload.filename, { type: payload.mime });
+                    } else if (!payload.tooLargeToEncode) {
+                        // Text/clipboard modes need the envelope ready too: the
+                        // click handler must not build it after activation.
+                        artifact.text = encodeEnvelope(bytes);
+                    }
+                    return artifact;
+                });
+                sharePreparing = entry;
+                return entry.promise.then(function (artifact) {
+                    sharePreparing = null;
+                    shareArtifact = artifact;
+                    setShareItem(artifact.mode, true, "");
+                    // A fresh artifact answers whatever the last attempt said.
+                    setShareStatus(null);
+                    return artifact;
+                }, function (err) {
+                    sharePreparing = null;
+                    shareArtifact = null;
+                    setShareItem(null, false, "Could not prepare the state for sharing");
+                    throw err;
+                });
+            }
+
             // Helper: download shareable state as .state.zst.
             function downloadShareable(bytes, title) {
                 if (!bytes) return;
@@ -4211,7 +4515,12 @@ var SnapshotStore = (() => {
             if (createMoreBtn && createMenu) {
                 createMoreBtn.addEventListener("click", function (e) {
                     e.stopPropagation();
-                    createMenu.classList.toggle("visible");
+                    var opened = createMenu.classList.toggle("visible");
+                    // The platform-share artifact is built while the menu is
+                    // open, so the Share click can stay synchronous.
+                    if (opened) {
+                        prepareShareArtifact().catch(function () { /* item stays disabled */ });
+                    }
                 });
                 // Close the menu when clicking outside.
                 document.addEventListener("click", function (e) {
@@ -4264,51 +4573,168 @@ var SnapshotStore = (() => {
                 });
             }
 
-            // Split-button: share via platform API (navigator.share).
+            // Split-button: hand the state to the platform share sheet.
+            // NOTHING is awaited before navigator.share(): the call has to stay
+            // inside the trusted click handler, or Android never opens the
+            // sheet — which is why the artifact is prepared while the menu is
+            // open (see prepareShareArtifact). The envelope is never truncated:
+            // a truncated base64 body does not decode, it only looks like a state.
             var createShareBtn = document.getElementById("share-create-share");
             if (createShareBtn) {
                 createShareBtn.addEventListener("click", function () {
                     if (createMenu) createMenu.classList.remove("visible");
                     var opts = gatherShareOpts();
-                    doCreateShareable(opts).then(function (bytes) {
-                        if (!bytes) return;
-                        var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
-                        if (!env) return;
-                        var text = env.encode(bytes);
-                        // Copy to clipboard first.
-                        var clipboardPromise = Promise.resolve();
-                        if (typeof navigator !== "undefined" && navigator.clipboard &&
-                            typeof navigator.clipboard.writeText === "function") {
-                            clipboardPromise = navigator.clipboard.writeText(text);
+                    var sig = shareOptsSignature(opts);
+                    if (!shareArtifact || shareArtifact.sig !== sig) {
+                        // Fields changed after the artifact was built: rebuild
+                        // and let the user click again (the item is disabled
+                        // until it is ready).
+                        prepareShareArtifact(true).catch(function () { /* stays disabled */ });
+                        return;
+                    }
+                    var artifact = shareArtifact;
+                    var nav = typeof navigator !== "undefined" ? navigator : null;
+                    var titleText = "yaPDP — PDP-11/70 machine state: " + artifact.title;
+
+                    // The FULL envelope, built once: every fallback shares or
+                    // copies exactly this string, so a refusal never costs the
+                    // operator the state.
+                    var envelopeText = artifact.text;
+                    if (!envelopeText && artifact.bytes) envelopeText = encodeEnvelope(artifact.bytes);
+
+                    function refusalReason(error) {
+                        if (!error) return "";
+                        var name = error.name || "";
+                        var message = error.message ? String(error.message).slice(0, 120) : "";
+                        if (name && message) return " (" + name + ": " + message + ")";
+                        if (name) return " (" + name + ")";
+                        return message ? " (" + message + ")" : "";
+                    }
+
+                    function fallbackToClipboard(error) {
+                        if (error && error.name === "AbortError") return;
+                        var reason = refusalReason(error);
+                        // A refused FILE is not a dead end: the same menu item
+                        // can retry as text on the NEXT click, because only a
+                        // click grants the activation a share needs (a retry in
+                        // the same handler fails with "Must be handling a user
+                        // gesture").
+                        var retryAsText = artifact.mode !== "text" &&
+                            artifact.mode !== "clipboard" &&
+                            !!envelopeText && envelopeText.length <= SHARE_TEXT_LIMIT;
+                        if (retryAsText) {
+                            shareArtifact = {
+                                sig: artifact.sig,
+                                mode: "text",
+                                filename: artifact.filename,
+                                mime: "text/plain",
+                                title: artifact.title,
+                                file: null,
+                                text: envelopeText,
+                                bytes: artifact.bytes,
+                                tooLargeToEncode: false
+                            };
+                            setShareItem("text", true, "Click again to share the text envelope");
                         }
-                        clipboardPromise.then(function () {
-                            // Try platform share API.
-                            if (typeof navigator !== "undefined" && navigator.share &&
-                                typeof navigator.share === "function") {
+                        var tail = retryAsText
+                            ? " — click Share once more to send the text envelope"
+                            : "";
+                        if (envelopeText && nav && nav.clipboard &&
+                            typeof nav.clipboard.writeText === "function") {
+                            nav.clipboard.writeText(envelopeText).then(function () {
+                                announceShare("The share sheet refused the state" + reason +
+                                    " — the full text envelope is on the clipboard" + tail, "error");
+                            }).catch(function () {
+                                announceShare("Could not share the state" + reason +
+                                    " — use Save as text file instead" + tail, "error");
+                            });
+                            return;
+                        }
+                        announceShare("Could not share the state" + reason +
+                            " — use Save as text file instead" + tail, "error");
+                    }
+
+                    // One call, caught so a synchronous refusal can be reported
+                    // without throwing out of the click handler.
+                    function tryShare(data) {
+                        try {
+                            return { promise: nav.share(data) };
+                        } catch (e) {
+                            return { error: e };
+                        }
+                    }
+
+                    // Exactly ONE share() per click. Chrome spends the click's
+                    // transient activation on the first call even when it
+                    // refuses, so every retry fails with "Must be handling a
+                    // user gesture" and hides the real reason. Diagnostics go
+                    // to the console; the operator gets the clipboard.
+                    function logShareRefusal(error) {
+                        try {
+                            var activation = nav && nav.userActivation ? {
+                                isActive: !!nav.userActivation.isActive,
+                                hasBeenActive: !!nav.userActivation.hasBeenActive
+                            } : null;
+                            console.error("[share] refused", {
+                                mode: artifact.mode,
+                                file: artifact.filename,
+                                name: error && error.name,
+                                message: error && error.message,
+                                secureContext: typeof window !== "undefined" && !!window.isSecureContext,
+                                topLevel: typeof window !== "undefined" && window.self === window.top,
+                                activation: activation
+                            });
+                        } catch (e) { /* diagnostics must never break the dialog */ }
+                    }
+
+                    var shareData = null;
+                    if ((artifact.mode === "zst" || artifact.mode === "txt") && artifact.file) {
+                        // Files ALONE: some share implementations reject a
+                        // payload that mixes files with a text body, and one
+                        // rejection costs the click's user activation.
+                        shareData = { files: [artifact.file], title: titleText };
+                    } else if (artifact.mode === "text" && envelopeText) {
+                        shareData = { title: titleText, text: envelopeText };
+                    }
+
+                    if (shareData && nav && typeof nav.share === "function") {
+                        var attempt = tryShare(shareData);
+                        if (attempt.error) {
+                            logShareRefusal(attempt.error);
+                            fallbackToClipboard(attempt.error);
+                            return;
+                        }
+                        // The dialog closes only AFTER the sheet settles: tearing
+                        // the modal down while the share is in flight is what
+                        // browsers report as a lost activation.
+                        if (attempt.promise && typeof attempt.promise.then === "function") {
+                            attempt.promise.then(function () {
                                 snapCloseModal();
-                                navigator.share({
-                                    title: "yaPDP — PDP-11/70 machine state: " + (opts.title || snapName),
-                                    text: text.slice(0, 2048), // share a preview (platforms limit share text)
-                                }).catch(function () {
-                                    // Share failed or dismissed — clipboard already has the full text.
-                                    if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
-                                        Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
-                                    }
-                                });
-                            } else {
-                                // No platform share — clipboard is enough.
-                                snapCloseModal();
-                                if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
-                                    Toasts.show({ text: "Text envelope copied to clipboard", category: "info" });
-                                }
-                            }
-                        }).catch(function () {
+                            }, function (error) {
+                                logShareRefusal(error);
+                                fallbackToClipboard(error);
+                            });
+                        } else {
                             snapCloseModal();
-                            if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
-                                Toasts.show({ text: "Could not copy to clipboard", category: "error" });
-                            }
+                        }
+                        return;
+                    }
+
+                    // No share channel at all (desktop webviews, older browsers)
+                    // or the envelope is too long for a share text: the FULL
+                    // envelope goes to the clipboard and the toast says so.
+                    if (envelopeText && nav && nav.clipboard &&
+                        typeof nav.clipboard.writeText === "function") {
+                        snapCloseModal();
+                        nav.clipboard.writeText(envelopeText).then(function () {
+                            announceShare("This platform cannot send the state as a file — " +
+                                "the full text envelope is on the clipboard, paste it into a message", "info");
+                        }).catch(function () {
+                            announceShare("Could not copy the state to the clipboard", "error");
                         });
-                    });
+                        return;
+                    }
+                    announceShare("This state is too large to share as text — download it instead", "error");
                 });
             }
 
@@ -4352,6 +4778,13 @@ var SnapshotStore = (() => {
         exportSnapshot: exportSnapshot,
         // Create a shareable .state.zst with description and optional command.
         createShareableState: createShareableState,
+        // The platform-share policy (file, text file, share text, clipboard).
+        // Exposed so unit tests pin the rule without a DOM or a share sheet.
+        shareCapabilities: shareCapabilities,
+        sharePayloadFor: sharePayloadFor,
+        envelopeLengthFor: envelopeLengthFor,
+        SHARE_TEXT_LIMIT: SHARE_TEXT_LIMIT,
+        SHARE_ENVELOPE_MAX_BYTES: SHARE_ENVELOPE_MAX_BYTES,
         // Import .state container bytes into the snapshot store.
         importState: importState,
         // What the last loaded state asked for (device, profile). Read by the
