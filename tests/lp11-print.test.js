@@ -145,15 +145,17 @@ function run() {
     //    queries.
     {
         const html = doc(["A"]);
-        assert.ok(/@page \{ size: landscape; margin: 10mm; \}/.test(html),
-            "the sheet is turned landscape like real fanfold, paper stays the dialog's");
+        assert.ok(/@page \{ size: landscape; margin: 0; \}/.test(html),
+            "the sheet is turned landscape like real fanfold, paper stays the dialog's," +
+            " and the sheet box reaches the paper's edges so the strips can too");
         // 10 pitch and 6 LPI put a line 1.667 glyph advances apart; with a 0.6em
         // advance that is exactly one character cell tall, so the 132 x 66 block
         // keeps the real printed area's 79.2 x 66 em (1.2) proportion.
         assert.strictEqual(paper.LINE_HEIGHT, 1,
             "6 LPI at 10 pitch: one cell of line pitch, nothing compact");
-        assert.ok(/--cell: min\(calc\(var\(--fit\) \/ var\(--colw\)\), calc\(100vh \/ var\(--lpp\)\)\)/.test(html),
-            "the machine's character cell is the smaller of the width and height fits");
+        assert.ok(/--cell: min\(calc\(var\(--fit\) \/ var\(--colw\)\), calc\(var\(--sheet\) \/ var\(--lpp\)\)\)/.test(html),
+            "the machine's character cell is the smaller of the width and height fits," +
+            " the height being the sheet box itself");
         assert.ok(Math.abs((COLUMNS * 0.6) / LINES - 1.2) < 1e-9,
             "132 columns x 66 lines keep the 1.2 proportion of the real print area");
         assert.ok(/\.page \{ position: relative; break-after: page;/.test(html),
@@ -218,8 +220,8 @@ function run() {
         // i.e. a third of the strip — a fatter dot reads as a punched-out slot.
         assert.ok(/radial-gradient\(circle closest-side at 50% 50%, #141414 0 33%, transparent 44%\)/.test(html),
             "a feed hole is a black dot a third of the strip wide, as in the artwork");
-        assert.ok(/background-size: 100% 12\.7mm;/.test(html),
-            "feed holes are half an inch apart, as on the paper");
+        assert.ok(/background-size: 100% var\(--hole\);/.test(html),
+            "feed holes are half an inch apart on the 11in page, as on the paper");
         // The glyph is drawn INSIDE the cell (a line printer's dot matrix never
         // fills it), and letter-spacing restores the advance so the column grid
         // stays exact — this is what keeps 6 LPI type from touching.
@@ -233,7 +235,7 @@ function run() {
             "a fallback glyph factor is present for engines without measurement");
         assert.ok(paper.GLYPH_FALLBACK > 0.6 && paper.GLYPH_FALLBACK < 1,
             "the fallback leaves the glyph inside the cell, not filling it");
-        assert.ok(/calc\(100vh \/ var\(--lpp\)\)/.test(html),
+        assert.ok(/calc\(var\(--sheet\) \/ var\(--lpp\)\)/.test(html),
             "a height guard keeps one logical sheet on one physical sheet");
         assert.ok(/container-type: inline-size/.test(html),
             "the box the columns are measured against");
@@ -259,6 +261,39 @@ function run() {
             "a short sheet still paints its paper down to the bottom edge");
         assert.ok(/\.page::before, \.page::after \{[^}]*bottom: 0;/.test(html),
             "the strips stretch over the whole (now full-height) page box");
+    }
+
+    // 7a-quater. The fold must not read as a seam, and two invariants carry it:
+    // no feed hole may be cut by the sheet edge, and the gap between the last
+    // hole of one sheet and the first hole of the next must be one pitch — the
+    // same spacing as between the holes mid-sheet. Both follow from the pitch
+    // being a whole share of the SHEET height (100vh / 22 — the historical half
+    // inch on the machine's 11in page) and from the hole sitting in the MIDDLE
+    // of its tile: the lattice starts half a pitch below the fold and ends half
+    // a pitch above the next one, so exactly 22 pitches close it. That is why
+    // the page margin had to go: it swallowed the hole nearest the fold, since
+    // the lattice leaves no slack of a whole pitch anywhere.
+    {
+        const html = doc(["A"]);
+        const perSheet = /--hole: calc\(100vh \/ (\d+)\)/.exec(html);
+        assert.ok(perSheet, "the hole pitch is a share of the sheet, not a fixed length");
+        assert.strictEqual(Number(perSheet[1]), 22,
+            "22 feed holes: 11in of paper at half an inch");
+        assert.ok(Math.abs((LINES / 6) / 0.5 - Number(perSheet[1])) < 1e-9,
+            "66 lines at 6 LPI span exactly the lattice's 22 half inches");
+        assert.ok(/@page \{ size: landscape; margin: 0; \}/.test(html),
+            "no page margin: it would swallow the hole nearest the fold");
+        const strip = /\.page::before, \.page::after \{[^}]*\}/.exec(html)[0];
+        assert.ok(/background-size: 100% var\(--hole\);/.test(strip),
+            "the pitch follows the sheet, so a sheet is a whole number of pitches");
+        assert.ok(/background-position: 50% 0;/.test(strip),
+            "the tiles start at the sheet's top edge");
+        assert.ok(/radial-gradient\(circle closest-side at 50% 50%/.test(strip),
+            "the hole is centred in its tile: half a pitch to the fold either side");
+        assert.ok(/\.page \{[^}]*height: var\(--sheet\);/.test(html),
+            "the sheet box reaches the fold, so the strips do too");
+        assert.ok(/--sheet: calc\(100vh - 0\.02mm\)/.test(html),
+            "a hair under the sheet height, so a full sheet cannot spill onto a blank one");
     }
 
     // 7a-bis. Plain paper: no bars, no strips, full printable width. This is
