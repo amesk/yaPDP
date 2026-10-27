@@ -44,18 +44,32 @@
     "media:unpack": "node tools/media-zst.js decompress",
     "media:repack": "node tools/media-zst.js repack",
     "media:rt11-util": "node tools/rt11-util.js",
+    "e2e:quickboot-manifest": "wireit",
+    "e2e:quickboot-deeplink": "wireit",
+    "e2e:quickboot-scenario": "wireit",
+    "e2e:snapshots": "wireit",
+    "e2e:startup-cls": "wireit",
     "e2e:os": "wireit",
+    "e2e:os:legacy": "wireit",
+    "e2e:teletype": "wireit",
+    "e2e:teletype-tape": "wireit",
     "e2e:bsd": "wireit",
     "e2e:bsd29": "wireit",
-    "e2e:os:legacy": "wireit",
     "e2e:xxdp": "wireit",
     "e2e:xxdp:kfp": "wireit",
+    "e2e:xxdp:halt": "wireit",
     "e2e:panel": "wireit",
-    "e2e:unmount": "wireit",
     "e2e:snapshot-image": "wireit",
     "e2e:state": "wireit",
     "e2e:vt100": "wireit",
     "e2e:mobile": "wireit",
+    "e2e:share": "wireit",
+    "e2e:import-export": "wireit",
+    "e2e:state:disk-access": "wireit",
+    "e2e:unmount": "wireit",
+    "e2e:firstrun-deeplink": "wireit",
+    "e2e:quickboot-take-control": "wireit",
+    "e2e:diskstore": "wireit",
     "validate": "wireit",
     "term": "node tools/headless-term.js",
     "voice": "node tools/voicer.js",
@@ -180,7 +194,7 @@
       ]
     },
     "e2e:os": {
-      "command": "node tests/e2e-osboot.js",
+      "command": "node tools/validate.js e2e:os",
       "dependencies": [
         "test"
       ],
@@ -195,7 +209,7 @@
       ]
     },
     "e2e:quickboot-scenario": {
-      "command": "node tests/e2e-quickboot-scenario.js",
+      "command": "node tools/validate.js e2e:quickboot-scenario",
       "dependencies": [
         "test"
       ],
@@ -210,9 +224,9 @@
       ]
     },
     "e2e:os:legacy": {
-      "command": "node tests/e2e-osboot.js --legacy",
+      "command": "node tools/validate.js e2e:os:legacy",
       "dependencies": [
-        "e2e:os"
+        "test"
       ],
       "files": [
         "src/**",
@@ -225,7 +239,7 @@
       ]
     },
     "e2e:bsd": {
-      "command": "node tests/e2e-bsd-boot.js",
+      "command": "node tools/validate.js e2e:bsd",
       "dependencies": [
         "test"
       ],
@@ -238,7 +252,7 @@
       ]
     },
     "e2e:bsd29": {
-      "command": "node tests/e2e-bsd29-boot.js",
+      "command": "node tools/validate.js e2e:bsd29",
       "dependencies": [
         "test"
       ],
@@ -251,7 +265,7 @@
       ]
     },
     "e2e:xxdp": {
-      "command": "node tests/e2e-xxdp-ekbbf0.js",
+      "command": "node tools/validate.js e2e:xxdp",
       "dependencies": [
         "test"
       ],
@@ -268,7 +282,7 @@
       ]
     },
     "e2e:xxdp:kfp": {
-      "command": "node tests/e2e-xxdp-kfp.js",
+      "command": "node tools/validate.js e2e:xxdp:kfp",
       "dependencies": [
         "test"
       ],
@@ -285,7 +299,7 @@
       ]
     },
     "e2e:panel": {
-      "command": "node tests/e2e-panel-lamps.js",
+      "command": "node tools/validate.js e2e:panel",
       "dependencies": [
         "test"
       ],
@@ -317,7 +331,7 @@
       ]
     },
     "e2e:snapshot-image": {
-      "command": "node tests/e2e-snapshot-image-changed.js",
+      "command": "node tools/validate.js e2e:snapshot-image",
       "dependencies": [
         "test"
       ],
@@ -332,7 +346,7 @@
       ]
     },
     "e2e:state": {
-      "command": "node tests/e2e-state-deeplink.js",
+      "command": "node tools/validate.js e2e:state",
       "dependencies": [
         "test"
       ],
@@ -349,7 +363,7 @@
       ]
     },
     "e2e:vt100": {
-      "command": "node tests/e2e-vt100.js",
+      "command": "node tools/validate.js e2e:vt100",
       "dependencies": [
         "test"
       ],
@@ -364,7 +378,7 @@
       ]
     },
     "e2e:mobile": {
-      "command": "node tests/e2e-mobile-input.js",
+      "command": "node tools/validate.js e2e:mobile",
       "dependencies": [
         "test"
       ],
@@ -379,7 +393,7 @@
       ]
     },
     "e2e:unmount": {
-      "command": "node tests/e2e-unmount-reboot.js",
+      "command": "node tools/validate.js e2e:unmount",
       "dependencies": [
         "test"
       ],
@@ -392,6 +406,84 @@
         "*.html",
         "media/**",
         "package.json"
+      ]
+    },
+    "e2e:quickboot-manifest": {
+      "command": "node tools/validate.js e2e:quickboot-manifest",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:quickboot-deeplink": {
+      "command": "node tools/validate.js e2e:quickboot-deeplink",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:snapshots": {
+      "command": "node tools/validate.js e2e:snapshots",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:startup-cls": {
+      "command": "node tools/validate.js e2e:startup-cls",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:teletype": {
+      "command": "node tools/validate.js e2e:teletype",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:teletype-tape": {
+      "command": "node tools/validate.js e2e:teletype-tape",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:xxdp:halt": {
+      "command": "node tools/validate.js e2e:xxdp:halt",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:share": {
+      "command": "node tools/validate.js e2e:share",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:import-export": {
+      "command": "node tools/validate.js e2e:import-export",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:state:disk-access": {
+      "command": "node tools/validate.js e2e:state:disk-access",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:firstrun-deeplink": {
+      "command": "node tools/validate.js e2e:firstrun-deeplink",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:quickboot-take-control": {
+      "command": "node tools/validate.js e2e:quickboot-take-control",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:diskstore": {
+      "command": "node tools/validate.js e2e:diskstore",
+      "dependencies": [
+        "test"
       ]
     }
   }
