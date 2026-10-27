@@ -79,6 +79,25 @@ function run() {
     }
   }
 
+  // --- The page's two manifests and the pre-built states are staged too ----
+  // pdp11.html fetches media/manifest.json and states/manifest.json, and the
+  // Scenario tab restores states/<file>.state.zst. The desktop app serves
+  // desktop/ as its frontendDist and ships the images as Tauri resources, so a
+  // manifest the staging step leaves out is an empty wizard list and an empty
+  // Scenario tab inside the packaged app — invisible to every browser suite.
+  {
+    assert.ok(/require\("\.\/desktop-manifests\.js"\)/.test(script),
+      "tools/build-desktop.js must derive the manifests through " +
+      "tools/desktop-manifests.js (one source of truth: bundle.resources)");
+    assert.ok(/stageManifests\(variant, variantConf\)/.test(script),
+      "tools/build-desktop.js must stage the manifests for the SELECTED variant");
+    assert.ok(/path\.join\(DEST, "media", "manifest\.json"\)/.test(script),
+      "tools/build-desktop.js must write desktop/media/manifest.json");
+    assert.ok(/path\.join\(DEST, "states"\)/.test(script),
+      "tools/build-desktop.js must stage desktop/states/ " +
+      "(manifest + state files + previews)");
+  }
+
   // --- Both installer variants serve that staged directory ------------------
   const configs = {};
   for (const [variant, file] of Object.entries(CONFIGS)) {
@@ -167,6 +186,23 @@ function run() {
       assert.ok(full[key], "the minimal installer must stay a subset of the " +
         "full one (" + key + " is only in tauri.conf.minimal.json)");
     }
+  }
+
+  // --- The bundle mounts only the images the variant ships -----------------
+  // BUNDLED is the resource-name map of the FULL build. Mounting it wholesale in
+  // the Minimal installer makes every image it deliberately omits fail inside
+  // loadOne(), and each failure raises an error toast at startup — the operator
+  // meets "Bundled image load failed: rk2.dsk.zst" before booting anything.
+  // The inventory now comes from the staged media manifest (written by the
+  // staging step from bundle.resources), so the table must be filtered by it.
+  {
+    const bundledModule = read(BUNDLED_MODULE);
+    assert.ok(/fetch\("media\/manifest\.json"/.test(bundledModule),
+      "src/tauri-bundled.js must read the staged media/manifest.json");
+    assert.ok(/shippedItems\(BUNDLED, shipped\)/.test(bundledModule),
+      "src/tauri-bundled.js must mount BUNDLED filtered by that manifest");
+    assert.ok(/__yapdpBundledReady = ready/.test(bundledModule),
+      "the readiness promise must still be exposed for baseBytes");
   }
 
   console.log("desktop-bundle: all tests passed");

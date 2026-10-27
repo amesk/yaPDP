@@ -49,6 +49,28 @@
         });
     }
 
+    // Bytes already mounted under this name AND carrying the registered
+    // identity. They win over the network: the desktop build ships its images
+    // as Tauri resources and has no HTTP path to media/ at all
+    // (src/tauri-bundled.js mounts them at startup), and in a browser this
+    // skips re-downloading an image the machine already holds. Identity, not
+    // the file name, decides (docs/STATE-FORMAT.md).
+    function mountedBytes(name, sha256) {
+        if (typeof DataLoader === "undefined" ||
+            typeof DataLoader.has !== "function" ||
+            typeof DataLoader.get !== "function" ||
+            typeof ImageFingerprint === "undefined" ||
+            typeof ImageFingerprint.ofBytes !== "function") {
+            return null;
+        }
+        if (!DataLoader.has(name)) return null;
+        var bytes = DataLoader.get(name);
+        if (!bytes) return null;
+        var own = ImageFingerprint.ofBytes(bytes);
+        return (own && String(own).toLowerCase() === String(sha256).toLowerCase())
+            ? bytes : null;
+    }
+
     async function load(name, version, expectedSha256) {
         var data = await manifest();
         var entry = entryFor(name, version, data);
@@ -56,17 +78,20 @@
         if (expectedSha256 && String(entry.sha256).toLowerCase() !== String(expectedSha256).toLowerCase()) {
             throw new Error("Registered SHA-256 changed for " + name + " v" + version);
         }
-        var response = await fetch(entry.url);
-        if (!response.ok) throw new Error("Cannot load " + name + " v" + version + " (" + response.status + ")");
-        var bytes = new Uint8Array(await response.arrayBuffer());
-        var raw;
-        if (/\.zst(?:$|\?)/i.test(entry.url)) {
-            if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
-                throw new Error("Zstandard decoder is unavailable for " + name);
+        var raw = mountedBytes(name, entry.sha256);
+        var fromMachine = !!raw;
+        if (!raw) {
+            var response = await fetch(entry.url);
+            if (!response.ok) throw new Error("Cannot load " + name + " v" + version + " (" + response.status + ")");
+            var bytes = new Uint8Array(await response.arrayBuffer());
+            if (/\.zst(?:$|\?)/i.test(entry.url)) {
+                if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
+                    throw new Error("Zstandard decoder is unavailable for " + name);
+                }
+                raw = fzstd.decompress(bytes);
+            } else {
+                raw = bytes;
             }
-            raw = fzstd.decompress(bytes);
-        } else {
-            raw = bytes;
         }
         if (typeof ImageFingerprint === "undefined" ||
             ImageFingerprint.ofBytes(raw) !== String(entry.sha256).toLowerCase()) {
@@ -75,7 +100,9 @@
         if (typeof DataLoader === "undefined" || typeof DataLoader.mount !== "function") {
             throw new Error("Image loader is unavailable");
         }
-        DataLoader.mount(name, raw, "published");
+        // Re-mounting bytes that are already there would overwrite their source
+        // label ("bundled") with "published" and lie about where they came from.
+        if (!fromMachine) DataLoader.mount(name, raw, "published");
         return raw;
     }
 
