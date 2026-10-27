@@ -310,6 +310,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The Minimal desktop build no longer reports images it does not ship.** The
+  startup mount walked the whole bundled-image table — the full build's
+  inventory — so on Minimal every omitted disk raised a load error and the
+  operator met one deduplicated error toast naming a disk the installer
+  deliberately leaves out (e.g. `rk2.dsk.zst`), before booting anything. The
+  list now comes from the staged `media/manifest.json` of the selected variant.
+  (`src/tauri-bundled.js`; pinned by `tests/desktop-manifests.test.js` and
+  `tests/desktop-bundle.test.js`)
+
+- **The desktop app ships the manifests and the pre-built states.** The staging
+  step copied only the page, `css/`, `src/` and `assets/`, so the packaged app had
+  no `media/manifest.json` and no `states/`: the quick-boot wizard offered guests
+  whose image the installer does not carry and the Scenario tab was empty. Both
+  manifests are now generated per variant from `bundle.resources`, the states are
+  staged with their previews, and a restore that pins an image version takes the
+  bytes the machine already holds instead of fetching `media/` over HTTP, which
+  the desktop app cannot do. (`tools/build-desktop.js`,
+  `tools/desktop-manifests.js`, `src/media-registry.js`, `docs/BUILDING.md`,
+  `tests/desktop-manifests.test.js`, `tests/desktop-bundle.test.js`)
+
 - **A restored printer page keeps the paper's character grid.** A saved state
   rebuilt every printed line as one stretch of text instead of a row of
   character cells, so the sheet came back about 1.4x narrower than the paper

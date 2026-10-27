@@ -9,6 +9,14 @@
  * large disk/tape images in media/ are deliberately EXCLUDED and shipped
  * instead as bundled Tauri resources so the installer stays small.
  *
+ * The page, though, still ASKS for the two manifests and for the pre-built
+ * machine states (media/manifest.json, states/manifest.json + *.state.zst +
+ * states/previews/*). They are derived here from the variant's
+ * bundle.resources — the only inventory of what the installer really carries —
+ * so the quick-boot wizard offers only shippable guests and the Scenario tab
+ * lists only states that can be restored offline. See
+ * tools/desktop-manifests.js for the filters and the per-variant state policy.
+ *
  * Two installer variants are produced from the same frontend:
  *   --variant minimal  (default) -> bundles only rk0/rk1/bootcode
  *   --variant full               -> bundles every media image (RK/RL/RP/RA/TM + tapes)
@@ -23,10 +31,13 @@
 
 const fs = require("fs");
 const path = require("path");
+const DesktopManifests = require("./desktop-manifests.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const DEST = path.join(ROOT, "desktop");
 const CONFIG_DEST = path.join(ROOT, "src-tauri", "tauri.conf.json");
+const MEDIA_MANIFEST = path.join(ROOT, "media", "manifest.json");
+const STATES_SRC = path.join(ROOT, "states");
 
 // --- Helpers ------------------------------------------------------------
 
@@ -47,6 +58,115 @@ function copyDir(src, dest) {
         } else {
             fs.copyFileSync(s, d);
         }
+    }
+}
+
+function readJson(file) {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+}
+
+function writeJson(file, value) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n", "utf8");
+}
+
+function fail(message) {
+    console.error(message);
+    process.exit(1);
+}
+
+// Stage the two manifests the page fetches, plus the machine states this
+// variant can actually restore. Both lists are filtered by bundle.resources of
+// the SELECTED variant, so the packaged app never advertises what it cannot
+// serve (see tools/desktop-manifests.js).
+function stageManifests(variant, conf) {
+    const shipped = DesktopManifests.shippedNames(conf);
+    if (!shipped.size) {
+        fail(`tauri.conf.${variant}.json declares no bundle.resources — nothing to stage`);
+    }
+
+    if (!fs.existsSync(MEDIA_MANIFEST)) {
+        fail("media/manifest.json is missing — run: npm run manifest");
+    }
+    const mediaManifest = readJson(MEDIA_MANIFEST);
+    const unlisted = DesktopManifests.unlistedResources(mediaManifest, shipped);
+    if (unlisted.length) {
+        fail(`bundle.resources of the ${variant} variant names payloads that ` +
+            "media/manifest.json does not describe: " + unlisted.join(", ") +
+            "\n  run: npm run manifest");
+    }
+    const filteredMedia = DesktopManifests.filterMediaManifest(mediaManifest, shipped);
+    writeJson(path.join(DEST, "media", "manifest.json"), filteredMedia);
+
+    const stateManifestFile = path.join(STATES_SRC, "manifest.json");
+    if (!fs.existsSync(stateManifestFile)) {
+        fail("states/manifest.json is missing — run: npm run state-manifest");
+    }
+    const entries = readJson(stateManifestFile);
+
+    // `mounted` from each container is what a state really needs; the device key
+    // only names the scenario (rk1tty and rk1vt52 both boot rk1.dsk).
+    const mountedByFile = {};
+    for (const entry of entries) {
+        try {
+            mountedByFile[entry.file] = DesktopManifests.readMounted(STATES_SRC, entry.file);
+        } catch (e) {
+            fail(`cannot read states/${entry.file}: ${e && e.message ? e.message : e}`);
+        }
+    }
+
+    const policy = DesktopManifests.STATE_POLICY[variant];
+    try {
+        DesktopManifests.assertPolicyCovered(policy, entries, mountedByFile, shipped);
+    } catch (e) {
+        fail(e.message + "\n  (fix tools/desktop-manifests.js -> STATE_POLICY)");
+    }
+
+    const filtered = DesktopManifests.filterStateEntries(entries, mountedByFile, shipped, policy);
+    const statesDest = path.join(DEST, "states");
+    const stagedEntries = [];
+    for (const entry of filtered.kept) {
+        const src = path.join(STATES_SRC, entry.file);
+        if (!fs.existsSync(src)) {
+            fail(`states/${entry.file} is listed in states/manifest.json but missing — ` +
+                "run: npm run state-manifest");
+        }
+        fs.mkdirSync(statesDest, { recursive: true });
+        fs.copyFileSync(src, path.join(statesDest, entry.file));
+        const staged = Object.assign({}, entry);
+        // Previews are stored next to the states ("previews/x-small.png"). A
+        // missing file is reported and dropped from the manifest, so the card
+        // falls back to text instead of the lightbox opening a 404.
+        for (const key of ["screenshot", "screenshotFull"]) {
+            const rel = staged[key];
+            if (!rel) continue;
+            const from = path.join(STATES_SRC, rel);
+            if (!fs.existsSync(from)) {
+                console.warn(`  missing ${rel} for ${entry.file} — its card shows text only`);
+                staged[key] = null;
+                continue;
+            }
+            const to = path.join(statesDest, rel);
+            fs.mkdirSync(path.dirname(to), { recursive: true });
+            fs.copyFileSync(from, to);
+        }
+        stagedEntries.push(staged);
+    }
+    if (stagedEntries.length) {
+        writeJson(path.join(statesDest, "manifest.json"), stagedEntries);
+    }
+
+    const stateBytes = DesktopManifests.dirBytes(statesDest).bytes;
+    console.log(`  media/manifest.json: ${filteredMedia.media.length} image(s)`);
+    console.log(`  states: ${stagedEntries.length} of ${entries.length} — ` +
+        DesktopManifests.megabytes(stateBytes));
+    for (const skip of filtered.skipped) {
+        console.log(`    skip ${DesktopManifests.stateId(skip.file)}: ${skip.reason}`);
+    }
+    if (stateBytes > DesktopManifests.STATES_BUDGET_BYTES) {
+        console.warn(`  WARNING: staged states exceed ` +
+            `${DesktopManifests.megabytes(DesktopManifests.STATES_BUDGET_BYTES)} — ` +
+            "they are embedded in the executable, so both installers grow");
     }
 }
 
@@ -102,10 +222,14 @@ copyDir(path.join(ROOT, "assets"), path.join(DEST, "assets"));
 
 // --- Select the Tauri config for this variant ---------------------------
 
-fs.copyFileSync(
-    path.join(ROOT, "src-tauri", `tauri.conf.${variant}.json`),
-    CONFIG_DEST
-);
+const CONF_SRC = path.join(ROOT, "src-tauri", `tauri.conf.${variant}.json`);
+const variantConf = readJson(CONF_SRC);
+
+// --- Manifests + pre-built states, filtered by that variant -------------
+
+stageManifests(variant, variantConf);
+
+fs.copyFileSync(CONF_SRC, CONFIG_DEST);
 
 console.log(`Staged Tauri frontend -> ${DEST}`);
 console.log(`Variant: ${variant} (tauri.conf.${variant}.json -> tauri.conf.json)`);

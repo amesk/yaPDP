@@ -1,11 +1,19 @@
 /**
  * Tauri desktop — bundled image bootstrap
  *
- * In the desktop build a small set of media images (rk0, rk1, bootcode) is
- * shipped as bundled resources (see src-tauri/tauri.conf.json). This module
- * detects the Tauri runtime and, on startup, loads those images through the
- * Rust `load_bundled_image` command, decompresses them, and mounts them into
- * DataLoader so the emulator boots offline with no network access.
+ * In the desktop build the disk/tape images are shipped as bundled resources
+ * (see bundle.resources in src-tauri/tauri.conf.<variant>.json). This module
+ * detects the Tauri runtime and, on startup, loads the ones THIS variant ships
+ * through the Rust `load_bundled_image` command, decompresses them, and mounts
+ * them into DataLoader so the emulator boots offline with no network access.
+ *
+ * Which ones: the staging step writes media/manifest.json for the selected
+ * variant (tools/desktop-manifests.js), so that manifest — not the table below —
+ * says what is installed. The table stays as the RESOURCE-NAME map (a logical
+ * url is not enough: some payloads ship compressed and some raw) and is filtered
+ * by the manifest, so the Minimal build no longer asks for images it
+ * deliberately does not contain and no longer reports each absence as a load
+ * failure (18 error toasts at startup, deduped into one naming rk2.dsk.zst).
  *
  * In a plain browser this module is a no-op.
  *
@@ -16,11 +24,14 @@
 (function () {
     // Bundled resources declared in src-tauri/tauri.conf.{minimal,full}.json
     // -> bundle.resources. `resource` is the file name in the resource dir;
-    // `url` is the logical device URL the emulator uses (DataLoader key).
+    // `url` is the logical device URL the emulator uses (DataLoader key) and
+    // `zst` says whether the resource is compressed on disk.
     //
-    // The full build ships ALL of these; the minimal build ships only the
-    // first few (rk0/rk1/bootcode). Missing resources fail in loadOne() and
-    // are skipped with a console.warn — so one code path serves both builds.
+    // This is the RESOURCE-NAME map, not the inventory: the inventory is the
+    // staged media/manifest.json (see fetchShipped), filtered per variant at
+    // build time. An entry the variant does not ship is never requested — its
+    // absence is not an error; an entry the manifest DOES list and that cannot
+    // be read is a packaging failure and stays loud.
     var BUNDLED = [
         // RK05 disk images (Unix V5, RT-11, RSTS, XXDP) — core boot images
         { resource: "rk0.dsk.zst", url: "rk0.dsk", zst: true },
@@ -61,11 +72,42 @@
         { resource: "lander.ptap", url: "lander.ptap", zst: false }
     ];
 
+    // The bootstrap loader is a bundled resource but NOT a logical media image —
+    // it is excluded from media/manifest.json (tools/gen-media-manifest.js), so
+    // the manifest filter must always let it through.
+    var BOOTSTRAP_LOADER = "bootcode.ptap";
+
     function isTauri() {
         return typeof window !== "undefined" &&
             window.__TAURI__ &&
             window.__TAURI__.core &&
             typeof window.__TAURI__.core.invoke === "function";
+    }
+
+    // The entries this build actually ships. `shipped` is the logical-url set
+    // from the staged manifest; null means "unknown" (a host without one) and
+    // every entry is attempted, as before. Pure — unit-testable in Node via
+    // window.__yapdpBundledPure.
+    function shippedItems(items, shipped) {
+        if (!shipped) return items;
+        return items.filter(function (item) {
+            return shipped[item.url] === true || item.url === BOOTSTRAP_LOADER;
+        });
+    }
+
+    // The staged manifest of THIS variant: the build step filters it by
+    // bundle.resources, so it is the authoritative "what is installed" list.
+    function fetchShipped() {
+        if (typeof fetch !== "function") return Promise.resolve(null);
+        return fetch("media/manifest.json", { cache: "no-store" })
+            .then(function (response) { return response.ok ? response.json() : null; })
+            .then(function (manifest) {
+                if (!manifest || !Array.isArray(manifest.media)) return null;
+                var shipped = {};
+                manifest.media.forEach(function (name) { shipped[name] = true; });
+                return shipped;
+            })
+            .catch(function () { return null; });
     }
 
     function loadOne(item) {
@@ -110,11 +152,14 @@
         // decompressed one after another — a guest booting from one of them
         // read an empty image and appeared to "not start". Parallel mount
         // removes that ordering race entirely.
-        // Expose a readiness promise so consumers (baseBytes) can wait for
-        // the bundle instead of falling back to a network fetch that does
-        // not exist in the desktop build.
-        var pending = BUNDLED.map(function (item) { return loadOne(item); });
-        var ready = Promise.all(pending).then(function (results) {
+        //
+        // The readiness promise is exposed IMMEDIATELY and covers the manifest
+        // lookup too: consumers (baseBytes) wait for it instead of falling back
+        // to a network fetch that does not exist in the desktop build, and a
+        // gap here would let a disk read race the mount.
+        var ready = fetchShipped().then(function (shipped) {
+            return Promise.all(shippedItems(BUNDLED, shipped).map(loadOne));
+        }).then(function (results) {
             var ok = (results || []).filter(Boolean).length;
             console.info("yaPDP desktop: mounted " + ok + " bundled image(s)");
             // The quick-boot wizard filters its list by what is mounted; if
@@ -129,6 +174,14 @@
         window.__yapdpBundledReady = ready;
     }
 
+    // Pure pieces for the Node contract test (tests/desktop-manifests.test.js):
+    // the filter is what decides whether the Minimal installer asks for images
+    // it does not contain, and that decision must be pinned.
+    if (typeof window !== "undefined") {
+        window.__yapdpBundledPure = { BUNDLED: BUNDLED, shippedItems: shippedItems };
+    }
+
+    if (typeof document === "undefined") return; // Node: nothing to mount
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
     } else {

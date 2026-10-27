@@ -76,6 +76,7 @@ const ORDER = [
     "landing-manual-coverage.test.js",
     "devlog.test.js",
     "desktop-bundle.test.js",
+    "desktop-manifests.test.js",
     "vt52.test.js",
     "g60printer-flush.test.js",
     "g60printer-seam.test.js",
