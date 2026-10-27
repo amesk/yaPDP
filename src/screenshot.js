@@ -170,14 +170,47 @@
     }
     
     // ── Share via Web Share API ────────────────────────────────────────
-    function shareScreenshot(canvas) {
-        if (!canvas) return;
-        if (typeof navigator !== "undefined" && navigator.share &&
-            typeof navigator.share === "function") {
-            navigator.share({
+    // Prepare the PNG before the Share click. Web Share must be invoked from
+    // the click handler itself while transient user activation is still valid.
+    function prepareShareFile(canvas) {
+        if (!canvas || typeof File === "undefined") {
+            return Promise.reject(new Error("File sharing is not supported"));
+        }
+        return canvasToBlob(canvas, "image/png").then(function (blob) {
+            var file = new File([blob], stampName(), { type: "image/png" });
+            if (typeof navigator.canShare !== "function" ||
+                !navigator.canShare({ files: [file] })) {
+                throw new Error("Sharing image files is not supported by this browser");
+            }
+            return file;
+        });
+    }
+
+    function shareScreenshot(file) {
+        if (!file || typeof navigator === "undefined" ||
+            typeof navigator.share !== "function") {
+            toast({ text: "Sharing screenshots is not supported", category: "error" });
+            return;
+        }
+
+        // Do not await anything before this call: it must remain directly
+        // inside the trusted click handler to open Android's share sheet.
+        try {
+            var result = navigator.share({
+                files: [file],
                 title: "yaPDP — PDP-11/70 emulator screenshot",
                 text: "A screenshot from the yaPDP PDP-11/70 web emulator"
-            }).catch(function () { /* ignore share errors */ });
+            });
+            if (result && typeof result.catch === "function") {
+                result.catch(function (error) {
+                    // User cancellation is expected and should stay silent.
+                    if (!error || error.name !== "AbortError") {
+                        toast({ text: "Could not share screenshot", category: "error" });
+                    }
+                });
+            }
+        } catch (error) {
+            toast({ text: "Could not share screenshot", category: "error" });
         }
     }
 
@@ -192,10 +225,11 @@
         contextMenu.className = "screenshot-context-menu";
         contextMenu.setAttribute("role", "menu");
 
-        // Capture the screenshot lazily — when the user picks an action,
-        // not when they right-click.  This way the menu always appears,
-        // even on pages without a canvas (e.g. the panel page).
-        // captureScreenshot() now returns a Promise<canvas|null>.
+        // Save and Copy capture lazily when selected. Share is different:
+        // prepare its PNG while the menu is open, so the subsequent Share
+        // click can call navigator.share() synchronously with user activation.
+        var shareFile = null;
+        var shareItem = null;
         var items = [
             { label: "Save image", action: function () {
                 captureScreenshot().then(function (c) { if (c) saveScreenshot(c); });
@@ -205,9 +239,14 @@
             }},
         ];
         if (typeof navigator !== "undefined" && navigator.share) {
-            items.push({ label: "Share\u2026", action: function () {
-                captureScreenshot().then(function (c) { if (c) shareScreenshot(c); });
-            }});
+            shareItem = {
+                label: "Share…",
+                disabled: true,
+                action: function () {
+                    if (shareFile) shareScreenshot(shareFile);
+                }
+            };
+            items.push(shareItem);
         }
 
         for (var i = 0; i < items.length; i++) {
@@ -215,7 +254,9 @@
                 var item = document.createElement("button");
                 item.className = "screenshot-context-item";
                 item.textContent = itemData.label;
+                item.disabled = !!itemData.disabled;
                 item.addEventListener("click", function () {
+                    if (item.disabled) return;
                     hideContextMenu();
                     itemData.action();
                 });
@@ -236,6 +277,19 @@
         contextMenu.style.top = top_ + "px";
 
         document.body.appendChild(contextMenu);
+
+        if (shareItem) {
+            var shareButton = contextMenu.querySelector("button:last-child");
+            captureScreenshot().then(prepareShareFile).then(function (file) {
+                shareFile = file;
+                if (shareButton && shareButton.isConnected) shareButton.disabled = false;
+            }).catch(function () {
+                if (shareButton && shareButton.isConnected) {
+                    shareButton.title = "Could not prepare screenshot for sharing";
+                }
+                toast({ text: "Could not prepare screenshot for sharing", category: "error" });
+            });
+        }
     }
 
     function hideContextMenu() {
