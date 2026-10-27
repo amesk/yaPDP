@@ -1710,6 +1710,25 @@ textarea {
    (#quick-boot-balloon) keeps the original row layout via flex-wrap. */
 #quick-boot-preparing.quickboot-balloon {
     flex-direction: column;
+    /* The base rule wraps for the autoload toast, which is a ROW. In a COLUMN
+       the same wrap opens a SECOND COLUMN as soon as the capped height is
+       exceeded — that is how the OK button ended up beside the description
+       when a phone was turned to landscape. A column must never wrap. */
+    flex-wrap: nowrap;
+    /* `left: 50%` + `width: auto` sizes a fixed box shrink-to-fit against the
+       space LEFT of the midline — half the window. In portrait that made the
+       toast ~180px wide, so the description stacked into a tall column and
+       the OK button fell below the bottom edge. Pin the box to the window
+       (the base rule's 16px gutter is kept) instead of letting it shrink. */
+    width: calc(100% - 16px);
+    max-width: 460px;
+    /* Portrait had no height cap at all: description + 200px screenshot ran
+       past the bottom edge. Cap the box and let it scroll, so the actions
+       always stay reachable. */
+    max-height: calc(100vh - 80px);
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     gap: 8px;
 }
 
@@ -4674,6 +4693,13 @@ button.action-more-hidden {
 
     #quick-boot-preparing .quickboot-balloon-row {
         gap: 8px;
+    }
+
+    /* The state preview is the tallest block in the preparing toast. Cap it
+       by the viewport so a tall screenshot cannot push the OK button out of
+       a phone screen. */
+    .quickboot-balloon-screenshot {
+        max-height: 32vh;
     }
 
     .quickboot-take-control {

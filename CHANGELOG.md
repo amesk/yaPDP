@@ -310,6 +310,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The preparing toast fits a phone in both orientations.** Restoring a
+  shared state shows a box with the state's title, description, screenshot and
+  an OK button; on a phone it was a narrow column in portrait that pushed the
+  button below the screen, and in landscape the button jumped beside the
+  description. The box now spans the window (up to 460px), never wraps, is
+  height-capped and scrolls, and the screenshot is capped to the viewport.
+  (`css/pdp11.css`; pinned by `tests/preparing-toast-layout.test.js`)
+
 - **Share via platform hands over the machine state.** The Share dialog's
   platform item offers the state to the system share sheet as a real
   `.state.zst` file — the artifact the recipient can import — with the file
