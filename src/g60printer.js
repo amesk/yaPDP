@@ -1632,6 +1632,37 @@
             };
         };
 
+        /**
+         * buildPaperRow(row) - Rebuild one restored paper row exactly as the
+         * live renderer built it: a <p> carrying the row's class and ONE <span>
+         * per character cell (see doPrintChar / doPrintln / doFormFeedMarker).
+         * The cell width is the stylesheet's 7px (g60printer.css), not the lp1
+         * face's own 0.5em advance: rebuilding a row as a single span collapsed
+         * a 132-column line from 924px to ~660px, so a restored sheet came back
+         * horizontally squeezed — the "stretched picture" a state restore showed
+         * while the paper that printed it looked right. Spaces are stored as
+         * NBSP cells in the snapshot; a surrogate pair stays ONE cell (no
+         * Array.from: this module keeps its ES5 form).
+         */
+        function buildPaperRow(row) {
+            var p = document.createElement('p');
+            if (row && row.cls) p.className = row.cls;
+            var text = (row && typeof row.text === 'string' && row.text.length > 0)
+                ? row.text : '\u00A0';
+            for (var i = 0; i < text.length; i++) {
+                var code = text.charCodeAt(i);
+                var cell = text.charAt(i);
+                if (code >= 0xD800 && code <= 0xDBFF && i + 1 < text.length) {
+                    cell = text.substr(i, 2);
+                    i++;
+                }
+                var span = document.createElement('span');
+                span.textContent = cell;
+                p.appendChild(span);
+            }
+            return p;
+        }
+
         // Restore the printed paper from a snapshot: rebuild the DOM rows
         // (text + row class), restore the form-feed page position, head
         // position and column width. Queued character output (charBuffer,
@@ -1649,15 +1680,13 @@
                 applyPaperGeometry();
             }
             var rows = Array.isArray(state.rows) ? state.rows : [];
+            // One row is up to 133 cells and a restored sheet is thousands of
+            // them: build into a fragment and touch the live paper once.
+            var frag = document.createDocumentFragment();
             for (var i = 0; i < rows.length; i++) {
-                var r = rows[i];
-                var p = document.createElement('p');
-                if (r.cls) p.className = r.cls;
-                var span = document.createElement('span');
-                span.textContent = (r.text && r.text.length > 0) ? r.text : '\u00A0';
-                p.appendChild(span);
-                printArea.appendChild(p);
+                frag.appendChild(buildPaperRow(rows[i]));
             }
+            printArea.appendChild(frag);
             if (typeof state.pagePos === 'number') pagePos = state.pagePos;
             if (typeof state.pageHasContent === 'boolean') pageHasContent = state.pageHasContent;
             // A seam in flight is pacing state, not paper state: a restore

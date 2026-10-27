@@ -310,6 +310,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A restored printer page keeps the paper's character grid.** A saved state
+  rebuilt every printed line as one stretch of text instead of a row of
+  character cells, so the sheet came back about 1.4x narrower than the paper
+  that printed it and a printed picture (the Madonna artwork) looked stretched
+  vertically; the restore now rebuilds the same 7px cells the printer wrote.
+  (`src/g60printer.js`; pinned by `tests/g60printer-paper-restore.test.js`)
+
 - **The preparing toast fits a phone in both orientations.** Restoring a
   shared state shows a box with the state's title, description, screenshot and
   an OK button; on a phone it was a narrow column in portrait that pushed the
