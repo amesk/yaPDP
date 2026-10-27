@@ -96,6 +96,7 @@ const ORDER = [
     "media-zst.test.js",
     "state-frame.test.js",
     "state-manifest.test.js",
+    "validate-suites.test.js",
 ];
 
 function allTestFiles() {

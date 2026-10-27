@@ -310,6 +310,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every e2e suite is runnable on its own, and none is left out of
+  `validate`.** The per-suite `npm run e2e:*` aliases were a third
+  hand-maintained list beside the `SUITES` array of `tools/validate.js`, and the
+  two had drifted apart: most suites had no alias at all (`e2e:teletype`,
+  `e2e:snapshots`, `e2e:share`, `e2e:diskstore`, `e2e:xxdp:halt`, …),
+  `e2e:quickboot-scenario` had a wireit task but no npm script, while
+  `e2e:unmount` was an alias whose suite never ran under `npm run validate` or
+  in CI. Every alias now delegates to `node tools/validate.js <name>` — an exact
+  suite name selects that suite, a substring selects several, `--list` prints
+  them — so `SUITES` remains the only list to edit, and
+  `tests/validate-suites.test.js` fails when an alias, its wireit task, the
+  e2e file on disk and `SUITES` ever disagree again. (`package.json`,
+  `tools/validate.js`, `tools/run-tests.js`, `tests/validate-suites.test.js`,
+  `docs/ARCHITECTURE.md`)
+
 - **The Minimal desktop build no longer reports images it does not ship.** The
   startup mount walked the whole bundled-image table — the full build's
   inventory — so on Minimal every omitted disk raised a load error and the

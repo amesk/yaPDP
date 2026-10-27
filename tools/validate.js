@@ -3,6 +3,15 @@
  * yaPDP — the single entry point that runs every e2e suite, ONE AT A TIME
  * against a single shared static server.
  *
+ * Usage:
+ *   node tools/validate.js                  run every suite (this is `npm run validate`)
+ *   node tools/validate.js e2e:os           run the suites matching the given names
+ *                                           (exact suite name wins, otherwise a substring;
+ *                                           any number of filters is allowed) — this is what
+ *                                           every `npm run e2e:*` alias drives, so a single
+ *                                           suite and the full run can never disagree
+ *   node tools/validate.js --list           print the suite names in run order and exit
+ *
  * Both the local `npm run validate` and the CI e2e job drive this file, so the
  * two can never drift apart: there is ONE list of suites (SUITES below), and
  * both run exactly it. (They used to be two hand-maintained lists — the wireit
@@ -68,6 +77,7 @@ const SUITES = [
     ["e2e:share",              ["tests/e2e-share.js"]],
     ["e2e:import-export",      ["tests/e2e-import-export.js"]],
     ["e2e:state:disk-access",  ["tests/e2e-state-disk-access.js"]],
+    ["e2e:unmount",            ["tests/e2e-unmount-reboot.js"]],
     ["e2e:firstrun-deeplink",  ["tests/e2e-firstrun-deeplink.js"]],
     ["e2e:quickboot-take-control", ["tests/e2e-quickboot-take-control.js"]],
     ["e2e:diskstore",          ["tests/e2e-diskstore.js"]],
@@ -100,11 +110,31 @@ async function ensureServer() {
     throw new Error(`Static server did not start on port ${PORT}`);
 }
 
-async function main() {
+// Resolve the filters from the command line to suites. An exact suite name
+// wins over a substring, so "e2e:xxdp" means that suite and not the kfp/halt
+// ones; no filters means the whole set.
+function selectSuites(filters) {
+    if (!filters.length) return { selected: SUITES, missing: [] };
+    const selected = [];
+    const missing = [];
+    for (const filter of filters) {
+        const exact = SUITES.filter(([name]) => name === filter);
+        const hits = exact.length
+            ? exact
+            : SUITES.filter(([name]) => name.includes(filter));
+        if (!hits.length) missing.push(filter);
+        for (const suite of hits) {
+            if (!selected.includes(suite)) selected.push(suite);
+        }
+    }
+    return { selected, missing };
+}
+
+async function main(suites) {
     const server = await ensureServer();
     const failed = [];
     try {
-        for (const [name, argv] of SUITES) {
+        for (const [name, argv] of suites) {
             // GitHub Actions log folding, so one step still reads as N suites.
             if (ON_CI) console.log(`::group::${name}`);
             else console.log(`\n──── ${name} ────`);
@@ -127,13 +157,25 @@ async function main() {
         console.error(`\n❌ ${failed.length} suite(s) failed: ${failed.join(", ")}`);
         process.exit(1);
     }
-    console.log("\nvalidate: all e2e suites passed");
+    console.log(`\nvalidate: all ${suites.length} e2e suite(s) passed`);
 }
 
-module.exports = { SUITES, ensureServer, serverAlive };
+module.exports = { SUITES, selectSuites, ensureServer, serverAlive };
 
 if (require.main === module) {
-    main().catch((err) => {
+    const args = process.argv.slice(2);
+    if (args.includes("--list")) {
+        SUITES.forEach(([name]) => console.log(name));
+        process.exit(0);
+    }
+    const filters = args.filter((a) => !a.startsWith("-"));
+    const { selected, missing } = selectSuites(filters);
+    if (missing.length) {
+        console.error(`No suite matches: ${missing.join(", ")}`);
+        console.error("Known suites: node tools/validate.js --list");
+        process.exit(1);
+    }
+    main(selected).catch((err) => {
         console.error(err && err.stack ? err.stack : err);
         process.exit(1);
     });
