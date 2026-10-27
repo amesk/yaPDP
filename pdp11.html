@@ -1564,6 +1564,10 @@
                     title="Erase the selected image from browser storage">Delete image</button>
                   <span id="mounted-count" class="mounted-count">0 images</span>
                 </span>
+                <!-- Full label of the selected image: the select shows a name
+                     shortened to a fixed budget (src/dragdrop.js, shortImageName),
+                     so the untruncated one wraps here instead of widening the page. -->
+                <span id="mounted-full" class="config-hint mounted-full" hidden></span>
                 <span class="config-hint">Unmount takes the selected image out of the
                   machine and keeps it in browser storage (it is back on the next launch).
                   Delete image erases it from this browser, guest writes included &mdash; only

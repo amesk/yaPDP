@@ -3967,6 +3967,11 @@ html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash {
 
 .config-control {
     flex: 1;
+    /* A control column must never be sized by its widest value: a dropped
+       image can carry a 255-character file name, and a native <select> is as
+       wide as its longest <option>. min-width: 0 breaks that min-content
+       chain, which otherwise climbs into .config-field and the tab grid. */
+    min-width: 0;
     font-size: 14px;
 }
 
@@ -4094,10 +4099,36 @@ html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+    /* Same reason as .config-control: the row must be able to shrink its
+       children, never grow to the width of a value inside them. */
+    min-width: 0;
 }
 
 .config-inline+.config-inline {
     margin-top: 6px;
+}
+
+/* The image-name lists on STORAGE get a footprint of their own instead of one
+   derived from the longest option, so a long dropped file name cannot stretch
+   the page or push Unmount / Delete image / Bind off the right edge. The text
+   inside is shortened by shortImageName() in src/dragdrop.js. */
+#mounted-select,
+#downLoadSelect {
+    flex: 1 1 180px;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Full label of the selected image. The select can only show a shortened name
+   (see shortImageName), so the whole one wraps here on its own line — the
+   ellipsis must never be the only place a name lives. */
+.mounted-full {
+    overflow-wrap: anywhere;
+}
+
+.mounted-full[hidden] {
+    display: none;
 }
 
 /* A hint that directly follows an action button needs a real gap — 4px made
@@ -4160,7 +4191,10 @@ html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash {
    selected. */
 .config-tabs {
     display: grid;
-    grid-template-columns: 1fr;
+    /* minmax(0, …) so the single track cannot be sized by the widest control
+       inside it (a native select grows to its longest option, which used to
+       widen the whole STORAGE page along with an image name). */
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .config-tab-bar {

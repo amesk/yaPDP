@@ -667,6 +667,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  `src/quickboot.js`, `tools/export-state.js`, `tools/headless-term.js`;
  pinned by `tests/panel-state.test.js`)
 
+- **A long image name no longer widens the Storage page.** Each list there was
+ as wide as the longest name it held, so mounting an image with a long file
+ name stretched the page and pushed Unmount, Delete image and Bind off the
+ right edge. The lists now keep a fixed footprint; the name inside them is
+ shortened in the middle, the extension and the `→ DRIVE` /
+ `· nothing to export` markers stay whole, and the full name of the selected
+ image is printed under the list and kept in the option's tooltip.
+ (`css/pdp11.css`, `src/dragdrop.js`, `pdp11.html`; pinned by
+ `tests/storage-label-width.test.js`)
+
 
 ## [0.3.0] - 2026-09-30
 
