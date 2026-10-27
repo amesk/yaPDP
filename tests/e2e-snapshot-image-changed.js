@@ -321,6 +321,16 @@ async function openPage(browser, errors) {
         // --- 9. A state on a local-only disk warns about portability -----
         {
             const page = await openPage(browser, errors);
+            // Let the machine finish its cold start before touching the toast
+            // slot. A fresh page runs from zeroed memory and stops at 2 (the
+            // empty-vector stop), and that stop now owns the single toast for
+            // 5 s (src/halt-notice.js). Saving AFTER it keeps this check on the
+            // save's own warning: on a slow runner the stop used to land just
+            // after the save and take the slot from the warning.
+            await page.waitForFunction(
+                () => typeof CPU !== "undefined" && !!CPU.haltReason,
+                { timeout: 3000 }
+            ).catch(() => { /* no cold-start stop: nothing to preempt the toast */ });
             const warned = await page.evaluate(async () => {
                 const bytes = new Uint8Array(64);
                 bytes[0] = 3;
