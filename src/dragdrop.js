@@ -207,6 +207,24 @@
         return base;
     }
 
+    // Browsers do not reliably show an <option title> while the list is closed,
+    // so the full label of the CURRENT entry is mirrored onto the <select>
+    // itself: hovering the closed control explains a shortened name without
+    // opening the list. Option titles are kept as well — an open list shows
+    // them as tooltips.
+    function syncSelectTitle(select) {
+        if (!select) return;
+        var full = "";
+        var opts = select.options || [];
+        for (var i = 0; i < opts.length; i++) {
+            if (opts[i].value === select.value) {
+                full = opts[i].title || opts[i].textContent || "";
+                break;
+            }
+        }
+        select.title = select.disabled ? "" : full;
+    }
+
     // ------------------------------------------------------------------
     // File processing
     // ------------------------------------------------------------------
@@ -356,6 +374,7 @@
         if (remove) remove.disabled = urls.length === 0;
         if (prev && urls.indexOf(prev) !== -1) select.value = prev;
         refreshMountedCaption();
+        syncSelectTitle(select);
         syncDriveSelectToList();
         refreshAssignControls();
         refreshDeleteButton();
@@ -485,6 +504,7 @@
             opt.setAttribute("data-drop", "1");
             select.appendChild(opt);
         });
+        syncSelectTitle(select);
     }
 
     // Unmount is "pull the cartridge out of the drive", not "throw it away":
@@ -660,6 +680,7 @@
         select.disabled = urls.length === 0;
         if (prev && urls.indexOf(prev) !== -1) select.value = prev;
         if (count) count.textContent = urls.length + " image(s) with changes";
+        syncSelectTitle(select);
     }
 
     // ------------------------------------------------------------------
@@ -749,6 +770,7 @@
         if (prev && urls.indexOf(prev) !== -1) select.value = prev;
         var dlBtn = document.getElementById("download-btn");
         if (dlBtn) dlBtn.disabled = urls.length === 0;
+        syncSelectTitle(select);
     }
 
     // Save one image to the operator's machine through the core exporter. Used
@@ -954,6 +976,16 @@
                 if (canDeleteImage(url)) openDeleteDialog(url);
             });
         }
+
+        // A shortened entry must stay readable from the CLOSED control: every
+        // Storage list mirrors the full label of its selection into its own
+        // tooltip, on rebuild (the refresh functions) and on every change.
+        ["mounted-select", "downLoadSelect", "persist-select", "ptr"].forEach(function (id) {
+            var sel = document.getElementById(id);
+            if (!sel) return;
+            sel.addEventListener("change", function () { syncSelectTitle(sel); });
+            syncSelectTitle(sel);
+        });
 
         // Binding control: one Bind button + the drive select. Picking a drive
         // assigns the image to it; picking "— not bound —" detaches it. Doing it
