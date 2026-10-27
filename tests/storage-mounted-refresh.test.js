@@ -35,13 +35,15 @@ function makeSelect() {
     const options = [];
     const select = {
         value: "",
+        title: "",
         disabled: false,
         options: options,
         appendChild(opt) {
             options.push(opt);
             if (options.length === 1) select.value = opt.value; // the DOM does this
         },
-        removeChild() {}
+        removeChild() {},
+        addEventListener() {}   // init() wires a change handler on every list
     };
     Object.defineProperty(select, "innerHTML", {
         get() { return ""; },

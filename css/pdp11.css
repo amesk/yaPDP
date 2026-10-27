@@ -4108,12 +4108,15 @@ html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash {
     margin-top: 6px;
 }
 
-/* The image-name lists on STORAGE get a footprint of their own instead of one
-   derived from the longest option, so a long dropped file name cannot stretch
-   the page or push Unmount / Delete image / Bind off the right edge. The text
-   inside is shortened by shortImageName() in src/dragdrop.js. */
+/* The name lists on STORAGE (mounted images, export, reader tape) get a
+   footprint of their own instead of one derived from the longest option, so a
+   long dropped file name cannot stretch the page or push Unmount / Delete
+   image / Bind / Download off the right edge. The text inside is shortened by
+   shortImageName() in src/dragdrop.js and the whole label stays in the
+   control's tooltip. */
 #mounted-select,
-#downLoadSelect {
+#downLoadSelect,
+#ptr {
     flex: 1 1 180px;
     min-width: 0;
     max-width: 100%;
