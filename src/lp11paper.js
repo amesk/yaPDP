@@ -51,6 +51,13 @@
 
     var DEFAULT_COLUMNS = 132;        // LP11 platen, 10 pitch
     var DEFAULT_LINES_PER_PAGE = 66;  // 11in sheet at 6 LPI
+    // Tractor feed: the paper carries one feed hole every half inch, and the
+    // machine's own sheet is 11in tall (66 lines at 6 LPI), i.e. 22 pitches.
+    // The printable pitch is therefore emitted as a SHARE of the sheet height
+    // (100vh / 22 in the print document) instead of a fixed 12.7mm: whatever
+    // paper the dialog offers, one sheet is then a whole number of pitches, so
+    // the perforation lattice closes across the fold. See buildPrintDocument.
+    var HOLES_PER_SHEET = 22;         // 11in / 0.5in
     // Real line-printer type is set solid: 10 pitch = 1/10in per glyph advance,
     // 6 LPI = 1/6in per line, so a line is 1.667 advances tall. For a monospace
     // face whose advance is 0.6em that is exactly 1.0em of line-height, and the
@@ -478,18 +485,35 @@
             "; --colw: " + (columns * FALLBACK_ADVANCE).toFixed(4) +
             "; --fit: " + fit +
             "; --lpp: " + linesPerPage + "; --glyph: " + GLYPH_FALLBACK +
-            "; --cell: min(calc(var(--fit) / var(--colw)), calc(100vh / var(--lpp))); }" +
+            // --sheet is the paper box the tractor strips are painted on: a hair
+            // under the printable height, so a full 66-line sheet cannot spill
+            // onto a blank one. --hole is the feed-hole pitch — the SHEET over
+            // the holes the machine feeds per sheet, never a fixed length (see
+            // the fold note on the strips below).
+            "; --sheet: calc(100vh - 0.02mm)" +
+            "; --hole: calc(100vh / " + HOLES_PER_SHEET + ")" +
+            "; --cell: min(calc(var(--fit) / var(--colw)), calc(var(--sheet) / var(--lpp))); }" +
             // A line-printer sheet is WIDER than it is tall (14 7/8 x 11in), so
             // landscape is the faithful orientation: the tractor strips fall on
             // the long edges and 132 columns keep their share of the width,
             // exactly as on the paper. The bare `landscape` keyword keeps the
             // paper the operator picks in the dialog and only turns it; an
             // explicit size ("14.875in 11in") can be passed for real fanfold.
-            "@page { size: " + pageSize + "; margin: 10mm; }" +
+            //
+            // margin: 0 — the sheet box must BE the paper box. The strips are
+            // painted inside it and nothing can be painted in the @page margin,
+            // where the printer clips it: a 10mm field swallowed the hole
+            // nearest the fold (there is one hole per half inch, no slack) and
+            // left a two-pitch gap at every fold.
+            "@page { size: " + pageSize + "; margin: 0; }" +
             "html, body { margin: 0; padding: 0; background: #fff; color: #000; }" +
             "body { font-family: " + fontStack + "; }" +
             ".page { position: relative; break-after: page; page-break-after: always;" +
-            " break-inside: avoid; padding: 0 " + strip + "; }" +
+            " break-inside: avoid; padding: 0 " + strip + ";" +
+            // The page box is the sheet, so it must reach the fold: without a
+            // height the strips (and their holes) stopped at the last printed
+            // line and left a bare band on both sides of every fold.
+            " height: var(--sheet); }" +
             ".page:last-child { break-after: auto; page-break-after: auto; }" +
             ".col { position: relative; container-type: inline-size; }" +
             (fanfold
@@ -520,18 +544,29 @@
                   " #f2f0ef calc(var(--cell)) calc(var(--cell) * 2));" +
                   " background-size: 100% calc(var(--cell) * 4), 100% calc(var(--cell) * 2);" +
                   " background-repeat: repeat, repeat; background-position: 0 0, 0 0; }" +
-                  // Tractor strips: one feed hole every half inch, as on the
-                  // paper, and A THIRD OF THE STRIP WIDE — the share the
-                  // artwork itself uses (paper-margin.png: an 11px hole in the
-                  // 33px strip), so the printed holes are not fatter than the
-                  // Printer page's. They fill the .page padding and are painted
-                  // inside the page box, because anything painted in the @page
-                  // margin is clipped away by the printer.
+                  // Tractor strips: one feed hole every half inch — A THIRD OF
+                  // THE STRIP WIDE, the share the artwork itself uses
+                  // (paper-margin.png: an 11px hole in the 33px strip), so the
+                  // printed holes are not fatter than the Printer page's. They
+                  // fill the .page padding and are painted inside the page box,
+                  // because anything painted in the @page margin is clipped.
+                  //
+                  // The perforation must read as ONE lattice across the fold:
+                  // no hole cut by the sheet edge, and the gap between the last
+                  // hole of a sheet and the first hole of the next equal to the
+                  // mid-sheet pitch. A tile is one hole tall with the hole
+                  // CENTRED in it, and the tiles start at the sheet's top edge,
+                  // so the first hole sits half a pitch below the fold and the
+                  // last half a pitch above the next one. --hole is the sheet
+                  // divided by 22 (half an inch on the machine's 11in page),
+                  // which makes a sheet exactly 22 pitches: the lattice closes
+                  // whatever paper the dialog hands over, where a fixed 12.7mm
+                  // pitch would jump in phase at every fold on A4/Letter.
                   ".page::before, .page::after { content: \"\"; position: absolute;" +
                   " top: 0; bottom: 0; width: " + strip + ";" +
                   " background-image: radial-gradient(circle closest-side at 50% 50%," +
                   " #141414 0 33%, transparent 44%);" +
-                  " background-size: 100% 12.7mm; background-repeat: repeat-y;" +
+                  " background-size: 100% var(--hole); background-repeat: repeat-y;" +
                   " background-position: 50% 0; }" +
                   ".page::before { left: 0; }" +
                   ".page::after { right: 0; }"

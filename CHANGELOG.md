@@ -167,6 +167,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/landing-manual-coverage.test.js`)
 ### Changed
 
+- **The LP11 Print sheet folds without a seam.** The tractor perforation now
+  reads as one continuous lattice across the fold: the feed holes are a whole
+  share of the sheet — 22 per sheet, the historical half inch on the machine's
+  11in page — so the gap between the last hole of one sheet and the first hole of
+  the next equals the spacing between the holes mid-sheet, and the fold never
+  cuts a hole. The sheet box reaches the paper's edges, so the strips and their
+  holes run to the fold instead of stopping at the last printed line, and the
+  10mm white border the dialog used to leave is gone. (`src/lp11paper.js`; pinned
+  by `tests/lp11-print.test.js`)
 - **The Mounted images list says why an image has no Export entry.** An image
   that "Export image" cannot save — pristine bundled media the machine merely
   streams — is marked "· nothing to export" in the list where it is mounted, so
