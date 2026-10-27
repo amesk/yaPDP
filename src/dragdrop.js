@@ -162,15 +162,40 @@
         return out;
     }
 
+    // Every Storage list shows at most NAME_LIMIT characters of an image name.
+    // The length of a name is data (a dropped file can be 255 characters long)
+    // and must never drive layout: a native <select> is as wide as its longest
+    // option, which used to widen the whole STORAGE page.
+    var NAME_LIMIT = 32;
+
+    // Middle ellipsis: the head of the name stays readable, the tail is kept
+    // because it carries the extension (.dsk / .tap.zst) that tells the
+    // operator what the image is. Only the middle is what gets elided.
+    function shortImageName(url, max) {
+        var limit = (typeof max === "number" && max > 8) ? max : NAME_LIMIT;
+        var s = String(url == null ? "" : url);
+        if (s.length <= limit) return s;
+        var tail = 12;
+        if (limit > tail + 2) {
+            return s.slice(0, limit - tail - 1) + "\u2026" + s.slice(s.length - tail);
+        }
+        return s.slice(0, limit - 1) + "\u2026";
+    }
+
     // "rp1.dsk  →  RP1" when the image is bound to a drive, url alone otherwise.
     // An image whose saved changes came from a SHARED STATE says so: those
     // blocks are somebody else's work, not this operator's, and the Reset
     // control clears them like any other.
-    function imageLabel(url, bindings) {
-        var base = url;
+    //
+    // `maxName` shortens ONLY the name (shortImageName); the drive / origin
+    // markers stay whole, because they are what the line means. The lists pass
+    // it and keep the untruncated label in the option's title.
+    function imageLabel(url, bindings, maxName) {
+        var base = maxName ? shortImageName(url, maxName) : url;
         var drives = bindings[url];
         if (drives && drives.length) {
-            base = url + "  \u2192  " + drives.map(function (d) {
+            // `base`, not `url`: the binding must not bring the long name back.
+            base = base + "  \u2192  " + drives.map(function (d) {
                 return d.toUpperCase();
             }).join(", ");
         }
@@ -318,15 +343,19 @@
                 // is mounted and streaming but has no entry in "Export image"
                 // (see exportableUrls), and a list that simply omits it reads as
                 // a bug unless the image itself says so.
-                opt.textContent = imageLabel(url, bindings) +
-                    (exportable.indexOf(url) === -1
-                        ? "  \u00b7 nothing to export" : "");
+                var suffix = exportable.indexOf(url) === -1
+                    ? "  \u00b7 nothing to export" : "";
+                opt.textContent = imageLabel(url, bindings, NAME_LIMIT) + suffix;
+                // The shortened name is a display choice, never a data loss:
+                // the whole label is one hover away, and on the line below.
+                opt.title = imageLabel(url, bindings) + suffix;
                 select.appendChild(opt);
             });
         }
         select.disabled = urls.length === 0;
         if (remove) remove.disabled = urls.length === 0;
         if (prev && urls.indexOf(prev) !== -1) select.value = prev;
+        refreshMountedCaption();
         syncDriveSelectToList();
         refreshAssignControls();
         refreshDeleteButton();
@@ -348,6 +377,19 @@
         refreshPtrList();
         // Keep the "Export image" list in sync (core stack; see refreshExportList).
         refreshExportList();
+    }
+
+    // The select can only show a shortened name (shortImageName), so the full
+    // label of the chosen image is printed on a line of its own under the list.
+    // That line wraps: it must grow downwards, never sideways.
+    function refreshMountedCaption() {
+        var el = document.getElementById("mounted-full");
+        if (!el) return;
+        var select = document.getElementById("mounted-select");
+        var url = select ? select.value : "";
+        var full = url ? imageLabel(url, bindingsByUrl()) : "";
+        el.textContent = full;
+        el.hidden = !full;
     }
 
     // Size of a mounted image in bytes, or null when it is not mounted.
@@ -436,7 +478,10 @@
             existing[base] = true;
             var opt = document.createElement("option");
             opt.value = url; // full url so PTR11 resolves it as-is
-            opt.textContent = url;
+            // Same fixed budget as the disk lists: a dropped .ptap with a long
+            // name must not widen the Paper Tapes tab either.
+            opt.textContent = shortImageName(url);
+            opt.title = url;
             opt.setAttribute("data-drop", "1");
             select.appendChild(opt);
         });
@@ -605,7 +650,10 @@
                 var opt = document.createElement("option");
                 opt.value = url;
                 var n = DiskStore.dirtyBlockCount(url);
-                opt.textContent = url + " (" + n + " blocks)";
+                // This select is capped at 190px (see .persist-control), which
+                // is why the name has to be shortened rather than merely clipped.
+                opt.textContent = shortImageName(url) + " (" + n + " blocks)";
+                opt.title = url + " (" + n + " blocks)";
                 select.appendChild(opt);
             });
         }
@@ -652,14 +700,14 @@
         return out.sort();
     }
 
-    function exportLabel(url, bindings, mounted) {
+    function exportLabel(url, bindings, mounted, maxName) {
         var n = (typeof DiskStore !== "undefined" &&
                  typeof DiskStore.changedBlockCount === "function")
             ? DiskStore.changedBlockCount(url) : 0;
         var blocks = n === 1 ? "1 block changed" : n + " blocks changed";
         var state = (n === 0) ? "no changes" : blocks;
         if (mounted.indexOf(url) === -1) state = "not mounted, " + blocks;
-        return imageLabel(url, bindings) + "  (" + state + ")";
+        return imageLabel(url, bindings, maxName) + "  (" + state + ")";
     }
 
     // Core stack only: the legacy stack fills #downLoadSelect itself through
@@ -692,7 +740,8 @@
                 opt.value = url;
                 // Detached images have no live base yet — exportLabel says so
                 // and the exporter fetches the base before assembling.
-                opt.textContent = exportLabel(url, bindings, mounted);
+                opt.textContent = exportLabel(url, bindings, mounted, NAME_LIMIT);
+                opt.title = exportLabel(url, bindings, mounted);
                 select.appendChild(opt);
             });
         }
@@ -891,6 +940,7 @@
             mountedSelect.addEventListener("change", function () {
                 mountedRemove.disabled = !mountedSelect.value;
                 refreshDeleteButton();
+                refreshMountedCaption();
                 syncDriveSelectToList();
                 refreshAssignControls();
             });
@@ -1022,6 +1072,9 @@
         window.yapdpExportList = {
             exportableUrls: exportableUrls,
             diskImageUrls: diskImageUrls,
+            // Label policy of the Storage lists: the name is shortened to a
+            // fixed budget so the page geometry cannot follow the data.
+            shortImageName: shortImageName,
             refreshExportList: refreshExportList,
             // Rebuild the "Mounted images" select. Snapshots calls this after a
             // restore: the images it mounts arrive after init() already filled
