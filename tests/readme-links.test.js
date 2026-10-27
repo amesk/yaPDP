@@ -17,6 +17,9 @@
  *   3. Relative links and images rot silently: a renamed screenshot or moved
  *      doc turns the README into a page of 404s. Every local target is
  *      resolved against the repository root.
+ *   4. The link policy drifted: a few `tools/` scripts were linked while every
+ *      `src/` module stayed a code span, so a link no longer carried one
+ *      meaning. Documentation pages are linked; implementation is not.
  *
  * Run with:  node tests/readme-links.test.js
  * Exit code 0 = all checks passed, non-zero = failure.
@@ -100,6 +103,19 @@ function run() {
 
     // 4. a POSIX text file ends with a newline; the README once did not.
     assert.ok(readme.endsWith("\n"), "README.md must end with a newline");
+
+    // 5. the link policy: documentation is linked, source code is not.
+    //    A link in the README reads as "go read this". Source modules and tool
+    //    scripts are referenced as code spans instead — the structure behind
+    //    them is explained once, in docs/ARCHITECTURE.md.
+    const SOURCE_LINK = /^(src|tools)\//;
+    const sourceLinks = linkTargets(readme)
+        .filter((t) => !isExternal(t))
+        .map(localPath)
+        .filter((t) => SOURCE_LINK.test(t));
+    assert.strictEqual(sourceLinks.length, 0,
+        "README links source code (" + sourceLinks.join(", ") + ") — use a " +
+        "`code` span instead; the module map lives in docs/ARCHITECTURE.md");
 
     console.log("All README tests passed.");
 }

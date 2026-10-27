@@ -103,7 +103,7 @@ Only submit material that you have the right to contribute and distribute under 
 
 ## Documentation and historical claims
 
-Documentation is part of the project, not an afterthought. Keep the README concise and use the existing `docs/` pages for detailed instructions, architecture, and feature descriptions. If you add a new documentation page, link it from the relevant README section.
+Documentation is part of the project, not an afterthought. Keep the README concise and use the existing `docs/` pages for detailed instructions, architecture, and feature descriptions. If you add a new documentation page, link it from the relevant README section. In the README, documentation pages and top-level resources are links; source modules and tool scripts are referenced as `code` only — implementation details belong to `docs/ARCHITECTURE.md`.
 
 When making historical claims, cite sources where possible and be clear about uncertainty. Do not describe an approximation, reconstructed experience, or known limitation as exact historical behavior. See the project documentation for the current architecture and supported features.
 
