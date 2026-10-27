@@ -52,7 +52,13 @@ and the **Make state self-contained** option.{.shot-caption}
 The **Create Shareable State** button is a split-button with additional options:
 - **Copy text to clipboard** — copies the text envelope of the shareable state.
 - **Save as text file** — downloads the text envelope as a `.state.txt` file.
-- **Share via platform…** — uses the browser's native sharing mechanism (Web Share API).
+- **Share via platform…** — hands the state to the system share sheet (Web Share API)
+  as the `.state.zst` file, which the receiving app can attach to a message. If the
+  sheet refuses the file, the dialog says so right above the buttons, the full text
+  envelope goes to the clipboard and the item becomes **Share state text…**: one more
+  click sends the envelope as message text — the channel every desktop browser has.
+  The state is prepared while the menu is open, so the item stays disabled until it
+  is ready.
 - **Create GitHub Gist…** — opens a Gist dialog that creates a **secret** Gist on GitHub with the
   machine state. You need a GitHub Personal Access Token with the `gist` scope.
 
