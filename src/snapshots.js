@@ -2581,6 +2581,11 @@ var SnapshotStore = (() => {
             if (loadMoreBtn) loadMoreBtn.disabled = !hasSelection;
             if (loadSharedBtn) loadSharedBtn.disabled = !hasSelection || !hasGuide;
             if (exportBtn) exportBtn.disabled = !hasSelection;
+            // The arrow that opens the export menu starts disabled in the
+            // markup and has to follow the main button, or the text-envelope
+            // options (text file, clipboard) stay unreachable.
+            var exportMoreBtn = document.getElementById("snap-export-more");
+            if (exportMoreBtn) exportMoreBtn.disabled = !hasSelection;
             // Enable the export dropdown items (text file, clipboard) too.
             var exportTextBtn = document.getElementById("snap-export-text");
             var exportClipboardBtn = document.getElementById("snap-export-clipboard");

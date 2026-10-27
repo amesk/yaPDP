@@ -11,7 +11,9 @@
  *   1. a selection that still exists survives a refresh;
  *   2. an explicit id (the Save/Import flow) selects the fresh snapshot;
  *   3. when the selected entry is gone, the fallback is the NEWEST snapshot;
- *   4. an empty store shows the placeholder and disables the controls.
+ *   4. an empty store shows the placeholder and disables the controls;
+ *   5. the Export split-button's dropdown arrow follows the selection, so the
+ *      text-envelope options (file, clipboard) are reachable whenever Export is.
  *
  * Run with:  node tests/snapshot-ui-selection.test.js
  */
@@ -253,6 +255,16 @@ async function run() {
   dom.registry.set("snap-select", select);
   dom.registry.set("snap-load", makeButton());
   dom.registry.set("snap-export", makeButton());
+  // The export dropdown is built disabled in the modal markup — the `disabled`
+  // attribute sits on the arrow and on both items — so these stubs start
+  // disabled too: a stub that began enabled would hide a missing enable line in
+  // refreshUI() instead of catching it.
+  const exportArrow = { disabled: true };
+  const exportText = { disabled: true };
+  const exportClipboard = { disabled: true };
+  dom.registry.set("snap-export-more", exportArrow);
+  dom.registry.set("snap-export-text", exportText);
+  dom.registry.set("snap-export-clipboard", exportClipboard);
   dom.registry.set("snap-share", makeButton());
   dom.registry.set("snap-rename", makeButton());
   dom.registry.set("snap-delete", makeButton());
@@ -278,6 +290,12 @@ async function run() {
   assert.strictEqual(select.disabled, false, "select enabled");
   assert.strictEqual(dom.registry.get("snap-load").disabled, false,
     "Load stays enabled with a selection");
+  assert.strictEqual(exportArrow.disabled, false,
+    "Export dropdown arrow enabled with a selection");
+  assert.strictEqual(exportText.disabled, false,
+    "Save as text file enabled with a selection");
+  assert.strictEqual(exportClipboard.disabled, false,
+    "Copy text to clipboard enabled with a selection");
   console.log("PASS test 1: refresh keeps an existing selection");
 
   // ---- Test 2: an explicit id wins (the Save/Import flow) -----------
@@ -315,6 +333,8 @@ async function run() {
   assert.strictEqual(select.disabled, true, "select disabled when empty");
   assert.strictEqual(dom.registry.get("snap-load").disabled, true,
     "Load disabled when empty");
+  assert.strictEqual(exportArrow.disabled, true,
+    "Export dropdown arrow disabled when empty");
   assert.strictEqual(dom.registry.get("snap-delete").disabled, true,
     "Delete disabled when empty");
   assert.strictEqual(dom.registry.get("snap-count").textContent, "0 snapshots",

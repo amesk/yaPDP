@@ -680,6 +680,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`css/pdp11.css`, `src/dragdrop.js`, `pdp11.html`; pinned by
   `tests/storage-label-width.test.js`)
 
+- **The Export dropdown in the Machine-state dialog can be opened.** The
+  split-button's arrow was created `disabled` and no refresh re-enabled it, so
+  "Save as text file" and "Copy text to clipboard" were unreachable and Export
+  offered only the `.state.zst` download. (`src/snapshots.js`; pinned by
+  `tests/snapshot-ui-selection.test.js`)
+
 
 ## [0.3.0] - 2026-09-30
 
