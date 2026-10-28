@@ -310,6 +310,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fullscreen in the desktop app no longer claims it failed.** The toggle
+  button worked, yet every click raised "Could not toggle fullscreen": the
+  icon refresh resolved the Tauri window from its fallback and then
+  dereferenced the raw argument, so the follow-up state query threw and the
+  successful toggle was reported as a failure (an uncaught error at startup
+  kept the icon stale as well). (`src/fullscreen.js`; pinned by
+  `tests/fullscreen.test.js`)
+
 - **Every e2e suite is runnable on its own, and none is left out of
   `validate`.** The per-suite `npm run e2e:*` aliases were a third
   hand-maintained list beside the `SUITES` array of `tools/validate.js`, and the

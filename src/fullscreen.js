@@ -62,7 +62,12 @@ var Fullscreen = (function () {
 
     // Resolve the current fullscreen state as a Promise<boolean>
     // (true = fullscreen is active).
+    // Both arguments default to the browser globals: callers that omit them
+    // (e.g. updateUI) must not dereference an undefined `win` after isTauri()
+    // has already resolved the global one.
     function current(win, doc) {
+        win = win || (typeof window !== "undefined" ? window : null);
+        doc = doc || (typeof document !== "undefined" ? document : null);
         if (isTauri(win)) {
             var w = win.__TAURI__.window.getCurrentWindow();
             return Promise.resolve(
@@ -96,11 +101,16 @@ var Fullscreen = (function () {
 
     // Refresh the button icon/label to reflect the current fullscreen state.
     // Best-effort: resolves false if the button or the state query is missing.
+    // The state query runs inside the promise chain so a synchronous throw can
+    // never escape into a DOM/event listener (and never turns a successful
+    // toggle into a reported failure).
     function updateUI() {
         var btn = (typeof document !== "undefined") ? document.getElementById("fullscreen-btn") : null;
         if (!btn) return Promise.resolve(false);
         var use = btn.querySelector("use");
-        return current().then(function (fs) {
+        return Promise.resolve().then(function () {
+            return current();
+        }).then(function (fs) {
             btn.classList.toggle("fullscreen-on", fs);
             if (use) use.setAttribute("href", fs ? "#icon-fullscreen-exit" : "#icon-fullscreen");
             btn.setAttribute("aria-label", fs ? "Exit fullscreen" : "Enter fullscreen");

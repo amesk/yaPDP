@@ -36,6 +36,54 @@ function loadModule() {
     return sandbox.Fullscreen;
 }
 
+// Load the module with browser globals injected, so the auto-init path runs the
+// same way it does in the desktop app.
+function loadModuleWithGlobals(globals) {
+    const code = fs.readFileSync(SOURCE_PATH, "utf8");
+    const sandbox = Object.assign({ console }, globals);
+    vm.createContext(sandbox);
+    vm.runInContext(code, sandbox);
+    return sandbox.Fullscreen;
+}
+
+// Minimal document stub: no #fullscreen-btn, so init() stays a no-op.
+function makeEmptyDocument() {
+    return {
+        readyState: "complete",
+        getElementById: () => null,
+        addEventListener: () => {}
+    };
+}
+
+// Minimal <button id="fullscreen-btn"> stub used by updateUI().
+function makeFullscreenButton() {
+    const attrs = {};
+    const useAttrs = {};
+    const classes = new Set();
+    return {
+        title: "",
+        attrs,
+        useAttrs,
+        classes,
+        querySelector: (sel) => (sel === "use"
+            ? { setAttribute: (k, v) => { useAttrs[k] = v; } }
+            : null),
+        classList: {
+            toggle: (cls, on) => { if (on) classes.add(cls); else classes.delete(cls); }
+        },
+        setAttribute: (k, v) => { attrs[k] = v; },
+        addEventListener: () => {}
+    };
+}
+
+function makeDocumentWithButton(btn) {
+    return {
+        readyState: "complete",
+        getElementById: (id) => (id === "fullscreen-btn" ? btn : null),
+        addEventListener: () => {}
+    };
+}
+
 // A Tauri-like window stub whose native fullscreen state can be inspected.
 function makeTauriWindow(initialFullscreen) {
     let fullscreen = initialFullscreen;
@@ -159,6 +207,48 @@ async function run() {
         const on = makeTauriWindow(true);
         await F.toggle(on.win, {});
         assert.strictEqual(on.state(), false, "tauri toggle exits fullscreen when on");
+    }
+
+    // ---- current()/updateUI() resolve the globals themselves ------------
+    // Regression: current() used to default `win` inside isTauri() only and
+    // then dereference the raw argument, so updateUI() threw in the desktop
+    // app (Tauri) and a successful toggle was reported as a failure.
+    {
+        const on = makeTauriWindow(true);
+        const WithGlobals = loadModuleWithGlobals({
+            window: on.win,
+            document: makeEmptyDocument()
+        });
+        assert.strictEqual(await WithGlobals.current(), true,
+            "current() without arguments uses the global Tauri window");
+        assert.strictEqual(await WithGlobals.updateUI(), false,
+            "updateUI() without a button resolves false instead of throwing");
+
+        const off = makeTauriWindow(false);
+        const WithGlobalsOff = loadModuleWithGlobals({
+            window: off.win,
+            document: makeEmptyDocument()
+        });
+        assert.strictEqual(await WithGlobalsOff.current(), false,
+            "current() without arguments reports native fullscreen off");
+    }
+
+    // ---- updateUI() reflects the Tauri state on the button ---------------
+    {
+        const btn = makeFullscreenButton();
+        const on = makeTauriWindow(true);
+        const WithButton = loadModuleWithGlobals({
+            window: on.win,
+            document: makeDocumentWithButton(btn)
+        });
+        assert.strictEqual(await WithButton.updateUI(), true,
+            "updateUI() resolves the native fullscreen state");
+        assert.ok(btn.classes.has("fullscreen-on"),
+            "updateUI() marks the button as fullscreen");
+        assert.strictEqual(btn.useAttrs.href, "#icon-fullscreen-exit",
+            "updateUI() swaps the icon to the exit variant");
+        assert.strictEqual(btn.attrs["aria-label"], "Exit fullscreen",
+            "updateUI() updates the accessible label");
     }
 
     console.log("\nAll Fullscreen tests passed.");
