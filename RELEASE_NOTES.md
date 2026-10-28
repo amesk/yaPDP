@@ -1,3 +1,88 @@
+# yaPDP v0.4.0 — Release Notes
+
+- **Release date:** 2026-10-28
+- **Baseline:** [releases/v0.3.0](https://github.com/amesk/yaPDP/releases/tag/releases%2Fv0.3.0) (2026-09-30)
+- **Full diff:** [releases/v0.3.0...releases/v0.4.0](https://github.com/amesk/yaPDP/compare/releases/v0.3.0...releases/v0.4.0)
+
+**yaPDP — Yet Another PDP-11/70 web emulator** with an authentic front panel,
+a Model 33 ASR teletype, DECscope VT52 and VT100 terminals and a DEC LP11 line
+printer.
+
+## What's new
+
+- **Ready-made machines, one click away.** The magic wand has a Scenario tab:
+  a saved machine — a game mid-flight, a prepared RT-11 session, a BASIC prompt
+  waiting for you — comes back exactly as it was left, with a picture of it and a
+  line saying what it is.
+- **Games have their own shelf.** Lunar Lander, Space Invaders, Dungeon,
+  Adventure and Time52 open already running, on both the new landing page and
+  the classic one, and an enlarged screenshot now carries its own Play button.
+- **Share a machine, not just a file.** A saved machine can travel as a file, as
+  text you paste anywhere, through a GitHub Gist, or through your system's share
+  sheet — and importing accepts every one of those forms.
+- **A service mode for exhibits.** A hidden maintenance screen returns the whole
+  emulator to the way it was delivered — settings, imported disks, saved
+  machines — and brings the exhibit back in one confirmation. It is meant for a
+  kiosk with no keyboard and no address bar.
+- **A stopped machine explains itself.** When the guest stops on its own
+  instruction, or the emulator catches it running wild, a notice says where it
+  stopped and which button brings it back, instead of leaving what looks like a
+  frozen screen.
+- **Tidying up after a session.** An imported image can be deleted from the
+  storage page once it is no longer needed, and unmounting a disk no longer
+  throws the image away with it.
+- **A machine remembers how it was wired.** A disk bound to a particular drive
+  stays there through saving, sharing and loading, and a restored machine brings
+  back the whole setup it was saved with — not only its memory.
+
+## Improved
+
+- **The line printer prints on line-printer paper**: green-bar stock, tractor
+  feed holes down both edges, the right proportions in the print dialog and on
+  screen, bold and underlined text, and a fold that never cuts a hole.
+- **The printed manual reads like a book** — running headers and footers, a
+  two-column index with page numbers, cross-references that jump where they
+  should and a clean black-and-white layout.
+- **The documentation grew up.** The user manual — and the guide on the landing
+  page — gained a glossary, a keyboard-shortcut table, a reference of every
+  setting, troubleshooting for the usual failures, a chapter on what the
+  emulator reproduces faithfully and where it approximates, and recipes for
+  embedding the machine into a museum page.
+- **The emulator speaks up** when a download fails, a saved machine does not
+  apply or the fullscreen switch does not take, in a short notice instead of the
+  developer console.
+- **Neater controls.** The state button moved next to the magic wand, the camera
+  stays on the machine pages where a picture is worth taking, and a long image
+  name no longer pushes buttons off the storage page.
+- **The desktop app ships its machines properly**: the Full installer offers
+  every prepared machine and every image it carries, and the Minimal one no
+  longer complains about disks it never included.
+- **Galleries loop**, so the last card is one more click away instead of a dead
+  end.
+
+## Fixed
+
+- A fresh start is a machine with the key in the POWER OFF position, not a
+  halted processor complaining about address 2 on every reload.
+- Unmounted disks boot again, and stored images survive an unmount.
+- The paper-tape reader keeps its tape across a reset and really rewinds it.
+- Loading one machine after another no longer replays the previous machine's
+  typed commands or leaves its text on the paper.
+- A shared link no longer reloads itself in a loop, and a long restore no longer
+  mounts its disks twice.
+- A saved machine travels with the changes the guest wrote to its disks, so a
+  file that went out and came back still has an intact file system.
+- A restored Lunar Lander keeps flying, and the pointer over the vector display
+  is where you think it is.
+- The share dialog accepts a pasted screenshot, and a machine named with a quote
+  in it can no longer break the dialog.
+- Importing a saved machine from a file works again.
+- A gallery link no longer traps a first-time visitor behind a welcome hint.
+- Desktop: the fullscreen button no longer claims it failed while it worked.
+- Screenshots are saved on black, the way the machine looks.
+
+---
+
 # yaPDP v0.3.0 — Release Notes
 
 - **Release date:** 2026-09-30
