@@ -503,6 +503,27 @@ column grid survives the bold. `Save .txt` stays plain text — a .txt has no
 styling — and the printed strip is clipped at the platen edge, exactly as the
 132-column mechanism would.
 
+## Service mode (museum maintenance)
+
+Every exhibit accumulates state the ordinary interface is not meant to destroy:
+the saved configuration, imported disk and tape images, saved machine states
+and the "disk overlays" holding the guest OS's own writes. In a museum a
+machine has to be brought back to the state it was delivered in, and that is a
+destructive operation — so it lives on a screen of its own and nowhere else.
+
+It is entered with `pdp11.html?maintenance=1`, by **5 clicks within 2 seconds**
+on the version marker (`v0.4.0` under the `yaPDP` name, bottom-left; on a
+tablet, the version row of the Info page), or by launching the desktop app with
+`--maintenance`. The screen offers **System reset** — which asks for
+confirmation with the focus on **Cancel**, then stops the machine, wipes the
+persisted state, erases the saved images, states and disk overlays, and reloads
+— and **Close**, which returns to the exhibit with its URL parameters intact.
+
+The GitHub token used by the Share dialog deliberately survives: a factory
+reset restores the exhibit, it does not log the operator out. Full details,
+including the kiosk procedure and how to add an operation, are in
+[MAINTENANCE.md](MAINTENANCE.md).
+
 ## Panel tricks
 
 ### A simple light chaser

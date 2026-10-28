@@ -1,0 +1,205 @@
+/*
+ * yaPDP — service mode (maintenance) screen.
+ *
+ * Deliberately self-contained: it only styles the markup declared near the end
+ * of pdp11.html (#maintenance-overlay and the confirmation dialog). It must not
+ * depend on the museum layout rules, because the service screen has to stay
+ * readable even if the emulator UI behind it is in an odd state (zoomed VT52,
+ * fullscreen, mobile bar).
+ *
+ * Palette matches css/pdp11.css: #16120e / #1c1915 slabs, #c8a860 gold,
+ * #e0d8c8 text, #8d8271 muted, #b5544a destructive accent.
+ */
+
+/* The screen sits ABOVE the startup gate (z-index 100000 in pdp11.html):
+   a service screen that can be hidden by a loading overlay is useless. */
+.maintenance-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 24px 18px;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(200, 168, 96, 0.08), transparent 60%),
+        rgba(10, 9, 8, 0.97);
+    color: #e0d8c8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.55;
+    overflow-y: auto;
+}
+
+.maintenance-overlay[hidden] {
+    display: none;
+}
+
+body.maintenance-open {
+    overflow: hidden;
+}
+
+.maintenance-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 640px;
+    margin: auto;
+    padding: 22px 24px 20px;
+    background: #1c1915;
+    border: 2px solid #4a453a;
+    border-radius: 6px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.65);
+}
+
+.maintenance-kicker {
+    margin: 0 0 4px;
+    color: #8d8271;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.maintenance-card h1 {
+    margin: 0 0 12px;
+    color: #f0e6c8;
+    font-size: 20px;
+    font-weight: normal;
+    letter-spacing: 0.04em;
+}
+
+.maintenance-card h2 {
+    margin: 18px 0 8px;
+    color: #c8a860;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.maintenance-intro {
+    margin: 0 0 12px;
+    color: #bdb5a4;
+}
+
+.maintenance-zone {
+    margin: 18px 0 0;
+    padding: 14px 16px;
+    border: 1px solid #4a453a;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.maintenance-zone.danger {
+    border-color: #6d3a33;
+}
+
+.maintenance-list {
+    margin: 8px 0 0;
+    padding-left: 20px;
+    color: #bdb5a4;
+}
+
+.maintenance-list li {
+    margin: 3px 0;
+}
+
+.maintenance-warning {
+    margin: 12px 0 0;
+    padding: 8px 10px;
+    border-left: 3px solid #b5544a;
+    background: rgba(181, 84, 74, 0.12);
+    color: #ff9b8a;
+}
+
+.maintenance-status {
+    min-height: 1.4em;
+    margin: 14px 0 0;
+    color: #8d8271;
+}
+
+.maintenance-status.ok {
+    color: #9fc48a;
+}
+
+.maintenance-status.error {
+    color: #ff9b8a;
+}
+
+.maintenance-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+/* Buttons mirror .modal-close from css/pdp11.css so the service screen feels
+   like the rest of the machine, without depending on that stylesheet. */
+.maintenance-btn {
+    padding: 7px 16px;
+    background: #2a2620;
+    color: #e0d8c8;
+    border: 1px solid #5a5346;
+    border-radius: 3px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.maintenance-btn:hover {
+    background: #3a3224;
+}
+
+.maintenance-btn:focus-visible {
+    outline: 2px solid #c8a860;
+    outline-offset: 1px;
+}
+
+.maintenance-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.maintenance-btn.danger {
+    border-color: #b5544a;
+    color: #ff9b8a;
+}
+
+.maintenance-btn.danger:hover {
+    background: #3a241f;
+}
+
+/* --- Confirmation dialog ------------------------------------------------
+   A native <dialog>: Esc cancels it for free and the browser provides the
+   focus trap. src/maintenance.js() focuses Cancel explicitly — the destructive
+   button must never be the default. */
+.maintenance-confirm {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    max-width: 640px;
+    width: calc(100% - 24px);
+}
+
+.maintenance-confirm::backdrop {
+    background: rgba(6, 5, 4, 0.78);
+}
+
+.maintenance-confirm .maintenance-card {
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .maintenance-overlay {
+        padding: 12px 10px;
+        align-items: flex-start;
+    }
+
+    .maintenance-card {
+        padding: 18px 16px 16px;
+    }
+
+    .maintenance-card h1 {
+        font-size: 17px;
+    }
+}

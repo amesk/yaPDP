@@ -67,6 +67,7 @@
     "e2e:import-export": "wireit",
     "e2e:state:disk-access": "wireit",
     "e2e:unmount": "wireit",
+    "e2e:maintenance": "wireit",
     "e2e:firstrun-deeplink": "wireit",
     "e2e:quickboot-take-control": "wireit",
     "e2e:diskstore": "wireit",
@@ -385,6 +386,21 @@
       "files": [
         "src/**",
         "tests/e2e-mobile-input.js",
+        "tools/**",
+        "css/**",
+        "*.html",
+        "media/**",
+        "package.json"
+      ]
+    },
+    "e2e:maintenance": {
+      "command": "node tools/validate.js e2e:maintenance",
+      "dependencies": [
+        "test"
+      ],
+      "files": [
+        "src/**",
+        "tests/e2e-maintenance.js",
         "tools/**",
         "css/**",
         "*.html",

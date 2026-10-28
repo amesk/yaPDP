@@ -10,6 +10,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Service mode for museum exhibits.** A hidden maintenance screen returns the
+  emulator to the state it was delivered in: a confirmed **System Reset** stops
+  the machine, wipes the persisted configuration, imported images, saved
+  machine states and the write-back disk overlays, and reloads, while the
+  GitHub token used by Share deliberately survives; **Close** returns to the
+  exhibit with its URL parameters intact. It is entered with
+  `?maintenance=1`, by five clicks within two seconds on the version marker
+  (the way in on a kiosk with no address bar), or by launching the desktop app
+  with `--maintenance`. Every storage key in `src/` is now covered by a drift
+  test, so a new persisted value cannot silently outlive a reset.
+  (`pdp11.html`, `src/maintenance.js`, `css/maintenance.css`,
+  `src/snapshots.js`, `src/dragdrop.js`, `src-tauri/src/lib.rs`,
+  `tools/run-tests.js`, `tools/validate.js`, `package.json`, `README.md`,
+  `docs/MAINTENANCE.md`, `docs/FEATURES.md`, `docs/ARCHITECTURE.md`,
+  `tests/maintenance-reset.test.js`, `tests/e2e-maintenance.js`)
+
 - **The machine says why it stopped.** A CPU halt — the guest's own `HALT` or
   the emulator's runaway-trap guard — now raises an operator toast carrying the
   address and the way out ("press CONT", or "press RESET or boot again"), where
@@ -309,6 +325,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/snapshots.js`, `css/pdp11.css`)
 
 ### Fixed
+
+- **The machine no longer switches itself on when a page loads.** Power at
+  startup comes only from the `powerOn` configuration option, so a factory
+  state is a machine at the POWER OFF detent instead of a CPU executing zeroed
+  memory and raising the "halted at 000002 — trapped into an empty vector"
+  notice on every reload. (`src/pdp11-panel.js`; pinned by
+  `tests/e2e-maintenance.js`)
 
 - **Fullscreen in the desktop app no longer claims it failed.** The toggle
   button worked, yet every click raised "Could not toggle fullscreen": the

@@ -122,6 +122,13 @@ contract, the bridge and the write-back storage split.
 | [`css/g60printer.css`](../css/g60printer.css)           | Teletype printer styles — including the "SVG art layer" block: the `--tty-*` marker variables, the backdrop and the marker-anchored overlay rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | [`assets/Model-33-ASR.svg`](../assets/Model-33-ASR.svg) | Model 33 ASR artwork — the console teletype cabinet used as the page backdrop. Its markers layer (`Keyboard`, `Apron`, `PuncherControl`, `PuncherTape`, `ReaderControl`, `ReaderTape`, `Paper`, `Caret`, each rect `display: none`) carries the rects the HTML controls are anchored to: the page reads them at load (`ttyMarkerVars` in `src/pdp11-app.js`) and writes them into the rig's `--tty-*` variables, so editing the artwork moves the controls (a marker rectangle carrying its own `rotate()`/`matrix()` counts as a four-point quad and is projected with a `matrix3d()`). Two layers are NOT part of the backdrop: `Foreground` is inlined (with `<defs>`, for its gradients) into `#tty-foreground`, which stacks above every overlay — that is how parts of the drawing cover the keys, the printed sheet and the tapes — while `Middle` goes into `#tty-foreground-back`, stacked BETWEEN the two hanging tapes (10 < 11 < 12), so the punched tape comes out OVER the punch tongue there while the reader tape still slips UNDER its own (layer lookup: `ttyArtLayerId`, Inkscape label first). `css/g60printer.css` keeps the same numbers as a fallback; `tests/teletype-svg-backdrop.test.js` pins parser, numbers, both layers and the never-paint rule |
 
+The service-mode (museum maintenance) screen is not a device and not a page of
+its own: [`src/maintenance.js`](../src/maintenance.js) owns the reset registry
+and wires an overlay declared in `pdp11.html`, [`css/maintenance.css`](../css/maintenance.css)
+styles it, and the reset walks the storage owners through their own clear
+methods before reloading. Entry points, the exact list of what a reset erases
+and the kiosk procedure are in [MAINTENANCE.md](MAINTENANCE.md).
+
 ## User-facing errors
 
 Most `console.*` output in the emulator is **debug tracing** — CPU/MMU/UDA/disk
@@ -307,6 +314,7 @@ Restore order for that field:
 - [Image version registry](image-registry.md) — image identity, version numbering, immutable publication and long-term availability
 - [Building the desktop app](BUILDING.md) — toolchain, artifacts, npm scripts
 - [Feature deep-dive](FEATURES.md) — the Model 33 ASR teletype, LP11, VT52 and VT100, the startup gate, quick boot and the UI pages in detail
+- [Service mode](MAINTENANCE.md) — the hidden museum-maintenance screen: entries, what System Reset erases, the kiosk procedure and how to extend it
 - [Known issues](known-issues.md) — open emulator bugs (e.g. ULTRIX‑11 multi-user panic)
 - [Example boot sessions](ExampleBoots.md) — full boot logs for every guest OS
 - [User manual](../manual.html) — step-by-step guide with live screenshots; everything are generated from

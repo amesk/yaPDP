@@ -81,6 +81,8 @@ const SUITES = [
     ["e2e:firstrun-deeplink",  ["tests/e2e-firstrun-deeplink.js"]],
     ["e2e:quickboot-take-control", ["tests/e2e-quickboot-take-control.js"]],
     ["e2e:diskstore",          ["tests/e2e-diskstore.js"]],
+    // Service mode: destructive, so it runs in its own throwaway profile.
+    ["e2e:maintenance",        ["tests/e2e-maintenance.js"]],
 ];
 
 function serverAlive() {

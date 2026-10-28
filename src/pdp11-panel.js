@@ -411,12 +411,18 @@ function examineDeposit(data) {
     restore: restorePanelState
   };
 
-  // Default to the powered-on RUN position so the active label matches the
-  // initial panel state. Deferred: `panel` is created by pdp11.js, which is
-  // loaded after this module.
-  setTimeout(function () {
-    setPowerState('run');
-  }, 0);
+  // The machine's power at load is decided in ONE place: applyMachinePower()
+  // in src/pdp11-app.js, from the CONFIG option (docs: default is OFF). This
+  // module must not switch it on: a deferred setPowerState('run') used to run
+  // here "so the active label matches the initial panel state", but the POWER
+  // LOCK labels have no lit state (see .lockPanelPos in css/pdp11.css) — its
+  // only effect was applyMachinePower(true) + Config.set({powerOn:true}), i.e.
+  // a machine powered on behind the operator's back. With the factory
+  // bootDevice ('none') the CPU then executed zeroed memory and halted at
+  // 000002, which raises the halt notice on every reload (a factory reset made
+  // that state the normal one). Whether the panel timer or pdp11-app.js won
+  // that race depended on how the parser yielded between scripts, so the
+  // symptom came and went.
 
   // --- Rotary switch 0 (class="rotarySwitch" in rotaryTopPanel) ---
   var rotary0 = document.querySelector('.rotaryTopPanel .rotarySwitch');

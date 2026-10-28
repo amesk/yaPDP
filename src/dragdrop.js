@@ -128,6 +128,38 @@
         });
     }
 
+    // Erase every stored image in one transaction. Service mode (System Reset)
+    // only: clearing the object store is safe on the connection this page
+    // already holds, unlike indexedDB.deleteDatabase() which would wait for it.
+    function dbClear() {
+        return openDB().then(function (db) {
+            if (!db) return Promise.resolve();
+            return new Promise(function (resolve) {
+                var tx = db.transaction(DB_STORE, "readwrite");
+                tx.objectStore(DB_STORE).clear();
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+            });
+        });
+    }
+
+    // Unmount everything the operator mounted from storage and drop the stored
+    // copies. Bundled/network media is not in IndexedDB and is streamed again
+    // on the next boot, so it is deliberately left alone.
+    function clearAllImages() {
+        var urls = Object.keys(userImages);
+        return dbClear().then(function () {
+            urls.forEach(function (url) { DataLoader.unmount(url); });
+            // Cleared IN PLACE: window.yapdpExportList.userImages hands this
+            // very object to the tests, so reassigning it would split the map
+            // the page reads from the one that was handed out.
+            urls.forEach(function (url) { delete userImages[url]; });
+            refreshMountedList();
+            refreshExportList();
+            return urls.length;
+        });
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -1112,7 +1144,10 @@
             // restore: the images it mounts arrive after init() already filled
             // the list, so the page would otherwise show none of them.
             refreshMountedList: refreshMountedList,
-            userImages: userImages
+            userImages: userImages,
+            // Service mode: erase the operator's stored images (see
+            // clearAllImages above). Resolves with how many were unmounted.
+            clearAll: clearAllImages
         };
     }
 
