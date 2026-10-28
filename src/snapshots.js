@@ -908,6 +908,22 @@ var SnapshotStore = (() => {
         return dbDelete(id);
     }
 
+    // Erase every stored state in one transaction. Used by the service mode's
+    // System Reset: clearing the object store is safe on the connection this
+    // page already holds (no deleteDatabase, so no `blocked` wait), and it
+    // leaves nothing behind — including records whose id the list would skip.
+    function removeAll() {
+        return openDB().then(function (d) {
+            if (!d) return Promise.resolve();
+            return new Promise(function (resolve) {
+                const tx = d.transaction(DB_STORE, "readwrite");
+                tx.objectStore(DB_STORE).clear();
+                tx.oncomplete = resolve;
+                tx.onerror = resolve;
+            });
+        });
+    }
+
     // --- Loading a state from a URL (?state= deep link) ------------------
     //
     // The second kind of shareable link (see docs/ROADMAP.md): ?boot= names a
@@ -4764,6 +4780,8 @@ var SnapshotStore = (() => {
         list: list,
         rename: rename,
         remove: remove,
+        // Service mode (System Reset): erase every stored state at once.
+        removeAll: removeAll,
         load: load,
         restore: restore,
         restoreApply: restoreApply,

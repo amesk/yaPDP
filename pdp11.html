@@ -126,6 +126,10 @@
   <!-- Google60 Printer styles -->
   <link rel="stylesheet" href="css/g60printer.css" type="text/css" charset="utf-8" media="all" />
 
+  <!-- Service mode (museum maintenance). Self-contained: it must stay readable
+       whatever the emulator UI behind it is doing. -->
+  <link rel="stylesheet" href="css/maintenance.css" type="text/css" charset="utf-8" media="all" />
+
 </head>
 
 <body>
@@ -2166,6 +2170,65 @@ Hello world
     </svg>
   </button>
 
+  <!-- Service mode (hidden). Entered with ?maintenance=1, by the 5-click
+       gesture on the version marker, or by launching the desktop app with
+       --maintenance. The destructive operations live ONLY here; wiring is in
+       src/maintenance.js, styles in css/maintenance.css. -->
+  <div id="maintenance-overlay" class="maintenance-overlay" hidden aria-hidden="true">
+    <div class="maintenance-card" role="dialog" aria-modal="true" aria-labelledby="maintenance-title">
+      <p class="maintenance-kicker">yaPDP &middot; service mode</p>
+      <h1 id="maintenance-title">Maintenance</h1>
+      <p class="maintenance-intro">
+        Operations here destroy the machine state yaPDP has saved and leave the
+        emulator as it was delivered. Close returns to the operations without
+        touching anything.
+      </p>
+
+      <section class="maintenance-zone danger" aria-labelledby="maintenance-zone-reset">
+        <h2 id="maintenance-zone-reset">System reset</h2>
+        <p>Stops the machine and then performs, in order:</p>
+        <ul id="maintenance-steps" class="maintenance-list"></ul>
+        <p class="maintenance-warning">
+          Saved machine states, imported images and the guest's own disk writes
+          are destroyed for good. The configuration returns to its factory
+          defaults. There is no undo.
+        </p>
+        <div class="maintenance-actions">
+          <button type="button" id="maintenance-reset" class="maintenance-btn danger">System reset&hellip;</button>
+        </div>
+      </section>
+
+      <p id="maintenance-status" class="maintenance-status" role="status" aria-live="polite"></p>
+
+      <div class="maintenance-actions">
+        <button type="button" id="maintenance-close" class="maintenance-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation dialog. A native <dialog>: Esc cancels it and the browser
+       traps focus; src/maintenance.js focuses Cancel explicitly so the
+       destructive button is never the default. -->
+  <dialog id="maintenance-confirm" class="maintenance-confirm" aria-labelledby="maintenance-confirm-title">
+    <div class="maintenance-card">
+      <p class="maintenance-kicker">yaPDP &middot; service mode</p>
+      <h2 id="maintenance-confirm-title">Reset the machine to factory state?</h2>
+      <p class="maintenance-intro">
+        The emulator is stopped, the following operations run, and the page
+        reloads. Cancel leaves everything as it is.
+      </p>
+      <ul id="maintenance-confirm-list" class="maintenance-list"></ul>
+      <p class="maintenance-warning">
+        This cannot be undone: the saved images, machine states and disk
+        overlays stored by yaPDP are erased.
+      </p>
+      <div class="maintenance-actions">
+        <button type="button" id="maintenance-cancel" class="maintenance-btn">Cancel</button>
+        <button type="button" id="maintenance-confirm-ok" class="maintenance-btn danger">Reset</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src='src/version.js'></script>
   <script src='src/emulation-control.js'></script>
   <script src='src/pdp11-panel.js'></script>
@@ -2270,6 +2333,9 @@ Hello world
   <script src='src/snapshots.js'></script>
   <script src='src/html2canvas.min.js'></script>
   <script src='src/screenshot.js'></script>
+  <!-- Service mode: must load LAST — it calls into Config, MountMap, LastBoot,
+       ViewerConfig, DiskStore, SnapshotStore, EmulationControl and the CPU. -->
+  <script src='src/maintenance.js'></script>
 </body>
 
 </html>

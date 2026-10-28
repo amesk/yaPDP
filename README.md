@@ -125,6 +125,7 @@ For build instructions and toolchain configuration, see [`docs/BUILDING.md`](doc
 * **State Format:** The `.state` container, manifest schema versioning, the newer-snapshot warning and the evolution plan: [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md).
 * **Image Version Registry:** Rules for image identity, version numbering, immutable publication, and long-term availability of published image content: [`docs/image-registry.md`](docs/image-registry.md).
 * **Embedding the Emulator:** For museums and educators — embed yaPDP in any HTML page via `<iframe>`: [`docs/manual/machine-state.md`](docs/manual/machine-state.md) (see the Embedding subsection).
+* **Service Mode (museum maintenance):** The hidden screen that returns an exhibit to its delivered state — System Reset of the configuration, imported images, saved states and disk overlays; entries, kiosk procedure and how to extend it: [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md).
 
 ---
 
