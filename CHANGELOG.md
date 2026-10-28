@@ -8,794 +8,286 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-28
+
 ### Added
 
-- **Service mode for museum exhibits.** A hidden maintenance screen returns the
-  emulator to the state it was delivered in: a confirmed **System Reset** stops
-  the machine, wipes the persisted configuration, imported images, saved
-  machine states and the write-back disk overlays, and reloads, while the
-  GitHub token used by Share deliberately survives; **Close** returns to the
-  exhibit with its URL parameters intact. It is entered with
-  `?maintenance=1`, by five clicks within two seconds on the version marker
-  (the way in on a kiosk with no address bar), or by launching the desktop app
-  with `--maintenance`. Every storage key in `src/` is now covered by a drift
-  test, so a new persisted value cannot silently outlive a reset.
-  (`pdp11.html`, `src/maintenance.js`, `css/maintenance.css`,
+- **Service mode for museum exhibits.** A hidden maintenance screen
+  (`?maintenance=1`, five clicks within two seconds on the version marker, or
+  `--maintenance` on the desktop app) returns the emulator to the state it was
+  delivered in: a confirmed **System Reset** stops the machine and wipes the
+  persisted configuration, imported images, saved states and disk write-back
+  overlays while the Share GitHub token survives, and **Close** returns to the
+  exhibit with its URL parameters intact; every storage key in `src/` is covered
+  by a drift test. (`src/maintenance.js`, `css/maintenance.css`,
   `src/snapshots.js`, `src/dragdrop.js`, `src-tauri/src/lib.rs`,
-  `tools/run-tests.js`, `tools/validate.js`, `package.json`, `README.md`,
-  `docs/MAINTENANCE.md`, `docs/FEATURES.md`, `docs/ARCHITECTURE.md`,
-  `tests/maintenance-reset.test.js`, `tests/e2e-maintenance.js`)
+  `tests/maintenance-reset.test.js`)
 
-- **The machine says why it stopped.** A CPU halt — the guest's own `HALT` or
-  the emulator's runaway-trap guard — now raises an operator toast carrying the
-  address and the way out ("press CONT", or "press RESET or boot again"), where
-  previously it only printed a line to the developer console and the machine
-  simply looked frozen. A stop at 0/2/4 (trapped into an empty vector) and a
-  runaway trap are errors; an ordinary guest halt is a warning; a panel `STEP`
-  stop stays silent, and nothing is shown while the Quick Boot wizard owns the
-  machine. The halted Panel icon keeps the reason in its tooltip and repeats the
-  notice when clicked. The same event reaches the headless stack, so a
-  diagnostic that HALTs (XXDP `EKBCD1` stops at PC `000010`) now fails with that
-  address instead of looking like a 90-second hang. Documented in the manual
-  (both languages) with a real screenshot, in `docs/ARCHITECTURE.md` and
-  `docs/FEATURES.md`, and on the landing's User Manual page. (`src/pdp11.js`,
-  `src/halt-notice.js`, `src/pdp11-app.js`, `src/panel-led.js`, `pdp11.html`,
-  `tests/xxdp-lib.js`, `docs/xxdp-diagnostics.md`, `docs/ARCHITECTURE.md`,
-  `docs/FEATURES.md`, `docs/manual/troubleshooting.md`,
-  `docs/manual/ru/troubleshooting.md`, `landing/src/components/UserManual.tsx`,
-  `tools/screenshots-manual.js`, `tests/halt-notice.test.js`,
-  `tests/cpu-halt-hook.test.js`, `tests/e2e-xxdp-halt-notice.js`)
+- **The machine says why it stopped.** A guest `HALT`, the runaway-trap guard or
+  a stop at 0/2/4 raises an operator toast carrying the address and the way out
+  instead of a line in the developer console; the Panel icon keeps the reason in
+  its tooltip and repeats the notice, a panel `STEP` stop stays silent, and the
+  same event reaches the headless stack, so an XXDP diagnostic that HALTs fails
+  with its PC rather than a 90-second hang. (`src/pdp11.js`,
+  `src/halt-notice.js`, `src/panel-led.js`, `tests/halt-notice.test.js`)
 
-- **Delete image on the Storage page.** An image the operator imported can now
-  be erased from the storage — guest writes included — with an explicit
-  **Delete image** button beside **Unmount**, which asks for confirmation and
-  offers **Export first**. Unmount itself only takes the medium out of the
-  machine, and bundled media is never offered for deletion because it is
-  streamed from the server again. (`src/dragdrop.js`, `pdp11.html`,
-  `docs/manual/storage.md`, `docs/manual/ru/storage.md`,
-  `landing/src/components/UserManual.tsx`; pinned by
-  `tests/e2e-unmount-reboot.js`)
+- **Toasts for user-facing failures.** A bundled image that failed to load, a
+  state that did not apply, an overlay that could not be restored or a failed
+  fullscreen toggle now reach a toast instead of the console, with key-based
+  deduplication; the queue rests between the bottom round buttons on every
+  layout. (`src/toasts.js`, `src/pdp11-app.js`, `css/pdp11.css`,
+  `tests/toasts.test.js`)
 
-- **A state remembers which image each drive held.** A drive remapped on the Storage page (rk4 holding rk5.dsk) survives saving, exporting, importing and `?state=` teleporting, and restores as the same machine on a browser that never made the binding; opening a state replaces the local drive bindings, while a state taken before this change leaves them untouched. (`src/mountmap.js`, `src/snapshots.js`, `src/state-format.js`, `src/devices/`, `tools/export-state.js`, `tools/restore-state.js`, `tools/headless-term.js`, `docs/ARCHITECTURE.md`, `docs/STATE-FORMAT.md`, `docs/FEATURES.md`, `tests/mountmap.test.js`, `tests/state-mountmap.test.js`, `tests/core.test.js`)
+- **Scenario tab in the Quick Boot wizard.** Pre-built states from `states/`
+  restore instantly the way a `?state=` link does, with a thumbnail that opens
+  the shared lightbox; `tools/gen-state-manifest.js` derives
+  `states/manifest.json` from the actual files and keeps previews as files under
+  `states/previews/`, inside the startup budget. (`src/quickboot.js`,
+  `src/lightbox.js`, `tools/gen-state-manifest.js`)
 
-- **Self-describing pre-built machine states.** Every `states/*.state.zst` now carries its own name, one-line description and preview, so a Scenario card says what the machine is instead of "RP1 (ready)", and the restore toast names the guest rather than the device key; a state opened from somebody else's `?state=` link describes itself the same way, because the metadata travels inside the container. Previews are captured from the active page at the moment the state is taken and embedded as a PNG data URI, `states/previews/*` is derived from them, and `node tools/states-annotate.js --write` keeps the committed states annotated across re-exports. (`src/snapshots.js`, `tools/states-annotate.js`, `tools/state-annotations.json`, `tools/preview-capture.js`, `tools/export-state-browser.js`, `tools/export-state.js`, `tools/gen-state-manifest.js`, `states/`, `docs/BUILDING.md`, `docs/CONTRIBUTING.md`, `tests/state-annotations.test.js`, `tests/preview-capture.test.js`, `tests/states-manifest.test.js`, `tests/e2e-quickboot-scenario.js`)
-- **One-click launch from gallery lightboxes.** Enlarged guest-OS, Instant Run, and game screenshots now offer the matching Run/Teleport/Play action, both in the React landing page and the classic root `index.html`; ordinary images without a launch target remain view-only. (`landing/src/components/Lightbox.tsx`, `landing/src/components/OSCarousel.tsx`, `landing/src/components/InstantRun.tsx`, `landing/src/components/GamesCarousel.tsx`, `index.html`)
-- **Scenario tab in the Quick Boot wizard.** The magic-wand dialog now has
-  two tabs — "Boot" (existing OS boot scenarios) and "Scenario" (pre-built
-  machine states from `states/`). Picking a scenario restores the machine
-  instantly, the same way a `?state=` deep link does. A new build step
-  (`tools/gen-state-manifest.js`) generates `states/manifest.json` from the
-  actual state files, so the list is always in sync. States that carry a
-  screenshot show a thumbnail, and clicking it opens the full picture in a
-  new shared lightbox (`src/lightbox.js`) instead of launching the state.
-  (`src/quickboot.js`, `src/lightbox.js`, `css/pdp11.css`,
-  `tools/gen-state-manifest.js`, `states/manifest.json`, `package.json`,
-  `pdp11.html`)
-- **The state manifest is light and screenshots are files.** The Scenario
-  tab's manifest (`states/manifest.json`) stores screenshots as paths to
-  `states/previews/*.png` instead of inline base64, so fetching the list
-  on page load stays inside the startup budget pinned by
-  `tests/e2e-startup-cls.js`. (`tools/gen-state-manifest.js`,
-  `states/manifest.json`, `states/previews/`, `src/quickboot.js`,
-  `tests/states-manifest.test.js`, `tests/e2e-startup-cls.js`)
-- **Glossary chapter in the user manual.** A new reference chapter
-  defining key terms (ASR-33, CONFIG, DL11, LP11, VT11, snapshot, etc.)
-  for quick lookup. Entries are written as Pandoc-style definition
-  lists and rendered as semantic `<dl>` markup (`docs/manual/glossary.md`,
-  `docs/manual/ru/glossary.md`, `tools/build-manual.js`)
-- **Keyboard shortcuts table in the Controls chapter.** A complete list
-  of keyboard shortcuts (F11, Ctrl+Shift+S, Page Up/Down, Ctrl+C/Z,
-  etc.) with their effects. (`docs/manual/controls.md`,
-  `docs/manual/ru/controls.md`)
-- **All-options-at-a-glance table in the Config chapter.** A single
-  reference table listing every CONFIG option, its tab, values and
-  whether it applies immediately or on restart.
-  (`docs/manual/config.md`, `docs/manual/ru/config.md`)
-- **New troubleshooting sections.** Added guidance for: guest OS does
-  not boot, keyboard does not type, no sound, poor performance, blank
-  screen, and CORS errors in the browser version — in the manual and in
-  the landing page's user guide alike.
-  (`docs/manual/troubleshooting.md`,
-  `docs/manual/ru/troubleshooting.md`,
-  `landing/src/components/UserManual.tsx`)
-- **About yaPDP chapter in the user manual.** A new introductory chapter
-  describing the project's goals, key features, and guidance for museums
-  and educators, including embedding and interactive exhibit creation.
-  (`docs/manual/about.md`, `docs/manual/ru/about.md`)
-- **Historical Fidelity & Limitations chapter in the user manual.** A new
-  manual chapter explaining what yaPDP reproduces accurately, where
-  emulation differs from the original hardware, and how to use the
-  emulator as a historical learning tool.
-  (`docs/manual/fidelity.md`, `docs/manual/ru/fidelity.md`)
-- **Internal links in PDF manual now resolve correctly.** The
-  named-destination catalog (/Dests) is rebuilt after pdf-lib merge,
-  so every internal link — TOC entries and in-text cross-references
-  alike — jumps to the correct page in the PDF.
-  (`tools/build-manual-pdf.js`)
-- **Embedding documentation for museums and educators.** A new
-  "Embedding the emulator" subsection in the Machine State chapter
-  describes how to embed yaPDP in external sites via `<iframe>` with
-  `?boot=` and `?state=` parameters, including CORS bypass through
-  GitHub Gist. (`docs/manual/machine-state.md`,
-  `docs/manual/ru/machine-state.md`)
-- **Text envelope format for sharing states via GitHub Gist.** A new
-  `yapdp-text-envelope-v1` format wraps a `.state.zst` file in base64 text
-  that can be pasted into any text pastebin. The envelope is handled by
-  [`src/state-envelope.js`](src/state-envelope.js), shared between browser
-  and Node tools. (`docs/STATE-FORMAT.md`, `src/state-envelope.js`)
-- **Import/Export split-buttons.** The Import and Export buttons in the
-  Machine-state dialog are now split-buttons. Import offers file picker,
-  clipboard import, and URL import with auto-detection of binary vs text
-  envelope. Export offers `.state.zst` download, text file save, and
-  clipboard copy. (`src/snapshots.js`)
-- **Share dialog extended with text and Gist output.** The "Create Shareable
-  State" button in the Share dialog is now a split-button offering: download
-  `.state.zst`, copy text envelope to clipboard, save as text file, and
-  create a GitHub Gist (opens a helper dialog with instructions, URL input,
-  and a share-link generator). (`src/snapshots.js`)
-- **User-facing failures now surface as toasts.** Real, user-relevant errors and
-  warnings — a bundled image that failed to load, a dropped state that did not
-  apply, a disk overlay that could not be restored, a fullscreen toggle that
-  failed — are now shown through the toast subsystem instead of being lost in
-  the browser console. The toast queue gained key-based deduplication, so a
-  repeated identical failure extends one toast instead of spamming.
-  (`src/toasts.js`, `src/pdp11-app.js`, `src/tauri-bundled.js`, `src/diskstore.js`,
-  `src/dragdrop.js`, `src/fullscreen.js`; pinned by `tests/toasts.test.js` and
-  `tests/toasts-adapter.test.js`)
-- **Sharing a state, and the manual that explains it.** The machine-state dialog's
-  Share button is now documented end to end — what the dialog asks for (title,
-  description, button label, screenshot, a command that types itself after the
-  restore), how the file gets to somebody else, and the two conditions a link
-  depends on: the host must allow the read (`Access-Control-Allow-Origin`), and
-  the receiver needs the same disk images, because a state carries their
-  fingerprints rather than the images themselves. The manual states both plainly
-  and names the fallback — **Import** takes any `.state` or `.state.zst` file
-  with no server and no CORS — so a shared state never depends on a host that
-  may not cooperate. (`docs/manual/machine-state.md`, `docs/manual/ru/machine-state.md`,
-  `docs/FEATURES.md`, `landing/src/components/UserManual.tsx`,
-  `tools/screenshots-manual.js`, `assets/images/manual/dialog-share.png`)
-- **Two-column subject index in the PDF manual.** The printed index is now
-  laid out as a classic two-column back-of-the-book index with a dotted
-  leader per entry and real page numbers (a term may reference several
-  sections, listed as "12, 18"). The manual's web page is unchanged; the
-  index exists only in the PDF. The table of contents gets the same dotted
-  leaders between a chapter title and its page number.
-  (`docs/manual/_index.json`, `tools/build-manual.js`,
-  `tools/build-manual-pdf.js`, `tools/manual-template-head.html`)
+- **Self-describing machine states.** Every `states/*.state.zst` carries its
+  name, one-line description and preview inside the container, so a Scenario
+  card and the restore toast name the guest and a state opened from somebody
+  else's `?state=` link describes itself too;
+  `node tools/states-annotate.js --write` keeps re-exported states annotated.
+  (`src/snapshots.js`, `tools/states-annotate.js`, `states/`)
 
-- **Canonical state container and migration utility.** New states use a versioned blob catalog with SHA-256 integrity checks for RAM, disk overlays and embedded resources. `tools/convert-state-format.js` migrates existing `.state.zst` files to the canonical layout. The converter also verifies and migrates legacy FNV-1a image fingerprints in snapshots and disk overlays to SHA-256, refusing to rewrite states when the original compressed image bytes cannot be verified.
-- **The landing page's user guide covers the whole manual.** Its Quick Start,
-  Machine State and Controls chapters had fallen behind `docs/manual/`: the
-  Scenario tab, the iframe embedding recipes (including the Gist route around
-  CORS) and the keyboard-shortcut table were missing. All five topics are in
-  the guide now, in English and Russian, and a test holds its topic count to
-  the manual's so the two cannot drift apart again.
-  (`landing/src/components/UserManual.tsx`,
+- **Sharing a state in any form.** The Share dialog offers a `.state.zst`
+  download, a text envelope on the clipboard or in a text file, a GitHub Gist
+  helper and the system share sheet, which hands over the real file and falls
+  back to the envelope text when the sheet refuses it; `Import` and `Export`
+  became split-buttons carrying the clipboard, URL and text-file paths, and
+  prompt for the whole file instead of a truncated one. (`src/snapshots.js`,
+  `src/state-envelope.js`, `docs/STATE-FORMAT.md`)
+
+- **Snapshot steps and guided restore.** A saved state can execute console steps
+  before the operator takes control, and the Machine-state dialog's **Load**
+  button offers **Load as shared state** beside the plain restore for states
+  that carry a guide. (`src/step-engine.js`, `src/snapshots.js`)
+
+- **Versioned state manifest and a newer-state warning.** States carry
+  `schemaVersion` as SemVer plus the build that wrote them and a catalogue with
+  SHA-256 integrity checks, `tools/convert-state-format.js` migrates the older
+  layouts (legacy FNV-1a fingerprints included), a state from a newer MAJOR is
+  refused with a reason, and a snapshot written by a newer yaPDP asks **Update
+  to Latest / Open Anyway / Cancel**. (`src/state-format.js`,
+  `src/state-frame.js`, `src/snapshots.js`, `tools/convert-state-format.js`,
+  `tests/state-format.test.js`)
+
+- **Games gallery.** A Games carousel beside Instant Run opens the emulator on a
+  saved state with the guest already running — Lunar Lander, Space Invaders,
+  Dungeon, Adventure and Time52, each described in the reader's language; the
+  classic landing page mirrors both galleries in English. (`landing/src/components/GamesCarousel.tsx`,
+  `landing/src/data.ts`, `index.html`)
+
+- **One-click launch from gallery lightboxes.** An enlarged guest-OS, Instant Run
+  or game screenshot offers its Run/Teleport/Play action in the React landing
+  and in `index.html`; an image without a launch target stays view-only.
+  (`landing/src/components/Lightbox.tsx`, `landing/src/components/OSCarousel.tsx`,
+  `index.html`)
+
+- **Delete image on the Storage page.** An imported image can be erased with its
+  guest writes behind a confirmation that offers **Export first**, while Unmount
+  only takes the medium out of the machine and bundled media is never offered
+  for deletion. (`src/dragdrop.js`, `pdp11.html`, `tests/e2e-unmount-reboot.js`)
+
+- **Drive bindings travel with a state.** A drive remapped on the Storage page
+  survives saving, export, import and `?state=` teleporting and restores on a
+  browser that never made the binding. (`src/mountmap.js`, `src/state-format.js`,
+  `docs/STATE-FORMAT.md`, `tests/state-mountmap.test.js`)
+
+- **User manual: new chapters and reference tables.** About yaPDP, Historical
+  Fidelity and Limitations, a glossary rendered as `<dl>`, the keyboard-shortcut
+  table, the every-CONFIG-option table, troubleshooting for six common failures
+  and iframe embedding recipes; the landing page's guide carries the same
+  topics and documents Share end to end, and a test holds its topic count to the
+  manual's. (`docs/manual/`, `landing/src/components/UserManual.tsx`,
   `tests/landing-manual-coverage.test.js`)
-- **Historical Fidelity chapter in the landing page's guide.** The guide now
-  carries "Historical Fidelity and Limitations" — what the emulator preserves,
-  where it is an approximation, how to use it as a teaching tool, and how to
-  report a fidelity issue — in English and Russian, between Troubleshooting and
-  the desktop chapter. About yaPDP and the Glossary stay out on purpose: the
-  first is what the landing itself says about the project, the second is a
-  reference list the manual page owns.
-  (`landing/src/components/UserManual.tsx`; pinned by
-  `tests/landing-manual-coverage.test.js`)
+
 ### Changed
 
-- **The desktop app keeps its content next to the executable.** The pre-built
-  machine states and both variant manifests now install into the app's resource
-  directory (`states/`, `media/manifest.json`) instead of being compiled into the
-  binary, exactly like the disk and tape images: the executable no longer grows
-  by the states, and the Full installer offers every Scenario card and every
-  image it ships instead of the Minimal lists. (`tools/build-desktop.js`,
-  `tools/desktop-manifests.js`, `src-tauri/src/lib.rs`,
-  `src-tauri/tauri.conf.*.json`, `src/tauri-bundled.js`, `src/quickboot.js`,
-  `src/media-registry.js`, `src/snapshots.js`, `tests/desktop-bundle.test.js`,
-  `tests/desktop-manifests.test.js`, `tests/snapshotstore.test.js`)
-- **The LP11 Print sheet folds without a seam.** The tractor perforation now
-  reads as one continuous lattice across the fold: the feed holes are a whole
-  share of the sheet — 22 per sheet, the historical half inch on the machine's
-  11in page — so the gap between the last hole of one sheet and the first hole of
-  the next equals the spacing between the holes mid-sheet, and the fold never
-  cuts a hole. The sheet box reaches the paper's edges, so the strips and their
-  holes run to the fold instead of stopping at the last printed line, and the
-  10mm white border the dialog used to leave is gone. (`src/lp11paper.js`; pinned
-  by `tests/lp11-print.test.js`)
-- **The Mounted images list says why an image has no Export entry.** An image
-  that "Export image" cannot save — pristine bundled media the machine merely
-  streams — is marked "· nothing to export" in the list where it is mounted, so
-  the omission reads as a rule instead of a missing feature. The export rule
-  itself is unchanged: guest writes, or an image the operator mounted.
-  (`src/dragdrop.js`, `pdp11.html`, `docs/manual/storage.md`,
-  `docs/manual/ru/storage.md`, `landing/src/components/UserManual.tsx`,
-  `tests/export-list.test.js`, `tests/storage-mounted-refresh.test.js`)
-- **The "state was not restored" dialog is readable.** It says the machine was
-  left untouched before explaining anything, names each disk the way CONFIG does
-  (`rk5.dsk`, not a url), shows an eight-digit identity in the flow and keeps the
-  full SHA-256 digests behind **Technical details** with **Copy details**, where
-  a 64-character token can no longer push the dialog past the window edge. The
-  actions say what they do: **Keep it** and **Delete this state**, the latter
-  styled as a destructive action, with the offending disk listed first and the
-  rest counted; all actions sit on one wrapping row, so a third button never
-  touches its neighbour on a narrow window. (`src/snapshots.js`,
-  `css/pdp11.css`, `tests/e2e-snapshot-image-changed.js`)
-- **Running header and footer of the printed manual.** The header carries the
-  product name in the top-left corner and the document name in the top-right
-  one, the footer the edition in the bottom-left corner and the page number in
-  the bottom-right one; both labels are translated in the Russian edition.
-  (`tools/build-manual-pdf.js`)
-- **The Screenshot button is offered on the machine pages only.** Storage,
-  CONFIG and Info no longer show the round camera button in the bottom-left
-  corner: a picture of a settings or reference page is not what the operator
-  saves mid-session. (`src/pdp11-panel.js`, `css/pdp11.css`,
-  `docs/manual/controls.md`, `docs/manual/ru/controls.md`,
-  `tests/console-button-layout.test.js`)
-- **STATE button moved to the top-right corner, next to the magic wand.**
-  The round STATE button (machine-state dialog) is now docked immediately
-  left of the quick-boot wand instead of right of REBOOT. Both are
-  session-level actions that open a dialog, and the wand's Scenario tab
-  restores a saved state too. Pause and Reboot stay on the left as
-  live-machine controls. (`css/pdp11.css`, `pdp11.html`,
-  `src/pdp11-panel.js`, `docs/manual/machine-state.md`,
-  `docs/manual/ru/machine-state.md`, `docs/manual/controls.md`,
-  `docs/manual/ru/controls.md`, `docs/FEATURES.md`,
-  `tests/console-button-layout.test.js`)
-- **Quick Start chapter restyled.** Long paragraphs split into shorter
-  ones for better readability. (`docs/manual/quick-start.md`,
-  `docs/manual/ru/quick-start.md`)
-- **Link underlines removed in PDF manual.** Added `text-decoration:
-  none` to links in `@media print` to prevent Chromium from rendering
-  spaces inside link text as underscores in the PDF text layer.
-  (`tools/manual-template-head.html`)
-- The **Boot device** select is now present in every **Reboot** / **Bootstrap
-  now!** dialog. It used to be hidden whenever the dialog was opened by the
-  configuration-rollback offer alone (a saved state whose configuration
-  differs, with the reboot confirmation off) or by **Bootstrap now!**, even
-  though the dialog still described the three-way choice.
-  (`src/pdp11-panel.js`; pinned by `tests/reboot-dialog-bootdev.test.js`)
-- **A machine state now carries the whole configuration — except the sound.**
-  Restoring a state (a teleport link, an imported file, a snapshot) applies the
-  full configuration profile it was saved with — console, user terminals, LP11
-  printer, VT11, widths, teletype speed, zoom, glow, phosphor, backdrop and the
-  rest — instead of only the device set. The two sound settings (`mute`, `hum`)
-  are never touched: they belong to the person at the keyboard, not to the
-  guest. A page reload now happens only when the device set differs (everything
-  else applies live). A teleport asks nothing — the state is the point of the
-  link; the offer to bring the viewer's own configuration back, remembered once
-  and kept, comes later, on the operator's terms: a plain page reload, or the
-  single **Reboot** / **Bootstrap now!** dialog, which now carries that choice
-  beside the reboot it already asked about. Returning it restores every field (a
-  further reload only when the device set differs), and a Reboot / Bootstrap
-  parked across that reload runs as soon as the page is back. The live re-tune
-  reaches the page through an explicit seam (`src/config-apply.js`) rather than a
-  page global; and a system dialog's buttons stay operable even while the
-  autoload owns the machine.
-  (`src/viewer-config.js`, `src/config-apply.js`, `src/snapshots.js`,
-  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`, `pdp11.html`;
-  pinned by `tests/viewer-config.test.js`, `tests/config-apply.test.js`,
-  `tests/snapshot-config.test.js`, `tests/quickboot-input-gate.test.js`)
+- **The desktop app keeps its content next to the executable.** Machine states
+  and both variant manifests install into the resource directory like the disk
+  and tape images, so the executable no longer carries them, the Full installer
+  offers every Scenario card and every image it ships, and the Minimal build
+  reads only the inventory it ships. (`tools/build-desktop.js`,
+  `tools/desktop-manifests.js`, `src-tauri/src/lib.rs`, `src/tauri-bundled.js`)
 
-- **The Auto-boot checkbox becomes Boot device.** CONFIG's Behaviour tab now
-  offers the emulated Boot ROM socket as a three-way choice — `none` (the
-  machine waits after power-on), `interactive@` (the built-in loader, the `@`
-  prompt) or `last` (a device-specific Boot ROM that boots the medium loaded
-  most recently — from the gallery, Games, a teleport link or a manual `BOOT`
-  at the `@` prompt — directly, with no `@` prompt) — and the reboot and
-  power-off dialogs offer the same three-way select. The Boot ROM learns a
-  device preset (`macro-asm/boot.mac`, cell `bootsel`) and records the device
-  it boots in an I/O mailbox (`src/boot-mailbox.js`), so `last` needs no typed
-  command and remembers a hand-booted device too. A config saved with the old
-  boolean `autoBoot` migrates one-for-one (`false` → `none`,
-  `true` → `interactive@`), so an upgrade changes no behaviour.
-  (`src/config.js`, `src/last-boot.js`, `src/boot-mailbox.js`, `src/pdp11.js`,
-  `src/pdp11-app.js`, `src/pdp11-panel.js`, `src/quickboot.js`,
-  `src/snapshots.js`, `macro-asm/boot.mac`, `src/bootcode.js`, `pdp11.html`;
-  pinned by `tests/config.test.js`, `tests/last-boot.test.js`,
-  `tests/boot-preset.test.js`)
+- **A machine state carries the whole configuration, except the sound.** A
+  restore applies console, user terminals, LP11, VT11, widths, teletype speed,
+  zoom, glow, phosphor and backdrop, a page reload happens only when the device
+  set differs, a teleport asks nothing and offers the viewer's own
+  configuration later from the **Reboot** / **Bootstrap now!** dialog, and the
+  two sound settings belong to the person at the keyboard. (`src/viewer-config.js`,
+  `src/config-apply.js`, `src/snapshots.js`, `src/pdp11-panel.js`)
 
-- **Lunar Lander's saved state now opens mid-descent.** The Games tile plays a
-  state captured with the landing already in progress — the vector scene on the
-  VT11 display with the light pen live — and its caption says so instead of
-  "ready to fly". (`states/lunar-lander.state.zst`, `index.html`,
-  `landing/src/data.ts`)
+- **Auto-boot becomes a three-way Boot device.** CONFIG's Behaviour tab and both
+  confirmation dialogs choose between `none`, `interactive@` and `last`; the
+  Boot ROM records the device it booted in an I/O mailbox so `last` needs no
+  typed command, and an old boolean `autoBoot` migrates one-for-one. The select
+  is present in every **Reboot** / **Bootstrap now!** dialog, including the one
+  opened by the configuration-rollback offer. (`src/config.js`,
+  `src/last-boot.js`, `src/boot-mailbox.js`, `macro-asm/boot.mac`,
+  `src/pdp11-panel.js`)
 
-- **Step engine unified:** the step-execution logic (`runSteps`, `waitForPrompt`,
-  `stepBytes`, `consoleWorkingState`, `clearConsole`, `sendBytes`, output buffer)
-  is extracted from `src/quickboot.js` into a shared `src/step-engine.js` module.
-  Both QuickBoot and Snapshots use the same engine — no code duplication.
-  (`src/step-engine.js`, `src/quickboot.js`)
+- **Panel and Storage controls moved.** STATE sits beside the magic wand, the
+  Screenshot button is offered on the machine pages only, and the four Storage
+  lists share one fixed footprint that keeps each button on its row while a
+  long image name is shortened in the middle and readable as a tooltip.
+  (`src/pdp11-panel.js`, `css/pdp11.css`, `src/dragdrop.js`)
 
-- **Lunar Lander moves from the guest-OS gallery to Games.** The lander is a
-  game, not a system, so its tile now lives in the Games carousel — first tile,
-  with the light-pen how-to as its description — and is gone from the
-  Instant-Run and Guest-OS galleries; the classic landing page drops its Lunar
-  Lander card to match. (`landing/src/data.ts`, `index.html`; pinned by
-  `tests/games-gallery.test.js`, `tests/os-gallery-run.test.js`)
+- **The "state was not restored" dialog explains itself.** It says the machine
+  was left untouched, names each disk as CONFIG does, shows an eight-digit
+  identity with the full digests behind **Technical details**, and offers
+  **Keep it** / **Delete this state** on one wrapping row. (`src/snapshots.js`,
+  `css/pdp11.css`)
 
-- **The screenshot (camera) button is documented.** The floating camera button —
-  bottom-left, next to Mute — now has its own row in the user manual's
-  floating-controls table (EN and RU) with a fresh close-up of the button, and
-  the page shots in which it is visible were regenerated. The diff helper keeps
-  only the shots that actually changed. (`docs/manual/controls.md`,
-  `docs/manual/ru/controls.md`, `tools/screenshots-manual.js`)
+- **Mounted images say why an image has no Export entry.** Pristine bundled
+  media is marked "· nothing to export" where it is mounted, so the rule reads
+  as a rule instead of a missing feature. (`src/dragdrop.js`, `pdp11.html`)
 
-- **The manual search finds the floating controls.** On the landing page's user
-  manual, a query matching a floating-control name — Magic wand, Reboot, Mute,
-  Screenshot, Fullscreen or Terminal zoom — now jumps to the controls section.
-  The names are read from the generated manual data, so they cannot drift from
-  the documentation. (`landing/src/components/UserManual.tsx`)
+- **The LP11 sheet looks like the paper it emulates.** The green-bar tile and
+  the black feed holes run to the fold, 22 holes on the machine's 11-inch sheet
+  keep the perforation continuous, the sheet prints landscape with the machine's
+  own character cell (6 LPI at 10 pitch) and 66 lines to a sheet, the Print
+  preview agrees with the Printer page at any column count, double-struck text
+  prints bold and an underscore strike underlined. (`src/lp11paper.js`,
+  `css/g60printer.css`, `tests/lp11-print.test.js`)
 
-- **Restoring a snapshot now comes in two flavours.** The Machine-state dialog's
-  **Load** button turned into a split button: **Load** restores the saved state
-  and hands the machine back to the keyboard at once, while the new **Load as
-  shared state** item — enabled only for snapshots that carry a guide (steps, a
-  button label or a screenshot) — replays the guided restore the same way a
-  shared-state link does. Existing callers keep the guided behaviour.
-  (`src/snapshots.js`, `css/pdp11.css`)
+- **Lunar Lander moves to Games and opens mid-descent**, with the light-pen
+  how-to as its caption. (`landing/src/data.ts`, `index.html`,
+  `states/lunar-lander.state.zst`)
+
+- **Panel actions confirm themselves.** Pause/Resume reports "Emulation paused"
+  or "Emulation resumed" and Reboot reports "Rebooting…" once the action is
+  confirmed. (`src/pdp11-panel.js`)
+
+- **Landing carousels loop.** The guest-OS, Instant Run and Games galleries carry
+  on past the first and last card in both directions, by arrow or by swipe.
+  (`landing/src/hooks/useWheelScroll.ts`, `landing/src/hooks/wheelMath.js`,
+  `landing/src/components/OSCarousel.tsx`, `landing/src/components/InstantRun.tsx`)
+
+- **The printed manual reads like a book.** Running header and footer (product,
+  document, edition, page number, translated in the Russian edition), a
+  two-column subject index and the same dotted leaders in the table of contents,
+  internal links that resolve after the pdf-lib merge, black-on-paper glossary
+  terms and floating-button captions, and no link underlines in the PDF text
+  layer. (`tools/build-manual.js`, `tools/build-manual-pdf.js`,
+  `tools/manual-template-head.html`)
+
+- **Landing lightboxes show a clean caption and keep the launch action on
+  screen** on short viewports and at high display scaling.
+  (`index.html`, `landing/src/components/Lightbox.tsx`)
 
 ### Fixed
 
 - **The machine no longer switches itself on when a page loads.** Power at
-  startup comes only from the `powerOn` configuration option, so a factory
-  state is a machine at the POWER OFF detent instead of a CPU executing zeroed
-  memory and raising the "halted at 000002 — trapped into an empty vector"
-  notice on every reload. (`src/pdp11-panel.js`; pinned by
-  `tests/e2e-maintenance.js`)
+  startup comes only from the `powerOn` configuration option, so a factory state
+  is a machine at the POWER OFF detent instead of a CPU executing zeroed memory
+  and raising "halted at 000002" on every reload. (`src/pdp11-panel.js`)
 
-- **Fullscreen in the desktop app no longer claims it failed.** The toggle
-  button worked, yet every click raised "Could not toggle fullscreen": the
-  icon refresh resolved the Tauri window from its fallback and then
-  dereferenced the raw argument, so the follow-up state query threw and the
-  successful toggle was reported as a failure (an uncaught error at startup
-  kept the icon stale as well). (`src/fullscreen.js`; pinned by
-  `tests/fullscreen.test.js`)
+- **Unmount keeps the operator's image, and the disk boots again.** Unmount only
+  takes the medium out of the machine — the stored copy and the drive binding
+  stay — the disk provider streams `media/<url>.zst` again once the bytes leave
+  the mount table, and an image that is genuinely unreachable raises the "Image
+  load interrupted" dialog instead of a halted CPU. (`src/dragdrop.js`,
+  `src/browser-machine.js`, `tests/e2e-unmount-reboot.js`)
 
-- **Every e2e suite is runnable on its own, and none is left out of
-  `validate`.** The per-suite `npm run e2e:*` aliases were a third
-  hand-maintained list beside the `SUITES` array of `tools/validate.js`, and the
-  two had drifted apart: most suites had no alias at all (`e2e:teletype`,
-  `e2e:snapshots`, `e2e:share`, `e2e:diskstore`, `e2e:xxdp:halt`, …),
-  `e2e:quickboot-scenario` had a wireit task but no npm script, while
-  `e2e:unmount` was an alias whose suite never ran under `npm run validate` or
-  in CI. Every alias now delegates to `node tools/validate.js <name>` — an exact
-  suite name selects that suite, a substring selects several, `--list` prints
-  them — so `SUITES` remains the only list to edit, and
-  `tests/validate-suites.test.js` fails when an alias, its wireit task, the
-  e2e file on disk and `SUITES` ever disagree again. (`package.json`,
-  `tools/validate.js`, `tools/run-tests.js`, `tests/validate-suites.test.js`,
-  `docs/ARCHITECTURE.md`)
+- **The Storage page lists the disks the machine is actually running from**,
+  rebuilt when the page opens and when a restore finishes, with a counter that
+  matches the list. (`src/dragdrop.js`, `src/snapshots.js`,
+  `tests/storage-mounted-refresh.test.js`)
 
-- **The Minimal desktop build no longer reports images it does not ship.** The
-  startup mount walked the whole bundled-image table — the full build's
-  inventory — so on Minimal every omitted disk raised a load error and the
-  operator met one deduplicated error toast naming a disk the installer
-  deliberately leaves out (e.g. `rk2.dsk.zst`), before booting anything. The
-  list now comes from the staged `media/manifest.json` of the selected variant.
-  (`src/tauri-bundled.js`; pinned by `tests/desktop-manifests.test.js` and
-  `tests/desktop-bundle.test.js`)
-
-- **The desktop app ships the manifests and the pre-built states.** The staging
-  step copied only the page, `css/`, `src/` and `assets/`, so the packaged app had
-  no `media/manifest.json` and no `states/`: the quick-boot wizard offered guests
-  whose image the installer does not carry and the Scenario tab was empty. Both
-  manifests are now generated per variant from `bundle.resources`, the states are
-  staged with their previews, and a restore that pins an image version takes the
-  bytes the machine already holds instead of fetching `media/` over HTTP, which
-  the desktop app cannot do. (`tools/build-desktop.js`,
-  `tools/desktop-manifests.js`, `src/media-registry.js`, `docs/BUILDING.md`,
-  `tests/desktop-manifests.test.js`, `tests/desktop-bundle.test.js`)
-
-- **A restored printer page keeps the paper's character grid.** A saved state
-  rebuilt every printed line as one stretch of text instead of a row of
-  character cells, so the sheet came back about 1.4x narrower than the paper
-  that printed it and a printed picture (the Madonna artwork) looked stretched
-  vertically; the restore now rebuilds the same 7px cells the printer wrote.
-  (`src/g60printer.js`; pinned by `tests/g60printer-paper-restore.test.js`)
-
-- **The preparing toast fits a phone in both orientations.** Restoring a
-  shared state shows a box with the state's title, description, screenshot and
-  an OK button; on a phone it was a narrow column in portrait that pushed the
-  button below the screen, and in landscape the button jumped beside the
-  description. The box now spans the window (up to 460px), never wraps, is
-  height-capped and scrolls, and the screenshot is capped to the viewport.
-  (`css/pdp11.css`; pinned by `tests/preparing-toast-layout.test.js`)
-
-- **Share via platform hands over the machine state.** The Share dialog's
-  platform item offers the state to the system share sheet as a real
-  `.state.zst` file — the artifact the recipient can import — with the file
-  travelling alone, because a payload that mixes files with a text body is
-  refused by some sheets. The state is packaged while the split menu is open and
-  the item stays disabled until it is ready, so `navigator.share()` runs inside
-  the click that owns the user activation. When the sheet refuses the file, the
-  full text envelope goes to the clipboard and the same item becomes
-  **Share state text…**, which sends the envelope as message text on the next
-  click — one `share()` per click, because a retry inside the same handler fails
-  with "Must be handling a user gesture" and hides the real refusal. The refusal
-  is reported in a status line inside the dialog, not through a toast: a toast
-  is painted under the modal overlay, and the dialog stays open for the retry.
-  The old `text.slice(0, 2048)` is gone: a truncated body no longer decodes.
-  (`src/snapshots.js`, `css/pdp11.css`, `docs/STATE-FORMAT.md`,
-  `docs/FEATURES.md`, `docs/manual/machine-state.md`,
-  `docs/manual/ru/machine-state.md`; pinned by `tests/share-payload.test.js` and
-  `tests/e2e-share.js`)
-
-- **No blank line or strip on an LP11 page throw.** A job that fills a sheet
-  without sending form feeds — an `.art` file printed from RT-11, for instance
-  — left one empty row between the last printed line and the fold, and the fold
-  itself spent a printed row, so the Printer page showed a blank strip at every
-  page boundary while the Print preview paginated correctly. The line feed that
-  fills the sheet no longer opens the next line on it, and the perforation is
-  drawn on the sheet boundary at zero height: 66 lines run right up to the fold
-  and the next page's first line starts directly under it. (`src/g60printer.js`,
-  `css/g60printer.css`; pinned by `tests/g60printer-seam.test.js`,
-  `tests/lp11-sheet-aspect.test.js`)
-
-- **A disk unmounted on the Storage page boots again.** The disk provider
-  treated its first image fetch as final, so once Unmount removed the bytes
-  from the mount table every read of that drive returned an all-zero block and
-  any boot of it ended in `HALT at 2 PSW: 4` — the `last medium` preset and a
-  manual `BOOT RK1` typed at the `@` prompt alike. The provider streams
-  `media/<url>.zst` again when the bytes leave the mount table, and an image
-  that really is unreachable raises the "Image load interrupted" dialog
-  instead of leaving a halted CPU. (`src/browser-machine.js`; pinned by
-  `tests/e2e-unmount-reboot.js`)
-- **Unmount keeps the operator's image.** Unmounting an imported image deleted
-  its only stored copy (IndexedDB), so the guest lost the medium for good and
-  the file could no longer be booted, exported or re-mounted. Unmount now only
-  takes the medium out of the machine: the stored copy and the drive binding
-  stay, the image is re-mounted on the next launch and stays exportable.
-  (`src/dragdrop.js`, `docs/manual/storage.md`; pinned by
-  `tests/e2e-unmount-reboot.js`)
-- **The Storage page shows the disks the machine is actually running from.** The mounted-image list was built once at startup, so the payload a restored state carries inline — and the boot disk QuickBoot fetches in the background — stayed invisible there while the guest was reading it, and the page claimed nothing was mounted. The list is now rebuilt when Storage is opened and again when a restore finishes, and the counter beside it counts the images the list offers instead of only the operator's own drops, so it no longer reads "0 images" next to a machine's disks. (`src/dragdrop.js`, `src/snapshots.js`; pinned by `tests/storage-mounted-refresh.test.js`)
-- **The LP11 paper keeps the guest's page breaks.** A form feed now ends the sheet it was sent on — in the printed document and as the `\f` sentinel of **Save .txt** — instead of being glued onto the line as a literal `\f`, and a job prints no blank sheet for a form feed that arrives with nothing printed since the last one. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-print.test.js`)
-- **A fanfold sheet that fills up gets its perforation.** The seam was drawn only on a guest form feed, so a job that happened to fill all 66 lines ran into the next sheet with no separator; the paper now closes the sheet at the 66th line and the form feed that follows it costs no second seam. (`src/g60printer.js`; pinned by `tests/g60printer-seam.test.js`)
-- **The LP11 job copy keeps every glyph the guest printed.** A TAB now only moves the carriage and an overstrike can only add ink, so neither the tab padding nor a blank/underscore strike replaces text any more — `man sh | lpr` used to lose whole phrases in the job copy (and so in **Save .txt**) while the animated paper still showed them. (`src/lp11paper.js`; pinned by `tests/lp11-text.test.js`)
-- **The LP11 Print sheet looks like the paper it emulates.** The same green-bar paper tile the Printer page draws (one tile per four character rows, so the bar period is the artwork's) and a column of black feed holes down each edge, half an inch apart, with the 132 columns filling the space between them — the strips take width from the text column exactly as the real tractor feed does. The backing is a CSS background, so the print dialog needs **Background graphics** on; `paper: "plain"` drops it for a job that really goes onto fanfold, where the perforation is already there. (`src/lp11paper.js`)
-- **The LP11 Print output has the machine's proportions.** The type is sized from the printable box instead of a fixed 12px, so the configured column count (132 by default) spans the width of whatever paper the print dialog picks, a line longer than the platen is cut at its edge instead of wrapping, and 66 lines stay on one sheet. The sheet is printed landscape with the machine's own character cell — 6 LPI at 10 pitch — because a line-printer sheet (14⅞ × 11″) is wider than it is tall, so the 132 × 66 block keeps the proportion of the real printed area; the glyph is drawn inside that cell, as a dot matrix was, so the lines keep their air instead of touching. (`src/lp11paper.js`; pinned by `tests/lp11-print.test.js`)
-- **Double-struck LP11 text prints bold.** Overstrike survives into the printed job — the same glyph struck twice (nroff bold) prints bold and an underscore strike prints underlined, without disturbing the 132-column grid; **Save .txt** stays plain text. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-text.test.js`)
-- **The Printer page's LP11 sheet keeps the fanfold proportions.** The animated sheet drew each line 16px tall against a 7px glyph advance — a 1.37× vertical stretch that made one 132 × 66 sheet 1026 × 1061px, taller than wide, while real fanfold is 14⅞ × 11″. The line pitch is now the machine's own 6 LPI at 10 pitch (11⅔px), so the sheet is 1026 × 775px and the printed image keeps the paper's aspect. (`css/g60printer.css`, `src/g60printer.js`, `src/devices/lp11.js`, `src/iopage.js`; pinned by `tests/lp11-sheet-aspect.test.js`)
-- **The Print sheet's green bars match the Printer page.** The print dialog used to open before the paper tile had decoded, so Chrome painted the emergency gradient — a noticeably greener, whiter bar than the artwork on screen. The document now warms the tile and prints once it has loaded (with a timeout, so an offline URL cannot stall the dialog), the fallback gradient carries the tile's own colours, and the sheet's margins are painted with the same paper colour, so the white rows no longer read as grey beside the perforated strips. (`src/lp11paper.js`; pinned by `tests/lp11-print.test.js`)
-- **Printed rules are continuous on the Printer page.** A run of `_` and nroff's underline (`_\bC` per letter) used to break up: the underscore glyph is narrower than the 7px cell, and `text-decoration` inside that cell is drawn only ~5px wide, leaving a 2px gap — a man-page heading such as `Cal` looked dashed while the printed sheet (one `<u>` inside a single `<pre>`) stayed unbroken. Both are now one 2px rule at the bottom of the cell, overhanging it by a pixel on each side (a background is clipped to its own box, and a 1px rule falls below a device pixel when the cabinet is auto-scaled, which is why the line also looked dashed while the paper was still moving). (`css/g60printer.css`, `src/g60printer.js`; pinned by `tests/lp11-cabinet-css.test.js`)
-- **Classic landing-page lightbox shows a clean caption under the picture.** The enlarged screenshot now stacks the caption and the RUN/PLAY action in the normal flow, so a multi-line card caption no longer runs together as one word and no longer covers the screenshot, and the hover-only "Click to enlarge" hint stays out of it. (`index.html`, `css/pdp11.css`)
-- **Landing lightbox no longer clips its Run/Play button on short viewports.** The enlarged screenshot now takes only the space left by the top bar and the caption instead of a fixed share of the window height, so the launch action stays on screen at high display scaling (Windows 125%) and on short laptops. (`landing/src/components/Lightbox.tsx`; pinned by `tests/landing-lightbox-fit.test.js`)
-- **Glossary terms print in black in the PDF manual.** The gold the term
-  carries on screen stayed on paper, where it was the only coloured element in
-  an otherwise black-and-white layout; on paper the term now matches every
-  other heading. (`tools/manual-template-head.html`; pinned by
-  `tests/manual-pdf-colours.test.js`)
-- **Floating-button captions print in black in the PDF manual.** The cream
-  label under each button picture in the Controls table had the same defect as
-  the glossary terms, and its override also needed a more specific selector —
-  the screen rule sits below the print block, and a media query carries no
-  priority of its own. (`tools/manual-template-head.html`)
-- **Importing a snapshot from a file works again.** The Import button's file
-  picker called a helper that no longer exists, so choosing a `.state` file
-  (for example `states/rt-11-print-coguar.state.zst`) failed with a
-  `ReferenceError` and nothing was imported. The picker now runs the same
-  decode-then-import pipeline as the clipboard and URL import paths — text
-  envelopes included — and reports a bad file instead of throwing.
-  (`src/snapshots.js`)
-- **The landing carousels loop instead of jamming at the first and last
-  card.** The guest-OS, Instant Run and Games galleries stopped scrolling once
-  the arrows reached an end; they now carry on past it, in both directions and
-  for a swipe too, the way the classic gallery on the emulator page does.
-  (`landing/src/hooks/useWheelScroll.ts`, `landing/src/hooks/wheelMath.js`,
-  `landing/src/components/OSCarousel.tsx`,
-  `landing/src/components/InstantRun.tsx`,
-  `landing/src/components/GamesCarousel.tsx`; pinned by
-  `tests/carousel-loop.test.js`)
-- **The landing guide's table of contents no longer offers chapters it does not
-  have.** About yaPDP, Glossary and Historical Fidelity and Limitations were
-  listed beside the thirteen chapters the guide actually renders, so choosing one
-  of them scrolled nowhere — and searching for "glossary" produced the same dead
-  jump. The contents and the search now list exactly what the page renders,
-  numbered to match the §N labels of those sections, and a test holds the two
-  lists equal. (`landing/src/components/UserManual.tsx`;
-  pinned by `tests/landing-manual-coverage.test.js`)
-- **A restored state no longer types the previous state's commands into its guest.** Restoring a scenario with guided steps (RT-11 Adventure: "R ADVENTURE") and then a state without steps of its own (2.11 BSD on RP1) replayed those keystrokes on the new console; the share metadata a device-set reload keeps across the page boundary is now written as a whole and consumed once. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
-- **Exporting a snapshot or a compact share no longer fails on an unmounted image.** Bundling of mounted resources is best-effort for plain export: a resource whose bytes are not loaded stays an external reference (with a warning toast), while self-contained shares still require every byte. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
-- **URL state restores no longer inherit stale preview text or controls.** QuickBoot now takes the description, steps, button label and screenshot only from the state being loaded, instead of falling back to sessionStorage metadata left by an earlier local snapshot. (`src/quickboot.js`)
-- **Restoring a state without captured teletype paper clears the previous guest's output.** Prepared and older states may omit the optional paper snapshot; restore now resets the visible paper instead of leaving text from the previously loaded game on the machine. (`src/snapshots.js`; pinned by `tests/snapshotstore.test.js`)
-
-
-- **?state= deep link no longer reload-loops or double-applies its devices.**
-  A state whose device set needs a page reload keeps its `?state=` in the
-  address bar; the reloaded page now applies the link once (via QuickBoot's
-  URL path) instead of also applying it from the pending key, which mounted
-  the state's disk images twice and could stall the restore on the "Restoring
-  the machine state…" toast — or, with a reload loop, never settle at all.
-  (`src/snapshots.js`; pinned by `tests/e2e-state-deeplink.js`, which now
-  fails a page that keeps navigating instead of hanging on `page.close()`)
-
-- **QuickBoot input gate respects modal visibility.** Keyboard and pointer events are exempted only for visible modal overlays, so focus left on the hidden scenario chooser cannot leak operator keystrokes into an active autoload.
-
-- **QuickBoot input gate stays closed when a host control retains focus.** Ordinary keyboard events targeting Pause/Resume, Reboot or Screenshot are still blocked during autoload; pointer clicks and Enter/Space activation of the host controls remain available. (`src/quickboot.js`; pinned by `tests/quickboot-input-gate.test.js`)
-- **Pause/Resume now confirms state changes with a toast.** Clicking the host-level control displays “Emulation paused” or “Emulation resumed”, in addition to updating its icon and accessible label. (`src/pdp11-panel.js`)
-- **Reboot now confirms the start of the operation with a toast.** “Rebooting…” appears only after the action is confirmed and immediately before reboot starts, including when the confirmed reboot resumes after a configuration-rollback reload. Opening or cancelling the dialog does not show it. (`src/pdp11-panel.js`)
-
-- **QuickBoot and guided snapshot steps now pause with emulation.** Scheduled
-  console input and prompt-wait timeouts suspend during a host-level pause and
-  resume with their remaining delay, so the autoload gate does not strand the
-  operator. (`src/step-engine.js`; pinned by
-  `tests/step-engine-pause.test.js`)
-
-- **Share-dialog screenshot paste now works.** The "Paste or click to add a
-  screenshot" field in the Share-snapshot dialog accepts Ctrl+V from the native
-  clipboard (e.g. an image copied from mspaint). The global keyboard handler no
-  longer intercepts Ctrl+V when a modal overlay is visible, and the paste
-  handler reads the clipboard directly when the paste event does not fire on
-  non-editable elements. (`src/snapshots.js`, `src/pdp11-app.js`)
-
-- **"Last medium" boot device loads uncompressed paper tapes correctly.** The
-  PTR11 paper-tape reader marked every tape as `compressed: true`, so a reboot
-  with `bootDevice: 'last'` after Lunar Lander (whose `lander.ptap` is raw, not
-  `.zst`) tried `media/lander.ptap.zst` first, got a 404, and the machine hung.
-  Paper tapes now try the raw file first and fall back to `.zst` — matching the
-  actual file on disk. (`src/devices/ptr11.js`, `src/iopage.js`,
+- **The PTR11 reader behaves like the hardware.** A reset clears the registers
+  and leaves the tape loaded with its position, REWIND returns to the first
+  frame, `eject()` is the one path that empties the reader, and a raw
+  `lander.ptap` boots under `bootDevice: 'last'` because a paper tape tries the
+  raw file before `.zst`; the legacy `?core=0` stack no longer crashes on a
+  `.ptap.zst` fallback. (`src/devices/ptr11.js`, `src/iopage.js`,
   `src/browser-machine.js`)
 
-- **Legacy stack (?core=0) paper-tape fallback no longer crashes on
-  ReferenceError.** The `fetchBlock()` fallback path (tried when a paper tape
-  ships only as `.zst` and the raw `.ptap` probe gets a 404) referenced
-  `zstResponse`, a variable defined only in the compressed path — the fallback
-  used `got` instead. Every paper tape that exists only as `.ptap.zst`
-  (BASIC-11, ODT-11, ED-11, Lunar Lander) failed to load on the legacy stack,
-  hanging the bootstrap loader at `@BOOT PR`. (`src/iopage.js`)
+- **A restored state no longer types the previous state's commands.** Steps, the
+  description, the button label and the screenshot come only from the state
+  being loaded, so a URL restore cannot inherit session metadata, and the paper
+  is cleared when the restored state carries none. (`src/snapshots.js`,
+  `src/quickboot.js`)
 
-- **Versioned state manifests:** a machine state now carries `schemaVersion` as
-  a semver string (`"1.0.0"`) and a `yaPDPVersion` field naming the build that
-  wrote it. Legacy snapshots (a bare numeric `schemaVersion` of 1) keep reading,
-  and a state whose manifest schema is a later MAJOR is refused with a clear
-  reason instead of being half-applied. (`src/state-format.js`, `src/snapshots.js`,
-  `tools/export-state.js`, `tools/headless-term.js`, `tools/state-manifest.js`;
-  pinned by `tests/state-format.test.js`)
+- **`?state=` links no longer reload-loop or mount their images twice**, and the
+  "Restoring the machine state…" toast is raised before the state is fetched,
+  with the state's description kept in the balloon until OK.
+  (`src/snapshots.js`, `src/quickboot.js`, `tests/e2e-state-deeplink.js`)
 
-- **Newer-snapshot compatibility warning:** restoring or importing a snapshot
-  taken by a **newer** yaPDP now shows a warning — Update to Latest / Open
-  Anyway / Cancel — instead of failing or silently proceeding. (`src/snapshots.js`;
-  the format is documented in [`docs/STATE-FORMAT.md`](docs/STATE-FORMAT.md))
+- **A snapshot keeps the disk's write-back overlay across export and import**,
+  so a state exported to a file and imported back no longer comes up with a
+  corrupted file system, and every reader accepts the frame the writer used —
+  zstd, gzip or bare. (`src/snapshots.js`, `src/diskstore.js`,
+  `src/state-frame.js`, `tools/state-io.js`)
 
-- **Toast notifications:** a DOM-independent toast subsystem (`src/toasts.js`)
-  that shows transient status messages (info/warning/error) at the bottom
-  centre of the emulator window; screenshot copy results and save failures
-  report through it, and a runaway-trap CPU halt raises an error toast via an
-  injectable core slot. (`src/toasts.js`, `src/screenshot.js`, `src/pdp11.js`,
-  `src/pdp11-app.js`, `css/pdp11.css`)
+- **A restored VT11 display keeps running.** The display processor restarts with
+  its blink timer and light-pen tracking whenever the saved status says it was
+  running, the pointer stays visible over the tube, and a hover reads exactly
+  where the pointer is because the canvas border is out of the mapping.
+  (`src/vt11.js`, `tests/vt11.test.js`)
 
-- **Snapshot steps:** after restoring a machine state, the snapshot can execute
-  one or more scenario steps (typed into the console) before the operator takes
-  control. Steps are stored in the manifest as a `steps` array, using the same
-  format as QuickBoot scenarios (`send`, `ctrlD`, `wait`, `waitFor`).
-  (`src/step-engine.js`, `src/snapshots.js`, `src/quickboot.js`)
+- **A restored state brings the front panel back with the machine.** The POWER
+  LOCK position, both rotary switches and three toggles restore with the CPU, a
+  state written before that block restores powered on, and a Quick Boot powers
+  the machine on instead of booting it behind a dead panel.
+  (`src/state-format.js`, `src/pdp11-panel.js`, `tests/panel-state.test.js`)
 
-- **Snapshot export/import:** saved snapshots can be exported as `.state.zst`
-  files and re-imported later, preserving the full machine state including steps
-  and stepsMessage. The snapshot list shows whether a snapshot carries startup
-  actions. (`src/snapshots.js`; pinned by `tests/e2e-import-export.js`)
+- **The LP11 job copy keeps every glyph and every page break.** A TAB only moves
+  the carriage, an overstrike only adds ink, a form feed ends its sheet in the
+  printed document and as the `\f` sentinel of **Save .txt**, a job that fills
+  66 lines still gets its perforation, and a job ejected early prints as a whole
+  sheet. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/g60printer.js`)
 
-- **Snapshot Share:** saved snapshots can be turned into shareable `.state.zst`
-  files with a human-readable description and an optional one-command handoff
-  scenario. The original snapshot is not modified. The preparing balloon shows
-  the description during `?state=` restore. A CLI tool (`tools/state-manifest.js`)
-  allows advanced manifest editing (extract/replace).
-  (`src/snapshots.js`, `src/quickboot.js`, `css/pdp11.css`,
-  `tools/state-manifest.js`; pinned by `tests/e2e-share.js`)
+- **A restored printer page keeps the paper's character grid**, so a printed
+  picture no longer comes back stretched. (`src/g60printer.js`)
 
-- **Snapshots can be canonicalised from the command line:**
-  `npm run media:repack -- states/unix-v5.state.zst` rewrites a `.state.zst` in
-  the frame the repo keeps (zstd), in place; a snapshot exported from the
-  browser is gzip, and gzip is the larger of the two. `node
-  tools/media-zst.js check --canonical <file>` reports such a file and fails, so
-  CI can hold the line. (`tools/media-zst.js`; pinned by
-  `tests/media-zst.test.js`)
+- **Sharing and importing states work in every path.** The file picker imports
+  again (text envelopes included), a screenshot pastes into the Share dialog
+  from the native clipboard, the snapshot name is escaped before it reaches the
+  modal markup, and a plain export no longer fails on an image whose bytes are
+  not loaded. (`src/snapshots.js`, `src/pdp11-app.js`,
+  `tests/snapshot-escape.test.js`)
 
-- **Games gallery on the landing page:** a "Games" carousel beside the
-  Instant-Run (Teleport) tiles, each card opening the emulator on a saved
-  machine state with the game already running — a "Play!" button, not a boot.
-  Five titles ship it, Lunar Lander first — played with the mouse as a light
-  pen on the VT11 vector display — then four RT-11 titles: Space Invaders
-  (`SPCINV`), Dungeon (the MIT text adventure that grew into Zork), Colossal
-  Cave Adventure and Time52, the "$100,000 Digital Timepiece" of 1975; each
-  description is shown in the reader's language.
-  (`landing/src/components/GamesCarousel.tsx`, `landing/src/data.ts`,
-  `landing/src/types.ts`, `landing/src/App.tsx`, `states/lunar-lander.state.zst`,
-  `states/rt-11-spcinv.state.zst`, `states/rt-11-dungeon.state.zst`,
-  `states/rt-11-adventure.state.zst`, `states/rt-11-time52.state.zst`,
-  `states/rt-11-print-coguar.state.zst`)
+- **The preparing balloon fits a phone in both orientations** — it spans the
+  window, never wraps, is height-capped and scrolls, and the screenshot is
+  capped to the viewport. (`css/pdp11.css`,
+  `tests/preparing-toast-layout.test.js`)
 
-- **Instant Run and Games on the classic landing page:** the root `index.html`
-  now mirrors the SPA's new carousels in English — an Instant-Run (Teleport)
-  gallery of saved machine states and a Games gallery with Lunar Lander, Space
-  Invaders, Dungeon, Adventure and Time52, each opening the emulator on a saved
-  state (`?state=`) with the guest already running. One shared carousel script
-  now drives all three galleries (guest OS, Instant Run, Games). (`index.html`;
-  pinned by `tests/os-gallery-run.test.js`, `tests/e2e-quickboot-deeplink.js`)
+- **Screenshots are saved on a black background**, matching the dark colour
+  scheme instead of framing the emulator on white. (`src/screenshot.js`)
 
-- **The VT11 light pen no longer drifts by the canvas border.** The
-  mouse-to-VT mapping scaled by the canvas's *border* box while the drawing
-  surface is its *content* box, so the inline 1px CSS border put every hover a
-  fraction of a pixel out — a linear error, largest at the edges. The border is
-  now removed from the mapping, so a hover reads exactly where the pointer is.
-  (`src/vt11.js`)
+- **A gallery deep link no longer traps a first-time visitor behind the first-run
+  hint.** The hint stands down on a deep link, and any dialog the system raises
+  on its own hands the machine back to the operator before it appears.
+  (`src/onboarding.js`, `src/quickboot.js`, `tests/overlay-during-autoload.test.js`)
 
-- **The VT11 Display page no longer hides the mouse pointer.** The vector
-  canvas set `cursor: none` whenever the light pen was "off", so the pointer
-  vanished over the tube and reappeared only outside the canvas; and a
-  restored Lunar Lander — whose saved state has the light pen enabled — was
-  left with no pointer because the restore re-initialised the renderer without
-  re-applying the cursor. The canvas now always shows a visible pointer (a
-  crosshair while the pen is live), and restoring a state re-applies the style
-  the restored status register asks for. (`src/vt11.js`; pinned by
-  `tests/vt11.test.js`)
+- **The Quick Boot input gate keeps operator input out of an autoload without
+  locking the machine.** Events are exempted only for visible modals, focus left
+  on a hidden chooser cannot leak keystrokes, host controls stay operable, and
+  scheduled steps suspend during a pause and resume with their remaining delay.
+  (`src/quickboot.js`, `src/step-engine.js`, `tests/quickboot-input-gate.test.js`)
 
-- **A restored VT11 display keeps running.** A state saved while the Lunar
-  Lander display processor was mid-pass restored the vector picture but the
-  display itself was dead — the lander never moved until the guest crashed it
-  and started the next frame. The picture refresh runs on a timer that a page
-  reload tears down, and the restored status register still said "running", so
-  nothing re-armed it and the guest waited for a frame that never came.
-  Restoring a state now restarts the display processor (with its blink timer
-  and light-pen tracking) whenever the saved status says it was running, so
-  Lunar Lander resumes flying right after a load. (`src/vt11.js`; pinned by
-  `tests/vt11.test.js`)
+- **The Machine-state dialog keeps its selection and its Export menu.** A
+  refresh keeps the chosen snapshot or selects the one just saved or imported,
+  and the Export arrow is no longer created disabled.
+  (`src/snapshots.js`, `tests/snapshot-ui-selection.test.js`)
 
-- **Snapshots keep the disk's write-back overlay across export/import.** The
-  overlay blocks — the sectors a guest wrote, e.g. `COPY` onto a disk — were
-  serialised into the `.state` manifest as JSON, which turned each block's
-  `Uint8Array` into a plain object; the restore then read that object as an
-  empty block and zeroed the restored sectors, so a snapshot exported to a
-  file, imported back and loaded came up with the disk's file system corrupted
-  (`DIR` hung). Overlay blocks are now written as byte arrays and read back
-  into `Uint8Array`, and `DiskStore.restoreOverlay` accepts all three shapes so
-  states written before this fix keep working. (`src/snapshots.js`,
-  `src/diskstore.js`; pinned by `tests/e2e-import-export.js` and
-  `tests/snapshotstore.test.js`)
+- **The landing guide's contents and search list only chapters it renders**, so
+  About yaPDP, Glossary and Historical Fidelity no longer scroll nowhere.
+  (`landing/src/components/UserManual.tsx`,
+  `tests/landing-manual-coverage.test.js`)
 
-- **Every state reader takes the frame the writer used.** The wrapper around a
-  `.state` container is zstd (the tools), gzip (the browser, which has only
-  `CompressionStream`) or — on a runtime with no compressor — absent, and each
-  reader had grown its own guess: `tools/restore-state.js`,
-  `tools/headless-term.js` and `tools/state-manifest.js` refused gzip
-  outright, and the page's manifest peek before a `?state=` restore did not
-  try it at all. The frames and the policy now live in `src/state-frame.js`
-  (Node's codecs in `tools/state-io.js`), and the writers — the two export
-  tools, `headless-term.js`, `state-manifest.js` — frame their output through
-  the same policy: zstd, else gzip, never bare while a compressor exists.
-  (`src/state-frame.js`, `tools/state-io.js`, `src/snapshots.js`, `pdp11.html`,
-  `tools/restore-state.js`, `tools/headless-term.js`, `tools/export-state.js`,
-  `tools/export-state-browser.js`, `tools/state-manifest.js`,
-  `tools/media-zst.js`; pinned by `tests/state-frame.test.js`,
-  `tests/state-manifest.test.js`, `tests/snapshotstore.test.js`)
+- **Desktop: the fullscreen toggle no longer reports a failure** that did not
+  happen, and the stale icon refresh is gone. (`src/fullscreen.js`,
+  `tests/fullscreen.test.js`)
 
-- **A browser-made snapshot opens in the media tool:** `tools/media-zst.js`
-  refused any gzip frame named `.zst`, which is exactly what the page writes for
-  a `.state.zst` (it compresses with the built-in `CompressionStream`), so a
-  snapshot saved in the browser could not be checked or unpacked from the repo.
-  `check`, `decompress` and `unpack` now accept either container for a
-  `.state.zst` — zstd through fzstd, gzip through zlib, the same split
-  `src/snapshots.js` reads — and `check` names the container it found. A media
-  image must still be a real zstd frame, since the image loader is fzstd.
-  (`tools/media-zst.js`; pinned by `tests/media-zst.test.js`)
-
-- **The PTR11 paper-tape reader behaves like the hardware: a machine reset does
-  not eject the tape, and REWIND rewinds it.** `reset()` (reached from `boot()`
-  on every Reboot) used to clear the tape control block and report "no tape",
-  while the Storage select still named one — so a guest that booted after a
-  reset read a tape the device no longer had, and a paper-tape boot (BASIC-11)
-  hung with the reader stuck on "Reading". REWIND had the same bug from the
-  other side: it FORGOT the tape instead of rewinding it, which is why the
-  indicator said "No tape" the moment the button was pressed (and why choosing
-  `None` and pressing REWIND were the same call). Now: a reset clears the
-  registers only and leaves the tape loaded, position and all; REWIND returns to
-  the first frame with the tape still in; `eject()` is the one path that empties
-  the reader, wired to choosing `None` in the tape list. The reader's state
-  label describes the MEDIUM rather than the last operation, so `ready`
-  ("Reading") became `partially-read` ("Partially read") — true while the tape
-  is being read and equally true after a reset stops with it half consumed.
-  (`src/devices/ptr11.js`, `src/browser-machine.js`, `src/iopage.js`,
-  `css/pdp11.css`; pinned by `tests/core.test.js`)
-
-- **A gallery link no longer traps a first-time visitor behind the first-run
-  hint.** Following `pdp11.html?boot=<device>` shares the machine with the
-  quick-boot autoload, whose input gate swallows every click outside its own
-  toast. The first-run hint ignored both: it appeared anyway, so its dismiss
-  button was dead while the toast's "Take control!" sat underneath it — the
-  only ways out were waiting out the prompt budget or reloading the page. A
-  deep link now stands the hint down and records it as seen (the gallery tile
-  *is* the onboarding), and any dialog the system raises on its own hands the
-  machine back to the operator before it appears, so what it shows can be
-  dismissed. (`src/onboarding.js`, `src/quickboot.js`, `src/snapshots.js`;
-  pinned by `tests/overlay-during-autoload.test.js` and
-  `tests/e2e-firstrun-deeplink.js`)
-
-- **The "Restoring the machine state…" toast now appears before the snapshot is
-  fetched**, so the browser renders it even when no steps or images follow. The
-  toast was raised inside the `onRestored` callback — after the state was already
-  applied — and hidden in the same synchronous chain when there was nothing left
-  to wait for, leaving no frame for the browser to draw it.
-  (`src/quickboot.js`)
-
-- **The snapshot description (stepsMessage) is now shown in the preparing
-  balloon**, with an OK button to dismiss it. Previously the description was set
-  on the hidden element but the toast was closed before the browser could render
-  the update; now the OK button keeps the balloon open until the operator reads
-  the text and clicks. (`src/quickboot.js`)
-
-- **Screenshots are saved on a black background.** The captured PNG composites
-  the active page with `html2canvas`, whose canvas fill defaulted to white while
-  the page itself is transparent — the emulator was framed on white. The
-  composite now fills with black, matching the dark colour scheme.
-  (`src/screenshot.js`)
-
-- **The snapshot manager keeps the selection across a refresh, and selects the
-  snapshot just saved or imported.** `refreshUI()` rebuilt the `<select>` from
-  scratch, dropping the operator's choice back to the first (oldest) entry, and
-  the freshly created entry was never in the stale options, so `save()`'s
-  `select.value = snap.id` could not survive the rebuild. `refreshUI(preferId)`
-  now restores the current selection when it still exists and takes the id of a
-  just-saved or just-imported snapshot explicitly; a vanished selection falls
-  back to the newest snapshot. (`src/snapshots.js`; pinned by
-  `tests/snapshot-ui-selection.test.js`)
-
-- **The Share dialog escapes the snapshot name before it reaches the modal
-  markup.** The escaping was a no-op — each character was replaced by itself —
-  and the name is interpolated both as text and inside the `value="…"`
-  attribute, so a snapshot named with a quote could break out of the attribute
-  and inject HTML. The name now passes through the same five-character escape
-  the Prompt dialog applies, and a crafted name renders as inert text.
-  (`src/snapshots.js`; pinned by `tests/snapshot-escape.test.js`)
-
-- **Toast notifications sit between the bottom round buttons, on their height.**
- The toast used to float well above the corner buttons; it now rests at the
- buttons' bottom offset on every layout — desktop, narrow screen and above the
- mobile keys stack — so it occupies the gap between the left and right button
- groups instead of hovering over them. (`css/pdp11.css`)
-
-- **An LP11 sheet ejected before its 66th line still prints as a whole sheet.**
- A form feed ends only the text: with the paper look enabled, the green-bar
- underlay and the feed holes down both edges now run to the bottom edge of the
- sheet instead of stopping dead at the last printed line, so a short job leaves
- blank paper below its text rather than a half-sheet. (`src/lp11paper.js`;
- pinned by `tests/lp11-print.test.js`)
-
-- **Print Preview lays the LP11 sheet out like the Printer page.** The tractor
- strips keep their 33px share of the sheet, the green bars start before column 0
- and end past the last column instead of beginning and ending with the text, and
- a feed hole is a third of the strip wide — the proportion the paper artwork
- itself uses — so the printed sheet and the on-screen paper agree at any
- configured column count. (`src/lp11paper.js`; pinned by
- `tests/lp11-print.test.js`)
-
-- **A restored state brings the front panel back with the machine.** The state
- carries the POWER LOCK position, the two rotary switches and the three toggles,
- and restores them together with the CPU: a guest no longer runs behind an OFF
- key, and the address/data rockers follow the restored switch register. A state
- written before that block existed is restored powered on, and a Quick Boot from
- the wizard powers the machine on instead of booting it behind a dead panel.
- (`src/state-format.js`, `src/pdp11-panel.js`, `src/snapshots.js`,
- `src/quickboot.js`, `tools/export-state.js`, `tools/headless-term.js`;
- pinned by `tests/panel-state.test.js`)
-
-- **A long image name no longer widens the Storage page.** Every list there was
-  as wide as the longest name it held, so an image with a long file name
-  stretched the page and pushed Unmount, Delete image, Bind and Download off
-  their row. All four lists — Mounted images, Export image, Persistent disk
-  changes, Paper tape reader file — now share one fixed footprint, and each
-  keeps its button on the same line. The name inside is shortened in the
-  middle by the same rule everywhere, the extension and the `→ DRIVE` /
-  `· nothing to export` markers stay whole, and the untruncated label is
-  readable without opening the list: it is the control's own tooltip, the
-  option's title, and — for the mounted image — a line under the list.
-  (`css/pdp11.css`, `src/dragdrop.js`, `pdp11.html`; pinned by
-  `tests/storage-label-width.test.js`)
-
-- **The Export dropdown in the Machine-state dialog can be opened.** The
-  split-button's arrow was created `disabled` and no refresh re-enabled it, so
-  "Save as text file" and "Copy text to clipboard" were unreachable and Export
-  offered only the `.state.zst` download. (`src/snapshots.js`; pinned by
-  `tests/snapshot-ui-selection.test.js`)
-
+- **Desktop: the Minimal build no longer reports images it does not ship.**
+  The startup mount reads the staged manifest of the selected variant instead of
+  the Full inventory. (`src/tauri-bundled.js`,
+  `tests/desktop-manifests.test.js`)
 
 ## [0.3.0] - 2026-09-30
 
@@ -2138,6 +1630,7 @@ Initial public alpha release.
 [0.1.0]: https://github.com/amesk/yaPDP/compare/v0.1.0-alpha2...releases/v0.1.0
 [0.2.0]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0...releases/v0.2.0
 [0.3.0]: https://github.com/amesk/yaPDP/compare/releases/v0.2.0...releases/v0.3.0
-[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.3.0...HEAD
+[0.4.0]: https://github.com/amesk/yaPDP/compare/releases/v0.3.0...releases/v0.4.0
+[Unreleased]: https://github.com/amesk/yaPDP/compare/releases/v0.4.0...HEAD
 [0.1.0-alpha2]: https://github.com/amesk/yaPDP/compare/releases/v0.1.0-alpha1...v0.1.0-alpha2
 [0.1.0-alpha1]: https://github.com/amesk/yaPDP/releases/tag/releases/v0.1.0-alpha1
