@@ -335,12 +335,12 @@ export const DOWNLOAD_VARIANTS: DownloadVariantItem[] = [
     id: 'minimal',
     variant: 'Minimal',
     ships: 'rk0 (Unix V5), rk1 (RT-11), bootcode + the demo paper tapes (BASIC-11, ODT-11, ED-11, Lunar Lander)',
-    notes: '≈19 MB on Windows. Boots Unix V5, RT-11 and the paper tapes out of the box; every other image is added by drag & drop at runtime.',
+    notes: '≈34 MB on Windows. Boots Unix V5, RT-11 and the paper tapes out of the box; every other image is added by drag & drop at runtime.',
   },
   {
     id: 'full',
     variant: 'Full',
     ships: 'every image — RK/RL/RP/RA disks, TM tapes, all paper tapes',
-    notes: '≈103 MB on Windows, but every guest system in this manual boots offline — nothing to download, no setup.',
+    notes: '≈120 MB on Windows, but every guest system in this manual boots offline — nothing to download, no setup.',
   },
 ];
