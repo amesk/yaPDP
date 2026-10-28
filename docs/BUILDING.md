@@ -13,23 +13,23 @@ download and a fully-offline bundle with every disk/tape image:
 
 | Variant     | Ships                                                                                                       | Notes                                                                                                                      |
 | ----------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Minimal** | `rk0` (Unix V5), `rk1` (RT‑11), `bootcode` and the demo paper tapes (BASIC‑11, ODT‑11, ED‑11, Lunar Lander) | ≈19 MB on Windows. Unix V5, RT‑11 and the paper tapes boot offline; all other images are **dragged & dropped** at runtime. |
-| **Full**    | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes                                                  | ≈103 MB on Windows, but all fifteen bootable images come up offline with zero extra steps.                                 |
+| **Minimal** | `rk0` (Unix V5), `rk1` (RT‑11), `bootcode` and the demo paper tapes (BASIC‑11, ODT‑11, ED‑11, Lunar Lander) | ≈34 MB on Windows. Unix V5, RT‑11 and the paper tapes boot offline; all other images are **dragged & dropped** at runtime. |
+| **Full**    | every image — RK/RL/RP/RA disks, TM tapes, all paper tapes                                                  | ≈120 MB on Windows, but all fifteen bootable images come up offline with zero extra steps.                                 |
 
-The download is the application itself — artwork, audio and fonts, ≈26 MB
+The download is the application itself — artwork, audio and fonts, ≈36 MB
 uncompressed — rather than the disk images: the Minimal media set adds about 1 MB.
 
 ### Artifacts (Windows x64)
 
-| Artifact                                   | Size (0.2.0 build) |
+| Artifact                                   | Size (0.4.0 build) |
 | ------------------------------------------ | ------------------ |
-| `yaPDP-Minimal_0.2.0_x64-setup.exe` (NSIS) | 19.0 MB            |
-| `yaPDP-Minimal_0.2.0_x64_en-US.msi` (WiX)  | 20.3 MB            |
-| `yaPDP-Full_0.2.0_x64-setup.exe` (NSIS)    | 103.4 MB           |
-| `yaPDP-Full_0.2.0_x64_en-US.msi` (WiX)     | 104.4 MB           |
+| `yaPDP-Minimal_0.4.0_x64-setup.exe` (NSIS) | 33.9 MB            |
+| `yaPDP-Minimal_0.4.0_x64_en-US.msi` (WiX)  | 35.0 MB            |
+| `yaPDP-Full_0.4.0_x64-setup.exe` (NSIS)    | 119.7 MB           |
+| `yaPDP-Full_0.4.0_x64_en-US.msi` (WiX)     | 120.5 MB           |
 
 Measured from `npm run desktop:minimal` / `npm run desktop:full` on Windows. The
-app executable itself (`yapdp.exe`, the portable target) is ≈19 MB: the frontend
+app executable itself (`yapdp.exe`, the portable target) is ≈37 MB: the frontend
 is embedded in it, while every piece of content — the disk/tape images, the
 pre-built machine states and both variant manifests — is installed **beside** it
 (`media/` and `states/` resource directories). The executable is therefore the

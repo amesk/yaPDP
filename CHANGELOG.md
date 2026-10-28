@@ -179,6 +179,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screen** on short viewports and at high display scaling.
   (`index.html`, `landing/src/components/Lightbox.tsx`)
 
+- **The documented download sizes are the 0.4.0 ones** — Minimal 33.9 MB NSIS /
+  35.0 MB MSI, Full 119.7 MB / 120.5 MB, portable `yapdp.exe` ≈37 MB — measured
+  on the Windows build and carried consistently through `docs/BUILDING.md`,
+  `docs/RELEASING.md`, the manual (EN and RU), `README.md`, the classic landing
+  page and the React landing data. (`docs/BUILDING.md`, `docs/RELEASING.md`,
+  `docs/manual/desktop.md`, `docs/manual/ru/desktop.md`, `README.md`,
+  `index.html`, `landing/src/data.ts`, `landing/src/components/UserManual.tsx`)
+
 ### Fixed
 
 - **The machine no longer switches itself on when a page loads.** Power at

@@ -2765,8 +2765,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 </td>
                 <td className="py-2.5 px-3 text-[#bfae90]">
                   {lang === 'en'
-                    ? '≈19 MB on Windows. Boots Unix V5, RT-11 and the paper tapes out of the box; every other image is added by drag & drop at runtime.'
-                    : '≈19 МБ в Windows. Из коробки запускаются Unix V5, RT-11 и перфоленты; остальные образы добавляются перетаскиванием.'}
+                    ? '≈34 MB on Windows. Boots Unix V5, RT-11 and the paper tapes out of the box; every other image is added by drag & drop at runtime.'
+                    : '≈34 МБ в Windows. Из коробки запускаются Unix V5, RT-11 и перфоленты; остальные образы добавляются перетаскиванием.'}
                 </td>
               </tr>
               <tr className="hover:bg-[#191611]">
@@ -2778,8 +2778,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
                 </td>
                 <td className="py-2.5 px-3 text-[#bfae90]">
                   {lang === 'en'
-                    ? '≈103 MB on Windows, but every guest system in this manual boots completely offline — nothing to download, no setup.'
-                    : '≈103 МБ в Windows, но все гостевые системы из этого руководства запускаются в оффлайне — ничего не нужно скачивать или настраивать.'}
+                    ? '≈120 MB on Windows, but every guest system in this manual boots completely offline — nothing to download, no setup.'
+                    : '≈120 МБ в Windows, но все гостевые системы из этого руководства запускаются в оффлайне — ничего не нужно скачивать или настраивать.'}
                 </td>
               </tr>
             </tbody>

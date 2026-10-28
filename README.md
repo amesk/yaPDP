@@ -99,8 +99,8 @@ The emulator ships with preloaded disk and tape images. To manual boot, type the
 
 For offline execution, **yaPDP** is packaged as a cross-platform desktop application using [Tauri v2](https://tauri.app/).
 
-* **Minimal Installer (~19 MB):** Ships core media (`rk0` Unix V5, `rk1` RT-11, `bootcode`, BASIC-11, ODT-11, ED-11, Lunar Lander). Additional disk images can be drag-and-dropped at runtime.
-* **Full Installer (~103 MB):** Pre-packaged with every disk and tape image, so the whole guest‑OS line‑up boots completely offline. Most of that download is the application itself (artwork, audio, fonts), not the images.
+* **Minimal Installer (~34 MB):** Ships core media (`rk0` Unix V5, `rk1` RT-11, `bootcode`, BASIC-11, ODT-11, ED-11, Lunar Lander). Additional disk images can be drag-and-dropped at runtime.
+* **Full Installer (~120 MB):** Pre-packaged with every disk and tape image, so the whole guest‑OS line‑up boots completely offline. Most of that download is the application itself (artwork, audio, fonts), not the images.
 * **Supported Platforms:** Windows x64 (MSI / NSIS / Portable) and Linux x64 (deb / rpm / AppImage).
 
 For build instructions and toolchain configuration, see [`docs/BUILDING.md`](docs/BUILDING.md) and [`docs/RELEASING.md`](docs/RELEASING.md).
