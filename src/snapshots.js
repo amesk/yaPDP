@@ -1028,6 +1028,61 @@ var SnapshotStore = (() => {
         return out;
     }
 
+    // The path of a state THIS build ships ("states/<file>"), or null when the
+    // URL is not one. The desktop build carries the pre-built states as bundled
+    // resources next to the executable (no HTTP path to states/), so those are
+    // read through BundledFs, exactly like the disk images.
+    //
+    // Absolute same-origin URLs count too: a restore that had to reload the
+    // page for a profile change comes back with the RESOLVED url from
+    // sessionStorage, not with the relative path.
+    function bundledStatePath(u) {
+        if (typeof window === "undefined" || !window.BundledFs ||
+            typeof window.BundledFs.readBytes !== "function" ||
+            !window.BundledFs.isTauri()) {
+            return null;
+        }
+        var pathname = u;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(u)) {
+            var parsed;
+            try {
+                parsed = new URL(u);
+            } catch (e) {
+                return null;
+            }
+            // A foreign host keeps the network path: only our own resources are
+            // read from disk.
+            if (typeof location !== "undefined" && parsed.origin !== location.origin) {
+                return null;
+            }
+            pathname = parsed.pathname;
+        }
+        var m = /(?:^|\/)states\/([^\/?#]+)$/.exec(pathname);
+        if (!m) return null;
+        if (!/\.state(\.zst)?$|\.txt$/i.test(m[1])) return null;
+        return "states/" + m[1];
+    }
+
+    // Read the container for a state URL. Everything except our own bundled
+    // states goes through fetch, and the bundled branch is shaped like the
+    // Response the caller expects — so the size bound and the envelope /
+    // container decoding stay in ONE place, which is what makes a foreign
+    // state safe to apply.
+    function stateSource(u, target) {
+        var rel = bundledStatePath(u);
+        if (!rel) return fetch(target, { cache: "no-store" });
+        return window.BundledFs.readBytes(rel).then(function (bytes) {
+            return {
+                ok: true,
+                status: 200,
+                headers: { get: function () { return String(bytes.byteLength); } },
+                arrayBuffer: function () { return Promise.resolve(bytes.buffer); }
+            };
+        }, function () {
+            return { ok: false, status: 404, headers: { get: function () { return null; } } };
+        });
+    }
+
     function loadFromUrl(url, opts) {
         var u = String(url || "");
         if (!u) return Promise.resolve({ ok: false, reason: "missing-url" });
@@ -1041,7 +1096,7 @@ var SnapshotStore = (() => {
         if (typeof location !== "undefined" && !/^https?:\/\//i.test(u)) {
             try { target = new URL(u, location.href).href; } catch (e) { /* keep u */ }
         }
-        return fetch(target, { cache: "no-store" }).then(function (res) {
+        return stateSource(u, target).then(function (res) {
             if (!res.ok) {
                 return { ok: false, reason: "http-" + res.status, url: target };
             }

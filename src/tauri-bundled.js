@@ -1,23 +1,33 @@
 /**
- * Tauri desktop — bundled image bootstrap
+ * Tauri desktop — bundled image bootstrap and resource reader
  *
- * In the desktop build the disk/tape images are shipped as bundled resources
- * (see bundle.resources in src-tauri/tauri.conf.<variant>.json). This module
- * detects the Tauri runtime and, on startup, loads the ones THIS variant ships
- * through the Rust `load_bundled_image` command, decompresses them, and mounts
- * them into DataLoader so the emulator boots offline with no network access.
+ * In the desktop build the disk/tape images, the pre-built machine states and
+ * both variant-filtered manifests are shipped as bundled resources (see
+ * bundle.resources in src-tauri/tauri.conf.<variant>.json), i.e. as FILES next
+ * to the executable — not baked into it. This module does two things:
  *
- * Which ones: the staging step writes media/manifest.json for the selected
- * variant (tools/desktop-manifests.js), so that manifest — not the table below —
- * says what is installed. The table stays as the RESOURCE-NAME map (a logical
- * url is not enough: some payloads ship compressed and some raw) and is filtered
- * by the manifest, so the Minimal build no longer asks for images it
- * deliberately does not contain and no longer reports each absence as a load
- * failure (18 error toasts at startup, deduped into one naming rk2.dsk.zst).
+ *   1. `BundledFs` — the one way the page reads such a resource: through the
+ *      Rust `load_bundled_file` command in the desktop build, through a plain
+ *      fetch of the same relative path in a browser. It exists because the
+ *      frontend IS embedded in the binary and compiled once for both installer
+ *      variants, so anything variant-specific (the manifests, the state list)
+ *      cannot live inside it without being wrong for one of them.
+ *   2. On startup, mounts the images THIS variant ships through the Rust
+ *      `load_bundled_image` command, decompressing them into DataLoader so the
+ *      emulator boots offline with no network access.
  *
- * In a plain browser this module is a no-op.
+ * Which images: the staged media/manifest.json for the selected variant
+ * (tools/desktop-manifests.js) — not the table below — says what is installed.
+ * The table stays as the RESOURCE-NAME map (a logical url is not enough: some
+ * payloads ship compressed and some raw) and is filtered by that manifest, so
+ * the Minimal build no longer asks for images it deliberately does not contain
+ * and no longer reports each absence as a load failure (18 error toasts at
+ * startup, deduped into one naming rk2.dsk.zst).
  *
- * Must be loaded AFTER iopage.js (DataLoader) and fzstd.js.
+ * In a plain browser the mounting half is a no-op; BundledFs keeps working.
+ *
+ * Must be loaded AFTER iopage.js (DataLoader) and fzstd.js, and BEFORE every
+ * module that reads a manifest (media-registry.js, quickboot.js) runs.
  */
 "use strict";
 
@@ -84,6 +94,45 @@
             typeof window.__TAURI__.core.invoke === "function";
     }
 
+    // --- Resource reader ----------------------------------------------------
+    // States and manifests are resources too (see bundle.resources), so in the
+    // desktop build they are read through IPC; a browser fetches the very same
+    // relative path from the repo/site root. Keeping both paths behind one
+    // object is what lets the rest of src/ stay deployment-agnostic — the
+    // manifests decide what the wizard offers, and they differ per variant.
+    var BundledFs = {
+        isTauri: isTauri,
+
+        // Raw bytes of a resource ("states/rk0-ready.state.zst").
+        readBytes: function (rel) {
+            if (isTauri()) {
+                return window.__TAURI__.core
+                    .invoke("load_bundled_file", { rel: rel })
+                    .then(function (bytes) { return new Uint8Array(bytes); });
+            }
+            if (typeof fetch !== "function") {
+                return Promise.reject(new Error("fetch is unavailable for " + rel));
+            }
+            return fetch(rel, { cache: "no-store" }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error("Cannot load " + rel + " (" + response.status + ")");
+                }
+                return response.arrayBuffer().then(function (buf) {
+                    return new Uint8Array(buf);
+                });
+            });
+        },
+
+        // A JSON resource ("media/manifest.json", "states/manifest.json").
+        // Resolves to null instead of throwing: a deployment without a manifest
+        // is a supported state (ad-hoc hosts, file:// pages), not an error.
+        manifest: function (rel) {
+            return BundledFs.readBytes(rel).then(function (bytes) {
+                return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+            }).catch(function () { return null; });
+        }
+    };
+
     // The entries this build actually ships. `shipped` is the logical-url set
     // from the staged manifest; null means "unknown" (a host without one) and
     // every entry is attempted, as before. Pure — unit-testable in Node via
@@ -98,16 +147,12 @@
     // The staged manifest of THIS variant: the build step filters it by
     // bundle.resources, so it is the authoritative "what is installed" list.
     function fetchShipped() {
-        if (typeof fetch !== "function") return Promise.resolve(null);
-        return fetch("media/manifest.json", { cache: "no-store" })
-            .then(function (response) { return response.ok ? response.json() : null; })
-            .then(function (manifest) {
-                if (!manifest || !Array.isArray(manifest.media)) return null;
-                var shipped = {};
-                manifest.media.forEach(function (name) { shipped[name] = true; });
-                return shipped;
-            })
-            .catch(function () { return null; });
+        return BundledFs.manifest("media/manifest.json").then(function (manifest) {
+            if (!manifest || !Array.isArray(manifest.media)) return null;
+            var shipped = {};
+            manifest.media.forEach(function (name) { shipped[name] = true; });
+            return shipped;
+        });
     }
 
     function loadOne(item) {
@@ -179,6 +224,9 @@
     // it does not contain, and that decision must be pinned.
     if (typeof window !== "undefined") {
         window.__yapdpBundledPure = { BUNDLED: BUNDLED, shippedItems: shippedItems };
+        // Public surface for the rest of the page: the ONE way to read a
+        // bundled resource (states, manifests) without knowing the deployment.
+        window.BundledFs = BundledFs;
     }
 
     if (typeof document === "undefined") return; // Node: nothing to mount

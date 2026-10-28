@@ -16,6 +16,11 @@
  * config — and filters the pre-built machine states down to the ones that can
  * actually be restored on that variant.
  *
+ * Everything staged here — both manifests and *.state.zst — ships as a bundled
+ * RESOURCE, next to the executable and next to the disk images, never inside the
+ * embedded frontend: the frontend is compiled once for both installer variants,
+ * so a variant-specific inventory baked into it is wrong for one of them.
+ *
  * Two inventories are kept deliberately:
  *
  *   1. shippedNames(conf)  — logical image names from bundle.resources. Every
@@ -72,17 +77,27 @@ const STATE_POLICY = {
 };
 
 // Log a warning above this many bytes of staged states (state files + previews).
-// The desktop frontend is embedded in the executable, so this grows the app for
-// BOTH variants; the ceiling keeps a future state set from doing it by accident.
+// States are installed NEXT TO the executable (bundle.resources), so this sizes
+// the installer rather than the app binary; the ceiling keeps a future state
+// set from growing the download by accident.
 const STATES_BUDGET_BYTES = 20 * 1024 * 1024;
 
 // bundle.resources -> logical image names ("media/rk0.dsk.zst" -> "rk0.dsk").
+//
+// Only file destinations under media/ are images. The same map also carries the
+// state tree and both variant-filtered manifests ("states/", "media/"), which
+// are resources too but are NOT part of the image inventory — counting them
+// would make the staleness check below complain about a payload the media
+// manifest is not supposed to describe.
 function shippedNames(conf) {
     const resources = (conf && conf.bundle && conf.bundle.resources) || {};
     const out = new Set();
     for (const value of Object.values(resources)) {
-        const name = path.basename(String(value)).replace(/\.zst$/i, "");
-        if (name) out.add(name);
+        const dest = String(value).replace(/\\/g, "/");
+        if (!dest.startsWith("media/") || dest.endsWith("/")) continue;
+        const name = path.basename(dest).replace(/\.zst$/i, "");
+        if (!name || name === "manifest.json") continue;
+        out.add(name);
     }
     return out;
 }

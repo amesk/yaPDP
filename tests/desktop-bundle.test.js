@@ -80,22 +80,43 @@ function run() {
   }
 
   // --- The page's two manifests and the pre-built states are staged too ----
-  // pdp11.html fetches media/manifest.json and states/manifest.json, and the
-  // Scenario tab restores states/<file>.state.zst. The desktop app serves
-  // desktop/ as its frontendDist and ships the images as Tauri resources, so a
-  // manifest the staging step leaves out is an empty wizard list and an empty
-  // Scenario tab inside the packaged app — invisible to every browser suite.
+  // The page reads media/manifest.json and states/manifest.json, and the
+  // Scenario tab restores states/<file>.state.zst. All three differ per variant
+  // while the frontend is compiled once, so they are staged into
+  // desktop-resources/ and shipped as bundle.resources — next to the executable,
+  // like the images. Only the Scenario previews stay in the embedded frontend
+  // (the cards paint them as <img src="states/previews/...">).
   {
     assert.ok(/require\("\.\/desktop-manifests\.js"\)/.test(script),
       "tools/build-desktop.js must derive the manifests through " +
       "tools/desktop-manifests.js (one source of truth: bundle.resources)");
     assert.ok(/stageManifests\(variant, variantConf\)/.test(script),
       "tools/build-desktop.js must stage the manifests for the SELECTED variant");
-    assert.ok(/path\.join\(DEST, "media", "manifest\.json"\)/.test(script),
-      "tools/build-desktop.js must write desktop/media/manifest.json");
+    assert.ok(/path\.join\(RESOURCES_DEST, "media", "manifest\.json"\)/.test(script),
+      "tools/build-desktop.js must stage the filtered media manifest as a " +
+      "RESOURCE (desktop-resources/media/manifest.json), not into the frontend");
+    assert.ok(/path\.join\(RESOURCES_DEST, "states"\)/.test(script),
+      "tools/build-desktop.js must stage the state files + their manifest as " +
+      "RESOURCES (desktop-resources/states/)");
     assert.ok(/path\.join\(DEST, "states"\)/.test(script),
-      "tools/build-desktop.js must stage desktop/states/ " +
-      "(manifest + state files + previews)");
+      "tools/build-desktop.js must keep the Scenario previews in the frontend " +
+      "(desktop/states/previews), because the cards load them as image URLs");
+  }
+
+  // --- The resource reader is confined to the resource directory -----------
+  // The frontend asks for "states/<file>", and that name becomes operator/URL
+  // input the moment a deep link names a state, so the Rust command — not only
+  // the JS caller — must refuse a path that leaves $RESOURCE.
+  {
+    const libRs = read(path.join(ROOT, "src-tauri", "src", "lib.rs"));
+    assert.ok(/fn load_bundled_file/.test(libRs),
+      "src-tauri/src/lib.rs must expose the load_bundled_file command " +
+      "(states and manifests are read through it)");
+    assert.ok(/rel\.contains\("\.\."\)/.test(libRs),
+      "load_bundled_file must refuse a '..' segment: the resource directory is " +
+      "the whole sandbox the frontend gets");
+    assert.ok(/generate_handler!\[[\s\S]*load_bundled_file/.test(libRs),
+      "load_bundled_file must be registered in the Tauri invoke handler");
   }
 
   // --- Both installer variants serve that staged directory ------------------
@@ -109,6 +130,13 @@ function run() {
       "tauri.conf." + variant + ".json must open pdp11.html");
     assert.strictEqual(conf.app.security.csp, null,
       "the artwork is fetched at runtime, so the CSP must stay off");
+    // The provenance of the states + manifests: a resource, not a compiled-in
+    // asset. Without these two lines the packaged app has an empty Scenario tab
+    // and an empty wizard list, and the difference per variant is invisible.
+    assert.strictEqual(conf.bundle.resources["../desktop-resources/states/"], "states/",
+      "tauri.conf." + variant + ".json must ship the staged states as a resource");
+    assert.strictEqual(conf.bundle.resources["../desktop-resources/media/"], "media/",
+      "tauri.conf." + variant + ".json must ship the staged manifests as a resource");
   }
 
   // --- Every asset the frontend references exists on disk ------------------
@@ -197,8 +225,12 @@ function run() {
   // staging step from bundle.resources), so the table must be filtered by it.
   {
     const bundledModule = read(BUNDLED_MODULE);
-    assert.ok(/fetch\("media\/manifest\.json"/.test(bundledModule),
-      "src/tauri-bundled.js must read the staged media/manifest.json");
+    assert.ok(/BundledFs\.manifest\("media\/manifest\.json"\)/.test(bundledModule),
+      "src/tauri-bundled.js must read the staged media/manifest.json " +
+      "(through BundledFs, i.e. from the resource dir in the desktop build)");
+    assert.ok(/invoke\("load_bundled_file"/.test(bundledModule),
+      "src/tauri-bundled.js must read resources through the Rust " +
+      "load_bundled_file command (states and manifests are not served over HTTP)");
     assert.ok(/shippedItems\(BUNDLED, shipped\)/.test(bundledModule),
       "src/tauri-bundled.js must mount BUNDLED filtered by that manifest");
     assert.ok(/__yapdpBundledReady = ready/.test(bundledModule),

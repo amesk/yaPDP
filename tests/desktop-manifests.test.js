@@ -71,6 +71,18 @@ function testShippedNames() {
     }
     assert.ok(full.size > minimal.size,
         "the full installer must stay bigger than the minimal one");
+
+    // The same resources map also carries the state tree and both variant
+    // manifests. They ARE resources, but they are not images: a phantom
+    // "states"/"manifest.json" name would make unlistedResources fail on a
+    // payload the media manifest is not supposed to describe.
+    for (const variant of ["minimal", "full"]) {
+        const names = DM.shippedNames(readJson(CONFIGS[variant]));
+        assert.ok(!names.has("states"),
+            "shippedNames must ignore the staged states tree (" + variant + ")");
+        assert.ok(!names.has("manifest.json"),
+            "shippedNames must ignore the staged manifests (" + variant + ")");
+    }
 }
 
 defineTest("shippedNames: bundle.resources -> logical image names", testShippedNames);
