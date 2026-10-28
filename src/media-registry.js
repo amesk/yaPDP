@@ -9,12 +9,25 @@
 (function (global) {
     var manifestPromise = null;
 
+    // The manifest is a bundled resource in the desktop build and a plain file
+    // on the site, so it is read through BundledFs (src/tauri-bundled.js) when
+    // that is present — the packaged app has no HTTP path to media/ at all.
+    function loadManifest() {
+        if (global.BundledFs && typeof global.BundledFs.manifest === "function") {
+            return global.BundledFs.manifest("media/manifest.json").then(function (data) {
+                if (!data) throw new Error("Cannot load media manifest");
+                return data;
+            });
+        }
+        return fetch("media/manifest.json").then(function (response) {
+            if (!response.ok) throw new Error("Cannot load media manifest");
+            return response.json();
+        });
+    }
+
     function manifest() {
         if (!manifestPromise) {
-            manifestPromise = fetch("media/manifest.json").then(function (response) {
-                if (!response.ok) throw new Error("Cannot load media manifest");
-                return response.json();
-            }).catch(function (err) {
+            manifestPromise = loadManifest().catch(function (err) {
                 manifestPromise = null;
                 throw err;
             });

@@ -47,6 +47,8 @@
             }
         },
         "resources": {
+            "../desktop-resources/states/": "states/",
+            "../desktop-resources/media/": "media/",
             "../media/rk0.dsk.zst": "media/rk0.dsk.zst",
             "../media/rk1.dsk.zst": "media/rk1.dsk.zst",
             "../media/bootcode.ptap": "media/bootcode.ptap",

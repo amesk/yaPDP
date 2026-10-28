@@ -17,6 +17,12 @@
  * lists only states that can be restored offline. See
  * tools/desktop-manifests.js for the filters and the per-variant state policy.
  *
+ * States and BOTH manifests are staged into desktop-resources/ and shipped as
+ * Tauri resources, exactly like the images: they are content, they differ per
+ * variant, and the frontend is compiled ONCE for both variants, so a
+ * variant-specific manifest inside it would be wrong for one of them. Only the
+ * Scenario previews stay in the frontend — the cards paint them as <img src>.
+ *
  * Two installer variants are produced from the same frontend:
  *   --variant minimal  (default) -> bundles only rk0/rk1/bootcode
  *   --variant full               -> bundles every media image (RK/RL/RP/RA/TM + tapes)
@@ -35,6 +41,9 @@ const DesktopManifests = require("./desktop-manifests.js");
 
 const ROOT = path.resolve(__dirname, "..");
 const DEST = path.join(ROOT, "desktop");
+// Staging for bundle.resources: states/ and media/manifest.json, shipped next
+// to the executable (see bundle.resources in both tauri.conf variants).
+const RESOURCES_DEST = path.join(ROOT, "desktop-resources");
 const CONFIG_DEST = path.join(ROOT, "src-tauri", "tauri.conf.json");
 const MEDIA_MANIFEST = path.join(ROOT, "media", "manifest.json");
 const STATES_SRC = path.join(ROOT, "states");
@@ -45,7 +54,7 @@ function usage() {
     console.log("Usage: node tools/build-desktop.js [--variant minimal|full] [--clean]");
     console.log("  minimal  (default) bundle rk0/rk1/bootcode only");
     console.log("  full     bundle every media image");
-    console.log("  --clean  remove staged frontend + generated tauri.conf.json");
+    console.log("  --clean  remove staged frontend, staged resources + generated tauri.conf.json");
 }
 
 function copyDir(src, dest) {
@@ -75,10 +84,11 @@ function fail(message) {
     process.exit(1);
 }
 
-// Stage the two manifests the page fetches, plus the machine states this
-// variant can actually restore. Both lists are filtered by bundle.resources of
-// the SELECTED variant, so the packaged app never advertises what it cannot
-// serve (see tools/desktop-manifests.js).
+// Stage the two manifests the page reads, plus the machine states this variant
+// can actually restore. Both lists are filtered by bundle.resources of the
+// SELECTED variant, so the packaged app never advertises what it cannot serve
+// (see tools/desktop-manifests.js). Output goes to desktop-resources/ because
+// all three are bundled resources, not part of the compiled-in frontend.
 function stageManifests(variant, conf) {
     const shipped = DesktopManifests.shippedNames(conf);
     if (!shipped.size) {
@@ -96,7 +106,9 @@ function stageManifests(variant, conf) {
             "\n  run: npm run manifest");
     }
     const filteredMedia = DesktopManifests.filterMediaManifest(mediaManifest, shipped);
-    writeJson(path.join(DEST, "media", "manifest.json"), filteredMedia);
+    // Staged WITH the images it describes: the app reads it from the resource
+    // dir (Rust `load_bundled_file`), never over HTTP.
+    writeJson(path.join(RESOURCES_DEST, "media", "manifest.json"), filteredMedia);
 
     const stateManifestFile = path.join(STATES_SRC, "manifest.json");
     if (!fs.existsSync(stateManifestFile)) {
@@ -123,7 +135,8 @@ function stageManifests(variant, conf) {
     }
 
     const filtered = DesktopManifests.filterStateEntries(entries, mountedByFile, shipped, policy);
-    const statesDest = path.join(DEST, "states");
+    const statesDest = path.join(RESOURCES_DEST, "states");
+    const previewsDest = path.join(DEST, "states");
     const stagedEntries = [];
     for (const entry of filtered.kept) {
         const src = path.join(STATES_SRC, entry.file);
@@ -131,12 +144,15 @@ function stageManifests(variant, conf) {
             fail(`states/${entry.file} is listed in states/manifest.json but missing — ` +
                 "run: npm run state-manifest");
         }
+        // The container is content: it ships next to the executable, like the
+        // images it mounts.
         fs.mkdirSync(statesDest, { recursive: true });
         fs.copyFileSync(src, path.join(statesDest, entry.file));
         const staged = Object.assign({}, entry);
-        // Previews are stored next to the states ("previews/x-small.png"). A
-        // missing file is reported and dropped from the manifest, so the card
-        // falls back to text instead of the lightbox opening a 404.
+        // Previews are UI, not content: they stay in the embedded frontend,
+        // which paints them as <img src="states/previews/...">. A missing file
+        // is reported and dropped from the manifest, so the card falls back to
+        // text instead of the lightbox opening a 404.
         for (const key of ["screenshot", "screenshotFull"]) {
             const rel = staged[key];
             if (!rel) continue;
@@ -146,7 +162,7 @@ function stageManifests(variant, conf) {
                 staged[key] = null;
                 continue;
             }
-            const to = path.join(statesDest, rel);
+            const to = path.join(previewsDest, rel);
             fs.mkdirSync(path.dirname(to), { recursive: true });
             fs.copyFileSync(from, to);
         }
@@ -166,7 +182,7 @@ function stageManifests(variant, conf) {
     if (stateBytes > DesktopManifests.STATES_BUDGET_BYTES) {
         console.warn(`  WARNING: staged states exceed ` +
             `${DesktopManifests.megabytes(DesktopManifests.STATES_BUDGET_BYTES)} — ` +
-            "they are embedded in the executable, so both installers grow");
+            "they are installed next to the executable, so the installer grows");
     }
 }
 
@@ -203,8 +219,10 @@ if (variant !== "minimal" && variant !== "full") {
 
 if (clean) {
     fs.rmSync(DEST, { recursive: true, force: true });
+    fs.rmSync(RESOURCES_DEST, { recursive: true, force: true });
     fs.rmSync(CONFIG_DEST, { force: true });
     console.log(`Removed staged frontend -> ${DEST}`);
+    console.log(`Removed staged resources -> ${RESOURCES_DEST}`);
     console.log("Removed generated src-tauri/tauri.conf.json");
     process.exit(0);
 }
@@ -213,6 +231,8 @@ if (clean) {
 
 fs.rmSync(DEST, { recursive: true, force: true });
 fs.mkdirSync(DEST, { recursive: true });
+fs.rmSync(RESOURCES_DEST, { recursive: true, force: true });
+fs.mkdirSync(RESOURCES_DEST, { recursive: true });
 
 fs.copyFileSync(path.join(ROOT, "pdp11.html"), path.join(DEST, "pdp11.html"));
 fs.copyFileSync(path.join(ROOT, "favicon.ico"), path.join(DEST, "favicon.ico"));

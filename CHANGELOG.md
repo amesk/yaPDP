@@ -183,6 +183,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/landing-manual-coverage.test.js`)
 ### Changed
 
+- **The desktop app keeps its content next to the executable.** The pre-built
+  machine states and both variant manifests now install into the app's resource
+  directory (`states/`, `media/manifest.json`) instead of being compiled into the
+  binary, exactly like the disk and tape images: the executable no longer grows
+  by the states, and the Full installer offers every Scenario card and every
+  image it ships instead of the Minimal lists. (`tools/build-desktop.js`,
+  `tools/desktop-manifests.js`, `src-tauri/src/lib.rs`,
+  `src-tauri/tauri.conf.*.json`, `src/tauri-bundled.js`, `src/quickboot.js`,
+  `src/media-registry.js`, `src/snapshots.js`, `tests/desktop-bundle.test.js`,
+  `tests/desktop-manifests.test.js`, `tests/snapshotstore.test.js`)
 - **The LP11 Print sheet folds without a seam.** The tractor perforation now
   reads as one continuous lattice across the fold: the feed holes are a whole
   share of the sheet — 22 per sheet, the historical half inch on the machine's

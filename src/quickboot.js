@@ -57,15 +57,31 @@ var QuickBoot = (function () {
     // does not briefly announce that the collection is empty while loading.
     var stateManifestLoaded = false;
 
+    // Read one of the two manifests. In the desktop build they ship as bundled
+    // resources (BundledFs, src/tauri-bundled.js) because the embedded frontend
+    // is compiled once while the inventory differs per variant; in a browser
+    // the same relative path is fetched. Resolves to null when the deployment
+    // has no manifest at all.
+    function readManifest(rel) {
+        if (typeof document === "undefined") return Promise.resolve(null);
+        if (typeof BundledFs !== "undefined" && BundledFs &&
+            typeof BundledFs.manifest === "function") {
+            return BundledFs.manifest(rel);
+        }
+        if (typeof fetch !== "function") return Promise.resolve(null);
+        return fetch(rel, { cache: "no-store" })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; });
+    }
+
     // Fetch the build manifest once. Resolves to the image-url list, or null
     // when the deployment has no manifest (or fetch is unavailable). The
     // promise is shared so the wizard and the Info page see the same answer.
     function fetchManifest() {
-        if (typeof fetch !== "function" || typeof document === "undefined") {
+        if (typeof document === "undefined") {
             return Promise.resolve(null);
         }
-        return fetch("media/manifest.json", { cache: "no-store" })
-            .then(function (r) { return r.ok ? r.json() : null; })
+        return readManifest("media/manifest.json")
             .then(function (m) {
                 manifestList = (m && Array.isArray(m.media)) ? m.media : null;
                 return manifestList;
@@ -84,11 +100,10 @@ var QuickBoot = (function () {
     // is unavailable). The promise is shared so the wizard and the Info page
     // see the same answer.
     function fetchStateManifest() {
-        if (typeof fetch !== "function" || typeof document === "undefined") {
+        if (typeof document === "undefined") {
             return Promise.resolve(null);
         }
-        return fetch("states/manifest.json", { cache: "no-store" })
-            .then(function (r) { return r.ok ? r.json() : null; })
+        return readManifest("states/manifest.json")
             .then(function (m) {
                 stateManifest = (Array.isArray(m)) ? m : null;
                 return stateManifest;

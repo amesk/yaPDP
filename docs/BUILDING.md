@@ -29,9 +29,11 @@ uncompressed — rather than the disk images: the Minimal media set adds about 1
 | `yaPDP-Full_0.2.0_x64_en-US.msi` (WiX)     | 104.4 MB           |
 
 Measured from `npm run desktop:minimal` / `npm run desktop:full` on Windows. The
-app executable itself (`yapdp.exe`, the portable target) is ≈21 MB: the frontend
-is embedded in it, while the bundled images are installed **beside** it (the
-`media/` resource directory), so its size is the same for both variants.
+app executable itself (`yapdp.exe`, the portable target) is ≈19 MB: the frontend
+is embedded in it, while every piece of content — the disk/tape images, the
+pre-built machine states and both variant manifests — is installed **beside** it
+(`media/` and `states/` resource directories). The executable is therefore the
+same for both variants, and a variant's inventory never has to be compiled in.
 
 ### Artifacts (Linux x64)
 
@@ -71,10 +73,15 @@ supported. Mounted images persist in IndexedDB and are re-mounted automatically 
 ### Bundled machine states
 
 The Scenario tab of the quick-boot wizard lists the pre-built machine states from
-`states/manifest.json`, and each card restores `states/<file>.state.zst`. Both reach
-the packaged app only because the staging step copies them (the frontend is embedded
-in the executable, so a card for an unshippable state would be a restore that cannot
-complete):
+`states/manifest.json`, and each card restores `states/<file>.state.zst`. Like the
+images, both ship as **Tauri resources**: the staging step writes the variant's
+filtered set into `desktop-resources/`, which `bundle.resources` installs as the
+`states/` directory next to the executable, and the page reads them through the
+Rust `load_bundled_file` command (`BundledFs` in `src/tauri-bundled.js`). They are
+deliberately NOT embedded in the frontend: the frontend is compiled once for both
+variants, so a per-variant state list or media manifest baked into it would be
+wrong for one of them. The Scenario previews (thumbnails) stay embedded — the
+cards paint them as image URLs.
 
 | Variant     | States                                                                                   | Staged size |
 | ----------- | ---------------------------------------------------------------------------------------- | ----------- |
@@ -108,12 +115,12 @@ flowchart LR
 ```
 
 In the desktop app the bundle is mounted from `bundle.resources` and the list is
-taken from the staged `media/manifest.json` — the table in
-`src/tauri-bundled.js` only maps a logical image to its resource file. That is
-why the Minimal installer never asks for `rk2`/`rl*`/`rp*` it does not contain:
-the filtered list decides, so an absent image is not a load error, while an
-image the manifest lists and the resource directory cannot produce still raises
-the operator toast.
+taken from the staged `media/manifest.json`, which ships as a resource as well —
+the table in `src/tauri-bundled.js` only maps a logical image to its resource
+file. That is why the Minimal installer never asks for `rk2`/`rl*`/`rp*` it does
+not contain: the filtered list decides, so an absent image is not a load error,
+while an image the manifest lists and the resource directory cannot produce
+still raises the operator toast.
 
 On a static host, disk/tape images are fetched from the `media/` directory
 **relative to the emulator page** (`fetch("media/…")`), not from `../media/`.

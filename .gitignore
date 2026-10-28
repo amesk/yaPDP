@@ -6,8 +6,11 @@ src-tauri/gen/schemas/
 # Only tauri.conf.minimal.json and tauri.conf.full.json are tracked.
 src-tauri/tauri.conf.json
 
-# ---- Generated staging directory (rebuilt by tools/build-desktop.js) ----
+# ---- Generated staging directories (rebuilt by tools/build-desktop.js) ----
+# desktop/        -> build.frontendDist (embedded in the executable)
+# desktop-resources/ -> bundle.resources: states + the two variant manifests
 desktop/
+desktop-resources/
 
 # ---- Node tooling (npm) ----
 node_modules/

@@ -185,6 +185,10 @@ function buildSandbox() {
     // src/state-frame.js — the frame around that container, same treatment.
     StateFrame: undefined,
     Response,
+    // The page resolves a relative ?state= against location.href and compares
+    // origins for the bundled-state path, so the sandbox needs the same URL
+    // implementation the browser has (a vm context does not get it for free).
+    URL,
     TextEncoder, TextDecoder,
     STATE_HALT: 3,
     STATE_RUN: 0,
@@ -1029,6 +1033,123 @@ async function run() {
     assert.strictEqual(JSON.stringify(p3.sb.StepEngine.calls), "[]",
       "no keystrokes from the previous guest are replayed into the new machine");
     console.log("PASS test 20: steps are never inherited across states");
+  }
+
+  // ---- Test 21: the desktop build reads its own states from the resource dir -
+  // In the packaged app the pre-built states ship as Tauri resources next to the
+  // executable, so `states/<file>` has NO HTTP path: it must go through
+  // BundledFs -> the Rust `load_bundled_file` command. Everything else keeps the
+  // network path, and the resource name is never widened — a `..` segment, a
+  // non-state file or a foreign host must not reach the resource reader at all.
+  {
+    const PROFILE = {
+      consoleType: "teletype", userTerminals: 0, printer: false, vt11: false,
+    };
+    const MANIFEST = {
+      schemaVersion: "1.0.0", label: "RT-11 ready", device: "rk1", profile: PROFILE,
+    };
+    const STATE = "states/rk1-ready.state.zst";
+
+    // One page of the desktop build: Tauri runtime present, no HTTP at all.
+    function desktopPage() {
+      const sb = buildSandbox();
+      sb.sessionStorage = {
+        _m: new Map(),
+        getItem(k) { return this._m.has(k) ? this._m.get(k) : null; },
+        setItem(k, v) { this._m.set(k, String(v)); },
+        removeItem(k) { this._m.delete(k); },
+      };
+      sb.location = {
+        reload: () => {},
+        href: "http://tauri.localhost/pdp11.html",
+        origin: "http://tauri.localhost",
+        pathname: "/pdp11.html",
+      };
+      sb.Config.set(PROFILE);
+      const calls = { bundled: [], fetch: [] };
+      // Stands in for src/tauri-bundled.js -> invoke("load_bundled_file").
+      sb.window.BundledFs = {
+        isTauri: () => true,
+        readBytes(rel) {
+          calls.bundled.push(rel);
+          if (rel !== STATE) {
+            return Promise.reject(new Error("cannot read bundled resource " + rel));
+          }
+          const bytes = sb.StateFormat.pack(MANIFEST, sb.CPU.memory);
+          return Promise.resolve(new Uint8Array(bytes));
+        },
+      };
+      // Any HTTP request in this build is a bug: answer like a 404 and record it.
+      sb.fetch = (url) => {
+        calls.fetch.push(String(url));
+        return Promise.resolve({ ok: false, status: 404, headers: { get: () => null } });
+      };
+      const SS = loadSnapshotStore(sb);
+      return { sb, SS, calls };
+    }
+
+    // A Scenario card: the relative path the wizard hands to loadFromUrl.
+    {
+      const p = desktopPage();
+      const result = await p.SS.loadFromUrl(STATE);
+      assert.strictEqual(result.ok, true,
+        "the bundled state must apply: " + JSON.stringify(result));
+      assert.deepStrictEqual(p.calls.bundled, [STATE],
+        "states/<file> must be read through load_bundled_file, exactly as stored");
+      assert.deepStrictEqual(p.calls.fetch, [],
+        "a bundled state must not be fetched over HTTP (there is no such path)");
+    }
+
+    // A restore that reloaded the page for a profile change comes back with the
+    // RESOLVED url from sessionStorage, not with the relative path.
+    {
+      const p = desktopPage();
+      const result = await p.SS.loadFromUrl("http://tauri.localhost/" + STATE);
+      assert.strictEqual(result.ok, true,
+        "the same-origin absolute url must resolve to the resource: " +
+        JSON.stringify(result));
+      assert.deepStrictEqual(p.calls.bundled, [STATE]);
+      assert.deepStrictEqual(p.calls.fetch, []);
+    }
+
+    // Somebody else's state keeps the network path.
+    {
+      const p = desktopPage();
+      const result = await p.SS.loadFromUrl("https://example.com/" + STATE);
+      assert.strictEqual(result.ok, false, "a foreign state cannot be a resource");
+      assert.strictEqual(result.reason, "http-404");
+      assert.deepStrictEqual(p.calls.bundled, [],
+        "a foreign host must never reach the resource reader");
+      assert.deepStrictEqual(p.calls.fetch, ["https://example.com/" + STATE]);
+    }
+
+    // The resource name is not widened: traversal and non-state files fall back
+    // to the network path (where they die) instead of being read from the app.
+    {
+      const p = desktopPage();
+      for (const bad of ["states/../../secrets.state.zst", "states/manifest.json"]) {
+        p.calls.bundled.length = 0;
+        p.calls.fetch.length = 0;
+        const result = await p.SS.loadFromUrl(bad);
+        assert.strictEqual(result.ok, false, "must be refused: " + bad);
+        assert.deepStrictEqual(p.calls.bundled, [],
+          "the resource reader must not be asked for " + bad);
+        assert.strictEqual(p.calls.fetch.length, 1,
+          bad + " must keep the network path");
+      }
+    }
+
+    // A state the variant does not ship is reported like a missing file, not
+    // thrown: the wizard shows its usual "not restored" dialog.
+    {
+      const p = desktopPage();
+      const result = await p.SS.loadFromUrl("states/rk5-ready.state.zst");
+      assert.strictEqual(result.ok, false);
+      assert.strictEqual(result.reason, "http-404",
+        "a resource that is absent from this installer is a 404, not a crash");
+    }
+
+    console.log("PASS test 21: desktop states come from the resource dir, nothing else");
   }
 
   console.log("\nAll SnapshotStore tests passed.");
