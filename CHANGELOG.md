@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   looked missing in the touch layout. Pause keeps its own, leftmost inset at
   every width. (`css/pdp11.css`, `tests/console-button-layout.test.js`)
 
+- **The Share dialog's buttons stay flush on a phone.** Cancel and Create
+  Shareable State were bare inline siblings in the dialog box, spaced by a
+  left margin that stayed applied after the pair wrapped, so the lower button
+  stood indented from the one above. Both now share the dialog's action row,
+  whose gap spaces the wrapped lines evenly.
+  (`src/snapshots.js`, `tests/mobile-css.test.js`)
+
 ## [0.4.0] - 2026-10-28
 
 ### Added

@@ -4190,15 +4190,22 @@ var SnapshotStore = (() => {
                     // stay open, because the share retry is a second click.
                     '<p class="share-status" id="share-status" role="status"' +
                         ' aria-live="polite" style="display:none"></p>' +
-                    '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
-                    '<div class="split-btn">' +
-                        '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
-                        '<button type="button" id="share-create-more" class="split-btn-arrow" aria-label="More share options">&#9662;</button>' +
-                        '<div class="split-btn-menu open-up" id="share-create-menu">' +
-                            '<button type="button" id="share-create-clipboard" class="split-btn-item">Copy text to clipboard</button>' +
-                            '<button type="button" id="share-create-textfile" class="split-btn-item">Save as text file</button>' +
-                            '<button type="button" id="share-create-share" class="split-btn-item" disabled>Share via platform\u2026</button>' +
-                            '<button type="button" id="share-create-gist" class="split-btn-item">Create GitHub Gist\u2026</button>' +
+                    // The two actions share the dialog action row, exactly like
+                    // every other dialog. As bare inline siblings they were
+                    // spaced by a margin-left on the second one, which stayed
+                    // applied after the row wrapped on a phone and pushed the
+                    // wrapped button sideways; the row's gap does not.
+                    '<div class="modal-actions">' +
+                        '<button type="button" class="modal-close" data-snap-action="cancel">Cancel</button>' +
+                        '<div class="split-btn">' +
+                            '<button type="button" class="modal-close split-btn-main" id="share-create">Create Shareable State</button>' +
+                            '<button type="button" id="share-create-more" class="split-btn-arrow" aria-label="More share options">&#9662;</button>' +
+                            '<div class="split-btn-menu open-up" id="share-create-menu">' +
+                                '<button type="button" id="share-create-clipboard" class="split-btn-item">Copy text to clipboard</button>' +
+                                '<button type="button" id="share-create-textfile" class="split-btn-item">Save as text file</button>' +
+                                '<button type="button" id="share-create-share" class="split-btn-item" disabled>Share via platform\u2026</button>' +
+                                '<button type="button" id="share-create-gist" class="split-btn-item">Create GitHub Gist\u2026</button>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                 '</div>';
