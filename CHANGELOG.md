@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`src/action-overflow.js`, `css/pdp11.css`, `tests/action-overflow.test.js`,
   `tests/mobile-css.test.js`)
 
+- **The Pause / Resume control is visible on a phone.** Below 768 px the
+  narrow-screen layout gave Pause and Reboot the same inset, and Reboot — later
+  in the document — painted over Pause, so the machine's run/pause control
+  looked missing in the touch layout. Pause keeps its own, leftmost inset at
+  every width. (`css/pdp11.css`, `tests/console-button-layout.test.js`)
+
 ## [0.4.0] - 2026-10-28
 
 ### Added

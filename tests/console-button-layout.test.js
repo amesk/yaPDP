@@ -111,6 +111,52 @@ function run() {
             "the narrow breakpoint must keep STATE clear of the wand");
     }
 
+    // --- 3b. The narrow breakpoint must not stack Pause on top of Reboot ----
+    // Pause wears BOTH .console-reboot and .console-pause, so comparing the two
+    // class names in the source is not enough: inside the breakpoint the same
+    // `left` competes by specificity and then by ORDER, and a .console-reboot
+    // rule placed after .console-pause wins it for Pause as well — at equal
+    // left, Reboot (later in the DOM) paints over Pause and the control looks
+    // missing on a phone. Resolve the cascade for both elements instead of
+    // trusting the order of the text.
+    {
+        const narrowMedia = blockAt(css,
+            css.indexOf("@media (max-width: 768px)"),
+            "@media (max-width: 768px)").body;
+
+        // Effective `left` for an element carrying exactly `classes`: the rule
+        // with the highest specificity wins, the later one among equals.
+        function resolvedLeft(classes) {
+            const ruleRe = /([^{}]+)\{([^{}]*)\}/g;
+            let best = null;
+            let m;
+            while ((m = ruleRe.exec(narrowMedia))) {
+                // The capture also carries the whitespace (and comments) that
+                // precede the selector, so strip them before matching.
+                const selector = m[1].replace(/\/\*[\s\S]*?\*\//g, "").trim();
+                if (!/^\.[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/.test(selector)) continue;
+                const own = selector.split(".").filter(Boolean);
+                if (!own.every((c) => classes.indexOf(c) !== -1)) continue;
+                const value = /(?:^|[^-a-z])left\s*:\s*(-?[0-9.]+)px/.exec(m[2]);
+                if (!value) continue;
+                if (!best || own.length >= best.specificity) {
+                    best = { specificity: own.length, value: parseFloat(value[1]) };
+                }
+            }
+            return best ? best.value : null;
+        }
+
+        const narrowPauseLeft = resolvedLeft(["console-reboot", "console-pause"]);
+        const narrowRebootLeft = resolvedLeft(["console-reboot"]);
+        assert.notStrictEqual(narrowPauseLeft, null,
+            "the narrow breakpoint must position Pause explicitly");
+        assert.notStrictEqual(narrowRebootLeft, null,
+            "the narrow breakpoint must position Reboot explicitly");
+        assert.ok(narrowPauseLeft < narrowRebootLeft,
+            "on a phone Pause must stay clear of Reboot (" + narrowPauseLeft +
+            " vs " + narrowRebootLeft + "): at equal left the later DOM sibling covers it");
+    }
+
     // --- 4. On a touch device the round buttons follow the control strip ----
     {
         // STATE has no own rule for this: it is a .console-reboot, and the

@@ -4615,14 +4615,20 @@ button.action-more-hidden {
         margin-bottom: 0;
     }
 
-    .console-pause {
-        top: 8px;
-        left: 8px;
-    }
-
+    /* Pause wears BOTH classes (.console-reboot.console-pause), and this
+       breakpoint used to declare .console-pause FIRST and .console-reboot
+       after it: at equal specificity the later left: 56px won, so Pause landed
+       exactly on top of Reboot — which follows it in the DOM and painted over
+       it, making the control look missing on a phone. The two-class selector
+       pins Pause leftmost at every width, independently of rule order. */
     .console-reboot {
         top: 8px;
         left: 56px;
+    }
+
+    .console-reboot.console-pause {
+        top: 8px;
+        left: 8px;
     }
 
     .console-state {
