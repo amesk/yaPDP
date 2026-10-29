@@ -640,6 +640,86 @@ async function testPlatformShareFallback(browser, errors) {
     console.log("  G: passed");
 }
 
+// --- J. Work in progress is visible while the state is prepared ----------
+// A small snapshot is ready in ~100 ms, and the dialog deliberately waits
+// 300 ms before it says anything — so the busy state cannot be observed on an
+// idle desktop. Throttling the renderer through CDP turns the same preparation
+// into seconds, which makes "the operator can see that it is working" a real
+// observation instead of a reading of the source (tests/share-busy.test.js
+// pins the contract; this pins the behaviour).
+async function testBusyIndicator(browser, errors) {
+    console.log("\n=== J. Work in progress is visible while preparing ===");
+    const page = await openStubPage(browser, errors);
+    let cdp = null;
+    try {
+        const snapId = await page.evaluate(async () => (await SnapshotStore.save("busy-ui")).id);
+        check("J1: snapshot saved", typeof snapId === "string", String(snapId));
+
+        // Open the dialog first, so the throttle only slows what is measured.
+        await page.evaluate((id) => {
+            const btn = document.getElementById("state-btn");
+            if (btn) btn.click();
+            SnapshotStore.refreshUI(id);
+        }, snapId);
+        await page.waitForFunction(() => {
+            const share = document.getElementById("snap-share");
+            return !!(share && !share.disabled);
+        }, { timeout: 60000 });
+
+        cdp = await page.createCDPSession();
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+
+        await page.evaluate(() => document.getElementById("snap-share").click());
+        await page.waitForSelector("#share-create-more", { timeout: 60000 });
+        await page.evaluate(() => document.getElementById("share-create-more").click());
+
+        const read = () => page.evaluate(() => {
+            const item = document.getElementById("share-create-share");
+            const status = document.getElementById("share-status");
+            return {
+                ariaBusy: item ? item.getAttribute("aria-busy") : null,
+                label: item ? item.textContent.replace(/\s+/g, " ").trim() : "",
+                spin: item ? !!item.querySelector(".yapdp-spin") : false,
+                disabled: item ? item.disabled : null,
+                statusVisible: status ? status.style.display === "block" : false,
+                statusBusy: status ? status.classList.contains("share-status--busy") : false,
+                statusText: status ? status.textContent.trim() : "",
+            };
+        });
+
+        let busy = null;
+        for (let i = 0; i < 400; i++) {
+            const state = await read();
+            if (state.ariaBusy === "true") { busy = state; break; }
+            await new Promise((r) => setTimeout(r, 50));
+        }
+        check("J2: the Share item reports work in progress", !!busy);
+        check("J3: it says what it is doing", !!busy && /Preparing/.test(busy.label),
+            busy ? busy.label : "");
+        check("J4: it carries the shared spinner", !!busy && busy.spin === true);
+        check("J5: and cannot be clicked while it prepares", !!busy && busy.disabled === true);
+        check("J6: the status line names the stage",
+            !!busy && busy.statusBusy && busy.statusVisible, busy ? busy.statusText : "");
+
+        let ready = null;
+        for (let i = 0; i < 600; i++) {
+            const state = await read();
+            if (state.ariaBusy === null && state.disabled === false) { ready = state; break; }
+            await new Promise((r) => setTimeout(r, 50));
+        }
+        check("J7: the busy state clears once the artifact is ready", !!ready);
+        check("J8: the spinner goes with it", !!ready && ready.spin === false);
+        check("J9: the status line is cleared too", !!ready && ready.statusVisible === false);
+        check("J10: and the item offers what will be handed over",
+            !!ready && /^Share /.test(ready.label), ready ? ready.label : "");
+
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    } finally {
+        if (cdp) { try { await cdp.detach(); } catch (e) { /* ignore */ } }
+        await page.close();
+    }
+}
+
 // --- Main ----------------------------------------------------------------
 (async () => {
     const server = await ensureServer();
@@ -664,6 +744,7 @@ async function testPlatformShareFallback(browser, errors) {
         await testPlatformShareFallback(browser, errors);
         await testShareRefusalKeepsTheState(browser, errors);
         await testFileRefusalRetriesAsText(browser, errors);
+        await testBusyIndicator(browser, errors);
 
         // E. Manifest CLI (doesn't need a browser page).
         await testManifestCLI();
