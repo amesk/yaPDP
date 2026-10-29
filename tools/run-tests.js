@@ -95,6 +95,7 @@ const ORDER = [
     "tape-archive.test.js",
     "media-zst.test.js",
     "state-frame.test.js",
+    "state-pack-digests.test.js",
     "state-manifest.test.js",
     "maintenance-reset.test.js",
     "validate-suites.test.js",

@@ -350,6 +350,15 @@ var StateFormat = (function () {
             ? fingerprint.ofBytes(bytes) : null;
     }
 
+    // A SHA-256 exactly as ImageFingerprint writes it (lowercase hex of 64
+    // glyphs) or null. pack() writes whatever digest it is given into the
+    // catalog and unpack() verifies it on the way in, so an untrusted value
+    // would produce a state that cannot be read back — nothing that is not a
+    // well-formed digest is ever accepted from a caller.
+    function trustedDigest(value) {
+        return (typeof value === "string" && /^[0-9a-f]{64}$/.test(value)) ? value : null;
+    }
+
     function writeHeader(out, magic, manifestBytes) {
         out.set(magic, 0);
         var len = manifestBytes.length;
@@ -370,12 +379,21 @@ var StateFormat = (function () {
     }
 
     /**
-     * pack(manifest, memoryWords, extraBlobs) -> Uint8Array.
+     * pack(manifest, memoryWords, extraBlobs, options) -> Uint8Array.
      * Container version 1 stores RAM, binary disk overlays, and caller-supplied
      * resources in one offset-addressable blob region. Blob offsets are relative
      * to that region, not the compressed outer frame.
+     *
+     * `options.digests` maps a blob id to a SHA-256 the CALLER already knows.
+     * Hashing is a pure-JS SHA-256 (see imagefingerprint.js) because
+     * crypto.subtle is absent on file:// and in some WebViews, and a
+     * self-contained state carries whole disk images: hashing a 170 MiB RP11
+     * disk again, when the snapshot recorded the same digest at mount time,
+     * costs over a second of main-thread time. Only a well-formed digest is
+     * used; everything else is hashed here as before.
      */
-    function pack(manifest, memoryWords, extraBlobs) {
+    function pack(manifest, memoryWords, extraBlobs, options) {
+        var known = (options && options.digests) || null;
         var saved = Object.assign({}, manifest || {});
         var blobs = [];
         var memoryBytes = memoryWords ? memoryToBytes(memoryWords) : new Uint8Array(0);
@@ -413,7 +431,7 @@ var StateFormat = (function () {
         blobs.forEach(function (blob) {
             if (ids[blob.id]) throw new Error("Duplicate state blob id: " + blob.id);
             ids[blob.id] = true;
-            var hash = blobHash(blob.bytes);
+            var hash = trustedDigest(known && known[blob.id]) || blobHash(blob.bytes);
             var key = hash ? "sha256:" + hash : "blob:" + blob.id;
             var location = content[key];
             if (!location) {
@@ -441,6 +459,27 @@ var StateFormat = (function () {
         stored.forEach(function (blob) {
             out.set(blob.bytes, cursor);
             cursor += blob.bytes.length;
+        });
+        return out;
+    }
+
+    /**
+     * knownBlobDigests(manifest.imageFingerprints, resources.embeddedImages)
+     * -> { blobId: sha256 }, ready for pack(..., { digests: ... }).
+     *
+     * The identity of an image is the digest of its decompressed bytes, taken
+     * once when the image is mounted and kept in the manifest from then on
+     * (see imagefingerprint.js). collectEmbeddedResources() reports the blob id
+     * each image was written under, so the two maps name the same bytes. A URL
+     * with no recorded digest is simply hashed by pack().
+     */
+    function knownBlobDigests(fingerprints, embeddedImages) {
+        var out = {};
+        if (!fingerprints || !embeddedImages) return out;
+        Object.keys(embeddedImages).forEach(function (url) {
+            var id = embeddedImages[url];
+            var digest = trustedDigest(fingerprints[url]);
+            if (typeof id === "string" && id && digest) out[id] = digest;
         });
         return out;
     }
@@ -601,6 +640,7 @@ var StateFormat = (function () {
         HEADER_LEN: HEADER_LEN,
         captureCPU: captureCPU,
         restoreCPU: restoreCPU,
+        knownBlobDigests: knownBlobDigests,
         memoryToBytes: memoryToBytes,
         bytesToMemory: bytesToMemory,
         // Front panel: what a state must carry for the POWER LOCK key, the
