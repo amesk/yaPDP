@@ -333,7 +333,9 @@ runaway-trap guard raise a toast carrying the address in octal and the way out
 ("Press CONT to continue, or RESET to reboot"), and the pause glyph on the PANEL
 sidebar button keeps the reason as a tooltip and repeats the notice when
 clicked. A halt at 0/2/4 (the CPU trapped into an empty vector, which is what a
-failed boot leaves behind) is an error, an ordinary guest halt a warning, and a
+failed boot leaves behind) is an error — a warning when no Boot ROM is
+configured, because then the machine simply had nothing to run and the notice
+names the missing boot device — an ordinary guest halt a warning, and a
 stop the operator caused himself — the **HALT** switch or one **STEP** pass — is
 not announced at all. The notice stays quiet while the quick-boot wizard owns
 the machine, so it can never hide its **Take control!** button.

@@ -1989,8 +1989,8 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
           <ul className="text-xs sm:text-sm text-[#c8b890] leading-relaxed list-disc pl-5 space-y-1.5">
             <li>
               {lang === 'en'
-                ? 'A stop at 000002 or 000004 means the CPU trapped into an empty vector — what a failed boot or a broken bootstrap leaves behind: reboot or boot again.'
-                : 'Остановка на адресе 000002 или 000004 означает, что процессор ушёл в пустой вектор — так выглядит неудачная загрузка или испорченный бутстрап: перезагрузите машину или загрузитесь снова.'}
+                ? 'A stop at 000002 or 000004 means the CPU trapped into an empty vector — what a failed boot or a broken bootstrap leaves behind: reboot or boot again. With Boot device set to None there is no bootstrap at all, so a powered-on machine just rests halted and says so as a note rather than an error.'
+                : 'Остановка на адресе 000002 или 000004 означает, что процессор ушёл в пустой вектор — так выглядит неудачная загрузка или испорченный бутстрап: перезагрузите машину или загрузитесь снова. Когда в качестве загрузочного устройства выбрано None, бутстрапа нет вовсе: включённая машина просто стоит на останове, и сообщение об этом — пояснение, а не ошибка.'}
             </li>
             <li>
               {lang === 'en'

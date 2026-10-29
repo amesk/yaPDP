@@ -59,6 +59,7 @@ const SUITES = [
     ["e2e:quickboot-scenario", ["tests/e2e-quickboot-scenario.js"]],
     ["e2e:snapshots",          ["tests/e2e-snapshots.js"]],
     ["e2e:startup-cls",        ["tests/e2e-startup-cls.js"]],
+    ["e2e:poweron",            ["tests/e2e-poweron-no-boot.js"]],
     ["e2e:os",                 ["tests/e2e-osboot.js"]],
     ["e2e:os:legacy",          ["tests/e2e-osboot.js", "--legacy"]],
     ["e2e:teletype",           ["tests/e2e-teletype.js"]],
