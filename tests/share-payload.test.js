@@ -7,12 +7,18 @@
  * src/snapshots.js (shareCapabilities / sharePayloadFor). This test drives the
  * real SnapshotStore IIFE in a VM sandbox and pins the rule:
  *
- *   1. the .state.zst FILE when the platform can share it;
- *   2. the .state.txt FILE (full text envelope) when it cannot;
+ *   1. the .state.txt FILE (full text envelope) — text/plain is the one type
+ *      every share sheet routes, so a tap tries it first;
+ *   2. the .state.zst container — compact, and the only file channel left once
+ *      the envelope is too big to build or to attach;
  *   3. the full envelope as share TEXT while it fits a text channel;
  *   4. otherwise nothing shareable — the caller copies the full envelope to the
  *      clipboard. Truncating the envelope (text.slice(0, 2048)) is the bug this
  *      policy exists to prevent, so it is asserted against in the source too.
+ * A mode the platform actually REFUSED is skipped for the rest of the session:
+ * canShare() answers for the type only, and Chrome says "yes" for a container
+ * it then refuses (application/octet-stream on Android), so re-offering it
+ * spends a click on a known dead end.
  *
  * Run with:  node tests/share-payload.test.js
  */
@@ -112,16 +118,29 @@ const DESKTOP_CAPS = { hasShare: true, canShareZst: true, canShareTxt: true, isM
 })();
 
 // ------------------------------------------------------------------
-// 2. File sharing wins when the platform accepts the container
+// 2. The text file travels FIRST, because a rejected type costs the tap
 // ------------------------------------------------------------------
-(function testFilePayload() {
-    console.log("\n=== 2. .state.zst file ===");
+(function testTextFileFirstPayload() {
+    console.log("\n=== 2. .state.txt file comes first ===");
     const p = store.sharePayloadFor(1000, "Share Test", ALL_CAPS);
-    check("2a: mode is zst", p.mode === "zst", p.mode);
+    check("2a: mode is txt", p.mode === "txt", p.mode);
     check("2b: filename carries the sanitized base name",
-        p.filename === "share-test.state.zst", p.filename);
-    check("2c: MIME is octet-stream", p.mime === "application/octet-stream", p.mime);
+        p.filename === "share-test.state.txt", p.filename);
+    check("2c: MIME is text/plain", p.mime === "text/plain", p.mime);
     check("2d: nothing to encode", p.tooLargeToEncode === false);
+
+    // Chrome refuses application/octet-stream AFTER answering canShare() "yes",
+    // and a refusal spends the click's activation, so the opaque container can
+    // only be the FIRST channel once the envelope stops being an attachment.
+    // The real case: a self-contained BSD 2.11 is ~27 MB of state and a ~37 MB
+    // envelope (the exported bsd.state.txt). It has to leave as the text file —
+    // Chrome refuses the container, so there is no second channel for it.
+    const bsd = store.sharePayloadFor(27567750, "bsd", ALL_CAPS);
+    check("2e: the self-contained BSD state travels as the text file",
+        bsd.mode === "txt", bsd.mode);
+    const ceiling = store.sharePayloadFor(store.SHARE_ENVELOPE_MAX_BYTES, "s", ALL_CAPS);
+    check("2f: even at the envelope ceiling the text file comes first",
+        ceiling.mode === "txt" && ceiling.tooLargeToEncode === false, ceiling.mode);
 })();
 
 // ------------------------------------------------------------------
@@ -141,10 +160,10 @@ const DESKTOP_CAPS = { hasShare: true, canShareZst: true, canShareTxt: true, isM
 (function testFileOfferedOnEveryDevice() {
     console.log("\n=== 3b. The file is offered on every device kind ===");
     const desktop = store.sharePayloadFor(1000, "s", DESKTOP_CAPS);
-    check("3b1: a desktop sheet that supports files gets the .state.zst",
-        desktop.mode === "zst" && desktop.filename === "s.state.zst", desktop.mode);
+    check("3b1: a desktop sheet gets the same text file",
+        desktop.mode === "txt" && desktop.filename === "s.state.txt", desktop.mode);
     const mobile = store.sharePayloadFor(1000, "s", ALL_CAPS);
-    check("3b2: and so does a mobile sheet", mobile.mode === "zst", mobile.mode);
+    check("3b2: and so does a mobile sheet", mobile.mode === "txt", mobile.mode);
     check("3b3: the device kind is reported but does not decide",
         DESKTOP_CAPS.isMobile === false && desktop.mode === mobile.mode);
 })();
@@ -275,6 +294,47 @@ const DESKTOP_CAPS = { hasShare: true, canShareZst: true, canShareTxt: true, isM
         src.indexOf('id="share-status"') !== -1);
     check("7g: refusals go to that status line, not to a toast under the modal",
         src.indexOf("function announceShare(") !== -1);
+})();
+
+// ------------------------------------------------------------------
+// 8. A mode the platform refused is skipped, never re-offered
+// ------------------------------------------------------------------
+(function testRefusedModes() {
+    console.log("\n=== 8. refused modes ===");
+    const txtRefused = store.sharePayloadFor(1000, "s", ALL_CAPS, { txt: true });
+    check("8a: the text file refused -> the container",
+        txtRefused.mode === "zst" && txtRefused.mime === "application/octet-stream",
+        txtRefused.mode + " " + txtRefused.mime);
+
+    const filesRefused = store.sharePayloadFor(1000, "s", ALL_CAPS,
+        { txt: true, zst: true });
+    check("8b: both files refused -> share text",
+        filesRefused.mode === "text", filesRefused.mode);
+
+    const allRefused = store.sharePayloadFor(1000, "s", ALL_CAPS,
+        { zst: true, txt: true, text: true });
+    check("8c: everything refused -> clipboard", allRefused.mode === "clipboard", allRefused.mode);
+
+    // The file path is byte-size blind, so a huge state that lost its file
+    // modes must not slide into a truncated text share.
+    const big = store.sharePayloadFor(100 * 1024, "s", ALL_CAPS, { txt: true, zst: true });
+    check("8d: a large state with the files refused goes to the clipboard",
+        big.mode === "clipboard" && big.tooLargeToEncode === false, big.mode);
+
+    const untouched = store.sharePayloadFor(1000, "s", ALL_CAPS, {});
+    check("8e: an empty refusal set decides exactly as before",
+        untouched.mode === "txt", untouched.mode);
+    const unsupported = store.sharePayloadFor(1000, "s", TXT_ONLY_CAPS, { txt: true });
+    check("8f: refusing a mode the platform never offered changes nothing",
+        unsupported.mode === "text", unsupported.mode);
+
+    // The dialog must feed its session memory into the policy and rebuild the
+    // artifact for the next channel instead of hardcoding a text retry.
+    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    check("8g: the dialog records the refusal",
+        /shareRefusedModes\[artifact\.mode\]\s*=\s*true/.test(src));
+    check("8h: and re-asks the policy with that memory",
+        /sharePayloadFor\([\s\S]{0,250}shareRefusedModes\)/.test(src));
 })();
 
 console.log("");

@@ -2044,11 +2044,17 @@ var SnapshotStore = (() => {
     // envelope itself cannot be built (a self-contained state carrying disk
     // images) — then only the file paths make sense and even the clipboard is
     // off the table.
-    function sharePayloadFor(byteLength, baseName, caps) {
+    // `refused` names the modes the platform already refused in this session.
+    // A mode that failed once must be skipped: canShare() answers for the TYPE
+    // only, and Chrome answers "yes" for a container it then refuses
+    // (application/octet-stream on Android, every file on Windows), so a retry
+    // of the same type spends a click for a known dead end.
+    function sharePayloadFor(byteLength, baseName, caps, refused) {
         var base = sanitizeFilename(baseName);
         var len = Number(byteLength) || 0;
         var zstName = base + ".state.zst";
         var txtName = base + ".state.txt";
+        var skip = refused || {};
         var result = {
             mode: "clipboard",
             filename: txtName,
@@ -2056,24 +2062,27 @@ var SnapshotStore = (() => {
             tooLargeToEncode: len > SHARE_ENVELOPE_MAX_BYTES
         };
         if (!caps || !caps.hasShare || len <= 0) return result;
-        // The file goes first, on every platform: it is the artifact that the
-        // recipient can import, and it is what the operator asks for. The
-        // payload is deliberately NOT mixed with a text body — some share
+        // The order is the safety net, and every step loses one property only:
+        //   1. the SAME state as a .txt file — text/plain is the one type every
+        //      share sheet routes, so a tap must try it first: Chrome refuses
+        //      application/octet-stream (and every file on Windows) AFTER
+        //      answering canShare() "yes", and a refusal spends the click's
+        //      activation, so a first tap that guesses wrong can never be
+        //      retried without a second one. There is no separate size cut-off:
+        //      a self-contained guest (BSD 2.11 is ~27 MB of state, ~37 MB of
+        //      envelope) has no other channel, and building the envelope is the
+        //      same cost the clipboard path already pays;
+        //   2. the container file — the only channel left when the envelope
+        //      cannot be built at all (SHARE_ENVELOPE_MAX_BYTES);
+        //   3. the envelope as share text — no attachment, so size-limited;
+        //   4. the clipboard.
+        // The payload is deliberately NOT mixed with a text body — some share
         // implementations reject that combination, and one rejection costs the
         // click's activation (see the dialog handler).
         // `isMobile` stays in the answer for diagnostics and labelling only: it
-        // must not decide what is offered, or a desktop that does support file
-        // sharing would never be asked.
-        if (caps.canShareZst) {
-            return {
-                mode: "zst",
-                filename: zstName,
-                mime: "application/octet-stream",
-                tooLargeToEncode: false
-            };
-        }
-        if (result.tooLargeToEncode) return result;
-        if (caps.canShareTxt) {
+        // must not decide what is offered.
+        var encodable = !result.tooLargeToEncode;
+        if (encodable && caps.canShareTxt && !skip.txt) {
             return {
                 mode: "txt",
                 filename: txtName,
@@ -2081,7 +2090,16 @@ var SnapshotStore = (() => {
                 tooLargeToEncode: false
             };
         }
-        if (envelopeLengthFor(len) <= SHARE_TEXT_LIMIT) {
+        if (caps.canShareZst && !skip.zst) {
+            return {
+                mode: "zst",
+                filename: zstName,
+                mime: "application/octet-stream",
+                tooLargeToEncode: false
+            };
+        }
+        if (!encodable) return result;
+        if (!skip.text && envelopeLengthFor(len) <= SHARE_TEXT_LIMIT) {
             return {
                 mode: "text",
                 filename: txtName,
@@ -4142,6 +4160,14 @@ var SnapshotStore = (() => {
 
     }
 
+    // Modes the platform refused in this session, keyed by mode name. Chrome
+    // answers canShare({files}) with "yes" for a type its share service then
+    // refuses (application/* containers on Android, every file on Windows), so
+    // a refusal has to outlive the dialog: otherwise every reopen walks into
+    // the same dead end and spends another click. Session-scoped on purpose —
+    // the refusal belongs to the device, not to one dialog or one state.
+    var shareRefusedModes = {};
+
     // ---- Share dialog ----------------------------------------------------
     function showShareDialog(snapId) {
         if (typeof document === "undefined") return;
@@ -4506,6 +4532,45 @@ var SnapshotStore = (() => {
                 selfContainedInput.addEventListener("change", invalidateShareArtifact);
             }
 
+            // Turn state bytes into the artifact the platform will take, using
+            // only the modes it has not refused yet (see sharePayloadFor).
+            // `preparedText` is an envelope the caller already built — encoding
+            // a multi-megabyte state again costs the click's activation.
+            function buildShareArtifact(sig, bytes, baseName, preparedText) {
+                var caps = shareCapsFor(baseName);
+                var payload = sharePayloadFor(bytes.byteLength, baseName, caps,
+                    shareRefusedModes);
+                var text = (typeof preparedText === "string" && preparedText)
+                    ? preparedText : null;
+                var artifact = {
+                    sig: sig,
+                    mode: payload.mode,
+                    filename: payload.filename,
+                    mime: payload.mime,
+                    title: baseName,
+                    file: null,
+                    text: null,
+                    // Kept so a refused share sheet can still build the
+                    // envelope on the spot and put it on the clipboard.
+                    bytes: bytes,
+                    tooLargeToEncode: payload.tooLargeToEncode
+                };
+                if (payload.mode === "zst" || payload.mode === "txt") {
+                    var body = payload.mode === "zst"
+                        ? bytes
+                        : new TextEncoder().encode(text || encodeEnvelope(bytes) || "");
+                    artifact.file = new File([body], payload.filename, { type: payload.mime });
+                    // The text file already carries the envelope: keep it, so
+                    // the clipboard fallback does not encode the state twice.
+                    if (payload.mode === "txt") artifact.text = text;
+                } else if (!payload.tooLargeToEncode) {
+                    // Text/clipboard modes need the envelope ready too: the
+                    // click handler must not build it after activation.
+                    artifact.text = text || encodeEnvelope(bytes);
+                }
+                return artifact;
+            }
+
             // Build the artifact for the CURRENT field values, cached by the
             // options signature so re-opening the menu does not recompress the
             // state. Resolves to the artifact; rejects when it cannot be built.
@@ -4522,33 +4587,7 @@ var SnapshotStore = (() => {
                 var entry = { sig: sig, promise: null };
                 entry.promise = doCreateShareable(opts).then(function (bytes) {
                     if (!bytes || !bytes.byteLength) throw new Error("state-not-created");
-                    var baseName = opts.title || snapName;
-                    var caps = shareCapsFor(baseName);
-                    var payload = sharePayloadFor(bytes.byteLength, baseName, caps);
-                    var artifact = {
-                        sig: sig,
-                        mode: payload.mode,
-                        filename: payload.filename,
-                        mime: payload.mime,
-                        title: baseName,
-                        file: null,
-                        text: null,
-                        // Kept so a refused share sheet can still build the
-                        // envelope on the spot and put it on the clipboard.
-                        bytes: bytes,
-                        tooLargeToEncode: payload.tooLargeToEncode
-                    };
-                    if (payload.mode === "zst" || payload.mode === "txt") {
-                        var body = payload.mode === "zst"
-                            ? bytes
-                            : new TextEncoder().encode(encodeEnvelope(bytes) || "");
-                        artifact.file = new File([body], payload.filename, { type: payload.mime });
-                    } else if (!payload.tooLargeToEncode) {
-                        // Text/clipboard modes need the envelope ready too: the
-                        // click handler must not build it after activation.
-                        artifact.text = encodeEnvelope(bytes);
-                    }
-                    return artifact;
+                    return buildShareArtifact(sig, bytes, opts.title || snapName);
                 });
                 sharePreparing = entry;
                 return entry.promise.then(function (artifact) {
@@ -4680,56 +4719,57 @@ var SnapshotStore = (() => {
                     var envelopeText = artifact.text;
                     if (!envelopeText && artifact.bytes) envelopeText = encodeEnvelope(artifact.bytes);
 
-                    function refusalReason(error) {
-                        if (!error) return "";
-                        var name = error.name || "";
-                        var message = error.message ? String(error.message).slice(0, 120) : "";
-                        if (name && message) return " (" + name + ": " + message + ")";
-                        if (name) return " (" + name + ")";
-                        return message ? " (" + message + ")" : "";
+                    function shareModeNoun(mode) {
+                        if (mode === "zst") return "state file";
+                        if (mode === "txt") return "text file";
+                        if (mode === "text") return "text envelope";
+                        return "state";
                     }
 
                     function fallbackToClipboard(error) {
                         if (error && error.name === "AbortError") return;
-                        var reason = refusalReason(error);
-                        // A refused FILE is not a dead end: the same menu item
-                        // can retry as text on the NEXT click, because only a
-                        // click grants the activation a share needs (a retry in
-                        // the same handler fails with "Must be handling a user
-                        // gesture").
-                        var retryAsText = artifact.mode !== "text" &&
-                            artifact.mode !== "clipboard" &&
-                            !!envelopeText && envelopeText.length <= SHARE_TEXT_LIMIT;
-                        if (retryAsText) {
-                            shareArtifact = {
-                                sig: artifact.sig,
-                                mode: "text",
-                                filename: artifact.filename,
-                                mime: "text/plain",
-                                title: artifact.title,
-                                file: null,
-                                text: envelopeText,
-                                bytes: artifact.bytes,
-                                tooLargeToEncode: false
-                            };
-                            setShareItem("text", true, "Click again to share the text envelope");
+                        // The DETAILS are for the console (logShareRefusal); the
+                        // operator only needs to know what happened to the state
+                        // and what the next tap will send.
+                        // Remember the refusal for this session: the platform
+                        // answered canShare() "yes" for this very type and then
+                        // refused the payload, so offering it again only buys
+                        // another wasted click.
+                        if (artifact.mode) shareRefusedModes[artifact.mode] = true;
+                        // A refused FILE is not a dead end: the NEXT channel
+                        // down the chain can be sent on the NEXT click, because
+                        // only a click grants the activation a share needs (a
+                        // retry in the same handler fails with "Must be
+                        // handling a user gesture").
+                        var next = sharePayloadFor(
+                            artifact.bytes ? artifact.bytes.byteLength : 0,
+                            artifact.title || snapName,
+                            shareCapsFor(artifact.title || snapName),
+                            shareRefusedModes);
+                        var retryMode = (next.mode !== "clipboard" &&
+                            next.mode !== artifact.mode) ? next.mode : null;
+                        if (retryMode) {
+                            shareArtifact = buildShareArtifact(artifact.sig,
+                                artifact.bytes, artifact.title || snapName, envelopeText);
+                            setShareItem(retryMode, true,
+                                "Click again to share the " + shareModeNoun(retryMode));
                         }
-                        var tail = retryAsText
-                            ? " — click Share once more to send the text envelope"
+                        var tail = retryMode
+                            ? " — click Share once more to send the " + shareModeNoun(retryMode)
                             : "";
                         if (envelopeText && nav && nav.clipboard &&
                             typeof nav.clipboard.writeText === "function") {
                             nav.clipboard.writeText(envelopeText).then(function () {
-                                announceShare("The share sheet refused the state" + reason +
-                                    " — the full text envelope is on the clipboard" + tail, "error");
+                                announceShare("This device would not take the state file — " +
+                                    "the full text is on the clipboard" + tail, "error");
                             }).catch(function () {
-                                announceShare("Could not share the state" + reason +
-                                    " — use Save as text file instead" + tail, "error");
+                                announceShare("Could not share the state — " +
+                                    "use Save as text file instead" + tail, "error");
                             });
                             return;
                         }
-                        announceShare("Could not share the state" + reason +
-                            " — use Save as text file instead" + tail, "error");
+                        announceShare("Could not share the state — " +
+                            "use Save as text file instead" + tail, "error");
                     }
 
                     // One call, caught so a synchronous refusal can be reported
@@ -4756,6 +4796,10 @@ var SnapshotStore = (() => {
                             console.error("[share] refused", {
                                 mode: artifact.mode,
                                 file: artifact.filename,
+                                // The two numbers that decide the channel: the
+                                // state itself and the envelope built from it.
+                                stateBytes: artifact.bytes ? artifact.bytes.byteLength : 0,
+                                envelopeChars: envelopeText ? envelopeText.length : 0,
                                 name: error && error.name,
                                 message: error && error.message,
                                 secureContext: typeof window !== "undefined" && !!window.isSecureContext,

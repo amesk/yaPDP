@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Sharing a state reaches the messenger in one tap.** Chrome answers
+  `canShare({files})` with "yes" for the `.state.zst` container and then
+  refuses the payload itself (`NotAllowedError: Permission denied`), and a
+  refusal spends the tap's user activation, so a wrong guess cost the operator
+  a second click and a browser error name. The sheet is now handed the same
+  state as a `.txt` attachment — `text/plain` is the one type every share sheet
+  routes — whenever the envelope can be built at all, so a self-contained guest
+  (BSD 2.11 is ~27 MB of state and ~37 MB of envelope) leaves as a file too;
+  the compact container follows when the text file is refused or the state is
+  too large to encode, then the share text and finally the clipboard. A channel
+  the platform refused is remembered for the session, and the dialog says what
+  went to the clipboard instead of quoting the exception.
+  (`src/snapshots.js`, `tests/share-payload.test.js`, `tests/e2e-share.js`)
+
 - **Powering on without a Boot ROM no longer reports a crash.** With the Boot
   device option set to None, a page load that came up powered on — the landing
   page's Reset after a reboot — executed the zeroed memory and raised an
