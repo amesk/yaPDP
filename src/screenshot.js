@@ -216,6 +216,29 @@
 
     // ── Context menu ───────────────────────────────────────────────────
     var contextMenu = null;
+    // Pending "Preparing…" reveal for the Share item (see showContextMenu).
+    var sharePrepareTimer = null;
+
+    function clearSharePrepareTimer() {
+        if (sharePrepareTimer) {
+            clearTimeout(sharePrepareTimer);
+            sharePrepareTimer = null;
+        }
+    }
+
+    // "Work in progress" in a context-menu item: the project's own spinner
+    // (.yapdp-spin) plus the stage. aria-busy makes a screen reader say what the
+    // spinner says to the eye.
+    function setMenuItemBusy(button, text) {
+        button.textContent = "";
+        var spin = document.createElement("span");
+        spin.className = "yapdp-spin screenshot-context-item-spin";
+        spin.setAttribute("aria-hidden", "true");
+        button.appendChild(spin);
+        button.appendChild(document.createTextNode(text));
+        button.disabled = true;
+        button.setAttribute("aria-busy", "true");
+    }
 
     function showContextMenu(e) {
         e.preventDefault();
@@ -280,19 +303,43 @@
 
         if (shareItem) {
             var shareButton = contextMenu.querySelector("button:last-child");
+            // html2canvas renders the whole page, which is seconds of work on a
+            // busy cabinet with nothing on screen to show for it. The item says
+            // "Preparing…" — but only once the wait is worth reporting, so a
+            // quick capture does not flash a spinner at the operator.
+            clearSharePrepareTimer();
+            sharePrepareTimer = setTimeout(function () {
+                sharePrepareTimer = null;
+                if (!shareButton || !shareButton.isConnected) return;
+                setMenuItemBusy(shareButton, "Preparing\u2026");
+                if (contextMenu) contextMenu.setAttribute("aria-busy", "true");
+            }, 200);
             captureScreenshot().then(prepareShareFile).then(function (file) {
                 shareFile = file;
-                if (shareButton && shareButton.isConnected) shareButton.disabled = false;
-            }).catch(function () {
+                clearSharePrepareTimer();
                 if (shareButton && shareButton.isConnected) {
+                    shareButton.textContent = "Share\u2026";
+                    shareButton.removeAttribute("aria-busy");
+                    shareButton.disabled = false;
+                }
+                if (contextMenu) contextMenu.removeAttribute("aria-busy");
+            }).catch(function () {
+                clearSharePrepareTimer();
+                if (shareButton && shareButton.isConnected) {
+                    // Named, not just disabled: a dead item with no reason is
+                    // what made the operator click it again.
+                    shareButton.textContent = "Share\u2026 (unavailable)";
+                    shareButton.removeAttribute("aria-busy");
                     shareButton.title = "Could not prepare screenshot for sharing";
                 }
+                if (contextMenu) contextMenu.removeAttribute("aria-busy");
                 toast({ text: "Could not prepare screenshot for sharing", category: "error" });
             });
         }
     }
 
     function hideContextMenu() {
+        clearSharePrepareTimer();
         if (contextMenu) {
             contextMenu.remove();
             contextMenu = null;

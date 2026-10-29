@@ -1924,8 +1924,12 @@ var SnapshotStore = (() => {
     // scenario. The original snapshot is NOT modified and is NOT saved
     // to the snapshot store — the result is returned as bytes for download.
     // Returns Promise<Uint8Array|null> — null when the id does not exist.
+    // `onStage(name)` is optional and reports the coarse stage ("pack",
+    // "compress"): the dialog turns it into the busy line, and a caller that
+    // does not care (a tool, a test) simply omits it.
     // ------------------------------------------------------------------
-    function createShareableState(id, opts) {
+    function createShareableState(id, opts, onStage) {
+        var stage = typeof onStage === "function" ? onStage : function () {};
         return dbGet(id).then(function (snap) {
             if (!snap) return null;
             var shareName = (opts && opts.title && opts.title.trim())
@@ -1979,12 +1983,14 @@ var SnapshotStore = (() => {
                             delete manifest.imageVersions[url];
                         });
                         if (selfContained) mergeEmbeddedOverlays(manifest, resources);
+                        stage("pack");
                         // A self-contained share embeds whole disk images, and
                         // their SHA-256 is already in imageFingerprints: re-hashing
                         // 170 MiB here was the longest main-thread block in Share.
                         var packed = StateFormat.pack(manifest, memoryWords, resources.blobs,
                             { digests: StateFormat.knownBlobDigests(manifest.imageFingerprints,
                                 resources.embeddedImages) });
+                        stage("compress");
                         return gzipCompress(packed).then(function (bytes) {
                             return bytes;
                         }, function () {
@@ -4414,21 +4420,86 @@ var SnapshotStore = (() => {
                 };
             }
 
-            // Helper: create shareable state and return bytes.
-            function doCreateShareable(opts) {
-                return createShareableState(snapId, opts);
+            // Helper: create shareable state and return bytes. `onStage` is
+            // forwarded so the dialog can name the stage it is waiting for.
+            function doCreateShareable(opts, onStage) {
+                return createShareableState(snapId, opts, onStage);
+            }
+
+            // One creation per field-value signature: the main button and every
+            // split-menu action need the same shareable state, and five
+            // impatient clicks used to start five separate compressions. A
+            // second request joins the run in flight.
+            function runShareable(opts) {
+                var sig = shareOptsSignature(opts);
+                if (shareRun && shareRun.sig === sig) return shareRun.promise;
+                var entry = { sig: sig, promise: null };
+                entry.promise = doCreateShareable(opts, function (stage) {
+                    // Stage text is worth changing only once the line is up.
+                    if (!shareBusyTimer) setShareBusy(shareStageText(stage));
+                }).then(function (bytes) {
+                    if (shareRun === entry) shareRun = null;
+                    return bytes;
+                }, function (err) {
+                    if (shareRun === entry) shareRun = null;
+                    throw err;
+                });
+                shareRun = entry;
+                return entry.promise;
+            }
+
+            // Run one share action with the busy state around it — the whole
+            // action, not only the state creation, so the envelope encoding that
+            // follows is covered too. The line appears only when the work
+            // outlives SHARE_BUSY_DELAY.
+            function shareWork(opts, work) {
+                var sig = shareOptsSignature(opts);
+                // Joining a run that is already showing its busy state must not
+                // restart the delay: that would blink the line away.
+                if (!shareRun || shareRun.sig !== sig) startShareBusy();
+                var promise;
+                try {
+                    promise = runShareable(opts).then(work);
+                } catch (e) {
+                    stopShareBusy();
+                    return Promise.reject(e);
+                }
+                return promise.then(function (value) {
+                    stopShareBusy();
+                    return value;
+                }, function (err) {
+                    stopShareBusy();
+                    throw err;
+                });
+            }
+
+            // The same, reporting a failure where the operator can see it: the
+            // dialog stays open after a failed create, so a toast would be
+            // painted under the overlay.
+            function withShareableBytes(opts, onBytes) {
+                return shareWork(opts, onBytes).then(function (value) {
+                    return value;
+                }, function () {
+                    announceShare("Could not prepare the state for sharing", "error");
+                });
             }
 
             // ---- Platform share (the system share sheet) ---------------------
             // navigator.share() only works while the click's transient user
             // activation is alive, and building a state (IndexedDB read + gzip)
             // outlives it. So the artifact is built BEFORE the click: when the
-            // split menu opens, and again after any field changes. The menu item
-            // stays disabled and says "Preparing" until it is ready; the click
+            // split menu opens, and again after any field changes. Until it is
+            // ready the item says "Preparing…" behind a spinner and the status
+            // line names the stage — but only when the work outlives
+            // SHARE_BUSY_DELAY: a normal snapshot is ready in ~0.1 s, and a
+            // spinner that flashes that briefly reads as a glitch. The click
             // itself then calls share() synchronously. This is the same pattern
             // the screenshot Share item uses (src/screenshot.js).
             var shareArtifact = null;   // { sig, mode, filename, mime, title, file, text }
-            var sharePreparing = null;  // { sig, promise } of the in-flight build
+            var sharePreparing = null;  // { sig, promise } of the in-flight artifact build
+            var shareRun = null;        // { sig, promise } of the in-flight state creation
+            var shareBusyTimer = null;  // turns the wait into a visible busy state
+            var SHARE_BUSY_DELAY = 300;
 
             function toastText(text, category) {
                 if (typeof Toasts !== "undefined" && typeof Toasts.show === "function") {
@@ -4462,6 +4533,54 @@ var SnapshotStore = (() => {
                 } else {
                     toastText(message, category);
                 }
+            }
+
+            // What the operator is told while the state is being built. The
+            // stages are the expensive ones measured by
+            // tools/_probe-share-timing.js: packing the container, compressing
+            // it, and wrapping the result in the text envelope.
+            function shareStageText(stage) {
+                if (stage === "pack") return "Packing the state\u2026";
+                if (stage === "compress") return "Compressing the state\u2026";
+                if (stage === "encode") return "Building the share file\u2026";
+                return "Preparing the state\u2026";
+            }
+
+            // Work in progress, in the slot the refusal message uses: the
+            // project's own spinner (.yapdp-spin) plus the stage. A toast would
+            // be painted under the modal overlay, so the line has to be here.
+            function setShareBusy(message) {
+                var status = document.getElementById("share-status");
+                if (!status) return;
+                if (!message) {
+                    setShareStatus(null);
+                    return;
+                }
+                status.textContent = "";
+                var spin = document.createElement("span");
+                spin.className = "yapdp-spin share-status-spin";
+                spin.setAttribute("aria-hidden", "true");
+                status.appendChild(spin);
+                status.appendChild(document.createTextNode(message));
+                status.className = "share-status share-status--busy";
+                status.style.display = "block";
+            }
+
+            function startShareBusy() {
+                stopShareBusy();
+                shareBusyTimer = setTimeout(function () {
+                    shareBusyTimer = null;
+                    setShareBusy(shareStageText(null));
+                    setShareItem(null, false, "Preparing\u2026", true);
+                }, SHARE_BUSY_DELAY);
+            }
+
+            function stopShareBusy() {
+                if (shareBusyTimer) {
+                    clearTimeout(shareBusyTimer);
+                    shareBusyTimer = null;
+                }
+                setShareBusy(null);
             }
 
             // Any field change makes the prepared artifact stale: the next menu
@@ -4528,9 +4647,26 @@ var SnapshotStore = (() => {
                 return "Share via platform\u2026";
             }
 
-            function setShareItem(mode, enabled, note) {
+            // The Share item of the split menu. `busy` is the preparation state:
+            // the label becomes "Preparing…" behind the shared spinner, and the
+            // item carries aria-busy so a screen reader says the same thing the
+            // spinner says to the eye.
+            function setShareItem(mode, enabled, note, busy) {
                 var item = document.getElementById("share-create-share");
                 if (!item) return;
+                if (busy) {
+                    item.textContent = "";
+                    var spin = document.createElement("span");
+                    spin.className = "yapdp-spin split-btn-item-spin";
+                    spin.setAttribute("aria-hidden", "true");
+                    item.appendChild(spin);
+                    item.appendChild(document.createTextNode("Preparing\u2026"));
+                    item.disabled = true;
+                    item.setAttribute("aria-busy", "true");
+                    item.title = note || "";
+                    return;
+                }
+                item.removeAttribute("aria-busy");
                 item.textContent = shareItemLabel(mode);
                 item.disabled = !enabled;
                 item.title = note || "";
@@ -4596,24 +4732,27 @@ var SnapshotStore = (() => {
                 if (sharePreparing && sharePreparing.sig === sig) {
                     return sharePreparing.promise;
                 }
-                setShareItem(null, false, "Preparing\u2026");
                 var entry = { sig: sig, promise: null };
-                entry.promise = doCreateShareable(opts).then(function (bytes) {
+                entry.promise = shareWork(opts, function (bytes) {
                     if (!bytes || !bytes.byteLength) throw new Error("state-not-created");
+                    // The envelope (base64 + UTF-8) is the last expensive step
+                    // of a text share; name it instead of going silent.
+                    if (!shareBusyTimer) setShareBusy(shareStageText("encode"));
                     return buildShareArtifact(sig, bytes, opts.title || snapName);
                 });
                 sharePreparing = entry;
                 return entry.promise.then(function (artifact) {
-                    sharePreparing = null;
+                    if (sharePreparing === entry) sharePreparing = null;
                     shareArtifact = artifact;
                     setShareItem(artifact.mode, true, "");
                     // A fresh artifact answers whatever the last attempt said.
                     setShareStatus(null);
                     return artifact;
                 }, function (err) {
-                    sharePreparing = null;
+                    if (sharePreparing === entry) sharePreparing = null;
                     shareArtifact = null;
                     setShareItem(null, false, "Could not prepare the state for sharing");
+                    announceShare("Could not prepare the state for sharing", "error");
                     throw err;
                 });
             }
@@ -4631,10 +4770,14 @@ var SnapshotStore = (() => {
                 createBtn.addEventListener("click", function () {
                     var opts = gatherShareOpts();
                     createBtn.disabled = true;
-                    doCreateShareable(opts).then(function (bytes) {
+                    shareWork(opts, function (bytes) {
                         createBtn.disabled = false;
                         snapCloseModal();
                         downloadShareable(bytes, opts.title);
+                    }).then(null, function () {
+                        // The busy line already carries the failure; the button
+                        // must never stay dead after it.
+                        createBtn.disabled = false;
                     });
                 });
             }
@@ -4666,7 +4809,7 @@ var SnapshotStore = (() => {
                 createClipboardBtn.addEventListener("click", function () {
                     if (createMenu) createMenu.classList.remove("visible");
                     var opts = gatherShareOpts();
-                    doCreateShareable(opts).then(function (bytes) {
+                    withShareableBytes(opts, function (bytes) {
                         if (!bytes) return;
                         var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
                         if (!env) return;
@@ -4690,7 +4833,7 @@ var SnapshotStore = (() => {
                 createTextFileBtn.addEventListener("click", function () {
                     if (createMenu) createMenu.classList.remove("visible");
                     var opts = gatherShareOpts();
-                    doCreateShareable(opts).then(function (bytes) {
+                    withShareableBytes(opts, function (bytes) {
                         if (!bytes) return;
                         var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
                         if (!env) return;
@@ -4879,7 +5022,7 @@ var SnapshotStore = (() => {
                 createGistBtn.addEventListener("click", function () {
                     if (createMenu) createMenu.classList.remove("visible");
                     var opts = gatherShareOpts();
-                    doCreateShareable(opts).then(function (bytes) {
+                    withShareableBytes(opts, function (bytes) {
                         if (!bytes) return;
                         var env = typeof StateEnvelope !== "undefined" ? StateEnvelope : window.__yapdpStateEnvelope;
                         if (!env) return;
