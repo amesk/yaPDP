@@ -359,6 +359,19 @@ function run() {
             "the menu must be hidden by default");
         assert.ok(/\.action-more-menu\.action-more-open\s*\{[\s\S]*?display:\s*flex/.test(css),
             "the open menu must lay its commands out in a column");
+        // The menu must NOT be inserted beside the strip: inside the pinned
+        // layer (.touch-pin, z-index 20) it always painted UNDER the round
+        // floating controls (State / Quick Boot, z-index 1000). It is a FIXED
+        // body-level overlay placed from the More button's viewport rect.
+        assert.ok(!/strip\.parentNode\.insertBefore\(menu/.test(overflow),
+            "the More menu must not be inserted beside the strip");
+        assert.ok(/appendChild\(menu\)/.test(overflow),
+            "the More menu must be attached outside the page");
+        assert.ok(/\.action-more-menu\.action-more-open\s*\{[\s\S]*?position:\s*fixed/.test(css),
+            "the open menu must be a fixed overlay");
+        const menuZ = /\.action-more-menu\.action-more-open\s*\{[\s\S]*?z-index:\s*(\d+)/.exec(css);
+        assert.ok(menuZ && Number(menuZ[1]) > 1000,
+            "the open menu must paint above the floating controls (z-index 1000)");
         assert.ok(/flex:\s*0\s+0\s+auto/.test(css),
             "the strip commands must keep their natural size for the measurement");
     }

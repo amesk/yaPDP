@@ -26,10 +26,18 @@
  * The "More…" button and its menu are BUILT here (like the special-key bar in
  * src/mobile-keys.js and the quick-boot balloon), so a strip only has to mark
  * its rare commands in the markup — it does not carry any overflow plumbing.
- * The menu is a SIBLING of the strip: the strip has overflow-x: auto and would
- * clip a pop-up hanging below it. It is created inside the strip's own parent,
- * which on a touch device is the pinned layer (src/touchzoom.js), so a pinch
- * keeps the menu at the strip's own size and place.
+ * The menu cannot be a child of the strip (the strip has overflow-x: auto and
+ * would clip a pop-up hanging below it), and it cannot live in the strip's
+ * parent either: on a touch device that parent is the pinned layer .touch-pin
+ * (src/touchzoom.js) whose z-index (20) makes it a stacking context, so a menu
+ * inside it can never paint ABOVE the round floating controls (State, Quick
+ * Boot, Pause, Reboot — fixed, z-index 1000) that sit in exactly the band under
+ * the strip. That is what put the menu UNDER those buttons on a phone.
+ * So the menu is attached to <body> as a FIXED overlay and placed in viewport
+ * pixels from the "More…" button's own rect (see menuBox): hung below the
+ * button, pushed clear of any floating control it would cover, and clamped into
+ * the viewport. Being outside the page also leaves it at natural size while a
+ * pinch-zoomed page carries a transform (src/touchzoom.js).
  *
  * The module exists only on a coarse pointer (the same isCoarse() test as the
  * bridge, the special-key bar and the gesture layer), so a narrow desktop window
@@ -62,11 +70,24 @@ var ActionOverflow = (function () {
     // command (tens of px wide) counts as overflow.
     var OVERFLOW_TOLERANCE = 1;
 
+    // Gap between the menu and the "More…" button, and between the menu and the
+    // viewport edges, in px.
+    var MENU_MARGIN = 6;
+
+    // The application's FIXED round controls (see css/pdp11.css): Pause, Reboot
+    // and State all wear .console-reboot, the magic wand is .quick-boot-btn, and
+    // the remaining round buttons sit in the corners. The menu is hung in their
+    // band, so it has to be pushed below whichever of them it would cover.
+    var FLOATING_SELECTOR = "#state-btn, #quick-boot-btn, .console-reboot, " +
+        ".console-pause, .mute-btn, .screenshot-btn, .zoom-btn, .fullscreen-btn";
+
     var doc = null;
     var entries = [];
     var installed = false;
     var onDocClick = null;
     var onDocKey = null;
+    var onResize = null;
+    var onScroll = null;
 
     // The pure rule the layout turns on. Exported for the Node tests.
     function overflows(scrollWidth, clientWidth, tolerance) {
@@ -107,8 +128,10 @@ var ActionOverflow = (function () {
     function buildMenu(entry) {
         var menu = doc.createElement("div");
         menu.className = MENU_CLASS;
-        var strip = entry.strip;
-        strip.parentNode.insertBefore(menu, strip.nextSibling);
+        // <body>, NOT the strip's parent — see the module comment: inside the
+        // pinned layer the menu would be trapped under the floating buttons,
+        // and inside the page it would be scaled by a pinch.
+        (doc.body || doc.documentElement).appendChild(menu);
         return menu;
     }
 
@@ -141,9 +164,105 @@ var ActionOverflow = (function () {
         entry.collapsed = false;
     }
 
+    // Where a pop-up hung under `anchor` has to sit, in viewport pixels. Pure
+    // geometry, exported for the Node tests: `anchor` and `viewport` carry the
+    // getBoundingClientRect numbers, `size` is the menu's own box and `avoid` is
+    // a list of rects the menu must not cover (the fixed round controls).
+    function menuBox(anchor, size, viewport, avoid, margin) {
+        var m = (typeof margin === "number" && isFinite(margin)) ? margin : MENU_MARGIN;
+        var a = anchor || {};
+        var s = size || {};
+        var v = viewport || {};
+        var w = Number(s.width) || 0;
+        var h = Number(s.height) || 0;
+        var vw = Number(v.width) || 0;
+        var vh = Number(v.height) || 0;
+        var aTop = Number(a.top);
+        var aRight = Number(a.right);
+        var aBottom = Number(a.bottom);
+        if (!isFinite(aTop)) aTop = 0;
+        if (!isFinite(aRight)) aRight = 0;
+        if (!isFinite(aBottom)) aBottom = 0;
+
+        // The right edge follows the anchor (the "More…" button ends the strip at
+        // the screen's right margin), clamped so a menu wider than the viewport
+        // never runs off the left side.
+        var right = (vw > 0) ? Math.round(vw - aRight) : 0;
+        if (right < m) right = m;
+        if (vw > 0 && w > 0 && vw - right - w < m) {
+            right = Math.max(m, Math.round(vw - w - m));
+        }
+        var left = (vw > 0) ? vw - right - w : 0;
+
+        // Hung below the button — and below any fixed round control the menu
+        // would otherwise be drawn under (State and the magic wand sit right
+        // under the strip on a touch device).
+        var top = Math.round(aBottom + m);
+        var list = avoid || [];
+        for (var i = 0; i < list.length && w > 0; i++) {
+            var r = list[i];
+            if (!r) continue;
+            var rl = Number(r.left);
+            var rr = Number(r.right);
+            var rb = Number(r.bottom);
+            if (!isFinite(rl) || !isFinite(rr) || !isFinite(rb)) continue;
+            if (rr > left && rl < left + w && rb + m > top) top = Math.round(rb + m);
+        }
+
+        // No room below (a landscape phone, an on-screen keyboard): hang the
+        // menu ABOVE the button rather than over it or off the screen.
+        if (vh > 0 && h > 0 && top + h > vh - m && aTop - m - h >= m) {
+            top = Math.round(aTop - m - h);
+        }
+        return { top: top, right: right };
+    }
+
+    // The live rects of the fixed round controls; hidden ones are skipped (a
+    // page that offers no Reboot has display: none on it).
+    function floatingRects() {
+        var out = [];
+        if (!doc || typeof doc.querySelectorAll !== "function") return out;
+        var els = doc.querySelectorAll(FLOATING_SELECTOR);
+        for (var i = 0; i < els.length; i++) {
+            var el = els[i];
+            if (!el || typeof el.getBoundingClientRect !== "function") continue;
+            var r = el.getBoundingClientRect();
+            if (!r || !(r.width > 0) || !(r.height > 0)) continue;
+            out.push(r);
+        }
+        return out;
+    }
+
+    function placeMenu(entry) {
+        var menu = entry.menu;
+        var more = entry.more;
+        var win = doc && doc.defaultView;
+        if (!menu || !more || !win) return;
+        if (typeof more.getBoundingClientRect !== "function") return;
+        var box = menuBox(more.getBoundingClientRect(), {
+            width: menu.offsetWidth || 0,
+            height: menu.offsetHeight || 0
+        }, {
+            width: win.innerWidth || 0,
+            height: win.innerHeight || 0
+        }, floatingRects(), MENU_MARGIN);
+        menu.style.top = box.top + "px";
+        menu.style.right = box.right + "px";
+    }
+
+    // A FIXED menu does not follow a scroll (the page scrolls, the window does
+    // not) or a rotation, so an open one is re-placed on both.
+    function repositionOpen() {
+        for (var i = 0; i < entries.length; i++) {
+            if (isMenuOpen(entries[i])) placeMenu(entries[i]);
+        }
+    }
+
     function openMenu(entry) {
         if (!entry.collapsed || !entry.menu) return;
         entry.menu.classList.add(MENU_OPEN_CLASS);
+        // Measured only once the menu is laid out (display: flex).
+        placeMenu(entry);
         entry.more.setAttribute("aria-expanded", "true");
     }
 
@@ -245,8 +364,13 @@ var ActionOverflow = (function () {
 
         var win = d.defaultView;
         if (win && typeof win.addEventListener === "function") {
-            win.addEventListener("resize", sync);
-            win.addEventListener("orientationchange", sync);
+            onResize = function () { sync(); repositionOpen(); };
+            onScroll = repositionOpen;
+            win.addEventListener("resize", onResize);
+            win.addEventListener("orientationchange", onResize);
+            // The menu is FIXED in viewport pixels while the PAGE scrolls, so it
+            // is the capture phase that catches the scrolling ancestor.
+            win.addEventListener("scroll", onScroll, true);
         }
         // Strips live on different pages; a switch shows one and hides another,
         // so the measurement has to be retaken then (the app announces it).
@@ -274,10 +398,20 @@ var ActionOverflow = (function () {
             if (onDocClick) doc.removeEventListener("click", onDocClick);
             if (onDocKey) doc.removeEventListener("keydown", onDocKey);
             doc.removeEventListener("yapdp:pagechange", sync);
+            var win = doc.defaultView;
+            if (win && typeof win.removeEventListener === "function") {
+                if (onResize) {
+                    win.removeEventListener("resize", onResize);
+                    win.removeEventListener("orientationchange", onResize);
+                }
+                if (onScroll) win.removeEventListener("scroll", onScroll, true);
+            }
         }
         doc = null;
         onDocClick = null;
         onDocKey = null;
+        onResize = null;
+        onScroll = null;
         installed = false;
     }
 
@@ -289,7 +423,10 @@ var ActionOverflow = (function () {
         MENU_CLASS: MENU_CLASS,
         MENU_OPEN_CLASS: MENU_OPEN_CLASS,
         OVERFLOW_TOLERANCE: OVERFLOW_TOLERANCE,
+        MENU_MARGIN: MENU_MARGIN,
+        FLOATING_SELECTOR: FLOATING_SELECTOR,
         overflows: overflows,
+        menuBox: menuBox,
         install: install,
         destroy: destroy,
         sync: sync,

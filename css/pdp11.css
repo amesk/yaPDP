@@ -4489,14 +4489,19 @@ button.action-more-hidden {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    position: absolute;
-    /* Hang just below the docked strip, aligned to its right edge, where
-       "More…" sits. --touch-strip-h is published by the strip rules above; the
-       fallback is the strip's own height. */
-    top: var(--touch-strip-h, 46px);
+    /* A FIXED overlay attached to <body>, never a child of the strip: the strip
+       lives in the pinned layer (src/touchzoom.js, z-index 20), whose own
+       z-index makes it a stacking context, so a menu inside it could never
+       paint above the round floating controls (State / Quick Boot, z-index
+       1000) that sit in the very same band under the strip. src/action-overflow.js
+       writes top/right in viewport pixels when it opens (see menuBox), keeping
+       the menu clear of those buttons; the `right` below is only the
+       pre-placement fallback. */
+    position: fixed;
     right: 6px;
     padding: 6px;
-    z-index: 30;
+    z-index: 1200;
+    /* above the floating controls (1000), below the toasts (40000) */
     background: linear-gradient(180deg, #2a2722 0%, #1a1815 100%);
     border: 1px solid #4a453a;
     border-radius: 6px;

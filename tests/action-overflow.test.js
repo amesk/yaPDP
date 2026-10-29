@@ -94,6 +94,49 @@ function run() {
         assert.ok(A.OVERFLOW_TOLERANCE >= 0, "the default tolerance is published");
     }
 
+    // ---- menu placement ---------------------------------------------------
+    // The menu is a FIXED body-level overlay now: hung below the "More…" button,
+    // pushed clear of the round floating controls (State / Quick Boot) that sit
+    // in the same band under the strip, and clamped into the viewport. The
+    // geometry is pure, so a phone-sized case can be asserted without a DOM.
+    {
+        assert.strictEqual(typeof A.menuBox, "function", "menuBox must be exported");
+        assert.ok(typeof A.MENU_MARGIN === "number" && A.MENU_MARGIN >= 0,
+            "the placement margin is published");
+        assert.ok(A.FLOATING_SELECTOR.indexOf("#state-btn") !== -1 &&
+            A.FLOATING_SELECTOR.indexOf("#quick-boot-btn") !== -1,
+            "the placement must know the floating State / Quick Boot buttons");
+
+        const viewport = { width: 390, height: 844 };
+        const size = { width: 150, height: 120 };
+        // Touch strip docked at the top: "More…" ends at the right margin, the
+        // State and Quick Boot buttons hang right below it.
+        const more = { top: 8, bottom: 46, right: 384, left: 320 };
+        const buttons = [
+            { top: 54, bottom: 96, left: 290, right: 332 },   // State
+            { top: 54, bottom: 96, left: 340, right: 382 }    // Quick Boot
+        ];
+
+        const box = A.menuBox(more, size, viewport, buttons);
+        assert.ok(box.top >= 96,
+            "the menu must clear the floating buttons (top " + box.top + ")");
+        assert.ok(box.right >= A.MENU_MARGIN &&
+            box.right + size.width <= viewport.width,
+            "the menu must stay inside the viewport");
+
+        assert.strictEqual(A.menuBox(more, size, viewport, []).top, 52,
+            "without floating controls the menu hangs just below the button");
+
+        const low = { top: 700, bottom: 740, right: 384, left: 320 };
+        const flipped = A.menuBox(low, size, viewport, []);
+        assert.ok(flipped.top + size.height <= low.top,
+            "no room below: the menu flips above the button");
+
+        const wide = A.menuBox(more, { width: 500, height: 100 }, viewport, []);
+        assert.strictEqual(wide.right, A.MENU_MARGIN,
+            "a menu wider than the viewport is clamped to the margin");
+    }
+
     // ---- install is a no-op without a DOM or a coarse pointer ------------
     {
         assert.strictEqual(A.install({}), null, "install without a DOM does nothing");
