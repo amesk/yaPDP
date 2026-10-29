@@ -428,7 +428,7 @@ async function driveShareDialog(page, snapId) {
 }
 
 async function testPlatformShareFile(browser, errors) {
-    console.log("\n=== F. Platform share sends a .state.zst file ===");
+    console.log("\n=== F. Platform share sends a .state.txt file ===");
     const page = await openStubPage(browser, errors, { acceptFiles: true, mobile: true });
     try {
         const snapId = await page.evaluate(async () => {
@@ -441,31 +441,40 @@ async function testPlatformShareFile(browser, errors) {
         check("F2: navigator stubs installed", stubError === null, String(stubError));
 
         const label = await driveShareDialog(page, snapId);
-        check("F3: the item advertises a file", /^Share state file/.test(label || ""), String(label));
+        check("F3: the item advertises the text file",
+            /^Share text file/.test(label || ""), String(label));
 
         const calls = await page.evaluate(() => window.__shareCalls);
         check("F4: navigator.share called once", calls.length === 1, String(calls.length));
         const call = calls[0] || {};
         check("F5: the share carried a file", call.hasFiles === true, JSON.stringify(call));
-        check("F6: named .state.zst",
-            /\.state\.zst$/.test((call.fileNames || [])[0] || ""), JSON.stringify(call.fileNames));
-        check("F7: typed application/octet-stream",
-            (call.fileTypes || [])[0] === "application/octet-stream", JSON.stringify(call.fileTypes));
+        // text/plain is the only type every share sheet routes: Chrome refuses
+        // application/octet-stream on Android and every file on Windows, and a
+        // refusal costs the tap's activation.
+        check("F6: named .state.txt",
+            /\.state\.txt$/.test((call.fileNames || [])[0] || ""), JSON.stringify(call.fileNames));
+        check("F7: typed text/plain",
+            (call.fileTypes || [])[0] === "text/plain", JSON.stringify(call.fileTypes));
         check("F8: not a 2 KB text stub — only a short note travels as text",
             (call.textLength || 0) < 512, String(call.textLength));
         const writes = await page.evaluate(() => window.__clipboardWrites);
         check("F9: clipboard untouched in file mode", writes.length === 0, String(writes.length));
 
-        // The bytes handed to the share sheet must import back as a state.
+        // The attachment must carry the WHOLE envelope and import back as a state.
         const imported = await page.evaluate(async () => {
             const files = window.__lastShareFiles || [];
             if (!files.length) return { ok: false, reason: "no-file" };
-            const buf = await files[0].arrayBuffer();
-            const res = await SnapshotStore.importState(new Uint8Array(buf));
+            const text = await files[0].text();
+            const env = typeof StateEnvelope !== "undefined"
+                ? StateEnvelope : window.__yapdpStateEnvelope;
+            const bytes = env && env.decode ? env.decode(text) : null;
+            if (!bytes) return { ok: false, reason: "not-an-envelope", size: text.length };
+            const res = await SnapshotStore.importState(bytes);
             if (res && res.ok) await SnapshotStore.remove(res.id);
-            return { ok: !!(res && res.ok), reason: res ? res.reason : "null", size: buf.byteLength };
+            return { ok: !!(res && res.ok), reason: res ? res.reason : "null", size: bytes.byteLength };
         });
-        check("F10: the shared bytes import as a state", imported.ok === true, JSON.stringify(imported));
+        check("F10: the attached envelope imports as a state",
+            imported.ok === true, JSON.stringify(imported));
 
         await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     } finally {
@@ -522,9 +531,9 @@ async function testShareRefusalKeepsTheState(browser, errors) {
     console.log("  H: passed");
 }
 
-// --- I. A refused file retries as text on the next click ------------------
+// --- I. A refused text file retries as the container on the next click -----
 async function testFileRefusalRetriesAsText(browser, errors) {
-    console.log("\n=== I. A refused file retries as text ===");
+    console.log("\n=== I. A refused text file retries as the container ===");
     const page = await openStubPage(browser, errors, {
         acceptFiles: true,
         shareErrorOnce: "NotSupportedError",
@@ -550,32 +559,45 @@ async function testFileRefusalRetriesAsText(browser, errors) {
         check("I2b: the refusal is visible inside the open dialog",
             status === "block", String(status));
 
-        // The dialog stays open, and the same item now advertises the text
-        // channel: one more click is all a share needs for its activation.
+        // The dialog stays open, and the item climbs ONE step down the chain:
+        // the text file was refused, so the next channel is the container. One
+        // more click is all a share needs for its activation.
         await page.evaluate(() => {
             const more = document.getElementById("share-create-more");
             if (more) more.click();
         });
         await page.waitForFunction(() => {
             const item = document.getElementById("share-create-share");
-            return !!(item && !item.disabled && /^Share state text/.test(item.textContent));
+            return !!(item && !item.disabled && /^Share state file/.test(item.textContent));
         }, { timeout: 20000 }).catch(() => { /* reported below */ });
         const label = await page.evaluate(
             () => (document.getElementById("share-create-share") || {}).textContent || "");
-        check("I3: the item now offers the text envelope",
-            /^Share state text/.test(label), String(label));
+        check("I3: the item now offers the container",
+            /^Share state file/.test(label), String(label));
 
         await page.evaluate(() => document.getElementById("share-create-share").click());
         await page.waitForFunction(() => window.__shareCalls.length >= 2, { timeout: 20000 })
             .catch(() => { /* reported below */ });
         const calls = await page.evaluate(() => window.__shareCalls);
         const last = calls[calls.length - 1] || {};
-        check("I4: the second click shared text", calls.length >= 2, String(calls.length));
-        check("I5: carrying the full envelope",
-            (last.textLength || 0) > 2048 &&
-            String(last.textHead || "").indexOf("yapdp-text-envelope-v1") === 0,
-            JSON.stringify({ len: last.textLength, head: last.textHead }));
-        check("I6: and no file this time", last.hasFiles !== true, JSON.stringify(last.hasFiles));
+        check("I4: the second click shared", calls.length >= 2, String(calls.length));
+        check("I5: as a .state.zst attachment",
+            last.hasFiles === true &&
+            (last.fileTypes || [])[0] === "application/octet-stream" &&
+            /\.state\.zst$/.test((last.fileNames || [])[0] || ""),
+            JSON.stringify({ files: last.fileNames, types: last.fileTypes }));
+        // A refused channel must not cost the state: what finally travels is a
+        // container that imports.
+        const imported = await page.evaluate(async () => {
+            const files = window.__lastShareFiles || [];
+            if (!files.length) return { ok: false, reason: "no-file" };
+            const buf = await files[0].arrayBuffer();
+            const res = await SnapshotStore.importState(new Uint8Array(buf));
+            if (res && res.ok) await SnapshotStore.remove(res.id);
+            return { ok: !!(res && res.ok), reason: res ? res.reason : "null", size: buf.byteLength };
+        });
+        check("I6: the container imports as a state",
+            imported.ok === true, JSON.stringify(imported));
 
         await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     } finally {
