@@ -49,6 +49,7 @@
     "e2e:quickboot-scenario": "wireit",
     "e2e:snapshots": "wireit",
     "e2e:startup-cls": "wireit",
+    "e2e:poweron": "wireit",
     "e2e:os": "wireit",
     "e2e:os:legacy": "wireit",
     "e2e:teletype": "wireit",
@@ -444,6 +445,12 @@
     },
     "e2e:startup-cls": {
       "command": "node tools/validate.js e2e:startup-cls",
+      "dependencies": [
+        "test"
+      ]
+    },
+    "e2e:poweron": {
+      "command": "node tools/validate.js e2e:poweron",
       "dependencies": [
         "test"
       ]

@@ -15,8 +15,15 @@
  * Classification:
  *   runaway-trap                    -> error   (unrecoverable trap recursion)
  *   halt-instruction, pc <= 4       -> error   (trapped into an empty vector)
+ *   halt-instruction, pc <= 4 and no Boot ROM in the socket
+ *                                   -> warning (nothing was there to run)
  *   halt-instruction, pc >  4       -> warning (the guest stopped itself)
  *   step === true                   -> nothing (the operator pressed STEP)
+ *
+ * The no-ROM variant of the dead end is not a fault: with CONFIG bootDevice
+ * 'none' the socket is empty by the operator's own choice, so the machine
+ * merely has nothing to execute. Calling that "the CPU trapped into an empty
+ * vector" (an ERROR) frightened an operator who had just selected "None".
  *
  * Anything the machine legitimately does while merely idle — a guest sitting
  * in WAIT at its prompt, e.g. the XXDP monitor — never reaches this module: the
@@ -47,6 +54,21 @@ var HaltNotice = (function () {
     }
 
     /**
+     * Is the emulated Boot ROM socket empty (CONFIG bootDevice 'none')? Read
+     * defensively: this module also runs in Node tests and before pdp11-app.js
+     * has built the config, where Config may be absent or throwing.
+     * @returns {boolean}
+     */
+    function noBootDevice() {
+        try {
+            if (typeof Config !== "undefined" && Config.get) {
+                return Config.get().bootDevice === "none";
+            }
+        } catch (err) { /* no config -> assume a ROM is configured */ }
+        return false;
+    }
+
+    /**
      * Classify one halt event.
      * @param {?{reason:string, pc:number, psw:number, step:boolean}} info
      *        CPU.haltReason as published by the core (null when none).
@@ -71,6 +93,18 @@ var HaltNotice = (function () {
         }
 
         if (info.reason === "halt-instruction" && pc <= DEAD_END_PC) {
+            // With no Boot ROM in the socket the dead end is the configured
+            // resting state, not a crash: say what is missing and how to boot
+            // instead of diagnosing an "empty vector".
+            if (noBootDevice()) {
+                return {
+                    text: "Machine halted" + at +
+                        " — no boot device is selected, so there is nothing " +
+                        "to run. Choose a boot device or press Bootstrap now!",
+                    category: "warning",
+                    key: KEY
+                };
+            }
             return {
                 text: "Machine halted" + at +
                     " — the CPU trapped into an empty vector. " +
@@ -102,6 +136,7 @@ var HaltNotice = (function () {
         KEY: KEY,
         DEAD_END_PC: DEAD_END_PC,
         octal: octal,
+        noBootDevice: noBootDevice,
         haltNotice: haltNotice
     };
 })();

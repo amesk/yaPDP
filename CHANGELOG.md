@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Powering on without a Boot ROM no longer reports a crash.** With the Boot
+  device option set to None, a page load that came up powered on — the landing
+  page's Reset after a reboot — executed the zeroed memory and raised an
+  "empty vector" error toast about a machine that had nothing to run: the CPU
+  now rests halted, exactly as it already did after a reboot, and the remaining
+  dead end with no Boot ROM is reported as a warning naming the missing boot
+  device instead of an error. (`src/pdp11-app.js`, `src/halt-notice.js`,
+  `tests/halt-notice.test.js`, `tests/e2e-poweron-no-boot.js`)
+
 ## [0.4.0] - 2026-10-28
 
 ### Added

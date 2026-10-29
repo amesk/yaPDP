@@ -81,6 +81,10 @@ out. The emulator says so instead of leaving you in front of a frozen screen.
 - A stop at `000002` or `000004` means the CPU trapped into an empty vector, which
   is what a failed boot or a broken bootstrap leaves behind: reboot the machine or
   boot it again.
+- With **Boot device** set to **None** there is no bootstrap at all, so a machine
+  that is powered on simply rests halted and says so as a note rather than an
+  error. Pick a boot device, or press **Bootstrap now!**, when you want it to run
+  something.
 - The pause icon on the **PANEL** button in the sidebar keeps the last stop as a
   tooltip, so the reason is still readable after the toast is gone; clicking the
   button shows the notice again.

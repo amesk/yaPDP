@@ -1905,9 +1905,21 @@ function applyMachinePower(powerOn, skipAutoBoot) {
   // Start the Boot ROM path when the machine is turned on, unless the caller
   // already reboots (skipAutoBoot) — gated on the boot-device option. What
   // the ROM does (interactive @ or replay the last medium) is decided in boot().
-  if (powerOn && !skipAutoBoot && !wasOn &&
-      typeof Config !== 'undefined' && Config.get().bootDevice !== 'none') {
+  var bootDevice = (typeof Config !== 'undefined' && Config.get)
+      ? Config.get().bootDevice
+      : 'none';
+  if (powerOn && !skipAutoBoot && !wasOn && bootDevice !== 'none') {
     boot();
+  } else if (powerOn && !wasOn && !skipAutoBoot && bootDevice === 'none' &&
+      typeof CPU !== 'undefined' && CPU.runState === STATE_RUN) {
+    // An empty Boot ROM socket: there is nothing for the machine to run. The
+    // CPU loop starts on its own when the page loads (src/pdp11.js), so a
+    // powered-on machine without a ROM executed the zeroed memory and trapped
+    // into the empty vector — an "empty vector" ERROR toast on every reload of
+    // a config that had been through a reboot (doReboot persists powerOn, and
+    // the landing page's Reset is a reload). Park the CPU instead: the same
+    // resting state doReboot() leaves for this configuration.
+    CPU.runState = STATE_HALT;
   }
 }
 window.applyMachinePower = applyMachinePower;

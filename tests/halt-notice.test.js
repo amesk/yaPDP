@@ -8,6 +8,8 @@
  *
  *   runaway-trap                -> error   (unrecoverable trap recursion)
  *   halt-instruction, pc <= 4   -> error   (trapped into an empty vector)
+ *   halt-instruction, pc <= 4 with no Boot ROM (bootDevice 'none')
+ *                               -> warning (nothing was there to run)
  *   halt-instruction, pc >  4   -> warning (the guest stopped itself)
  *   step === true               -> nothing (the operator pressed STEP)
  *
@@ -59,6 +61,46 @@ assert.strictEqual(
     assert.strictEqual(n.category, "error", "pc " + pc.toString(8) + " is a dead end");
     assert.ok(/empty vector/.test(n.text), "it explains the dead end: " + n.text);
 });
+
+// --- the same dead end with an EMPTY Boot ROM socket is not a fault ----------
+// CONFIG bootDevice 'none' means the board is missing by the operator's choice:
+// a machine that stops at 000002 there has nothing to run, it is not broken.
+{
+    const withBootRom = { get: () => ({ bootDevice: "interactive@" }) };
+    global.Config = withBootRom;
+    try {
+        const n = notice({ reason: "halt-instruction", pc: 2, psw: 0, step: false });
+        assert.strictEqual(n.category, "error",
+            "a configured Boot ROM that dead-ends is still an error");
+        assert.ok(/empty vector/.test(n.text), "it keeps the dead-end wording");
+        assert.strictEqual(HaltNotice.noBootDevice(), false,
+            "a configured ROM is not 'no boot device'");
+    } finally { delete global.Config; }
+
+    global.Config = { get: () => ({ bootDevice: "none" }) };
+    try {
+        const n = notice({ reason: "halt-instruction", pc: 2, psw: 0, step: false });
+        assert.strictEqual(n.category, "warning",
+            "an empty socket is a warning, not an emulator fault");
+        assert.ok(/no boot device/i.test(n.text),
+            "it names the missing board: " + n.text);
+        assert.ok(!/empty vector/.test(n.text),
+            "the developer phrase is gone: " + n.text);
+        assert.ok(/Bootstrap now!/.test(n.text),
+            "it offers the real way out: " + n.text);
+        assert.strictEqual(n.key, HaltNotice.KEY, "one dedup key for every stop");
+        assert.strictEqual(HaltNotice.noBootDevice(), true,
+            "bootDevice 'none' is reported as an empty socket");
+    } finally { delete global.Config; }
+
+    // No Config at all (Node, unit-test page): assume a ROM is configured and
+    // keep the louder wording rather than hiding a real crash.
+    assert.strictEqual(HaltNotice.noBootDevice(), false,
+        "an absent Config must not be read as 'no boot device'");
+    assert.strictEqual(
+        notice({ reason: "halt-instruction", pc: 2, psw: 0, step: false }).category,
+        "error", "absent Config keeps the empty-vector error");
+}
 
 // --- an ordinary guest halt: loud enough to notice, not an emulator fault ----
 [0o10, 0o1000, 0o177777].forEach(function (pc) {
