@@ -1513,7 +1513,11 @@ var SnapshotStore = (() => {
                     manifest.imageVersions = versions;
                     return collectEmbeddedResources(manifest.mounted, versions, null, false, true).then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
-                        var packed = StateFormat.pack(manifest, CPU.memory, resources.blobs);
+                        // The images were hashed when they were mounted; pack()
+                        // re-uses those digests instead of re-reading 150+ MiB.
+                        var packed = StateFormat.pack(manifest, CPU.memory, resources.blobs,
+                            { digests: StateFormat.knownBlobDigests(manifest.imageFingerprints,
+                                resources.embeddedImages) });
                         // Compression is only an outer transport frame; the
                         // inner v2 blob offsets refer to the decoded container.
                         return gzipCompress(packed).then(function (bytes) {
@@ -1867,7 +1871,11 @@ var SnapshotStore = (() => {
                 return collectEmbeddedResources(snap.mounted, snap.imageVersions, snap.embeddedResources, false, true)
                     .then(function (resources) {
                         manifest.embeddedImages = resources.embeddedImages;
-                        var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
+                        // Digests the snapshot already recorded; pack() hashes
+                        // only what it was not told the identity of.
+                        var packed = StateFormat.pack(manifest, memoryWords, resources.blobs,
+                            { digests: StateFormat.knownBlobDigests(manifest.imageFingerprints,
+                                resources.embeddedImages) });
                         return gzipCompress(packed).then(function (bytes) {
                             return bytes;
                         }, function () {
@@ -1971,7 +1979,12 @@ var SnapshotStore = (() => {
                             delete manifest.imageVersions[url];
                         });
                         if (selfContained) mergeEmbeddedOverlays(manifest, resources);
-                        var packed = StateFormat.pack(manifest, memoryWords, resources.blobs);
+                        // A self-contained share embeds whole disk images, and
+                        // their SHA-256 is already in imageFingerprints: re-hashing
+                        // 170 MiB here was the longest main-thread block in Share.
+                        var packed = StateFormat.pack(manifest, memoryWords, resources.blobs,
+                            { digests: StateFormat.knownBlobDigests(manifest.imageFingerprints,
+                                resources.embeddedImages) });
                         return gzipCompress(packed).then(function (bytes) {
                             return bytes;
                         }, function () {

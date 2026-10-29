@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Sharing or exporting a self-contained state stops re-hashing its disk
+  images.** A state is content-addressed, so `pack()` takes a SHA-256 of every
+  blob — a pure-JS one, for `file://` pages and desktop WebViews without
+  `crypto.subtle` — and one 170 MiB RP11 disk cost 1.6 s of blocked main thread
+  on top of the copy and the compression. An image is hashed once, when it is
+  mounted, and the digest now travels with the snapshot: the state export, the
+  device export and the share dialog hand it to `pack()`, which hashes only the
+  blobs it was not told about. (`src/state-format.js`, `src/snapshots.js`,
+  `tests/state-pack-digests.test.js`)
+
 - **Sharing a state reaches the messenger in one tap.** Chrome answers
   `canShare({files})` with "yes" for the `.state.zst` container and then
   refuses the payload itself (`NotAllowedError: Permission denied`), and a
