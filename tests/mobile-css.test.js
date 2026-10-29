@@ -31,6 +31,7 @@ const MOBILE_INPUT = path.join(__dirname, "..", "src", "mobile-input.js");
 const MOBILE_KEYS = path.join(__dirname, "..", "src", "mobile-keys.js");
 const QUICKBOOT = path.join(__dirname, "..", "src", "quickboot.js");
 const ACTION_OVERFLOW = path.join(__dirname, "..", "src", "action-overflow.js");
+const SNAPSHOTS = path.join(__dirname, "..", "src", "snapshots.js");
 
 // Extract the body of an at-rule by brace balancing, so nested rules cannot
 // corrupt the extraction.
@@ -374,6 +375,40 @@ function run() {
             "the open menu must paint above the floating controls (z-index 1000)");
         assert.ok(/flex:\s*0\s+0\s+auto/.test(css),
             "the strip commands must keep their natural size for the measurement");
+    }
+
+    // ---- Share dialog: the actions share one row ------------------------
+    // Cancel and Create Shareable State used to be bare inline siblings in
+    // the dialog box, spaced by `.modal-box .modal-close + .split-btn`'s
+    // margin-left. On a phone the pair wraps, and that margin stays on the
+    // second line, so the split button hung 10px to the right of the row
+    // above. They belong to the shared .modal-actions row, whose gap does
+    // not survive the wrap.
+    {
+        const snaps = fs.readFileSync(SNAPSHOTS, "utf8");
+        const start = snaps.indexOf("function showShareDialog(");
+        assert.ok(start !== -1,
+            "src/snapshots.js must keep showShareDialog()");
+        const nextFn = snaps.indexOf("\n    function ", start + 10);
+        const share = snaps.slice(start, nextFn === -1 ? snaps.length : nextFn);
+
+        const rowAt = share.indexOf('class="modal-actions"');
+        const cancelAt = share.indexOf('data-snap-action="cancel"');
+        const createAt = share.indexOf('id="share-create"');
+        assert.ok(rowAt !== -1,
+            "the Share dialog must put its actions in a .modal-actions row");
+        assert.ok(cancelAt !== -1 && cancelAt > rowAt,
+            "Cancel must sit inside the .modal-actions row");
+        assert.ok(createAt !== -1 && createAt > rowAt,
+            "Create Shareable State must sit inside the same row");
+
+        // The reset that cancels the inline margin-left inside the row, and
+        // the gap that replaces it, must both survive.
+        assert.ok(/\.modal-box \.modal-actions \.modal-close\+\.modal-close[\s\S]*?margin-left:\s*0/
+            .test(css),
+            ".modal-actions must reset the inline margin-left between buttons");
+        assert.ok(/\.modal-actions\s*\{[^}]*gap:\s*10px/.test(css),
+            ".modal-actions must space its buttons with a gap");
     }
 
     // ---- The modules exist ---------------------------------------------
