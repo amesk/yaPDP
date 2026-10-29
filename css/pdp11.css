@@ -754,6 +754,22 @@ textarea {
     cursor: default;
 }
 
+/* "Share…" while the state is being prepared (src/snapshots.js): the project's
+   own spinner plus the stage, and NOT the washed-out disabled look — nothing is
+   wrong, the machine is working. */
+.split-btn-item[aria-busy="true"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 1;
+}
+
+.split-btn-item-spin {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+}
+
 .modal-close:hover {
     background: #3a3224;
 }
@@ -1434,6 +1450,21 @@ textarea {
     color: #e0d8c8;
 }
 
+/* The Share item while the PNG is being captured (src/screenshot.js): html2canvas
+   renders the whole page, so the menu has to say it is working. */
+.screenshot-context-item[aria-busy="true"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 1;
+}
+
+.screenshot-context-item-spin {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
+}
+
 /* Quick-boot tab bar inside the shared modal box. */
 .quickboot-tabs {
     display: flex;
@@ -1703,6 +1734,22 @@ textarea {
 .share-status--error {
     border-color: #c05a4a;
     color: #ffd9d0;
+}
+
+/* The same slot reports work in progress: a spinner and the stage the dialog is
+   on. One visual language with the loading gate and the preparing balloon
+   (.yapdp-spin below), so "the machine is busy" always looks the same. */
+.share-status--busy {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-color: #8a7a52;
+}
+
+.share-status-spin {
+    width: 12px;
+    height: 12px;
+    border-width: 2px;
 }
 
 /* Preparing toast stacks its children vertically: status row, optional state

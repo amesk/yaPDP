@@ -8,7 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The Share dialog says it is working.** Building a shareable state — the
+  IndexedDB read, the container, its compression and the text envelope — used
+  to leave nothing but a greyed-out item on screen, so an operator clicked
+  again. After 300 ms the Share item turns into "Preparing…" behind the spinner
+  the rest of the app already uses, the status line names the stage (packing,
+  compressing, building the share file), and the screenshot menu reports its
+  own capture the same way; a state that is ready sooner shows no indicator at
+  all. (`src/snapshots.js`, `src/screenshot.js`, `css/pdp11.css`)
+
 ### Fixed
+
+- **A second Share click joins the work instead of repeating it.** Every action
+  of the split button started its own compression of the state, and "Create
+  Shareable State" stayed disabled for good when the build failed; the actions
+  now share one build in flight, every button comes back, and a failed
+  preparation is reported in the dialog instead of leaving a dead item.
+  (`src/snapshots.js`, `tests/share-busy.test.js`)
 
 - **Sharing or exporting a self-contained state stops re-hashing its disk
   images.** A state is content-addressed, so `pack()` takes a SHA-256 of every
