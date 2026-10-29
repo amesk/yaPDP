@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   device instead of an error. (`src/pdp11-app.js`, `src/halt-notice.js`,
   `tests/halt-notice.test.js`, `tests/e2e-poweron-no-boot.js`)
 
+- **The command strips' "More…" menu opens above the floating controls.** The
+  overflow menu of the touch command strips is a fixed overlay placed from the
+  "More…" button's own rect, clear of the round State / Quick Boot / Pause /
+  Reboot buttons and clamped into the viewport, instead of being laid out inside
+  the pinned control layer where those buttons painted over it.
+  (`src/action-overflow.js`, `css/pdp11.css`, `tests/action-overflow.test.js`,
+  `tests/mobile-css.test.js`)
+
 ## [0.4.0] - 2026-10-28
 
 ### Added
