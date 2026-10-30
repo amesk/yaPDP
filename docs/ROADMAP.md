@@ -4,7 +4,16 @@ Where the project is going. Each item is one or two lines — details live in
 linked docs/issues. Known emulator bugs are tracked separately in
 [known-issues.md](known-issues.md); this file is for direction, not defects.
 
-## Next release (0.4.0)
+## Next release (0.5.0)
+
+- **Retire the legacy stack (`?core=0`).** Once the core stack has soaked,
+  drop the monolithic `src/iopage.js` path and the `E2E_LEGACY` parity run
+  (the 10-guest matrix on the core stack remains the gate); delete the
+  deprecated puppeteer CLI `tools/rt11-term.js` (headless-term is the tool
+  of record). Tracked as
+  [#18](https://github.com/amesk/yaPDP/issues/18).
+
+## Planned for 0.4.0 — shipped 2026-10-28
 
 - **Shareable and reproducible emulator states.** Snapshots should be portable:
   import and export, and loading one from an external URL. A snapshot carries
@@ -65,13 +74,6 @@ linked docs/issues. Known emulator bugs are tracked separately in
     an entry point welcomes everything that arrives.
   - **Instant-start is a property of the combination** of a small image and a
     small state, not a slogan.
-
-- **Retire the legacy stack (`?core=0`).** Once the core stack has soaked,
-  drop the monolithic `src/iopage.js` path and the `E2E_LEGACY` parity run
-  (the 10-guest matrix on the core stack remains the gate); delete the
-  deprecated puppeteer CLI `tools/rt11-term.js` (headless-term is the tool
-  of record). Tracked as
-  [#18](https://github.com/amesk/yaPDP/issues/18).
 
 ## Backlog / ideas
 

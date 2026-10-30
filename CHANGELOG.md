@@ -8,92 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
 
-- **The Share dialog says it is working.** Building a shareable state — the
-  IndexedDB read, the container, its compression and the text envelope — used
-  to leave nothing but a greyed-out item on screen, so an operator clicked
-  again. After 300 ms the Share item turns into "Preparing…" behind the spinner
-  the rest of the app already uses, the status line names the stage (packing,
-  compressing, building the share file), and the screenshot menu reports its
-  own capture the same way; a state that is ready sooner shows no indicator at
-  all. (`src/snapshots.js`, `src/screenshot.js`, `css/pdp11.css`)
-
-### Fixed
-
-- **The RSTS scenario card shows its screenshot.** RSTS V06C-03 was the one
-  entry in Quick boot → Scenario without a preview, because its state carried
-  none. The state is re-exported with one, and the browser exporter now re-arms
-  the console render counters after the profile reload and waits for the
-  teletype to stop printing before the shot — so the picture and the restored
-  machine show the same moment: the full boot banner and the START dialogue.
-  (`tools/export-state-browser.js`, `states/rk2-ready.state.zst`,
-  `states/previews/`, `states/manifest.json`)
-
-- **A second Share click joins the work instead of repeating it.** Every action
-  of the split button started its own compression of the state, and "Create
-  Shareable State" stayed disabled for good when the build failed; the actions
-  now share one build in flight, every button comes back, and a failed
-  preparation is reported in the dialog instead of leaving a dead item.
-  (`src/snapshots.js`, `tests/share-busy.test.js`)
-
-- **Sharing or exporting a self-contained state stops re-hashing its disk
-  images.** A state is content-addressed, so `pack()` takes a SHA-256 of every
-  blob — a pure-JS one, for `file://` pages and desktop WebViews without
-  `crypto.subtle` — and one 170 MiB RP11 disk cost 1.6 s of blocked main thread
-  on top of the copy and the compression. An image is hashed once, when it is
-  mounted, and the digest now travels with the snapshot: the state export, the
-  device export and the share dialog hand it to `pack()`, which hashes only the
-  blobs it was not told about. (`src/state-format.js`, `src/snapshots.js`,
-  `tests/state-pack-digests.test.js`)
-
-- **Sharing a state reaches the messenger in one tap.** Chrome answers
-  `canShare({files})` with "yes" for the `.state.zst` container and then
-  refuses the payload itself (`NotAllowedError: Permission denied`), and a
-  refusal spends the tap's user activation, so a wrong guess cost the operator
-  a second click and a browser error name. The sheet is now handed the same
-  state as a `.txt` attachment — `text/plain` is the one type every share sheet
-  routes — whenever the envelope can be built at all, so a self-contained guest
-  (BSD 2.11 is ~27 MB of state and ~37 MB of envelope) leaves as a file too;
-  the compact container follows when the text file is refused or the state is
-  too large to encode, then the share text and finally the clipboard. A channel
-  the platform refused is remembered for the session, and the dialog says what
-  went to the clipboard instead of quoting the exception.
-  (`src/snapshots.js`, `tests/share-payload.test.js`, `tests/e2e-share.js`)
-
-- **Powering on without a Boot ROM no longer reports a crash.** With the Boot
-  device option set to None, a page load that came up powered on — the landing
-  page's Reset after a reboot — executed the zeroed memory and raised an
-  "empty vector" error toast about a machine that had nothing to run: the CPU
-  now rests halted, exactly as it already did after a reboot, and the remaining
-  dead end with no Boot ROM is reported as a warning naming the missing boot
-  device instead of an error. (`src/pdp11-app.js`, `src/halt-notice.js`,
-  `tests/halt-notice.test.js`, `tests/e2e-poweron-no-boot.js`)
-
-- **The command strips' "More…" menu opens above the floating controls.** The
-  overflow menu of the touch command strips is a fixed overlay placed from the
-  "More…" button's own rect, clear of the round State / Quick Boot / Pause /
-  Reboot buttons and clamped into the viewport, instead of being laid out inside
-  the pinned control layer where those buttons painted over it.
-  (`src/action-overflow.js`, `css/pdp11.css`, `tests/action-overflow.test.js`,
-  `tests/mobile-css.test.js`)
-
-- **The Pause / Resume control is visible on a phone.** Below 768 px the
-  narrow-screen layout gave Pause and Reboot the same inset, and Reboot — later
-  in the document — painted over Pause, so the machine's run/pause control
-  looked missing in the touch layout. Pause keeps its own, leftmost inset at
-  every width. (`css/pdp11.css`, `tests/console-button-layout.test.js`)
-
-- **The Share dialog's buttons stay flush on a phone.** Cancel and Create
-  Shareable State were bare inline siblings in the dialog box, spaced by a
-  left margin that stayed applied after the pair wrapped, so the lower button
-  stood indented from the one above. Both now share the dialog's action row,
-  whose gap spaces the wrapped lines evenly.
-  (`src/snapshots.js`, `tests/mobile-css.test.js`)
-
-## [0.4.0] - 2026-10-28
+## [0.4.0] - 2026-10-30
 
 ### Added
+
+- **The Share dialog says it is working**: preparing a shareable state turns
+  the Share item into "Preparing…" behind the spinner after 300 ms, the status
+  line names the stage and the screenshot menu reports its own capture; a
+  state that is ready sooner shows no indicator. (`src/snapshots.js`,
+  `src/screenshot.js`, `css/pdp11.css`)
 
 - **Service mode for museum exhibits.** A hidden maintenance screen
   (`?maintenance=1`, five clicks within two seconds on the version marker, or
@@ -160,8 +84,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Games gallery.** A Games carousel beside Instant Run opens the emulator on a
   saved state with the guest already running — Lunar Lander, Space Invaders,
   Dungeon, Adventure and Time52, each described in the reader's language; the
-  classic landing page mirrors both galleries in English. (`landing/src/components/GamesCarousel.tsx`,
-  `landing/src/data.ts`, `index.html`)
+  classic landing page mirrors both galleries in English.
+  (`landing/src/components/GamesCarousel.tsx`, `landing/src/data.ts`,
+   `index.html`)
 
 - **One-click launch from gallery lightboxes.** An enlarged guest-OS, Instant Run
   or game screenshot offers its Run/Teleport/Play action in the React landing
@@ -272,6 +197,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The RSTS V06C-03 scenario card carries a preview.** The browser exporter
+  re-arms the console render counters after the profile reload and waits for
+  the teletype to stop printing before the shot, so the picture and the
+  restored machine show the same moment. (`tools/export-state-browser.js`,
+  `states/rk2-ready.state.zst`, `states/previews/`, `states/manifest.json`)
+
+- **One share build serves every action of the split button**: a second click
+  joins the build in flight, every button returns once it finishes and a
+  failed preparation is reported in the dialog. (`src/snapshots.js`,
+  `tests/share-busy.test.js`)
+
+- **Packing a state reuses the image digests recorded at mount time**: the
+  state export, the device export and the share dialog hand them to `pack()`,
+  which hashes only the blobs it was not handed a digest for.
+  (`src/state-format.js`, `src/snapshots.js`,
+  `tests/state-pack-digests.test.js`)
+
+- **Sharing a state reaches the messenger in one tap**: the share sheet is
+  handed the state as a `.txt` attachment first, then the `.state.zst`
+  container, the share text and finally the clipboard, a self-contained guest
+  included, and a channel the platform refused is remembered for the session.
+  (`src/snapshots.js`, `tests/share-payload.test.js`, `tests/e2e-share.js`)
+
+- **Powering on with the Boot device set to None rests the CPU halted**
+  instead of executing zeroed memory, and the dead end is reported as a
+  warning naming the missing boot device. (`src/pdp11-app.js`,
+  `src/halt-notice.js`, `tests/halt-notice.test.js`,
+  `tests/e2e-poweron-no-boot.js`)
+
+- **The command strips' "More…" menu opens above the floating controls**: a
+  fixed overlay placed from the button's own rect, clear of the round State /
+  Quick Boot / Pause / Reboot buttons and clamped into the viewport.
+  (`src/action-overflow.js`, `css/pdp11.css`, `tests/action-overflow.test.js`,
+  `tests/mobile-css.test.js`)
+
+- **The Pause / Resume control is visible on a phone**: Pause keeps its own,
+  leftmost inset below 768 px, where the narrow-screen layout used to give it
+  and Reboot the same one. (`css/pdp11.css`,
+  `tests/console-button-layout.test.js`)
+
+- **The Share dialog's buttons stay flush on a phone**: Cancel and Create
+  Shareable State share the dialog's action row, whose gap spaces the wrapped
+  lines evenly. (`src/snapshots.js`, `tests/mobile-css.test.js`)
+
 - **The machine no longer switches itself on when a page loads.** Power at
   startup comes only from the `powerOn` configuration option, so a factory state
   is a machine at the POWER OFF detent instead of a CPU executing zeroed memory
@@ -332,8 +301,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   66 lines still gets its perforation, and a job ejected early prints as a whole
   sheet. (`src/lp11paper.js`, `src/devices/lp11.js`, `src/g60printer.js`)
 
-- **A restored printer page keeps the paper's character grid**, so a printed
-  picture no longer comes back stretched. (`src/g60printer.js`)
+- **A restored printer page comes back on the paper's character grid**, so a
+  printed picture keeps the proportions it was printed with.
+  (`src/g60printer.js`)
 
 - **Sharing and importing states work in every path.** The file picker imports
   again (text envelopes included), a screenshot pastes into the Share dialog
@@ -363,11 +333,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The Machine-state dialog keeps its selection and its Export menu.** A
   refresh keeps the chosen snapshot or selects the one just saved or imported,
-  and the Export arrow is no longer created disabled.
-  (`src/snapshots.js`, `tests/snapshot-ui-selection.test.js`)
+  and the Export arrow is enabled from the start. (`src/snapshots.js`,
+  `tests/snapshot-ui-selection.test.js`)
 
-- **The landing guide's contents and search list only chapters it renders**, so
-  About yaPDP, Glossary and Historical Fidelity no longer scroll nowhere.
+- **The landing guide's contents and search list only chapters it renders**,
+  so About yaPDP, Glossary and Historical Fidelity scroll to their chapter.
   (`landing/src/components/UserManual.tsx`,
   `tests/landing-manual-coverage.test.js`)
 
