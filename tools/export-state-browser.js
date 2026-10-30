@@ -160,12 +160,24 @@ async function exportOne(page, device) {
     const readyMs = Date.now() - t0;
     log("  ready in " + readyMs + "ms");
 
+    // The wizard reloads the page when the scenario needs a different machine
+    // profile (devices are registered at load time), and a reload wipes the
+    // render counters installed before the boot. Without them
+    // waitRenderStable() reads a counter that never moves, declares the render
+    // "stable" at once, and the shot lands mid-line: that is how the RSTS
+    // teletype — 30 characters a second at authentic pace — was captured with
+    // half of its boot banner and published without a usable preview.
+    await consoleWait.installConsoleHooks(page);
+
     // Drain the teletype (and shoot the preview) before the stop-the-world
     // capture: the picture and the state must be the SAME moment, otherwise the
-    // tile shows half a prompt and the restore shows the whole one.
+    // tile shows half a prompt and the restore shows the whole one. The timeout
+    // is generous because the render drain, not the guest, is the slow part on
+    // an authentic-pace teletype (a 1500-character banner takes ~45 s).
     let shotUri = null;
     try {
-        const png = await preview.captureMachinePng(page, { stableMs: 2500 });
+        const png = await preview.captureMachinePng(page,
+            { stableMs: 2500, timeoutMs: 240000 });
         shotUri = preview.toDataUri(png);
         log("  preview captured " + Math.round(png.length / 1024) + " KB");
     } catch (e) {

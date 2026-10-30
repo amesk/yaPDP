@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The RSTS scenario card shows its screenshot.** RSTS V06C-03 was the one
+  entry in Quick boot → Scenario without a preview, because its state carried
+  none. The state is re-exported with one, and the browser exporter now re-arms
+  the console render counters after the profile reload and waits for the
+  teletype to stop printing before the shot — so the picture and the restored
+  machine show the same moment: the full boot banner and the START dialogue.
+  (`tools/export-state-browser.js`, `states/rk2-ready.state.zst`,
+  `states/previews/`, `states/manifest.json`)
+
 - **A second Share click joins the work instead of repeating it.** Every action
   of the split button started its own compression of the state, and "Create
   Shareable State" stayed disabled for good when the build failed; the actions

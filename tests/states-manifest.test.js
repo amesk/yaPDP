@@ -96,6 +96,29 @@ const MANIFEST = path.join(STATES, "manifest.json");
     }
 }
 
+// --- 3b. Every shipped state carries a preview -------------------------------
+// A card without a thumbnail is the "RSTS has no preview" regression: the
+// exporter used to shoot the teletype mid-print (the profile reload wiped its
+// render counters), a state could therefore be published with screenshot=null,
+// and the manifest generator has no way to invent a picture — the Scenario tab
+// simply showed a blank card. Every state in this repo is exported WITH a
+// preview, so a null here means the browser exporter was not used, or its
+// capture was skipped.
+// Fix with: node tools/export-state-browser.js <device> && node tools/gen-state-manifest.js
+{
+    const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
+    for (const entry of manifest) {
+        assert.ok(typeof entry.screenshot === "string" && entry.screenshot.length > 0,
+            entry.file + ": no preview screenshot (screenshot is " +
+            JSON.stringify(entry.screenshot) + ") — its Scenario card would " +
+            "render without a thumbnail; re-export the state with " +
+            "node tools/export-state-browser.js and regenerate the manifest");
+        assert.ok(typeof entry.screenshotFull === "string" && entry.screenshotFull.length > 0,
+            entry.file + ": no full-size screenshot — the lightbox has nothing " +
+            "to enlarge");
+    }
+}
+
 // --- 4. Every state names and describes itself ------------------------------
 // A state whose label IS its device key is the failure this policy exists for:
 // the restore toast shows manifest.label, so "rp1" reads as a lone lowercase
