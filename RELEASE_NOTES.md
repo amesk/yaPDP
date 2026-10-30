@@ -1,6 +1,6 @@
 # yaPDP v0.4.0 — Release Notes
 
-- **Release date:** 2026-10-28
+- **Release date:** 2026-10-30
 - **Baseline:** [releases/v0.3.0](https://github.com/amesk/yaPDP/releases/tag/releases%2Fv0.3.0) (2026-09-30)
 - **Full diff:** [releases/v0.3.0...releases/v0.4.0](https://github.com/amesk/yaPDP/compare/releases/v0.3.0...releases/v0.4.0)
 
@@ -11,29 +11,32 @@ printer.
 ## What's new
 
 - **Ready-made machines, one click away.** The magic wand has a Scenario tab:
-  a saved machine — a game mid-flight, a prepared RT-11 session, a BASIC prompt
-  waiting for you — comes back exactly as it was left, with a picture of it and a
-  line saying what it is.
+  a saved machine — a game mid-flight, a prepared RT-11 session, a BASIC
+  prompt waiting for you — comes back exactly as it was left, with a picture
+  of it and a line saying what it is, and a prepared machine can carry a short
+  guide that walks the guest to the right screen and then hands you the
+  console.
 - **Games have their own shelf.** Lunar Lander, Space Invaders, Dungeon,
   Adventure and Time52 open already running, on both the new landing page and
-  the classic one, and an enlarged screenshot now carries its own Play button.
-- **Share a machine, not just a file.** A saved machine can travel as a file, as
-  text you paste anywhere, through a GitHub Gist, or through your system's share
-  sheet — and importing accepts every one of those forms.
-- **A service mode for exhibits.** A hidden maintenance screen returns the whole
-  emulator to the way it was delivered — settings, imported disks, saved
-  machines — and brings the exhibit back in one confirmation. It is meant for a
-  kiosk with no keyboard and no address bar.
+  the classic one, an enlarged screenshot carries its own Play button, and the
+  galleries loop, so the last card is one more click away.
+- **Share a machine, not just a file.** A saved machine can travel as a file,
+  as text you paste anywhere, through a GitHub Gist, or through your system's
+  share sheet — and importing accepts every one of those forms.
+- **A service mode for exhibits.** A hidden maintenance screen returns the
+  whole emulator to the way it was delivered — settings, imported disks, saved
+  machines — and brings the exhibit back in one confirmation. It is meant for
+  a kiosk with no keyboard and no address bar.
 - **A stopped machine explains itself.** When the guest stops on its own
   instruction, or the emulator catches it running wild, a notice says where it
-  stopped and which button brings it back, instead of leaving what looks like a
-  frozen screen.
+  stopped and which button brings it back, instead of leaving what looks like
+  a frozen screen.
+- **A machine remembers how it was set up.** A saved machine brings back the
+  whole setup it was taken with — terminals, printer, panel and every disk on
+  the drive it was bound to — not only its memory.
 - **Tidying up after a session.** An imported image can be deleted from the
-  storage page once it is no longer needed, and unmounting a disk no longer
-  throws the image away with it.
-- **A machine remembers how it was wired.** A disk bound to a particular drive
-  stays there through saving, sharing and loading, and a restored machine brings
-  back the whole setup it was saved with — not only its memory.
+  storage page once it is no longer needed, unmounting a disk keeps the stored
+  image, and an image with nothing to export says so where it is mounted.
 
 ## Improved
 
@@ -43,43 +46,46 @@ printer.
 - **The printed manual reads like a book** — running headers and footers, a
   two-column index with page numbers, cross-references that jump where they
   should and a clean black-and-white layout.
-- **The documentation grew up.** The user manual — and the guide on the landing
-  page — gained a glossary, a keyboard-shortcut table, a reference of every
-  setting, troubleshooting for the usual failures, a chapter on what the
+- **The documentation grew up.** The user manual — and the guide on the
+  landing page — gained a glossary, a keyboard-shortcut table, a reference of
+  every setting, troubleshooting for the usual failures, a chapter on what the
   emulator reproduces faithfully and where it approximates, and recipes for
   embedding the machine into a museum page.
 - **The emulator speaks up** when a download fails, a saved machine does not
-  apply or the fullscreen switch does not take, in a short notice instead of the
-  developer console.
-- **Neater controls.** The state button moved next to the magic wand, the camera
-  stays on the machine pages where a picture is worth taking, and a long image
-  name no longer pushes buttons off the storage page.
+  apply or the fullscreen switch does not take, in a short notice instead of
+  the developer console — and Pause, Resume and Reboot report what they just
+  did.
+- **Neater controls.** The state button moved next to the magic wand, the
+  camera stays on the machine pages where a picture is worth taking, and a
+  long image name no longer pushes buttons off the storage page.
+- **The boot device is a real choice**: nothing, a typed boot prompt, or the
+  device the machine booted last — so a reboot needs no typed command.
 - **The desktop app ships its machines properly**: the Full installer offers
   every prepared machine and every image it carries, and the Minimal one no
   longer complains about disks it never included.
-- **Galleries loop**, so the last card is one more click away instead of a dead
-  end.
 
 ## Fixed
 
 - A fresh start is a machine with the key in the POWER OFF position, not a
   halted processor complaining about address 2 on every reload.
-- Unmounted disks boot again, and stored images survive an unmount.
-- The paper-tape reader keeps its tape across a reset and really rewinds it.
-- Loading one machine after another no longer replays the previous machine's
-  typed commands or leaves its text on the paper.
-- A shared link no longer reloads itself in a loop, and a long restore no longer
-  mounts its disks twice.
+- Disks and tapes keep what they are given: an unmounted disk still boots and
+  its stored image survives, and the paper-tape reader holds its tape across a
+  reset and really rewinds it.
+- One machine after another: a long restore no longer replays the previous
+  machine's typed commands, leaves its text on the paper or mounts its disks
+  twice, and a shared link no longer reloads itself in a loop.
 - A saved machine travels with the changes the guest wrote to its disks, so a
   file that went out and came back still has an intact file system.
-- A restored Lunar Lander keeps flying, and the pointer over the vector display
-  is where you think it is.
-- The share dialog accepts a pasted screenshot, and a machine named with a quote
-  in it can no longer break the dialog.
-- Importing a saved machine from a file works again.
-- A gallery link no longer traps a first-time visitor behind a welcome hint.
-- Desktop: the fullscreen button no longer claims it failed while it worked.
-- Screenshots are saved on black, the way the machine looks.
+- A restored Lunar Lander keeps flying, the pointer over the vector display is
+  where you think it is, and sharing or importing a saved machine works in
+  every path — from a file, with a pasted screenshot, and with a name that
+  carries a quote.
+- A machine saved by a newer version is not restored behind your back: it asks
+  whether to update, open it anyway or cancel, and a refused machine names the
+  disks it wanted and offers to keep or delete it.
+- Desktop: the fullscreen button no longer claims it failed while it worked,
+  screenshots are saved on black, and a gallery link no longer traps a
+  first-time visitor behind a welcome hint.
 
 ---
 
