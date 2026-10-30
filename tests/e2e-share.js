@@ -17,6 +17,9 @@
  *      the full envelope instead of leaving the operator with a bare toast
  *   I. A refused FILE retries as text on the next click (a share needs a fresh
  *      click for its activation, so the retry can never be automatic)
+ *   J. While the artifact is being prepared, the Share item says "Preparing…"
+ *      behind the shared spinner (aria-busy) and the status line names the
+ *      stage — observed on a page whose compression stage really takes time.
  *
  * Run with: node tests/e2e-share.js
  * (needs puppeteer, server on :1170 — see tools/serve.js)
@@ -315,7 +318,7 @@ async function testManifestCLI() {
 // decision what to hand over — is the real code under test.
 async function openStubPage(browser, errors, options) {
     const opts = Object.assign(
-        { acceptFiles: false, shareError: null, shareErrorOnce: null, mobile: false },
+        { acceptFiles: false, shareError: null, shareErrorOnce: null, mobile: false, slowGzip: 0 },
         options || {});
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
@@ -392,6 +395,26 @@ async function openStubPage(browser, errors, options) {
                 }
             });
         } catch (e) { window.__stubError = "clipboard: " + e.message; }
+        // A state takes real, YIELDING wall time to prepare (an IndexedDB read,
+        // the gzip of a multi-megabyte state) — and that is the only situation
+        // in which the dialog's 300 ms "Preparing…" delay can be observed. The
+        // page therefore gets a compressor that waits before it compresses:
+        // the wait yields the main thread, while the output stays a real gzip.
+        if (stubOptions.slowGzip > 0) {
+            try {
+                const RealCompressionStream = window.CompressionStream;
+                window.CompressionStream = function (format) {
+                    const wait = new TransformStream({
+                        transform(chunk, ctrl) {
+                            return new Promise((r) => setTimeout(r, stubOptions.slowGzip))
+                                .then(() => ctrl.enqueue(chunk));
+                        }
+                    });
+                    const real = new RealCompressionStream(format);
+                    return { writable: wait.writable, readable: wait.readable.pipeThrough(real) };
+                };
+            } catch (e) { window.__stubError = "compressionStream: " + e.message; }
+        }
     }, opts);
     await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForFunction(
@@ -642,20 +665,29 @@ async function testPlatformShareFallback(browser, errors) {
 
 // --- J. Work in progress is visible while the state is prepared ----------
 // A small snapshot is ready in ~100 ms, and the dialog deliberately waits
-// 300 ms before it says anything — so the busy state cannot be observed on an
-// idle desktop. Throttling the renderer through CDP turns the same preparation
-// into seconds, which makes "the operator can see that it is working" a real
-// observation instead of a reading of the source (tests/share-busy.test.js
-// pins the contract; this pins the behaviour).
+// 300 ms before it says anything — so on an idle desktop the busy state is
+// never shown and an assertion about it would be a coin flip.
+//
+// Slowing the RENDERER (CDP CPU throttling) does NOT make it observable: the
+// throttle stretch a single BLOCKING task instead (StateFormat.pack() is one
+// synchronous call), a timer cannot fire while the main thread is blocked, and
+// the run then resolves in microtasks before the timer is ever reached — so
+// shareWork() clears it and the item never says "Preparing…". Measured with a
+// longtask timeline: 1.7 s of blocking work, nothing on screen, item enabled.
+//
+// What the indicator exists for is a stage that takes real, YIELDING wall time
+// (an IndexedDB read, the gzip of a multi-megabyte state), so the page gets
+// exactly that: a CompressionStream that waits 600 ms before it compresses.
+// The output stays a real gzip and the wait becomes deterministic — this pins
+// the behaviour, while tests/share-busy.test.js pins the 300 ms contract.
 async function testBusyIndicator(browser, errors) {
     console.log("\n=== J. Work in progress is visible while preparing ===");
-    const page = await openStubPage(browser, errors);
-    let cdp = null;
+    const page = await openStubPage(browser, errors, { slowGzip: 600 });
     try {
         const snapId = await page.evaluate(async () => (await SnapshotStore.save("busy-ui")).id);
         check("J1: snapshot saved", typeof snapId === "string", String(snapId));
 
-        // Open the dialog first, so the throttle only slows what is measured.
+        // Open the dialog first; the split menu is what starts the build.
         await page.evaluate((id) => {
             const btn = document.getElementById("state-btn");
             if (btn) btn.click();
@@ -666,33 +698,35 @@ async function testBusyIndicator(browser, errors) {
             return !!(share && !share.disabled);
         }, { timeout: 60000 });
 
-        cdp = await page.createCDPSession();
-        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
-
         await page.evaluate(() => document.getElementById("snap-share").click());
         await page.waitForSelector("#share-create-more", { timeout: 60000 });
-        await page.evaluate(() => document.getElementById("share-create-more").click());
 
-        const read = () => page.evaluate(() => {
-            const item = document.getElementById("share-create-share");
-            const status = document.getElementById("share-status");
-            return {
-                ariaBusy: item ? item.getAttribute("aria-busy") : null,
-                label: item ? item.textContent.replace(/\s+/g, " ").trim() : "",
-                spin: item ? !!item.querySelector(".yapdp-spin") : false,
-                disabled: item ? item.disabled : null,
-                statusVisible: status ? status.style.display === "block" : false,
-                statusBusy: status ? status.classList.contains("share-status--busy") : false,
-                statusText: status ? status.textContent.trim() : "",
+        // One reader for the whole item + status line, so a state is read in a
+        // single round trip: the busy window is only as wide as the stub delay.
+        await page.evaluate(() => {
+            window.__readShareItem = () => {
+                const item = document.getElementById("share-create-share");
+                const status = document.getElementById("share-status");
+                return {
+                    exists: !!item,
+                    ariaBusy: item ? item.getAttribute("aria-busy") : null,
+                    label: item ? item.textContent.replace(/\s+/g, " ").trim() : "",
+                    spin: item ? !!item.querySelector(".yapdp-spin") : false,
+                    disabled: item ? item.disabled : null,
+                    statusVisible: status ? status.style.display === "block" : false,
+                    statusBusy: status ? status.classList.contains("share-status--busy") : false,
+                    statusText: status ? status.textContent.trim() : "",
+                };
             };
         });
+        await page.evaluate(() => document.getElementById("share-create-more").click());
 
-        let busy = null;
-        for (let i = 0; i < 400; i++) {
-            const state = await read();
-            if (state.ariaBusy === "true") { busy = state; break; }
-            await new Promise((r) => setTimeout(r, 50));
-        }
+        const busy = await page.waitForFunction(() => {
+            const state = window.__readShareItem();
+            return state.ariaBusy === "true" ? state : null;
+        }, { timeout: 20000, polling: 50 })
+            .then((handle) => handle.jsonValue())
+            .catch(() => null);
         check("J2: the Share item reports work in progress", !!busy);
         check("J3: it says what it is doing", !!busy && /Preparing/.test(busy.label),
             busy ? busy.label : "");
@@ -701,23 +735,23 @@ async function testBusyIndicator(browser, errors) {
         check("J6: the status line names the stage",
             !!busy && busy.statusBusy && busy.statusVisible, busy ? busy.statusText : "");
 
-        let ready = null;
-        for (let i = 0; i < 600; i++) {
-            const state = await read();
-            if (state.ariaBusy === null && state.disabled === false) { ready = state; break; }
-            await new Promise((r) => setTimeout(r, 50));
-        }
+        const ready = await page.waitForFunction(() => {
+            const state = window.__readShareItem();
+            return (state.ariaBusy === null && state.disabled === false) ? state : null;
+        }, { timeout: 20000, polling: 50 })
+            .then((handle) => handle.jsonValue())
+            .catch(() => null);
         check("J7: the busy state clears once the artifact is ready", !!ready);
         check("J8: the spinner goes with it", !!ready && ready.spin === false);
         check("J9: the status line is cleared too", !!ready && ready.statusVisible === false);
         check("J10: and the item offers what will be handed over",
             !!ready && /^Share /.test(ready.label), ready ? ready.label : "");
 
-        await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+        await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     } finally {
-        if (cdp) { try { await cdp.detach(); } catch (e) { /* ignore */ } }
         await page.close();
     }
+    console.log("  J: passed");
 }
 
 // --- Main ----------------------------------------------------------------
