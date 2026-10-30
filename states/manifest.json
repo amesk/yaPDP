@@ -52,8 +52,8 @@
     "label": "RSTS V06C-03",
     "description": "RSTS/E V06C-03, the timesharing system DEC sold to everybody who could not afford a mainframe — answer START at the Option: prompt.",
     "file": "rk2-ready.state.zst",
-    "screenshot": null,
-    "screenshotFull": null
+    "screenshot": "previews/rk2-ready-small.png",
+    "screenshotFull": "previews/rk2-ready-full.png"
   },
   {
     "device": "rk3",
