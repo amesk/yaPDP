@@ -2080,7 +2080,7 @@
     //     Feeds characters into the terminal (string or numeric byte).
     //
     // These functions are attached to window for easy integration with
-    // emulators, PDP‑11 simulators, or browser‑based DEC tools.
+    // emulators, PDP‑11 emulators, or browser‑based DEC tools.
     // ============================================================================
     function vt52Initialize(unit, receiveRoutine, textArea, screenCanvas, options) {
         VT.set(unit, new Terminal(Object.assign({

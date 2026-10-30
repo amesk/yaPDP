@@ -237,7 +237,7 @@ export default function App() {
                 {lang === 'en' ? 'Online Emulator' : 'Эмулятор'}
               </button>
             </div>
-            <span>yaPDP © Alexei Eskenazi (amesk) · DEC PDP‑11/70 Simulator</span>
+            <span>yaPDP © Alexei Eskenazi (amesk) · DEC PDP‑11/70 Emulator</span>
           </div>
         </footer>
       </div>

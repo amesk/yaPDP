@@ -135,7 +135,7 @@ So: take the emulator I had, boot RT-11, turn Paul's `boot.mac` into a paper tap
 
 ## What came of it
 
-The main goal — an immersive simulator you want not only to work on but simply to stand next to, watching the lights run — I consider achieved. The code in many places is honestly rough: assembled on weekends, at night, by the rule "if it works, don't touch it". But now there is a point to dance from: refactor, clean, improve, without adding features. Which is precisely what I intend to do.
+The main goal — an immersive emulator you want not only to work on but simply to stand next to, watching the lights run — I consider achieved. The code in many places is honestly rough: assembled on weekends, at night, by the rule "if it works, don't touch it". But now there is a point to dance from: refactor, clean, improve, without adding features. Which is precisely what I intend to do.
 
 There is one exception to "no new features": the working tape reader on the teletype. Feed it a tape, and its contents go into the machine byte by byte. That is AUTO mode — the computer accepts what is on the tape in start-stop mode; START mode is no good for this, the data just hammers into thin air and there is no time to receive it.
 

@@ -206,7 +206,7 @@ export function UserManual({ lang, onBackToHome, onOpenEmulator }: UserManualPro
       <div className="text-center pt-2 pb-6 border-b border-[#3a3528]/80">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#524939] bg-[#14120e] text-xs text-[#c8a860] mb-3 font-mono">
           <BookOpen className="w-3.5 h-3.5 text-[#e8d080]" />
-          <span>DEC PDP-11/70 SIMULATOR · USER GUIDE</span>
+          <span>DEC PDP-11/70 EMULATOR · USER GUIDE</span>
         </div>
 
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-[#f0e6c8] mb-3">
