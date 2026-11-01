@@ -116,7 +116,7 @@ jobs:
       # Upload the compiled binary + deps that bundling needs. We upload the
       # whole target/release so `cargo tauri bundle` finds the binary.
       - name: Upload Rust build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rust-build-${{ matrix.os }}
           path: |
@@ -202,7 +202,7 @@ jobs:
         run: node tools/tauri-build.js --bundle-only --variant ${{ matrix.variant }}
 
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-ubuntu-latest-${{ matrix.variant }}
           path: src-tauri/target/release/bundle/
@@ -275,7 +275,7 @@ jobs:
         run: node tools/tauri-build.js --bundle-only --variant ${{ matrix.variant }}
 
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-windows-latest-${{ matrix.variant }}
           path: src-tauri/target/release/bundle/
@@ -324,7 +324,7 @@ jobs:
         run: npm run docs
 
       - name: Upload manual PDFs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs-manual
           path: |
