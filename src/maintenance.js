@@ -464,9 +464,9 @@ var Maintenance = (() => {
             open();
             return;
         }
-        // A single click on the version marker still opens the About page; from
-        // the second click of a series the navigation is silenced so the
-        // gesture cannot flip through pages five times.
+        // The version marker is not a navigation link, so this guard is only a
+        // safety belt: a clickable ancestor added later must not act on the
+        // intermediate clicks of a series.
         if (stamps.length > 1 && event) event.stopPropagation();
     }
 

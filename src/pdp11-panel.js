@@ -230,8 +230,9 @@ function examineDeposit(data) {
   // --- Sidebar navigation (data-page) ---
   // Leaving the CONFIG page with uncommitted changes asks for confirmation via
   // the shared modal overlay (window.configConfirmLeave) so the user does
-  // not silently lose pending structural edits. The sidebar version marker
-  // reuses the same navigation path (it carries data-page="instructions").
+  // not silently lose pending structural edits. The sidebar version marker is
+  // NOT part of this path: it carries no data-page any more, because a single
+  // click there fired in the middle of the service-mode gesture.
   function navigateTo(target) {
     if (target !== 'config' &&
         typeof window.isConfigDirty === 'function' &&
@@ -261,6 +262,9 @@ function examineDeposit(data) {
   // The "yaPDP" name is static; the "vX.Y.Z" line and the Info page "About"
   // table version cell come from src/version.js (window.YAPDP_VERSION), which
   // is generated from package.json by tools/sync-version.js.
+  // No click handler here on purpose: the marker is the target of the 5-click
+  // service-mode gesture (src/maintenance.js) and nothing else. Navigating to
+  // the Info page is the job of the Info nav button.
   var versionMarker = document.getElementById('sidebar-version');
   var versionText = versionMarker &&
     versionMarker.querySelector('.sidebar-version-text');
@@ -268,11 +272,6 @@ function examineDeposit(data) {
   var appVersion = window.YAPDP_VERSION || '';
   if (versionText && appVersion) versionText.textContent = 'v' + appVersion;
   if (aboutVersion && appVersion) aboutVersion.textContent = appVersion;
-  if (versionMarker) {
-    versionMarker.addEventListener('click', function () {
-      navigateTo(this.dataset.page);
-    });
-  }
 
   // --- Power lock (OFF / POWER / LOCK) ---
   // The position labels are the hit targets: clicking a label selects that
