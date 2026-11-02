@@ -141,7 +141,8 @@ actually produced: the `.AppImage` also carries the WebKitGTK runtime.
 - [ ] Download and install one artifact per platform — smoke-test: boot a
       guest OS (Minimal: Unix V5 `boot rk0`; Full: BSD 2.11 `boot rp1`),
       save/load a machine state, drag & drop an image
-- [ ] Verify the version marker in the sidebar (`yaPDP vX.Y.Z` → Info page)
+- [ ] Verify the version marker in the sidebar and the Info page About block
+      show the release version (`vX.Y.Z`)
 - [ ] Tell the user what's in the release (one paragraph from RELEASE_NOTES)
 
 ## Optional automation (future)

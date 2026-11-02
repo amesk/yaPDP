@@ -394,11 +394,14 @@
           </svg></span>
         Info
       </div>
-      <!-- Version marker: pinned to the bottom of the sidebar, clickable —
-           jumps to the Info page ("About" block). The text is filled from
-           src/version.js by src/pdp11-panel.js (initPanelUI). -->
-      <div class="sidebar-version" id="sidebar-version" data-page="instructions"
-        title="yaPDP — Yet Another PDP‑11/70 Emulator. Click for version, author, website and license information.">
+      <!-- Version marker: pinned to the bottom of the sidebar. Deliberately NOT
+           a link — a single click here used to fling the user to the Info page
+           in the middle of the 5-click service-mode gesture; the Info page has
+           its own nav button. The node is only the gesture target
+           (src/maintenance.js). The text is filled from src/version.js by
+           src/pdp11-panel.js (initPanelUI). -->
+      <div class="sidebar-version" id="sidebar-version"
+        title="yaPDP — Yet Another PDP‑11/70 Emulator. Version, author, website and license are on the Info page.">
         <span class="sidebar-version-name">yaPDP</span>
         <span class="sidebar-version-text"></span>
       </div>

@@ -2559,8 +2559,16 @@ body {
 }
 
 /* Version marker pinned to the bottom of the sidebar (yaPDP + vX.Y.Z).
-   Clickable — navigates to the Info page like the nav buttons. The text is
-   filled from src/version.js (window.YAPDP_VERSION) by initPanelUI. */
+   Not a link — the only thing it does is listen for the 5-click service-mode
+   gesture (src/maintenance.js). The text is filled from src/version.js
+   (window.YAPDP_VERSION) by initPanelUI.
+
+   It must LOOK like nothing more than a static line of version text: no
+   pointer cursor, no hover highlight, no press feedback. Any affordance turns
+   the service-mode target into an invitation to tap it (the whole point of the
+   hidden gesture is that nobody taps it by accident).
+   user-select: none keeps a series of clicks from selecting the text, which
+   would be a highlight of its own. */
 .app-sidebar .sidebar-version {
     margin-top: auto;
     margin-bottom: 10px;
@@ -2570,20 +2578,13 @@ body {
     color: #6a655a;
     font-size: 9px;
     line-height: 1.4;
-    cursor: pointer;
+    cursor: default;
     user-select: none;
-    border-radius: 4px;
-    transition: color 0.2s, background 0.2s;
 }
 
 .app-sidebar .sidebar-version .sidebar-version-name {
     font-weight: bold;
     letter-spacing: 0.5px;
-}
-
-.app-sidebar .sidebar-version:hover {
-    color: #b8b0a0;
-    background: rgba(255, 255, 255, 0.05);
 }
 
 /* Activity lamp: a tiny green LED in the top-right corner of a sidebar
