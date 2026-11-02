@@ -148,6 +148,48 @@ const MANIFEST = path.join(STATES, "manifest.json");
     }
 }
 
+// --- 4b. A paper-tape state is captured at the prompt, not mid-print --------
+// The console output the guest produced but the teletype had not yet printed
+// when a state was taken is NOT in the state: g60printer.restore() starts with
+// an empty pacing queue (deliberately — an in-flight print "never happened").
+// A state captured while the banner was still being printed therefore restores
+// to a truncated console: no prompt, no READY, which reads as "the state did
+// not restore" (found 2026-11-02: states/basic-ready.state.zst ended at
+// " PDP-11 BASIC, "). tools/export-state-browser.js already waits for the
+// wizard to finish and for the render to drain; this is the guard that a state
+// committed under states/ was really taken that way.
+// Fix with: node tools/export-state-browser.js <device>
+{
+    const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
+    const StateIO = require(path.join(ROOT, "tools", "state-io.js"));
+    const vm = require("vm");
+    const sandbox = {};
+    vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT, "src", "osboot.js"), "utf8"), sandbox);
+    const OSBoot = sandbox.OSBoot;
+    const files = fs.readdirSync(STATES)
+        .filter((f) => /\.state\.zst$/.test(f) && !f.startsWith(".")).sort();
+    for (const f of files) {
+        const m = StateFormat.unpack(StateIO.readBytes(path.join(STATES, f)).container).manifest;
+        const sc = (m && m.device && OSBoot.scenarioFor(m.device)) || null;
+        // Only a paper-tape scenario prints on the teletype as its console, so
+        // only there is the paper proof that the state was taken at the prompt.
+        if (!sc || !sc.paperTape) continue;
+        const prompts = (sc.steps || []).map((s) => s && s.waitFor).filter(Boolean);
+        if (!prompts.length) continue;
+        const rows = (m.teletypepaper && Array.isArray(m.teletypepaper.rows))
+            ? m.teletypepaper.rows : [];
+        const text = rows.map((r) => (r && r.text) || "").join("")
+            .replace(/\u00A0/g, " ");
+        const last = prompts[prompts.length - 1];
+        assert.ok(text.indexOf(last) !== -1,
+            f + ": the console paper stops before the scenario's prompt " +
+            JSON.stringify(last) + " — the state was captured while the teletype " +
+            "was still printing, and queued output is not part of a state " +
+            "(re-export with node tools/export-state-browser.js)");
+    }
+}
+
 // --- 5. An embedded preview is a PNG data URI within the size cap -----------
 // The preview travels inside the state so that a ?state= link can show it; that
 // only works for the ONE format the manifest generator decodes, and only if the

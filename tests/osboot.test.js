@@ -58,6 +58,31 @@ function run() {
         assert.strictEqual(OSBoot.urlFor("rp1"), "rp1.dsk");
     }
 
+    // ---- stateImageUrls (the image a restored state will read) -------
+    // A state's manifest carries only its device key; the image is derived
+    // from the scenario table. A paper-tape scenario reads <paperTape>.ptap
+    // and must NEVER resolve to <device>.dsk: "basic.dsk" does not exist, and
+    // asking for it logged two 404s on every ?state= restore (2026-11-02).
+    {
+        assert.deepStrictEqual(plain(QuickBoot.stateImageUrls({ device: "basic" })),
+            ["DEC-11-AJPB-PB.ptap"]);
+        assert.deepStrictEqual(plain(QuickBoot.stateImageUrls({ device: "lander" })),
+            ["lander.ptap"]);
+        assert.deepStrictEqual(plain(QuickBoot.stateImageUrls({ device: "rk1" })),
+            ["rk1.dsk"]);
+        assert.deepStrictEqual(plain(QuickBoot.stateImageUrls({ device: "rk1tty" })),
+            ["rk1.dsk"], "a console variant reads its scenario url, not rk1tty.dsk");
+        assert.deepStrictEqual(plain(QuickBoot.stateImageUrls({ device: null })), [],
+            "a state without a device asks for nothing");
+        assert.deepStrictEqual(plain(QuickBoot.stateImageUrls(null)), []);
+        for (const dev of ["basic", "odt11", "ed11", "lander"]) {
+            const urls = plain(QuickBoot.stateImageUrls({ device: dev }));
+            assert.strictEqual(urls.length, 1);
+            assert.ok(/\.ptap$/.test(urls[0]),
+                dev + " must read its paper tape, got " + JSON.stringify(urls));
+        }
+    }
+
     // ---- scenarioFor -------------------------------------------------
     {
         const rk0 = OSBoot.scenarioFor("rk0");
