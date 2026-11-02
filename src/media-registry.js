@@ -62,6 +62,18 @@
         });
     }
 
+    // The identity of the payload a url holds, as learned when it was mounted
+    // (DataLoader.mount -> DiskStore.registerImage). Hashing a whole disk image
+    // again on the main thread costs seconds for an RP/RK payload, and a state
+    // restore asks for the same identity several times; the registry's cache is
+    // the answer whenever it is known. null means "not learned here".
+    function knownFingerprint(name) {
+        if (typeof DiskStore === "undefined" ||
+            typeof DiskStore.fingerprintOf !== "function") return null;
+        var known = DiskStore.fingerprintOf(name);
+        return known == null ? null : String(known).toLowerCase();
+    }
+
     // Bytes already mounted under this name AND carrying the registered
     // identity. They win over the network: the desktop build ships its images
     // as Tauri resources and has no HTTP path to media/ at all
@@ -79,7 +91,9 @@
         if (!DataLoader.has(name)) return null;
         var bytes = DataLoader.get(name);
         if (!bytes) return null;
-        var own = ImageFingerprint.ofBytes(bytes);
+        // Trust the identity recorded at mount time; hash only when this host
+        // never learned one (a payload that arrived without the registration).
+        var own = knownFingerprint(name) || ImageFingerprint.ofBytes(bytes);
         return (own && String(own).toLowerCase() === String(sha256).toLowerCase())
             ? bytes : null;
     }
@@ -106,16 +120,30 @@
                 raw = bytes;
             }
         }
-        if (typeof ImageFingerprint === "undefined" ||
-            ImageFingerprint.ofBytes(raw) !== String(entry.sha256).toLowerCase()) {
-            throw new Error("SHA-256 mismatch for " + name + " v" + version);
+        // Bytes that came from the machine were already checked by
+        // mountedBytes(); only a fresh download still has to be verified, so
+        // the same payload is never hashed twice for one restore. The digest
+        // goes through the platform hasher when the host has one: a JS SHA-256
+        // over a 166 MiB RP image blocks the page for seconds.
+        var digest = fromMachine ? knownFingerprint(name) : null;
+        if (!fromMachine) {
+            digest = (typeof ImageFingerprint !== "undefined" &&
+                typeof ImageFingerprint.asyncOfBytes === "function")
+                ? await ImageFingerprint.asyncOfBytes(raw)
+                : ((typeof ImageFingerprint !== "undefined" &&
+                    typeof ImageFingerprint.ofBytes === "function")
+                    ? ImageFingerprint.ofBytes(raw) : null);
+            if (digest == null || String(digest) !== String(entry.sha256).toLowerCase()) {
+                throw new Error("SHA-256 mismatch for " + name + " v" + version);
+            }
         }
         if (typeof DataLoader === "undefined" || typeof DataLoader.mount !== "function") {
             throw new Error("Image loader is unavailable");
         }
         // Re-mounting bytes that are already there would overwrite their source
         // label ("bundled") with "published" and lie about where they came from.
-        if (!fromMachine) DataLoader.mount(name, raw, "published");
+        // The verified digest is handed over so the mount does not hash it again.
+        if (!fromMachine) DataLoader.mount(name, raw, "published", digest);
         return raw;
     }
 

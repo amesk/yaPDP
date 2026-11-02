@@ -32,15 +32,24 @@ var DataLoader = (() => {
         // "embedded" (carried inside a state). A thin snapshot cannot fetch
         // local bytes back, so a state records this and can warn or refuse
         // honestly instead of blaming the wrong disk.
-        mount(url, bytes, source) {
+        //
+        // `fingerprint` (optional) is the canonical identity the caller has
+        // ALREADY established (a registry version it verified, or a digest it
+        // computed with the platform hasher). Passing it avoids hashing the
+        // payload again on the main thread — for an RP image that is seconds.
+        mount(url, bytes, source, fingerprint) {
             mounted.set(url, bytes);
             sources.set(url, source || "local");
             // All mounted data is decompressed payload bytes. Register one
             // canonical identity here so network, drag-and-drop, QuickBoot,
             // and desktop-bundled images follow the same rule.
-            if (typeof DiskStore !== "undefined" &&
-                typeof DiskStore.registerImage === "function" &&
-                typeof ImageFingerprint !== "undefined" &&
+            if (typeof DiskStore === "undefined" ||
+                typeof DiskStore.registerImage !== "function") return;
+            if (fingerprint != null) {
+                try { DiskStore.registerImage(url, fingerprint); } catch (err) { /* stay permissive */ }
+                return;
+            }
+            if (typeof ImageFingerprint !== "undefined" &&
                 typeof ImageFingerprint.ofBytes === "function") {
                 try {
                     DiskStore.registerImage(url, ImageFingerprint.ofBytes(bytes));

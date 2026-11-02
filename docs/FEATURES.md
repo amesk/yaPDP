@@ -292,6 +292,7 @@ interrupted" dialog takes over).
 ## The UI pages
 
 Use the sidebar to switch between:
+
 - **Panel** — the front panel with switches and LEDs
 - **Console** — the operator console: a Model 33 ASR teletype, a DECscope VT52
   or a DEC VT100, whichever the console terminal is configured as
@@ -516,7 +517,9 @@ destructive operation — so it lives on a screen of its own and nowhere else.
 It is entered with `pdp11.html?maintenance=1`, by **5 clicks within 2 seconds**
 on the version marker (`v0.4.0` under the `yaPDP` name, bottom-left; on a
 tablet, the version row of the Info page), or by launching the desktop app with
-`--maintenance`. The screen offers **System reset** — which asks for
+`--maintenance`. The marker is not a link — a single click there does nothing,
+the Info page has its own navigation button — so a series never flips the page
+under the operator's finger. The screen offers **System reset** — which asks for
 confirmation with the focus on **Cancel**, then stops the machine, wipes the
 persisted state, erases the saved images, states and disk overlays, and reloads
 — and **Close**, which returns to the exhibit with its URL parameters intact.

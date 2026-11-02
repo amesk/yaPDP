@@ -11,7 +11,7 @@ Use the sidebar to switch between:
 - **[Display](#vt11)** — the VT11 vector-graphics CRT page, shown only when configured.
 - **[Storage](#storage)** — storage media in two tabs: Images (drop zone, mounted images) and Paper Tapes (reader, punch export).
 - **[Config](#config)** — configure the emulated peripherals (persisted between sessions).
-- **Info** — detailed instructions, OS reference and the About block (version, website, author and license; the version marker at the bottom of the sidebar opens this page).
+- **Info** — detailed instructions, OS reference and the About block (version, website, author and license).
 
 ### Floating controls
 

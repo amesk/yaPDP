@@ -301,7 +301,7 @@
             try {
                 var rawGot = await progress("media/" + url);
                 if (rawGot.response.ok) {
-                    DataLoader.mount(url, rawGot.bytes, "network");
+                    await mountWithIdentity(url, rawGot.bytes, "network");
                     return rawGot.bytes;
                 }
             } catch (e) { /* fall through to .zst */ }
@@ -309,7 +309,7 @@
                 var got = await progress("media/" + url + ".zst");
                 if (got.response.ok) {
                     var raw = fzstd.decompress(got.bytes);
-                    DataLoader.mount(url, raw, "network");
+                    await mountWithIdentity(url, raw, "network");
                     return raw;
                 }
             } catch (e) { /* .zst also missing */ }
@@ -320,7 +320,7 @@
             var got = await progress("media/" + url + ".zst");
             if (got.response.ok) {
                 var raw = fzstd.decompress(got.bytes);
-                DataLoader.mount(url, raw, "network");
+                await mountWithIdentity(url, raw, "network");
                 return raw;
             }
         } catch (e) {
@@ -329,11 +329,27 @@
         try {
             var rawGot = await progress("media/" + url);
             if (!rawGot.response.ok) return undefined;
-            DataLoader.mount(url, rawGot.bytes, "network");
+            await mountWithIdentity(url, rawGot.bytes, "network");
             return rawGot.bytes;
         } catch (e) {
             return undefined;
         }
+    }
+
+    // mountWithIdentity(url, raw, source) — mount image bytes and record their
+    // canonical identity in one step. The digest is computed with the platform
+    // hasher when the host has one (ImageFingerprint.asyncOfBytes): a JS SHA-256
+    // over a 166 MiB RP image blocks the page for seconds, and this path runs
+    // before the machine can resume. Hosts without WebCrypto keep the old
+    // synchronous DataLoader.mount() route.
+    async function mountWithIdentity(url, raw, source) {
+        var fp = null;
+        if (typeof ImageFingerprint !== "undefined" && ImageFingerprint &&
+            typeof ImageFingerprint.asyncOfBytes === "function") {
+            try { fp = await ImageFingerprint.asyncOfBytes(raw); } catch (e) { fp = null; }
+        }
+        if (fp != null) DataLoader.mount(url, raw, source, fp);
+        else DataLoader.mount(url, raw, source);
     }
 
     // Reported image load failures, one modal per url and session: a guest
@@ -617,6 +633,22 @@
         if (!versionInfo && typeof DataLoader !== "undefined" &&
             typeof DataLoader.has === "function" && DataLoader.has(url)) {
             return true;   // already here: nothing to wait for
+        }
+        // A pinned version is asked for TWICE during a shared-state restore:
+        // once by the compatibility preflight in SnapshotStore.restoreApply(),
+        // once more by the toast that keeps input gated while the disk lands.
+        // When the mounted payload already carries that identity (recorded at
+        // mount time, see DiskStore.registerImage) there is nothing left to
+        // fetch or verify — answering here is what keeps the second ask free.
+        if (versionInfo && versionInfo.sha256 &&
+            typeof DataLoader !== "undefined" && typeof DataLoader.has === "function" &&
+            DataLoader.has(url) && typeof DiskStore !== "undefined" &&
+            typeof DiskStore.fingerprintOf === "function") {
+            var known = DiskStore.fingerprintOf(url);
+            if (known != null &&
+                String(known).toLowerCase() === String(versionInfo.sha256).toLowerCase()) {
+                return true;
+            }
         }
         try {
             var bytes = await loadBaseBytes(url, versionInfo);

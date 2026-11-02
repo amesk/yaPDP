@@ -127,6 +127,36 @@ var ImageFingerprint = (function () {
         return sha256(bytes);
     }
 
+    // Asynchronous identity: the platform's SHA-256 (WebCrypto) when the host
+    // has it, the self-contained loop above otherwise. The native digest is two
+    // orders of magnitude faster on the payloads yaPDP mounts (measured
+    // 2026-11-02: 166 MiB in ~130 ms native vs ~4.2 s here), and every path
+    // that AWAITS an image arrival can afford a Promise. Callers that must stay
+    // synchronous keep ofBytes(); the result is the same 64 lowercase digits.
+    function asyncOfBytes(bytes) {
+        if (!bytes || typeof bytes.length !== "number" || bytes.length === 0) {
+            return Promise.resolve(null);
+        }
+        var subtle = (typeof crypto !== "undefined" && crypto && crypto.subtle) || null;
+        if (subtle && typeof subtle.digest === "function") {
+            try {
+                return Promise.resolve(subtle.digest("SHA-256", bytes)).then(function (buf) {
+                    var view = new Uint8Array(buf);
+                    var out = "";
+                    for (var i = 0; i < view.length; i++) {
+                        out += (view[i] < 16 ? "0" : "") + view[i].toString(16);
+                    }
+                    return out;
+                }, function () {
+                    // A host that rejects the digest call (no secure context)
+                    // falls back to the pure implementation, never to "unknown".
+                    return ofBytes(bytes);
+                });
+            } catch (e) { /* fall through to the pure implementation */ }
+        }
+        return Promise.resolve(ofBytes(bytes));
+    }
+
     // An unknown identity cannot contradict a known one. This preserves the
     // permissive behavior for hosts that cannot expose their image bytes.
     function matches(a, b) {
@@ -142,6 +172,7 @@ var ImageFingerprint = (function () {
     return {
         sha256: sha256,
         ofBytes: ofBytes,
+        asyncOfBytes: asyncOfBytes,
         matches: matches,
         describe: describe
     };

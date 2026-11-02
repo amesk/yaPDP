@@ -990,6 +990,11 @@ var QuickBoot = (function () {
     // manifest names its device (states are per-scenario), and the scenario
     // table knows the image that device boots. No manifest, no guess — an
     // empty list simply means "no toast", never a wrong wait.
+    //
+    // A paper-tape scenario boots from the READER, not from a disk, so its
+    // image is <paperTape>.ptap. Applying the disk naming convention to it
+    // asked the server for "basic.dsk" — a file that has never existed — and
+    // every ?state= restore of such a state logged two 404s (found 2026-11-02).
     function stateImageUrls(manifest) {
         var out = [];
         try {
@@ -997,7 +1002,8 @@ var QuickBoot = (function () {
             if (s && s.device && typeof OSBoot !== "undefined") {
                 var sc = (typeof OSBoot.scenarioFor === "function")
                     ? OSBoot.scenarioFor(s.device) : null;
-                if (sc && sc.url) out.push(sc.url);
+                if (sc && sc.paperTape) out.push(sc.paperTape + ".ptap");
+                else if (sc && sc.url) out.push(sc.url);
                 else if (typeof OSBoot.urlFor === "function") out.push(OSBoot.urlFor(s.device));
             }
         } catch (err) { /* fall through with what we have */ }
@@ -1545,6 +1551,10 @@ var QuickBoot = (function () {
         // The ?state= half of the deep-link contract (see docs/ROADMAP.md).
         stateUrlFromSearch: stateUrlFromSearch,
         stateUrlAllowed: stateUrlAllowed,
+        // The image urls a restored state will read. Exposed for the pure
+        // module tests: it must answer with a tape for a paper-tape scenario
+        // and never with a "device.dsk" that does not exist.
+        stateImageUrls: stateImageUrls,
         // Stop the autoload so an operator-facing dialog the SYSTEM raised is
         // not shown into a machine that owns the input. See yieldToOperator().
         yieldToOperator: yieldToOperator,

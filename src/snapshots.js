@@ -520,6 +520,18 @@ var SnapshotStore = (() => {
     // A dropped "my-rk5.dsk" that IS the disk the state needs is adopted
     // instead of fetching the published rk5.dsk over it. Returns the urls that
     // were adopted, so a caller can tell the operator what happened.
+    //
+    // Identity comes from DiskStore's registry first (learned once at mount
+    // time): re-hashing mounted payloads here would hash every image of the
+    // machine on the main thread on every restore, which is exactly the wait
+    // the operator sees as a frozen page.
+    function mountedFingerprint(url) {
+        if (typeof DiskStore === "undefined" ||
+            typeof DiskStore.fingerprintOf !== "function") return null;
+        var known = DiskStore.fingerprintOf(url);
+        return known == null ? null : String(known).toLowerCase();
+    }
+
     function adoptLocalImages(snap) {
         var saved = (snap && snap.imageFingerprints) || null;
         if (!saved || typeof saved !== "object") return [];
@@ -537,15 +549,24 @@ var SnapshotStore = (() => {
             var wanted = String(then).toLowerCase();
             // Already mounted and already the right bytes: nothing to do.
             if (typeof DataLoader.has === "function" && DataLoader.has(url)) {
-                var own = F.ofBytes(DataLoader.get(url));
+                var own = mountedFingerprint(url);
+                if (own == null) {
+                    var ownBytes = DataLoader.get(url);
+                    own = ownBytes ? F.ofBytes(ownBytes) : null;
+                }
                 if (own && String(own).toLowerCase() === wanted) return;
             }
             for (var i = 0; i < mountedUrls.length; i++) {
                 var from = mountedUrls[i];
                 if (from === url) continue;
-                var bytes = DataLoader.get(from);
-                var sha = bytes ? F.ofBytes(bytes) : null;
+                var sha = mountedFingerprint(from);
+                var bytes = null;
+                if (sha == null) {
+                    bytes = DataLoader.get(from);
+                    sha = bytes ? F.ofBytes(bytes) : null;
+                }
                 if (sha && String(sha).toLowerCase() === wanted) {
+                    if (bytes == null) bytes = DataLoader.get(from);
                     DataLoader.mount(url, bytes, "adopted");
                     adopted.push(url);
                     return;
