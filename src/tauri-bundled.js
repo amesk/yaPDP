@@ -158,16 +158,25 @@
     function loadOne(item) {
         return window.__TAURI__.core
             .invoke("load_bundled_image", { name: item.resource })
-            .then(function (bytes) {
+            .then(async function (bytes) {
                 var u8 = new Uint8Array(bytes);
+                var raw = u8;
                 if (item.zst) {
                     if (typeof fzstd === "undefined" || typeof fzstd.decompress !== "function") {
                         throw new Error("fzstd not available for " + item.resource);
                     }
-                    DataLoader.mount(item.url, fzstd.decompress(u8), "bundled");
-                } else {
-                    DataLoader.mount(item.url, u8, "bundled");
+                    raw = fzstd.decompress(u8);
                 }
+                // Hash the payload once, with the platform hasher when there is
+                // one: a bundled RP image is 166 MiB, and hashing it with the
+                // JS loop at startup stalls the desktop build for seconds.
+                var fp = null;
+                if (typeof ImageFingerprint !== "undefined" && ImageFingerprint &&
+                    typeof ImageFingerprint.asyncOfBytes === "function") {
+                    try { fp = await ImageFingerprint.asyncOfBytes(raw); } catch (e) { fp = null; }
+                }
+                if (fp != null) DataLoader.mount(item.url, raw, "bundled", fp);
+                else DataLoader.mount(item.url, raw, "bundled");
                 return item.url;
             })
             .catch(function (err) {
