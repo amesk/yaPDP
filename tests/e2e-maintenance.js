@@ -297,6 +297,21 @@ async function main() {
         h.check("the version marker is filled (the gesture target)", markerText.length > 0,
             markerText);
 
+        // The marker is not a link: one click must leave the operator where
+        // they are. It used to jump to the Info page in the middle of a series,
+        // which is exactly what the 5-click gesture needs untouched.
+        const activePageId = () => page.evaluate(() => {
+            const active = document.querySelector(".page.active");
+            return active ? active.id : "";
+        });
+        const pageBefore = await activePageId();
+        await click(page, "#sidebar-version .sidebar-version-text", 1);
+        await h.sleep(300);
+        const pageAfter = await activePageId();
+        h.check("one click on the version marker does not change the page",
+            pageAfter === pageBefore, `${pageBefore} -> ${pageAfter}`);
+
+        await h.sleep(2200); // let the single click leave the gesture window
         await click(page, "#sidebar-version .sidebar-version-text", 4);
         await h.sleep(300);
         h.check("four clicks do not open the service screen", !(await overlayShown(page)));
