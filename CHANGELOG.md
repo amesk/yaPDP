@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
 ## [0.4.0] - 2026-10-30
 
 ### Added
@@ -583,6 +582,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fits entirely, and the background music is ducked while it plays. The pure
   timing helpers live in `tools/reel-voice-util.js` with unit tests in
   `tests/reel-voice.test.js`.
+
 ### Changed
 
 - **The quick-boot autoload hands the machine back on request.** While the
@@ -903,6 +903,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is now narrated with tiled top step banners (`MANUAL BOOTSTRAP` → the 12-word
   toggle → `ENABLE + START`) and spoken phrases, so the long stretch of panel
   switches stays legible to a first-time viewer. (`tools/record-video.js`)
+
 ### Fixed
 
 - **In TextMode a single click on a VT52 terminal no longer flips the zoom.**
@@ -1107,6 +1108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is now ducked under the spoken phrases mixed into a clip — not only under the
   title cards — in both the reel and the standalone clips.
   (`tools/assemble-video.js`)
+
 ### Removed
 
 - The Model 33 "Drawn in the artwork" keyboard-source option. (`src/config.js`,
@@ -1198,7 +1200,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `11,70`/`PDP` dropped); RSX‑11M images autostart, so the blind MCR typing
   was removed.
 
-
 ### Added
 
 - **Automatic NUL lead-in / trailer on the ASR paper tape.** A fresh tape
@@ -1221,7 +1222,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   login-typing end to end; failures save an artifact screenshot and the
   console tail to `tests/artifacts/`. The suite starts its own dev server if
   :1170 is not serving.
-
 
 - **BASIC-11 from the ASR paper-tape reader (promo clip `basic-tape`).**
   The demo-reel generator now has a second BASIC-11 clip: it boots BASIC-11
@@ -1258,7 +1258,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raised (12 Mbps) and the final H.264 export uses CRF 18 instead of 20.
   Re-record with `npm run record:video` to pick up the sharper capture.
 
-
 - **Build manifest (`media/manifest.json`) + availability-aware quick-boot
   picker.** A deployment now declares which guest images it ships: the
   manifest is generated from `media/` by `node tools/gen-media-manifest.js`
@@ -1274,7 +1273,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   finishes mounting. New e2e coverage: `tests/e2e-quickboot-manifest.js`
   (reduced manifest, absent manifest, drag-drop union, Info annotation,
   full-repo manifest).
-
 
 - **Working ASR paper-tape reader.** The TAPE READER on the Model 33 ASR
   console now actually reads: **Load tape** opens a file dialog for a
@@ -1579,6 +1577,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `text-transform: uppercase` in the CSS. The name is displayed as written
   now. (The stylised all-caps `YAPDP` on the promo-video intro title card
   is intentional and unchanged.)
+
 ### Chore
 
 - Demo video pipeline: teletype human-input capture, VT52 pacing, MP4
@@ -1594,6 +1593,7 @@ controls.
 ### Added
 
 #### Peripherals — Model 33 ASR
+
 - Redraw the console teletype as an authentic Model 33 ASR ([`d9ccd78`](https://github.com/amesk/yaPDP/commit/d9ccd78)).
 - Authentic ASR-33 paper tape with punch controls ([`70ddb41`](https://github.com/amesk/yaPDP/commit/70ddb41)).
 - Four-position TAPE READER switch and latching REL ([`0ceb537`](https://github.com/amesk/yaPDP/commit/0ceb537)).
@@ -1603,11 +1603,13 @@ controls.
 - Teletype Corporation logo on the console front panel ([`31fd8ab`](https://github.com/amesk/yaPDP/commit/31fd8ab)).
 
 #### Peripherals — LP11 line printer
+
 - DEC-style LP11 printer cabinet with rising paper ([`a1376c7`](https://github.com/amesk/yaPDP/commit/a1376c7)).
 - LP11 cabinet hood, indicator panel and working ON LINE key ([`798c9a6`](https://github.com/amesk/yaPDP/commit/798c9a6)).
 - Sidebar output-activity lamps and historical LP11 DONE/ERROR semantics ([`6af0ab3`](https://github.com/amesk/yaPDP/commit/6af0ab3)).
 
 #### Peripherals — DECscope VT52
+
 - Authentic VT52 cabinet: slanted beige monoblock, dark side panel, dark grey-green glass, scanline tuning and proportional window scaling ([`d21646a`](https://github.com/amesk/yaPDP/commit/d21646a)).
 - Authentic fritzm/vt52 bitmap display font ([`adbf6e2`](https://github.com/amesk/yaPDP/commit/adbf6e2)).
 - IRM insert mode, ESC L/M and previously missing escape sequences ([`f7a5860`](https://github.com/amesk/yaPDP/commit/f7a5860)).
@@ -1615,6 +1617,7 @@ controls.
 - VT52 text mode option and shared PasteUtil paste helper ([`98d72b2`](https://github.com/amesk/yaPDP/commit/98d72b2)).
 
 #### Front panel & machine controls
+
 - Machine power/auto-boot config options, power lamp on the Panel nav button and auto-boot-aware reboot ([`16a2c40`](https://github.com/amesk/yaPDP/commit/16a2c40)).
 - Bootstrap sticky note with "Help Me!"/"Bootstrap now!" controls and a power-off guard ([`27c2c05`](https://github.com/amesk/yaPDP/commit/27c2c05)).
 - Control OFF/POWER/LOCK by clicking position labels instead of cycling the switch ([`8186471`](https://github.com/amesk/yaPDP/commit/8186471)).
@@ -1623,6 +1626,7 @@ controls.
 - "Power on & Bootstrap" and "Apply & Leave" dialog buttons ([`33b9958`](https://github.com/amesk/yaPDP/commit/33b9958)).
 
 #### UI, config & misc
+
 - Global mute button for all sounds ([`d9fe637`](https://github.com/amesk/yaPDP/commit/d9fe637)).
 - CONFIG: retitle the Visual tab to "Look and sound", add a Development tab for VT52 text mode ([`fb536c3`](https://github.com/amesk/yaPDP/commit/fb536c3)).
 - CONFIG Equipment: group each device with its parameters, hide inapplicable fields without layout shift ([`af06612`](https://github.com/amesk/yaPDP/commit/af06612)).
