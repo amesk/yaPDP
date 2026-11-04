@@ -110,7 +110,9 @@ var IdleManager = (function () {
         reset();
 
         return {
-            active: true,
+            get active() {
+                return active;
+            },
             reset: reset,
             stop: stop,
             destination: destination
