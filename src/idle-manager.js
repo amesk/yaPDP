@@ -39,11 +39,40 @@ var IdleManager = (function () {
         return { timeout: timeout, redirect: redirect.trim() };
     }
 
+    function isTauriRuntime(base) {
+        // Tauri 2 uses tauri://localhost on macOS/Linux and
+        // http://tauri.localhost on Windows. These are app origins, not
+        // ordinary web pages.
+        return (base.protocol === "tauri:" && base.hostname === "localhost") ||
+            ((base.protocol === "http:" || base.protocol === "https:") &&
+                base.hostname === "tauri.localhost");
+    }
+
     function resolveRedirect(redirect, base) {
-        const target = new URL(redirect, base);
-        // Navigation to a museum's other HTTP(S) origin is intentional. Do not
-        // let a query parameter turn the hand-off into script/data execution.
-        if (target.protocol === "javascript:" || target.protocol === "data:") {
+        const source = new URL(base);
+        let value = String(redirect).trim();
+
+        // Accept a native Windows absolute path in local/Tauri deployments.
+        // URL() otherwise interprets "D:\\..." as a custom URL scheme.
+        if (/^[a-zA-Z]:[\\/]/.test(value)) {
+            if (source.protocol !== "file:" && !isTauriRuntime(source)) {
+                throw new TypeError("Local file redirects are not allowed from web pages");
+            }
+            const normalized = value.replace(/\\\\/g, "/");
+            const drive = normalized.slice(0, 2);
+            const segments = normalized.slice(3).split("/");
+            value = "file:///" + drive + "/" + segments.map(encodeURIComponent).join("/");
+        }
+
+        const target = new URL(value, source);
+        const webTarget = target.protocol === "http:" || target.protocol === "https:";
+        const localFileTarget = target.protocol === "file:" &&
+            (source.protocol === "file:" || isTauriRuntime(source));
+
+        // A normal web page must never be able to navigate to a local file.
+        // Local launches and the Tauri app may use an operator-configured file
+        // anywhere on disk; the attract page need not live beside yaPDP.
+        if (!webTarget && !localFileTarget) {
             throw new TypeError("Unsupported idle redirect protocol: " + target.protocol);
         }
         return target.href;
