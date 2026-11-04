@@ -58,7 +58,7 @@ var IdleManager = (function () {
             if (source.protocol !== "file:" && !isTauriRuntime(source)) {
                 throw new TypeError("Local file redirects are not allowed from web pages");
             }
-            const normalized = value.replace(/\\\\/g, "/");
+            const normalized = value.replace(/\\/g, "/");
             const drive = normalized.slice(0, 2);
             const segments = normalized.slice(3).split("/");
             value = "file:///" + drive + "/" + segments.map(encodeURIComponent).join("/");
