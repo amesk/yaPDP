@@ -2,3 +2,15 @@
 // Single source of truth for the user-visible version string (sidebar
 // marker, Info page "About" block). Regenerate with: npm run version:sync
 window.YAPDP_VERSION = "0.4.0";
+
+/* Load the optional museum idle hand-off only when configured. Keeping this
+ * opt-in leaves ordinary yaPDP sessions untouched. Resolve beside this script
+ * so the module also works in GitHub Pages project subpaths and desktop builds.
+ */
+(function () {
+    var params = new URLSearchParams(window.location.search);
+    if (!params.has("idle-timeout") && !params.has("idle-redirect")) return;
+    var script = document.createElement("script");
+    script.src = new URL("idle-manager.js", document.currentScript.src).href;
+    document.head.appendChild(script);
+})();
