@@ -24,6 +24,34 @@ assert.throws(
     () => IdleManager.resolveRedirect("javascript:alert(1)", "https://example.com/pdp11.html"),
     /Unsupported idle redirect protocol/
 );
+assert.throws(
+    () => IdleManager.resolveRedirect("file:///D:/Museum/attract.html", "https://example.com/pdp11.html"),
+    /Unsupported idle redirect protocol/
+);
+assert.strictEqual(
+    IdleManager.resolveRedirect("file:///D:/Museum/attract.html", "file:///C:/yaPDP/pdp11.html"),
+    "file:///D:/Museum/attract.html"
+);
+assert.strictEqual(
+    IdleManager.resolveRedirect("D:\\\\Museum\\\\Attract Page\\\\index.html", "file:///C:/yaPDP/pdp11.html"),
+    "file:///D:/Museum/Attract%20Page/index.html"
+);
+assert.strictEqual(
+    IdleManager.resolveRedirect("file:///D:/Museum/attract.html", "http://tauri.localhost/pdp11.html"),
+    "file:///D:/Museum/attract.html"
+);
+assert.strictEqual(
+    IdleManager.resolveRedirect("file:///D:/Museum/attract.html", "tauri://localhost/pdp11.html"),
+    "file:///D:/Museum/attract.html"
+);
+assert.strictEqual(
+    IdleManager.resolveRedirect("https://museum.example/attract.html", "file:///C:/yaPDP/pdp11.html"),
+    "https://museum.example/attract.html"
+);
+assert.throws(
+    () => IdleManager.resolveRedirect("ftp://museum.example/attract.html", "https://example.com/pdp11.html"),
+    /Unsupported idle redirect protocol/
+);
 
 function makeHarness() {
     const listeners = {};
