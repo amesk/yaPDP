@@ -33,7 +33,7 @@ assert.strictEqual(
     "file:///D:/Museum/attract.html"
 );
 assert.strictEqual(
-    IdleManager.resolveRedirect("D:\\\\Museum\\\\Attract Page\\\\index.html", "file:///C:/yaPDP/pdp11.html"),
+    IdleManager.resolveRedirect("D:\\Museum\\Attract Page\\index.html", "file:///C:/yaPDP/pdp11.html"),
     "file:///D:/Museum/Attract%20Page/index.html"
 );
 assert.strictEqual(
