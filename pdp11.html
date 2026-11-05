@@ -2233,6 +2233,15 @@ Hello world
   </dialog>
 
   <script src='src/version.js'></script>
+  <script>
+    /* Load the optional museum idle hand-off only when configured.
+     * Keeping this opt-in leaves ordinary yaPDP sessions untouched. */
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (!params.has("idle-timeout") && !params.has("idle-redirect")) return;
+      document.write("<script src='src/idle-manager.js'><\/script>");
+    })();
+  </script>
   <script src='src/emulation-control.js'></script>
   <script src='src/pdp11-panel.js'></script>
   <script src='src/vt52zoom.js'></script>
