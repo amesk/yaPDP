@@ -113,6 +113,27 @@ var Toasts = (function () {
         if (adapter) adapter.hide();
     }
 
+    // Withdraw the toast carrying `key`, wherever it lives (active or queued),
+    // and restore the next queued one when the withdrawn toast was visible.
+    // A subsystem that raises a CONDITION toast has to be able to take it back
+    // once the condition clears (e.g. the idle warning, src/idle-manager.js);
+    // clear() is too blunt for that — it would drop everybody's toasts.
+    function hide(key) {
+        if (!key) return false;
+        var found = false;
+        if (current && current.key === key) {
+            clock.clear(current.timer);
+            found = true;
+            step();                       // restores what was preempted, or hides
+        }
+        if (queue.length) {
+            var before = queue.length;
+            queue = queue.filter(function (t) { return t.key !== key; });
+            found = found || queue.length !== before;
+        }
+        return found;
+    }
+
     function configure(a) {
         adapter = (a && typeof a.update === "function") ? a : null;
         if (adapter && typeof adapter.mount === "function") adapter.mount();
@@ -121,6 +142,7 @@ var Toasts = (function () {
     return {
         configure: configure,
         show: show,
+        hide: hide,
         clear: clear,
         __setTimers: function (c) {
             if (c && typeof c.now === "function" &&

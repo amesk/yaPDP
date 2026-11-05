@@ -253,6 +253,33 @@ function testDedupExtendsQueuedToast() {
         "queued toast restored once, not duplicated");
 }
 
+function testHideWithdrawsKeyedToast() {
+    const toasts = loadToasts();
+    const adapter = fakeAdapter();
+    const clock = fakeTimers();
+    toasts.__setTimers(clock);
+    toasts.configure(adapter);
+
+    // An active keyed toast can be taken back by its owner alone.
+    toasts.show({ text: "warning", category: "warning", key: "idle-warning" });
+    assert.strictEqual(adapter.hideCalls, 0);
+    assert.strictEqual(toasts.hide("idle-warning"), true, "the active keyed toast is withdrawn");
+    assert.strictEqual(adapter.hideCalls, 1, "withdrawing the only toast hides the slot");
+    assert.strictEqual(toasts.hide("idle-warning"), false, "a withdrawn toast cannot be withdrawn twice");
+
+    clock.advance(10000);
+    assert.strictEqual(adapter.updates.length, 1, "a withdrawn toast never comes back");
+    assert.strictEqual(adapter.hideCalls, 1);
+
+    // A queued keyed toast is withdrawn too, and the preempted one is restored.
+    toasts.show({ text: "keep", duration: 10000, key: "keep" });
+    toasts.show({ text: "drop", duration: 3000, key: "drop" });
+    assert.strictEqual(toasts.hide("drop"), true, "a queued keyed toast is withdrawn");
+    assert.deepStrictEqual(adapter.updates.map(function (u) { return u.text; }).slice(-1), ["keep"],
+        "the preempted toast is restored when the withdrawal empties the slot");
+    assert.strictEqual(toasts.hide("keep"), true, "the restored toast is still owned by its key");
+}
+
 function testDedupDifferentKeysPreempt() {
     const toasts = loadToasts();
     const adapter = fakeAdapter();
@@ -278,6 +305,7 @@ function main() {
     testClearCancelsEverything();
     testDedupExtendsActiveToast();
     testDedupExtendsQueuedToast();
+    testHideWithdrawsKeyedToast();
     testDedupDifferentKeysPreempt();
     console.log("toasts: all tests passed");
 }
