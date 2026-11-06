@@ -2233,6 +2233,12 @@ Hello world
   </dialog>
 
   <script src='src/version.js'></script>
+  <!-- Opened from disk (file://) the browser blocks every fetch, so the page
+       has no manifests, no artwork and no disk images. This shim answers those
+       requests from assets/fs-bundle/bundle.js, which it pulls in as a <script>
+       on such a page only; over HTTP and in the desktop build it does nothing.
+       Rebuild the payload with `npm run fs-bundle`. -->
+  <script src='src/fsbundle.js'></script>
   <script src='src/emulation-control.js'></script>
   <script src='src/pdp11-panel.js'></script>
   <script src='src/vt52zoom.js'></script>

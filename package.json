@@ -24,6 +24,7 @@
     "desktop:minimal": "node tools/build-desktop.js --variant minimal && node tools/tauri-build.js",
     "desktop:full": "node tools/build-desktop.js --variant full && node tools/tauri-build.js",
     "serve": "node tools/serve.js",
+    "fs-bundle": "node tools/build-fs-bundle.js",
     "site:build": "npm run docs && npm --prefix landing run build && node tools/site-preview.js site",
     "site:serve": "node tools/serve.js --port 3000 --dir site --index index.html",
     "site:preview": "npm run site:build && npm run site:serve",

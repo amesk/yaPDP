@@ -132,6 +132,6 @@ If a terminal page shows nothing:
 
 If the emulator page shows a CORS error when loading images or media:
 
-- **file:// protocol.** Opening `pdp11.html` as a local file (`file://`) triggers browser CORS policies. Use a local web server instead — or open the page through the **Launch Online!** link on the [landing page](index.html).
-- **The built-in server.** Run `npm run serve` from the repository root to start a local HTTP server on port 1187, then open `http://127.0.0.1:1187/pdp11.html`.
+- **file:// protocol.** Opening `pdp11.html` as a local file (`file://`) triggers browser CORS policies. A local web server is the normal answer — or open the page through the **Launch Online!** link on the [landing page](index.html). If the page must be opened straight from disk, build the offline payload once with `npm run fs-bundle`: the emulator then reads its disk images, saved states and cabinet artwork from `assets/fs-bundle/bundle.js`, which a `file://` page is allowed to load.
+- **The built-in server.** Run `npm run serve` from the repository root to start a local HTTP server on port 1170, then open `http://127.0.0.1:1170/pdp11.html`.
 - **Tauri desktop.** The [desktop app](#desktop) has no CORS restrictions — it bundles its own server.

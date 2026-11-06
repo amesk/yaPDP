@@ -240,6 +240,12 @@ copyDir(path.join(ROOT, "css"), path.join(DEST, "css"));
 copyDir(path.join(ROOT, "src"), path.join(DEST, "src"));
 copyDir(path.join(ROOT, "assets"), path.join(DEST, "assets"));
 
+// The file:// payload (assets/fs-bundle, built by `npm run fs-bundle`) is for a
+// page opened from disk. The desktop app loads its resources through BundledFs
+// and serves the frontend over tauri://, so the shim never installs there — and
+// the payload would only bloat the executable by a few megabytes.
+fs.rmSync(path.join(DEST, "assets", "fs-bundle"), { recursive: true, force: true });
+
 // --- Select the Tauri config for this variant ---------------------------
 
 const CONF_SRC = path.join(ROOT, "src-tauri", `tauri.conf.${variant}.json`);

@@ -83,6 +83,23 @@ parameter intact.
   fetches byte ranges): `node tools/serve.js` (`npm run serve`), nginx or IIS
   do; `python -m http.server` does not. Never serve `.zst` with
   `Content-Encoding: zstd` — the page decompresses those bytes itself.
+- **Opening `pdp11.html` straight from the filesystem needs one extra flag.**
+  A browser refuses `fetch()` for a `file://` document, so the manifests, the
+  cabinet artwork and every disk image are unreachable and no guest can boot.
+  Both answers below were measured on Chrome 156, and they combine:
+  - `--allow-file-access-from-files` — the page reads `media/`, `states/` and
+    `assets/` exactly as it would over HTTP, any image and any size included,
+    no build step. This is the kiosk answer when the shortcut already carries
+    flags: `chrome.exe --kiosk --allow-file-access-from-files pdp11.html`.
+    Range requests degrade to a `200` with the requested slice; the loader
+    accepts both (`response.ok || status === 206`).
+  - `npm run fs-bundle` once — packs the demo payloads into
+    `assets/fs-bundle/bundle.js`, so a plain double-click works with no flag
+    ([BUILDING.md](BUILDING.md)). Limited to what it packs.
+  [`src/fsbundle.js`](../src/fsbundle.js) answers from the payload when it can
+  and hands every other request to the browser's own `fetch`, so a kiosk with
+  the flag can carry a small payload for the demo and still mount an arbitrary
+  disk from `media/`.
 - **Two windows are the only complication.** While another window of the same
   profile keeps the emulator loaded, the stores cannot be cleared and the
   screen reports which step was blocked. Close the exhibit window and press

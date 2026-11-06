@@ -5,6 +5,21 @@ images, image-loading internals, toolchain installation and the build
 commands. The browser version needs no build at all — serve the repository
 root with any static server (`npm run serve` for a local one on port 1170).
 
+### Opening the page from disk (`file://`)
+
+A browser blocks `fetch()` for a document opened from the filesystem (its origin
+is `null`), which is why the emulator lost its manifests, its cabinet artwork and
+every disk image when `pdp11.html` was double-clicked. `npm run fs-bundle` packs
+those payloads — both manifests, the SVG artwork, the demo disks (Unix V5 on
+rk0, RT-11 on rk1), the paper tapes and the states that only need those images —
+base64 into `assets/fs-bundle/bundle.js` (≈3.6 MB, git-ignored), and
+[`src/fsbundle.js`](../src/fsbundle.js) serves the page's relative requests from
+it. The shim installs on a `file://` page only: over HTTP, in the desktop build
+and in Node, `fetch` is left untouched. `--all` packs every image and state
+instead (tens of megabytes), which is what a fully offline museum copy wants.
+Regenerate after changing `media/`, `states/` or `assets/*.svg` — without the
+payload a `file://` page says so in a toast and behaves as it always did.
+
 ## Desktop App (Tauri)
 
 The same emulator is packaged as a native desktop application with [Tauri v2](https://tauri.app/).
@@ -191,15 +206,19 @@ Linux machine (building a Windows installer from Linux is not supported).
 1. **Node.js ≥ 18** — `sudo apt install nodejs npm`, or the LTS from
    <https://nodejs.org>.
 2. **Rust** — install via <https://rustup.rs>:
+
    ```bash
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
    ```
+
 3. **Tauri system dependencies** (Debian/Ubuntu; other distros — see the
    [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)):
+
    ```bash
    sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
      libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
    ```
+
 4. **Tauri CLI v2** — `cargo install tauri-cli --version "^2"`.
 
 Verify every component is on the `PATH`, then stage and build either variant:
@@ -243,6 +262,7 @@ build is orchestrated through npm scripts — the only npm dependency is the
 | `npm run e2e:vt100`                            | Put a VT100 console, a DECscope on TTY 1 and a VT100 on TTY 2 on one machine and assert the terminals as the operator sees them — rig dialect and artwork, the phosphor reaching the VT100 and not the DECscope, reverse video the other way round, the key click, zoom by button and by double click, and the terminal types surviving validation ([`tests/e2e-vt100.js`](../tests/e2e-vt100.js))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `npm run e2e:mobile`                           | Drive the on-screen keyboard bridge on an emulated touch device (the CONFIG → DEVELOPMENT "VT52 text mode" switch is applied live): a terminal started in text mode, the switch turned off, then a tap on the tube must focus that terminal's invisible textarea — what raises the system keyboard — and the typed bytes must reach the right DL11 unit. Guards the regression where the canvas came back without the bridge, so the keyboard never came up again ([`tests/e2e-mobile-input.js`](../tests/e2e-mobile-input.js))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `npm run serve`                                | Local static server on port 1170 (HTTP Range supported) for browser development                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `npm run fs-bundle`                            | Pack the payloads a `file://` page cannot fetch (manifests, artwork, demo disks, paper tapes, states) base64 into `assets/fs-bundle/bundle.js`, so `pdp11.html` works when opened by double-clicking it — `--all` packs every image and state instead. Git-ignored and derived from `media/`, `states/` and `assets/*.svg` ([`tools/build-fs-bundle.js`](../tools/build-fs-bundle.js), served by [`src/fsbundle.js`](../src/fsbundle.js), pinned by [`tests/fsbundle.test.js`](../tests/fsbundle.test.js))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `npm run site:preview`                         | Build the React landing, assemble the full site (`site/`) and serve it on <http://localhost:3000> — SPA at `/`, emulator at `/pdp11.html`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `npm run site:build`                           | Build the landing + assemble `site/` only (no server); `npm run site:serve` re-serves an already built `site/` on port 3000                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `npm run manual:build`                         | Regenerate the user manual from its Markdown source (`docs/manual/*.md` + `docs/manual/ru/*.md`): `manual.html`, `manual_ru.html` and `landing/src/data/manualData.ts`. **None of the three is committed** — see the note under the table; [`tests/manual-generation.test.js`](../tests/manual-generation.test.js) generates them in memory and guards the structure of both pages ([`tools/build-manual.js`](../tools/build-manual.js))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |

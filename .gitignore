@@ -18,6 +18,12 @@ node_modules/
 # ---- Generated demo videos (kept out of assets/ so they never reach the site) ----
 video/
 
+# ---- Offline payload for file:// pages (rebuilt by tools/build-fs-bundle.js) ----
+# Base64 of the manifests, artwork, demo images and states, so a double-clicked
+# pdp11.html can read them (see src/fsbundle.js). Regenerate with `npm run
+# fs-bundle`; never committed, it is derived from media/, states/ and assets/.
+assets/fs-bundle/
+
 # ---- YouTube publish credentials (never commit; see docs/YOUTUBE.md) ----
 # The refresh token (tools/youtube-publish.js --auth) and the OAuth desktop
 # client. The generated video/youtube-state.json / youtube-manifest.json live

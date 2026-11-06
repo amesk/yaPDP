@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A page opened from disk works.** `pdp11.html` double-clicked from the
+  filesystem used to lose its manifests, its cabinet artwork and every disk
+  image, because a browser blocks `fetch()` for a `file://` document: RT-11 and
+  Unix V5 could not boot at all. `npm run fs-bundle` packs those payloads base64
+  into `assets/fs-bundle/bundle.js` and `src/fsbundle.js` serves the page's
+  relative requests from it, honouring Range, answering an absent image with
+  404, and standing aside completely over HTTP and in the desktop build. A kiosk
+  that already launches Chrome with `--allow-file-access-from-files` needs no
+  payload: the shim hands every request it cannot answer to the browser's own
+  fetch, so arbitrary and arbitrarily large images mount straight from `media/`.
+  (`tools/build-fs-bundle.js`, `src/fsbundle.js`, `tests/fsbundle.test.js`)
+
 ## [0.4.0] - 2026-10-30
 
 ### Added
