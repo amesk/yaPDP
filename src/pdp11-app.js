@@ -1610,13 +1610,17 @@ function applyCRTEffects(enabled) {
  *
  * Only the VT100 takes the option: the VT52 was never offered another phosphor,
  * and its dialect pins p4 through powerOnState(), so a value pushed here is
- * ignored by a DECscope on its own. The stylesheet gets the same choice through
- * a body attribute, because it paints the tube's surround and the textarea's
- * text — the canvas paints the glyphs, and if only one side moved the picture
- * would come apart.
+ * ignored by a DECscope on its own. The three tubes are p4 white, p1 green and
+ * p3 amber — the LATER phosphor (the VT220 era and after; a DEC factory option
+ * from the VT300 series, never a VT100 one). The stylesheet gets the same choice
+ * through the body's data-phosphor attribute, because it paints the tube's
+ * surround, the plain-text field and the phosphor halo — the canvas paints the
+ * glyphs, and if only one side moved the picture would come apart. Anything
+ * unrecognised falls back to p4, so a hand-edited config cannot leave the canvas
+ * and the stylesheet on two different tubes.
  */
 function applyTerminalPhosphor(name) {
-  var phosphor = (name === 'p1') ? 'p1' : 'p4';
+  var phosphor = (name === 'p1' || name === 'p3') ? name : 'p4';
   // The phosphor is the VT100's alone. Every dialect shares ONE registry
   // (window.yapdpCore.terminals), so vt100Get(u) happily returns a DECscope that
   // happens to sit on that unit — iterating it lit the whole machine green and

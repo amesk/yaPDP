@@ -5,8 +5,11 @@
 :::config-item
 ![CONFIG — вкладка Equipment](assets/images/manual/config-equipment.png){.config-item-img}
 :::config-item-text
+
 ### Оборудование
+
 :::
+
 - **Console terminal** — [консоль оператора](#console) (tty0): телетайп Model 33 ASR, DECscope VT52 или DEC VT100.
 - **User terminals** — два [пользовательских терминала (TTY 1 / TTY 2)](#user-terminals), каждый `None | VT52 | VT100` и у каждого своя страница в боковой панели; число терминалов выводится из двух селектов, а TT2 можно заполнить только после TT1.
 - **Line printer (LP11)** — установить анимированный построчный принтер LP11 на отдельной [странице Printer](#printer).
@@ -20,10 +23,13 @@
 :::config-item
 ![CONFIG — вкладка Look & sound](assets/images/manual/config-visual.png){.config-item-img}
 :::config-item-text
+
 ### Вид и звук
+
 :::
+
 - **VT100 key click** — звуковая отдача нажатия клавиш на терминалах VT100; клавиатура DECscope была механической и щёлкать ей нечем, поэтому поле гаснет, когда VT100 не установлен.
-- **VT100 phosphor** — трубка VT100: P4 белый (люминофор, с которым он выпускался) или P1 зелёный. DECscope жёстко привязан к P4 — с другим он никогда не продавался.
+- **VT100 phosphor** — трубка VT100, выбирается рядом кнопок: P4 белый (люминофор, с которым он выпускался), P1 зелёный или P3 янтарный — более поздняя трубка, характерная для эпохи VT220 и последовавших за ней терминалов DEC, заводская опция начиная с серии VT300; VT100 1978 года в янтаре не выпускался. DECscope жёстко привязан к P4 — с другим он никогда не продавался.
 - **VT52 reverse video** — исторический режим обратного видео DECscope: чёрный текст на белом. Это собственный переключатель DECscope; VT100 показывает инверсный текст только когда программа просит об этом атрибутом SGR 7.
 - **CRT effects** — чисто CSS-имитация CRT: мерцание яркости, дрожание люминофора и полоса вертикального срыва.
 - **Machine hum** — фоновый гул блока питания и шум вентилятора, пока машина включена.
@@ -32,8 +38,11 @@
 :::config-item
 ![CONFIG — вкладка Behaviour](assets/images/manual/config-behaviour.png){.config-item-img}
 :::config-item-text
+
 ### Поведение
+
 :::
+
 - **Reboot confirmation** — спрашивать перед перезагрузкой машины; опцию «Don't show this warning anymore» можно вернуть здесь в любой момент.
 - **Help Me! sticker** — показывать рукописную памятку оператора о загрузчике на странице Panel.
 - **Machine power** — машина включена; выключение обесточивает PDP-11 (POWER LOCK в положении off).
@@ -43,8 +52,11 @@
 :::config-item
 ![CONFIG — вкладка Development](assets/images/manual/config-development.png){.config-item-img}
 :::config-item-text
+
 ### Разработка
+
 :::
+
 - **Plain text input instead of the canvas CRT** — выводить терминал как текстовое поле вместо canvas CRT, что даёт нативное выделение текста и Windows Clipboard (Ctrl+C / Ctrl+V / вставка правой кнопкой) для быстрого ввода исходного кода; при этом теряются атрибуты SGR (жирный/подчёркивание/инверсия). Действует на страницу, поэтому так выводятся и VT52, и VT100.
 
 #### Все опции на одной странице
@@ -62,7 +74,7 @@
 | Upper Case Only            | Equipment    | Off / On                                | Немедленно                   |
 | Force PDP Output Uppercase | Equipment    | Off / On                                | Немедленно                   |
 | VT100 key click            | Look & sound | Off / On                                | Немедленно                   |
-| VT100 phosphor             | Look & sound | P4 white / P1 green                     | Немедленно                   |
+| VT100 phosphor             | Look & sound | P4 white / P1 green / P3 amber          | Немедленно                   |
 | VT52 reverse video         | Look & sound | Off / On                                | Немедленно                   |
 | CRT effects                | Look & sound | Off / On                                | Немедленно                   |
 | Machine hum                | Look & sound | Off / On                                | Немедленно                   |

@@ -35,11 +35,13 @@
  *                    sends the raw lower case to the machine. On by default
  *                    (authentic). Ignored entirely on a VT52 console, which
  *                    does lower case. Applied live, no reboot.
- *   - vt100Phosphor: the VT100 tube's phosphor, 'p4' (white — the phosphor the
- *                    VT100 was introduced on in 1978) or 'p1' (green — the tube
- *                    1980s terminals are known for). The VT52 is NOT offered a
- *                    choice: it was never sold in another phosphor, and its
- *                    dialect pins p4.
+ *   - vt100Phosphor: the VT100 tube's phosphor: 'p4' (white — the phosphor the
+ *                    VT100 was introduced on in 1978), 'p1' (green — the tube
+ *                    1980s terminals are known for) or 'p3' (amber — a later
+ *                    tube: the VT220 era and the DEC terminals that followed,
+ *                    a factory option from the VT300 series on; a VT100 was
+ *                    never sold in amber). The VT52 is NOT offered a choice: it
+ *                    was never sold in another phosphor, and its dialect pins p4.
  *   - keyClick:      audible key-click feedback for VT100 terminals. The
  *                    DECscope's keyboard was mechanical and had no such
  *                    setting; the click this project used to offer the VT52
@@ -100,9 +102,11 @@ var Config = (function () {
         forceUpperCaseOut: true,
         keyClick: false,         // boolean (VT100 key click)
         // The VT100's tube: 'p4' (white — the phosphor the VT100 was introduced
-        // on in 1978) or 'p1' (green — what 1980s terminals are known for).
-        // The VT52 has no such option: it was never offered in another phosphor,
-        // and its dialect pins p4 (see the dialect's powerOnState).
+        // on in 1978), 'p1' (green — what 1980s terminals are known for) or
+        // 'p3' (amber — the later VT220-era tube; DEC made it a factory option
+        // from the VT300 series on, never on a VT100). The VT52 has no such
+        // option: it was never offered in another phosphor, and its dialect pins
+        // p4 (see the dialect's powerOnState).
         vt100Phosphor: "p4",
         vt52ReverseVideo: false, // boolean (VT52 reverse video — black text on white)
         vt52TextMode: false,     // boolean (VT52 plain <textarea> instead of canvas)
@@ -136,6 +140,13 @@ var Config = (function () {
     // Terminal dialects a user terminal may be built as. 'vt52' is the
     // historical DECscope; 'vt100' is the ANSI terminal (a superset of it).
     var TERMINAL_TYPES = Object.freeze(["vt52", "vt100"]);
+
+    // The tubes the phosphor option offers — the only values the config keeps.
+    // p4 white is the 1978 tube, p1 green the late-1970s/1980s one, p3 amber
+    // the LATER tube (VT220 era and after; a DEC factory option from the VT300
+    // series). Amber is deliberately offered on the VT100 anyway: the field is
+    // a period palette, not a 1978 catalogue, and the CONFIG hint says so.
+    var VT100_PHOSPHORS = Object.freeze(["p4", "p1", "p3"]);
 
     // The emulated Boot ROM socket. Three legal values, three distinct
     // behaviours after power-on (see DEFAULTS.bootDevice).
@@ -219,8 +230,10 @@ var Config = (function () {
                 ? DEFAULTS.forceUpperCaseOut
                 : Boolean(o.forceUpperCaseOut),
             keyClick: Boolean(o.keyClick),
-            // Only the two phosphors the project draws; anything else is p4.
-            vt100Phosphor: o.vt100Phosphor === "p1" ? "p1" : DEFAULTS.vt100Phosphor,
+            // Only the three phosphors the project draws; anything else is p4.
+            vt100Phosphor: isOneOf(o.vt100Phosphor, VT100_PHOSPHORS)
+                ? o.vt100Phosphor
+                : DEFAULTS.vt100Phosphor,
             vt52ReverseVideo: Boolean(o.vt52ReverseVideo),
             // Absent key falls back to the default (keeps the authentic canvas
             // CRT for old configs saved before the option existed).
