@@ -4,8 +4,8 @@
  *
  * The VT100's tube is painted from three sources, and they used to drift apart:
  *   - PHOSPHORS in src/terminal-core.js — the canvas glyph colours;
- *   - --vt52-bg / --vt52-fg / --vt52-glow in css/pdp11.css — the glass, the
- *     plain-text field and the phosphor halo;
+ *   - --vt52-bg / --vt52-fg in css/pdp11.css — the glass plate and the
+ *     plain-text field;
  *   - the CONFIG control in pdp11.html — which tubes the operator may pick.
  *
  * p3 (amber) is the LATER tube: the VT220 era and the DEC terminals that
@@ -88,7 +88,6 @@ function run() {
     "body --vt52-fg must be the p4 foreground");
   assert.strictEqual((decl(base, "--vt52-bg") || "").toLowerCase(), pal.p4.bg.toLowerCase(),
     "body --vt52-bg must be the p4 background");
-  assert.ok(decl(base, "--vt52-glow"), "body must publish --vt52-glow");
 
   for (const name of ["p1", "p3"]) {
     const sel = 'body[data-phosphor="' + name + '"] .vt52-rig[data-dialect="vt100"]';
@@ -97,28 +96,33 @@ function run() {
       sel + " --vt52-fg must match PHOSPHORS." + name + ".fg");
     assert.strictEqual((decl(body, "--vt52-bg") || "").toLowerCase(), pal[name].bg.toLowerCase(),
       sel + " --vt52-bg must match PHOSPHORS." + name + ".bg");
-    assert.ok(decl(body, "--vt52-glow"),
-      sel + " must carry its own --vt52-glow, or the halo stays white");
     // Reverse video swaps the LIVE pair, so the flipped tube has to restate it.
     const rev = ruleBody(css, sel + ".reverse-video");
     assert.strictEqual((decl(rev, "--vt52-bg") || "").toLowerCase(), pal[name].fg.toLowerCase(),
       sel + ".reverse-video must swap fg/bg");
   }
 
-  // --- 3. the halo follows the tube, and never frames the picture --------
+  // --- 3. no halo on either surface --------------------------------------
   // The canvas paints an OPAQUE background, so a drop-shadow() on it can only
   // outline the whole rectangle — it showed as a thin bright stripe along the
-  // canvas edges, inside the glass. The halo belongs to real text instead.
+  // canvas edges. A shadow around a thin glyph (Canvas shadowBlur or a CSS
+  // text-shadow) reads as a second contour of the letter instead of bloom. So
+  // there is no halo at all, in EITHER rendering mode: the phosphor shows in
+  // the colour, and one terminal never looks like two.
   const canvasRule = ruleBody(css, ".vt52-crt canvas");
   assert.ok(!/filter\s*:/.test(canvasRule),
     "the canvas must carry NO filter: a drop-shadow there frames the picture " +
-    "with a hard bright rectangle instead of haloing the glyphs");
+    "with a hard bright rectangle");
   const flicker = ruleBody(css, "@keyframes crt-flicker");
   assert.ok(!/drop-shadow/.test(flicker) && /brightness\(/.test(flicker),
-    "crt-flicker must only flicker the brightness, never repaint a rect halo");
-  assert.ok(/text-shadow:\s*0 0 3px var\(--vt52-glow\)/.test(css),
-    "the phosphor halo belongs to the plain-text field, where text-shadow " +
-    "reaches the glyphs");
+    "crt-flicker must only flicker the brightness");
+  assert.ok(!/\btext-shadow\s*:/.test(ruleBody(css, ".vt52-crt textarea.vt52-textarea")),
+    "no glyph halo in the plain-text field: the canvas has none either, and " +
+    "one terminal must not look like two");
+  const core = read(JS_PATH);
+  assert.ok(!/shadowBlur|shadowColor/.test(core),
+    "the canvas renderer must not draw a glyph halo — it shows as a second " +
+    "contour of every letter (measured, not guessed: see the note by PHOSPHORS)");
 
   // --- 4. the CONFIG control ---------------------------------------------
   const html = read(HTML_PATH);
