@@ -318,24 +318,18 @@ async function main() {
         check("the VT100 tube's surround follows the amber phosphor",
             amberCons && amberCons.tubeBg === "rgb(26, 16, 0)",
             amberCons && amberCons.tubeBg);
-        // The halo is a phosphor-level colour (plain-text field, glow swatch) —
-        // the CANVAS must carry no filter at all: it paints an opaque
-        // background, so a drop-shadow there is a hard rectangle around the
-        // picture, i.e. a bright stripe along the canvas edges.
-        const amberGlow = await page.evaluate((id) => {
+        // No halo anywhere: the canvas must carry no filter at all (it paints
+        // an opaque background, so a drop-shadow there is a hard rectangle
+        // around the picture), and the renderer draws no glyph shadow either.
+        const amberCanvas = await page.evaluate((id) => {
             const rig = document.querySelector("#" + id + " .vt52-rig");
             const canvas = rig ? rig.querySelector("canvas") : null;
-            return {
-                glow: getComputedStyle(rig).getPropertyValue("--vt52-glow").trim(),
-                filter: canvas ? getComputedStyle(canvas).filter : "(no canvas)"
-            };
+            return { filter: canvas ? getComputedStyle(canvas).filter : "(no canvas)" };
         }, PAGES.console);
-        check("the phosphor halo colour turns amber with the tube",
-            /255,\s*176,\s*0/.test(amberGlow.glow), amberGlow.glow);
         // brightness() is legitimate (the CRT-effects flicker); a drop-shadow
         // is not — it frames the opaque canvas with a hard rectangle.
         check("the canvas carries no rectangle halo filter",
-            !/drop-shadow/.test(amberGlow.filter), amberGlow.filter);
+            !/drop-shadow/.test(amberCanvas.filter), amberCanvas.filter);
 
         // ---- 5. reverse video is the DECscope's switch ---------------------
         await page.evaluate(() => window.applyVT52ReverseVideo(true));

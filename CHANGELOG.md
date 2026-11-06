@@ -18,10 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Amber phosphor for the VT100 tube.** The CONFIG → Look & sound phosphor pick
   is a row of three buttons — P4 white, P1 green, P3 amber — and the amber tube
-  lights the glyphs, the phosphor halo and the glass around them in amber; the
-  hint under the row says amber is a later tube (the VT220 era and after), never
-  a VT100 factory option. (`src/config.js`, `src/terminal-core.js`,
-  `src/pdp11-app.js`, `css/pdp11.css`, `pdp11.html`)
+  lights the glyphs and the glass around them in amber; the hint under the row
+  says amber is a later tube (the VT220 era and after), never a VT100 factory
+  option. (`src/config.js`, `src/terminal-core.js`, `src/pdp11-app.js`,
+  `css/pdp11.css`, `pdp11.html`)
 
 ### Fixed
 
@@ -41,9 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inlined glass plate and the plain-text field follow the phosphor picked in
   CONFIG instead of the terminal type, so P4 reads white, P1 green and P3 amber
   — with no edge where the canvas meets the SVG backdrop, and without the hard
-  2px rectangle the old halo filter drew around the picture. The halo itself
-  moved to the plain-text field, the one surface where it can reach the glyphs.
-  (`css/pdp11.css`)
+  2px rectangle the old halo filter drew around the picture. There is no glyph
+  halo at all, in either rendering mode: a shadow around a thin glyph reads as
+  a second contour of the letter, so the tube shows the phosphor in colour only.
+  (`css/pdp11.css`, `src/terminal-core.js`)
 
 ## [0.4.0] - 2026-10-30
 

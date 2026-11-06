@@ -81,6 +81,13 @@
     const BG_COLOR    = PHOSPHORS.p4.bg;  // kept for the default readers
     const FG_COLOR    = PHOSPHORS.p4.fg;
 
+    // NO glyph halo, on either surface. A Canvas 2D shadow around a thin
+    // monospace glyph — and a CSS text-shadow around the same glyph in text
+    // mode — draws a visible second contour of the letter instead of phosphor
+    // bloom, and having it on one surface only made one terminal look like two.
+    // The phosphor shows in the COLOUR. A convincing bloom would need a real
+    // blur pass over a separate layer, which is not worth the repaint cost.
+
     // Attribute bitmask flags (SGR)
     const ATTR_BOLD       = 1;
     const ATTR_UNDERSCORE = 2;
