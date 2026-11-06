@@ -68,9 +68,14 @@
     //   p1  the green phosphor that late-1970s and 1980s terminals are known
     //       for. Muted rather than the bright green of period film, which is a
     //       fiction: a real P1 sits close to this.
+    //   p3  the amber phosphor of the LATER tubes — the VT220 era and the DEC
+    //       terminals that followed it. Warm and a little muted for the same
+    //       reason as the green: the fictional cinema amber tires the eye.
+    //       The glass keeps a brown-black tint rather than a green one.
     const PHOSPHORS = Object.freeze({
         p4: Object.freeze({ fg: "#E0E0E0", bg: "#141914" }),
-        p1: Object.freeze({ fg: "#2BD62B", bg: "#0A1A0A" })
+        p1: Object.freeze({ fg: "#2BD62B", bg: "#0A1A0A" }),
+        p3: Object.freeze({ fg: "#FFB000", bg: "#1A1000" })
     });
 
     const BG_COLOR    = PHOSPHORS.p4.bg;  // kept for the default readers

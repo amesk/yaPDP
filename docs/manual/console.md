@@ -62,7 +62,9 @@ VT52 identification reply. Asked who it is (`CSI c`) the VT100 answers
 as the real machine did.
 
 Two CONFIG options belong to this terminal alone: the **tube phosphor** — P4
-white, the phosphor the VT100 was introduced on, or P1 green — and the **key click** (the DECscope's
-keyboard was mechanical and has no click to make). The **VT52 reverse video** switch is the
-DECscope's own and never touches a VT100: there, inverse text comes from the SGR 7 attribute the
-software sends.
+white, the phosphor the VT100 was introduced on, P1 green, or P3 amber (the later
+tube: the VT220 era and the DEC terminals that followed it, a factory option
+from the VT300 series on — a 1978 VT100 never came in amber) — and the **key
+click** (the DECscope's keyboard was mechanical and has no click to make). The
+**VT52 reverse video** switch is the DECscope's own and never touches a VT100:
+there, inverse text comes from the SGR 7 attribute the software sends.

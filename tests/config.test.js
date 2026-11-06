@@ -234,6 +234,15 @@ function run() {
         assert.strictEqual(C.validate({ autoBoot: true, bootDevice: "last" }).bootDevice, "last");
         // A legacy key is not emitted in the validated shape any more.
         assert.strictEqual(C.validate({ autoBoot: true }).autoBoot, undefined);
+
+        // vt100Phosphor: the three tubes the project draws — p4 white (1978),
+        // p1 green (the 1980s tube) and p3 amber (the LATER VT220-era tube).
+        // Anything else falls back to p4, including a wrong-case name.
+        assert.strictEqual(C.validate({}).vt100Phosphor, "p4");
+        assert.strictEqual(C.validate({ vt100Phosphor: "p1" }).vt100Phosphor, "p1");
+        assert.strictEqual(C.validate({ vt100Phosphor: "p3" }).vt100Phosphor, "p3");
+        assert.strictEqual(C.validate({ vt100Phosphor: "amber" }).vt100Phosphor, "p4");
+        assert.strictEqual(C.validate({ vt100Phosphor: "P3" }).vt100Phosphor, "p4");
     }
 
     // ---- load / save round-trip ------------------------------------
@@ -267,6 +276,13 @@ function run() {
         C.save(cfg, s);
         assert.deepStrictEqual(plain(C.load(s)), cfg,
             "load should restore a saved config");
+
+        // The amber tube is a legal value too: it must survive the round-trip
+        // instead of being normalised back to p4 by load().
+        const s3 = makeStorage();
+        C.save(Object.assign({}, cfg, { vt100Phosphor: "p3" }), s3);
+        assert.strictEqual(C.load(s3).vt100Phosphor, "p3",
+            "amber (p3) must survive save/load");
 
         // Empty storage -> defaults.
         assert.deepStrictEqual(plain(C.load(makeStorage())), plain(C.DEFAULTS),

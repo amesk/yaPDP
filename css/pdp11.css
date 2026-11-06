@@ -3191,35 +3191,59 @@ html.yapdp-emulation-paused .console-pause {
    DECscope's rig flips them
    (see applyVT52ReverseVideo in src/pdp11-app.js). #141914 / #e0e0e0 mirror
    BG_COLOR / FG_COLOR in src/vt52.js — keep the two pairs in step. */
-/* The phosphor in play. p4 is the white tube the DECscope shipped with and the
-   VT100 was introduced on; p1 is the green that 1980s terminals are known for.
-   The VT100 takes this as an option and the VT52 does not (it was never offered
-   in another phosphor), which is why the attribute is set per terminal rather
-   than globally — see applyTerminalPhosphor in src/pdp11-app.js. */
+/* The phosphor in play, driven by body[data-phosphor] (applyTerminalPhosphor in
+   src/pdp11-app.js). p4 white is the tube the DECscope shipped with and the
+   VT100 was introduced on; p1 green is what 1980s terminals are known for; p3
+   amber is the LATER tube (the VT220 era and after — a DEC factory option from
+   the VT300 series, never a VT100 one). The attribute is the operator's PICK,
+   the dialect says WHO may take it: the VT52 was never offered another
+   phosphor, so every phosphor rule below is scoped to the VT100 rig and a
+   DECscope stays white without the JS having to fight CSS.
+   --vt52-glow is the phosphor halo. It is spent on the plain-text field's
+   text-shadow, the one surface where a halo reaches the glyphs; the canvas
+   paints an opaque background and must never carry a drop-shadow (it frames
+   the whole picture instead). */
 body {
     --vt52-bg: #141914;
     --vt52-fg: #e0e0e0;
+    --vt52-glow: rgba(224, 224, 224, 0.30);
 }
 
-/* Green is for the VT100's tube only. The DECscope is not offered a phosphor
-   (its dialect pins p4), so scoping the choice to the rig that carries the
-   VT100 artwork keeps a DECscope white without the JS having to fight CSS. */
-.vt52-rig[data-dialect="vt100"] {
+/* Green is for the VT100's tube only. */
+body[data-phosphor="p1"] .vt52-rig[data-dialect="vt100"] {
     --vt52-bg: #0a1a0a;
     --vt52-fg: #2bd62b;
+    --vt52-glow: rgba(43, 214, 43, 0.35);
 }
 
-/* Reverse video swaps the LIVE pair, so it has to restate both phosphors:
-   a single rule would snap a green tube back to white the moment it flipped. */
+/* Amber: the later tube, on brown-black glass rather than a green one. */
+body[data-phosphor="p3"] .vt52-rig[data-dialect="vt100"] {
+    --vt52-bg: #1a1000;
+    --vt52-fg: #ffb000;
+    --vt52-glow: rgba(255, 176, 0, 0.40);
+}
+
+/* Reverse video swaps the LIVE pair, so it has to restate every phosphor:
+   a single rule would snap a green or amber tube back to white the moment it
+   flipped. */
 .vt52-rig.reverse-video:not([data-dialect="vt100"]) {
     --vt52-bg: #e0e0e0;
     --vt52-fg: #141914;
 }
 
-/* Reverse video on a green tube: the live pair swapped, same as the white one. */
-.vt52-rig[data-dialect="vt100"].reverse-video {
+body[data-phosphor="p4"] .vt52-rig[data-dialect="vt100"].reverse-video {
+    --vt52-bg: #e0e0e0;
+    --vt52-fg: #141914;
+}
+
+body[data-phosphor="p1"] .vt52-rig[data-dialect="vt100"].reverse-video {
     --vt52-bg: #2bd62b;
     --vt52-fg: #0a1a0a;
+}
+
+body[data-phosphor="p3"] .vt52-rig[data-dialect="vt100"].reverse-video {
+    --vt52-bg: #ffb000;
+    --vt52-fg: #1a1000;
 }
 
 /* The glass plate itself is part of the artwork, so it cannot be recoloured
@@ -3242,6 +3266,20 @@ body {
 
 .vt52-rig.reverse-video:not([data-dialect="vt100"]) .vt52-layer-GlassInverted {
     display: inline;
+}
+
+/* The plate itself follows the tube. Its fill is written INLINE in the artwork
+   (#141914 for the dark plate, #e0e0e0 for the inverted one), so only an
+   !important declaration can move it — but it MUST move: the canvas paints the
+   phosphor's own background, and a plate left at P4 grey framed a green or
+   amber screen with a visible rectangle, the canvas edge against the SVG
+   backdrop. Painting the plate from --vt52-bg makes the two the same colour by
+   construction in every phosphor, and in reverse video (where --vt52-bg is
+   already the swapped, light colour). The DECscope inherits the same pair, so
+   its plate is unchanged. */
+.vt52-rig .vt52-layer-Glass,
+.vt52-rig .vt52-layer-GlassInverted {
+    fill: var(--vt52-bg) !important;
 }
 
 .vt52-crt {
@@ -3429,8 +3467,12 @@ body {
     display: block;
     width: 100%;
     height: 100%;
-    /* Phosphor halo: a soft glow around the white (P4) writing. */
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.30));
+    /* NO filter here. The canvas paints an OPAQUE background, so a
+       drop-shadow() could never halo the glyphs — it drew a hard 2px rectangle
+       around the whole picture instead, which reads as a thin bright stripe
+       along the canvas edges (the same lesson the tube's own rule records: the
+       tube contributes the picture, not the trim). The phosphor halo lives on
+       the plain-text field, where text-shadow reaches the glyphs. */
     outline: none;
 }
 
@@ -3448,9 +3490,20 @@ body {
     height: 100%;
     z-index: 1;
     pointer-events: none;
+    /* The sheen is painted INSIDE the tube box (this layer covers the canvas,
+       so it can shade the picture), and that box ends at the Screen marker
+       while the glass plate carries on beyond it. A gradient still lit at that
+       border therefore left a thin bright stripe along the edges — the old
+       diagonal glare was brightest in the top-left corner, which is exactly
+       where the stripe showed. closest-side anchors the highlight so it fades
+       to ZERO before the box ends and the tube edge has nothing to step
+       against.
+
+       ONE highlight only: real glass shows one broad room reflection, and a
+       second dim spot in the opposite corner reads as a smudge rather than as
+       light. */
     background:
-        radial-gradient(ellipse at 50% -25%, rgba(255, 255, 255, 0.09), transparent 62%),
-        linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 42%);
+        radial-gradient(closest-side at 32% 22%, rgba(255, 255, 255, 0.10), transparent 100%);
 }
 
 /* Scanlines overlay (a genuine CRT texture in normal mode). */
@@ -3472,8 +3525,7 @@ body {
 
 .vt52-crt canvas {
     display: block;
-    /* Phosphor halo: a soft glow around the white (P4) writing. */
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.30));
+    /* No filter — see the previous .vt52-crt canvas rule. */
     outline: none;
 }
 
@@ -3496,6 +3548,8 @@ body {
     background: var(--vt52-bg);
     color: var(--vt52-fg);
     caret-color: var(--vt52-fg);
+    /* The phosphor halo, on the one surface that can have one: real text. */
+    text-shadow: 0 0 3px var(--vt52-glow);
     font-family: 'VT52', monospace;
     font-size: 20px;
     line-height: 20px;
@@ -3564,11 +3618,11 @@ body.crt-effects .vt52-crt canvas {
 
     0%,
     100% {
-        filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.12)) brightness(1);
+        filter: brightness(1);
     }
 
     50% {
-        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.08)) brightness(0.96);
+        filter: brightness(0.96);
     }
 }
 
@@ -3618,6 +3672,11 @@ body.crt-effects .vt52-crt::before {
             rgba(255, 255, 255, 0.12) 50%,
             rgba(255, 255, 255, 0.05) 55%,
             transparent 100%);
+    /* The band is painted inside the Screen marker while the glass carries on
+       beyond it: a band still lit at that border would show as a bright
+       vertical stripe along the tube's sides. Fade it out before the edges. */
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%);
     mix-blend-mode: screen;
     animation: crt-roll 6s linear infinite;
 }
@@ -4075,10 +4134,81 @@ html.yapdp-emulation-paused .vt52-textarea.vt52-bell-flash {
     cursor: pointer;
 }
 
-.config-radios label {
-    display: inline-flex;
+/* --- A one-row choice of radio inputs drawn as buttons ---------------------
+   CONFIG → Look & sound → "VT100 phosphor" (P4 white / P1 green / P3 amber).
+   The inputs stay REAL radios so the group keeps its semantics — one .checked,
+   arrow keys, one change event — and the code that reads them
+   (querySelectorAll('input[name="vt100Phosphor"]'), setRadioChecked,
+   setFieldDisabled) is untouched. Only the presentation changes: the native
+   control is clipped out of sight but keeps its tab stop, and the <span> inside
+   the label carries the shared action-button look. */
+.config-segmented {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+}
+
+.config-segmented label {
+    display: inline-flex;
+    margin: 0;
+}
+
+/* Clipped, NOT display:none: the input must stay focusable and settable. */
+.config-segmented input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.config-segmented label>span {
+    background: linear-gradient(180deg, #3a352a, #2a2722);
+    color: #b8b0a0;
+    border: 1px solid #5a554a;
+    border-radius: 4px;
+    padding: 5px 14px;
+    font-family: 'Courier Prime', arial, helvetica, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.config-segmented label>span:hover {
+    border-color: #8a7a5a;
+    color: #e0d8c8;
+}
+
+/* The chosen tube reads as a lit key, the same state the panel's buttons use. */
+.config-segmented input:checked+span {
+    background: linear-gradient(180deg, #7a6a40, #5a4a30);
+    border-color: #e0c070;
+    color: #fff3d0;
+}
+
+.config-segmented input:focus-visible+span {
+    outline: 2px solid #c8a860;
+    outline-offset: 1px;
+}
+
+/* setFieldDisabled() dims the whole field and disables the inputs; the button
+   must not pretend to be pressable behind that. */
+.config-segmented input:disabled+span {
+    cursor: not-allowed;
+}
+
+/* The hint is a sibling of the labels, so it claims the whole line and wraps
+   under the row instead of being squeezed against the last button. */
+.config-segmented .config-hint {
+    flex: 1 0 100%;
+    margin-top: 2px;
 }
 
 /* Two narrow selects that belong together (TT1 / TT2). The radios row is built

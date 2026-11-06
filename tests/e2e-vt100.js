@@ -296,6 +296,47 @@ async function main() {
             greenVt52 && greenVt52.tubeBg === "rgb(20, 25, 20)",
             greenVt52 && greenVt52.tubeBg);
 
+        // ---- 4b. amber (p3), the later VT220-era tube -----------------------
+        // The canvas, the glass around it AND the phosphor halo must all turn
+        // amber. The halo is the one that matters most: a hard-coded white
+        // drop-shadow makes a recoloured tube look pasted on.
+        await showPage(page, PAGES.console);
+        await page.evaluate(() => {
+            const r = document.querySelector('input[name="vt100Phosphor"][value="p3"]');
+            if (r) { r.checked = true; r.dispatchEvent(new Event("change", { bubbles: true })); }
+        });
+        await sleep(500);
+        const p3 = await readTerminals(page);
+        check("p3 turns the VT100 canvas amber",
+            p3[0] && p3[0].phosphor === "p3" && p3[0].fg.toUpperCase() === "#FFB000",
+            p3[0] && (p3[0].phosphor + "/" + p3[0].fg));
+        check("p3 does NOT turn the DECscope amber",
+            p3[1] && p3[1].phosphor === "p4" && p3[1].fg.toUpperCase() === "#E0E0E0",
+            p3[1] && (p3[1].phosphor + "/" + p3[1].fg));
+
+        const amberCons = await readRig(page, PAGES.console);
+        check("the VT100 tube's surround follows the amber phosphor",
+            amberCons && amberCons.tubeBg === "rgb(26, 16, 0)",
+            amberCons && amberCons.tubeBg);
+        // The halo is a phosphor-level colour (plain-text field, glow swatch) —
+        // the CANVAS must carry no filter at all: it paints an opaque
+        // background, so a drop-shadow there is a hard rectangle around the
+        // picture, i.e. a bright stripe along the canvas edges.
+        const amberGlow = await page.evaluate((id) => {
+            const rig = document.querySelector("#" + id + " .vt52-rig");
+            const canvas = rig ? rig.querySelector("canvas") : null;
+            return {
+                glow: getComputedStyle(rig).getPropertyValue("--vt52-glow").trim(),
+                filter: canvas ? getComputedStyle(canvas).filter : "(no canvas)"
+            };
+        }, PAGES.console);
+        check("the phosphor halo colour turns amber with the tube",
+            /255,\s*176,\s*0/.test(amberGlow.glow), amberGlow.glow);
+        // brightness() is legitimate (the CRT-effects flicker); a drop-shadow
+        // is not — it frames the opaque canvas with a hard rectangle.
+        check("the canvas carries no rectangle halo filter",
+            !/drop-shadow/.test(amberGlow.filter), amberGlow.filter);
+
         // ---- 5. reverse video is the DECscope's switch ---------------------
         await page.evaluate(() => window.applyVT52ReverseVideo(true));
         await sleep(500);

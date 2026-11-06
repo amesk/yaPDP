@@ -1373,16 +1373,20 @@
               </div>
             </div>
 
-            <!-- The VT100's tube. The VT52 gets no such choice: it was never
-                 offered in another phosphor (see Config.vt100Phosphor). -->
+            <!-- The VT100's tube (see Config.vt100Phosphor). The VT52 gets no
+                 such choice: it was never offered in another phosphor. The three
+                 picks stay RADIO inputs — one group, arrow keys, one .checked —
+                 and .config-segmented draws them as a row of buttons, so the
+                 form/JS contract (querySelectorAll, setRadioChecked) is kept. -->
             <div class="config-field" id="config-field-vt100Phosphor">
               <span class="config-label">VT100 phosphor</span>
-              <div class="config-control config-radios">
-                <label><input type="radio" name="vt100Phosphor" value="p4"> P4 white — the tube the VT100 shipped
-                  with</label>
-                <label><input type="radio" name="vt100Phosphor" value="p1"> P1 green — the 1980s tube</label>
-                <span class="config-hint">Only a VT100 takes this: the VT52 was never sold in another
-                  phosphor and stays white. Applied immediately.</span>
+              <div class="config-control config-segmented">
+                <label><input type="radio" name="vt100Phosphor" value="p4"><span>P4 white</span></label>
+                <label><input type="radio" name="vt100Phosphor" value="p1"><span>P1 green</span></label>
+                <label><input type="radio" name="vt100Phosphor" value="p3"><span>P3 amber</span></label>
+                <span class="config-hint">Only a VT100 takes this: the VT52 was never sold in another phosphor and
+                  stays white. Amber is a later tube — the VT220 era and the DEC terminals that followed it (a
+                  factory option from the VT300 series on); a 1978 VT100 never came in amber. Applied immediately.</span>
               </div>
             </div>
 
