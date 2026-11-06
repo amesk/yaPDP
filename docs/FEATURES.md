@@ -13,7 +13,7 @@ the UI pages.
 | **Model 33 ASR Teletype**       | A fully animated teletype drawn as an authentic Model 33 ASR — see [below](#model-33-asr-teletype).                                                                                                                                                                                                                                                                                      |
 | **Authentic LP11 Line Printer** | A faithful recreation of the DEC line printer that stood beside real PDP‑11s — beige/grey cabinet, fanfold paper, ON LINE lamp and TOP OF FORM / PAPER FEED controls, printing at a near‑authentic ~300 lines/min. The accumulated job can be handed to your real printer via the system dialog (**Print**) or exported as a **.txt** file — hardcopy, just as it left the machine room. |
 | **VT52 Terminal**               | A DECscope VT52 terminal (TT1:) rendered on canvas with its authentic white/grey (P4) phosphor on a black tube — an optional reverse-video mode swaps it to black text on white — for guest OSes that prefer video terminals. See [below](#vt52-terminal).                                                                                                                               |
-| **VT100 Terminal**              | The terminal the 1980s guests actually ran on: canvas tube with a P4 white or P1 green phosphor (the DECscope pins P4), the VT100 key click, reverse video only when the software asks for it with SGR 7, and the ANSI dialect built on the DECscope the hardware superseded. See [below](#vt100-terminal).                                                                              |
+| **VT100 Terminal**              | The terminal the 1980s guests actually ran on: canvas tube with a P4 white, P1 green or P3 amber phosphor (the DECscope pins P4; amber is the later VT220-era tube), the VT100 key click, reverse video only when the software asks for it with SGR 7, and the ANSI dialect built on the DECscope the hardware superseded. See [below](#vt100-terminal). |
 | **VT11 Display**                | An optional DEC VT11 vector-graphics display processor on its own green-phosphor CRT page (1024x768 logical resolution, auto-scaled to fit the window), enabled from the CONFIG page.                                                                                                                                                                                                    |
 | **Bootable Media & Quick Boot** | Boot Unix V5, BSD 2.9 &amp; 2.11, ULTRIX-11, RSX-11M (3.2 &amp; 4.6), RSTS/E (4B-17 through 10.1), RT-11 and XXDP diagnostics — fifteen bootable disk and tape images, plus the paper-tape reader for the self-building bootstrap and for programs like BASIC-11 and Lunar Lander.                                                                                                       |
 | **Persistent Disk Images**      | All disk and tape images are preloaded. Changes to disk contents persist in browser storage across sessions.                                                                                                                                                                                                                                                                             |
@@ -184,8 +184,9 @@ reimplemented.
 Its cabinet is its own drawing ([`assets/vt100.svg`](../assets/vt100.svg),
 authored from scratch rather than derived from the DECscope) and its tube is
 recolourable from the stylesheet. Two options belong to it alone: the
-**phosphor** (P4 white, the tube the VT100 was introduced on, or P1 green) and
-the **key click**. The DECscope pins its white phosphor through its dialect — it
+**phosphor** (P4 white, the tube the VT100 was introduced on; P1 green; or P3
+amber, the later VT220-era tube, a DEC factory option from the VT300 series on)
+and the **key click**. The DECscope pins its white phosphor through its dialect — it
 was never sold with another — and its keyboard was mechanical, so it has no
 click to make. Reverse video is the DECscope's switch only; a VT100 shows
 inverse text when a program asks for it with the SGR 7 attribute.
@@ -350,7 +351,7 @@ VT11 graphics display, the teletype print width (72/80 — a Model 33 ASR is at
 most 80 columns), the printer print width (72/80/100/132), the VT100 key-click
 sound, the historical VT52 reverse-video mode
 (black text on white, the DECscope's own switch — a VT100 has no such control),
-the VT100 tube's phosphor (P4 white or P1 green), a pure-CSS CRT simulation
+the VT100 tube's phosphor (P4 white, P1 green or P3 amber), a pure-CSS CRT simulation
 (brightness flicker, scanline
 shimmer and a vertical-hold roll band), an optional VT52 **text mode** (plain
 text field with native Windows Clipboard — Ctrl+C/Ctrl+V/right-click paste — for
