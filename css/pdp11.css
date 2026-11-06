@@ -3199,28 +3199,24 @@ html.yapdp-emulation-paused .console-pause {
    the dialect says WHO may take it: the VT52 was never offered another
    phosphor, so every phosphor rule below is scoped to the VT100 rig and a
    DECscope stays white without the JS having to fight CSS.
-   --vt52-glow is the phosphor halo. It is spent on the plain-text field's
-   text-shadow, the one surface where a halo reaches the glyphs; the canvas
-   paints an opaque background and must never carry a drop-shadow (it frames
-   the whole picture instead). */
+   There is deliberately NO phosphor halo: a shadow around a thin glyph reads
+   as a second contour of the letter rather than as bloom, and on the canvas it
+   can only outline the whole opaque picture. The phosphor shows in the colour. */
 body {
     --vt52-bg: #141914;
     --vt52-fg: #e0e0e0;
-    --vt52-glow: rgba(224, 224, 224, 0.30);
 }
 
 /* Green is for the VT100's tube only. */
 body[data-phosphor="p1"] .vt52-rig[data-dialect="vt100"] {
     --vt52-bg: #0a1a0a;
     --vt52-fg: #2bd62b;
-    --vt52-glow: rgba(43, 214, 43, 0.35);
 }
 
 /* Amber: the later tube, on brown-black glass rather than a green one. */
 body[data-phosphor="p3"] .vt52-rig[data-dialect="vt100"] {
     --vt52-bg: #1a1000;
     --vt52-fg: #ffb000;
-    --vt52-glow: rgba(255, 176, 0, 0.40);
 }
 
 /* Reverse video swaps the LIVE pair, so it has to restate every phosphor:
@@ -3471,8 +3467,10 @@ body[data-phosphor="p3"] .vt52-rig[data-dialect="vt100"].reverse-video {
        drop-shadow() could never halo the glyphs — it drew a hard 2px rectangle
        around the whole picture instead, which reads as a thin bright stripe
        along the canvas edges (the same lesson the tube's own rule records: the
-       tube contributes the picture, not the trim). The phosphor halo lives on
-       the plain-text field, where text-shadow reaches the glyphs. */
+       tube contributes the picture, not the trim). No glyph halo either: a
+       shadow around a thin glyph reads as a second contour of the letter, so
+       the tube shows the phosphor in colour only (see the note in
+       src/terminal-core.js where the phosphor table lives). */
     outline: none;
 }
 
@@ -3548,8 +3546,8 @@ body[data-phosphor="p3"] .vt52-rig[data-dialect="vt100"].reverse-video {
     background: var(--vt52-bg);
     color: var(--vt52-fg);
     caret-color: var(--vt52-fg);
-    /* The phosphor halo, on the one surface that can have one: real text. */
-    text-shadow: 0 0 3px var(--vt52-glow);
+    /* No glyph halo here either: the canvas draws none, and the two rendering
+       modes must look like the same terminal. */
     font-family: 'VT52', monospace;
     font-size: 20px;
     line-height: 20px;
