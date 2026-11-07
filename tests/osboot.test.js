@@ -153,6 +153,19 @@ function run() {
             "BSD 2.11 should use a VT100 console");
         assert.strictEqual(OSBoot.scenarioFor("rp1").hardware.forceUpperCaseOut, null,
             "BSD 2.11 must not force upper-case output");
+        // ULTRIX-11's stock /etc/ttys opens getty on two extra DL11s; without
+        // those cards the kernel takes a Unibus timeout and panics. The profile
+        // uses the Config field names, one entry per terminal.
+        const rp0 = OSBoot.scenarioFor("rp0");
+        assert.strictEqual(rp0.hardware.userTerminals, 2,
+            "ULTRIX-11 needs both extra DL11 terminals for its getty lines");
+        assert.deepStrictEqual(plain(rp0.hardware.userTerminalTypes),
+            ["vt100", "vt100"],
+            "the two extra terminals should be specified per terminal");
+        assert.deepStrictEqual(plain(rp0.steps),
+            [{ send: "", waitFor: "#" }, { wait: 1500 }, { ctrlD: true },
+                { send: "root", waitFor: "login:" }],
+            "ULTRIX-11 must wait for the single-user prompt before Ctrl-D");
         assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.console, "teletype",
             "XXDP should declare a teletype console explicitly");
         assert.strictEqual(OSBoot.scenarioFor("rk3").hardware.printer, null,
@@ -293,6 +306,33 @@ function run() {
         assert.deepStrictEqual(plain(QuickBoot.mergeHardware(base,
             { console: null, printer: null, vt11: null })),
             base, "null profile keys should leave the config unchanged");
+
+        // userTerminals/userTerminalTypes use the Config names verbatim: a
+        // scenario that needs the extra DL11 cards declares the count and the
+        // dialect of each terminal.
+        const withTerminals = { consoleType: "vt52", userTerminals: 0,
+            userTerminalTypes: ["vt52", "vt52"], printer: false, vt11: false };
+        assert.deepStrictEqual(plain(QuickBoot.mergeHardware(withTerminals,
+            { console: "vt100", userTerminals: 2,
+              userTerminalTypes: ["vt100", "vt100"] })),
+            { consoleType: "vt100", userTerminals: 2,
+              userTerminalTypes: ["vt100", "vt100"], printer: false, vt11: false },
+            "mergeHardware should carry the terminal count and dialects");
+        assert.deepStrictEqual(plain(QuickBoot.mergeHardware(withTerminals,
+            { userTerminals: null, userTerminalTypes: null })),
+            withTerminals,
+            "null terminal keys should leave the config unchanged");
+        assert.strictEqual(
+            QuickBoot.hardwareDirty(withTerminals, { userTerminals: 2 }), true,
+            "a differing terminal count should be dirty");
+        assert.strictEqual(
+            QuickBoot.hardwareDirty(withTerminals,
+                { userTerminals: 0, userTerminalTypes: ["vt52", "vt52"] }), false,
+            "matching user terminals should not be dirty");
+        assert.strictEqual(
+            QuickBoot.hardwareDirty(withTerminals,
+                { userTerminals: 2, userTerminalTypes: ["vt52", "vt52"] }), true,
+            "a differing terminal dialect should be dirty");
 
         // forceUpperCaseOut is a LIVE option: it is merged into the config but
         // must never mark the layout as dirty (a reload would be pointless —

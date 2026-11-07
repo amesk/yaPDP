@@ -18,7 +18,7 @@ exactly what can boot here.
 | RL1{.disk}  | RSX-11M v3.2 | `BOOT RL1` | login `1,2` password `SYSTEM` |  |
 | RL2{.disk}  | RSTS/E v7.0 | `BOOT RL2` | wizard answers START at the Option: prompt |  |
 | RL3{.disk}  | XXDP (extended) | `BOOT RL3` | extended diagnostics library |  |
-| RP0{.disk}  | ULTRIX-11 V3.1 | `boot rp0` | boots to a single-user shell (multi-user is a known emulator bug) |  |
+| RP0{.disk}  | ULTRIX-11 V3.1 | `boot rp0` | single-user `#`; CTRL/D enters multi-user (`login:`) — the scenario configures the two extra user terminals the image getty lines need |  |
 | RP1{.disk}  | BSD 2.11 | `boot rp1` | autoboots to multiuser, login root (no password) | root (no password) |
 | RP2{.disk}  | RSTS/E v9.6 | `BOOT RP2` | boots to the date prompt; then `11,70` / PDP | 11,70 (PDP) |
 | RP3{.disk}  | RSX-11M v4.6 | `BOOT RP3` | auto-logs `1,2` `SYSTEM` |  |

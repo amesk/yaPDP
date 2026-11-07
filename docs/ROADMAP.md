@@ -116,8 +116,9 @@ linked docs/issues. Known emulator bugs are tracked separately in
   the emulator and wait for their verdict — the era's own test equipment
   certifying the emulation, as an e2e extension. Bonus fact for the Habr
   series: XXDP's name comes from the DECsystem-10/20 world.
-- **ULTRIX-11 multi-user panic** — root-cause and fix (MMU/user-mode
-  candidate); tracked as [#15](https://github.com/amesk/yaPDP/issues/15),
+- **ULTRIX-11 multi-user panic** — root cause found: the image's `getty`
+  lines need two extra DL11 terminals, now declared by the quick-boot
+  scenario; tracked as [#15](https://github.com/amesk/yaPDP/issues/15),
   details in known-issues.md.
 - **e2e-teletype-tape "HERE IS" LOCAL flake** — timing-sensitive output
   check, occasional spurious failure; tracked as
