@@ -28,6 +28,7 @@ is the single exception, so the operator cannot get stuck in a mode they cannot
 leave.
 
 **Reproduction.**
+
 1. `node tools/serve.js` (port 1170), open `pdp11.html?boot=rk1`.
 2. While the "Autoloading in progress…" toast is up, try to type, click a
    navigation tab or flip a front-panel switch — nothing responds.
@@ -66,7 +67,8 @@ dump). A ring tracer (intercept console.log → a 300-entry ring in the VM,
 
 **GitHub issue:** [#15](https://github.com/amesk/yaPDP/issues/15)
 
-**Status:** open (not a regression — reproduces on v0.1.0-alpha2 too).
+**Status:** root-caused and fixed for the quick-boot scenario; booting the
+image by hand still needs two user terminals (see "Fix / workaround" below).
 
 **Symptom.** ULTRIX-11 V3.1 boots to single-user (`#`), but Ctrl-D
 (transition to multi-user) panics the kernel:
@@ -87,61 +89,64 @@ panic: trap
 ```
 
 **Reproduction.**
-1. `node tools/serve.js` (port 1170), open `pdp11.html?bridge=1`.
+
+1. `node tools/serve.js` (port 1170), open `pdp11.html?bridge=1` with **no**
+   user terminals configured (CONFIG: 0 terminals).
 2. Boot → `boot rp0` → wait for single-user `#`.
 3. Send Ctrl-D (`dlReceiveQueue(0, [4])`).
 
-Or the e2e scenario: `node /tmp/ctrld-probe.js rp0` (prototype script).
+**Root cause.** Not the MMU and not user mode. Entering multi-user runs the
+`getty` lines from the image's `/etc/ttys`, which open **two extra DL11
+consoles** — 0o176500 (vector 0o310) and 0o176510 (vector 0o320). The emulator
+registers those cards only when `Config.userTerminals` is 1 or 2
+(`src/iopage.js`), so with the default 0 the CSR read at physical 0o17776500 /
+0o17776510 lands in an empty I/O slot; `iopage.access()` raises a
+Unibus-timeout trap (vector 4, error 0x10) and the kernel's unexpected-trap
+path reports `trap type 0` and panics. The reported `pc = 136250` is the kernel
+console routine: the trapping instruction starts at 0o136244
+(`BIS @#addr,(R4)`, `R4 = 0o176500`) and the saved PC is the value after its
+operand fetch. The MMU state at the trap was consistent (`MMR3 = 0o65`, kernel
+PAR/PDR as expected, `ka6 = 7574`), so translation itself is fine.
 
-**What was found.**
-- On v0.1.0-alpha2 the panic is identical (same `pc=136250`, `trap type 0`) —
-  the bug is in the common part of the emulator (pdp11.js / MMU / user-mode),
-  not in the iopage devices and not in the refactor.
-- The kernel manages to mount /usr and /user1 and writes the error log —
-  it panics when returning to user mode / starting init.
-- The same "class" of problems (multi-user / user-mode) was seen on BSD 2.9
-  (input after `login:`), but there the cause was in the guest (getty
-  TIOCFLUSH) — here, judging by `panic: trap`, the bug is in the emulator.
+**Evidence.**
 
-**Search candidates.**
-- MMU translation in user mode (PAR/PDR user sets) when switching
-  kernel→user.
-- Interrupt/trap handling in user mode (PSW mode bits, stacks).
-- Possibly related to `mapVirtualToPhysical` / `CPU.mmuMode` when
-  switching process context.
+- A trap wrapper around `trap()` logged exactly one CPU trap:
+  `vector 4`, `errorMask 0x10`, `pc 0o136250`, `MMR2 0o136244`, kernel PSW.
+- A wrapper around `iopage.access()` logged exactly one unmapped I/O access:
+  `pa 0o17776500`, read, `pc 0o136250`, `R4 0o176500`.
+- With `userTerminals = 1` the fatal access moves to 0o17776510 (TTY2); with
+  `userTerminals = 2` the machine reaches `ULTRIX-11 System V3.1 (vixen)` and
+  `login:` — no panic.
+
+**Fix / workaround.**
+
+- The rp0 quick-boot scenario declares `userTerminals: 2` and
+  `userTerminalTypes: ["vt100", "vt100"]`; QuickBoot applies both Config
+  fields as hardware keys (`mergeHardware`/`hardwareDirty`), so the two extra
+  cards are present before the boot and Ctrl-D reaches `login:`.
+- Booting rp0 by hand: set **2** user terminals on the CONFIG page first, or
+  disable tty1/tty2 in `/etc/ttys` while in single-user.
 
 **Tools:** `window.__tracePC` (instruction-trace windows),
 `DEBUG_MMU`/`DEBUG_TRAP` (headless), dumps of `CPU.mmuPAR/PDR`.
 
 ---
 
-## e2e-osboot: the ULTRIX-11 (rp0) and RSX-11M v4.6 (rp3) guests are disabled
+## e2e-osboot: the RSX-11M v4.6 (rp3) guest is disabled
 
 **Number:** none — documented here for discoverability.
 
-**Status:** open — the scenarios are commented out in the test until the guests pass.
+**Status:** open — RSX-11M v4.6 stays commented out until it passes.
 
-**Symptom.** [`tests/e2e-osboot.js`](../tests/e2e-osboot.js) declares ten guest
-OSes, but two of them — ULTRIX-11 V3.1 (rp0) and RSX-11M v4.6 (rp3) — are
-COMMENTED OUT, so the suite boots eight. Neither guest reaches its ready marker
-on the current build, which is why the CI / `npm run validate` run would go red
-if they were left in.
+**Symptom.** [`tests/e2e-osboot.js`](../tests/e2e-osboot.js) declares nine guest
+OSes and boots nine; only RSX-11M v4.6 (rp3) is still COMMENTED OUT because it
+does not reach "PLEASE ENTER TIME AND DATE" within the scenario budget (cause
+not yet isolated).
 
-**Why they are off.**
-- ULTRIX-11 (rp0): boots to single-user `#`, but the Ctrl-D to multi-user panics
-  the kernel (`panic: trap`) — see the entry above and
-  [#15](https://github.com/amesk/yaPDP/issues/15) — so the wizard's auto-login
-  step cannot complete.
-- RSX-11M v4.6 (rp3): does not reach "PLEASE ENTER TIME AND DATE" within the
-  scenario budget (cause not yet isolated).
-
-**Reproduction.** Delete the `/* */` markers around one entry in `GUESTS` and
-run `node tests/e2e-osboot.js` — the guest fails with
-"ready marker not seen within …s".
-
-**Note.** The entries are kept commented in place (not deleted) so the intent,
-the console type and the exact config survive; uncomment them once the guests
-pass.
+**Note.** ULTRIX-11 (rp0) is enabled again: its Ctrl-D transition to multi-user
+works once the two extra DL11 terminals are configured — see the entry above.
+The rp3 entry is kept commented in place (not deleted) so the intent, the
+console type and the exact config survive; uncomment it once it passes.
 
 ---
 
@@ -176,6 +181,7 @@ console, but on a VT100 operator console the large digits break up into stray
 asterisks and control-character frays instead of a readable clock.
 
 **Reproduction.**
+
 1. `node tools/serve.js` (port 1170), open `pdp11.html?boot=rk1`.
 2. In CONFIG set the operator console to VT100, boot RT-11 and run `R TIME52`.
 3. Repeat with the console set to VT52 — the clock draws.

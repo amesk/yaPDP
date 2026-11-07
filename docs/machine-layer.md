@@ -214,8 +214,9 @@ that gate is what lets the legacy monolith retire with confidence.
 
 ## Known limitations
 
-- ULTRIX‑11 V3.1 boots to single-user but panics entering multi-user — an
-  open emulator bug (see [known-issues.md](known-issues.md)), unrelated to
-  the stack split (reproduced on the legacy stack and on v0.1.0-alpha2).
+- ULTRIX‑11 V3.1 needs two extra DL11 terminals for its multi-user `getty`
+  lines; the quick-boot scenario now declares them, so Ctrl-D reaches
+  `login:` (see [known-issues.md](known-issues.md)). Booting the image by
+  hand needs the same two user terminals configured.
 - The legacy `?core=0` stack remains for comparison/rollback; retiring it is
   a deliberate follow-up once the core stack has soaked.

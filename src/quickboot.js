@@ -159,6 +159,14 @@ var QuickBoot = (function () {
         if (profile.console) out.consoleType = profile.console;
         if (typeof profile.printer === "boolean") out.printer = profile.printer;
         if (typeof profile.vt11 === "boolean") out.vt11 = profile.vt11;
+        // The same names Config uses: a count plus per-terminal dialects
+        // (ULTRIX-11's getty lines need the two extra DL11 cards present).
+        if (typeof profile.userTerminals === "number") {
+            out.userTerminals = profile.userTerminals;
+        }
+        if (Array.isArray(profile.userTerminalTypes)) {
+            out.userTerminalTypes = profile.userTerminalTypes.slice();
+        }
         if (typeof profile.forceUpperCaseOut === "boolean") {
             out.forceUpperCaseOut = profile.forceUpperCaseOut;
         }
@@ -177,6 +185,16 @@ var QuickBoot = (function () {
             cfg.printer !== profile.printer) return true;
         if (typeof profile.vt11 === "boolean" &&
             cfg.vt11 !== profile.vt11) return true;
+        // Extra DL11 terminals are registered at load time too, so both the
+        // count and the per-terminal dialects are layout keys.
+        if (typeof profile.userTerminals === "number" &&
+            (Number(cfg.userTerminals) || 0) !== profile.userTerminals) return true;
+        if (Array.isArray(profile.userTerminalTypes)) {
+            var installed = cfg.userTerminalTypes || [];
+            for (var i = 0; i < profile.userTerminalTypes.length; i++) {
+                if (installed[i] !== profile.userTerminalTypes[i]) return true;
+            }
+        }
         return false;
     }
 

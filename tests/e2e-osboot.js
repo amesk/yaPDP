@@ -11,7 +11,7 @@
  *   rk2    RSTS V06C — "START" at the Option: prompt, "You currently have:"
  *   rk3    XXDP      — "ENTER DATE" after the DIAG monitor reports BOOTED
  *   rl0    BSD 2.9   — wizard drives single-user "#" then login: + root shell
- *   rp0    ULTRIX-11 — kernel boot to the single-user "#" prompt
+ *   rp0    ULTRIX-11 — Ctrl-D into multi-user ("login:"), needs both user terminals
  *   rp1    BSD 2.11  — auto-login typed by the wizard, shell "#" after "login:"
  *   rp2    RSTS/E 9.6— "Today's date?" (also anchors the UDA50 browser crash fix)
  *   rp3    RSX-11M 4.6 — autostart runs startup, date/time prompt (1912K mapped)
@@ -81,14 +81,13 @@ const GUESTS = [
         cfg: { consoleType: "teletype", printer: true, vt11: false },
         readyWhen: "login:", timeout: 120000
     },
-/*
     { device: "rp0",   name: "ULTRIX-11 V3.1",
-        // Known emulator bug: Ctrl-D from single-user panics the kernel
-        // ('panic: trap' during multi-user init). Coverage target here is
-        // the kernel booting to the single-user "#" prompt; no login: check.
-        cfg: { consoleType: "vt100", printer: false, vt11: false },
-        readyWhen: "#", timeout: 120000 },
-*/
+        // Multi-user init opens getty on two extra DL11s; the scenario declares
+        // userTerminals: 2, and the seed must match or the wizard reloads the
+        // page mid-run. The wizard's own Ctrl-D step completes at "login:".
+        cfg: { consoleType: "vt100", userTerminals: 2,
+            userTerminalTypes: ["vt100", "vt100"], printer: false, vt11: false },
+        readyWhen: "login:", timeout: 180000 },
     // BSD 2.11 runs on a VT100 console now (1980-81, two years after the VT100).
     { device: "rp1",   name: "BSD 2.11",
         cfg: { consoleType: "vt100", printer: true, vt11: false },
