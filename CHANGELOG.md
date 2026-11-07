@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inactivity instead of firing before the operator touches the machine.
   (`src/idle-manager.js`, `tests/idle-manager.test.js`)
 
+- **ULTRIX-11 reaches multi-user.** The quick-boot scenario declares the two
+  extra DL11 terminals (`userTerminals: 2` with `userTerminalTypes:
+  ["vt100", "vt100"]`) and QuickBoot applies them as part of the hardware
+  profile, so the image's `getty` lines find their cards instead of trapping the
+  kernel (`trap type 0`, `panic: trap`). (`src/osboot.js`, `src/quickboot.js`,
+  `tests/osboot.test.js`, `tests/e2e-osboot.js`)
+
 ## [0.4.0] - 2026-10-30
 
 ### Added
