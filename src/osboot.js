@@ -187,16 +187,29 @@ var OSBoot = (function () {
                 forceUpperCaseOut: true } },
         // ULTRIX-11 V3.1 — 1984, so a VT100 (1978); six years separate them and
         // a teletype console would be the anachronism. The kernel boots into
-        // single-user ("#") on its own. NOTE: Ctrl-D from here panics the kernel
-        // ('panic: trap' during multi-user init, pc=136250) — an emulator bug,
-        // not a scenario bug; until fixed, the scenario stops at the single-user
-        // prompt (autoLogin below sends "root" into the shell, which the e2e test
-        // tolerates). A CRT prints both cases, so force-upper (a Model 33
-        // property) is left alone.
+        // single-user ("#") on its own. A CRT prints both cases, so force-upper
+        // (a Model 33 property) is left alone.
+        //
+        // userTerminals/userTerminalTypes mirror the Config fields of the same
+        // names: the stock image's /etc/ttys starts getty on two extra DL11s
+        // (0o176500 vector 0o310 and 0o176510 vector 0o320). With those cards
+        // absent the kernel takes a Unibus-timeout trap (vector 4) on the CSR
+        // read and dies with "trap type 0 / panic: trap" — see known-issues.md.
         { device: "rp0", label: "ULTRIX-11 V3.1", boot: "boot rp0",
-            steps: [{ ctrlD: true }, { send: "root", waitFor: "login:" }],
+            // Boot to the single-user "#" first: a Ctrl-D typed while the
+            // kernel is still starting is flushed by the tty open, so the
+            // shell would read "root" as a command instead of exiting. The
+            // delay is a separate step because runSteps() treats a step with
+            // `wait` as a pure delay (it never waits for `waitFor`).
+            steps: [
+                { send: "", waitFor: "#" },
+                { wait: 1500 },
+                { ctrlD: true },
+                { send: "root", waitFor: "login:" }
+            ],
             autoLogin: true,
             hardware: { console: "vt100", printer: null, vt11: false,
+                userTerminals: 2, userTerminalTypes: ["vt100", "vt100"],
                 forceUpperCaseOut: null } },
         // BSD 2.11 — 1980-81, so it runs on a VT100 (1978), not a DECscope. It
         // is the ONE guest that does not detect a teletype console (its loader

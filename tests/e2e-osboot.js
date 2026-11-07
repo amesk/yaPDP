@@ -11,7 +11,7 @@
  *   rk2    RSTS V06C — "START" at the Option: prompt, "You currently have:"
  *   rk3    XXDP      — "ENTER DATE" after the DIAG monitor reports BOOTED
  *   rl0    BSD 2.9   — wizard drives single-user "#" then login: + root shell
- *   rp0    ULTRIX-11 — kernel boot to the single-user "#" prompt
+ *   rp0    ULTRIX-11 — Ctrl-D into multi-user ("login:"), needs both user terminals
  *   rp1    BSD 2.11  — auto-login typed by the wizard, shell "#" after "login:"
  *   rp2    RSTS/E 9.6— "Today's date?" (also anchors the UDA50 browser crash fix)
  *   rp3    RSX-11M 4.6 — autostart runs startup, date/time prompt (1912K mapped)
@@ -29,9 +29,11 @@
  * Stack selection: the refactored machine layer (core classes + devices,
  * browser-machine.js) is the DEFAULT since the refactor; the legacy
  * monolithic iopage.js runs only with ?core=0. Set E2E_LEGACY=1 to run
- * the whole guest matrix against the legacy stack — together with the
- * default run this is the stack-parity gate (both stacks must boot every
- * guest). E2E_LEGACY=1 replaced the old tools/_check-basic.js parity tool.
+ * the guest matrix against the legacy stack — together with the default
+ * run this is the stack-parity gate. A guest marked `coreOnly` (currently
+ * ULTRIX-11, whose kernel load stalls on the legacy stack) is covered on
+ * the default stack only. E2E_LEGACY=1 replaced the old
+ * tools/_check-basic.js parity tool.
  */
 "use strict";
 
@@ -81,14 +83,19 @@ const GUESTS = [
         cfg: { consoleType: "teletype", printer: true, vt11: false },
         readyWhen: "login:", timeout: 120000
     },
-/*
     { device: "rp0",   name: "ULTRIX-11 V3.1",
-        // Known emulator bug: Ctrl-D from single-user panics the kernel
-        // ('panic: trap' during multi-user init). Coverage target here is
-        // the kernel booting to the single-user "#" prompt; no login: check.
-        cfg: { consoleType: "vt100", printer: false, vt11: false },
-        readyWhen: "#", timeout: 120000 },
-*/
+        // Multi-user init opens getty on two extra DL11s; the scenario declares
+        // userTerminals: 2, and the seed must match or the wizard reloads the
+        // page mid-run. The wizard's own Ctrl-D step completes at "login:".
+        //
+        // coreOnly: the legacy ?core=0 stack never finishes loading the ULTRIX
+        // kernel in the browser — the boot program spins polling the RP11 with
+        // no completion, even with both terminals configured. That is a
+        // separate, pre-existing legacy limitation; the default (core) stack
+        // is the one the product ships, so the guest is covered there.
+        cfg: { consoleType: "vt100", userTerminals: 2,
+            userTerminalTypes: ["vt100", "vt100"], printer: false, vt11: false },
+        coreOnly: true, readyWhen: "login:", timeout: 180000 },
     // BSD 2.11 runs on a VT100 console now (1980-81, two years after the VT100).
     { device: "rp1",   name: "BSD 2.11",
         cfg: { consoleType: "vt100", printer: true, vt11: false },
@@ -332,8 +339,11 @@ async function bootGuest(browser, guest) {
             "--disable-dev-shm-usage"],
     });
     console.log(`e2e-osboot: stack = ${STACK_LABEL}`);
+    // A guest marked coreOnly is covered on the default stack only: the legacy
+    // ?core=0 comparison stack has its own (pre-existing) limitations.
+    const runGuests = GUESTS.filter((g) => !(legacyMode && g.coreOnly));
     try {
-        for (const guest of GUESTS) {
+        for (const guest of runGuests) {
             await bootGuest(browser, guest);
         }
     } finally {
@@ -341,8 +351,8 @@ async function bootGuest(browser, guest) {
         if (server) server.kill();
     }
 
-    const passed = GUESTS.length - failures;
-    console.log(`\n${passed}/${GUESTS.length} guest OS(es) booted`);
+    const passed = runGuests.length - failures;
+    console.log(`\n${passed}/${runGuests.length} guest OS(es) booted`);
     if (failures) {
         console.error(`e2e-osboot: ${failures} failure(s)`);
         process.exit(1);

@@ -80,9 +80,9 @@ who answers.
 A card is a `Device` subclass implementing any of:
 
 | Method | Role |
-|--------|------|
+| -------- | ------ |
 | `access(pa, data, byteFlag)` | Read (`data < 0`) / write (`data >= 0`) a register. Returns the register value on read. `pa` is the full I/O-page address; mask the low bits for the register offset |
-| `poll(takeInterrupt)` | Interrupt arbitration. `poll(false)` returns `priority << 5 | pending`; `poll(true)` returns the vector when the CPU takes the interrupt |
+| `poll(takeInterrupt)` | Interrupt arbitration. `poll(false)` returns `priority << 5 | pending`;`poll(true)` returns the vector when the CPU takes the interrupt |
 | `reset()` | Bus reset / INIT — restore the card to power-on state |
 | `snapshot()` / `restore(state)` | L2 machine-state capture/restore (registers only — see *snapshots* below) |
 | `powerOn()` / `powerOff()` | Machine power hooks (optional) |
@@ -121,7 +121,7 @@ The storage split has two layers:
    layout as legacy iopage) and serves the cards:
 
 | Op | Meaning |
-|----|---------|
+| ---- | --------- |
 | `OP_READ` / `OP_WRITE` | Sector read/write for disk controllers |
 | `OP_CHECK` | Status probe |
 | `OP_ACCUM` | Tape controllers (accumulate buffer, e.g. TM11) |
@@ -198,7 +198,7 @@ state.
 ## Debug aids
 
 | Env / knob | What it logs |
-|------------|--------------|
+| ------------ | -------------- |
 | `DEBUG_BUS=1/2` | NXM accesses / every I/O write (bus.js) |
 | `DEBUG_RP`, `DEBUG_MMU`, `DEBUG_UDA` | RP11 register ops, MMU map writes, UDA50 activity |
 | `opts.trapTrace` | Headless trap depth/events |
@@ -209,13 +209,18 @@ state.
 `tests/e2e-osboot.js` boots ten guests (Unix V5, RT‑11 ×2, RSX‑11M 3.2/4.6,
 RSTS V06C/V7.0/E 9.6/10.1, XXDP, BSD 2.9/2.11, BASIC‑11) through the wizard
 path and asserts each ready marker. The default run exercises the core
-stack; `E2E_LEGACY=1` runs the same matrix on `?core=0`. Both must pass —
-that gate is what lets the legacy monolith retire with confidence.
+stack; `E2E_LEGACY=1` runs the same matrix on `?core=0`, except guests marked
+`coreOnly` — currently ULTRIX‑11, whose legacy kernel load does not complete.
+Both runs must pass — that gate is what lets the legacy monolith retire with
+confidence.
 
 ## Known limitations
 
-- ULTRIX‑11 V3.1 boots to single-user but panics entering multi-user — an
-  open emulator bug (see [known-issues.md](known-issues.md)), unrelated to
-  the stack split (reproduced on the legacy stack and on v0.1.0-alpha2).
+- ULTRIX‑11 V3.1 needs two extra DL11 terminals for its multi-user `getty`
+  lines; the quick-boot scenario now declares them, so Ctrl-D reaches
+  `login:` (see [known-issues.md](known-issues.md)). Booting the image by
+  hand needs the same two user terminals configured. The legacy `?core=0`
+  stack still stalls loading this kernel; the guest is covered on the core
+  stack only.
 - The legacy `?core=0` stack remains for comparison/rollback; retiring it is
   a deliberate follow-up once the core stack has soaked.
