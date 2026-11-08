@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The idle hand-off announces itself.** With `?idle-timeout=` set, the page
+  warns "Inactivity detected, activating idle mode..." five seconds before the
+  hand-off; any activity withdraws the warning and restarts the idle window.
+  (`src/idle-manager.js`, `src/toasts.js`, `tests/idle-manager.test.js`,
+  `tests/toasts.test.js`)
+
+### Fixed
+
+- **The idle hand-off waits the configured time.** `?idle-timeout=` is read as
+  seconds, so a page hands over to `?idle-redirect=` after that much real
+  inactivity instead of firing before the operator touches the machine.
+  (`src/idle-manager.js`, `tests/idle-manager.test.js`)
+
 ## [0.4.0] - 2026-10-30
 
 ### Added

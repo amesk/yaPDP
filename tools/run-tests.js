@@ -99,6 +99,8 @@ const ORDER = [
     "share-busy.test.js",
     "state-manifest.test.js",
     "maintenance-reset.test.js",
+    "idle-manager.test.js",
+    "version-loader.test.js",
     "validate-suites.test.js",
 ];
 
