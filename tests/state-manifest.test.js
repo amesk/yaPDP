@@ -28,6 +28,8 @@ const ROOT = path.join(__dirname, "..");
 const TOOL = path.join(ROOT, "tools", "state-manifest.js");
 const { StateFormat } = require(path.join(ROOT, "src", "state-format.js"));
 const { StateFrame } = require(path.join(ROOT, "src", "state-frame.js"));
+const { ImageFingerprint } = require(path.join(ROOT, "src", "imagefingerprint.js"));
+const StateIO = require(path.join(ROOT, "tools", "state-io.js"));
 
 const MANIFEST = {
     schemaVersion: StateFormat.SCHEMA_VERSION,
@@ -121,6 +123,56 @@ function run() {
         assert.strictEqual(parsed.manifest.stepsMessage, "from the CLI");
         assert.deepStrictEqual(Array.from(parsed.memoryWords),
             Array.from(sampleMemory()), "memory must survive the edit");
+
+        // ---- replace keeps the embedded disk of a SELF-CONTAINED state ----
+        // Regression (2026-11-13): a manifest edit re-packed with the memory
+        // alone, so the embedded image blob was dropped while `embeddedImages`
+        // kept naming it. The file looked valid and refused to restore over a
+        // fingerprint mismatch, because the page fell back to fetching the
+        // published image of the same name.
+        const disk = new Uint8Array(4096).fill(7);
+        const diskSha = ImageFingerprint.ofBytes(disk);
+        const selfContained = StateFormat.pack(Object.assign({}, MANIFEST, {
+            mounted: ["rk1.dsk"],
+            imageFingerprints: { "rk1.dsk": diskSha },
+            embeddedImages: { "rk1.dsk": "resource-0" },
+        }), sampleMemory(), [{ id: "resource-0",
+            mediaType: "application/octet-stream", bytes: disk }]);
+        const selfFile = path.join(tmp, "self-contained.state.zst");
+        fs.writeFileSync(selfFile, StateFrame.wrap(Buffer.from(selfContained),
+            StateIO.codecs).bytes);
+        const selfEdited = Object.assign({}, MANIFEST, {
+            stepsMessage: "self-contained, edited",
+            mounted: ["rk1.dsk"],
+            imageFingerprints: { "rk1.dsk": diskSha },
+            embeddedImages: { "rk1.dsk": "resource-0" },
+        });
+        const selfJson = path.join(tmp, "self.json");
+        fs.writeFileSync(selfJson, JSON.stringify(selfEdited, null, 2));
+        const selfOut = path.join(tmp, "self-out.state.zst");
+        const selfRep = cli(["replace", selfFile, selfJson, selfOut]);
+        assert.strictEqual(selfRep.status, 0,
+            "replace must accept a self-contained state: " + selfRep.stderr);
+        const selfParsed = StateFormat.unpack(StateIO.readBytes(selfOut).container);
+        assert.ok(selfParsed, "the rewritten self-contained state unpacks");
+        assert.ok(selfParsed.blobs["resource-0"],
+            "the embedded disk must survive a manifest edit");
+        assert.deepStrictEqual(Array.from(selfParsed.blobs["resource-0"]),
+            Array.from(disk), "the embedded disk bytes must be unchanged");
+
+        // ---- a manifest naming a blob the container lacks is refused ------
+        // Writing it would produce the same unrestorable file by hand.
+        const danglingJson = path.join(tmp, "dangling.json");
+        fs.writeFileSync(danglingJson, JSON.stringify(Object.assign({}, selfEdited,
+            { embeddedImages: { "rk1.dsk": "resource-9" } }), null, 2));
+        const danglingOut = path.join(tmp, "dangling-out.state.zst");
+        const danglingRep = cli(["replace", selfFile, danglingJson, danglingOut]);
+        assert.notStrictEqual(danglingRep.status, 0,
+            "replace must refuse a manifest pointing at a missing embedded image");
+        assert.ok(/does not carry|does not exist/.test(danglingRep.stdout + danglingRep.stderr),
+            "and say which image: " + danglingRep.stdout + danglingRep.stderr);
+        assert.ok(!fs.existsSync(danglingOut),
+            "a refused edit must not leave a file behind");
 
         // ---- replace accepts a LEGACY numeric schemaVersion ---------------
         // States written before schemaVersion became semver carry the bare
