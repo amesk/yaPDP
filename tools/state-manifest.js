@@ -44,9 +44,47 @@ function readState(file) {
     return parsed;
 }
 
+// pack() re-creates only the two RESERVED blobs; everything else (the disk
+// images a SELF-CONTAINED state embeds) has to be handed back to it or it is
+// gone. `replace` used to re-pack with the memory alone, which dropped the
+// embedded disk while the manifest kept naming it in `embeddedImages` — the
+// file then looked fine and refused to restore over a fingerprint mismatch
+// ("the disk is not the disk loaded now"), because the page fell back to
+// fetching the published image.
+const RESERVED_BLOBS = ["memory", "disk-overlay"];
+
+function extraBlobsOf(parsed) {
+    const catalog = (parsed && parsed.blobCatalog) || [];
+    const bytesById = (parsed && parsed.blobs) || {};
+    const out = [];
+    catalog.forEach(function (item) {
+        if (!item || RESERVED_BLOBS.indexOf(item.id) !== -1) return;
+        const bytes = bytesById[item.id];
+        if (!bytes) return;
+        out.push({ id: item.id, mediaType: item.mediaType, bytes: bytes });
+    });
+    return out;
+}
+
+// A manifest may only name an image the container really carries. An
+// `embeddedImages` entry whose blob is absent is a state that cannot restore,
+// so it is refused on the way OUT rather than written into somebody's file.
+function missingEmbeddedBlobs(manifest, extras) {
+    const refs = (manifest && manifest.embeddedImages) || null;
+    if (!refs || typeof refs !== "object") return [];
+    const have = Object.create(null);
+    (extras || []).forEach(function (blob) {
+        if (blob && blob.id) have[blob.id] = true;
+    });
+    return Object.keys(refs).filter(function (url) {
+        return typeof refs[url] !== "string" || !have[refs[url]];
+    });
+}
+
 // Returns the frame that was written, for the caller to report.
-function writeState(manifest, memoryWords, outPath) {
-    return StateIO.writeBytes(outPath, StateFormat.pack(manifest, memoryWords));
+function writeState(manifest, memoryWords, outPath, extras) {
+    return StateIO.writeBytes(outPath,
+        StateFormat.pack(manifest, memoryWords, extras || []));
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +100,13 @@ function cmdExtract(inputPath, outputPath) {
     console.log("  label: " + (parsed.manifest.label || "(none)"));
     console.log("  device: " + (parsed.manifest.device || "(none)"));
     console.log("  memoryWords: " + (parsed.memoryWords ? parsed.memoryWords.length + " words" : "none"));
+    // Report an already-damaged file: the manifest names an embedded image the
+    // container does not carry, so a restore will refuse it over its digest.
+    const dangling = missingEmbeddedBlobs(parsed.manifest, extraBlobsOf(parsed));
+    if (dangling.length) {
+        console.warn("  warning: embedded image(s) missing from the container: " +
+            dangling.join(", ") + " — this state cannot be restored");
+    }
 }
 
 function cmdReplace(inputPath, manifestPath, outputPath) {
@@ -83,8 +128,16 @@ function cmdReplace(inputPath, manifestPath, outputPath) {
         throw new Error("manifest must have a schemaVersion " +
             "(a semver string; the legacy numeric form is accepted)");
     }
-    // Preserve the original memoryWords (they are not in the manifest).
-    const frame = writeState(newManifest, parsed.memoryWords, outputPath);
+    // Preserve the original memoryWords (they are not in the manifest) and the
+    // embedded disk images (they are not in the manifest either — only the blob
+    // ids are, on both sides of the reference).
+    const extras = extraBlobsOf(parsed);
+    const dangling = missingEmbeddedBlobs(newManifest, extras);
+    if (dangling.length) {
+        throw new Error("manifest references embedded image(s) this container " +
+            "does not carry: " + dangling.join(", ") + " — nothing was written");
+    }
+    const frame = writeState(newManifest, parsed.memoryWords, outputPath, extras);
     console.log("manifest replaced: " + path.relative(ROOT, outputPath) +
         " (" + frame + ")");
     console.log("  schemaVersion: " + newManifest.schemaVersion);
@@ -92,6 +145,8 @@ function cmdReplace(inputPath, manifestPath, outputPath) {
     console.log("  device: " + (newManifest.device || "(none)"));
     console.log("  steps: " + (newManifest.steps ? newManifest.steps.length + " step(s)" : "none"));
     console.log("  stepsMessage: " + (newManifest.stepsMessage ? JSON.stringify(newManifest.stepsMessage) : "none"));
+    console.log("  embedded blobs: " +
+        (extras.length ? extras.map((b) => b.id + " (" + b.bytes.length + " bytes)").join(", ") : "none"));
 }
 
 // ---------------------------------------------------------------------------

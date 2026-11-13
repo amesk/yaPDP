@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Editing a manifest keeps a self-contained state self-contained.**
+  `node tools/state-manifest.js replace` re-packed the container with the RAM
+  alone, so a state exported with "self-contained" lost its embedded disk image
+  while the manifest kept naming it; the file still looked valid and every
+  restore refused it over a fingerprint mismatch ("the disk is not the disk
+  loaded now"). The edit now carries the embedded blobs through and refuses a
+  manifest that names an image the container does not hold.
+  (`tools/state-manifest.js`, `tests/state-manifest.test.js`)
+
 - **The snapshot list survives a state with steps but no description.** The
   manager builds each row from a projection that carries `hasSteps` but not the
   `steps` array, and the row builder counted `it.steps.length`: a shareable
