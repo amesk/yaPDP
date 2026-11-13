@@ -474,6 +474,15 @@ short windows it shrinks to stay inside the window top and above the operator
 buttons (its viewport-driven paper and hanging tape divide their max-heights
 by the scale, so they still reach the window edges).
 
+The LP11 also reproduces a **composed glyph**, the trick a driver uses when the
+printer's type train has no such character: Unix V5's `lp.c` prints a `{` as
+`(` struck over by `-`, backing the carriage up one column so the pair shares a
+single column. The paper paints the two strikes over each other — exactly what
+a real printout shows — while **Save .txt** and the saved-state paper carry the
+composed character (`{`, `}`, `|`, `~`, `` ` ``), so a listing keeps its
+columns and the export stays readable. A character the guest printed directly,
+with no overstrike, is never composed back.
+
 Both also honour form feed (FF, 0x0C): the 2.11BSD spooler (`lpr`/`lpd`) sends
 FF between print jobs so each starts on a fresh page. The LP11 ejects to the
 top of the next fanfold page — it fills the rest of the sheet (66 lines at

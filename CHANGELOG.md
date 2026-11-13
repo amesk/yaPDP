@@ -56,6 +56,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a second contour of the letter, so the tube shows the phosphor in colour only.
   (`css/pdp11.css`, `src/terminal-core.js`)
 
+- **LP11 composed characters print as paper, not as dark cells.** A driver
+  builds a character its printer's type train lacks from two strikes in one
+  column (Unix V5's `lpcanon()` prints `(` + BS + `-` for a `{`, backing the
+  carriage up so the pair shares the column); the printer painted such a column
+  as a solid dark cell and the paper copy kept only the modifier. The sheet now
+  shows the two strikes over each other, and the composed character (`{`, `}`,
+  `|`, `~`, `` ` ``) is what **Save .txt**, the **Print** document and the
+  paper in a saved state carry, so a listing keeps its column alignment.
+  (`src/lp11paper.js`, `src/g60printer.js`, `css/g60printer.css`,
+  `tests/lp11-compose.test.js`)
+
 ## [0.4.0] - 2026-10-30
 
 ### Added

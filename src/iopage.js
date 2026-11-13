@@ -1577,6 +1577,12 @@ iopage.register(0o17777510, 2, (function() {
                 charSound: false,
                 charsPerTick: 3,
                 printWhirr: true,
+                // A line printer whose type train lacks a character prints it
+                // as a base glyph struck over with a mark in ONE column ('(' +
+                // BS + '-' is a '{', see Unix V5's lpcanon()). The composed
+                // glyph goes to the paper copy, and the two strikes are painted
+                // over the cell so the sheet looks like a real printout.
+                composeGlyphs: true,
                 // Historically-accurate DONE: re-assert DONE (and raise the
                 // completion interrupt if IE is set) as each character is
                 // actually consumed by the renderer. This throttles the CPU at

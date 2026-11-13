@@ -337,6 +337,22 @@
         // character of both render paths, so switching the CONFIG option mid-run
         // takes effect on the very next character.
         var foldGlyph = (typeof opts.foldGlyph === 'function') ? opts.foldGlyph : null;
+        // Glyph composition (options.composeGlyphs): a printer whose type train
+        // lacks a character prints it as a base glyph struck over with a mark —
+        // '(' + BS + '-' builds a '{' (Unix V5's lp.c, see composePair in
+        // src/lp11paper.js). The LP11 instances enable it; the Model 33 ASR
+        // console keeps its authentic overstrike blot, so it stays off by
+        // default. The table lives in src/lp11paper.js, which every caller loads
+        // before a printer is built (iopage.js / devices/lp11.js require it).
+        var composeGlyphs = (opts.composeGlyphs === true);
+
+        /** composePair — the glyph built by striking `mark` over `base`. */
+        function composePair(base, mark) {
+            if (!composeGlyphs || typeof window === 'undefined') return null;
+            var lib = window.Lp11Paper;
+            if (!lib || typeof lib.composePair !== 'function') return null;
+            return lib.composePair(base, mark);
+        }
         // Form feed (FF, 0x0C): a real line printer advances the paper to the
         // top of the next page. On the continuous G60 paper this is rendered
         // as `pageLength` empty lines (filling the rest of the sheet) followed
@@ -648,6 +664,7 @@
 
             var space = (c === ' ');
             var span;
+            var composite = null;
 
             if (currentCharPos >= maxCols) {
                 // Carriage has reached the right margin: the carriage-return
@@ -702,6 +719,19 @@
                             // Same character overstruck → bold (heavier ink on
                             // a real teletype); the glyph is unchanged.
                             if (span.className.indexOf('bold') === -1) span.className += ' bold';
+                        } else if ((composite = composePair(prevGlyph, c))) {
+                            // The type train has no such character: the second
+                            // strike BUILDS one in the SAME column ('(' struck
+                            // over by '-' is a '{'), it does not blot the cell.
+                            // The cell keeps the composed glyph — that is what
+                            // Save .txt and the paper snapshot hold — and CSS
+                            // paints the two strikes over it (span.compose in
+                            // css/g60printer.css), so the paper shows the same
+                            // thing a real printout does.
+                            span.textContent = composite;
+                            span.setAttribute('data-base', prevGlyph);
+                            span.setAttribute('data-mark', c);
+                            if (span.className.indexOf('compose') === -1) span.className += ' compose';
                         } else {
                             // Different glyph overstruck (e.g. the boot
                             // countdown "5\r4"): on a real teletype the new
