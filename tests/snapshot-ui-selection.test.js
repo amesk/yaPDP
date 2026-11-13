@@ -13,7 +13,10 @@
  *   3. when the selected entry is gone, the fallback is the NEWEST snapshot;
  *   4. an empty store shows the placeholder and disables the controls;
  *   5. the Export split-button's dropdown arrow follows the selection, so the
- *      text-envelope options (file, clipboard) are reachable whenever Export is.
+ *      text-envelope options (file, clipboard) are reachable whenever Export is;
+ *   6. a state that carries steps but no description is labelled from the
+ *      projected step count (refreshUI used to read it.steps, a field
+ *      dbGetAll() does not project, and threw inside the rebuild).
  *
  * Run with:  node tests/snapshot-ui-selection.test.js
  */
@@ -340,6 +343,30 @@ async function run() {
   assert.strictEqual(dom.registry.get("snap-count").textContent, "0 snapshots",
     "counter reports zero");
   console.log("PASS test 4: empty store shows placeholder and disables controls");
+
+  // ---- Test 5: steps WITHOUT a description still label the row --------
+  // Share writes hand-off steps and leaves stepsMessage null when the
+  // description field was empty. The row builder read `it.steps` — a field the
+  // dbGetAll() projection does not carry — so the first such snapshot threw
+  // inside forEach and the whole rebuild (selection, buttons, counter) died.
+  await pause();
+  const stepsOnly = await SS.save("Steps only",
+    [{ send: "R ADVENTURE" }, { send: "\u0004" }]);
+  SS.refreshUI(stepsOnly.id);
+  await flush();
+  assert.strictEqual(select.options.length, 1, "the steps-only snapshot is listed");
+  const row = select.options[0];
+  assert.strictEqual(row.value, stepsOnly.id, "the fresh row is the selection");
+  assert.ok(/\u21E8 2 steps$/.test(row.textContent),
+    "the row counts the steps when there is no description, got: " +
+    JSON.stringify(row.textContent));
+  assert.strictEqual(dom.registry.get("snap-load").disabled, false,
+    "Load is enabled for a steps-only snapshot");
+  assert.strictEqual(exportArrow.disabled, false,
+    "Export stays enabled for a steps-only snapshot");
+  assert.strictEqual(dom.registry.get("snap-count").textContent, "1 snapshot",
+    "counter reports the steps-only snapshot");
+  console.log("PASS test 5: steps without a description label the row");
 
   console.log("\nAll snapshot UI selection tests passed.");
 }
