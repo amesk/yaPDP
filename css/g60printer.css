@@ -335,6 +335,37 @@
     text-decoration: underline;
 }
 
+/* A composed column: the type train has no such character, so the driver
+   strikes a base glyph and a mark over it in ONE column ('(' + BS + '-' is a
+   '{', see lpcanon() in Unix V5's lp.c). The cell keeps the composed glyph —
+   it is what Save .txt and the paper snapshot hold — and the two strikes are
+   painted over it, so the paper shows what a real printout does. */
+#g60printer td#paper_printarea span.compose {
+    position: relative;
+    color: transparent;
+    text-shadow: none;
+}
+
+#g60printer td#paper_printarea span.compose::before {
+    content: attr(data-base);
+}
+
+#g60printer td#paper_printarea span.compose::after {
+    content: attr(data-mark);
+}
+
+#g60printer td#paper_printarea span.compose::before,
+#g60printer td#paper_printarea span.compose::after {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    text-align: center;
+    /* The print-area ink; the cell itself is transparent so the composite
+       glyph underneath never doubles the ink. */
+    color: #36363c;
+}
+
 #g60printer td#paper_printarea span.drop {
     margin-top: 1px;
     height: 15px;
@@ -855,6 +886,36 @@
    re-printed → bold; letter printed over an underscore → underline). */
 #lp11_printer td#lp11g60paper_printarea span.bold {
     font-weight: bold;
+}
+
+/* A composed column (see lpcanon() in Unix V5's lp.c): the two strikes that
+   BUILD the character ('(' overstruck by '-' is a '{') share one cell, so the
+   paper shows the pair exactly like a real printout. The cell keeps the
+   composed glyph for Save .txt and the snapshot and paints it transparent;
+   ::before/::after draw the base and the mark. A composed cell is never
+   underlined, so ::after is free here (see span.underline::after below). */
+#lp11_printer td#lp11g60paper_printarea span.compose {
+    position: relative;
+    color: transparent;
+    text-shadow: none;
+}
+
+#lp11_printer td#lp11g60paper_printarea span.compose::before {
+    content: attr(data-base);
+}
+
+#lp11_printer td#lp11g60paper_printarea span.compose::after {
+    content: attr(data-mark);
+}
+
+#lp11_printer td#lp11g60paper_printarea span.compose::before,
+#lp11_printer td#lp11g60paper_printarea span.compose::after {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    text-align: center;
+    color: #36363c;
 }
 
 /* Printed rules: both a literal "_" and nroff's underline (a letter overstruck

@@ -23,7 +23,12 @@
  *                  (nroff underline, "_\bX" / "X\b_");
  *                  any other overstrike keeps the LAST glyph struck (which is
  *                  what the mechanism leaves) and reads as BOLD: a real ink
- *                  blot cannot be reproduced on paper, "heavier" can.
+ *                  blot cannot be reproduced on paper, "heavier" can;
+ *     COMPOSE    — the two strikes BUILD one character the printer's type
+ *                  train does not have (Unix V5's lp.c prints '(' + BS + '-'
+ *                  for '{', see composePair). The text copy keeps the composed
+ *                  glyph; the run only tells the printed sheet to show the two
+ *                  strikes, exactly like the Printer page does.
  *
  * Rendering: Save .txt stays plain text (a .txt has no styling). Print builds
  * one <section> per sheet, a <pre> of <b>/<u> runs per sheet, and sizes the
@@ -48,6 +53,47 @@
 
     var BOLD = "bold";
     var UNDERLINE = "underline";
+    var COMPOSE = "compose";
+
+    // ------------------------------------------------------------------
+    // Glyph composition: a character the type train does not have
+    // ------------------------------------------------------------------
+    // Unix V5's printer driver (/usr/sys/dmr/lp.c, lpcanon()) prints a code the
+    // LP11 train lacks by striking a base glyph, backing the carriage up one
+    // column and striking a mark over it — '(' + BS + '-' builds a '{'. The two
+    // strikes share ONE column: the driver also decrements its own column
+    // counter, so the extra byte never eats a pitch and a listing printed this
+    // way keeps its alignment. The paper copy therefore carries the COMPOSED
+    // glyph and a COMPOSE run marks the column, while the pair itself is
+    // recovered from the glyph (splitGlyph) — a '{' the guest printed directly,
+    // without the overstrike, is therefore never composed back into '(' + '-'.
+    var COMPOSE_PAIRS = Object.freeze({
+        "(-": "{",
+        ")-": "}",
+        "'-": "`",
+        "!-": "|",
+        "^-": "~",
+    });
+    var COMPOSE_SPLIT = (function () {
+        var out = {};
+        for (var key in COMPOSE_PAIRS) {
+            if (!Object.prototype.hasOwnProperty.call(COMPOSE_PAIRS, key)) continue;
+            out[COMPOSE_PAIRS[key]] = { base: key.charAt(0), mark: key.charAt(1) };
+        }
+        return Object.freeze(out);
+    })();
+
+    /** composePair — the glyph built by striking `mark` over `base`, or null. */
+    function composePair(base, mark) {
+        if (!base || !mark) return null;
+        return COMPOSE_PAIRS[base + mark] || null;
+    }
+
+    /** splitGlyph — the pair a composed glyph was built from, or null. */
+    function splitGlyph(glyph) {
+        var pair = COMPOSE_SPLIT[glyph];
+        return pair ? { base: pair.base, mark: pair.mark } : null;
+    }
 
     var DEFAULT_COLUMNS = 132;        // LP11 platen, 10 pitch
     var DEFAULT_LINES_PER_PAGE = 66;  // 11in sheet at 6 LPI
@@ -131,7 +177,8 @@
         if (!runs || !runs.length) return [];
         var sorted = runs.filter(function (r) {
             return r && typeof r.at === "number" && typeof r.len === "number" &&
-                r.len > 0 && (r.kind === BOLD || r.kind === UNDERLINE);
+                r.len > 0 && (r.kind === BOLD || r.kind === UNDERLINE ||
+                              r.kind === COMPOSE);
         }).map(function (r) {
             return { at: r.at, len: r.len, kind: r.kind };
         }).sort(function (a, b) { return a.at - b.at; });
@@ -194,6 +241,10 @@
      * a plain replacement is what turned "sh [ -ceik…" into "sh   -ceik…" and
      * ate whole phrases of a man page. A strike past the line end pads any gap
      * the carriage left (TAB/BS move the column without writing).
+     *
+     * The exception is a pair the train lacks: a base glyph struck over by a
+     * mark (see COMPOSE_PAIRS) is not a blot, it BUILDS one character, so the
+     * column carries the composed glyph and a COMPOSE run marks it.
      */
     function putChar(state, ch) {
         ensureStreams(state);
@@ -201,6 +252,7 @@
             var was = state.line.charAt(state.col);
             var glyph = null;
             var kind = null;
+            var built = null;
             if (ch === " ") {
                 // A blank strike prints nothing at all.
             } else if (was === " ") {
@@ -208,6 +260,9 @@
             } else if (was === "_" || ch === "_") {
                 glyph = (was === "_") ? ch : was; // the underscore is the underline
                 kind = UNDERLINE;
+            } else if ((built = composePair(was, ch))) {
+                glyph = built;                    // the pair builds one character
+                kind = COMPOSE;
             } else {
                 glyph = ch;                       // last strike wins the shape
                 kind = BOLD;                      // same glyph = bold, other = blot
@@ -386,7 +441,33 @@
         });
     }
 
-    /** lineHtml — one printed line: escaped glyphs plus <b>/<u> over the runs. */
+    /** attrHtml — escapeHtml plus quotes, for a data-* attribute value. */
+    var QUOT = String.fromCharCode(34);
+    var APOS = String.fromCharCode(39);
+    function attrHtml(value) {
+        return escapeHtml(value)
+            .split(QUOT).join(AMP + "quot;")
+            .split(APOS).join(AMP + "#39;");
+    }
+
+    /**
+     * composeHtml — one printed cell whose glyph was struck twice. The composed
+     * character stays the cell's text, so the column grid is untouched, and the
+     * two strikes are painted over it by the print stylesheet (see
+     * buildPrintDocument): the printed sheet then looks like the Printer page.
+     * An unknown glyph prints plain — a headline that only looks composed is
+     * never decomposed.
+     */
+    function composeHtml(glyph) {
+        var pair = splitGlyph(glyph);
+        if (!pair) return escapeHtml(glyph);
+        return '<span class="compose" data-base="' + attrHtml(pair.base) +
+            '" data-mark="' + attrHtml(pair.mark) + '">' + escapeHtml(glyph) +
+            "</span>";
+    }
+
+    /** lineHtml — one printed line: escaped glyphs, <b>/<u> over the runs and
+     *  the two strikes of a composed column laid over each other. */
     function lineHtml(entry) {
         var text = entry && entry.text ? entry.text : "";
         var runs = normalizeRuns((entry && entry.runs) || []);
@@ -399,8 +480,15 @@
             var end = Math.min(text.length, r.at + r.len);
             if (end <= pos || end <= at) return;
             if (at > pos) out += escapeHtml(text.slice(pos, at));
-            var inner = escapeHtml(text.slice(at, end));
-            out += (r.kind === UNDERLINE) ? "<u>" + inner + "</u>" : "<b>" + inner + "</b>";
+            if (r.kind === COMPOSE) {
+                // Per CHARACTER, not per run: two touching composed columns are
+                // merged into one run by normalizeRuns.
+                for (var i = at; i < end; i++) out += composeHtml(text.charAt(i));
+            } else {
+                var inner = escapeHtml(text.slice(at, end));
+                out += (r.kind === UNDERLINE)
+                    ? "<u>" + inner + "</u>" : "<b>" + inner + "</b>";
+            }
             pos = end;
         });
         if (pos < text.length) out += escapeHtml(text.slice(pos));
@@ -591,6 +679,18 @@
             " letter-spacing: calc(var(--cell) * var(--adv) * (1 - var(--glyph))); }" +
             "b { font-weight: 700; }" +
             "u { text-decoration: underline; }" +
+            // A composed column: the sheet shows the two strikes that built the
+            // glyph, so the PDF matches the Printer page. The composed
+            // character keeps the cell's advance and the column grid, and is
+            // painted transparent underneath the pair.
+            "span.compose { position: relative; color: transparent;" +
+            " text-shadow: none; -webkit-text-shadow: none; }" +
+            "span.compose::before { content: attr(data-base); }" +
+            "span.compose::after { content: attr(data-mark); }" +
+            "span.compose::before, span.compose::after {" +
+            " position: absolute; left: 0; right: 0; top: 0;" +
+            " text-align: center; line-height: inherit; letter-spacing: 0;" +
+            " color: #000; }" +
             "@supports not (container-type: inline-size) { pre { font-size: 5.5pt; } }" +
             "</style></head><body><div class=\"sheet\">" + body + "</div></body></html>";
     }
@@ -717,6 +817,9 @@
         LEGACY_FF: LEGACY_FF,
         BOLD: BOLD,
         UNDERLINE: UNDERLINE,
+        COMPOSE: COMPOSE,
+        composePair: composePair,
+        splitGlyph: splitGlyph,
         DEFAULT_COLUMNS: DEFAULT_COLUMNS,
         DEFAULT_LINES_PER_PAGE: DEFAULT_LINES_PER_PAGE,
         LINE_HEIGHT: LINE_HEIGHT,

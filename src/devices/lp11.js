@@ -121,6 +121,12 @@
                 charSound: false,
                 charsPerTick: 3,
                 printWhirr: true,
+                // A line printer whose type train lacks a character prints it
+                // as a base glyph struck over with a mark in ONE column ('(' +
+                // BS + '-' is a '{', see Unix V5's lpcanon()). The composed
+                // glyph goes to the paper copy, and the two strikes are painted
+                // over the cell so the sheet looks like a real printout.
+                composeGlyphs: true,
                 onChar: function () {
                     dev.lpcs |= LP_LPCS_DONE;
                     if (dev.lpcs & LP_LPCS_IE) {
