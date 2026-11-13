@@ -99,7 +99,13 @@ var SnapshotStore = (() => {
                             schemaVersion: v.schemaVersion,
                             cpuBytes: v.cpuBytes || 0,
                             memBytes: v.memBytes || 0,
-                            hasSteps: v.steps && Array.isArray(v.steps) && v.steps.length > 0,
+                            // A row is a PROJECTION of the record: the `steps`
+                            // array itself stays out of it (only its size is
+                            // ever shown), so the count is what gets copied.
+                            // Projecting the flag alone left the row builder
+                            // dereferencing a field that is not here.
+                            hasSteps: Array.isArray(v.steps) && v.steps.length > 0,
+                            stepsCount: Array.isArray(v.steps) ? v.steps.length : 0,
                             stepsMessage: v.stepsMessage || null,
                             hasGuide: !!(v.steps || v.stepsMessage || v.buttonLabel || v.screenshot),
                         };
@@ -2794,7 +2800,12 @@ var SnapshotStore = (() => {
                     opt.dataset.hasGuide = it.hasGuide ? "1" : "";
                     var label = it.name + "  (" + fmtSize(it.memBytes) + ")";
                     if (it.hasSteps) {
-                        label += "  \u21E8 " + (it.stepsMessage || it.steps.length + " steps");
+                        // Only projected fields: a state that carries steps but
+                        // no description (the Share dialog writes
+                        // stepsMessage = null) used to read it.steps here and
+                        // throw, killing the whole rebuild.
+                        label += "  \u21E8 " +
+                            (it.stepsMessage || (it.stepsCount || 0) + " steps");
                     }
                     opt.textContent = label;
                     select.appendChild(opt);
@@ -2837,6 +2848,13 @@ var SnapshotStore = (() => {
             const count = document.getElementById("snap-count");
             if (count) {
                 count.textContent = items.length + " " + (items.length === 1 ? "snapshot" : "snapshots");
+            }
+        }).catch(function (err) {
+            // A failed listing must not leave the manager half-built behind an
+            // unhandled rejection: the controls keep their previous state and
+            // the reason reaches the console once.
+            if (typeof console !== "undefined" && console.warn) {
+                console.warn("Snapshot list failed:", err);
             }
         });
     }

@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The snapshot list survives a state with steps but no description.** The
+  manager builds each row from a projection that carries `hasSteps` but not the
+  `steps` array, and the row builder counted `it.steps.length`: a shareable
+  state with hand-off steps and an empty description (`unix-v5-lp.state.zst`)
+  threw inside the rebuild, so the list stopped mid-way and Load, Export,
+  Rename, Share and Delete stayed disabled. The row now counts a projected
+  `stepsCount`, and a failed listing leaves the controls as they were instead
+  of surfacing as an unhandled rejection. (`src/snapshots.js`,
+  `tests/snapshot-ui-selection.test.js`)
+
 - **The idle hand-off waits the configured time.** `?idle-timeout=` is read as
   seconds, so a page hands over to `?idle-redirect=` after that much real
   inactivity instead of firing before the operator touches the machine.
