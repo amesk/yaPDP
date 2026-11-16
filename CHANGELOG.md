@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A self-contained state can go back to a published base.** `npm run state:strip`
+  turns a state that embeds whole disk images into the ordinary form: the image
+  bytes are dropped and the state references the published version from
+  `media/manifest.json` (`imageVersions` + `imageSources`) while keeping its
+  block overlay. The tool writes a file only after mounting that base and
+  applying the overlay reproduces the embedded image byte-for-byte, so a smaller
+  state can never quietly restore a different disk.
+  (`tools/state-strip-embedded.js`, `package.json`, `docs/STATE-FORMAT.md`,
+  `docs/BUILDING.md`)
+
+- **Manifest fields can be edited without re-packing a state.** `node
+  tools/state-manifest.js edit` changes a field by path (`--set
+  steps[0].send "cat /etc/motd"`, `--replace vt52[1].state.hardcopy mail
+  "cat /etc/motd"`) and copies the blob region verbatim, so RAM, the disk
+  overlay and embedded disk images keep their exact bytes and nothing is
+  re-hashed; the payload is verified before the file is written. `replace`
+  re-packs the whole container and re-hashes every blob — the right tool for
+  swapping a manifest, the wrong one for changing one field.
+  (`tools/state-manifest.js`, `tests/state-manifest.test.js`,
+  `docs/STATE-FORMAT.md`, `docs/BUILDING.md`)
+
 - **The idle hand-off announces itself.** With `?idle-timeout=` set, the page
   warns "Inactivity detected, activating idle mode..." five seconds before the
   hand-off; any activity withdraws the warning and restarts the idle window.
@@ -24,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `css/pdp11.css`, `pdp11.html`)
 
 ### Fixed
+
+- **Editing a manifest keeps a self-contained state self-contained.**
+  `node tools/state-manifest.js replace` re-packed the container with the RAM
+  alone, so a state exported with "self-contained" lost its embedded disk image
+  while the manifest kept naming it; the file still looked valid and every
+  restore refused it over a fingerprint mismatch ("the disk is not the disk
+  loaded now"). The edit now carries the embedded blobs through and refuses a
+  manifest that names an image the container does not hold.
+  (`tools/state-manifest.js`, `tests/state-manifest.test.js`)
 
 - **The snapshot list survives a state with steps but no description.** The
   manager builds each row from a projection that carries `hasSteps` but not the
