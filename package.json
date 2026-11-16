@@ -99,7 +99,7 @@
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
-    "puppeteer": "^25.16.0"
+    "puppeteer": "^25.17.0"
   },
   "wireit": {
     "manifest": {
