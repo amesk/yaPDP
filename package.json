@@ -43,6 +43,7 @@
     "media:compress": "node tools/media-zst.js compress",
     "media:unpack": "node tools/media-zst.js decompress",
     "media:repack": "node tools/media-zst.js repack",
+    "state:strip": "node tools/state-strip-embedded.js",
     "media:rt11-util": "node tools/rt11-util.js",
     "e2e:quickboot-manifest": "wireit",
     "e2e:quickboot-deeplink": "wireit",

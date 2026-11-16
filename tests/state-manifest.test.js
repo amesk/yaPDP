@@ -184,6 +184,60 @@ function run() {
         const lrep = cli(["replace", gzipFile, legacyPath, legacyOut]);
         assert.strictEqual(lrep.status, 0,
             "replace must accept the legacy numeric schemaVersion: " + lrep.stderr);
+
+        // ---- edit changes fields WITHOUT re-packing the payload -----------
+        // `replace` re-packs through StateFormat.pack(): it keeps the embedded
+        // blobs now, but it decodes and re-encodes RAM and the overlay and
+        // re-hashes every blob. `edit` rewrites the manifest alone and copies
+        // the payload verbatim, so nothing is decoded or hashed on the way —
+        // the image, the overlay and the RAM must come back byte for byte.
+        const editDisk = new Uint8Array(4096).fill(0x5a);
+        const editManifest = Object.assign({}, MANIFEST, {
+            mounted: ["rk1.dsk"],
+            imageFingerprints: { "rk1.dsk": ImageFingerprint.ofBytes(editDisk) },
+            embeddedImages: { "rk1.dsk": "resource-0" },
+            steps: [{ send: "mail" }],
+            vt52: [
+                { state: { hardcopy: "first" } },
+                { state: { hardcopy: "Use 'mail' to check for system messages." } }
+            ]
+        });
+        const editFile = path.join(tmp, "edit-source.state.zst");
+        fs.writeFileSync(editFile, Buffer.from(StateFormat.pack(editManifest, sampleMemory(),
+            [{ id: "resource-0", mediaType: "application/octet-stream", bytes: editDisk }])));
+        const editOut = path.join(tmp, "edit-out.state.zst");
+
+        const editRun = cli(["edit", editFile, "--out", editOut,
+            "--set", "steps[0].send", "cat /etc/motd",
+            "--set", "label", "edited label",
+            "--replace", "vt52[1].state.hardcopy", "mail", "cat /etc/motd"]);
+        assert.strictEqual(editRun.status, 0, "edit must succeed: " + editRun.stderr);
+        const editedParsed = StateFormat.unpack(StateIO.readBytes(editOut).container);
+        assert.ok(editedParsed, "the edited state must be a valid container");
+        assert.strictEqual(editedParsed.manifest.steps[0].send, "cat /etc/motd",
+            "the step must carry the new command");
+        assert.strictEqual(editedParsed.manifest.label, "edited label");
+        assert.strictEqual(editedParsed.manifest.vt52[1].state.hardcopy,
+            "Use 'cat /etc/motd' to check for system messages.");
+        assert.ok(editedParsed.blobs["resource-0"],
+            "an embedded disk must survive a manifest edit");
+        assert.deepStrictEqual(Array.from(editedParsed.blobs["resource-0"]),
+            Array.from(editDisk), "the embedded disk bytes must be unchanged");
+        assert.deepStrictEqual(Array.from(editedParsed.memoryWords),
+            Array.from(sampleMemory()), "memory must survive a manifest edit");
+        assert.strictEqual(editedParsed.manifest.imageFingerprints["rk1.dsk"],
+            ImageFingerprint.ofBytes(editDisk), "the image identity must be untouched");
+
+        // ---- edit refuses a path that does not exist, and writes nothing ---
+        const editMissingOut = path.join(tmp, "edit-missing-out.state.zst");
+        const badEdit = cli(["edit", editFile, "--out", editMissingOut,
+            "--set", "steps[9].send", "x"]);
+        assert.notStrictEqual(badEdit.status, 0, "an unknown path must fail");
+        assert.ok(/no parent object at 'steps\[9\]'|no field at|array index out of range/
+            .test(badEdit.stdout + badEdit.stderr),
+            "and say which path failed: " + badEdit.stdout + badEdit.stderr);
+        assert.ok(!fs.existsSync(editMissingOut),
+            "a refused edit must not leave a file behind");
     } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
     }
