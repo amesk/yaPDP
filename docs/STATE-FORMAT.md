@@ -10,7 +10,8 @@ the deep-link loader (`?state=`), and the Node tools
 ([`tools/export-state.js`](../tools/export-state.js),
 [`tools/headless-term.js`](../tools/headless-term.js),
 [`tools/restore-state.js`](../tools/restore-state.js),
-[`tools/state-manifest.js`](../tools/state-manifest.js)).
+[`tools/state-manifest.js`](../tools/state-manifest.js),
+[`tools/state-strip-embedded.js`](../tools/state-strip-embedded.js)).
 
 ## The container
 
@@ -109,6 +110,30 @@ original after validation. Keep a normal repository backup/commit before using
 `--write`; the migration should be reviewed and committed separately from the
 code change.
 
+### Editing a manifest in place
+
+Most changes to a state are field changes — a label, a hand-off step, the
+text of a help screen. [`tools/state-manifest.js`](../tools/state-manifest.js)
+has a third mode for exactly that:
+
+```sh
+node tools/state-manifest.js edit states/unix-v5.state.zst --in-place \
+  --set steps[0].send "cat /etc/motd" \
+  --set label "UNIX V5 — demo" \
+  --replace vt52[1].state.hardcopy mail "cat /etc/motd"
+```
+
+`edit` rewrites the manifest JSON and copies the blob region verbatim, so
+RAM, the disk overlay and every embedded image keep their exact bytes and
+their offsets; the payload is compared before anything is written. `replace`
+is the wholesale route: it validates a manifest file and re-packs the whole
+container, which decodes and re-hashes RAM, the overlay and every blob. Use
+`replace` when a manifest is swapped in, and `edit` when a field changes.
+
+Paths are object keys and array indexes: `label`, `steps[0].send`,
+`vt52[1].state.hardcopy`. A value is JSON when it parses (numbers, booleans,
+`null`, quoted strings) and a plain string otherwise.
+
 ## Images: identity, versions and embedded bytes
 
 A state never stores a disk image under its logical name alone. Three manifest
@@ -164,6 +189,36 @@ preserve portability, create a new self-contained share of the resulting state.
 
 The container size ceiling is 256 MB (state plus bundled resources), so a
 self-contained share of a large disk set is refused rather than truncated.
+
+## Making a self-contained state ordinary again
+
+Self-containment is a property of one file, not of the machine. A state that
+embeds whole images can be brought back to the published-base form whenever
+every embedded image is a published version of a registered image:
+
+```sh
+npm run state:strip -- states/unix-v5.state.zst            # writes <name>.light.state.zst
+npm run state:strip -- states/unix-v5.state.zst --dry-run  # report only
+```
+
+[`tools/state-strip-embedded.js`](../tools/state-strip-embedded.js) drops the
+image blobs, points `imageFingerprints` and `overlay[url].v` at the digest of the
+published base, and fills `imageVersions` (the version whose bytes carry that
+digest) together with `imageSources: "published"`. The overlay itself is kept as
+written; what changes is the identity it is valid against.
+
+The conversion is not a rewrite of the disk. The tool mounts each candidate
+published version, applies the state's overlay block by block (`IO_BLOCKSIZE`,
+128 KiB) and requires the result to be **byte-identical** to the embedded image.
+Only then is a file written; otherwise it names the image it cannot reproduce and
+exits non-zero. The result restores like any normal snapshot — the base is
+fetched by version and the overlay is laid over it — so the same machine is
+described without carrying the image bytes.
+
+A state whose embedded image is a *custom* disk (not published, or published
+with different bytes) cannot be converted: there is no base to reference, and
+the tool refuses rather than emitting an overlay against the wrong disk. Make a
+self-contained share of such a state instead.
 
 ## Text envelope for GitHub Gist
 
