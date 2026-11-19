@@ -12,7 +12,7 @@ The target for the first public 0.4.0 release is one canonical resource identity
 
 A snapshot records the emulated machine state, mounted logical image names, image fingerprints, and disk write-back overlays. It does not embed every base disk or tape image required to recreate the scenario. A recipient can therefore have a valid snapshot but lack one of its base resources, or have a different revision under the same filename.
 
-The current `media/manifest.json` is a guest-media catalogue, not a complete inventory of every file under `media/` and not a content-version manifest. For example, `bootcode.ptap` exists in `media/` but is not listed in that catalogue.
+The current `media/manifest.json` is a guest-media catalogue with a versioned SHA-256 registry for the image resources it covers. It is not a complete inventory of every file under `media/` and does not define the complete built-in resource set for an application release. For example, `bootcode.ptap` exists in `media/` but is not listed in that catalogue.
 
 The Pages workflow builds the site from the selected checkout. Files present only in a newer commit are not automatically retained when an older checkout is deployed. Consequently, Git history alone does not guarantee that an old resource URL remains available on the live site after a rollback.
 
@@ -166,7 +166,7 @@ Migration should be incremental:
 2. Compute and verify canonical SHA-256 identities from uncompressed bytes.
 3. Record the built-in resource set for each release based on the actual bytes shipped by that release; do not infer it from the current directory listing.
 4. Add catalogue/manifest validation and deployment safeguards.
-5. In the 0.4.0 implementation, explicitly invalidate incompatible pre-0.4.0 DiskStore records and provide a clear error for old snapshots with FNV metadata.
+5. Preserve and regression-test the existing 0.4.0 compatibility behavior: DiskStore must not apply legacy blocks to a known, different image identity, and snapshots carrying pre-0.4.0 FNV fingerprints must be refused explicitly.
 6. Only after those contracts are tested, implement Share resource collection and packaging.
 
 Do not retroactively claim that an old release guaranteed a resource unless the exact historical payload can be verified. Recording historical payloads in the archive does not imply that the new application must continue to load every old snapshot.
