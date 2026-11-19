@@ -18,15 +18,15 @@ The Pages workflow builds the site from the selected checkout. Files present onl
 
 ## Existing compatibility contracts
 
-The following concepts must remain distinct: logical resource names, public URLs, and canonical content identity. The old fingerprint algorithm itself is not a contract to preserve across the pre-release 0.4.0 boundary.
+The current `master` already implements several of the contracts that this proposal must build on. Keep the following concepts distinct: drive-to-image binding, mounted resource names/URLs, canonical content identity, the guest-media catalogue, and the set of files actually published by a release. They are related, but none is a substitute for another.
 
-### 1. Logical resource name
+### 1. Mounted resources and drive bindings
 
-Snapshots refer to mounted images by logical names such as `rp1.dsk`. They do not serialize the `media/` URL prefix as the mounted name.
+The emulator captures the currently mounted resources separately from the drive-to-image mapping. A snapshot stores the mounted-resource list and a `mountmap` table; the latter records which image is assigned to each drive (for example, a remapped drive such as `rk4=rk5.dsk`). On restore, the mount map is applied before the machine is created, because device controllers resolve their image URL when their control blocks are built.
 
-Preserve the interpretation of logical mounted names. This is independent of whether old fingerprint metadata remains readable.
+Do not collapse these fields into a new resource identifier or assume that a drive name alone identifies the image. Preserve the existing snapshot fields and their restore ordering when introducing a catalogue or package format.
 
-### 2. Public runtime URL
+### 2. Public runtime URLs
 
 The emulator currently fetches built-in resources from URLs such as:
 
@@ -35,21 +35,47 @@ The emulator currently fetches built-in resources from URLs such as:
 - `media/lander.ptap` for an uncompressed paper tape;
 - `media/bootcode.ptap` for boot code.
 
-The `media/` path is therefore part of the web-serving interface even though it is not the logical name saved in a snapshot. Do not remove or repurpose these paths as part of the initial storage-model change.
+These paths are part of the current web-serving interface. The logical image name stored in the mount map (for example, `rp1.dsk`) is not the same thing as its public URL (for example, `media/rp1.dsk.zst`). Do not remove or repurpose existing `media/...` paths as part of the initial storage-model change.
 
-### 3. Pre-0.4.0 fingerprint migration
+### 3. Canonical image identity
 
-In `releases/v0.3.0`, `src/imagefingerprint.js` used **FNV-1a/32** over the compressed `.zst` response body. The value was used by DiskStore and snapshot compatibility checks.
+The current implementation uses **SHA-256 over the decompressed resource bytes** as the canonical image identity. Compression is a transport/storage detail: recompressing identical payload bytes must not change the identity. The implementation is in `src/imagefingerprint.js`; it provides synchronous and asynchronous SHA-256 paths, with the same 64-character lowercase hexadecimal result.
 
-For 0.4.0, replace FNV-1a/32 with **SHA-256 over the decompressed resource payload** everywhere resource/image identity is needed. Do not keep FNV-1a/32 as a second active mechanism, and never reinterpret an old eight-digit FNV value as SHA-256.
+This identity is already used by the runtime snapshot and DiskStore paths:
 
-Backward compatibility with pre-0.4.0 fingerprint values is intentionally not required. A snapshot whose stored identity uses the old fingerprint format must be rejected with an explicit, actionable compatibility error rather than silently accepted or compared with a SHA-256 value. The rejection should identify the snapshot as using an unsupported pre-0.4.0 identity format and explain that it must be recreated with the current version. Do not make failure depend on successfully loading the current image first.
+- snapshots capture `imageFingerprints` for mounted images and use them when checking image compatibility;
+- snapshots also capture `imageVersions` and image-source information as separate metadata;
+- DiskStore tags persisted blocks and per-image metadata with the SHA-256 identity of the decompressed image;
+- disk-overlay capture and restore carry the image identity and check it before applying blocks.
 
-DiskStore cache entries and persisted overlays created under the old identity contract must not be trusted under the new one. At the 0.4.0 migration boundary, invalidate or discard legacy cache/overlay records unless a separately designed and tested migration can prove their base-image identity. Do not apply legacy overlay blocks merely because a logical filename matches. The migration must be explicit and deterministic; it must not accidentally erase unrelated machine state or current-format data.
+Do not introduce another active image-identity algorithm or hash the compressed response body. Never reinterpret a legacy FNV value as SHA-256.
 
-Snapshots with no identity metadata are also not proof of compatibility. Under the new contract, do not assign them a fabricated identity or silently apply an overlay to a known image. If the application elects to support such snapshots, it must have an explicit safe policy and tests; otherwise reject them with a clear message.
+Unknown identity is not handled identically by every subsystem, and the proposal must not describe it as one universal rule:
 
-A filename or URL does not prove that the bytes are unchanged between releases. The canonical identity detects payload changes; the resource catalogue and release manifests separately make exact historical payloads discoverable and available.
+- `ImageFingerprint.matches()` is permissive when either identity is unknown (`null`), because some hosts cannot expose the original bytes.
+- DiskStore applies a stricter rule to cached blocks and overlays: known-vs-unknown is not a match; both identities must be known and equal, or both must be unknown. This prevents an identity-less persisted block from being applied to an image whose current identity is known.
+- Snapshot metadata can contain absent or `null` image fingerprints. The current code comments define these as identities that were never learned, not as proof that the image bytes match. Snapshot compatibility behavior must therefore be described in terms of the actual snapshot restore checks, not inferred from DiskStore's stricter overlay rule.
+
+The pre-0.4.0 FNV-1a/32 implementation is historical compatibility context, not the active identity contract. The current runtime's canonical identity is SHA-256 of the uncompressed payload.
+
+### 4. Current media manifest
+
+The current `media/manifest.json` has two related parts:
+
+- `media`: the sorted list of logical guest-media names known to the media registry;
+- `media-versioned`: a per-logical-name registry of published versions. Each version records its version number, SHA-256 of the decompressed payload, and the public URL from which that payload is served.
+
+This is already a content-version registry for the guest media it covers. It is not merely a filename catalogue. The generator, `tools/gen-media-manifest.js`, computes the digest from decompressed bytes and refuses to change the bytes associated with an already published version number; changed content must be published under a new version number.
+
+However, this manifest is not a complete physical-file inventory of `media/`, the repository, or the deployed site. It covers supported guest-media image files and deliberately excludes at least boot code (for example, `bootcode.ptap`). Nor does it define the complete set of resources guaranteed to be present in a particular application release. Keep those responsibilities separate in the proposed model.
+
+### 5. Pages deployment and rollback
+
+The current Pages workflow (`.github/workflows/pages.yml`) checks out the selected release tag or manually selected branch/commit, builds the documentation when that checkout supports it, builds the landing page when present, assembles the site from that checkout plus the landing build, and deploys the resulting artifact.
+
+A manual rollback therefore republishes the site assembled from the older selected checkout. It does not merge in files from newer deployments or retain a separate immutable resource archive automatically. A resource that exists only in a newer checkout can consequently disappear from the deployed site after rollback.
+
+The current media-version registry protects version immutability while its history is carried forward in the manifest: the generator rejects changed bytes for an existing logical-name/version pair. That check does not, by itself, make the corresponding payload independently durable across a rollback to a checkout that predates it. The proposed deployment/archive model must address that gap explicitly.
 
 ## Proposed model
 
