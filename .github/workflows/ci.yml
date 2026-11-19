@@ -40,7 +40,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --onnxruntime-node-install-cuda=skip
 
       - name: Run unit tests
         run: npm test
@@ -58,7 +58,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --onnxruntime-node-install-cuda=skip
 
       - name: Cache puppeteer Chromium
         uses: actions/cache@v6
