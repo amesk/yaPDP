@@ -293,7 +293,11 @@
      */
     function tapeConsumed() {
         stopTimer();
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = null;
+        autoDueAt = 0;
         pendingAuto = false;
+        restoredAutoWaiting = false;
         tapeBytes = null;
         pos = 0;
     }
@@ -416,10 +420,15 @@
     function onTtyMode() {
         if (window.ttyReaderMode !== 'auto') return;
         stopTimer();
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = null;
+        autoDueAt = 0;
         pendingAuto = false;
         if (window.ttyMode === 'local') {
+            restoredAutoWaiting = false;
             startTimer();
         } else {
+            restoredAutoWaiting = false;
             autoFeed();
         }
     }
