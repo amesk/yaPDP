@@ -115,6 +115,21 @@ function testEncode() {
 // ------------------------------------------------------------------
 // Structural checks: the ASR tape unit markup and CSS.
 // ------------------------------------------------------------------
+function testSnapshotContract() {
+  const src = fs.readFileSync(SOURCE_PATH, "utf8");
+  const snap = extractBlock(src, "function snapshot()", "");
+  const restore = extractBlock(src, "function restore(state)", "");
+  assert.ok(/armedDepth\s*:\s*armedDepth/.test(snap),
+    "punch snapshot must preserve the backed-up punch-head depth");
+  assert.ok(/state\.armedDepth/.test(restore),
+    "punch restore must reinstate the backed-up punch-head depth");
+  assert.ok(/Array\.isArray\(state\)/.test(restore),
+    "punch restore must continue accepting legacy byte-array snapshots");
+  assert.ok(/visibleCount\s*=\s*buffer\.length\s*-\s*armedDepth/.test(restore),
+    "rows hidden inside the punch mechanism must not hang below the slot");
+  console.log("punchtape-snapshot: OK (BSP head position + legacy compatibility)");
+}
+
 function testMarkup() {
   const html = fs.readFileSync(HTML_PATH, "utf8");
 
@@ -548,6 +563,7 @@ function testKick() {
 }
 
 testEncode();
+testSnapshotContract();
 testMarkup();
 testCss();
 testKick();
