@@ -1677,7 +1677,16 @@
                 charBuffer: charBuffer.slice(),
                 currentCharPos: currentCharPos,
                 overHang: overHang,
-                seamQueued: seamQueued
+                seamQueued: seamQueued,
+                // The legacy line-oriented print() path stages rows before
+                // animating them. These are plain data objects, so its queue
+                // can also be resumed without persisting browser timers.
+                textBuffer: textBuffer || '',
+                textPos: textPos || 0,
+                lines: lines ? lines.slice() : [],
+                curLine: curLine || null,
+                linePrintActive: !idle || !!(lines && lines.length) || !!curLine,
+                keepLocked: !!keepLocked
             };
         };
 
@@ -1771,6 +1780,15 @@
                 ? Math.max(0, Math.floor(state.overHang)) : 0;
             seamQueued = state.seamQueued === true;
             charBuffer = Array.isArray(state.charBuffer) ? state.charBuffer.slice() : [];
+            textBuffer = typeof state.textBuffer === 'string' ? state.textBuffer : '';
+            textPos = (typeof state.textPos === 'number')
+                ? Math.max(0, Math.min(Math.floor(state.textPos), textBuffer.length)) : 0;
+            lines = Array.isArray(state.lines) ? state.lines.slice() : [];
+            curLine = state.curLine || null;
+            if (curLine) lines.unshift(curLine);
+            idle = true;
+            keepLocked = state.keepLocked === true;
+            callback = null; // callbacks cannot be meaningfully serialized
             if (typeof state.headPos === 'number') {
                 headPos = state.headPos;
                 setHeadPos(headPos, false);
@@ -1783,6 +1801,10 @@
             // Re-arm the queue only after all restored paper and carriage
             // state is in place. This avoids both dropping and double-printing
             // bytes that were waiting at snapshot time.
+            if (state.linePrintActive === true && lines.length > 0) {
+                initialTop = scrollState;
+                printOut();
+            }
             if (charBuffer.length > 0 && !charPrintTimer) {
                 charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
             }
