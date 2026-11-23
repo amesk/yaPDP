@@ -411,6 +411,17 @@ async function ensureServer() {
     console.log("[8] reader advances after X-ON: " + (resumed ? "OK" : "FAILED"));
     if (!resumed) ok = false;
 
+    // The printer queue must not merely survive as data: it must be re-armed
+    // and eventually render the pending characters onto the restored paper.
+    const printerResumed = await page.waitForFunction(() => {
+      const state = window.g60printer.snapshot();
+      return state.charBuffer.length === 0 &&
+        state.rows.some(row => (row.text || "").indexOf("R") !== -1);
+    }, { timeout: 20000 }).then(() => true).catch(() => false);
+    console.log("[8] restored printer queue drains onto paper: " +
+      (printerResumed ? "OK" : "FAILED"));
+    if (!printerResumed) ok = false;
+
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     console.log("[8] test snapshot removed");
 
