@@ -394,13 +394,21 @@ async function ensureServer() {
     // --- 8. Cleanup test snapshot ---
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     // Prove the restored X-OFF latch is behavioural, not just serialized:
-    // it must hold the reader until the machine sends DC1 / X-ON.
+    // the reader must remain at the same byte until DC1 / X-ON arrives.
+    const pausedPos = await page.evaluate(() => window.tapeReader.snapshot().pos);
+    await new Promise((r) => setTimeout(r, 400));
+    const stillPausedPos = await page.evaluate(() => window.tapeReader.snapshot().pos);
+    const held = stillPausedPos === pausedPos;
+    console.log("[8] reader remains paused under restored X-OFF: " + (held ? "OK" : "FAILED"));
+    if (!held) ok = false;
+
     await page.evaluate(() => window.g60ConsoleWrite(0x11));
     const resumed = await page.waitForFunction(
-      () => window.tapeReader.snapshot().pos > 0,
-      { timeout: 10000 }
+      (pos) => window.tapeReader.snapshot().pos > pos,
+      { timeout: 10000 },
+      pausedPos
     ).then(() => true).catch(() => false);
-    console.log("[8] reader resumes after X-ON: " + (resumed ? "OK" : "FAILED"));
+    console.log("[8] reader advances after X-ON: " + (resumed ? "OK" : "FAILED"));
     if (!resumed) ok = false;
 
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
