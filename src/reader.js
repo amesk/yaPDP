@@ -486,6 +486,8 @@
             bytes: Array.prototype.slice.call(tapeBytes),
             pos: pos,
             mode: window.ttyReaderMode || 'stop',
+            xoffPaused: typeof window.getTtyReaderXoffPaused === 'function'
+                ? window.getTtyReaderXoffPaused() : false,
             pendingAuto: pendingAuto,
             autoWaitMs: pendingAuto ? Math.max(0, autoDueAt - Date.now()) : 0,
             elapsedSinceLastFeed: lastFeed ? Math.max(0, Date.now() - lastFeed) : null
@@ -504,6 +506,11 @@
         // Restore logical motor/handshake state, not browser timer handles.
         var mode = (snap.mode === 'start' || snap.mode === 'auto' ||
             snap.mode === 'free' || snap.mode === 'stop') ? snap.mode : 'stop';
+        // Restore the CCU's DC3/X-OFF latch before setReaderMode() recomputes
+        // ttyReaderCanFeed. Legacy snapshots have no latch and default clear.
+        if (typeof window.setTtyReaderXoffPaused === 'function') {
+            window.setTtyReaderXoffPaused(snap.xoffPaused === true);
+        }
         lastFeed = typeof snap.elapsedSinceLastFeed === 'number'
             ? Date.now() - Math.max(0, snap.elapsedSinceLastFeed) : 0;
         pendingAuto = snap.pendingAuto === true;
