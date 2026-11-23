@@ -230,7 +230,12 @@ function buildSandbox() {
       paperTape: {
         _buffer: [0x11, 0x22, 0x33],
         snapshot() { return { buffer: this._buffer.slice() }; },
-        restore(bytes) { this._buffer = bytes ? bytes.slice() : []; },
+        restore(state) {
+          // Production snapshots now carry { buffer, armedDepth }; retain
+          // compatibility with legacy snapshots that stored the byte array.
+          const bytes = Array.isArray(state) ? state : state && state.buffer;
+          this._buffer = bytes ? bytes.slice() : [];
+        },
       },
       g60printer: {
         _state: { rows: [] },
