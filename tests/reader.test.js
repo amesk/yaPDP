@@ -197,6 +197,20 @@ function loadReaderModule() {
     "snapshots.js captures the reader tape");
   assert.ok(snaps.includes("window.tapeReader.restore"),
     "snapshots.js restores the reader tape");
+  assert.ok(!/window\.setReaderMode\(["']stop["']\)/.test(snaps),
+    "snapshots.js must not force a restored reader into STOP");
+  assert.ok(/mode:\s*window\.ttyReaderMode/.test(src),
+    "reader snapshot preserves the operator switch position");
+  assert.ok(/pendingAuto:\s*pendingAuto/.test(src),
+    "reader snapshot preserves a paced AUTO feed");
+  assert.ok(/autoWaitMs:/.test(src),
+    "reader snapshot preserves the remaining AUTO pacing delay");
+  assert.ok(/elapsedSinceLastFeed:/.test(src),
+    "reader snapshot preserves AUTO motor pacing history");
+  assert.ok(/window\.setReaderMode\(mode\)/.test(src),
+    "reader restore updates the switch UI and resumes the saved mode");
+  assert.ok(/restoredAutoWaiting/.test(src),
+    "AUTO/LINE restore waits for the outstanding DL11 drain instead of duplicating input");
 
   // reader.js itself: the AUTO signal listener is exposed, and the tape is
   // kicked through the punch tape's shared motion model, so both hanging tapes
