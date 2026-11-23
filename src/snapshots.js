@@ -790,7 +790,7 @@ var SnapshotStore = (() => {
                     // absent, e.g. VT52 console).
                     if (snap.punchtape && typeof window !== "undefined" &&
                         window.paperTape && typeof window.paperTape.restore === "function") {
-                        window.paperTape.restore(snap.punchtape.buffer);
+                        window.paperTape.restore(snap.punchtape);
                     }
                     // ASR reader tape (L2) — re-render the loaded tape and its read
                     // position (no-op when the tape UI is absent or no tape was
