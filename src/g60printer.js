@@ -1669,7 +1669,15 @@
                 pagePos: pagePos,
                 pageHasContent: pageHasContent,
                 headPos: headPos,
-                maxCols: maxCols
+                maxCols: maxCols,
+                // The ASR console receives bytes into charBuffer and prints
+                // them asynchronously. Preserve the logical device queue and
+                // carriage state so a restored machine does not lose output
+                // that had already been accepted by the printer.
+                charBuffer: charBuffer.slice(),
+                currentCharPos: currentCharPos,
+                overHang: overHang,
+                seamQueued: seamQueued
             };
         };
 
@@ -1724,13 +1732,9 @@
             return p;
         }
 
-        // Restore the printed paper from a snapshot: rebuild the DOM rows
-        // (text + row class), restore the form-feed page position, head
-        // position and column width. Queued character output (charBuffer,
-        // textBuffer) is NOT restored — a restored machine resumes with the
-        // paper as it looked at save time, and any in-flight printing simply
-        // never happened (like power loss on real hardware). The next printed
-        // character starts a fresh line below the restored paper.
+        // Restore the printed paper and the pending character-device queue.
+        // Browser timers are deliberately not serialized: the saved queue is
+        // resumed with a fresh pacing interval after the DOM has been rebuilt.
         this.restore = function(state) {
             if (!state) return;
             resetPrinter(true);
@@ -1753,6 +1757,20 @@
             // A seam in flight is pacing state, not paper state: a restore
             // starts with an empty queue.
             seamQueued = false;
+            // The last ordinary row is the active carriage line. A page
+            // seam closes the sheet and deliberately leaves no active line.
+            currentLineEl = null;
+            if (rows.length && rows[rows.length - 1] &&
+                rows[rows.length - 1].cls !== 'pageBreak') {
+                currentLineEl = printArea.lastChild;
+            }
+            currentCharPos = (typeof state.currentCharPos === 'number')
+                ? Math.max(0, Math.min(Math.floor(state.currentCharPos), maxCols))
+                : 0;
+            overHang = (typeof state.overHang === 'number')
+                ? Math.max(0, Math.floor(state.overHang)) : 0;
+            seamQueued = state.seamQueued === true;
+            charBuffer = Array.isArray(state.charBuffer) ? state.charBuffer.slice() : [];
             if (typeof state.headPos === 'number') {
                 headPos = state.headPos;
                 setHeadPos(headPos, false);
@@ -1761,6 +1779,12 @@
                 scrollState = Math.max(0, paper.scrollHeight - paper.clientHeight);
                 paper.scrollTop = scrollState;
                 paper.className = 'paperNoScroll';
+            }
+            // Re-arm the queue only after all restored paper and carriage
+            // state is in place. This avoids both dropping and double-printing
+            // bytes that were waiting at snapshot time.
+            if (charBuffer.length > 0 && !charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
             }
         };
     };
