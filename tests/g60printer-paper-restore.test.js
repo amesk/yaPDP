@@ -72,6 +72,12 @@ function makeElement(tag) {
     className: "",
     textContent: "",
     children: [],
+    attributes: {},
+    setAttribute: function (name, value) { this.attributes[name] = String(value); },
+    getAttribute: function (name) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, name)
+        ? this.attributes[name] : null;
+    },
     appendChild: function (child) {
       this.children.push(child);
       return child;
@@ -116,14 +122,32 @@ function run() {
     assert.strictEqual(p.children[0].textContent, "\u00A0");
   }
 
-  // 3. A missing/odd row payload must not throw and still yields a cell.
+  // 3. New snapshots preserve per-cell styling and composed-glyph metadata.
+  {
+    const p = buildPaperRow({
+      cls: "",
+      cells: [
+        { text: "N", cls: "bold" },
+        { text: "{", cls: "compose", base: "(", mark: "-" },
+        { text: "4", cls: "overstrike" }
+      ]
+    });
+    assert.strictEqual(p.children.length, 3);
+    assert.strictEqual(p.children[0].className, "bold");
+    assert.strictEqual(p.children[1].className, "compose");
+    assert.strictEqual(p.children[1].getAttribute("data-base"), "(");
+    assert.strictEqual(p.children[1].getAttribute("data-mark"), "-");
+    assert.strictEqual(p.children[2].className, "overstrike");
+  }
+
+  // 4. A missing/odd row payload must not throw and still yields a cell.
   {
     const p = buildPaperRow(null);
     assert.strictEqual(p.children.length, 1, "a null row degrades to one cell");
     assert.strictEqual(p.className, "", "no class for a null row");
   }
 
-  // 4. The row class survives (the perforation seam is a `p.pageBreak`).
+  // 5. The row class survives (the perforation seam is a `p.pageBreak`).
   {
     const p = buildPaperRow({ text: "\u00A0", cls: "pageBreak" });
     assert.strictEqual(p.className, "pageBreak",
