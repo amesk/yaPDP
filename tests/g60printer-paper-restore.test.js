@@ -193,6 +193,32 @@ function run() {
       "one character cell must keep the 6 LPI height");
   }
 
+  // 8. Shared snapshots must preserve pending ASR output and the carriage
+  //    position. A timer itself is not serialized; restore schedules a fresh
+  //    pacing tick after rebuilding the paper.
+  {
+    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    const snapshotStart = src.indexOf("this.snapshot = function()");
+    assert.ok(snapshotStart !== -1, "G60Printer.snapshot must exist");
+    const snapshotBody = src.slice(snapshotStart, snapshotStart + 1800);
+    assert.ok(/charBuffer:\s*charBuffer\.slice\(\)/.test(snapshotBody),
+      "snapshot must copy the pending character queue");
+    assert.ok(/currentCharPos:\s*currentCharPos/.test(snapshotBody),
+      "snapshot must preserve the carriage column");
+    assert.ok(/overHang:\s*overHang/.test(snapshotBody),
+      "snapshot must preserve pending overstrike position");
+
+    const restoreStart = src.indexOf("this.restore = function(state)");
+    assert.ok(restoreStart !== -1, "G60Printer.restore must exist");
+    const restoreBody = src.slice(restoreStart, restoreStart + 3200);
+    assert.ok(/charBuffer\s*=\s*Array\.isArray\(state\.charBuffer\)/.test(restoreBody),
+      "restore must reinstate pending characters");
+    assert.ok(/setTimeout\(processCharBuffer,\s*charPrintDelay\)/.test(restoreBody),
+      "restore must restart pacing without serializing a browser timer");
+    assert.ok(/currentCharPos\s*=/.test(restoreBody),
+      "restore must reinstate the current carriage column");
+  }
+
   console.log("g60printer paper-restore tests: all passed");
 }
 
