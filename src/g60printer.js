@@ -1647,9 +1647,20 @@
             if (printArea) {
                 for (var i = 0; i < printArea.children.length; i++) {
                     var el = printArea.children[i];
+                    var cells = [];
+                    for (var j = 0; j < el.children.length; j++) {
+                        var cell = el.children[j];
+                        cells.push({
+                            text: cell.textContent || '',
+                            cls: cell.className || '',
+                            base: cell.getAttribute('data-base'),
+                            mark: cell.getAttribute('data-mark')
+                        });
+                    }
                     rows.push({
                         text: el.textContent || '',
-                        cls: el.className || ''
+                        cls: el.className || '',
+                        cells: cells
                     });
                 }
             }
@@ -1677,17 +1688,37 @@
         function buildPaperRow(row) {
             var p = document.createElement('p');
             if (row && row.cls) p.className = row.cls;
+            // New snapshots carry the actual cell structure, including
+            // overstrike/composition metadata. Older snapshots only have row
+            // text, so retain the original one-span-per-character fallback.
+            if (row && Array.isArray(row.cells)) {
+                for (var c = 0; c < row.cells.length; c++) {
+                    var saved = row.cells[c] || {};
+                    var cell = document.createElement('span');
+                    cell.textContent = typeof saved.text === 'string' ? saved.text : '';
+                    if (saved.cls) cell.className = saved.cls;
+                    if (saved.base != null) cell.setAttribute('data-base', saved.base);
+                    if (saved.mark != null) cell.setAttribute('data-mark', saved.mark);
+                    p.appendChild(cell);
+                }
+                if (!row.cells.length) {
+                    var emptyCell = document.createElement('span');
+                    emptyCell.textContent = '\u00A0';
+                    p.appendChild(emptyCell);
+                }
+                return p;
+            }
             var text = (row && typeof row.text === 'string' && row.text.length > 0)
                 ? row.text : '\u00A0';
             for (var i = 0; i < text.length; i++) {
                 var code = text.charCodeAt(i);
-                var cell = text.charAt(i);
+                var glyph = text.charAt(i);
                 if (code >= 0xD800 && code <= 0xDBFF && i + 1 < text.length) {
-                    cell = text.substr(i, 2);
+                    glyph = text.substr(i, 2);
                     i++;
                 }
                 var span = document.createElement('span');
-                span.textContent = cell;
+                span.textContent = glyph;
                 p.appendChild(span);
             }
             return p;
