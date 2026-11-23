@@ -26,7 +26,7 @@ const SOURCE_PATH = path.join(__dirname, "..", "src", "onboarding.js");
 // isEnabled/setEnabled bridge, which reads the module's own storage, is testable.
 function loadModule(extra) {
     const code = fs.readFileSync(SOURCE_PATH, "utf8");
-    const sandbox = Object.assign({ console }, extra || {});
+    const sandbox = Object.assign({ console, URLSearchParams }, extra || {});
     vm.createContext(sandbox);
     vm.runInContext(code, sandbox);
     // `var Onboarding = ...` at top level becomes a property of the sandbox.
@@ -76,6 +76,18 @@ function fakeTable(rowsData) {
 function run() {
     const On = loadModule();
     assert.ok(On, "module should expose Onboarding");
+
+    // ---- kiosk URL override ----------------------------------------
+    {
+        assert.strictEqual(On.shouldSkipOnboarding("?onboarding=skip"), true,
+            "onboarding=skip should suppress the built-in hint");
+        assert.strictEqual(On.shouldSkipOnboarding("?onboarding=show"), false,
+            "other onboarding values should preserve default behavior");
+        assert.strictEqual(On.shouldSkipOnboarding("?foo=1&onboarding=skip&bar=2"), true,
+            "the option should work alongside other URL parameters");
+        assert.strictEqual(On.shouldSkipOnboarding(""), false,
+            "no option should preserve default behavior");
+    }
 
     // ---- shouldShowOnboarding --------------------------------------
     {
