@@ -57,6 +57,16 @@ var Onboarding = (function () {
         }
     }
 
+    // A host may own the visitor introduction and opt out of the built-in
+    // first-run hint for this page load without changing the saved preference.
+    function shouldSkipOnboarding(search) {
+        try {
+            return new URLSearchParams(String(search || "")).get("onboarding") === "skip";
+        } catch (err) {
+            return false;
+        }
+    }
+
     // Record that the user has seen the hint.
     function markSeen(storage) {
         if (!storage) return;
@@ -344,6 +354,14 @@ var Onboarding = (function () {
 
     // Called from pdp11-app.js during bootstrap — first-run gate.
     function init() {
+        // An embedding host (e.g. a museum kiosk) may provide its own
+        // introduction. Suppress only this launch; never touch the saved
+        // first-run preference, so ordinary visits retain their usual behavior.
+        if (typeof location !== "undefined" &&
+            shouldSkipOnboarding(location.search)) {
+            syncHintCheckbox();
+            return;
+        }
         if (bootTable === null) {
             bootTable = loadBootTable(document.getElementById("guest-os-table"));
         }
@@ -393,6 +411,7 @@ var Onboarding = (function () {
         isEnabled: isEnabled,
         setEnabled: setEnabled,
         shouldShowOnboarding: shouldShowOnboarding,
+        shouldSkipOnboarding: shouldSkipOnboarding,
         markSeen: markSeen,
         clearFlag: clearFlag,
         parseBootRow: parseBootRow,

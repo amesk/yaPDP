@@ -199,6 +199,12 @@ except the disk images, which are bundled with the emulator.
 
 **Recommendations for museums and educators**
 
+The `?onboarding=skip` parameter suppresses yaPDP's built-in first-run hint for
+that page load. Use it when the embedding host provides its own visitor
+introduction (for example, a museum kiosk). It does not change the visitor's
+saved onboarding preference, so opening yaPDP normally later retains the
+usual first-run behavior.
+
 - Use `?boot=` for a quick OS demonstration — no state file needed.
 - Use `?state=` with a GitHub Gist for a curated exhibit that survives
   hosting changes.
