@@ -113,6 +113,9 @@
     var timer = null;     // START-mode feed timer
     var lastFeed = 0;     // timestamp of the last fed byte (AUTO pacing)
     var pendingAuto = false; // an AUTO feed is owed (pacing delay running)
+    var autoTimer = null; // AUTO pacing timer (separate from START motor timer)
+    var autoDueAt = 0;    // wall-clock deadline for the pending AUTO feed
+    var restoredAutoWaiting = false; // AUTO/LINE snapshot awaiting DL11 drain
 
     /**
      * init() - Locate the #readertape element, create the tape body and size
@@ -334,7 +337,11 @@
         var wait = currentDelay() - (Date.now() - lastFeed);
         if (wait > 0) {
             pendingAuto = true;
-            setTimeout(function () {
+            autoDueAt = Date.now() + wait;
+            if (autoTimer) clearTimeout(autoTimer);
+            autoTimer = setTimeout(function () {
+                autoTimer = null;
+                autoDueAt = 0;
                 pendingAuto = false;
                 autoFeed();
             }, wait);
@@ -362,18 +369,40 @@
      */
     function setMode(mode) {
         if (mode === 'start') {
+            if (autoTimer) clearTimeout(autoTimer);
+            autoTimer = null;
+            autoDueAt = 0;
             pendingAuto = false;
+            restoredAutoWaiting = false;
             startTimer();
         } else if (mode === 'auto') {
             stopTimer();
             if (window.ttyMode === 'local') {
+                restoredAutoWaiting = false;
                 startTimer(); // LOCAL: no DL11 handshake — printer-paced
+            } else if (restoredAutoWaiting) {
+                // The saved DL11 may still contain the previously fed byte.
+                // Wait for its drain notification instead of feeding a duplicate.
+                restoredAutoWaiting = false;
+            } else if (pendingAuto && autoDueAt > Date.now()) {
+                var remaining = autoDueAt - Date.now();
+                if (autoTimer) clearTimeout(autoTimer);
+                autoTimer = setTimeout(function () {
+                    autoTimer = null;
+                    autoDueAt = 0;
+                    pendingAuto = false;
+                    autoFeed();
+                }, remaining);
             } else {
                 autoFeed(); // one byte now, then one per drained signal
             }
         } else {
             stopTimer();
+            if (autoTimer) clearTimeout(autoTimer);
+            autoTimer = null;
+            autoDueAt = 0;
             pendingAuto = false;
+            restoredAutoWaiting = false;
         }
     }
 
@@ -407,7 +436,11 @@
     function loadBytes(bytes) {
         if (!bytes || !bytes.length) return;
         stopTimer();
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = null;
+        autoDueAt = 0;
         pendingAuto = false;
+        restoredAutoWaiting = false;
         tapeBytes = bytes;
         pos = 0;
         if (!body) init();
@@ -424,7 +457,11 @@
      */
     function removeTape() {
         stopTimer();
+        if (autoTimer) clearTimeout(autoTimer);
+        autoTimer = null;
+        autoDueAt = 0;
         pendingAuto = false;
+        restoredAutoWaiting = false;
         var had = !!tapeBytes;
         tapeBytes = null;
         pos = 0;
@@ -438,18 +475,33 @@
         if (!tapeBytes) return null;
         return {
             bytes: Array.prototype.slice.call(tapeBytes),
-            pos: pos
+            pos: pos,
+            mode: window.ttyReaderMode || 'stop',
+            pendingAuto: pendingAuto,
+            autoWaitMs: pendingAuto ? Math.max(0, autoDueAt - Date.now()) : 0,
+            elapsedSinceLastFeed: lastFeed ? Math.max(0, Date.now() - lastFeed) : null
         };
     }
 
     function restore(snap) {
         if (!snap || !snap.bytes || !snap.bytes.length) {
             removeTape();
+            if (typeof window.setReaderMode === 'function') window.setReaderMode('stop');
             return;
         }
         loadBytes(new Uint8Array(snap.bytes));
         var read = Math.max(0, Math.min(snap.pos || 0, tapeBytes.length));
         pos = read;
+        // Restore logical motor/handshake state, not browser timer handles.
+        var mode = (snap.mode === 'start' || snap.mode === 'auto' ||
+            snap.mode === 'free' || snap.mode === 'stop') ? snap.mode : 'stop';
+        lastFeed = typeof snap.elapsedSinceLastFeed === 'number'
+            ? Date.now() - Math.max(0, snap.elapsedSinceLastFeed) : 0;
+        pendingAuto = snap.pendingAuto === true;
+        autoDueAt = pendingAuto
+            ? Date.now() + Math.max(0, Number(snap.autoWaitMs) || 0) : 0;
+        restoredAutoWaiting = mode === 'auto' && window.ttyMode !== 'local' &&
+            !pendingAuto;
         if (body) {
             // Re-play the rows that had already come out of the slot, in the
             // order they were read: each fresh row is prepended, so the byte
@@ -460,6 +512,14 @@
                 else body.appendChild(row);
             }
             keepHeadVisible();
+        }
+        // setReaderMode updates the switch UI and calls setMode(), which
+        // re-arms START/AUTO with fresh timers. Legacy snapshots default STOP.
+        if (typeof window.setReaderMode === 'function') {
+            window.setReaderMode(mode);
+        } else {
+            window.ttyReaderMode = mode;
+            setMode(mode);
         }
     }
 
