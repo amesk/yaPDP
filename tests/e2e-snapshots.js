@@ -174,15 +174,23 @@ async function ensureServer() {
       window.paperTape.punchChar(0x42); // B
       window.paperTape.backspace();     // BSP: B is inside the punch mechanism
       window.tapeReader.loadBytes(new Uint8Array([0x31, 0x32, 0x33, 0x34]));
-      window.setTtyReaderXoffPaused(true);
-      window.setReaderMode("auto");
+      window.setReaderMode("start");
       // Keep the print queue pending long enough for SnapshotStore.save()
       // to capture it; the restored queue must continue printing afterwards.
       for (var i = 0; i < 300; i++) window.g60printer.printChar("R");
     });
+    // Give START enough time to advance the reader to a non-zero position,
+    // then park it in AUTO with DC3 latched before capturing the snapshot.
+    await page.waitForFunction(() => window.tapeReader.snapshot().pos >= 2,
+      { timeout: 5000 });
+    await page.evaluate(() => {
+      window.setReaderMode("stop");
+      window.setTtyReaderXoffPaused(true);
+      window.setReaderMode("auto");
+    });
     await page.waitForFunction(() => {
       const r = window.tapeReader.snapshot();
-      return r && r.mode === "auto" && r.xoffPaused === true;
+      return r && r.mode === "auto" && r.xoffPaused === true && r.pos >= 2;
     }, { timeout: 5000 });
     console.log("[3] Model 33 ASR prepared: punch BSP, AUTO/X-OFF reader, pending print queue");
 
