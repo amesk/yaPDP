@@ -79,6 +79,14 @@ function setTtyPunch(on) {
 var readerModes = ['start', 'auto', 'stop', 'free'];
 var readerXoffPaused = false; // DC3/X-OFF pause latch, only used in AUTO
 
+// The latch is part of the reader's logical peripheral state. Expose narrow
+// accessors so the reader snapshot can preserve it without owning CCU logic.
+window.getTtyReaderXoffPaused = function () { return readerXoffPaused; };
+window.setTtyReaderXoffPaused = function (paused) {
+  readerXoffPaused = !!paused;
+  updateReaderCanFeed();
+};
+
 // Recompute whether the ASR reader may feed bytes, honouring the CCU power
 // state. START always feeds; STOP/FREE never; AUTO feeds unless a DC3
 // (X-OFF) pause is latched. In CCU OFF the unit is powered down, so the
