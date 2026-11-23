@@ -165,6 +165,27 @@ async function ensureServer() {
     }, { timeout: 5000 });
     console.log("[3] LP11 taken OFF LINE");
 
+    // Model 33 ASR state: preserve an armed punch head, an X-OFF-paused
+    // AUTO reader, and a substantial pending character queue across the
+    // same IndexedDB save/reload path exercised below.
+    await page.evaluate(() => {
+      window.paperTape.clear();
+      window.paperTape.punchChar(0x41); // A
+      window.paperTape.punchChar(0x42); // B
+      window.paperTape.backspace();     // BSP: B is inside the punch mechanism
+      window.tapeReader.loadBytes(new Uint8Array([0x31, 0x32, 0x33, 0x34]));
+      window.setTtyReaderXoffPaused(true);
+      window.setReaderMode("auto");
+      // Keep the print queue pending long enough for SnapshotStore.save()
+      // to capture it; the restored queue must continue printing afterwards.
+      for (var i = 0; i < 300; i++) window.g60printer.printChar("R");
+    });
+    await page.waitForFunction(() => {
+      const r = window.tapeReader.snapshot();
+      return r && r.mode === "auto" && r.xoffPaused === true;
+    }, { timeout: 5000 });
+    console.log("[3] Model 33 ASR prepared: punch BSP, AUTO/X-OFF reader, pending print queue");
+
     // VT52 console (unit 0): print a couple of lines via the terminal so the
     // screen buffer (and hardcopy scrollback) carry content. ESC [2J clears,
     // then two lines with a cursor move in between.
@@ -217,6 +238,10 @@ async function ensureServer() {
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
+      readertape: (window.tapeReader && window.tapeReader.snapshot) ? window.tapeReader.snapshot() : null,
+      teletype: (window.g60printer && window.g60printer.snapshot) ? window.g60printer.snapshot() : null,
+      readertape: (window.tapeReader && window.tapeReader.snapshot) ? window.tapeReader.snapshot() : null,
+      teletype: (window.g60printer && window.g60printer.snapshot) ? window.g60printer.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
       vt52: (window.vt52SnapshotAll && window.vt52SnapshotAll()) || null,
@@ -299,6 +324,21 @@ async function ensureServer() {
                      before.devices["17777560"] && before.devices["17777560"].rcsr],
       ["TM11 mts", after.devices["17772520"] && after.devices["17772520"].mts,
                    before.devices["17772520"] && before.devices["17772520"].mts],
+      ["punch armedDepth", after.punchtape && after.punchtape.armedDepth,
+                           before.punchtape && before.punchtape.armedDepth],
+      ["reader tape bytes", after.readertape && after.readertape.bytes.join(","),
+                             before.readertape && before.readertape.bytes.join(",")],
+      ["reader position", after.readertape && after.readertape.pos,
+                           before.readertape && before.readertape.pos],
+      ["reader AUTO mode", after.readertape && after.readertape.mode,
+                            "auto"],
+      ["reader X-OFF latch", after.readertape && after.readertape.xoffPaused,
+                              true],
+      ["teletype pending queue restored", after.teletype && after.teletype.charBuffer.length > 0,
+                                          true],
+      ["teletype queue retains pending R characters",
+          after.teletype && after.teletype.charBuffer.every(ch => ch === "R"),
+          true],
       ["punchtape bytes", after.punchtape && after.punchtape.buffer.length,
                           before.punchtape && before.punchtape.buffer.length],
       ["tape DOM rows", after.tapeRows, (before.punchtape && before.punchtape.buffer) ? before.punchtape.buffer.length : -1],
@@ -344,6 +384,17 @@ async function ensureServer() {
     }
 
     // --- 8. Cleanup test snapshot ---
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
+    // Prove the restored X-OFF latch is behavioural, not just serialized:
+    // it must hold the reader until the machine sends DC1 / X-ON.
+    await page.evaluate(() => window.g60ConsoleWrite(0x11));
+    const resumed = await page.waitForFunction(
+      () => window.tapeReader.snapshot().pos > 0,
+      { timeout: 10000 }
+    ).then(() => true).catch(() => false);
+    console.log("[8] reader resumes after X-ON: " + (resumed ? "OK" : "FAILED"));
+    if (!resumed) ok = false;
+
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     console.log("[8] test snapshot removed");
 
