@@ -207,6 +207,10 @@ function run() {
       "snapshot must preserve the carriage column");
     assert.ok(/overHang:\s*overHang/.test(snapshotBody),
       "snapshot must preserve pending overstrike position");
+    assert.ok(/lines:\s*lines\s*\?\s*lines\.slice\(\)/.test(snapshotBody),
+      "snapshot must preserve the line-oriented print queue");
+    assert.ok(/textBuffer:\s*textBuffer/.test(snapshotBody),
+      "snapshot must preserve unconsumed line-oriented text");
 
     const restoreStart = src.indexOf("this.restore = function(state)");
     assert.ok(restoreStart !== -1, "G60Printer.restore must exist");
@@ -217,6 +221,10 @@ function run() {
       "restore must restart pacing without serializing a browser timer");
     assert.ok(/currentCharPos\s*=/.test(restoreBody),
       "restore must reinstate the current carriage column");
+    assert.ok(/lines\s*=\s*Array\.isArray\(state\.lines\)/.test(restoreBody),
+      "restore must reinstate the line-oriented print queue");
+    assert.ok(/printOut\(\)/.test(restoreBody),
+      "restore must restart pending line-oriented output");
   }
 
   console.log("g60printer paper-restore tests: all passed");
