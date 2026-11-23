@@ -201,6 +201,13 @@ function loadReaderModule() {
     "snapshots.js must not force a restored reader into STOP");
   assert.ok(/mode:\s*window\.ttyReaderMode/.test(src),
     "reader snapshot preserves the operator switch position");
+  assert.ok(/xoffPaused:/.test(src),
+    "reader snapshot preserves the DC3/X-OFF pause latch");
+  assert.ok(/setTtyReaderXoffPaused\(snap\.xoffPaused === true\)/.test(src),
+    "reader restore reinstates X-OFF before restoring the switch mode");
+  assert.ok(/getTtyReaderXoffPaused/.test(app) &&
+    /setTtyReaderXoffPaused/.test(app),
+    "pdp11-app.js exposes the CCU X-OFF latch to the reader snapshot");
   assert.ok(/pendingAuto:\s*pendingAuto/.test(src),
     "reader snapshot preserves a paced AUTO feed");
   assert.ok(/autoWaitMs:/.test(src),
