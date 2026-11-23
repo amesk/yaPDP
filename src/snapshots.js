@@ -797,13 +797,11 @@ var SnapshotStore = (() => {
                     // loaded at capture time).
                     if (snap.readertape && typeof window !== "undefined" &&
                         window.tapeReader && typeof window.tapeReader.restore === "function") {
+                        // restore() also restores the saved switch/motor
+                        // state and re-arms its pacing timers. Do not force STOP:
+                        // doing so would silently change the input stream after
+                        // a shared-state restore.
                         window.tapeReader.restore(snap.readertape);
-                        // A restored tape is paused like a freshly loaded one: the
-                        // reader switch goes to STOP so the UI never shows a
-                        // running reader with a stopped motor.
-                        if (typeof window.setReaderMode === "function") {
-                            window.setReaderMode("stop");
-                        }
                     }
                     // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
                     // cursor, modes. Restored after RAM/devices so a repaint sees
