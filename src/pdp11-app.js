@@ -290,6 +290,8 @@ function initG60Printer() {
     }
   });
   g60Console = createG60Console(g60printer);
+  // SnapshotStore and browser integrations use the public peripheral handle.
+  window.g60printer = g60printer;
 }
 
 // ==================================================================
