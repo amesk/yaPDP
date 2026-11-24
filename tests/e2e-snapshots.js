@@ -422,11 +422,22 @@ async function ensureServer() {
 
     // The printer queue must not merely survive as data: it must be re-armed
     // and eventually render the pending characters onto the restored paper.
+    // The default Model 33 speed is authentic (100 ms per character), so
+    // a 284-character restored queue needs about 28 seconds to drain. Derive
+    // the wait from the captured queue and configured speed rather than
+    // failing a correct restore at an arbitrary 20-second cutoff.
+    const printerQueueLength = before.teletype && Array.isArray(before.teletype.charBuffer)
+      ? before.teletype.charBuffer.length : 0;
+    const printerSpeed = await page.evaluate(() => Config.get().teletypeSpeed);
+    const printerCharDelay = printerSpeed === "authentic" ? 100 : 30;
+    const printerTimeout = Math.max(20000, printerQueueLength * printerCharDelay + 10000);
+    console.log("[8] waiting for restored printer queue: " + printerQueueLength +
+      " chars at " + printerSpeed + " speed (timeout " + printerTimeout + " ms)");
     const printerResumed = await page.waitForFunction(() => {
       const state = window.g60printer.snapshot();
       return state.charBuffer.length === 0 &&
         state.rows.some(row => (row.text || "").indexOf("R") !== -1);
-    }, { timeout: 20000 }).then(() => true).catch(() => false);
+    }, { timeout: printerTimeout }).then(() => true).catch(() => false);
     console.log("[8] restored printer queue drains onto paper: " +
       (printerResumed ? "OK" : "FAILED"));
     if (!printerResumed) ok = false;
