@@ -231,11 +231,20 @@ async function ensureServer() {
     // writing the DPC register. The processor loop runs in-page and draws
     // onto the CRT canvas, which the snapshot must capture.
 
-    const snapId = await page.evaluate(async () => {
+    const savedSnapshot = await page.evaluate(async () => {
       const snap = await SnapshotStore.save("e2e test");
-      return snap.id;
+      return {
+        id: snap.id,
+        teletypeQueueLength: snap.teletypepaper &&
+          Array.isArray(snap.teletypepaper.charBuffer)
+          ? snap.teletypepaper.charBuffer.length : -1
+      };
     });
-    console.log(`[3] snapshot saved: ${snapId}`);
+    const snapId = savedSnapshot.id;
+    console.log(`[3] snapshot saved: ${snapId}; Model 33 queued chars=${savedSnapshot.teletypeQueueLength}`);
+    if (savedSnapshot.teletypeQueueLength <= 0) {
+      throw new Error("SnapshotStore.save did not capture the pending Model 33 character queue");
+    }
 
     const before = await page.evaluate(() => ({
       pc: CPU.registerVal[7],
