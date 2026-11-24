@@ -289,7 +289,12 @@
         if (window.EmulationControl && window.EmulationControl.register) {
             window.EmulationControl.register("g60-printer:" + idPrefix, {
                 pause: pauseEmulationTimers,
-                resume: resumeEmulationTimers
+                resume: resumeEmulationTimers,
+                // register() invokes resume-if-needed for a module created
+                // after the page has restored its persisted host-pause state.
+                // Without this alias, restored character queues stay armed
+                // only in the scheduler's map and never receive a real timer.
+                "resume-if-needed": resumeEmulationTimers
             });
         }
 
