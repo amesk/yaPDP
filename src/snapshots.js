@@ -291,6 +291,14 @@ var SnapshotStore = (() => {
                 typeof window.vt52SnapshotAll === "function") {
                 vt52 = window.vt52SnapshotAll();
             }
+            // The Model 33 ASR paper and its pending character queue are part
+            // of the operator-visible machine state. Capture them in the
+            // ordinary local SnapshotStore path as well as in exported states.
+            var teletypepaper = null;
+            if (typeof window !== "undefined" && window.g60printer &&
+                typeof window.g60printer.snapshot === "function") {
+                teletypepaper = window.g60printer.snapshot();
+            }
             // Disk write-back overlay: the blocks that differ from the
             // pristine base image at capture time. Restoring them rolls the
             // disks back to the same generation as the captured RAM, so the
@@ -338,6 +346,7 @@ var SnapshotStore = (() => {
                     punchtape: punchtape,
                     readertape: readertape,
                     vt52: vt52,
+                    teletypepaper: teletypepaper,
                     overlay: overlay,
                     steps: steps || null,
                     stepsMessage: stepsMessage || null,
