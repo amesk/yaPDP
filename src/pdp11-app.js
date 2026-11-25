@@ -178,6 +178,10 @@ function setTtyMode(mode) {
   }
 }
 
+// SnapshotStore restores the CCU selector through the same operator path,
+// keeping the switch artwork and the reader/punch power interlocks in sync.
+window.setTtyMode = setTtyMode;
+
 function g60ConsoleWrite(code) {
   // In LOCAL mode the teletype is disconnected from the machine line: output
   // from the machine is ignored (it neither prints nor punches). In OFF the
