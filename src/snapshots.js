@@ -341,6 +341,12 @@ var SnapshotStore = (() => {
                     // rotary switches, toggles) — the machine alone cannot
                     // recreate it, so it travels with the state.
                     panel: capturePanelState(),
+                    // Model 33 ASR Call Control Unit selector. OFF removes
+                    // power from the complete peripheral; LINE and LOCAL
+                    // select its connection to the PDP-11.
+                    asrMode: (typeof window !== "undefined" &&
+                        (window.ttyMode === "off" || window.ttyMode === "local"))
+                        ? window.ttyMode : "line",
                     page: capturePage(),
                     devices: devices,
                     punchtape: punchtape,
@@ -800,6 +806,15 @@ var SnapshotStore = (() => {
                     if (snap.punchtape && typeof window !== "undefined" &&
                         window.paperTape && typeof window.paperTape.restore === "function") {
                         window.paperTape.restore(snap.punchtape);
+                    }
+                    // Restore the CCU selector before the reader switch: OFF
+                    // must interlock the reader motor/feed, not merely repaint
+                    // the knob. States predating asrMode default to LINE.
+                    if (typeof window !== "undefined" &&
+                        typeof window.setTtyMode === "function") {
+                        var asrMode = (snap.asrMode === "off" || snap.asrMode === "local")
+                            ? snap.asrMode : "line";
+                        window.setTtyMode(asrMode);
                     }
                     // ASR reader tape (L2) — re-render the loaded tape and its read
                     // position (no-op when the tape UI is absent or no tape was
