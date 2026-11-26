@@ -347,6 +347,13 @@ var SnapshotStore = (() => {
                     asrMode: (typeof window !== "undefined" &&
                         (window.ttyMode === "off" || window.ttyMode === "local"))
                         ? window.ttyMode : "line",
+                    // Model 33 ASR paper-punch controls are operator state,
+                    // independent of the CCU selector and reader switch.
+                    // Older snapshots have no asrPunch block and restore to
+                    // the physical default: punch OFF, REL released.
+                    asrPunch: (typeof window !== "undefined" &&
+                        typeof window.getTtyPunchState === "function")
+                        ? window.getTtyPunchState() : { enabled: false, relHeld: false },
                     page: capturePage(),
                     devices: devices,
                     punchtape: punchtape,
@@ -815,6 +822,15 @@ var SnapshotStore = (() => {
                         var asrMode = (snap.asrMode === "off" || snap.asrMode === "local")
                             ? snap.asrMode : "line";
                         window.setTtyMode(asrMode);
+                    }
+                    // Restore the ASR punch's ON/OFF and REL latches through
+                    // the operator-control API, after the CCU power interlock.
+                    // Missing fields in older snapshots mean the safe default.
+                    if (typeof window !== "undefined" &&
+                        typeof window.setTtyPunchState === "function") {
+                        window.setTtyPunchState(snap.asrPunch || {
+                            enabled: false, relHeld: false
+                        });
                     }
                     // ASR reader tape (L2) — re-render the loaded tape and its read
                     // position (no-op when the tape UI is absent or no tape was
