@@ -68,6 +68,28 @@ function setTtyPunch(on) {
   if (on) setRelHeld(false);
 }
 
+// SnapshotStore persists the operator's punch controls through this narrow
+// API. Keep the logical latches here; the snapshot layer must not reconstruct
+// button state by editing CSS classes. Enabling the punch mechanically
+// releases REL, and CCU OFF always wins over a saved ON state.
+window.getTtyPunchState = function () {
+  return {
+    enabled: !!window.ttyPunchEnabled,
+    relHeld: !!ttyRelHeld
+  };
+};
+window.setTtyPunchState = function (state) {
+  state = state || {};
+  setRelHeld(!!state.relHeld);
+  setTtyPunch(!!state.enabled);
+  // setTtyPunch(true) is intentionally rejected while CCU is OFF. Make the
+  // resulting state explicit and keep the controls' artwork in sync.
+  if (window.ttyMode === 'off') {
+    setRelHeld(false);
+    setTtyPunch(false);
+  }
+};
+
 // Tape reader switch state. On the automatic (ASR) Model 33 the reader is
 // controlled by a VERTICAL four-detent lever whose positions read top to
 // bottom as on the machine: START (manual run — the reader feeds continuously
