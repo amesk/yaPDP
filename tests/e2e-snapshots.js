@@ -187,6 +187,7 @@ async function ensureServer() {
       window.setReaderMode("stop");
       window.setTtyReaderXoffPaused(true);
       window.setReaderMode("auto");
+      window.setTtyPunchState({ enabled: true, relHeld: false });
     });
     await page.waitForFunction(() => {
       const r = window.tapeReader.snapshot();
@@ -256,6 +257,7 @@ async function ensureServer() {
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
       readertape: (window.tapeReader && window.tapeReader.snapshot) ? window.tapeReader.snapshot() : null,
+      asrPunch: window.getTtyPunchState(),
       teletype: (window.g60printer && window.g60printer.snapshot) ? window.g60printer.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
@@ -282,6 +284,7 @@ async function ensureServer() {
     });
     await page.evaluate(() => {
       if (window.paperTape && window.paperTape.clear) window.paperTape.clear();
+      window.setTtyPunchState({ enabled: false, relHeld: true });
     });
     const mmuAtMutate = await page.evaluate(() => window.__mutateMmu || null);
     console.log("[4] machine state mutated (PC=0x7777, mem 0xDEAD, RK11 CSR=0x9999, tape cleared) t=" + Date.now() +
@@ -320,6 +323,8 @@ async function ensureServer() {
         const body = document.getElementById("punchtape__body");
         return body ? body.childNodes.length : -1;
       })(),
+      punchOnActive: (() => { const b = document.getElementById("punch-on"); return !!b && b.classList.contains("active"); })(),
+      punchRelActive: (() => { const b = document.getElementById("punch-rel"); return !!b && b.classList.contains("active"); })(),
       pending: (() => { try { return localStorage.getItem("yapdp-pending-snapshot"); } catch (e) { return "n/a"; } })(),
     }));
 
@@ -351,6 +356,12 @@ async function ensureServer() {
                             "auto"],
       ["reader X-OFF latch", after.readertape && after.readertape.xoffPaused,
                               true],
+      ["ASR punch enabled state", after.asrPunch && after.asrPunch.enabled,
+                                  before.asrPunch && before.asrPunch.enabled],
+      ["ASR REL latch state", after.asrPunch && after.asrPunch.relHeld,
+                              before.asrPunch && before.asrPunch.relHeld],
+      ["ASR ON button artwork", after.punchOnActive, true],
+      ["ASR REL button artwork", after.punchRelActive, false],
       ["teletype pending queue restored", after.teletype && after.teletype.charBuffer.length > 0,
                                           true],
       ["teletype queue retains pending R characters",
@@ -444,6 +455,46 @@ async function ensureServer() {
 
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     console.log("[8] test snapshot removed");
+
+    // Exercise the complementary REL-latched state through a second complete
+    // save/reload cycle. ON and REL are mutually exclusive on the real panel.
+    await page.evaluate(() => window.setTtyPunchState({ enabled: false, relHeld: true }));
+    const relSnapshotId = await page.evaluate(async () => {
+      const saved = await SnapshotStore.save("e2e ASR REL state");
+      return saved.id;
+    });
+    await page.evaluate(() => window.setTtyPunchState({ enabled: true, relHeld: false }));
+    await page.evaluate((id) => SnapshotStore.load(id), relSnapshotId);
+    await page.waitForFunction(
+      () => typeof SnapshotStore !== "undefined" &&
+        typeof window.getTtyPunchState === "function",
+      { timeout: 30000 }
+    );
+    await new Promise((r) => setTimeout(r, 1000));
+    const relRestored = await page.evaluate(() => ({
+      state: window.getTtyPunchState(),
+      relActive: (() => { const b = document.getElementById("punch-rel"); return !!b && b.classList.contains("active"); })(),
+      onActive: (() => { const b = document.getElementById("punch-on"); return !!b && b.classList.contains("active"); })()
+    }));
+    const relPass = relRestored.state.enabled === false &&
+      relRestored.state.relHeld === true &&
+      relRestored.relActive === true && relRestored.onActive === false;
+    console.log("[9] ASR REL state survives save/restore: " + (relPass ? "OK" : "FAILED"));
+    if (!relPass) ok = false;
+
+    // CCU OFF must override a malformed/older ON state on restore.
+    const offInterlock = await page.evaluate(() => {
+      window.setTtyMode("off");
+      window.setTtyPunchState({ enabled: true, relHeld: true });
+      const state = window.getTtyPunchState();
+      window.setTtyMode("line");
+      return state;
+    });
+    const offPass = offInterlock.enabled === false && offInterlock.relHeld === false;
+    console.log("[9] CCU OFF interlocks ASR punch restore: " + (offPass ? "OK" : "FAILED"));
+    if (!offPass) ok = false;
+
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, relSnapshotId);
 
     if (!ok) {
       console.error("\nE2E SNAPSHOTS: FAILED");
