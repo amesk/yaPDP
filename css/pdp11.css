@@ -454,6 +454,14 @@ textarea {
     display: block;
 }
 
+/* Kiosk launch (?fullscreen-button=off, class set by the inline <head> script):
+   the host already keeps the window borderless, so there is nothing to toggle.
+   display: none (not visibility) is what the floating-control geometry expects:
+   src/action-overflow.js skips controls with a zero-size rect. */
+.yapdp-no-fullscreen-button .fullscreen-btn {
+    display: none;
+}
+
 /* Shared modal dialog overlay — used by the first-run onboarding hint, the
    reboot confirmation, the CONFIG leave dialog and the image-load error
    dialog (imgerror.js). */

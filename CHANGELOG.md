@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A kiosk launch can drop the fullscreen button.** `?fullscreen-button=off`
+  removes the floating fullscreen toggle for that page load — the switch for a
+  host that already owns the window chrome, where the button would only offer an
+  action that is already taken. The page never shows it, not even for one frame,
+  and nothing is persisted: a plain load keeps the button. The parameter is not
+  consumed, so a reload (and the service-mode round trip) keeps it.
+  (`src/fullscreen.js`, `pdp11.html`, `css/pdp11.css`, `tests/fullscreen.test.js`,
+  `docs/manual/machine-state.md`, `docs/ARCHITECTURE.md`)
+
 - **A self-contained state can go back to a published base.** `npm run state:strip`
   turns a state that embeds whole disk images into the ordinary form: the image
   bytes are dropped and the state references the published version from

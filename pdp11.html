@@ -110,6 +110,15 @@
        panel. A repeat visit from cache lifts the gate almost immediately, so
        the overlay is a blink at most. */
     document.documentElement.className += " yapdp-booting";
+    /* Kiosk launch (?fullscreen-button=off, see src/fullscreen.js): the host
+       already owns the window chrome, so the floating fullscreen button is not
+       offered at all. The class is set here, synchronously, so the button never
+       flashes on the first paint. */
+    try {
+      if (new URLSearchParams(location.search).get("fullscreen-button") === "off") {
+        document.documentElement.classList.add("yapdp-no-fullscreen-button");
+      }
+    } catch (err) { /* no URLSearchParams: the button simply stays */ }
     /* Absolute backstop, inline so it survives a script that never loads:
        an overlay that cannot leave is worse than the flash it hides. */
     setTimeout(function () {

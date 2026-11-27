@@ -50,6 +50,7 @@ The Share dialog: title, description, screenshot, optional post-restore command,
 and the **Make state self-contained** option.{.shot-caption}
 
 The **Create Shareable State** button is a split-button with additional options:
+
 - **Copy text to clipboard** — copies the text envelope of the shareable state.
 - **Save as text file** — downloads the text envelope as a `.state.txt` file.
 - **Share via platform…** — hands the state to the system share sheet (Web Share API)
@@ -204,6 +205,12 @@ that page load. Use it when the embedding host provides its own visitor
 introduction (for example, a museum kiosk). It does not change the visitor's
 saved onboarding preference, so opening yaPDP normally later retains the
 usual first-run behavior.
+
+The `?fullscreen-button=off` parameter removes the floating fullscreen button for
+that page load. Use it when the host already owns the window chrome — a kiosk or
+a browser running without a frame and an address bar — so the button would only
+offer an action that is already taken. Nothing is saved: a plain load later shows
+the button again.
 
 - Use `?boot=` for a quick OS demonstration — no state file needed.
 - Use `?state=` with a GitHub Gist for a curated exhibit that survives
