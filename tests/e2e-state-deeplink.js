@@ -128,35 +128,41 @@ async function poll(page, predicate, timeoutMs) {
 // and a stale overlay fingerprint from an earlier session makes the restore
 // refuse the state (bad.length > 0 in incompatibleImages) — which shows up as
 // "parameter never dropped" rather than a hang, but only on reused profiles.
+//
+// The reset goes through the emulator's OWN store seams, never through
+// indexedDB.deleteDatabase(): this page holds those databases open, so the
+// delete request sits `blocked` forever (the trap src/maintenance.js documents)
+// and the document that follows — the ?state= one — can then never open them.
+// A restore waits on that open, so the machine stayed behind "Restoring…" with
+// no dialog and no timeout while the test timed out (found in CI).
 async function openPage(browser, errors, search) {
     const page = await browser.newPage();
     page.on("pageerror", (e) => errors.push(String(e && e.stack ? e.stack : e)));
     await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.evaluate(() => new Promise((resolve) => {
+        // The reset is best effort: a store that never answers must not turn
+        // into a harness hang — the state path is what is being measured.
+        const cap = setTimeout(resolve, 8000);
+        const done = () => { clearTimeout(cap); resolve(); };
         try { localStorage.clear(); } catch (e) { /* ignore */ }
         try { sessionStorage.clear(); } catch (e) { /* ignore */ }
-        const dropAll = () => {
-            if (typeof indexedDB === "undefined" ||
-                typeof indexedDB.databases !== "function") {
-                resolve();
-                return;
+        // Awaiting these two also guarantees the page's own database opens have
+        // settled before the navigation below, so nothing is abandoned
+        // mid-open — that is what wedged the store for the next document.
+        const stores = [];
+        try {
+            if (typeof DiskStore !== "undefined" &&
+                typeof DiskStore.clearAll === "function") {
+                stores.push(DiskStore.clearAll());
             }
-            indexedDB.databases().then((dbs) => {
-                const names = (dbs || []).map((d) => d.name)
-                    // The emulator's own stores; anything else belongs to
-                    // something else and is left alone.
-                    .filter((n) => /^yapdp-/.test(n));
-                if (!names.length) { resolve(); return; }
-                let left = names.length;
-                names.forEach((name) => {
-                    const req = indexedDB.deleteDatabase(name);
-                    req.onsuccess = req.onerror = req.onblocked = () => {
-                        if (--left === 0) resolve();
-                    };
-                });
-            }, () => resolve());
-        };
-        dropAll();
+        } catch (e) { /* ignore */ }
+        try {
+            if (window.yapdpExportList &&
+                typeof window.yapdpExportList.clearAll === "function") {
+                stores.push(window.yapdpExportList.clearAll());
+            }
+        } catch (e) { /* ignore */ }
+        Promise.all(stores).then(done, done);
     }));
     await page.goto(BASE + search, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForFunction(

@@ -41,6 +41,24 @@ var SnapshotStore = (() => {
     // ------------------------------------------------------------------
     // IndexedDB helpers (same pattern as DiskStore / dragdrop)
     // ------------------------------------------------------------------
+
+    // Bounded like DiskStore's open: a wedged IndexedDB (a name still held by
+    // an abandoned document, a pending delete) must not stall the startup
+    // restore with no dialog and no way out. The snapshot list then simply
+    // behaves as if nothing was stored, which is what an unreadable store
+    // means anyway.
+    const DB_OPEN_TIMEOUT_MS = 4000;
+
+    // Both halves are optional: a bare VM context (the unit tests run this
+    // module that way) may not define the timer globals at all.
+    function armTimer(fn, ms) {
+        return (typeof setTimeout === "function") ? setTimeout(fn, ms) : null;
+    }
+
+    function disarmTimer(timer) {
+        if (timer != null && typeof clearTimeout === "function") clearTimeout(timer);
+    }
+
     function openDB() {
         if (dbPromise) return dbPromise;
         if (typeof indexedDB === "undefined") {
@@ -48,14 +66,36 @@ var SnapshotStore = (() => {
             return dbPromise;
         }
         dbPromise = new Promise(function (resolve) {
-            const req = indexedDB.open(DB_NAME, 1);
+            let settled = false;
+            const settle = function (value) {
+                if (settled) return;
+                settled = true;
+                disarmTimer(timer);
+                db = value;
+                resolve(value);
+            };
+            const timer = armTimer(function () { settle(null); }, DB_OPEN_TIMEOUT_MS);
+            let req = null;
+            try {
+                req = indexedDB.open(DB_NAME, 1);
+            } catch (e) {
+                settle(null);
+                return;
+            }
             req.onupgradeneeded = function () {
                 if (!req.result.objectStoreNames.contains(DB_STORE)) {
                     req.result.createObjectStore(DB_STORE);
                 }
             };
-            req.onsuccess = function () { db = req.result; resolve(db); };
-            req.onerror = function () { resolve(null); };
+            req.onsuccess = function () {
+                if (settled) {
+                    try { req.result.close(); } catch (e) { /* already closed */ }
+                    return;
+                }
+                settle(req.result);
+            };
+            req.onerror = function () { settle(null); };
+            req.onblocked = function () { settle(null); };
         });
         return dbPromise;
     }

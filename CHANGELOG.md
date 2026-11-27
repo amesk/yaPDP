@@ -55,6 +55,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A `?state=` restore can no longer hang behind the "Restoring…" toast.** The
+  disk-overlay and snapshot stores now bound their IndexedDB open: a database
+  name still held by an abandoned document (or a delete left pending by one)
+  left the open request unanswered forever, and the restore waited on it with
+  no dialog and no timeout. Both stores fall back to memory-only for the session
+  when the open is blocked or takes too long, so the guest always comes up.
+  (`src/diskstore.js`, `src/snapshots.js`)
+
+- **The `?state=` deep-link e2e clears storage through the emulator's own store
+  seams** instead of `indexedDB.deleteDatabase()`, a request that stays `blocked`
+  while the page holds those databases and wedges the document that follows —
+  the intermittent CI failure in the E2E job.
+  (`tests/e2e-state-deeplink.js`)
+
 - **Editing a manifest keeps a self-contained state self-contained.**
   `node tools/state-manifest.js replace` re-packed the container with the RAM
   alone, so a state exported with "self-contained" lost its embedded disk image
