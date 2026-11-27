@@ -19,6 +19,12 @@
  *
  * Must be loaded after tauri-bundled.js (consistent Tauri detection) and
  * before pdp11-app.js.
+ *
+ * A host that already owns the window chrome (a kiosk launcher such as
+ * yapdp-kiosk) can suppress the button for this launch with
+ * ?fullscreen-button=off: the toggle would only offer an action that is
+ * already taken, and a browser Fullscreen API call inside a --kiosk window
+ * either does nothing or is rejected.
  */
 "use strict";
 
@@ -32,6 +38,20 @@ var Fullscreen = (function () {
         win = win || (typeof window !== "undefined" ? window : null);
         return !!(win && win.__TAURI__ && win.__TAURI__.window &&
             typeof win.__TAURI__.window.getCurrentWindow === "function");
+    }
+
+    // Should the floating toggle be suppressed for this page load?
+    // ?fullscreen-button=off is a launch switch of the embedding host: the host
+    // already owns the window chrome, so the button would offer an action that
+    // is already taken. The parameter is read, never consumed, so it survives a
+    // reload (the service-mode round trip preserves every other query
+    // parameter too). A missing URLSearchParams means "show the button".
+    function shouldHide(search) {
+        try {
+            return new URLSearchParams(String(search || "")).get("fullscreen-button") === "off";
+        } catch (err) {
+            return false;
+        }
     }
 
     // Is the DOM currently in fullscreen? Handles both modern browsers that
@@ -125,6 +145,11 @@ var Fullscreen = (function () {
         // No-op outside a real browser environment (Node test sandbox).
         if (typeof document === "undefined" || typeof window === "undefined") return;
 
+        // Kiosk launch: nothing to wire. The button is already hidden by CSS
+        // (the class comes from the inline <head> script), and no listener may
+        // survive to report a toggle that can never succeed.
+        if (shouldHide(typeof location !== "undefined" ? location.search : "")) return;
+
         var btn = document.getElementById("fullscreen-btn");
         if (!btn) return;
 
@@ -182,6 +207,7 @@ var Fullscreen = (function () {
 
     return {
         isTauri: isTauri,
+        shouldHide: shouldHide,
         isBrowserFullscreen: isBrowserFullscreen,
         current: current,
         toggle: toggle,

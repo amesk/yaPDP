@@ -29,7 +29,9 @@ const SOURCE_PATH = path.join(__dirname, "..", "src", "fullscreen.js");
 
 function loadModule() {
     const code = fs.readFileSync(SOURCE_PATH, "utf8");
-    const sandbox = { console };
+    // URLSearchParams backs the ?fullscreen-button=off switch, exactly as in
+    // the browser; a vm context does not inherit it from the Node realm.
+    const sandbox = { console, URLSearchParams };
     vm.createContext(sandbox);
     vm.runInContext(code, sandbox);
     // `var Fullscreen = ...` at top level becomes a property of the sandbox.
@@ -40,7 +42,7 @@ function loadModule() {
 // same way it does in the desktop app.
 function loadModuleWithGlobals(globals) {
     const code = fs.readFileSync(SOURCE_PATH, "utf8");
-    const sandbox = Object.assign({ console }, globals);
+    const sandbox = Object.assign({ console, URLSearchParams }, globals);
     vm.createContext(sandbox);
     vm.runInContext(code, sandbox);
     return sandbox.Fullscreen;
@@ -132,6 +134,54 @@ async function run() {
             "plain object is not Tauri");
         assert.strictEqual(F.isTauri(null), false,
             "null is not Tauri");
+    }
+
+    // ---- shouldHide (?fullscreen-button=off) --------------------------
+    {
+        assert.strictEqual(F.shouldHide("?fullscreen-button=off"), true,
+            "the kiosk switch suppresses the button");
+        assert.strictEqual(F.shouldHide("?state=x&fullscreen-button=off"), true,
+            "the switch is found next to other parameters");
+        assert.strictEqual(F.shouldHide("?fullscreen-button=on"), false,
+            "any other value keeps the button");
+        assert.strictEqual(F.shouldHide("?onboarding=skip"), false,
+            "an unrelated switch keeps the button");
+        assert.strictEqual(F.shouldHide(""), false, "an empty query keeps it");
+        assert.strictEqual(F.shouldHide(undefined), false,
+            "a missing search keeps it");
+    }
+
+    // ---- init() with the kiosk switch wires nothing -------------------
+    // The button is hidden by CSS (the class comes from the inline <head>
+    // script), and a kiosk window can never satisfy the toggle, so no listener
+    // may survive to report a failure over the exhibit.
+    {
+        const wired = [];
+        const hiddenBtn = makeFullscreenButton();
+        hiddenBtn.addEventListener = (type) => { wired.push("btn:" + type); };
+        const hiddenDoc = makeDocumentWithButton(hiddenBtn);
+        hiddenDoc.addEventListener = (type) => { wired.push("doc:" + type); };
+        const Hidden = loadModuleWithGlobals({
+            window: {},
+            document: hiddenDoc,
+            location: { search: "?fullscreen-button=off" }
+        });
+        // The module auto-starts on load (the stub reports readyState complete).
+        assert.deepStrictEqual(wired, [],
+            "init() must not wire the hidden button");
+        assert.strictEqual(typeof Hidden.shouldHide, "function",
+            "shouldHide is exported for the tests");
+
+        // The same document without the switch DOES wire the button.
+        const Shown = loadModuleWithGlobals({
+            window: {},
+            document: hiddenDoc,
+            location: { search: "" }
+        });
+        assert.ok(wired.indexOf("btn:click") !== -1,
+            "init() wires the click handler on a plain load");
+        assert.strictEqual(Shown.isTauri(), false,
+            "a plain load is not Tauri");
     }
 
     // ---- isBrowserFullscreen -----------------------------------------
@@ -249,6 +299,21 @@ async function run() {
             "updateUI() swaps the icon to the exit variant");
         assert.strictEqual(btn.attrs["aria-label"], "Exit fullscreen",
             "updateUI() updates the accessible label");
+    }
+
+    // ---- static contract: the <head> switch and the CSS rule -------------
+    // The button must never paint on a kiosk launch, which is only true while
+    // the class is set synchronously in the page and the CSS actually hides it.
+    {
+        const html = fs.readFileSync(path.join(__dirname, "..", "pdp11.html"), "utf8");
+        assert.ok(/fullscreen-button"\)\s*===\s*"off"/.test(html),
+            "pdp11.html must read ?fullscreen-button=off in the inline <head> script");
+        assert.ok(/yapdp-no-fullscreen-button/.test(html),
+            "pdp11.html must add the yapdp-no-fullscreen-button class");
+        const css = fs.readFileSync(path.join(__dirname, "..", "css", "pdp11.css"), "utf8");
+        assert.ok(
+            /\.yapdp-no-fullscreen-button\s+\.fullscreen-btn\s*\{[^}]*display:\s*none/.test(css),
+            "css/pdp11.css must hide .fullscreen-btn under the kiosk class");
     }
 
     console.log("\nAll Fullscreen tests passed.");

@@ -44,6 +44,14 @@ address bar only while a device-set reload is in flight, so the reloaded page
 applies it once. The restore path lives in [`src/snapshots.js`](../src/snapshots.js);
 the URL half in [`src/quickboot.js`](../src/quickboot.js).
 
+`?fullscreen-button=off` drops the floating fullscreen toggle for that page load
+— the switch a kiosk launcher (`yapdp-kiosk`) uses when the host window is
+already borderless, where the button would offer an action that is already taken.
+The class that hides it comes from the inline `<head>` script in `pdp11.html`, so
+the button never paints, and [`src/fullscreen.js`](../src/fullscreen.js) skips
+its wiring entirely. Nothing is persisted and the parameter is not consumed: the
+next plain load shows the button again.
+
 The magic-wand dialog has two lists: **Boot** (guest-OS scenarios from
 [`src/osboot.js`](../src/osboot.js)) and **Scenario** (pre-built machine states
 from `states/`, listed by [`tools/gen-state-manifest.js`](../tools/gen-state-manifest.js)).
@@ -267,10 +275,10 @@ same digest is what the versioned registry publishes
 version instead of relying on the file name. Nothing has to be bumped by hand:
 replace `media/rk0.dsk.zst` and every identity derived from it changes, so
 
-* a cached block saved from the previous build no longer matches and is
+- a cached block saved from the previous build no longer matches and is
   ignored (`DiskStore.getBlock`), and an overlay recorded against it is skipped
   (`DiskStore.restoreOverlay`) — instead of being written over a different disk;
-* `SnapshotStore.restore()` refuses the snapshot before it touches CPU or RAM,
+- `SnapshotStore.restore()` refuses the snapshot before it touches CPU or RAM,
   explains why in a dialog and offers to delete it. A half-applied restore
   (saved memory on top of a disk it does not match) is worse than none.
 
