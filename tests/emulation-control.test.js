@@ -55,6 +55,8 @@ function run() {
     assert.ok(printerSource.includes("function pauseEmulationTimers()") &&
         printerSource.includes("function resumeEmulationTimers()"),
         "printer paper/head timers must preserve their remaining time across pause");
+    assert.ok(printerSource.includes('"resume-if-needed": resumeEmulationTimers'),
+        "a printer created during a persisted unpaused session must start its timers");
     assert.ok(vt11Source.includes("EmulationControl.isPaused()) return;"),
         "VT11 light-pen input must be ignored while paused");
     assert.ok(cssSource.includes("html.yapdp-emulation-paused .vt52-crt canvas") &&

@@ -289,7 +289,12 @@
         if (window.EmulationControl && window.EmulationControl.register) {
             window.EmulationControl.register("g60-printer:" + idPrefix, {
                 pause: pauseEmulationTimers,
-                resume: resumeEmulationTimers
+                resume: resumeEmulationTimers,
+                // register() invokes resume-if-needed for a module created
+                // after the page has restored its persisted host-pause state.
+                // Without this alias, restored character queues stay armed
+                // only in the scheduler's map and never receive a real timer.
+                "resume-if-needed": resumeEmulationTimers
             });
         }
 
@@ -1647,9 +1652,20 @@
             if (printArea) {
                 for (var i = 0; i < printArea.children.length; i++) {
                     var el = printArea.children[i];
+                    var cells = [];
+                    for (var j = 0; j < el.children.length; j++) {
+                        var cell = el.children[j];
+                        cells.push({
+                            text: cell.textContent || '',
+                            cls: cell.className || '',
+                            base: cell.getAttribute('data-base'),
+                            mark: cell.getAttribute('data-mark')
+                        });
+                    }
                     rows.push({
                         text: el.textContent || '',
-                        cls: el.className || ''
+                        cls: el.className || '',
+                        cells: cells
                     });
                 }
             }
@@ -1658,7 +1674,24 @@
                 pagePos: pagePos,
                 pageHasContent: pageHasContent,
                 headPos: headPos,
-                maxCols: maxCols
+                maxCols: maxCols,
+                // The ASR console receives bytes into charBuffer and prints
+                // them asynchronously. Preserve the logical device queue and
+                // carriage state so a restored machine does not lose output
+                // that had already been accepted by the printer.
+                charBuffer: charBuffer.slice(),
+                currentCharPos: currentCharPos,
+                overHang: overHang,
+                seamQueued: seamQueued,
+                // The legacy line-oriented print() path stages rows before
+                // animating them. These are plain data objects, so its queue
+                // can also be resumed without persisting browser timers.
+                textBuffer: textBuffer || '',
+                textPos: textPos || 0,
+                lines: lines ? lines.slice() : [],
+                curLine: curLine || null,
+                linePrintActive: !idle || !!(lines && lines.length) || !!curLine,
+                keepLocked: !!keepLocked
             };
         };
 
@@ -1677,29 +1710,45 @@
         function buildPaperRow(row) {
             var p = document.createElement('p');
             if (row && row.cls) p.className = row.cls;
+            // New snapshots carry the actual cell structure, including
+            // overstrike/composition metadata. Older snapshots only have row
+            // text, so retain the original one-span-per-character fallback.
+            if (row && Array.isArray(row.cells)) {
+                for (var c = 0; c < row.cells.length; c++) {
+                    var saved = row.cells[c] || {};
+                    var cell = document.createElement('span');
+                    cell.textContent = typeof saved.text === 'string' ? saved.text : '';
+                    if (saved.cls) cell.className = saved.cls;
+                    if (saved.base != null) cell.setAttribute('data-base', saved.base);
+                    if (saved.mark != null) cell.setAttribute('data-mark', saved.mark);
+                    p.appendChild(cell);
+                }
+                if (!row.cells.length) {
+                    var emptyCell = document.createElement('span');
+                    emptyCell.textContent = '\u00A0';
+                    p.appendChild(emptyCell);
+                }
+                return p;
+            }
             var text = (row && typeof row.text === 'string' && row.text.length > 0)
                 ? row.text : '\u00A0';
             for (var i = 0; i < text.length; i++) {
                 var code = text.charCodeAt(i);
-                var cell = text.charAt(i);
+                var glyph = text.charAt(i);
                 if (code >= 0xD800 && code <= 0xDBFF && i + 1 < text.length) {
-                    cell = text.substr(i, 2);
+                    glyph = text.substr(i, 2);
                     i++;
                 }
                 var span = document.createElement('span');
-                span.textContent = cell;
+                span.textContent = glyph;
                 p.appendChild(span);
             }
             return p;
         }
 
-        // Restore the printed paper from a snapshot: rebuild the DOM rows
-        // (text + row class), restore the form-feed page position, head
-        // position and column width. Queued character output (charBuffer,
-        // textBuffer) is NOT restored — a restored machine resumes with the
-        // paper as it looked at save time, and any in-flight printing simply
-        // never happened (like power loss on real hardware). The next printed
-        // character starts a fresh line below the restored paper.
+        // Restore the printed paper and the pending character-device queue.
+        // Browser timers are deliberately not serialized: the saved queue is
+        // resumed with a fresh pacing interval after the DOM has been rebuilt.
         this.restore = function(state) {
             if (!state) return;
             resetPrinter(true);
@@ -1722,6 +1771,29 @@
             // A seam in flight is pacing state, not paper state: a restore
             // starts with an empty queue.
             seamQueued = false;
+            // The last ordinary row is the active carriage line. A page
+            // seam closes the sheet and deliberately leaves no active line.
+            currentLineEl = null;
+            if (rows.length && rows[rows.length - 1] &&
+                rows[rows.length - 1].cls !== 'pageBreak') {
+                currentLineEl = printArea.lastChild;
+            }
+            currentCharPos = (typeof state.currentCharPos === 'number')
+                ? Math.max(0, Math.min(Math.floor(state.currentCharPos), maxCols))
+                : 0;
+            overHang = (typeof state.overHang === 'number')
+                ? Math.max(0, Math.floor(state.overHang)) : 0;
+            seamQueued = state.seamQueued === true;
+            charBuffer = Array.isArray(state.charBuffer) ? state.charBuffer.slice() : [];
+            textBuffer = typeof state.textBuffer === 'string' ? state.textBuffer : '';
+            textPos = (typeof state.textPos === 'number')
+                ? Math.max(0, Math.min(Math.floor(state.textPos), textBuffer.length)) : 0;
+            lines = Array.isArray(state.lines) ? state.lines.slice() : [];
+            curLine = state.curLine || null;
+            if (curLine) lines.unshift(curLine);
+            idle = true;
+            keepLocked = state.keepLocked === true;
+            callback = null; // callbacks cannot be meaningfully serialized
             if (typeof state.headPos === 'number') {
                 headPos = state.headPos;
                 setHeadPos(headPos, false);
@@ -1730,6 +1802,16 @@
                 scrollState = Math.max(0, paper.scrollHeight - paper.clientHeight);
                 paper.scrollTop = scrollState;
                 paper.className = 'paperNoScroll';
+            }
+            // Re-arm the queue only after all restored paper and carriage
+            // state is in place. This avoids both dropping and double-printing
+            // bytes that were waiting at snapshot time.
+            if (state.linePrintActive === true && lines.length > 0) {
+                initialTop = scrollState;
+                printOut();
+            }
+            if (charBuffer.length > 0 && !charPrintTimer) {
+                charPrintTimer = setTimeout(processCharBuffer, charPrintDelay);
             }
         };
     };

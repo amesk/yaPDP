@@ -72,6 +72,12 @@ function makeElement(tag) {
     className: "",
     textContent: "",
     children: [],
+    attributes: {},
+    setAttribute: function (name, value) { this.attributes[name] = String(value); },
+    getAttribute: function (name) {
+      return Object.prototype.hasOwnProperty.call(this.attributes, name)
+        ? this.attributes[name] : null;
+    },
     appendChild: function (child) {
       this.children.push(child);
       return child;
@@ -116,14 +122,32 @@ function run() {
     assert.strictEqual(p.children[0].textContent, "\u00A0");
   }
 
-  // 3. A missing/odd row payload must not throw and still yields a cell.
+  // 3. New snapshots preserve per-cell styling and composed-glyph metadata.
+  {
+    const p = buildPaperRow({
+      cls: "",
+      cells: [
+        { text: "N", cls: "bold" },
+        { text: "{", cls: "compose", base: "(", mark: "-" },
+        { text: "4", cls: "overstrike" }
+      ]
+    });
+    assert.strictEqual(p.children.length, 3);
+    assert.strictEqual(p.children[0].className, "bold");
+    assert.strictEqual(p.children[1].className, "compose");
+    assert.strictEqual(p.children[1].getAttribute("data-base"), "(");
+    assert.strictEqual(p.children[1].getAttribute("data-mark"), "-");
+    assert.strictEqual(p.children[2].className, "overstrike");
+  }
+
+  // 4. A missing/odd row payload must not throw and still yields a cell.
   {
     const p = buildPaperRow(null);
     assert.strictEqual(p.children.length, 1, "a null row degrades to one cell");
     assert.strictEqual(p.className, "", "no class for a null row");
   }
 
-  // 4. The row class survives (the perforation seam is a `p.pageBreak`).
+  // 5. The row class survives (the perforation seam is a `p.pageBreak`).
   {
     const p = buildPaperRow({ text: "\u00A0", cls: "pageBreak" });
     assert.strictEqual(p.className, "pageBreak",
@@ -167,6 +191,40 @@ function run() {
       "one character cell must stay 7px wide (the restored paper depends on it)");
     assert.ok(/height:\s*var\(--lp11-cell\)\s*;/.test(spanRule[0]),
       "one character cell must keep the 6 LPI height");
+  }
+
+  // 8. Shared snapshots must preserve pending ASR output and the carriage
+  //    position. A timer itself is not serialized; restore schedules a fresh
+  //    pacing tick after rebuilding the paper.
+  {
+    const src = fs.readFileSync(SOURCE_PATH, "utf8");
+    const snapshotStart = src.indexOf("this.snapshot = function()");
+    assert.ok(snapshotStart !== -1, "G60Printer.snapshot must exist");
+    const snapshotBody = src.slice(snapshotStart, snapshotStart + 2400);
+    assert.ok(/charBuffer:\s*charBuffer\.slice\(\)/.test(snapshotBody),
+      "snapshot must copy the pending character queue");
+    assert.ok(/currentCharPos:\s*currentCharPos/.test(snapshotBody),
+      "snapshot must preserve the carriage column");
+    assert.ok(/overHang:\s*overHang/.test(snapshotBody),
+      "snapshot must preserve pending overstrike position");
+    assert.ok(/lines:\s*lines\s*\?\s*lines\.slice\(\)/.test(snapshotBody),
+      "snapshot must preserve the line-oriented print queue");
+    assert.ok(/textBuffer:\s*textBuffer/.test(snapshotBody),
+      "snapshot must preserve unconsumed line-oriented text");
+
+    const restoreStart = src.indexOf("this.restore = function(state)");
+    assert.ok(restoreStart !== -1, "G60Printer.restore must exist");
+    const restoreBody = src.slice(restoreStart, restoreStart + 4000);
+    assert.ok(/charBuffer\s*=\s*Array\.isArray\(state\.charBuffer\)/.test(restoreBody),
+      "restore must reinstate pending characters");
+    assert.ok(/setTimeout\(processCharBuffer,\s*charPrintDelay\)/.test(restoreBody),
+      "restore must restart pacing without serializing a browser timer");
+    assert.ok(/currentCharPos\s*=/.test(restoreBody),
+      "restore must reinstate the current carriage column");
+    assert.ok(/lines\s*=\s*Array\.isArray\(state\.lines\)/.test(restoreBody),
+      "restore must reinstate the line-oriented print queue");
+    assert.ok(/printOut\(\)/.test(restoreBody),
+      "restore must restart pending line-oriented output");
   }
 
   console.log("g60printer paper-restore tests: all passed");

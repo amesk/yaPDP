@@ -68,6 +68,28 @@ function setTtyPunch(on) {
   if (on) setRelHeld(false);
 }
 
+// SnapshotStore persists the operator's punch controls through this narrow
+// API. Keep the logical latches here; the snapshot layer must not reconstruct
+// button state by editing CSS classes. Enabling the punch mechanically
+// releases REL, and CCU OFF always wins over a saved ON state.
+window.getTtyPunchState = function () {
+  return {
+    enabled: !!window.ttyPunchEnabled,
+    relHeld: !!ttyRelHeld
+  };
+};
+window.setTtyPunchState = function (state) {
+  state = state || {};
+  setRelHeld(!!state.relHeld);
+  setTtyPunch(!!state.enabled);
+  // setTtyPunch(true) is intentionally rejected while CCU is OFF. Make the
+  // resulting state explicit and keep the controls' artwork in sync.
+  if (window.ttyMode === 'off') {
+    setRelHeld(false);
+    setTtyPunch(false);
+  }
+};
+
 // Tape reader switch state. On the automatic (ASR) Model 33 the reader is
 // controlled by a VERTICAL four-detent lever whose positions read top to
 // bottom as on the machine: START (manual run — the reader feeds continuously
@@ -78,6 +100,14 @@ function setTtyPunch(on) {
 // index is also the lever's detent (--reader-lever-i).
 var readerModes = ['start', 'auto', 'stop', 'free'];
 var readerXoffPaused = false; // DC3/X-OFF pause latch, only used in AUTO
+
+// The latch is part of the reader's logical peripheral state. Expose narrow
+// accessors so the reader snapshot can preserve it without owning CCU logic.
+window.getTtyReaderXoffPaused = function () { return readerXoffPaused; };
+window.setTtyReaderXoffPaused = function (paused) {
+  readerXoffPaused = !!paused;
+  updateReaderCanFeed();
+};
 
 // Recompute whether the ASR reader may feed bytes, honouring the CCU power
 // state. START always feeds; STOP/FREE never; AUTO feeds unless a DC3
@@ -169,6 +199,10 @@ function setTtyMode(mode) {
     window.tapeReader.onTtyMode();
   }
 }
+
+// SnapshotStore restores the CCU selector through the same operator path,
+// keeping the switch artwork and the reader/punch power interlocks in sync.
+window.setTtyMode = setTtyMode;
 
 function g60ConsoleWrite(code) {
   // In LOCAL mode the teletype is disconnected from the machine line: output
@@ -282,6 +316,8 @@ function initG60Printer() {
     }
   });
   g60Console = createG60Console(g60printer);
+  // SnapshotStore and browser integrations use the public peripheral handle.
+  window.g60printer = g60printer;
 }
 
 // ==================================================================

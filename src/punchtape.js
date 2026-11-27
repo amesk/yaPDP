@@ -358,7 +358,13 @@
      * touched. Absent UI (no #punchtape element) yields an empty tape.
      */
     function snapshot() {
-        return { buffer: buffer.slice() };
+        return {
+            buffer: buffer.slice(),
+            // The last armedDepth bytes have been pulled back inside the
+            // punch unit by BSP and are not hanging visibly from the slot.
+            // Keep the head position as part of the machine state.
+            armedDepth: armedDepth
+        };
     }
 
     /**
@@ -367,17 +373,29 @@
      * without punching through the teletype path (no sound, no interrupts).
      * Returns the number of rows restored, or 0 if the tape UI is absent.
      */
-    function restore(bytes) {
+    function restore(state) {
+        // Accept the original byte-array payload as well as the extended
+        // snapshot object, so states created by older yaPDP versions remain
+        // readable.
+        var bytes = Array.isArray(state) ? state : (state && state.buffer);
         if (!bytes || !bytes.length) { clear(); return 0; }
         if (!body) init();
         if (!body) return 0;
         body.innerHTML = '';
         buffer = [];
-        armedDepth = 0;
-        for (var i = 0; i < bytes.length; i++) {
-            buffer.push(bytes[i] & 0x7F);
+        for (var i = 0; i < bytes.length; i++) buffer.push(bytes[i] & 0x7F);
+        armedDepth = (state && !Array.isArray(state) &&
+            typeof state.armedDepth === 'number')
+            ? Math.max(0, Math.min(Math.floor(state.armedDepth), buffer.length))
+            : 0;
+
+        // Rows pulled back by BSP are still on the tape, but are inside the
+        // punch mechanism rather than hanging below the slot. Rebuild only
+        // the visible tail; the hidden bytes remain in buffer for overpunch.
+        var visibleCount = buffer.length - armedDepth;
+        for (var j = 0; j < visibleCount; j++) {
             var row = makeSpan('pt-row');
-            renderRow(row, bytes[i]);
+            renderRow(row, buffer[j]);
             if (body.firstChild) {
                 body.insertBefore(row, body.firstChild);
             } else {

@@ -165,6 +165,36 @@ async function ensureServer() {
     }, { timeout: 5000 });
     console.log("[3] LP11 taken OFF LINE");
 
+    // Model 33 ASR state: preserve an armed punch head, an X-OFF-paused
+    // AUTO reader, and a substantial pending character queue across the
+    // same IndexedDB save/reload path exercised below.
+    await page.evaluate(() => {
+      window.paperTape.clear();
+      window.paperTape.punchChar(0x41); // A
+      window.paperTape.punchChar(0x42); // B
+      window.paperTape.backspace();     // BSP: B is inside the punch mechanism
+      window.tapeReader.loadBytes(new Uint8Array([0x31, 0x32, 0x33, 0x34]));
+      window.setReaderMode("start");
+      // Keep the print queue pending long enough for SnapshotStore.save()
+      // to capture it; the restored queue must continue printing afterwards.
+      for (var i = 0; i < 300; i++) window.g60printer.printChar("R");
+    });
+    // Give START enough time to advance the reader to a non-zero position,
+    // then park it in AUTO with DC3 latched before capturing the snapshot.
+    await page.waitForFunction(() => window.tapeReader.snapshot().pos >= 2,
+      { timeout: 5000 });
+    await page.evaluate(() => {
+      window.setReaderMode("stop");
+      window.setTtyReaderXoffPaused(true);
+      window.setReaderMode("auto");
+      window.setTtyPunchState({ enabled: false, relHeld: false });
+    });
+    await page.waitForFunction(() => {
+      const r = window.tapeReader.snapshot();
+      return r && r.mode === "auto" && r.xoffPaused === true && r.pos >= 2;
+    }, { timeout: 5000 });
+    console.log("[3] Model 33 ASR prepared: punch BSP, AUTO/X-OFF reader, pending print queue");
+
     // VT52 console (unit 0): print a couple of lines via the terminal so the
     // screen buffer (and hardcopy scrollback) carry content. ESC [2J clears,
     // then two lines with a cursor move in between.
@@ -202,11 +232,20 @@ async function ensureServer() {
     // writing the DPC register. The processor loop runs in-page and draws
     // onto the CRT canvas, which the snapshot must capture.
 
-    const snapId = await page.evaluate(async () => {
+    const savedSnapshot = await page.evaluate(async () => {
       const snap = await SnapshotStore.save("e2e test");
-      return snap.id;
+      return {
+        id: snap.id,
+        teletypeQueueLength: snap.teletypepaper &&
+          Array.isArray(snap.teletypepaper.charBuffer)
+          ? snap.teletypepaper.charBuffer.length : -1
+      };
     });
-    console.log(`[3] snapshot saved: ${snapId}`);
+    const snapId = savedSnapshot.id;
+    console.log(`[3] snapshot saved: ${snapId}; Model 33 queued chars=${savedSnapshot.teletypeQueueLength}`);
+    if (savedSnapshot.teletypeQueueLength <= 0) {
+      throw new Error("SnapshotStore.save did not capture the pending Model 33 character queue");
+    }
 
     const before = await page.evaluate(() => ({
       pc: CPU.registerVal[7],
@@ -217,6 +256,9 @@ async function ensureServer() {
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
+      readertape: (window.tapeReader && window.tapeReader.snapshot) ? window.tapeReader.snapshot() : null,
+      asrPunch: window.getTtyPunchState(),
+      teletype: (window.g60printer && window.g60printer.snapshot) ? window.g60printer.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
       vt52: (window.vt52SnapshotAll && window.vt52SnapshotAll()) || null,
@@ -242,6 +284,7 @@ async function ensureServer() {
     });
     await page.evaluate(() => {
       if (window.paperTape && window.paperTape.clear) window.paperTape.clear();
+      window.setTtyPunchState({ enabled: false, relHeld: true });
     });
     const mmuAtMutate = await page.evaluate(() => window.__mutateMmu || null);
     console.log("[4] machine state mutated (PC=0x7777, mem 0xDEAD, RK11 CSR=0x9999, tape cleared) t=" + Date.now() +
@@ -270,6 +313,9 @@ async function ensureServer() {
       memSize: CPU.memory.length,
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
+      readertape: (window.tapeReader && window.tapeReader.snapshot) ? window.tapeReader.snapshot() : null,
+      asrPunch: window.getTtyPunchState(),
+      teletype: (window.g60printer && window.g60printer.snapshot) ? window.g60printer.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
       vt52: (window.vt52SnapshotAll && window.vt52SnapshotAll()) || null,
@@ -278,6 +324,8 @@ async function ensureServer() {
         const body = document.getElementById("punchtape__body");
         return body ? body.childNodes.length : -1;
       })(),
+      punchOnActive: (() => { const b = document.getElementById("punch-on"); return !!b && b.classList.contains("active"); })(),
+      punchRelActive: (() => { const b = document.getElementById("punch-rel"); return !!b && b.classList.contains("active"); })(),
       pending: (() => { try { return localStorage.getItem("yapdp-pending-snapshot"); } catch (e) { return "n/a"; } })(),
     }));
 
@@ -299,9 +347,30 @@ async function ensureServer() {
                      before.devices["17777560"] && before.devices["17777560"].rcsr],
       ["TM11 mts", after.devices["17772520"] && after.devices["17772520"].mts,
                    before.devices["17772520"] && before.devices["17772520"].mts],
+      ["punch armedDepth", after.punchtape && after.punchtape.armedDepth,
+                           before.punchtape && before.punchtape.armedDepth],
+      ["reader tape bytes", after.readertape && after.readertape.bytes.join(","),
+                             before.readertape && before.readertape.bytes.join(",")],
+      ["reader position", after.readertape && after.readertape.pos,
+                           before.readertape && before.readertape.pos],
+      ["reader AUTO mode", after.readertape && after.readertape.mode,
+                            "auto"],
+      ["reader X-OFF latch", after.readertape && after.readertape.xoffPaused,
+                              true],
+      ["ASR punch enabled state", after.asrPunch && after.asrPunch.enabled,
+                                  before.asrPunch && before.asrPunch.enabled],
+      ["ASR REL latch state", after.asrPunch && after.asrPunch.relHeld,
+                              before.asrPunch && before.asrPunch.relHeld],
+      ["ASR ON button artwork", after.punchOnActive, before.asrPunch && before.asrPunch.enabled],
+      ["ASR REL button artwork", after.punchRelActive, before.asrPunch && before.asrPunch.relHeld],
+      ["teletype pending queue restored", after.teletype && after.teletype.charBuffer.length > 0,
+                                          true],
+      ["teletype queue retains pending R characters",
+          after.teletype && after.teletype.charBuffer.every(ch => ch === "R"),
+          true],
       ["punchtape bytes", after.punchtape && after.punchtape.buffer.length,
                           before.punchtape && before.punchtape.buffer.length],
-      ["tape DOM rows", after.tapeRows, (before.punchtape && before.punchtape.buffer) ? before.punchtape.buffer.length : -1],
+      ["tape DOM rows", after.tapeRows, (before.punchtape && before.punchtape.buffer) ? before.punchtape.buffer.length - before.punchtape.armedDepth : -1],
       ["LP11 rows", after.lp11 ? after.lp11.rows.length : -1,
                     before.lp11 ? before.lp11.rows.length : -1],
       ["LP11 has text", after.lp11 && after.lp11.rows.some(r => r.text && r.text.indexOf("HELLO") !== -1),
@@ -345,7 +414,116 @@ async function ensureServer() {
 
     // --- 8. Cleanup test snapshot ---
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
+    // Prove the restored X-OFF latch is behavioural, not just serialized:
+    // the reader must remain at the same byte until DC1 / X-ON arrives.
+    const pausedPos = await page.evaluate(() => window.tapeReader.snapshot().pos);
+    await new Promise((r) => setTimeout(r, 400));
+    const stillPausedPos = await page.evaluate(() => window.tapeReader.snapshot().pos);
+    const held = stillPausedPos === pausedPos;
+    console.log("[8] reader remains paused under restored X-OFF: " + (held ? "OK" : "FAILED"));
+    if (!held) ok = false;
+
+    await page.evaluate(() => window.g60ConsoleWrite(0x11));
+    const resumed = await page.waitForFunction(
+      (pos) => window.tapeReader.snapshot().pos > pos,
+      { timeout: 10000 },
+      pausedPos
+    ).then(() => true).catch(() => false);
+    console.log("[8] reader advances after X-ON: " + (resumed ? "OK" : "FAILED"));
+    if (!resumed) ok = false;
+
+    // The printer queue must not merely survive as data: it must be re-armed
+    // and eventually render the pending characters onto the restored paper.
+    // The default Model 33 speed is authentic (100 ms per character), so
+    // a 284-character restored queue needs about 28 seconds to drain. Derive
+    // the wait from the captured queue and configured speed rather than
+    // failing a correct restore at an arbitrary 20-second cutoff.
+    const printerQueueLength = before.teletype && Array.isArray(before.teletype.charBuffer)
+      ? before.teletype.charBuffer.length : 0;
+    const printerSpeed = await page.evaluate(() => Config.get().teletypeSpeed);
+    const printerCharDelay = printerSpeed === "authentic" ? 100 : 30;
+    const printerTimeout = Math.max(20000, printerQueueLength * printerCharDelay + 10000);
+    console.log("[8] waiting for restored printer queue: " + printerQueueLength +
+      " chars at " + printerSpeed + " speed (timeout " + printerTimeout + " ms)");
+    const printerResumed = await page.waitForFunction(() => {
+      const state = window.g60printer.snapshot();
+      return state.charBuffer.length === 0 &&
+        state.rows.some(row => (row.text || "").indexOf("R") !== -1);
+    }, { timeout: printerTimeout }).then(() => true).catch(() => false);
+    console.log("[8] restored printer queue drains onto paper: " +
+      (printerResumed ? "OK" : "FAILED"));
+    if (!printerResumed) ok = false;
+
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     console.log("[8] test snapshot removed");
+
+    // Test the ON latch in isolation after the queued printer output has
+    // drained, so the printer cannot legitimately add bytes to the paper
+    // tape while the main round-trip assertions are running.
+    await page.evaluate(() => window.setTtyPunchState({ enabled: true, relHeld: false }));
+    const onSnapshotId = await page.evaluate(async () => {
+      const saved = await SnapshotStore.save("e2e ASR punch ON state");
+      return saved.id;
+    });
+    await page.evaluate(() => window.setTtyPunchState({ enabled: false, relHeld: false }));
+    await page.evaluate((id) => SnapshotStore.load(id), onSnapshotId);
+    await page.waitForFunction(
+      () => typeof SnapshotStore !== "undefined" &&
+        typeof window.getTtyPunchState === "function",
+      { timeout: 30000 }
+    );
+    await new Promise((r) => setTimeout(r, 1000));
+    const onRestored = await page.evaluate(() => ({
+      state: window.getTtyPunchState(),
+      onActive: (() => { const b = document.getElementById("punch-on"); return !!b && b.classList.contains("active"); })(),
+      relActive: (() => { const b = document.getElementById("punch-rel"); return !!b && b.classList.contains("active"); })()
+    }));
+    const onPass = onRestored.state.enabled === true &&
+      onRestored.state.relHeld === false &&
+      onRestored.onActive === true && onRestored.relActive === false;
+    console.log("[9] ASR punch ON state survives save/restore: " + (onPass ? "OK" : "FAILED"));
+    if (!onPass) ok = false;
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, onSnapshotId);
+
+    // Exercise the complementary REL-latched state through a second complete
+    // save/reload cycle. ON and REL are mutually exclusive on the real panel.
+    await page.evaluate(() => window.setTtyPunchState({ enabled: false, relHeld: true }));
+    const relSnapshotId = await page.evaluate(async () => {
+      const saved = await SnapshotStore.save("e2e ASR REL state");
+      return saved.id;
+    });
+    await page.evaluate(() => window.setTtyPunchState({ enabled: true, relHeld: false }));
+    await page.evaluate((id) => SnapshotStore.load(id), relSnapshotId);
+    await page.waitForFunction(
+      () => typeof SnapshotStore !== "undefined" &&
+        typeof window.getTtyPunchState === "function",
+      { timeout: 30000 }
+    );
+    await new Promise((r) => setTimeout(r, 1000));
+    const relRestored = await page.evaluate(() => ({
+      state: window.getTtyPunchState(),
+      relActive: (() => { const b = document.getElementById("punch-rel"); return !!b && b.classList.contains("active"); })(),
+      onActive: (() => { const b = document.getElementById("punch-on"); return !!b && b.classList.contains("active"); })()
+    }));
+    const relPass = relRestored.state.enabled === false &&
+      relRestored.state.relHeld === true &&
+      relRestored.relActive === true && relRestored.onActive === false;
+    console.log("[9] ASR REL state survives save/restore: " + (relPass ? "OK" : "FAILED"));
+    if (!relPass) ok = false;
+
+    // CCU OFF must override a malformed/older ON state on restore.
+    const offInterlock = await page.evaluate(() => {
+      window.setTtyMode("off");
+      window.setTtyPunchState({ enabled: true, relHeld: true });
+      const state = window.getTtyPunchState();
+      window.setTtyMode("line");
+      return state;
+    });
+    const offPass = offInterlock.enabled === false && offInterlock.relHeld === false;
+    console.log("[9] CCU OFF interlocks ASR punch restore: " + (offPass ? "OK" : "FAILED"));
+    if (!offPass) ok = false;
+
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, relSnapshotId);
 
     if (!ok) {
       console.error("\nE2E SNAPSHOTS: FAILED");

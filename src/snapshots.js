@@ -291,6 +291,14 @@ var SnapshotStore = (() => {
                 typeof window.vt52SnapshotAll === "function") {
                 vt52 = window.vt52SnapshotAll();
             }
+            // The Model 33 ASR paper and its pending character queue are part
+            // of the operator-visible machine state. Capture them in the
+            // ordinary local SnapshotStore path as well as in exported states.
+            var teletypepaper = null;
+            if (typeof window !== "undefined" && window.g60printer &&
+                typeof window.g60printer.snapshot === "function") {
+                teletypepaper = window.g60printer.snapshot();
+            }
             // Disk write-back overlay: the blocks that differ from the
             // pristine base image at capture time. Restoring them rolls the
             // disks back to the same generation as the captured RAM, so the
@@ -333,11 +341,25 @@ var SnapshotStore = (() => {
                     // rotary switches, toggles) — the machine alone cannot
                     // recreate it, so it travels with the state.
                     panel: capturePanelState(),
+                    // Model 33 ASR Call Control Unit selector. OFF removes
+                    // power from the complete peripheral; LINE and LOCAL
+                    // select its connection to the PDP-11.
+                    asrMode: (typeof window !== "undefined" &&
+                        (window.ttyMode === "off" || window.ttyMode === "local"))
+                        ? window.ttyMode : "line",
+                    // Model 33 ASR paper-punch controls are operator state,
+                    // independent of the CCU selector and reader switch.
+                    // Older snapshots have no asrPunch block and restore to
+                    // the physical default: punch OFF, REL released.
+                    asrPunch: (typeof window !== "undefined" &&
+                        typeof window.getTtyPunchState === "function")
+                        ? window.getTtyPunchState() : { enabled: false, relHeld: false },
                     page: capturePage(),
                     devices: devices,
                     punchtape: punchtape,
                     readertape: readertape,
                     vt52: vt52,
+                    teletypepaper: teletypepaper,
                     overlay: overlay,
                     steps: steps || null,
                     stepsMessage: stepsMessage || null,
@@ -790,20 +812,36 @@ var SnapshotStore = (() => {
                     // absent, e.g. VT52 console).
                     if (snap.punchtape && typeof window !== "undefined" &&
                         window.paperTape && typeof window.paperTape.restore === "function") {
-                        window.paperTape.restore(snap.punchtape.buffer);
+                        window.paperTape.restore(snap.punchtape);
+                    }
+                    // Restore the CCU selector before the reader switch: OFF
+                    // must interlock the reader motor/feed, not merely repaint
+                    // the knob. States predating asrMode default to LINE.
+                    if (typeof window !== "undefined" &&
+                        typeof window.setTtyMode === "function") {
+                        var asrMode = (snap.asrMode === "off" || snap.asrMode === "local")
+                            ? snap.asrMode : "line";
+                        window.setTtyMode(asrMode);
+                    }
+                    // Restore the ASR punch's ON/OFF and REL latches through
+                    // the operator-control API, after the CCU power interlock.
+                    // Missing fields in older snapshots mean the safe default.
+                    if (typeof window !== "undefined" &&
+                        typeof window.setTtyPunchState === "function") {
+                        window.setTtyPunchState(snap.asrPunch || {
+                            enabled: false, relHeld: false
+                        });
                     }
                     // ASR reader tape (L2) — re-render the loaded tape and its read
                     // position (no-op when the tape UI is absent or no tape was
                     // loaded at capture time).
                     if (snap.readertape && typeof window !== "undefined" &&
                         window.tapeReader && typeof window.tapeReader.restore === "function") {
+                        // restore() also restores the saved switch/motor
+                        // state and re-arms its pacing timers. Do not force STOP:
+                        // doing so would silently change the input stream after
+                        // a shared-state restore.
                         window.tapeReader.restore(snap.readertape);
-                        // A restored tape is paused like a freshly loaded one: the
-                        // reader switch goes to STOP so the UI never shows a
-                        // running reader with a stopped motor.
-                        if (typeof window.setReaderMode === "function") {
-                            window.setReaderMode("stop");
-                        }
                     }
                     // VT52 terminals (L3) — screen buffer, hardcopy scrollback,
                     // cursor, modes. Restored after RAM/devices so a repaint sees

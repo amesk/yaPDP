@@ -227,10 +227,17 @@ function buildSandbox() {
       addEventListener: () => {},
     },
     window: {
+      ttyMode: "line",
+      setTtyMode(mode) { this.ttyMode = mode; },
       paperTape: {
         _buffer: [0x11, 0x22, 0x33],
         snapshot() { return { buffer: this._buffer.slice() }; },
-        restore(bytes) { this._buffer = bytes ? bytes.slice() : []; },
+        restore(state) {
+          // Production snapshots now carry { buffer, armedDepth }; retain
+          // compatibility with legacy snapshots that stored the byte array.
+          const bytes = Array.isArray(state) ? state : state && state.buffer;
+          this._buffer = bytes ? bytes.slice() : [];
+        },
       },
       g60printer: {
         _state: { rows: [] },
@@ -268,6 +275,7 @@ async function run() {
     assert.ok(snap.id, "snapshot has id");
     assert.strictEqual(snap.name, "test snapshot");
     assert.strictEqual(snap.schemaVersion, SS.SCHEMA_VERSION);
+    assert.strictEqual(snap.asrMode, "line", "ASR CCU defaults to LINE and is captured");
     // Image identity is now COMPUTED (a fingerprint per mounted url), not a
     // hand-maintained version string. No DiskStore in this sandbox means no
     // fingerprints were learned, which is recorded as an empty map — and an
@@ -330,10 +338,34 @@ async function run() {
     assert.strictEqual(sb.CPU.registerVal[7], 0x1234, "PC restored");
     assert.strictEqual(sb.CPU.PSW, 0x1f, "PSW restored");
     assert.strictEqual(sb.CPU.memory[100], 0xDEAD, "RAM restored");
+    assert.strictEqual(sb.window.ttyMode, "line", "ASR CCU selector restored");
     // Whole RAM must match the pre-mutation pattern.
     assert.strictEqual(sb.CPU.memory[0], 0, "mem[0] restored from pattern");
     assert.strictEqual(sb.CPU.memory[1], 7, "mem[1] restored from pattern");
     console.log("PASS test 3: restore() restores CPU + full RAM");
+  }
+
+  // ---- Test 3b: ASR CCU OFF state is restored as a real interlock ----
+  {
+    const sb = buildSandbox();
+    const SS = loadSnapshotStore(sb);
+    sb.window.ttyMode = "off";
+    const snap = await SS.save("ASR switched off");
+    assert.strictEqual(snap.asrMode, "off", "OFF selector captured");
+
+    sb.window.ttyMode = "local";
+    await SS.restore(snap);
+    assert.strictEqual(sb.window.ttyMode, "off",
+      "restore reapplies OFF through the peripheral control path");
+
+    // Old shared states have no asrMode. They must not inherit a stale OFF
+    // selector from the machine that happened to be active before restore.
+    delete snap.asrMode;
+    sb.window.ttyMode = "off";
+    await SS.restore(snap);
+    assert.strictEqual(sb.window.ttyMode, "line",
+      "legacy states default to the powered LINE position");
+    console.log("PASS test 3b: ASR CCU OFF selector and legacy default");
   }
 
   // ---- Test 4: restore() with raw (non-gzip) memory ------------------
