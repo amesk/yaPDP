@@ -88,6 +88,27 @@ var DiskStore = (() => {
     let flushTimer = null;
 
     // --- IndexedDB plumbing (mirrors dragdrop.js) ---
+
+    // A wedged IndexedDB must never freeze the MACHINE. A snapshot restore
+    // awaits clearAll() and restoreOverlay(), and an open request that never
+    // settles — a name still held by an abandoned document, a delete left
+    // pending after a page was navigated away mid-open — would leave the guest
+    // frozen behind the "Restoring…" toast with nothing to click. `blocked`
+    // and this timeout both drop the store to memory-only for the session,
+    // the same way the image-readiness seam bounds its own wait.
+    const DB_OPEN_TIMEOUT_MS = 4000;
+
+    // A harness may load this module without the timer globals (tests/diskstore
+    // .test.js runs it in a bare VM context), so both halves are optional: no
+    // timer simply means "wait for the open like before".
+    function armTimer(fn, ms) {
+        return (typeof setTimeout === "function") ? setTimeout(fn, ms) : null;
+    }
+
+    function disarmTimer(timer) {
+        if (timer != null && typeof clearTimeout === "function") clearTimeout(timer);
+    }
+
     function openDB() {
         if (dbPromise) return dbPromise;
         if (typeof indexedDB === "undefined") {
@@ -95,14 +116,38 @@ var DiskStore = (() => {
             return dbPromise;
         }
         dbPromise = new Promise((resolve) => {
-            const req = indexedDB.open(DB_NAME, 1);
+            let settled = false;
+            const settle = (value) => {
+                if (settled) return;
+                settled = true;
+                disarmTimer(timer);
+                db = value;
+                resolve(value);
+            };
+            const timer = armTimer(() => settle(null), DB_OPEN_TIMEOUT_MS);
+            let req = null;
+            try {
+                req = indexedDB.open(DB_NAME, 1);
+            } catch (e) {
+                settle(null);
+                return;
+            }
             req.onupgradeneeded = () => {
                 if (!req.result.objectStoreNames.contains(DB_STORE)) {
                     req.result.createObjectStore(DB_STORE);
                 }
             };
-            req.onsuccess = () => { db = req.result; resolve(db); };
-            req.onerror = () => { db = null; resolve(null); };
+            req.onsuccess = () => {
+                // A connection granted after the fallback fired is not ours to
+                // keep: the store already runs memory-only for this session.
+                if (settled) {
+                    try { req.result.close(); } catch (e) { /* already closed */ }
+                    return;
+                }
+                settle(req.result);
+            };
+            req.onerror = () => settle(null);
+            req.onblocked = () => settle(null);
         });
         return dbPromise;
     }
