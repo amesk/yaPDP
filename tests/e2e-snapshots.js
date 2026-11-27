@@ -187,7 +187,7 @@ async function ensureServer() {
       window.setReaderMode("stop");
       window.setTtyReaderXoffPaused(true);
       window.setReaderMode("auto");
-      window.setTtyPunchState({ enabled: true, relHeld: false });
+      window.setTtyPunchState({ enabled: false, relHeld: false });
     });
     await page.waitForFunction(() => {
       const r = window.tapeReader.snapshot();
@@ -314,6 +314,7 @@ async function ensureServer() {
       devices: iopage.snapshotDevices(),
       punchtape: (window.paperTape && window.paperTape.snapshot) ? window.paperTape.snapshot() : null,
       readertape: (window.tapeReader && window.tapeReader.snapshot) ? window.tapeReader.snapshot() : null,
+      asrPunch: window.getTtyPunchState(),
       teletype: (window.g60printer && window.g60printer.snapshot) ? window.g60printer.snapshot() : null,
       lp11: (window.lp11G60Printer && window.lp11G60Printer.snapshot) ? window.lp11G60Printer.snapshot() : null,
       onlineLedOff: (() => { const led = document.getElementById("lp11-online-led"); return led ? led.classList.contains("off") : null; })(),
@@ -455,6 +456,34 @@ async function ensureServer() {
 
     await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, snapId);
     console.log("[8] test snapshot removed");
+
+    // Test the ON latch in isolation after the queued printer output has
+    // drained, so the printer cannot legitimately add bytes to the paper
+    // tape while the main round-trip assertions are running.
+    await page.evaluate(() => window.setTtyPunchState({ enabled: true, relHeld: false }));
+    const onSnapshotId = await page.evaluate(async () => {
+      const saved = await SnapshotStore.save("e2e ASR punch ON state");
+      return saved.id;
+    });
+    await page.evaluate(() => window.setTtyPunchState({ enabled: false, relHeld: false }));
+    await page.evaluate((id) => SnapshotStore.load(id), onSnapshotId);
+    await page.waitForFunction(
+      () => typeof SnapshotStore !== "undefined" &&
+        typeof window.getTtyPunchState === "function",
+      { timeout: 30000 }
+    );
+    await new Promise((r) => setTimeout(r, 1000));
+    const onRestored = await page.evaluate(() => ({
+      state: window.getTtyPunchState(),
+      onActive: (() => { const b = document.getElementById("punch-on"); return !!b && b.classList.contains("active"); })(),
+      relActive: (() => { const b = document.getElementById("punch-rel"); return !!b && b.classList.contains("active"); })()
+    }));
+    const onPass = onRestored.state.enabled === true &&
+      onRestored.state.relHeld === false &&
+      onRestored.onActive === true && onRestored.relActive === false;
+    console.log("[9] ASR punch ON state survives save/restore: " + (onPass ? "OK" : "FAILED"));
+    if (!onPass) ok = false;
+    await page.evaluate(async (id) => { await SnapshotStore.remove(id); }, onSnapshotId);
 
     // Exercise the complementary REL-latched state through a second complete
     // save/reload cycle. ON and REL are mutually exclusive on the real panel.
